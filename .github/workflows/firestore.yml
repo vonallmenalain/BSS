@@ -52,10 +52,14 @@ jobs:
       - name: Abhängigkeiten installieren
         run: npm ci --no-audit --no-fund
 
-      # Der Firestore-Emulator läuft auf Java; auf ubuntu-latest ist es
-      # vorinstalliert. Diese Prüfung macht ein Fehlen sofort erkennbar.
-      - name: Java prüfen
-        run: java -version
+      # Der Firestore-Emulator läuft auf Java, und firebase-tools ab Version 15
+      # verlangt mindestens JDK 21. Auf ubuntu-latest ist Java 17 vorinstalliert –
+      # das reicht nicht, deshalb wird die Version hier festgelegt statt der
+      # Voreinstellung des Runners überlassen.
+      - uses: actions/setup-java@v5
+        with:
+          distribution: temurin
+          java-version: '21'
 
       - name: Zugriffsregeln testen
         run: npm run test:rules
