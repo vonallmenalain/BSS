@@ -1,0 +1,438 @@
+import { useMemo, useState } from 'react'
+import { Link, useNavigate } from 'react-router-dom'
+import {
+  CalendarDays,
+  Plus,
+  ArrowRight,
+  AlertTriangle,
+  Mic,
+  ListTodo,
+  Play,
+  Cake,
+  CheckCircle2,
+} from 'lucide-react'
+import { useAuth } from '@/contexts/AuthContext'
+import { useData } from '@/contexts/DataContext'
+import { useMeetings, useOpenItems, useTalks } from '@/hooks/useFirestore'
+import { AgendaItemCard } from '@/components/agenda/AgendaItemCard'
+import { AgendaItemForm } from '@/components/agenda/AgendaItemForm'
+import { MeetingStatusBadge } from '@/components/ui/Badge'
+import { EmptyState, SkeletonList } from '@/components/ui/Feedback'
+import { PageHeader } from '@/components/ui/Pickers'
+import {
+  formatDateLong,
+  formatDateShort,
+  formatTime,
+  getDueInfo,
+  hasBirthdaySoon,
+  toDate,
+  differenceInCalendarDays,
+  startOfDay,
+  upcomingWeekdays,
+} from '@/lib/dates'
+import { sortForPendenzen } from '@/services/agenda'
+import { ACTIVE_TALK_STATUSES, type AgendaItem } from '@/lib/types'
+
+export function Dashboard() {
+  const { profile } = useAuth()
+  const { settings, members } = useData()
+  const navigate = useNavigate()
+  const { data: meetings, loading: meetingsLoading } = useMeetings(20)
+  const { data: openItems, loading: itemsLoading } = useOpenItems()
+  const { data: talks } = useTalks(100)
+  const [formOpen, setFormOpen] = useState(false)
+
+  /* Nächste Sitzung: die zeitlich nächste, die noch nicht abgeschlossen ist. */
+  const nextMeeting = useMemo(() => {
+    const upcoming = meetings
+      .filter((m) => m.status !== 'closed')
+      .sort((a, b) => (toDate(a.date)?.getTime() ?? 0) - (toDate(b.date)?.getTime() ?? 0))
+    return upcoming.find((m) => m.status === 'running') ?? upcoming[0] ?? null
+  }, [meetings])
+
+  const nextMeetingRef = useMemo(() => {
+    const date = toDate(nextMeeting?.date)
+    return nextMeeting && date ? { id: nextMeeting.id, date } : null
+  }, [nextMeeting])
+
+  const daysToMeeting = nextMeetingRef
+    ? differenceInCalendarDays(startOfDay(nextMeetingRef.date), startOfDay(new Date()))
+    : null
+
+  /* Pendenzen ------------------------------------------------------- */
+  const myItems = useMemo(
+    () =>
+      sortForPendenzen(openItems.filter((item) => item.assignees?.includes(profile?.id ?? ''))),
+    [openItems, profile?.id],
+  )
+
+  const overdueItems = useMemo(
+    () => sortForPendenzen(openItems.filter((item) => getDueInfo(item.dueDate)?.overdue)),
+    [openItems],
+  )
+
+  const meetingItems = useMemo(
+    () => openItems.filter((item) => item.meetingId === nextMeeting?.id),
+    [openItems, nextMeeting?.id],
+  )
+
+  const unassignedCount = openItems.filter((item) => !item.meetingId).length
+
+  /* Ansprachen: die nächsten Sonntage und ihre Lücken ---------------- */
+  const talkGaps = useMemo(() => {
+    const sundays = upcomingWeekdays(settings.sacramentWeekday, 6)
+    return sundays.map((sunday) => {
+      const assigned = talks.filter((talk) => {
+        const date = toDate(talk.date)
+        return (
+          date &&
+          date.toDateString() === sunday.toDateString() &&
+          ACTIVE_TALK_STATUSES.concat('held').includes(talk.status)
+        )
+      })
+      return { date: sunday, assigned: assigned.length, open: Math.max(0, settings.talksPerSunday - assigned.length) }
+    })
+  }, [talks, settings.sacramentWeekday, settings.talksPerSunday])
+
+  const openTalkSlots = talkGaps.reduce((sum, gap) => sum + gap.open, 0)
+
+  /* Geburtstage ------------------------------------------------------ */
+  const birthdays = useMemo(
+    () =>
+      members
+        .filter((m) => m.status === 'active' && hasBirthdaySoon(m.birthDate, 10))
+        .sort((a, b) => {
+          const dayOf = (value: typeof a.birthDate) => {
+            const date = toDate(value)
+            if (!date) return 999
+            const today = startOfDay(new Date())
+            const candidate = new Date(today.getFullYear(), date.getMonth(), date.getDate())
+            if (candidate < today) candidate.setFullYear(today.getFullYear() + 1)
+            return differenceInCalendarDays(candidate, today)
+          }
+          return dayOf(a.birthDate) - dayOf(b.birthDate)
+        })
+        .slice(0, 5),
+    [members],
+  )
+
+  const greeting = (() => {
+    const hour = new Date().getHours()
+    if (hour < 11) return 'Guten Morgen'
+    if (hour < 18) return 'Guten Tag'
+    return 'Guten Abend'
+  })()
+
+  const handleOpenItem = (item: AgendaItem) => {
+    if (item.meetingId) navigate(`/sitzungen/${item.meetingId}`)
+    else navigate('/pendenzen')
+  }
+
+  return (
+    <>
+      <PageHeader
+        title={`${greeting}, ${profile?.displayName.split(' ')[0] ?? ''}`}
+        subtitle={settings.wardName}
+        actions={
+          <button type="button" className="btn-primary" onClick={() => setFormOpen(true)}>
+            <Plus className="size-4" aria-hidden />
+            <span className="hidden sm:inline">Traktandum</span>
+          </button>
+        }
+      />
+
+      <div className="grid gap-4 lg:grid-cols-3">
+        {/* ---------- Nächste Sitzung ---------- */}
+        <section className="lg:col-span-2">
+          {meetingsLoading ? (
+            <SkeletonList rows={1} />
+          ) : nextMeeting && nextMeetingRef ? (
+            <div className="card overflow-hidden">
+              <div className="from-brand-600 to-brand-700 bg-gradient-to-br p-5 text-white">
+                <div className="flex items-start justify-between gap-3">
+                  <div className="min-w-0">
+                    <p className="text-brand-100 text-xs font-medium tracking-wide uppercase">
+                      {nextMeeting.status === 'running'
+                        ? 'Sitzung läuft'
+                        : daysToMeeting === 0
+                          ? 'Heute'
+                          : daysToMeeting === 1
+                            ? 'Morgen'
+                            : daysToMeeting != null && daysToMeeting > 0
+                              ? `In ${daysToMeeting} Tagen`
+                              : 'Überfällig'}
+                    </p>
+                    <h2 className="mt-1 truncate text-lg font-semibold">{nextMeeting.title}</h2>
+                    <p className="text-brand-100 mt-0.5 text-sm">
+                      {formatDateLong(nextMeeting.date)} · {formatTime(nextMeeting.date)}
+                      {nextMeeting.location && ` · ${nextMeeting.location}`}
+                    </p>
+                  </div>
+                  <MeetingStatusBadge status={nextMeeting.status} />
+                </div>
+
+                <div className="mt-4 flex flex-wrap gap-2">
+                  <Link
+                    to={`/sitzungen/${nextMeeting.id}`}
+                    className="btn text-brand-800 bg-white hover:bg-brand-50"
+                  >
+                    {nextMeeting.status === 'running' ? (
+                      <>
+                        <Play className="size-4" aria-hidden />
+                        Weiterführen
+                      </>
+                    ) : (
+                      <>
+                        <CalendarDays className="size-4" aria-hidden />
+                        Sitzung öffnen
+                      </>
+                    )}
+                  </Link>
+                  {unassignedCount > 0 && (
+                    <Link
+                      to={`/sitzungen/${nextMeeting.id}`}
+                      className="btn border border-white/30 text-white hover:bg-white/10"
+                    >
+                      {unassignedCount} Pendenz{unassignedCount === 1 ? '' : 'en'} übernehmen
+                    </Link>
+                  )}
+                </div>
+              </div>
+
+              <div className="p-4">
+                <div className="mb-3 flex items-center justify-between">
+                  <h3 className="text-sm font-medium">Traktanden dieser Sitzung</h3>
+                  <span className="text-xs text-slate-500 dark:text-slate-400">
+                    {meetingItems.length} offen
+                  </span>
+                </div>
+                {meetingItems.length === 0 ? (
+                  <p className="py-3 text-center text-sm text-slate-500 dark:text-slate-400">
+                    Noch nichts traktandiert.
+                  </p>
+                ) : (
+                  <div className="space-y-2">
+                    {meetingItems.slice(0, 4).map((item) => (
+                      <AgendaItemCard
+                        key={item.id}
+                        item={item}
+                        compact
+                        onOpen={handleOpenItem}
+                        nextMeeting={nextMeetingRef}
+                      />
+                    ))}
+                    {meetingItems.length > 4 && (
+                      <Link
+                        to={`/sitzungen/${nextMeeting.id}`}
+                        className="text-brand-600 dark:text-brand-300 flex items-center justify-center gap-1 py-2 text-sm hover:underline"
+                      >
+                        Alle {meetingItems.length} anzeigen
+                        <ArrowRight className="size-3.5" aria-hidden />
+                      </Link>
+                    )}
+                  </div>
+                )}
+              </div>
+            </div>
+          ) : (
+            <div className="card">
+              <EmptyState
+                icon={CalendarDays}
+                title="Keine Sitzung geplant"
+                description="Lege den nächsten Termin fest, damit Traktanden zugeordnet werden können."
+                action={
+                  <Link to="/sitzungen" className="btn-primary">
+                    <Plus className="size-4" aria-hidden />
+                    Sitzung planen
+                  </Link>
+                }
+              />
+            </div>
+          )}
+        </section>
+
+        {/* ---------- Rechte Spalte ---------- */}
+        <div className="space-y-4">
+          <StatRow
+            overdue={overdueItems.length}
+            mine={myItems.length}
+            openTalks={openTalkSlots}
+          />
+
+          {/* Ansprachen */}
+          <section className="card p-4">
+            <div className="mb-3 flex items-center justify-between">
+              <h3 className="flex items-center gap-2 text-sm font-medium">
+                <Mic className="size-4 text-slate-400" aria-hidden />
+                Ansprachen
+              </h3>
+              <Link
+                to="/ansprachen"
+                className="text-brand-600 dark:text-brand-300 text-xs hover:underline"
+              >
+                Planen
+              </Link>
+            </div>
+            <ul className="divide-list -mx-1">
+              {talkGaps.slice(0, 4).map((gap) => (
+                <li
+                  key={gap.date.toISOString()}
+                  className="flex items-center justify-between px-1 py-2 text-sm"
+                >
+                  <span>{formatDateShort(gap.date)}</span>
+                  {gap.open === 0 ? (
+                    <span className="badge bg-emerald-100 text-emerald-800 dark:bg-emerald-950 dark:text-emerald-200">
+                      <CheckCircle2 className="size-3" aria-hidden />
+                      Vollständig
+                    </span>
+                  ) : (
+                    <span className="badge bg-amber-100 text-amber-800 dark:bg-amber-950 dark:text-amber-200">
+                      {gap.open} offen
+                    </span>
+                  )}
+                </li>
+              ))}
+            </ul>
+          </section>
+
+          {/* Geburtstage */}
+          {birthdays.length > 0 && (
+            <section className="card p-4">
+              <h3 className="mb-3 flex items-center gap-2 text-sm font-medium">
+                <Cake className="size-4 text-slate-400" aria-hidden />
+                Geburtstage
+              </h3>
+              <ul className="space-y-2 text-sm">
+                {birthdays.map((member) => (
+                  <li key={member.id} className="flex items-center justify-between gap-2">
+                    <Link
+                      to={`/mitglieder/${member.id}`}
+                      className="min-w-0 truncate hover:underline"
+                    >
+                      {member.firstName} {member.lastName}
+                    </Link>
+                    <span className="shrink-0 text-xs text-slate-500 dark:text-slate-400">
+                      {formatDateShort(
+                        (() => {
+                          const date = toDate(member.birthDate)!
+                          const today = startOfDay(new Date())
+                          const next = new Date(today.getFullYear(), date.getMonth(), date.getDate())
+                          if (next < today) next.setFullYear(today.getFullYear() + 1)
+                          return next
+                        })(),
+                      ).slice(0, 9)}
+                    </span>
+                  </li>
+                ))}
+              </ul>
+            </section>
+          )}
+        </div>
+      </div>
+
+      {/* ---------- Pendenzen ---------- */}
+      <div className="mt-6 grid gap-4 lg:grid-cols-2">
+        <section>
+          <div className="mb-3 flex items-center justify-between">
+            <h2 className="flex items-center gap-2 text-sm font-semibold">
+              <ListTodo className="size-4 text-slate-400" aria-hidden />
+              Meine Pendenzen
+            </h2>
+            <Link
+              to="/pendenzen"
+              className="text-brand-600 dark:text-brand-300 text-xs hover:underline"
+            >
+              Alle anzeigen
+            </Link>
+          </div>
+          {itemsLoading ? (
+            <SkeletonList rows={2} />
+          ) : myItems.length === 0 ? (
+            <div className="card">
+              <EmptyState
+                icon={CheckCircle2}
+                title="Nichts offen"
+                description="Dir ist aktuell keine Pendenz zugewiesen."
+              />
+            </div>
+          ) : (
+            <div className="space-y-2">
+              {myItems.slice(0, 5).map((item) => (
+                <AgendaItemCard
+                  key={item.id}
+                  item={item}
+                  compact
+                  onOpen={handleOpenItem}
+                  nextMeeting={nextMeetingRef}
+                />
+              ))}
+            </div>
+          )}
+        </section>
+
+        {overdueItems.length > 0 && (
+          <section>
+            <h2 className="mb-3 flex items-center gap-2 text-sm font-semibold text-rose-600 dark:text-rose-400">
+              <AlertTriangle className="size-4" aria-hidden />
+              Überfällig ({overdueItems.length})
+            </h2>
+            <div className="space-y-2">
+              {overdueItems.slice(0, 5).map((item) => (
+                <AgendaItemCard
+                  key={item.id}
+                  item={item}
+                  compact
+                  onOpen={handleOpenItem}
+                  nextMeeting={nextMeetingRef}
+                />
+              ))}
+            </div>
+          </section>
+        )}
+      </div>
+
+      <AgendaItemForm
+        open={formOpen}
+        onClose={() => setFormOpen(false)}
+        meetingId={nextMeeting?.id ?? null}
+      />
+    </>
+  )
+}
+
+function StatRow({
+  overdue,
+  mine,
+  openTalks,
+}: {
+  overdue: number
+  mine: number
+  openTalks: number
+}) {
+  const stats = [
+    { label: 'Überfällig', value: overdue, to: '/pendenzen', danger: overdue > 0 },
+    { label: 'Meine', value: mine, to: '/pendenzen' },
+    { label: 'Reden offen', value: openTalks, to: '/ansprachen' },
+  ]
+
+  return (
+    <div className="grid grid-cols-3 gap-2">
+      {stats.map((stat) => (
+        <Link
+          key={stat.label}
+          to={stat.to}
+          className="card card-hover p-3 text-center"
+        >
+          <p
+            className={`tabular text-2xl font-semibold ${
+              stat.danger ? 'text-rose-600 dark:text-rose-400' : ''
+            }`}
+          >
+            {stat.value}
+          </p>
+          <p className="mt-0.5 text-xs text-slate-500 dark:text-slate-400">{stat.label}</p>
+        </Link>
+      ))}
+    </div>
+  )
+}

@@ -1,0 +1,45 @@
+<!doctype html>
+<html lang="de-CH">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+    <meta name="description" content="Administrative Werkzeuge für die Bischofschaft: Sitzungen, Traktanden, Pendenzen, Ansprachen und Berufungen." />
+    <meta name="robots" content="noindex, nofollow" />
+
+    <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
+    <link rel="apple-touch-icon" href="/icons/icon-192.png" />
+    <link rel="mask-icon" href="/favicon.svg" color="#1e3a5f" />
+
+    <meta name="theme-color" content="#1e3a5f" media="(prefers-color-scheme: light)" />
+    <meta name="theme-color" content="#0f172a" media="(prefers-color-scheme: dark)" />
+    <meta name="apple-mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+    <meta name="apple-mobile-web-app-title" content="Bischofschaft" />
+    <meta name="mobile-web-app-capable" content="yes" />
+    <meta name="format-detection" content="telephone=no" />
+
+    <title>Bischofschaft</title>
+
+    <style>
+      /* Verhindert ein weisses Aufblitzen vor dem ersten Render */
+      html { background-color: #f8fafc; }
+      @media (prefers-color-scheme: dark) { html { background-color: #0b1220; } }
+      #splash {
+        position: fixed; inset: 0; display: grid; place-items: center;
+        font-family: system-ui, -apple-system, 'Segoe UI', sans-serif;
+        color: #64748b; font-size: 0.875rem; letter-spacing: 0.05em;
+      }
+    </style>
+  </head>
+  <body>
+    <div id="root">
+      <div id="splash">Bischofschaft wird geladen …</div>
+    </div>
+    <noscript>
+      <p style="font-family: system-ui, sans-serif; padding: 2rem">
+        Diese Anwendung benötigt JavaScript. Bitte aktiviere JavaScript in deinem Browser.
+      </p>
+    </noscript>
+    <script type="module" src="/src/main.tsx"></script>
+  </body>
+</html>

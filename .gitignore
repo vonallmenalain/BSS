@@ -1,0 +1,56 @@
+# Dependencies
+node_modules/
+.pnp
+.pnp.js
+
+# Build-Output
+dist/
+dist-ssr/
+build/
+*.local
+
+# Umgebungsvariablen (enthalten Firebase-Konfiguration)
+.env
+.env.local
+.env.*.local
+!.env.example
+
+# Editor / OS
+.vscode/*
+!.vscode/extensions.json
+.idea/
+.DS_Store
+*.suo
+*.ntvs*
+*.njsproj
+*.sln
+*.sw?
+Thumbs.db
+
+# Logs
+logs/
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+
+# Netlify
+.netlify/
+
+# Firebase
+.firebase/
+firebase-debug.log
+firestore-debug.log
+ui-debug.log
+*-service-account.json
+serviceAccountKey.json
+
+# Test-Output
+coverage/
+
+# Import-Daten (können Personendaten enthalten!)
+/import/
+*.xlsx
+*.xls
+!docs/**/*.xlsx
