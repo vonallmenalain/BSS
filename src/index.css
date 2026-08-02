@@ -1,0 +1,227 @@
+@import 'tailwindcss';
+
+/* Dark Mode über eine Klasse am <html>-Element steuern. */
+@custom-variant dark (&:where(.dark, .dark *));
+
+@theme {
+  /* Markenfarbe: gedecktes Blau – ruhig, seriös, gut lesbar */
+  --color-brand-50: oklch(0.97 0.014 250);
+  --color-brand-100: oklch(0.94 0.03 250);
+  --color-brand-200: oklch(0.88 0.055 250);
+  --color-brand-300: oklch(0.79 0.085 250);
+  --color-brand-400: oklch(0.68 0.11 250);
+  --color-brand-500: oklch(0.58 0.125 250);
+  --color-brand-600: oklch(0.49 0.115 250);
+  --color-brand-700: oklch(0.41 0.095 250);
+  --color-brand-800: oklch(0.34 0.075 250);
+  --color-brand-900: oklch(0.28 0.055 250);
+  --color-brand-950: oklch(0.19 0.04 250);
+
+  --font-sans:
+    ui-sans-serif, system-ui, -apple-system, 'Segoe UI', Roboto, 'Helvetica Neue', Arial,
+    sans-serif;
+
+  --animate-slide-up: slide-up 0.22s cubic-bezier(0.32, 0.72, 0, 1);
+  --animate-fade-in: fade-in 0.15s ease-out;
+  --animate-scale-in: scale-in 0.18s cubic-bezier(0.32, 0.72, 0, 1);
+}
+
+@keyframes slide-up {
+  from {
+    opacity: 0;
+    transform: translateY(0.75rem);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes fade-in {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+@keyframes scale-in {
+  from {
+    opacity: 0;
+    transform: scale(0.97);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+
+@layer base {
+  html {
+    -webkit-text-size-adjust: 100%;
+    -webkit-tap-highlight-color: transparent;
+    scrollbar-gutter: stable;
+  }
+
+  body {
+    @apply bg-slate-50 font-sans text-slate-900 antialiased dark:bg-slate-950 dark:text-slate-100;
+    /* Overscroll-Bounce unterdrücken, damit sich die PWA nativ anfühlt */
+    overscroll-behavior-y: none;
+  }
+
+  /* Sichtbarer Fokus für Tastaturbedienung – nie entfernen */
+  :focus-visible {
+    @apply outline-brand-500 outline-2 outline-offset-2;
+  }
+
+  ::selection {
+    @apply bg-brand-200 text-brand-950;
+  }
+
+  h1,
+  h2,
+  h3 {
+    @apply text-balance;
+  }
+
+  /* Zahlen in Tabellen sauber untereinander */
+  .tabular {
+    font-variant-numeric: tabular-nums;
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    *,
+    *::before,
+    *::after {
+      animation-duration: 0.01ms !important;
+      animation-iteration-count: 1 !important;
+      transition-duration: 0.01ms !important;
+      scroll-behavior: auto !important;
+    }
+  }
+}
+
+/* Wiederkehrende Bausteine als `@utility` – in Tailwind v4 ist das die
+   Voraussetzung dafür, dass sie ihrerseits per `@apply` verwendbar sind
+   (`btn-primary` baut auf `btn` auf). */
+
+/* --- Flächen -------------------------------------------------------- */
+@utility card {
+  @apply rounded-xl border border-slate-200 bg-white shadow-xs dark:border-slate-800 dark:bg-slate-900;
+}
+
+@utility card-hover {
+  @apply transition hover:border-slate-300 hover:shadow-md dark:hover:border-slate-700;
+}
+
+/* --- Schaltflächen -------------------------------------------------- */
+@utility btn {
+  @apply inline-flex shrink-0 items-center justify-center gap-2 rounded-lg px-3.5 py-2 text-sm font-medium
+    transition select-none disabled:pointer-events-none disabled:opacity-50;
+}
+
+@utility btn-primary {
+  @apply btn bg-brand-600 text-white shadow-xs hover:bg-brand-700 active:bg-brand-800;
+}
+
+@utility btn-secondary {
+  @apply btn border border-slate-300 bg-white text-slate-700 shadow-xs hover:bg-slate-50
+    dark:border-slate-700 dark:bg-slate-900 dark:text-slate-200 dark:hover:bg-slate-800;
+}
+
+@utility btn-ghost {
+  @apply btn text-slate-600 hover:bg-slate-100 dark:text-slate-300 dark:hover:bg-slate-800;
+}
+
+@utility btn-danger {
+  @apply btn bg-rose-600 text-white shadow-xs hover:bg-rose-700;
+}
+
+@utility btn-success {
+  @apply btn bg-emerald-600 text-white shadow-xs hover:bg-emerald-700;
+}
+
+@utility btn-sm {
+  @apply px-2.5 py-1.5 text-xs;
+}
+
+@utility btn-lg {
+  @apply px-5 py-2.5 text-base;
+}
+
+/* --- Formulare ------------------------------------------------------ */
+@utility input {
+  @apply w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm text-slate-900
+    shadow-xs transition placeholder:text-slate-400
+    focus:border-brand-500 focus:ring-2 focus:ring-brand-500/20 focus:outline-none
+    disabled:bg-slate-50 disabled:text-slate-500
+    dark:border-slate-700 dark:bg-slate-900 dark:text-slate-100 dark:placeholder:text-slate-500
+    dark:disabled:bg-slate-800;
+}
+
+@utility label {
+  @apply mb-1.5 block text-sm font-medium text-slate-700 dark:text-slate-300;
+}
+
+@utility hint {
+  @apply mt-1 text-xs text-slate-500 dark:text-slate-400;
+}
+
+/* --- Etiketten ------------------------------------------------------ */
+@utility badge {
+  @apply inline-flex items-center gap-1 rounded-md px-2 py-0.5 text-xs font-medium whitespace-nowrap;
+}
+
+@utility chip {
+  @apply inline-flex items-center gap-1.5 rounded-full px-2.5 py-1 text-xs font-medium;
+}
+
+/* --- Trennlinien in Listen ------------------------------------------ */
+@utility divide-list {
+  & > * + * {
+    @apply border-t border-slate-200 dark:border-slate-800;
+  }
+}
+
+@layer utilities {
+  /* Sichere Bereiche auf iPhones mit Notch */
+  .pb-safe {
+    padding-bottom: env(safe-area-inset-bottom);
+  }
+  .pt-safe {
+    padding-top: env(safe-area-inset-top);
+  }
+
+  /* Horizontal scrollbare Bereiche mit Einrastpunkten */
+  .snap-x-mandatory {
+    scroll-snap-type: x mandatory;
+  }
+  .snap-start {
+    scroll-snap-align: start;
+  }
+
+  /* Scrollbalken ausblenden, Scrollen bleibt möglich */
+  .no-scrollbar {
+    scrollbar-width: none;
+  }
+  .no-scrollbar::-webkit-scrollbar {
+    display: none;
+  }
+}
+
+/* Beim Drucken (Protokoll) nur den Inhalt ausgeben */
+@media print {
+  .no-print {
+    display: none !important;
+  }
+  body {
+    background: white;
+    color: black;
+  }
+  .card {
+    border: 1px solid #ddd;
+    box-shadow: none;
+    break-inside: avoid;
+  }
+}
