@@ -1,0 +1,112 @@
+name: Firestore-Regeln
+
+# Prüft die Zugriffsregeln und rollt sie aus, sobald sie auf `main` landen.
+#
+# Ablauf:
+#   1. `test`   – läuft immer, auch bei Pull Requests. Startet den
+#                 Firestore-Emulator und prüft die Regeln gegen tests/.
+#   2. `deploy` – läuft nur bei einem Push auf `main` und nur, wenn die
+#                 Tests grün sind. Damit kann keine Regel produktiv werden,
+#                 die den Zugriff auf Personendaten öffnet.
+#
+# Einmalige Einrichtung siehe README, Abschnitt «Automatisches Ausrollen».
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'firestore.rules'
+      - 'firestore.indexes.json'
+      - 'tests/**'
+      - '.github/workflows/firestore.yml'
+  pull_request:
+    paths:
+      - 'firestore.rules'
+      - 'firestore.indexes.json'
+      - 'tests/**'
+      - '.github/workflows/firestore.yml'
+  # Erlaubt das Ausrollen von Hand über den Reiter «Actions».
+  workflow_dispatch:
+
+# Nur Lesezugriff aufs Repository – der Workflow schreibt nichts zurück.
+permissions:
+  contents: read
+
+# Zwei gleichzeitige Läufe würden sich beim Ausrollen in die Quere kommen.
+concurrency:
+  group: firestore-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  test:
+    name: Regeln prüfen
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+
+      - uses: actions/setup-node@v5
+        with:
+          node-version: 22
+          cache: npm
+
+      - name: Abhängigkeiten installieren
+        run: npm ci --no-audit --no-fund
+
+      # Der Firestore-Emulator läuft auf Java, und firebase-tools ab Version 15
+      # verlangt mindestens JDK 21. Auf ubuntu-latest ist Java 17 vorinstalliert –
+      # das reicht nicht, deshalb wird die Version hier festgelegt statt der
+      # Voreinstellung des Runners überlassen.
+      - uses: actions/setup-java@v5
+        with:
+          distribution: temurin
+          java-version: '21'
+
+      - name: Zugriffsregeln testen
+        run: npm run test:rules
+
+  deploy:
+    name: Regeln ausrollen
+    needs: test
+    if: github.event_name != 'pull_request'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+
+      - uses: actions/setup-node@v5
+        with:
+          node-version: 22
+
+      # Das Dienstkonto wird über eine Datei übergeben, nicht über die
+      # Kommandozeile – so landet es nicht in der Prozessliste. `printf` mit
+      # der Variable statt direkter Einsetzung verhindert, dass Sonderzeichen
+      # im Schlüssel als Shell-Befehle gelesen werden.
+      - name: Dienstkonto bereitstellen
+        env:
+          SERVICE_ACCOUNT: ${{ secrets.FIREBASE_SERVICE_ACCOUNT }}
+        run: |
+          if [ -z "$SERVICE_ACCOUNT" ]; then
+            echo "::error::Das Repository-Secret FIREBASE_SERVICE_ACCOUNT fehlt. Siehe README, Abschnitt «Automatisches Ausrollen»."
+            exit 1
+          fi
+          printf '%s' "$SERVICE_ACCOUNT" > "$RUNNER_TEMP/service-account.json"
+          chmod 600 "$RUNNER_TEMP/service-account.json"
+          echo "GOOGLE_APPLICATION_CREDENTIALS=$RUNNER_TEMP/service-account.json" >> "$GITHUB_ENV"
+
+      - name: Regeln und Indizes ausrollen
+        env:
+          PROJECT_ID: ${{ secrets.FIREBASE_PROJECT_ID }}
+        run: |
+          if [ -z "$PROJECT_ID" ]; then
+            echo "::error::Das Repository-Secret FIREBASE_PROJECT_ID fehlt."
+            exit 1
+          fi
+          npx --yes firebase-tools@15 deploy \
+            --only firestore:rules,firestore:indexes \
+            --project "$PROJECT_ID" \
+            --non-interactive
+
+      # Läuft auch, wenn das Ausrollen scheitert. Der Runner wird zwar ohnehin
+      # verworfen, aber die Datei soll keinen Schritt länger existieren als nötig.
+      - name: Dienstkonto entfernen
+        if: always()
+        run: rm -f "$RUNNER_TEMP/service-account.json"

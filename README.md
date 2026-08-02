@@ -66,9 +66,11 @@ Dann Regeln und Indizes ausrollen:
 
 ```bash
 npx firebase login
-npx firebase use --add          # das Projekt auswählen
-npx firebase deploy --only firestore:rules,firestore:indexes
+npm run deploy:rules -- --project DEINE-PROJEKT-ID
 ```
+
+Danach übernimmt das GitHub Actions automatisch – siehe
+[Automatisches Ausrollen](#automatisches-ausrollen).
 
 ### 4. Ersten Benutzer freischalten
 
@@ -90,6 +92,7 @@ Alle weiteren Konten schaltest du danach in der App frei:
 
 ```bash
 npm run dev          # Entwicklungsserver auf http://localhost:5173
+npm run test:rules   # Zugriffsregeln gegen den Emulator prüfen
 npm run build        # Produktions-Build nach dist/
 npm run preview      # Build lokal prüfen
 npm run lint         # ESLint
@@ -119,6 +122,71 @@ Fehlt das, schlägt die Anmeldung in Produktion fehl.
 
 ---
 
+## Automatisches Ausrollen
+
+Änderungen an `firestore.rules` oder `firestore.indexes.json` werden von
+GitHub Actions selbst ausgerollt, sobald sie auf `main` landen. Der Workflow
+liegt in [`.github/workflows/firestore.yml`](.github/workflows/firestore.yml)
+und arbeitet in zwei Schritten:
+
+1. **Prüfen** – startet den Firestore-Emulator und lässt die Tests aus
+   `tests/` gegen die Regeln laufen. Das passiert bei jedem Pull Request und
+   bei jedem Push.
+2. **Ausrollen** – nur bei einem Push auf `main` und nur, wenn Schritt 1 grün
+   ist. So kann keine Regel produktiv werden, die den Zugriff auf
+   Personendaten öffnet.
+
+Der Reiter **Actions** auf GitHub erlaubt zusätzlich das Ausrollen von Hand
+(*Firestore-Regeln → Run workflow*), etwa nach einem Wechsel des Projekts.
+
+### Einmalige Einrichtung
+
+Damit die Action im Namen des Projekts handeln darf, braucht sie ein
+Dienstkonto. Das ist einmal aufzusetzen, danach läuft es von selbst.
+
+**1. Schlüssel erzeugen.** Firebase-Konsole → Zahnrad → **Projekteinstellungen**
+→ Reiter **Dienstkonten** → **Neuen privaten Schlüssel generieren**. Es lädt
+eine JSON-Datei herunter. Diese Datei ist ein echtes Geheimnis – sie gehört
+nicht ins Repository und nicht in eine Chat-Nachricht.
+
+**2. Berechtigungen vergeben.** Das frisch erzeugte Konto darf standardmässig
+noch keine Regeln ausrollen. In der
+[Google-Cloud-Konsole](https://console.cloud.google.com/iam-admin/iam) das
+richtige Projekt wählen, in der Liste den Eintrag
+`firebase-adminsdk-…@dein-projekt.iam.gserviceaccount.com` suchen, auf das
+Stift-Symbol klicken und zwei Rollen ergänzen:
+
+| Rolle | Wofür |
+| --- | --- |
+| **Firebase Rules Admin** | `firestore.rules` veröffentlichen |
+| **Cloud Datastore Index Admin** | Indizes anlegen und ändern |
+
+**3. Zwei Secrets hinterlegen.** GitHub → Repository → **Settings** →
+**Secrets and variables** → **Actions** → **New repository secret**:
+
+| Name | Inhalt |
+| --- | --- |
+| `FIREBASE_SERVICE_ACCOUNT` | der **gesamte** Inhalt der JSON-Datei aus Schritt 1 |
+| `FIREBASE_PROJECT_ID` | die Projekt-ID, derselbe Wert wie `VITE_FIREBASE_PROJECT_ID` |
+
+Beim JSON die komplette Datei einfügen, von der ersten geschweiften Klammer
+bis zur letzten. Fehlt eines der beiden Secrets, bricht der Workflow mit einer
+Meldung ab, die genau darauf hinweist.
+
+**4. Löschen nicht vergessen.** Die heruntergeladene JSON-Datei vom eigenen
+Rechner entfernen, sobald sie in GitHub hinterlegt ist.
+
+### Wenn das Ausrollen scheitert
+
+- *«Missing permissions»* → Schritt 2 wurde übersprungen oder betraf das
+  falsche Dienstkonto.
+- *Indizes können nicht gelöscht werden* → Der Workflow entfernt bewusst keine
+  Indizes, die aus `firestore.indexes.json` verschwunden sind. Das wäre ein
+  Eingriff, der laufende Abfragen brechen kann, und passiert deshalb nur von
+  Hand über die Firebase-Konsole.
+
+---
+
 ## Lokale Entwicklung mit Emulatoren
 
 Zum Ausprobieren mit Testdaten – ohne echte Personendaten anzufassen:
@@ -137,6 +205,26 @@ Die App verbindet sich anschliessend mit `127.0.0.1:9099` (Auth) und
 `127.0.0.1:8080` (Firestore). Die Oberfläche der Emulatoren liegt auf
 <http://127.0.0.1:4000>. Die Sicherheitsregeln aus `firestore.rules` gelten
 dort ebenfalls – Änderungen daran lassen sich also lokal prüfen.
+
+### Zugriffsregeln testen
+
+```bash
+npm run test:rules
+```
+
+Startet den Emulator, führt die Tests aus `tests/` aus und fährt ihn wieder
+herunter. Geprüft wird unter anderem, dass Sekretäre vertrauliche Traktanden
+weder einzeln lesen noch über eine ungefilterte Abfrage erhalten und dass sich
+niemand selbst eine höhere Rolle geben kann.
+
+Der Test ist bewusst so gebaut, dass er die naheliegenden Fehler auch wirklich
+bemerkt: Wird der Vergleich in `firestore.rules` zu
+`resource.data.get('confidential', false)` umgeschrieben – eine Form, die
+Firestore nicht gegen den Abfragefilter abgleichen kann –, schlägt er fehl.
+Genau dieser Fall lieferte in einer früheren Fassung vertrauliche Dokumente an
+Sekretäre aus.
+
+Dieselben Tests laufen in der CI, bevor Regeln ausgerollt werden.
 
 ---
 
@@ -190,6 +278,8 @@ src/
 ├── pages/               Eine Datei pro Ansicht
 └── services/            Schreibzugriffe und Fachlogik pro Sammlung
 
+tests/                   Tests der Zugriffsregeln (laufen in der CI)
+.github/workflows/       Prüfen und Ausrollen der Firestore-Regeln
 firestore.rules          Zugriffsregeln (die eigentliche Absicherung)
 firestore.indexes.json   Zusammengesetzte Indizes
 netlify.toml             Build, Weiterleitungen, Header
