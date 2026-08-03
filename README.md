@@ -92,6 +92,7 @@ Alle weiteren Konten schaltest du danach in der App frei:
 
 ```bash
 npm run dev          # Entwicklungsserver auf http://localhost:5173
+npm run test:import  # Parser und Abgleich der Text-Importe prüfen
 npm run test:rules   # Zugriffsregeln gegen den Emulator prüfen
 npm run build        # Produktions-Build nach dist/
 npm run preview      # Build lokal prüfen
@@ -296,6 +297,53 @@ allein (dann mit Warnung). Drei Schalter schützen gepflegte Daten:
 
 Damit der Abgleich beim nächsten Mal sicher greift, lohnt es sich, eine Spalte
 mit der Mitglieds-Nummer mitzuliefern und als «Mitglieds-Nr.» zuzuordnen.
+
+---
+
+## Berufungen und Betreuung importieren
+
+Drei Reiter im Import-Bereich führen zu den drei Listen, die sich aus dem LCR
+übernehmen lassen: **Mitglieder**, **Berufungen**, **Betreuung**. Der Weg ist
+derselbe wie beim Mitgliederverzeichnis – Seite markieren, kopieren, einfügen;
+nur die Spaltenzuordnung entfällt, weil der Aufbau feststeht.
+
+Die Mitglieder kommen zuerst. Berufungen und Betreuungsaufträge ordnen ihre
+Einträge erfassten Personen zu und überspringen, was sie nicht findet – so
+entstehen aus einem Tippfehler keine stillen Karteileichen.
+
+**Berufungen.** Gelesen werden die Seite *Organisationen* und die Seite
+*Berufungen ausserhalb der Einheit*; welche der beiden vorliegt, erkennt die
+App selbst. Bestehende Berufungen werden über Person, Rolle und Organisation
+erkannt und aktualisiert. Offene Berufungen («Berufung offen») werden gezählt,
+aber nicht geschrieben.
+
+**Betreuung.** Die Seite *Betreuungsaufträge* mit allen Organisationen und
+allen Personen anzeigen lassen, dann kopieren. Pro Person entstehen zwei
+Listen: mit wem zusammen betreut wird und wer betreut wird.
+
+### Was dabei wegfällt
+
+Beide Importe **ersetzen** ihren Bereich, statt ihn zu ergänzen: Die LCR-Seite
+ist die vollständige Wahrheit über den aktuellen Stand. Wer aus einer
+Betreuungspartnerschaft herausfällt, verschwindet auch hier; eine Berufung, die
+das LCR nicht mehr führt, wird entlassen.
+
+Entlassen heisst nicht löschen – die Berufung behält ihren Verlauf und steht
+weiterhin unter «Entlassen». Wer in der Vorschau prüfen will, was wegfällt,
+findet es dort einzeln aufgeführt, bevor etwas geschrieben wird.
+
+Drei Vorkehrungen halten die Ersetzung in Grenzen:
+
+- **Nur so weit wie die Quelle.** Ersetzt wird, was die eingefügte Seite
+  abdeckt. Wer bloss die Sonntagsschule kopiert, entlässt niemanden in der FHV,
+  und die Seite «ausserhalb der Einheit» rührt die Gemeinde nicht an.
+- **Nichts in Vorbereitung.** Vorgeschlagene und ausgesprochene Berufungen
+  stehen nicht im LCR und können dort deshalb auch nicht fehlen.
+- **Nichts bei leerer Quelle.** Gibt die Kopie nichts her, wird nichts
+  entlassen.
+
+Wer bewusst nur einen Ausschnitt einfügt, kann das Entlassen in der Vorschau
+zusätzlich abschalten.
 
 ---
 

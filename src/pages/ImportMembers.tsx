@@ -12,7 +12,9 @@ import {
 } from 'lucide-react'
 import { useData } from '@/contexts/DataContext'
 import { useToast } from '@/contexts/ToastContext'
+import { ImportNav } from '@/components/ImportNav'
 import { PageHeader } from '@/components/ui/Pickers'
+import { SummaryTile } from '@/components/ui/Feedback'
 import { cn } from '@/lib/utils'
 import {
   buildPreview,
@@ -168,6 +170,7 @@ export function ImportMembers() {
         title="Mitglieder importieren"
         subtitle="Liste einfügen oder Datei einlesen und mit dem Bestand abgleichen"
       />
+      <ImportNav />
 
       {/* Schrittanzeige */}
       <ol className="mb-6 flex items-center gap-2 text-sm">
@@ -654,22 +657,5 @@ function PasteStatus({ people, hasText }: { people: PastedPerson[]; hasText: boo
         {first.fullName} … {last.fullName}
       </span>
     </p>
-  )
-}
-
-function SummaryTile({
-  value,
-  label,
-  className,
-}: {
-  value: number
-  label: string
-  className?: string
-}) {
-  return (
-    <div className="card p-3 text-center">
-      <p className={cn('tabular text-2xl font-semibold', className)}>{value}</p>
-      <p className="mt-0.5 text-xs text-slate-500 dark:text-slate-400">{label}</p>
-    </div>
   )
 }

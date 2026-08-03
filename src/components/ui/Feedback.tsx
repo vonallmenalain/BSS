@@ -3,12 +3,7 @@ import { Loader2, Inbox } from 'lucide-react'
 import { cn } from '@/lib/utils'
 
 export function Spinner({ className }: { className?: string }) {
-  return (
-    <Loader2
-      className={cn('size-5 animate-spin text-slate-400', className)}
-      aria-hidden
-    />
-  )
+  return <Loader2 className={cn('size-5 animate-spin text-slate-400', className)} aria-hidden />
 }
 
 export function LoadingScreen({ label = 'Wird geladen …' }: { label?: string }) {
@@ -35,7 +30,9 @@ export function EmptyState({
   className?: string
 }) {
   return (
-    <div className={cn('flex flex-col items-center justify-center px-6 py-12 text-center', className)}>
+    <div
+      className={cn('flex flex-col items-center justify-center px-6 py-12 text-center', className)}
+    >
       <div className="mb-3 rounded-full bg-slate-100 p-3 dark:bg-slate-800">
         <Icon className="size-6 text-slate-400" />
       </div>
@@ -44,6 +41,24 @@ export function EmptyState({
         <p className="mt-1 max-w-sm text-sm text-slate-500 dark:text-slate-400">{description}</p>
       )}
       {action && <div className="mt-4">{action}</div>}
+    </div>
+  )
+}
+
+/** Eine Zahl mit Beschriftung – die Kopfzeile jeder Import-Vorschau. */
+export function SummaryTile({
+  value,
+  label,
+  className,
+}: {
+  value: number
+  label: string
+  className?: string
+}) {
+  return (
+    <div className="card p-3 text-center">
+      <p className={cn('tabular text-2xl font-semibold', className)}>{value}</p>
+      <p className="mt-0.5 text-xs text-slate-500 dark:text-slate-400">{label}</p>
     </div>
   )
 }
