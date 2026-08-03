@@ -388,7 +388,8 @@ immer dasselbe: Termin verstrichen.
 - Ansprachen und Zeugnisse mit Vorschlagsliste, Verlauf und Zusatzplätzen
 - Abendmahlsversammlung: Leitung, Bekanntmachungen, Angelegenheiten, Musik,
   Gebet – mit Ablauf zum Ausdrucken
-- Liederliste aus Excel oder CSV, Liedtitel aus der Nummer
+- Liederliste aus dem Musikarchiv oder aus Excel bzw. CSV, Liedtitel aus der
+  Nummer
 - Berufungsverwaltung mit Prozessschritten
 - Einstellungen für Gemeinde, Sitzungsrhythmus und Abendmahlsversammlung
 - PWA: installierbar, offline speichern mit Warteschlange und Konflikthinweis,

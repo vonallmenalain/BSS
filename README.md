@@ -251,13 +251,11 @@ als Standard in den Einstellungen. Für einen einzelnen Sonntag lässt sich mehr
 vorsehen: eine zusätzliche Ansprache, ein Zeugnis oder ein leerer Platz zum
 späteren Vergeben. Der Standard bleibt davon unberührt.
 
-**Liederliste.** Unter **Einstellungen → Liederliste** eine Excel- oder
-CSV-Datei mit Liednummer und Titel hochladen. Welche Spalten das sind, erkennt
-der Import selbst und zeigt es vor dem Übernehmen zur Kontrolle. Danach genügt
-beim Erfassen der Musik die Nummer – der Titel erscheint automatisch. Eine
-Nummer, die nicht in der Liste steht, lässt sich von Hand ergänzen und auf
-Wunsch in die Liste aufnehmen. Der Titel wird im Programm mitgespeichert,
-damit ein bereits verteiltes Programm nach einem Neuimport gleich bleibt.
+**Liederliste.** Unter **Import → Lieder** einlesen, dann genügt beim Erfassen
+der Musik die Nummer – der Titel erscheint automatisch. Eine Nummer, die nicht
+in der Liste steht, lässt sich von Hand ergänzen und auf Wunsch in die Liste
+aufnehmen. Der Titel wird im Programm mitgespeichert, damit ein bereits
+verteiltes Programm nach einem Neuimport gleich bleibt.
 
 **Gebet.** Beim Zuteilen steht bei jedem Vorschlag, wann die Person zuletzt
 gebetet hat; zuoberst steht, wer noch nie an der Reihe war – dieselbe Logik
@@ -302,10 +300,11 @@ mit der Mitglieds-Nummer mitzuliefern und als «Mitglieds-Nr.» zuzuordnen.
 
 ## Berufungen und Betreuung importieren
 
-Drei Reiter im Import-Bereich führen zu den drei Listen, die sich aus dem LCR
-übernehmen lassen: **Mitglieder**, **Berufungen**, **Betreuung**. Der Weg ist
-derselbe wie beim Mitgliederverzeichnis – Seite markieren, kopieren, einfügen;
-nur die Spaltenzuordnung entfällt, weil der Aufbau feststeht.
+Reiter im Import-Bereich führen zu allem, was sich von aussen übernehmen lässt:
+**Mitglieder**, **Berufungen**, **Betreuung**, **Verlauf** und **Lieder**. Die
+ersten drei kommen aus dem LCR, und der Weg ist derselbe wie beim
+Mitgliederverzeichnis – Seite markieren, kopieren, einfügen; nur die
+Spaltenzuordnung entfällt, weil der Aufbau feststeht.
 
 Die Mitglieder kommen zuerst. Berufungen und Betreuungsaufträge ordnen ihre
 Einträge erfassten Personen zu und überspringen, was sie nicht findet – so
@@ -385,6 +384,26 @@ Zwei Grenzen sind zu kennen:
 Der Import ist wiederholbar: Die Dokument-IDs entstehen aus Datum und Person,
 ein zweiter Durchlauf schreibt deshalb dieselben Einträge noch einmal, statt den
 Verlauf zu verdoppeln. Was in der App gepflegt wurde, bleibt unangetastet.
+
+---
+
+## Liederliste importieren
+
+**Import → Lieder**, einmalig.
+
+Der übliche Weg führt übers **Musikarchiv** der Kirche: dort das Gesangbuch
+öffnen, «Alles einblenden» wählen, die Seite markieren, kopieren und einfügen.
+Menü, Filterleiste, Rubriken und das laufende Hörbeispiel dürfen mitkommen –
+gelesen wird nur, was wie «Nummer. Titel» aussieht. Der Punkt hinter der Zahl
+ist dabei das entscheidende Merkmal: ohne ihn wäre «210 Ergebnisse» ein Lied.
+
+Alternativ lässt sich eine `.xlsx`- oder `.csv`-Datei mit je einer Spalte für
+Nummer und Titel einlesen; welche das sind, erkennt der Import selbst.
+
+Die Vorschau meldet Lücken in der Nummernfolge – der übliche Grund ist, dass
+«Alles einblenden» vergessen ging und die Seite nur einen Teil zeigte. Die
+Nummer ist der Schlüssel: Dieselbe Nummer wird aktualisiert statt doppelt
+angelegt.
 
 ---
 
@@ -525,6 +544,6 @@ node scripts/generate-icons.mjs
 Die Daten liegen im Firebase-Projekt. Eine regelmässige Sicherung ist trotzdem
 sinnvoll:
 
-- **Mitgliederliste:** *Einstellungen → Daten → Mitgliederliste als CSV sichern*
+- **Mitgliederliste:** *Einstellungen → Import → Mitgliederliste als CSV sichern*
 - **Vollständig:** [geplante Firestore-Exporte](https://firebase.google.com/docs/firestore/manage-data/export-import)
   in einen Cloud-Storage-Bucket

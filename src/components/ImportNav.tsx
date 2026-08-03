@@ -1,5 +1,5 @@
 import { NavLink } from 'react-router-dom'
-import { ClipboardList, Award, HeartHandshake, History } from 'lucide-react'
+import { ClipboardList, Award, HeartHandshake, History, Music } from 'lucide-react'
 import { cn } from '@/lib/utils'
 
 /**
@@ -8,15 +8,18 @@ import { cn } from '@/lib/utils'
  * Die ersten drei stammen aus dem LCR und gehören zusammen: Nach einem
  * Wechsel in der Gemeinde ist meist alles drei fällig, und die Reihenfolge
  * ist nicht beliebig – Berufungen und Betreuung ordnen ihre Einträge den
- * erfassten Personen zu, deshalb kommen die Mitglieder zuerst. Der Verlauf
- * kommt aus der bisherigen Excel-Tabelle und wird nur einmal gebraucht,
- * steht aber am selben Ort, weil man ihn dort sucht.
+ * erfassten Personen zu, deshalb kommen die Mitglieder zuerst.
+ *
+ * Verlauf und Liederliste braucht man je nur einmal. Sie stehen trotzdem
+ * hier, weil man sie hier sucht – und stehen hinten, weil sie nach der
+ * Einrichtung niemanden mehr beschäftigen.
  */
 const TABS = [
   { to: '/import', label: 'Mitglieder', icon: ClipboardList },
   { to: '/import/berufungen', label: 'Berufungen', icon: Award },
   { to: '/import/betreuung', label: 'Betreuung', icon: HeartHandshake },
   { to: '/import/verlauf', label: 'Verlauf', icon: History },
+  { to: '/import/lieder', label: 'Lieder', icon: Music },
 ]
 
 export function ImportNav() {

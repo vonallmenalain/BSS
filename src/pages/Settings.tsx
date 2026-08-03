@@ -1,12 +1,10 @@
-import { useEffect, useRef, useState } from 'react'
+import { useEffect, useState } from 'react'
 import { Link } from 'react-router-dom'
 import {
   Building2,
   CalendarCog,
   Check,
-  Database,
   Mic,
-  Music,
   ShieldCheck,
   Trash2,
   Upload,
@@ -21,14 +19,7 @@ import { Avatar } from '@/components/ui/Avatar'
 import { WEEKDAYS } from '@/lib/dates'
 import { saveSettings } from '@/services/settings'
 import { deleteUserProfile, setUserActive, setUserRole, updateUserProfile } from '@/services/users'
-import { downloadCsv, membersToCsv, parseFile } from '@/services/import'
-import {
-  clearHymns,
-  guessHymnColumns,
-  importHymns,
-  parseHymnSheet,
-  type HymnRow,
-} from '@/services/hymns'
+import { downloadCsv, membersToCsv } from '@/services/import'
 import { ASSIGNABLE_ROLES, ROLE_LABELS, type AppSettings, type Role } from '@/lib/types'
 
 export function Settings() {
@@ -332,9 +323,6 @@ export function Settings() {
           </button>
         </div>
 
-        {/* ---------- Liederliste ---------- */}
-        <HymnListSection />
-
         {/* ---------- Benutzer ---------- */}
         <section className="card p-5">
           <h2 className="mb-1 flex items-center gap-2 text-sm font-semibold">
@@ -363,16 +351,20 @@ export function Settings() {
           </ul>
         </section>
 
-        {/* ---------- Daten ---------- */}
+        {/* ---------- Import ---------- */}
         <section className="card p-5">
-          <h2 className="mb-4 flex items-center gap-2 text-sm font-semibold">
-            <Database className="size-4 text-slate-400" aria-hidden />
-            Daten
+          <h2 className="mb-1 flex items-center gap-2 text-sm font-semibold">
+            <Upload className="size-4 text-slate-400" aria-hidden />
+            Import
           </h2>
+          <p className="hint mb-4">
+            Mitglieder, Berufungen, Betreuung, Liederliste und der Verlauf der Ansprachen und Gebete
+            – alles an einem Ort, jedes mit Vorschau vor dem Schreiben.
+          </p>
           <div className="flex flex-wrap gap-2">
             <Link to="/import" className="btn-secondary">
               <Upload className="size-4" aria-hidden />
-              Mitglieder importieren
+              Zu den Importen
             </Link>
             <button
               type="button"
@@ -398,170 +390,6 @@ export function Settings() {
         </p>
       </div>
     </>
-  )
-}
-
-/* ------------------------------------------------------------------ */
-/* Liederliste                                                         */
-/* ------------------------------------------------------------------ */
-
-/**
- * Import der Liederliste aus Excel oder CSV.
- *
- * Zweck: Beim Erfassen der Musik soll die Liednummer genügen – den Titel
- * ergänzt die App. Erwartet wird eine Spalte mit der Nummer und eine mit dem
- * Titel; welche das sind, erkennt der Import selbst und zeigt es zur Kontrolle.
- */
-function HymnListSection() {
-  const { hymns } = useData()
-  const toast = useToast()
-  const fileInput = useRef<HTMLInputElement>(null)
-
-  const [preview, setPreview] = useState<HymnRow[] | null>(null)
-  const [fileName, setFileName] = useState('')
-  const [busy, setBusy] = useState(false)
-  const [confirmClear, setConfirmClear] = useState(false)
-
-  const handleFile = async (file: File) => {
-    setBusy(true)
-    try {
-      const sheet = await parseFile(file)
-      const rows = parseHymnSheet(sheet, guessHymnColumns(sheet))
-      if (rows.length === 0) {
-        toast.error('In der Datei wurden keine Lieder gefunden (Nummer und Titel nötig).')
-        return
-      }
-      setFileName(file.name)
-      setPreview(rows)
-    } catch (error) {
-      console.error(error)
-      toast.error('Die Datei konnte nicht gelesen werden. Unterstützt: .xlsx und .csv')
-    } finally {
-      setBusy(false)
-    }
-  }
-
-  const run = async () => {
-    if (!preview) return
-    setBusy(true)
-    try {
-      const count = await importHymns(preview)
-      toast.success(`${count} Lieder übernommen.`)
-      setPreview(null)
-      setFileName('')
-    } catch (error) {
-      console.error(error)
-      toast.error(
-        error instanceof Error && error.message ? error.message : 'Der Import ist fehlgeschlagen.',
-      )
-    } finally {
-      setBusy(false)
-    }
-  }
-
-  return (
-    <section className="card p-5">
-      <h2 className="mb-1 flex items-center gap-2 text-sm font-semibold">
-        <Music className="size-4 text-slate-400" aria-hidden />
-        Liederliste
-      </h2>
-      <p className="hint mb-4">
-        {hymns.length > 0
-          ? `${hymns.length} Lieder hinterlegt – beim Erfassen der Musik genügt die Nummer.`
-          : 'Lade eine Excel- oder CSV-Datei mit Liednummer und Titel hoch. Danach genügt beim Erfassen der Musik die Nummer.'}
-      </p>
-
-      {preview ? (
-        <>
-          <p className="text-sm">
-            <strong>{fileName}</strong> · {preview.length} Lieder erkannt
-          </p>
-          <ul className="mt-2 max-h-48 space-y-0.5 overflow-y-auto rounded-lg bg-slate-50 p-3 text-sm dark:bg-slate-800/60">
-            {preview.slice(0, 40).map((row) => (
-              <li key={row.number} className="flex gap-3">
-                <span className="tabular w-10 shrink-0 text-slate-500">{row.number}</span>
-                <span className="truncate">{row.title}</span>
-              </li>
-            ))}
-            {preview.length > 40 && (
-              <li className="pt-1 text-xs text-slate-400">… und {preview.length - 40} weitere</li>
-            )}
-          </ul>
-          <div className="mt-3 flex flex-wrap justify-end gap-2">
-            <button
-              type="button"
-              className="btn-secondary"
-              onClick={() => setPreview(null)}
-              disabled={busy}
-            >
-              Abbrechen
-            </button>
-            <button
-              type="button"
-              className="btn-primary"
-              onClick={() => void run()}
-              disabled={busy}
-            >
-              {busy ? 'Wird übernommen …' : `${preview.length} Lieder übernehmen`}
-            </button>
-          </div>
-        </>
-      ) : (
-        <div className="flex flex-wrap gap-2">
-          <button
-            type="button"
-            className="btn-secondary"
-            onClick={() => fileInput.current?.click()}
-            disabled={busy}
-          >
-            <Upload className="size-4" aria-hidden />
-            {hymns.length > 0 ? 'Liste aktualisieren' : 'Liederliste hochladen'}
-          </button>
-          {hymns.length > 0 && (
-            <button
-              type="button"
-              className="btn-ghost text-rose-600 dark:text-rose-400"
-              onClick={() => setConfirmClear(true)}
-              disabled={busy}
-            >
-              <Trash2 className="size-4" aria-hidden />
-              Liste leeren
-            </button>
-          )}
-          <input
-            ref={fileInput}
-            type="file"
-            accept=".xlsx,.xls,.csv,text/csv"
-            className="hidden"
-            onChange={(event) => {
-              const file = event.target.files?.[0]
-              if (file) void handleFile(file)
-              event.target.value = ''
-            }}
-          />
-        </div>
-      )}
-
-      <ConfirmDialog
-        open={confirmClear}
-        onClose={() => setConfirmClear(false)}
-        onConfirm={() => {
-          void clearHymns()
-            .then((count) => toast.success(`${count} Lieder entfernt.`))
-            .catch((error: unknown) =>
-              toast.error(
-                error instanceof Error && error.message
-                  ? error.message
-                  : 'Die Liste konnte nicht geleert werden.',
-              ),
-            )
-        }}
-        title="Liederliste leeren?"
-        message="Bereits erfasste Programme behalten ihre Liedtitel – nur die Nachschlageliste wird gelöscht."
-        confirmLabel="Leeren"
-        danger
-      />
-    </section>
   )
 }
 
