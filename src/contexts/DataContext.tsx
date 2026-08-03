@@ -2,6 +2,7 @@ import { createContext, useContext, useEffect, useMemo, useState, type ReactNode
 import { collection, doc, onSnapshot, orderBy, query } from 'firebase/firestore'
 import { db, COLLECTIONS } from '@/lib/firebase'
 import { useAuth } from '@/contexts/AuthContext'
+import { codeOf, hymnKey } from '@/services/hymns'
 import {
   DEFAULT_SETTINGS,
   type AppSettings,
@@ -23,15 +24,16 @@ interface DataContextValue {
   members: Member[]
   membersById: Map<string, Member>
   hymns: Hymn[]
-  hymnsByNumber: Map<number, Hymn>
+  /** Code in Vergleichsform («6», «pv18a») → Lied */
+  hymnsByCode: Map<string, Hymn>
   settings: AppSettings
   loading: boolean
   /** Namen einer UID auflösen, mit Rückfallwert */
   userName: (uid: string) => string
   /** Namen eines Mitglieds auflösen */
   memberName: (id: string) => string
-  /** Liedtitel zu einer Nummer – leer, wenn die Nummer nicht in der Liste steht */
-  hymnTitle: (number: number | null | undefined) => string
+  /** Liedtitel zu einem Code – leer, wenn er nicht in der Liste steht */
+  hymnTitle: (code: string | null | undefined) => string
   /**
    * Titel einer Liedauswahl für die Anzeige. Der gespeicherte Titel gewinnt,
    * damit ein bereits gedrucktes Programm nach einem Neuimport gleich bleibt.
@@ -121,9 +123,9 @@ export function DataProvider({ children }: { children: ReactNode }) {
   const value = useMemo<DataContextValue>(() => {
     const usersById = new Map(users.map((u) => [u.id, u]))
     const membersById = new Map(members.map((m) => [m.id, m]))
-    const hymnsByNumber = new Map(hymns.map((h) => [h.number, h]))
-    const hymnTitle = (number: number | null | undefined) =>
-      number == null ? '' : (hymnsByNumber.get(number)?.title ?? '')
+    const hymnsByCode = new Map(hymns.map((hymn) => [hymnKey(codeOf(hymn)), hymn]))
+    const hymnTitle = (code: string | null | undefined) =>
+      code ? (hymnsByCode.get(hymnKey(code))?.title ?? '') : ''
 
     return {
       users,
@@ -131,7 +133,7 @@ export function DataProvider({ children }: { children: ReactNode }) {
       members,
       membersById,
       hymns,
-      hymnsByNumber,
+      hymnsByCode,
       settings,
       loading: isApproved && (!usersLoaded || !membersLoaded),
       userName: (id) => usersById.get(id)?.displayName ?? 'Unbekannt',
@@ -142,7 +144,7 @@ export function DataProvider({ children }: { children: ReactNode }) {
       hymnTitle,
       hymnLabel: (choice) => {
         if (!choice) return ''
-        return choice.title || hymnTitle(choice.number)
+        return choice.title || hymnTitle(choice.code ?? String(choice.number ?? ''))
       },
     }
   }, [users, members, hymns, settings, usersLoaded, membersLoaded, isApproved])

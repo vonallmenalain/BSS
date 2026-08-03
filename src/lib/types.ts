@@ -523,8 +523,15 @@ export const HYMN_SLOT_LABELS: Record<HymnSlot, string> = {
 export const OPTIONAL_HYMN_SLOTS: HymnSlot[] = ['intermediate']
 
 export interface HymnChoice {
-  /** Liednummer aus dem Gesangbuch; `null`, solange nichts festgelegt ist */
+  /** Liednummer; `null`, solange nichts festgelegt ist */
   number: number | null
+  /**
+   * Wie das Lied angeschrieben wird: «6», «18a», «PV 6».
+   *
+   * Fehlt das Feld, gilt die Nummer aus dem Gesangbuch – so bleiben
+   * Programme aus der Zeit vor dem PV-Liederbuch unverändert lesbar.
+   */
+  code?: string
   /**
    * Titel des Liedes. Wird aus der importierten Liederliste ergänzt und
    * mitgespeichert, damit ein altes Programm auch dann lesbar bleibt,
@@ -651,12 +658,41 @@ export interface Prayer extends WithId {
 /* ------------------------------------------------------------------ */
 
 /**
- * Ein Lied aus dem Gesangbuch. Die Dokument-ID ist die Liednummer als Text,
- * damit sich die Liste beliebig oft neu importieren lässt, ohne Dubletten
- * anzulegen. Erfasst wird nur die Nummer – den Titel ergänzt die App.
+ * Die beiden Bücher, aus denen in der Gemeinde gesungen wird.
+ *
+ * Ihre Nummern laufen unabhängig voneinander: Nr. 6 ist im Gesangbuch
+ * «Israel, der Herr ruft alle», im Liederbuch für Kinder «Gebet eines
+ * Kindes». Ohne diese Unterscheidung überschriebe ein Import den anderen.
+ */
+export type HymnBook = 'hymns' | 'children'
+
+export const HYMN_BOOK_LABELS: Record<HymnBook, string> = {
+  hymns: 'Gesangbuch',
+  children: 'Liederbuch für Kinder (PV)',
+}
+
+/** Kürzel vor der Nummer. Das Gesangbuch bleibt ohne – es ist der Normalfall. */
+export const HYMN_BOOK_PREFIX: Record<HymnBook, string> = {
+  hymns: '',
+  children: 'PV',
+}
+
+/**
+ * Ein Lied aus einem der beiden Bücher. Die Dokument-ID ist der Code
+ * («6», «pv-18a»), damit sich die Liste beliebig oft neu importieren
+ * lässt, ohne Dubletten anzulegen. Erfasst wird nur der Code – den Titel
+ * ergänzt die App.
  */
 export interface Hymn extends WithId {
+  /** Zahl im Buch – sie sortiert die Liste. «18a» und «18b» teilen sie sich. */
   number: number
+  /**
+   * Wie das Lied angeschrieben und gesucht wird: «6», «18a», «PV 6».
+   * Fehlt das Feld (Altbestand), gilt die Nummer als Code.
+   */
+  code?: string
+  /** Fehlt das Feld (Altbestand), gilt das Gesangbuch. */
+  book?: HymnBook
   title: string
   updatedAt?: TS
 }

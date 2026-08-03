@@ -3,16 +3,20 @@ import { Link } from 'react-router-dom'
 import { Check, Music, TriangleAlert } from 'lucide-react'
 import { useData } from '@/contexts/DataContext'
 import { useToast } from '@/contexts/ToastContext'
-import { saveHymn, searchHymns } from '@/services/hymns'
+import { codeOf, hymnKey, parseHymnCode, saveHymn, searchHymns } from '@/services/hymns'
 import type { HymnChoice } from '@/lib/types'
 
 /**
- * Eingabe eines Liedes über die Nummer.
+ * Eingabe eines Liedes über seine Nummer.
  *
  * Der Titel kommt aus der importierten Liederliste, sobald die Nummer erkannt
- * wird – man tippt also nur eine Zahl. Ist eine Nummer nicht in der Liste
- * (oder wurde noch keine Liste hochgeladen), lässt sich der Titel von Hand
- * eintragen und auf Wunsch in die Liste übernehmen.
+ * wird – man tippt also nur die Nummer. Ist sie nicht in der Liste (oder wurde
+ * noch keine Liste hochgeladen), lässt sich der Titel von Hand eintragen und
+ * auf Wunsch in die Liste übernehmen.
+ *
+ * Aus dem Liederbuch für Kinder wird «PV» vorangestellt: «PV 6». Beide Bücher
+ * zählen ab 1, ohne das Kürzel wäre nicht zu sagen, welches gemeint ist.
+ * Doppelnummern behalten ihren Buchstaben: «PV 18a».
  *
  * Der Titel wird immer mitgespeichert, damit ein bereits verteiltes Programm
  * auch nach einem Neuimport der Liederliste unverändert bleibt.
@@ -33,57 +37,63 @@ export function HymnField({
   optional?: boolean
   hint?: string
 }) {
-  const { hymns, hymnsByNumber } = useData()
+  const { hymns, hymnsByCode } = useData()
   const toast = useToast()
   const fieldId = useId()
   const [remembering, setRemembering] = useState(false)
 
-  const number = value?.number ?? null
+  const code = value?.code ?? (value?.number != null ? String(value.number) : '')
   const title = value?.title ?? ''
-  const known = number != null ? hymnsByNumber.get(number) : undefined
+  const known = code ? hymnsByCode.get(hymnKey(code)) : undefined
 
   const matches = useMemo(
     () => (title.trim() && !known ? searchHymns(hymns, title, 5) : []),
     [hymns, title, known],
   )
 
-  const set = (nextNumber: number | null, nextTitle: string) => {
-    onChange(
-      nextNumber === null && !nextTitle ? undefined : { number: nextNumber, title: nextTitle },
-    )
-  }
-
-  const changeNumber = (text: string) => {
-    const parsed = Number.parseInt(text, 10)
-    if (!text.trim() || !Number.isFinite(parsed) || parsed <= 0) {
-      set(null, title)
+  const set = (nextCode: string, nextTitle: string) => {
+    if (!nextCode && !nextTitle) {
+      onChange(undefined)
       return
     }
-    // Bekannte Nummer: Titel automatisch übernehmen. Ein von Hand
-    // eingetragener Titel bleibt stehen, wenn die Nummer unbekannt ist.
-    const found = hymnsByNumber.get(parsed)
-    set(parsed, found ? found.title : title)
+    const parsed = parseHymnCode(nextCode)
+    onChange({
+      number: parsed?.number ?? null,
+      code: parsed?.code ?? nextCode,
+      title: nextTitle,
+    })
   }
 
-  const canRemember = number != null && !known && title.trim().length > 2
+  const changeCode = (text: string) => {
+    const parsed = parseHymnCode(text)
+    if (!parsed) {
+      // Halb getippt («PV ») – stehen lassen, statt die Eingabe wegzunehmen.
+      set(text.trim(), title)
+      return
+    }
+    // Bekannter Code: Titel automatisch übernehmen. Ein von Hand
+    // eingetragener Titel bleibt stehen, wenn der Code unbekannt ist.
+    const found = hymnsByCode.get(hymnKey(parsed.code))
+    set(parsed.code, found ? found.title : title)
+  }
+
+  const canRemember = Boolean(parseHymnCode(code)) && !known && title.trim().length > 2
 
   return (
     <div className="rounded-lg border border-slate-200 p-3 dark:border-slate-700">
       <div className="flex flex-wrap items-end gap-3">
-        <div className="w-24">
+        <div className="w-28">
           <label className="label" htmlFor={`${fieldId}-nr`}>
             {label}
           </label>
           <input
             id={`${fieldId}-nr`}
-            type="number"
-            inputMode="numeric"
-            min={1}
-            max={999}
+            type="text"
             className="input tabular"
-            value={number ?? ''}
-            onChange={(event) => changeNumber(event.target.value)}
+            value={code}
+            onChange={(event) => changeCode(event.target.value)}
             placeholder="Nr."
+            aria-describedby={`${fieldId}-hilfe`}
           />
         </div>
 
@@ -95,7 +105,7 @@ export function HymnField({
             id={`${fieldId}-titel`}
             className="input"
             value={title}
-            onChange={(event) => set(number, event.target.value)}
+            onChange={(event) => set(code, event.target.value)}
             placeholder={
               hymns.length === 0
                 ? 'Noch keine Liederliste hinterlegt'
@@ -104,7 +114,7 @@ export function HymnField({
           />
         </div>
 
-        {optional && (number != null || title) && (
+        {optional && (code || title) && (
           <button type="button" className="btn-ghost btn-sm" onClick={() => onChange(undefined)}>
             Entfernen
           </button>
@@ -125,10 +135,10 @@ export function HymnField({
               <button
                 type="button"
                 className="btn-secondary btn-sm"
-                onClick={() => set(hymn.number, hymn.title)}
+                onClick={() => set(codeOf(hymn), hymn.title)}
               >
                 <Music className="size-3" aria-hidden />
-                {hymn.number} – {hymn.title}
+                {codeOf(hymn)} – {hymn.title}
               </button>
             </li>
           ))}
@@ -139,7 +149,7 @@ export function HymnField({
         <div className="mt-2 flex flex-wrap items-center gap-2">
           <span className="flex items-center gap-1 text-xs text-amber-700 dark:text-amber-400">
             <TriangleAlert className="size-3.5" aria-hidden />
-            Nummer {number} steht nicht in der Liederliste.
+            Nr. {code} steht nicht in der Liederliste.
           </span>
           <button
             type="button"
@@ -147,8 +157,8 @@ export function HymnField({
             disabled={remembering}
             onClick={() => {
               setRemembering(true)
-              void saveHymn(number, title)
-                .then(() => toast.success(`Nr. ${number} in die Liederliste aufgenommen.`))
+              void saveHymn(code, title)
+                .then(() => toast.success(`Nr. ${code} in die Liederliste aufgenommen.`))
                 .catch(() => toast.error('Speichern fehlgeschlagen.'))
                 .finally(() => setRemembering(false))
             }}
@@ -158,15 +168,19 @@ export function HymnField({
         </div>
       )}
 
-      {hymns.length === 0 && (
-        <p className="hint">
-          Damit Titel automatisch erscheinen:{' '}
-          <Link to="/einstellungen" className="underline">
-            Liederliste in den Einstellungen hochladen
-          </Link>
-          .
-        </p>
-      )}
+      <p id={`${fieldId}-hilfe`} className="hint">
+        {hymns.length === 0 ? (
+          <>
+            Damit Titel automatisch erscheinen:{' '}
+            <Link to="/import/lieder" className="underline">
+              Liederliste importieren
+            </Link>
+            .
+          </>
+        ) : (
+          'Aus dem Gesangbuch nur die Nummer, aus dem PV-Liederbuch mit «PV» davor: «PV 6».'
+        )}
+      </p>
 
       {hint && <p className="hint">{hint}</p>}
     </div>
