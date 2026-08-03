@@ -37,6 +37,22 @@ export function Modal({
   const panelRef = useRef<HTMLDivElement>(null)
   const previouslyFocused = useRef<HTMLElement | null>(null)
 
+  /*
+   * Das Schliessen liegt in einer Ref, und der Effekt hängt allein am
+   * geöffneten Zustand.
+   *
+   * Stünde `onClose` in der Abhängigkeitsliste, liefe der Effekt bei jedem
+   * Rendern der umgebenden Seite neu – die Funktion wird dort meist direkt
+   * hingeschrieben und ist damit jedes Mal eine neue. Genau das riss den Fokus
+   * mitten im Schreiben ins erste Feld zurück: Ein Schnappschuss aus Firestore
+   * – etwa der eigene, eben gespeicherte Stand – zeichnet die Seite neu, und
+   * der Cursor sprang aus dem Text in den Titel.
+   */
+  const close = useRef(onClose)
+  useEffect(() => {
+    close.current = onClose
+  })
+
   useEffect(() => {
     if (!open) return
 
@@ -47,7 +63,7 @@ export function Modal({
     const onKeyDown = (event: KeyboardEvent) => {
       if (event.key === 'Escape') {
         event.stopPropagation()
-        onClose()
+        close.current()
         return
       }
       if (event.key !== 'Tab' || !panelRef.current) return
@@ -85,7 +101,7 @@ export function Modal({
       window.clearTimeout(timer)
       previouslyFocused.current?.focus?.()
     }
-  }, [open, onClose])
+  }, [open])
 
   if (!open) return null
 

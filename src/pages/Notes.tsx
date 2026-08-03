@@ -1,5 +1,5 @@
 import { useLayoutEffect, useMemo, useRef, useState, type ReactNode } from 'react'
-import { NotebookPen, Plus, Search, SlidersHorizontal } from 'lucide-react'
+import { ChevronDown, ChevronUp, NotebookPen, Plus, Search, SlidersHorizontal } from 'lucide-react'
 import { useAuth } from '@/contexts/AuthContext'
 import { useData } from '@/contexts/DataContext'
 import { useToast } from '@/contexts/ToastContext'
@@ -12,7 +12,7 @@ import { PageHeader, SegmentedControl } from '@/components/ui/Pickers'
 import { formatDateTime, toDate } from '@/lib/dates'
 import { splitLinks } from '@/lib/links'
 import { cn, matchesSearch } from '@/lib/utils'
-import { createNote, deleteNote, updateNote } from '@/services/notes'
+import { createNote, deleteNote, saveNoteOrder, updateNote } from '@/services/notes'
 import type { Note } from '@/lib/types'
 
 /* ------------------------------------------------------------------ */
@@ -55,6 +55,15 @@ const GROESSE_REGELN: Record<
 }
 
 /**
+ * Wonach die Übersicht ordnet.
+ *
+ * `zuletzt` ist der Normalfall und braucht keine Pflege: Woran gerade
+ * gearbeitet wird, steht zuoberst. `eigene` gibt die Reihenfolge in die Hand –
+ * für Notizen, die als Liste gelesen werden und deren Abfolge etwas bedeutet.
+ */
+type Sortierung = 'zuletzt' | 'eigene'
+
+/**
  * Wie breit eine geöffnete Notiz werden darf.
  *
  * Nur am grossen Bildschirm eine Frage: Auf dem Handy ist die volle Breite die
@@ -80,10 +89,15 @@ type Breite = 'md' | 'lg' | 'xl'
 export function Notes() {
   const { data: notes, loading } = useNotes()
   const { userName } = useData()
+  const toast = useToast()
 
   const [search, setSearch] = useState('')
   const [ansicht, setAnsicht] = useLocalStorage<Ansicht>('bss:notizen:ansicht', 'liste')
   const [groesse, setGroesse] = useLocalStorage<Groesse>('bss:notizen:groesse', 'komprimiert')
+  const [sortierung, setSortierung] = useLocalStorage<Sortierung>(
+    'bss:notizen:sortierung',
+    'zuletzt',
+  )
   const [showView, setShowView] = useState(false)
   /** Die offene Notiz – oder `neu` für eine, die es noch nicht gibt. */
   const [open, setOpen] = useState<Note | 'neu' | null>(null)
@@ -99,8 +113,47 @@ export function Notes() {
      * damit oben, statt für einen Moment ans Ende zu rutschen.
      */
     const zeit = (note: Note) => toDate(note.updatedAt)?.getTime() ?? Number.POSITIVE_INFINITY
-    return [...gefunden].sort((a, b) => zeit(b) - zeit(a))
-  }, [notes, search])
+    if (sortierung === 'zuletzt') return [...gefunden].sort((a, b) => zeit(b) - zeit(a))
+
+    /*
+     * Eigene Reihenfolge. Eine Notiz ohne Position wurde noch nie einsortiert –
+     * sie steht zuoberst, dort, wo sie auch nach «zuletzt bearbeitet» stünde.
+     * So beginnt die Ansicht mit genau der Liste, die man vorher gesehen hat,
+     * und eine neue Notiz verschwindet nicht am Ende.
+     */
+    const platz = (note: Note) => (typeof note.order === 'number' ? note.order : null)
+    return [...gefunden].sort((a, b) => {
+      const links = platz(a)
+      const rechts = platz(b)
+      if (links === null && rechts === null) return zeit(b) - zeit(a)
+      if (links === null) return -1
+      if (rechts === null) return 1
+      return links - rechts || zeit(b) - zeit(a)
+    })
+  }, [notes, search, sortierung])
+
+  /*
+   * Verschoben wird immer die ganze Liste – die neue Reihenfolge steht danach
+   * bei jeder Notiz. Beim Suchen ist die Liste unvollständig; die Knöpfe fehlen
+   * dann, sonst schriebe eine Verschiebung Positionen für einen Ausschnitt.
+   */
+  const sortierbar = sortierung === 'eigene' && !search.trim()
+
+  const move = async (id: string, delta: number) => {
+    const index = visible.findIndex((note) => note.id === id)
+    const ziel = index + delta
+    if (index < 0 || ziel < 0 || ziel >= visible.length) return
+
+    const next = [...visible]
+    const [note] = next.splice(index, 1)
+    next.splice(ziel, 0, note)
+    try {
+      await saveNoteOrder(next)
+    } catch (error) {
+      console.error(error)
+      toast.error('Reihenfolge konnte nicht gespeichert werden.')
+    }
+  }
 
   return (
     <>
@@ -173,7 +226,28 @@ export function Notes() {
                 ]}
               />
             </div>
+            <div>
+              <span className="label">Reihenfolge</span>
+              <SegmentedControl<Sortierung>
+                value={sortierung}
+                onChange={setSortierung}
+                size="sm"
+                options={[
+                  { value: 'zuletzt', label: 'Zuletzt bearbeitet' },
+                  { value: 'eigene', label: 'Eigene' },
+                ]}
+              />
+            </div>
+            {sortierung === 'eigene' && (
+              <p className="hint w-full">
+                Mit den Pfeilen an jeder Notiz umsortieren. Die Reihenfolge gilt für alle.
+              </p>
+            )}
           </div>
+        )}
+
+        {sortierung === 'eigene' && search.trim() && (
+          <p className="hint">Zum Umsortieren die Suche leeren – sie zeigt nur einen Ausschnitt.</p>
         )}
       </div>
 
@@ -207,7 +281,7 @@ export function Notes() {
               : 'space-y-2',
           )}
         >
-          {visible.map((note) => (
+          {visible.map((note, index) => (
             <li key={note.id}>
               <NoteCard
                 note={note}
@@ -215,6 +289,9 @@ export function Notes() {
                 groesse={groesse}
                 author={note.updatedById ? userName(note.updatedById) : ''}
                 onOpen={() => setOpen(note)}
+                onMove={sortierbar ? (delta) => void move(note.id, delta) : undefined}
+                first={index === 0}
+                last={index === visible.length - 1}
               />
             </li>
           ))}
@@ -239,14 +316,22 @@ function NoteCard({
   groesse,
   author,
   onOpen,
+  onMove,
+  first,
+  last,
 }: {
   note: Note
   ansicht: Ansicht
   groesse: Groesse
   author: string
   onOpen: () => void
+  /** Nur gesetzt, solange von Hand sortiert wird. */
+  onMove?: (delta: number) => void
+  first: boolean
+  last: boolean
 }) {
   const regel = GROESSE_REGELN[groesse]
+  const name = note.title || 'ohne Titel'
 
   return (
     // Die Fläche zum Öffnen liegt als Knopf unter dem Inhalt: So bleibt die
@@ -261,11 +346,12 @@ function NoteCard({
       <button
         type="button"
         onClick={onOpen}
-        aria-label={`Notiz ${note.title || 'ohne Titel'} öffnen`}
+        aria-label={`Notiz ${name} öffnen`}
         className="absolute inset-0"
       />
 
-      {/* Der Inhalt lässt Griffe zum Knopf durch – nur Verweise fangen sie ab. */}
+      {/* Der Inhalt lässt Griffe zum Knopf durch – nur Verweise und die
+          Pfeile zum Umsortieren fangen sie ab. */}
       <span className="pointer-events-none relative flex w-full items-start gap-2">
         <span className="min-w-0 flex-1 font-medium">
           {note.title || <span className="text-slate-400">Ohne Titel</span>}
@@ -281,6 +367,29 @@ function NoteCard({
           {formatDateTime(note.updatedAt)}
           {author && <span className="block">{author}</span>}
         </span>
+
+        {onMove && (
+          <span className="pointer-events-auto relative z-10 -my-1 flex shrink-0 flex-col">
+            <button
+              type="button"
+              className="btn-ghost p-1"
+              onClick={() => onMove(-1)}
+              disabled={first}
+              aria-label={`${name} nach oben`}
+            >
+              <ChevronUp className="size-4" aria-hidden />
+            </button>
+            <button
+              type="button"
+              className="btn-ghost p-1"
+              onClick={() => onMove(1)}
+              disabled={last}
+              aria-label={`${name} nach unten`}
+            >
+              <ChevronDown className="size-4" aria-hidden />
+            </button>
+          </span>
+        )}
       </span>
 
       {note.body && (
@@ -344,6 +453,12 @@ function NoteEditor({ note, onClose }: { note: Note | null; onClose: () => void 
 
   const [title, setTitle] = useState(note?.title ?? '')
   const [body, setBody] = useState(note?.body ?? '')
+  /*
+   * Ob gleich geschrieben wird, entscheidet sich beim Öffnen – nicht mitten im
+   * Tippen. Aus dem laufenden Text abgeleitet, kippte der Wert mit dem ersten
+   * Zeichen und schob den Cursor ans Ende.
+   */
+  const [startInEditing] = useState(() => !note || (note.body ?? '') === '')
   /** Sobald eine neue Notiz einmal gespeichert ist, lässt sie sich löschen. */
   const [savedId, setSavedId] = useState<string | null>(note?.id ?? null)
   const [confirmDelete, setConfirmDelete] = useState(false)
@@ -428,7 +543,7 @@ function NoteEditor({ note, onClose }: { note: Note | null; onClose: () => void 
           className="w-full bg-transparent text-lg font-semibold outline-none"
         />
 
-        <NoteText value={body} onChange={setBody} startInEditing={!note || body === ''} />
+        <NoteText value={body} onChange={setBody} startInEditing={startInEditing} />
       </Modal>
 
       <ConfirmDialog

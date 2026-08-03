@@ -1,4 +1,3 @@
-import { useLocation, useNavigate } from 'react-router-dom'
 import { ChevronDown, ChevronUp, Megaphone, Plus, Trash2 } from 'lucide-react'
 import { useToast } from '@/contexts/ToastContext'
 import { EmptyState } from '@/components/ui/Feedback'
@@ -20,13 +19,11 @@ import type { AnnouncementEntry } from '@/lib/types'
  * am Pult vorgelesen werden, und erscheint genauso unter «Leitung».
  *
  * Gespeichert wird laufend: kurz nach dem letzten Tastendruck und spätestens
- * beim Verlassen der Seite. «Fertig» räumt leere Zeilen weg und bringt einen
- * dorthin zurück, wo man hergekommen ist.
+ * beim Verlassen der Seite. «Speichern» schreibt sofort und räumt leere Zeilen
+ * weg – die Seite bleibt dabei stehen, wo sie ist.
  */
 export function Announcements() {
   const { date, meeting } = useSacrament()
-  const navigate = useNavigate()
-  const location = useLocation()
   const toast = useToast()
 
   const draft = useAutoDraft<AnnouncementEntry[]>(
@@ -38,7 +35,12 @@ export function Announcements() {
   const entries = draft.value
   const change = draft.set
 
-  const done = async () => {
+  /*
+   * Speichern und stehen bleiben. Früher führte der Knopf zurück, wo man
+   * hergekommen war – wer vorher bei den Ansprachen gewesen war, landete nach
+   * dem Speichern dort und damit mitten aus der Arbeit gerissen.
+   */
+  const save = async () => {
     // Leere Einträge fallen zum Schluss weg – so bleibt die Liste sauber.
     const cleaned = entries.filter((entry) => entry.text.trim())
     try {
@@ -48,12 +50,7 @@ export function Announcements() {
     } catch (error) {
       console.error(error)
       toast.error('Speichern fehlgeschlagen.')
-      return
     }
-    // Zurück, wo man hergekommen ist. Wer die Seite direkt aufgerufen hat,
-    // landet beim Ablauf – dort laufen die Bekanntmachungen zusammen.
-    if (location.key === 'default') navigate('/abendmahl/leitung')
-    else navigate(-1)
   }
 
   return (
@@ -75,7 +72,7 @@ export function Announcements() {
               <Plus className="size-4" aria-hidden />
               Bekanntmachung
             </button>
-            <button type="button" className="btn-primary" onClick={() => void done()}>
+            <button type="button" className="btn-primary" onClick={() => void save()}>
               Speichern
             </button>
           </>

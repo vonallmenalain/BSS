@@ -164,6 +164,16 @@ vorsehen – eine zusätzliche Ansprache, ein Zeugnis oder ein leerer Platz zum
 späteren Vergeben. Der Standard bleibt davon unberührt; die Ausnahme steht als
 `talkSlots` beim betreffenden Sonntag.
 
+**Ein Name von Hand.** Nicht jeder, der spricht, steht in der Mitgliederliste:
+ein besuchender Hoher Rat, die Missionare, «Zeugnisse der neuen Ältesten».
+Jedes Namensfeld einer Ansprache nimmt deshalb auch reinen Text an. Ein
+Mitglied wird ausschliesslich dann zugeordnet, wenn es in der Vorschlagsliste
+angetippt wird – getippter Text allein genügt nie, sonst entstünden aus
+Tippfehlern stillschweigend falsche Zuordnungen. Ein solcher Eintrag belegt
+seinen Programmplatz wie jeder andere, trägt aber kein Mitglied und bleibt
+damit ausserhalb von `lastTalkDate`, `talkCount` und der Vorschlagsliste – es
+gibt niemanden, bei dem er zu vermerken wäre.
+
 **Vorschläge.** Die eigentliche Antwort auf «wer war schon lange nicht mehr
 dran»: eine nach Dringlichkeit sortierte Liste. Zuoberst, wer noch nie
 gesprochen hat, danach nach Abstand absteigend. Wer bereits eingeplant ist,
@@ -251,6 +261,14 @@ Datenbank.
 einmal beim Schliessen. Ein Speichern-Knopf wäre hier die einzige
 Gelegenheit, Geschriebenes zu verlieren. Eine leere Notiz entsteht gar nicht
 erst; angelegt wird beim ersten Speichern.
+
+**Reihenfolge.** Normalerweise steht zuoberst, woran zuletzt gearbeitet wurde;
+das braucht keine Pflege und trifft es meistens. Wo die Abfolge selbst etwas
+bedeutet, lässt sich stattdessen von Hand sortieren. Diese Reihenfolge steht
+als Position bei jeder Notiz und gilt deshalb für alle – anders als
+Darstellung und Anzeigegrösse, die zum Gerät gehören. Umsortiert wird immer die
+ganze Liste: Trüge nur die verschobene Notiz eine Position, stünde sie nach der
+nächsten Bearbeitung wieder woanders.
 
 ---
 
@@ -374,8 +392,9 @@ agendaItems/{id}       Traktandum = Pendenz
                        ├─ confidential
                        └─ notes[], history[]
 members/{id}           Stammdaten, Status, Notiz, lastTalkDate, talkCount
-talks/{id}             Mitglied, Datum, Programmplatz, Art (Ansprache |
-                       Zeugnis), Thema, Status
+talks/{id}             Mitglied (leer = Name von Hand), Datum,
+                       Programmplatz, Art (Ansprache | Zeugnis), Thema,
+                       Status
 callings/{id}          Mitglied, Position, Organisation, Status, Meilensteine
 sacramentMeetings/{yyyy-MM-dd}
                        Programm eines Sonntags
@@ -391,7 +410,8 @@ sacramentMeetings/{yyyy-MM-dd}
 prayers/{yyyy-MM-dd_slot}
                        Datum, Anfangs- oder Schlussgebet, Mitglied
 hymns/{nummer}         Liednummer und Titel (importiert)
-notes/{id}             Notiz: Titel, Text, wer zuletzt geschrieben hat
+notes/{id}             Notiz: Titel, Text, wer zuletzt geschrieben hat,
+                       Platz in der selbst gewählten Reihenfolge
 settings/app           Gemeindename, Sitzungsrhythmus, Vorgaben zur
                        Abendmahlsversammlung, Personen ohne Konto für
                        Vorsitz und Leitung
@@ -448,8 +468,8 @@ immer dasselbe: Termin verstrichen.
 - Sitzungen planen, starten, durchführen, abschliessen, Protokoll drucken
 - Sitzungsmodus mit Notizen, Statuswechsel, Verschieben, Tastatursteuerung
 - Pendenzenübersicht mit Filtern (alle / meine / überfällig / ohne Sitzung)
-- Notizen für alle: Titel und Text, Suche, Liste oder Kacheln, laufendes
-  Speichern
+- Notizen für alle: Titel und Text, Suche, Liste oder Kacheln, eigene
+  Reihenfolge, laufendes Speichern
 - Mitgliederliste mit Suche, Sortierung, Detailansicht, Notizen
 - Import aus eingefügter Liste, Excel oder CSV mit Spaltenzuordnung, Abgleich
   und Vorschau; CSV-Export
@@ -457,7 +477,8 @@ immer dasselbe: Termin verstrichen.
   ihren Bereich, statt ihn zu ergänzen
 - Einmaliger Import des Ansprachen- und Gebetsverlaufs aus der bisherigen
   Excel-Tabelle, damit die Vorschlagslisten von Anfang an stimmen
-- Ansprachen und Zeugnisse mit Vorschlagsliste, Verlauf und Zusatzplätzen
+- Ansprachen und Zeugnisse mit Vorschlagsliste, Verlauf, Zusatzplätzen und
+  Einträgen von Hand für alle, die nicht in der Mitgliederliste stehen
 - Abendmahlsversammlung: Leitung, Bekanntmachungen, Angelegenheiten, Musik,
   Gebet – mit Ablauf zum Ausdrucken
 - Liederlisten aus dem Musikarchiv oder aus Excel bzw. CSV – Gesangbuch,

@@ -28,7 +28,8 @@ import {
 const talksRef = collection(db, COLLECTIONS.talks)
 
 export interface TalkInput {
-  memberId: string
+  /** Leer lassen, wenn der Name von Hand erfasst wurde (siehe `TalkSpeaker`) */
+  memberId?: string
   memberName: string
   date: Date
   slot: number
@@ -41,6 +42,26 @@ export interface TalkInput {
   notes?: string
 }
 
+/**
+ * Wer spricht: ein Mitglied **oder** ein von Hand erfasster Name.
+ *
+ * Am Pult steht nicht immer jemand aus der eigenen Gemeinde – ein besuchender
+ * Hoher Rat, die Missionare, «Zeugnisse der neuen Ältesten». Ein Mitglied wird
+ * deshalb nur zugeordnet, wenn es ausdrücklich aus der Mitgliederliste gewählt
+ * wurde; alles andere bleibt reiner Text und lässt die Auswertung «wer war
+ * lange nicht dran» unberührt.
+ */
+export type TalkSpeaker = { member: Member } | { name: string }
+
+/** Die beiden Felder, die eine Ansprache über die sprechende Person führt. */
+export function speakerFields(speaker: TalkSpeaker): { memberId: string; memberName: string } {
+  if ('member' in speaker) {
+    const { id, firstName, lastName } = speaker.member
+    return { memberId: id, memberName: `${firstName} ${lastName}`.trim() }
+  }
+  return { memberId: '', memberName: speaker.name.trim() }
+}
+
 export async function createTalk(input: TalkInput): Promise<{ id: string; outcome: SaveOutcome }> {
   // Die ID entsteht im Client, damit sie auch ohne Netz sofort feststeht.
   const docRef = doc(talksRef)
@@ -51,7 +72,7 @@ export async function createTalk(input: TalkInput): Promise<{ id: string; outcom
         notes: input.notes?.trim(),
         durationMinutes: input.durationMinutes,
       }),
-      memberId: input.memberId,
+      memberId: input.memberId ?? '',
       memberName: input.memberName,
       date: Timestamp.fromDate(input.date),
       slot: input.slot,
@@ -75,6 +96,29 @@ export async function updateTalk(
   return commit(
     updateDoc(doc(db, COLLECTIONS.talks, id), { ...data, updatedAt: serverTimestamp() }),
   )
+}
+
+/**
+ * Trägt ein, wer spricht – ein Mitglied oder ein Name von Hand.
+ *
+ * Wechselt eine bereits gehaltene Ansprache die Person, werden beide
+ * Mitgliederstatistiken neu berechnet: Sonst zählte die Ansprache weiterhin
+ * bei derjenigen, die sie gar nicht gehalten hat. Ohne Mitglied gibt es nichts
+ * nachzuführen.
+ */
+export async function setTalkSpeaker(id: string, speaker: TalkSpeaker): Promise<SaveOutcome> {
+  const ref = doc(db, COLLECTIONS.talks, id)
+  const snapshot = await getDoc(ref)
+  const previous = snapshot.exists() ? (snapshot.data() as Talk) : null
+  const fields = speakerFields(speaker)
+
+  const outcome = await commit(updateDoc(ref, { ...fields, updatedAt: serverTimestamp() }))
+
+  if (previous?.status === 'held' && previous.memberId !== fields.memberId) {
+    if (previous.memberId) await recalculateLastTalk(previous.memberId)
+    if (fields.memberId) await recalculateLastTalk(fields.memberId)
+  }
+  return outcome
 }
 
 /**
@@ -103,6 +147,9 @@ export async function setTalkStatus(id: string, status: TalkStatus): Promise<Sav
   )
 
   if (isHeld === wasHeld) return outcome
+  // Ein von Hand erfasster Name gehört zu keinem Mitglied – es gibt keine
+  // Statistik, die nachzuführen wäre.
+  if (!talk.memberId) return outcome
 
   const memberRef = doc(db, COLLECTIONS.members, talk.memberId)
   const memberSnapshot = await getDoc(memberRef)
@@ -155,7 +202,7 @@ export async function deleteTalk(id: string): Promise<SaveOutcome> {
   const talk = snapshot.exists() ? ({ id: snapshot.id, ...snapshot.data() } as Talk) : null
   const outcome = await commit(deleteDoc(ref))
   // War die Ansprache bereits gehalten, muss die Mitgliederstatistik nachgeführt werden.
-  if (talk?.status === 'held') await recalculateLastTalk(talk.memberId)
+  if (talk?.status === 'held' && talk.memberId) await recalculateLastTalk(talk.memberId)
   return outcome
 }
 

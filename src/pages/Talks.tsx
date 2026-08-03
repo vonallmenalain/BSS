@@ -12,6 +12,7 @@ import {
   Sparkles,
   Trash2,
   TriangleAlert,
+  UserPlus,
   X,
 } from 'lucide-react'
 import { useData } from '@/contexts/DataContext'
@@ -38,7 +39,9 @@ import {
   deleteTalk,
   rankTalkCandidates,
   setTalkStatus,
+  speakerFields,
   updateTalk,
+  type TalkSpeaker,
 } from '@/services/talks'
 import {
   sacramentDocId,
@@ -375,7 +378,7 @@ function TalkRow({
         <span className="tabular grid size-7 shrink-0 place-items-center rounded-full bg-slate-100 text-xs font-semibold dark:bg-slate-800">
           {talk.slot}
         </span>
-        <Avatar name={talk.memberName} id={talk.memberId} size="sm" />
+        <Avatar name={talk.memberName} id={talk.memberId || undefined} size="sm" />
         <span className="min-w-0 flex-1">
           <span className="block truncate text-sm font-medium">
             {talk.memberName}
@@ -597,14 +600,19 @@ function HistoryList({ talks }: { talks: Talk[] }) {
     <ul className="card divide-list overflow-hidden">
       {talks.map((talk) => (
         <li key={talk.id} className="flex items-center gap-3 px-4 py-3">
-          <Avatar name={talk.memberName} id={talk.memberId} size="sm" />
+          <Avatar name={talk.memberName} id={talk.memberId || undefined} size="sm" />
           <div className="min-w-0 flex-1">
-            <Link
-              to={`/mitglieder/${talk.memberId}`}
-              className="block truncate text-sm font-medium hover:underline"
-            >
-              {talk.memberName}
-            </Link>
+            {/* Ein von Hand erfasster Name führt zu keinem Mitglied. */}
+            {talk.memberId ? (
+              <Link
+                to={`/mitglieder/${talk.memberId}`}
+                className="block truncate text-sm font-medium hover:underline"
+              >
+                {talk.memberName}
+              </Link>
+            ) : (
+              <p className="truncate text-sm font-medium">{talk.memberName}</p>
+            )}
             {talk.topic && (
               <p className="truncate text-xs text-slate-500 dark:text-slate-400">{talk.topic}</p>
             )}
@@ -644,6 +652,8 @@ function AssignDialog({
 
   const [search, setSearch] = useState('')
   const [selected, setSelected] = useState<Member | null>(null)
+  /** Von Hand erfasster Name – für alle, die nicht in der Mitgliederliste stehen. */
+  const [manual, setManual] = useState('')
   const [dateValue, setDateValue] = useState('')
   const [slotValue, setSlotValue] = useState(1)
   const [kind, setKind] = useState<TalkKind>('talk')
@@ -658,6 +668,7 @@ function AssignDialog({
     setSlotValue(slot)
     setKind(initialKind)
     setSelected(preset)
+    setManual('')
     setSearch('')
     setTopic('')
     // Zeugnisse sind deutlich kürzer als eine Ansprache.
@@ -681,18 +692,30 @@ function AssignDialog({
       .slice(0, 8)
   }, [ranked, search])
 
+  /** Ein Mitglied nur, wenn eines gewählt wurde – sonst der getippte Name. */
+  const speaker: TalkSpeaker | null = selected
+    ? { member: selected }
+    : manual.trim()
+      ? { name: manual }
+      : null
+
+  const takeAsIs = () => {
+    if (!search.trim()) return
+    setManual(search.trim())
+    setSearch('')
+  }
+
   const handleSubmit = async (event: FormEvent) => {
     event.preventDefault()
-    if (!selected) {
-      toast.error('Bitte wähle ein Mitglied aus.')
+    if (!speaker) {
+      toast.error('Bitte wähle ein Mitglied aus oder trage einen Namen ein.')
       return
     }
 
     setSaving(true)
     try {
       const { outcome } = await createTalk({
-        memberId: selected.id,
-        memberName: `${selected.firstName} ${selected.lastName}`,
+        ...speakerFields(speaker),
         date: new Date(`${dateValue}T${settings.sacramentTime}:00`),
         slot: slotValue,
         kind,
@@ -727,7 +750,7 @@ function AssignDialog({
             type="submit"
             form="talk-form"
             className="btn-primary"
-            disabled={saving || !selected}
+            disabled={saving || !speaker}
           >
             {saving ? 'Wird gespeichert …' : 'Eintragen'}
           </button>
@@ -764,6 +787,25 @@ function AssignDialog({
                 <X className="size-4" aria-hidden />
               </button>
             </div>
+          ) : manual.trim() ? (
+            /* Von Hand erfasst: ein Gast, die Missionare, eine Gruppe. */
+            <div className="flex items-center gap-3 rounded-lg border border-slate-200 p-3 dark:border-slate-700">
+              <Avatar name={manual} size="md" />
+              <div className="min-w-0 flex-1">
+                <p className="truncate text-sm font-medium">{manual}</p>
+                <p className="text-xs text-slate-500 dark:text-slate-400">
+                  Keinem Mitglied zugeordnet
+                </p>
+              </div>
+              <button
+                type="button"
+                className="btn-ghost p-1.5"
+                onClick={() => setManual('')}
+                aria-label="Auswahl aufheben"
+              >
+                <X className="size-4" aria-hidden />
+              </button>
+            </div>
           ) : (
             <>
               <input
@@ -772,6 +814,13 @@ function AssignDialog({
                 placeholder="Name eingeben oder aus den Vorschlägen wählen"
                 value={search}
                 onChange={(event) => setSearch(event.target.value)}
+                onKeyDown={(event) => {
+                  if (event.key !== 'Enter') return
+                  // Die Eingabetaste übernimmt den Namen, statt das Formular
+                  // abzusenden – dort fehlte sonst noch, wer spricht.
+                  event.preventDefault()
+                  takeAsIs()
+                }}
               />
               <ul className="mt-2 max-h-56 space-y-1 overflow-y-auto">
                 {results.map(({ member, monthsSince: months, alreadyPlanned }) => (
@@ -805,6 +854,23 @@ function AssignDialog({
                   </li>
                 ))}
               </ul>
+
+              {results.length === 0 && search.trim().length > 1 && (
+                <p className="hint">Keine Übereinstimmung in der Mitgliederliste.</p>
+              )}
+
+              {/* Ein Mitglied wird nur zugeordnet, wenn es oben angetippt
+                  wird. Alles andere bleibt reiner Text. */}
+              {search.trim() && (
+                <button type="button" className="btn-secondary btn-sm mt-2" onClick={takeAsIs}>
+                  <UserPlus className="size-3.5" aria-hidden />«{search.trim()}» ohne Mitglied
+                  eintragen
+                </button>
+              )}
+              <p className="hint">
+                Wer nicht in der Mitgliederliste steht – ein besuchender Hoher Rat, die Missionare,
+                eine Gruppe –, wird von Hand eingetragen und keinem Mitglied zugeordnet.
+              </p>
             </>
           )}
         </div>
@@ -1002,7 +1068,9 @@ function EditTalkDialog({ talk, onClose }: { talk: Talk | null; onClose: () => v
               ))}
             </div>
             <p className="hint">
-              «Gehalten» aktualisiert automatisch das Datum der letzten Ansprache beim Mitglied.
+              {talk.memberId
+                ? '«Gehalten» aktualisiert automatisch das Datum der letzten Ansprache beim Mitglied.'
+                : 'Dieser Eintrag ist keinem Mitglied zugeordnet – er bleibt in der Mitgliederstatistik unberücksichtigt.'}
             </p>
           </div>
 

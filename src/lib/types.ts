@@ -349,8 +349,20 @@ export const TALK_KIND_LABELS: Record<TalkKind, string> = {
 }
 
 export interface Talk extends WithId {
+  /**
+   * Das Mitglied, das spricht – **leer**, wenn der Name von Hand erfasst wurde.
+   *
+   * Nicht jeder Programmpunkt gehört zu jemandem aus der Mitgliederliste: ein
+   * besuchender Hoher Rat, die Missionare, «Zeugnisse der neuen Ältesten».
+   * Solche Einträge belegen ihren Platz wie jeder andere, zählen aber nicht in
+   * die Auswertung «wer war lange nicht dran» – es gibt niemanden, bei dem sie
+   * zu vermerken wären.
+   */
   memberId: string
-  /** Denormalisiert, damit Listen ohne zusätzliche Abfrage darstellbar sind */
+  /**
+   * Denormalisiert, damit Listen ohne zusätzliche Abfrage darstellbar sind.
+   * Ohne Mitglied steht hier der von Hand erfasste Text.
+   */
   memberName: string
 
   /** Datum der Abendmahlsversammlung */
@@ -771,6 +783,15 @@ export interface Hymn extends WithId {
 export interface Note extends WithId {
   title: string
   body: string
+  /**
+   * Platz in der selbst gewählten Reihenfolge – kleiner heisst weiter oben.
+   *
+   * Fehlt die Angabe, wurde die Notiz noch nie von Hand einsortiert; sie steht
+   * dann zuoberst, genau wie in der Ansicht «Zuletzt bearbeitet». Beim
+   * Umsortieren bekommen alle Notizen ihre Position, damit die Reihenfolge auch
+   * dann stehen bleibt, wenn jemand eine davon bearbeitet.
+   */
+  order?: number
   /** Wer sie angelegt bzw. zuletzt geändert hat (UID aus `users`) */
   createdById?: string | null
   updatedById?: string | null
