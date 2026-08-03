@@ -177,6 +177,38 @@ export function useCallings(limitCount = 300) {
   return useCollection<Calling>(COLLECTIONS.callings, constraints, isApproved)
 }
 
+/**
+ * Berufungen in Vorbereitung – genehmigt oder ausgesprochen, aber noch
+ * nicht bestätigt.
+ *
+ * Eine eigene Abfrage statt eines Ausschnitts der zuletzt geänderten: Es
+ * sind stets wenige, und sie sollen auch dann vollständig erscheinen, wenn
+ * die Sammlung durch die übernommene Berufungshistorie auf Hunderte
+ * angewachsen ist.
+ */
+export function useCallingsInPreparation() {
+  const { isApproved } = useAuth()
+  const constraints = useMemo(() => [where('status', 'in', ['approved', 'extended'])], [])
+  return useCollection<Calling>(COLLECTIONS.callings, constraints, isApproved)
+}
+
+/**
+ * Sämtliche Berufungen einer Person – ohne Obergrenze.
+ *
+ * Eine eigene Abfrage, seit die Berufungshistorie mitkommt: Die Sammlung
+ * zählt dann Hunderte von Einträgen, und ein Ausschnitt der zuletzt
+ * geänderten träfe ausgerechnet den Verlauf nicht, um den es hier geht.
+ * Auf eine Person gerechnet bleibt es dagegen eine kurze Liste.
+ */
+export function useMemberCallings(memberId: string | undefined) {
+  const { isApproved } = useAuth()
+  const constraints = useMemo(
+    () => (memberId ? [where('memberId', '==', memberId)] : []),
+    [memberId],
+  )
+  return useCollection<Calling>(COLLECTIONS.callings, constraints, isApproved && Boolean(memberId))
+}
+
 /* ------------------------------------------------------------------ */
 /* Abendmahlsversammlung                                               */
 /* ------------------------------------------------------------------ */

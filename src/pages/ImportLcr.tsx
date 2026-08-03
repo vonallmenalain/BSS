@@ -1,8 +1,7 @@
-import { useMemo, useState } from 'react'
+import { useEffect, useMemo, useState, type ReactNode } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useData } from '@/contexts/DataContext'
 import { useToast } from '@/contexts/ToastContext'
-import { useCallings } from '@/hooks/useFirestore'
 import { ImportNav } from '@/components/ImportNav'
 import {
   BackLink,
@@ -18,12 +17,13 @@ import {
 } from '@/components/ImportShell'
 import { PageHeader } from '@/components/ui/Pickers'
 import { SummaryTile } from '@/components/ui/Feedback'
+import { ImportCallingHistory } from '@/pages/ImportCallingHistory'
 import { cn } from '@/lib/utils'
 import { parsePastedCallings, type CallingSource } from '@/services/importCallings'
 import { parsePastedMinistering } from '@/services/importMinistering'
 import { buildCallingsPreview, buildMinisteringPreview } from '@/services/importMatch'
-import { runCallingsImport, runMinisteringImport } from '@/services/importApply'
-import { ORGANIZATION_LABELS, type Organization } from '@/lib/types'
+import { loadAllCallings, runCallingsImport, runMinisteringImport } from '@/services/importApply'
+import { ORGANIZATION_LABELS, type Calling, type Organization } from '@/lib/types'
 
 /**
  * Berufungen und Betreuungsaufträge aus dem LCR übernehmen.
@@ -37,6 +37,11 @@ import { ORGANIZATION_LABELS, type Organization } from '@/lib/types'
  * LCR-Seite ist die vollständige Wahrheit über den aktuellen Stand. Was
  * dabei wegfällt, steht vor dem Schreiben in der Vorschau – das ist der
  * Teil, den man wirklich prüfen muss.
+ *
+ * Daneben steht als dritte Sparte die **Berufungshistorie**: die
+ * gewachsene Excel-Liste der Gemeinde. Sie kommt nicht aus dem LCR und
+ * ersetzt nichts – sie füllt die Vergangenheit auf (siehe
+ * `ImportCallingHistory`).
  */
 
 type Step = 'paste' | 'preview' | 'done'
@@ -45,17 +50,109 @@ type Step = 'paste' | 'preview' | 'done'
 /* Berufungen                                                          */
 /* ------------------------------------------------------------------ */
 
+/** Die drei Quellen, aus denen Berufungen kommen können. */
+type CallingImportSource = CallingSource | 'history'
+
+const SOURCES: [CallingImportSource, string][] = [
+  ['organizations', 'Berufungen der Gemeinde'],
+  ['outOfUnit', 'Ausserhalb der Einheit'],
+  ['history', 'Berufungshistorie'],
+]
+
 export function ImportCallings() {
+  const [source, setSource] = useState<CallingImportSource>('organizations')
+
+  /*
+   * Die Auswahl gehört zum ersten Schritt und wird deshalb an die Quelle
+   * weitergereicht, statt hier zu stehen: Wer schon in der Vorschau ist,
+   * soll sie nicht mehr umstellen können – die eingelesenen Daten gehören
+   * zur gewählten Liste.
+   */
+  const picker = (
+    <div className="card mb-4 p-4">
+      <span className="label">Welche Liste?</span>
+      <div className="flex flex-wrap gap-2">
+        {SOURCES.map(([key, label]) => (
+          <button
+            key={key}
+            type="button"
+            onClick={() => setSource(key)}
+            aria-pressed={source === key}
+            className={cn(
+              'rounded-full border px-3 py-1.5 text-sm font-medium transition',
+              source === key
+                ? 'border-brand-500 bg-brand-50 text-brand-900 dark:bg-brand-950 dark:text-brand-100'
+                : 'border-slate-300 text-slate-600 hover:border-slate-400 dark:border-slate-700 dark:text-slate-300',
+            )}
+          >
+            {label}
+          </button>
+        ))}
+      </div>
+      <p className="hint">
+        {source === 'history' ? (
+          <>
+            Die dritte Liste kommt nicht aus dem LCR, sondern aus der Tabelle, welche die Gemeinde
+            seit Jahren führt. Sie sagt nichts über den heutigen Stand – sie trägt nach, was die
+            Mitglieder früher schon getan haben.
+          </>
+        ) : (
+          <>
+            Die beiden LCR-Listen stehen dort auf eigenen Seiten und werden getrennt geführt: Der
+            Sonntagsschulpräsident des Pfahls ist nicht der Sonntagsschulpräsident der Gemeinde.
+            Jeder Import ersetzt nur seinen eigenen Bereich.
+          </>
+        )}
+      </p>
+    </div>
+  )
+
+  return (
+    <>
+      <BackLink to="/berufungen" label="Berufungen" />
+      <PageHeader
+        title="Berufungen importieren"
+        subtitle={
+          source === 'history'
+            ? 'Die bisherige Berufungsliste als Verlauf der Mitglieder übernehmen'
+            : 'Die Berufungsliste aus dem LCR einfügen und mit dem Bestand abgleichen'
+        }
+      />
+      <ImportNav />
+
+      {source === 'history' ? (
+        <ImportCallingHistory picker={picker} />
+      ) : (
+        // Ein Wechsel der Quelle beginnt von vorn: Was für die eine Seite
+        // eingefügt wurde, taugt für die andere nicht.
+        <PastedCallings key={source} source={source} picker={picker} />
+      )}
+    </>
+  )
+}
+
+function PastedCallings({ source, picker }: { source: CallingSource; picker: ReactNode }) {
   const { members } = useData()
-  // Grosszügig bemessen: Der Abgleich muss den ganzen Bestand sehen, sonst
-  // entstünden Dubletten für Berufungen, die knapp ausserhalb lägen.
-  const { data: existing } = useCallings(1000)
   const toast = useToast()
   const navigate = useNavigate()
 
+  // Der Abgleich muss den ganzen Bestand sehen, sonst entstünden Dubletten
+  // für Berufungen, die knapp ausserhalb einer Obergrenze lägen – und mit
+  // der übernommenen Berufungshistorie ist der Bestand um ein Vielfaches
+  // gewachsen. Einmal laden genügt: Die Vorschau soll sich unter der Hand
+  // nicht verändern.
+  const [existing, setExisting] = useState<Calling[]>([])
+  useEffect(() => {
+    void loadAllCallings()
+      .then(setExisting)
+      .catch((error) => {
+        console.error(error)
+        toast.error('Die bestehenden Berufungen konnten nicht geladen werden.')
+      })
+  }, [toast])
+
   const [pasted, setPasted] = useState('')
   const [step, setStep] = useState<Step>('paste')
-  const [source, setSource] = useState<CallingSource>('organizations')
   const [releaseMissing, setReleaseMissing] = useState(true)
   const [busy, setBusy] = useState(false)
   const [progress, setProgress] = useState<Progress | null>(null)
@@ -111,49 +208,7 @@ export function ImportCallings() {
 
   return (
     <>
-      <BackLink to="/berufungen" label="Berufungen" />
-      <PageHeader
-        title="Berufungen importieren"
-        subtitle="Die Berufungsliste aus dem LCR einfügen und mit dem Bestand abgleichen"
-      />
-      <ImportNav />
-
-      {step === 'paste' && (
-        <div className="card mb-4 p-4">
-          <span className="label">Welche Liste?</span>
-          <div className="flex flex-wrap gap-2">
-            {(
-              [
-                ['organizations', 'Berufungen der Gemeinde'],
-                ['outOfUnit', 'Ausserhalb der Einheit'],
-              ] as [CallingSource, string][]
-            ).map(([key, label]) => (
-              <button
-                key={key}
-                type="button"
-                onClick={() => {
-                  setSource(key)
-                  setPasted('')
-                }}
-                aria-pressed={source === key}
-                className={cn(
-                  'rounded-full border px-3 py-1.5 text-sm font-medium transition',
-                  source === key
-                    ? 'border-brand-500 bg-brand-50 text-brand-900 dark:bg-brand-950 dark:text-brand-100'
-                    : 'border-slate-300 text-slate-600 hover:border-slate-400 dark:border-slate-700 dark:text-slate-300',
-                )}
-              >
-                {label}
-              </button>
-            ))}
-          </div>
-          <p className="hint">
-            Die beiden Listen stehen im LCR auf eigenen Seiten und werden getrennt geführt: Der
-            Sonntagsschulpräsident des Pfahls ist nicht der Sonntagsschulpräsident der Gemeinde.
-            Jeder Import ersetzt nur seinen eigenen Bereich.
-          </p>
-        </div>
-      )}
+      {step === 'paste' && picker}
 
       {step === 'paste' && (
         <PasteCard

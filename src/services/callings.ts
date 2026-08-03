@@ -8,6 +8,7 @@ import {
   Timestamp,
 } from 'firebase/firestore'
 import { db, COLLECTIONS } from '@/lib/firebase'
+import { formatDate, toDate } from '@/lib/dates'
 import { stripUndefined } from '@/lib/utils'
 import { commit, type SaveOutcome } from '@/lib/sync'
 import {
@@ -132,15 +133,48 @@ export function isWardCalling(calling: Calling): boolean {
   return !calling.outOfUnit
 }
 
-/** Berufungen eines Mitglieds, aktuelle zuerst. */
+/**
+ * Berufungen eines Mitglieds, aktuelle zuerst und darunter die jüngste.
+ *
+ * Die Reihenfolge zählt, seit die übernommene Berufungshistorie das Feld
+ * füllt: Wer seit zehn Jahren in der Gemeinde ist, bringt ein Dutzend
+ * Einträge mit, und ungeordnet läse sich daraus keine Geschichte.
+ */
 export function callingsForMember(callings: Calling[], memberId: string): Calling[] {
   return callings
     .filter((c) => c.memberId === memberId)
     .sort((a, b) => {
-      const aActive = ACTIVE_CALLING_STATUSES.includes(a.status) ? 0 : 1
-      const bActive = ACTIVE_CALLING_STATUSES.includes(b.status) ? 0 : 1
-      return aActive - bActive
+      const running = Number(!isRunning(a)) - Number(!isRunning(b))
+      return running !== 0 ? running : startedAt(b) - startedAt(a)
     })
+}
+
+function isRunning(calling: Calling): boolean {
+  return ACTIVE_CALLING_STATUSES.includes(calling.status)
+}
+
+/** Wann die Berufung begann – für die Sortierung, notfalls ihr Ende. */
+function startedAt(calling: Calling): number {
+  const date = toDate(
+    calling.setApartDate ?? calling.sustainedDate ?? calling.extendedDate ?? calling.releasedDate,
+  )
+  return date ? date.getTime() : 0
+}
+
+/**
+ * Der Zeitraum einer Berufung: «seit 4. Feb. 2024», «2015 – 2017».
+ *
+ * Bei laufenden Berufungen zählt der Anfang, bei abgeschlossenen der
+ * Abschnitt. Fehlt beides – aus der Berufungsliste kommen Einträge, deren
+ * Datum niemand mehr weiss –, bleibt die Zeile leer statt falsch.
+ */
+export function callingPeriod(calling: Calling): string {
+  const from = calling.setApartDate ?? calling.sustainedDate ?? calling.extendedDate
+  if (isRunning(calling)) return from ? `seit ${formatDate(from)}` : ''
+  if (from && calling.releasedDate)
+    return `${formatDate(from)} – ${formatDate(calling.releasedDate)}`
+  if (calling.releasedDate) return `bis ${formatDate(calling.releasedDate)}`
+  return from ? `ab ${formatDate(from)}` : ''
 }
 
 /** Häufige Positionen als Eingabehilfe je Organisation. */

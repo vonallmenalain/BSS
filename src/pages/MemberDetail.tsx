@@ -16,7 +16,7 @@ import {
 import { useData } from '@/contexts/DataContext'
 import { useAuth } from '@/contexts/AuthContext'
 import { useToast } from '@/contexts/ToastContext'
-import { useCallings, useTalks } from '@/hooks/useFirestore'
+import { useMemberCallings, useTalks } from '@/hooks/useFirestore'
 import { Modal, ConfirmDialog } from '@/components/ui/Modal'
 import { EmptyState } from '@/components/ui/Feedback'
 import { Avatar } from '@/components/ui/Avatar'
@@ -25,11 +25,13 @@ import { MemberPicker } from '@/components/ui/Pickers'
 import { formatDate, getAge, monthsSince, toDateInput } from '@/lib/dates'
 import { cn, formatPhone, telHref } from '@/lib/utils'
 import { createMember, deleteMember, updateMember } from '@/services/members'
-import { callingsForMember } from '@/services/callings'
+import { callingPeriod, callingsForMember } from '@/services/callings'
 import {
+  ACTIVE_CALLING_STATUSES,
   GENDER_LABELS,
   MEMBER_STATUS_LABELS,
   ORGANIZATION_LABELS,
+  type Calling,
   type Gender,
   type Member,
   type MemberStatus,
@@ -42,7 +44,7 @@ export function MemberDetail() {
   const toast = useToast()
   const navigate = useNavigate()
   const { data: talks } = useTalks(300)
-  const { data: callings } = useCallings(300)
+  const { data: callings } = useMemberCallings(memberId)
 
   const [editOpen, setEditOpen] = useState(false)
   const [confirmDelete, setConfirmDelete] = useState(false)
@@ -64,6 +66,12 @@ export function MemberDetail() {
   const memberCallings = useMemo(
     () => (memberId ? callingsForMember(callings, memberId) : []),
     [callings, memberId],
+  )
+  const running = memberCallings.filter((calling) =>
+    ACTIVE_CALLING_STATUSES.includes(calling.status),
+  )
+  const earlier = memberCallings.filter(
+    (calling) => !ACTIVE_CALLING_STATUSES.includes(calling.status),
   )
 
   if (loading) return null
@@ -263,31 +271,24 @@ export function MemberDetail() {
           {memberCallings.length === 0 ? (
             <p className="text-sm text-slate-400">Keine Berufung erfasst.</p>
           ) : (
-            <ul className="divide-list">
-              {memberCallings.map((calling) => (
-                <li key={calling.id} className="flex flex-wrap items-center gap-2 py-2 text-sm">
-                  <span className="font-medium">{calling.position}</span>
-                  {calling.outOfUnit ? (
-                    <span
-                      className="badge bg-violet-100 text-violet-800 dark:bg-violet-950 dark:text-violet-200"
-                      title="Pfahl, Seminar, Institut oder Mission – nicht in der Gemeinde"
-                    >
-                      Ausserhalb der Einheit
-                    </span>
-                  ) : (
-                    <span className="text-slate-500 dark:text-slate-400">
-                      {ORGANIZATION_LABELS[calling.organization]}
-                    </span>
-                  )}
-                  <CallingStatusBadge status={calling.status} />
-                  {calling.setApartDate && (
-                    <span className="text-xs text-slate-400">
-                      seit {formatDate(calling.setApartDate)}
-                    </span>
-                  )}
-                </li>
-              ))}
-            </ul>
+            <>
+              <CallingList callings={running} />
+
+              {/*
+               * Der Verlauf steht eingeklappt darunter: Er beantwortet die
+               * Frage «was hat diese Person schon getan?», die man vor einer
+               * neuen Berufung stellt – aber nicht die, mit der man das
+               * Profil sonst öffnet.
+               */}
+              {earlier.length > 0 && (
+                <details className={running.length > 0 ? 'mt-3' : undefined}>
+                  <summary className="cursor-pointer text-sm font-medium text-slate-500 dark:text-slate-400">
+                    Früher · {earlier.length} {earlier.length === 1 ? 'Berufung' : 'Berufungen'}
+                  </summary>
+                  <CallingList callings={earlier} />
+                </details>
+              )}
+            </>
           )}
         </section>
       </div>
@@ -733,6 +734,34 @@ export function MemberForm({
         </label>
       </form>
     </Modal>
+  )
+}
+
+/** Berufungen mit Organisation, Stand und Zeitraum – laufende wie frühere. */
+function CallingList({ callings }: { callings: Calling[] }) {
+  if (callings.length === 0) return null
+  return (
+    <ul className="divide-list">
+      {callings.map((calling) => (
+        <li key={calling.id} className="flex flex-wrap items-center gap-2 py-2 text-sm">
+          <span className="font-medium">{calling.position}</span>
+          {calling.outOfUnit ? (
+            <span
+              className="badge bg-violet-100 text-violet-800 dark:bg-violet-950 dark:text-violet-200"
+              title="Pfahl, Seminar, Institut oder Mission – nicht in der Gemeinde"
+            >
+              Ausserhalb der Einheit
+            </span>
+          ) : (
+            <span className="text-slate-500 dark:text-slate-400">
+              {ORGANIZATION_LABELS[calling.organization]}
+            </span>
+          )}
+          <CallingStatusBadge status={calling.status} />
+          <span className="tabular text-xs text-slate-400">{callingPeriod(calling)}</span>
+        </li>
+      ))}
+    </ul>
   )
 }
 

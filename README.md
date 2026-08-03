@@ -17,7 +17,7 @@ Abendmahlsversammlung, Berufungsverwaltung und Mitgliederdaten.
 | **Pendenzen**             | Offenes über alle Sitzungen hinweg, gefiltert nach «meine», «überfällig», «ohne Sitzung»            |
 | **Notizen**               | Was nicht an eine Sitzung gehört – für alle sichtbar, speichert von selbst                          |
 | **Abendmahlsversammlung** | Ganzer Ablauf pro Sonntag: Leitung, Bekanntmachungen, Angelegenheiten, Ansprachen, Musik, Gebet     |
-| **Berufungen**            | Vom Vorschlag bis zur Einsetzung, gruppiert nach Organisation                                       |
+| **Berufungen**            | Vom Vorschlag bis zur Einsetzung, gruppiert nach Organisation; Verlauf aus der bisherigen Liste     |
 | **Mitglieder**            | Stammdaten, Notizen, Suche und Sortierung; Import aus eingefügter Liste, Excel oder CSV, CSV-Export |
 
 Traktandum und Pendenz sind derselbe Datensatz: Was in einer Sitzung offen
@@ -390,11 +390,13 @@ zweiter – steht in der Quelle «Christiane», passt das zu «Anne Christiane»
 und abgekürzte Zweitnamen («Joshua B.») ebenso. Ein halber Treffer gilt
 bewusst nicht als Treffer: Was übrig bleibt, wird gemeldet statt geraten.
 
-**Berufungen.** Zwei Listen, getrennt geführt: _Berufungen der Gemeinde_ (die
-LCR-Seite «Organisationen») und _Ausserhalb der Einheit_. Welche vorliegt,
-wird vor dem Einfügen gewählt – die zweite Seite trägt kein Merkmal, an dem
-sie sich erkennen liesse, und die Wahl entscheidet mit, welcher Bereich
-ersetzt wird.
+**Berufungen.** Drei Sparten stehen zur Wahl. Zwei davon kommen aus dem LCR
+und werden dort getrennt geführt: _Berufungen der Gemeinde_ (die Seite
+«Organisationen») und _Ausserhalb der Einheit_. Welche vorliegt, wird vor dem
+Einfügen gewählt – die zweite Seite trägt kein Merkmal, an dem sie sich
+erkennen liesse, und die Wahl entscheidet mit, welcher Bereich ersetzt wird.
+Die dritte, die _Berufungshistorie_, kommt aus der eigenen Tabelle der
+Gemeinde und ersetzt nichts (siehe [unten](#berufungshistorie-übernehmen)).
 
 Die Trennung ist keine Kosmetik: Der Sonntagsschulpräsident des Pfahls ist
 nicht der Sonntagsschulpräsident der Gemeinde. Beide tragen dieselbe
@@ -433,6 +435,81 @@ Drei Vorkehrungen halten die Ersetzung in Grenzen:
 
 Wer bewusst nur einen Ausschnitt einfügt, kann das Entlassen in der Vorschau
 zusätzlich abschalten.
+
+---
+
+## Berufungshistorie übernehmen
+
+**Import → Berufungen → Berufungshistorie**, einmalig.
+
+Das LCR kennt nur den heutigen Stand. Was jemand vorher schon getan hat –
+zwei Jahre PV-Lehrerin, davor Sekretärin der JD –, steht dort nicht, wohl
+aber in der Tabelle, welche die Gemeinde seit Jahren führt: eine Zeile je
+Vorgang, mit Organisation, Amt, Name und den Daten von Berufung,
+Bestätigung und Einsetzung. Dieser Import trägt sie nach. Danach beantwortet
+das Profil einer Person die Frage, die vor jeder neuen Berufung kommt: Was
+hat sie bisher gemacht?
+
+Die Datei wird als `.xlsx` eingelesen, alle Blätter auf einmal – eine
+Entlassung steht oft auf einem anderen Blatt als die Berufung, zu der sie
+gehört. Welche Spalte was bedeutet, erkennt der Import an der Überschrift;
+die Reihenfolge der Spalten darf sich über die Jahre geändert haben.
+
+**Aus zwei Zeilen wird eine Berufung.** Die Tabelle führt Ereignisse: «B»
+beruft, «E» entlässt. Erst beide zusammen ergeben, was die App unter einer
+Berufung versteht – eine Aufgabe mit Anfang und Ende. Gesucht wird von der
+Entlassung aus, unter den noch offenen Berufungen derselben Person in
+derselben Organisation: zuerst beim gleich benannten Amt, dann beim
+ähnlichsten, und wenn dort nur eine einzige offen ist, bei dieser. Ämter
+werden dafür auf ihren Kern zurückgeführt – «1. Ratgeberin JD» und «Erste
+Ratgeberin» meinen dasselbe, «Leherin» ist «Lehrerin».
+
+Drei Eigenheiten der gewachsenen Liste sind berücksichtigt:
+
+- **Das Kennzeichen «B/E» gibt es erst in den neueren Blättern.** Davor
+  verrät sich eine Entlassung daran, dass «eingesetzt am» und «eingesetzt
+  von» durchgestrichen sind – so hält es die Legende im Kopf der Tabelle
+  fest.
+- **Datumsangaben stehen in drei Schreibweisen** nebeneinander: als echtes
+  Datum, als «24.03.13» und als «3/26/2017» aus der amerikanischen
+  Oberfläche des LCR. Der Punkt heisst Tag zuerst, der Schrägstrich Monat
+  zuerst. Was sich nicht sicher lesen lässt – «????», «längst» –, bleibt
+  leer statt geraten.
+- **Die Kürzel der Organisationen wechseln** («SoSch», «Soschu»,
+  «Sonntagschule»). Die Hohepriestergruppe zählt zum Ältestenkollegium, das
+  Aaronische Priestertum zu den Jungen Männern; was nach Pfahl, Seminar oder
+  Institut aussieht, wird als Berufung ausserhalb der Einheit übernommen.
+  Unbekannte Kürzel kommen unter «Übrige» mit und werden in der Vorschau
+  genannt.
+
+**Namen von Hand zuordnen.** Über zehn Jahre wechselt eine Gemeinde: Die
+meisten offenen Namen gehören Weggezogenen. Die Vorschau listet jeden davon
+mit seiner Trefferzahl auf und lässt die Person auswählen – oder den Namen
+mit **«Kein Mitglied unserer Gemeinde»** weglegen. Weggelegte Namen
+verschwinden aus der Liste und werden nirgends geschrieben; zurückholen
+lassen sie sich jederzeit. Was offen bleibt, wird übersprungen.
+
+**Was nicht erfasst wurde, wird nicht erfunden.** Zu vielen Berufungen steht
+keine Entlassung in der Liste – über die Jahre sammeln sich mehr vergessene
+Einträge als heute noch laufende Aufgaben. Sie kommen deshalb als Verlauf in
+die App, mit dem Vermerk «keine Entlassung erfasst» statt mit einem
+erfundenen Datum. Den laufenden Stand liefert ohnehin der LCR-Import. Wer es
+anders will, setzt in der Vorschau das Häkchen «Berufungen ohne Entlassung
+als laufend übernehmen».
+
+**Der laufende Bestand bleibt unangetastet.** Ist dieselbe Berufung schon
+erfasst, wird sie nicht verdoppelt, sondern höchstens um die Daten ergänzt,
+die dort fehlen – das Datum der Berufung etwa, das im LCR gar nicht steht.
+Eine abgeschlossene Berufung ist dagegen immer ein eigener Abschnitt: Wer
+eine Aufgabe zweimal innehatte, soll sie auch zweimal sehen.
+
+Der Import ist wiederholbar: Die Dokument-IDs entstehen aus Blatt und Zeile
+der Quelle. Ein zweiter Durchlauf schreibt deshalb dieselben Berufungen noch
+einmal, statt den Verlauf zu verdoppeln – auch dann, wenn beim zweiten Mal
+mehr Namen von Hand zugeordnet wurden.
+
+Im Profil einer Person stehen die laufenden Berufungen oben; darunter lässt
+sich «Früher» aufklappen, mit Zeitraum je Eintrag.
 
 ---
 
@@ -673,6 +750,6 @@ node scripts/generate-icons.mjs
 Die Daten liegen im Firebase-Projekt. Eine regelmässige Sicherung ist trotzdem
 sinnvoll:
 
-- **Mitgliederliste:** _Einstellungen → Import → Mitgliederliste als CSV sichern_
+- **Mitgliederliste:** _Mitglieder → Export_ sichert sie als CSV
 - **Vollständig:** [geplante Firestore-Exporte](https://firebase.google.com/docs/firestore/manage-data/export-import)
   in einen Cloud-Storage-Bucket
