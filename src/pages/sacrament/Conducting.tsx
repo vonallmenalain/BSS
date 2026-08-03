@@ -1,6 +1,5 @@
-import { Fragment, useEffect, useMemo, useRef, useState, type ReactNode } from 'react'
-import { Link } from 'react-router-dom'
-import { ChevronDown, ChevronUp, CircleAlert, Pencil, Plus, Printer, Trash2 } from 'lucide-react'
+import { Fragment, useEffect, useMemo, useState, type ReactNode } from 'react'
+import { ChevronDown, ChevronUp, Pencil, Plus, Trash2 } from 'lucide-react'
 import { useAuth } from '@/contexts/AuthContext'
 import { useData } from '@/contexts/DataContext'
 import { useToast } from '@/contexts/ToastContext'
@@ -12,7 +11,7 @@ import { LeaderField } from '@/components/sacrament/LeaderField'
 import { MemberSearchSelect } from '@/components/sacrament/MemberSearchSelect'
 import { ConflictNotice, SectionHeader, useSacrament } from '@/components/sacrament/SacramentLayout'
 import { useAutoDraft } from '@/components/sacrament/useDraft'
-import { formatDate, formatDateLong, toDate, toDateInput } from '@/lib/dates'
+import { formatDate, toDate, toDateInput } from '@/lib/dates'
 import { cn } from '@/lib/utils'
 import { formatHymn } from '@/services/hymns'
 import { lastPrayerByMember, rankPrayerCandidates, setPrayer } from '@/services/prayers'
@@ -29,7 +28,6 @@ import {
   addTalkSlot,
   buildProgram,
   emptySacramentMeeting,
-  findGaps,
   moveInList,
   newAnnouncement,
   newBusinessEntry,
@@ -79,9 +77,82 @@ interface MeetingDraft {
 interface StepDef {
   key: string
   title: string
-  /** Der Fachbereich, aus dem der Punkt stammt */
-  to?: string
   content: ReactNode
+}
+
+/* ------------------------------------------------------------------ */
+/* Ansicht                                                             */
+/* ------------------------------------------------------------------ */
+
+/**
+ * Wie luftig der Ablauf gesetzt wird.
+ *
+ * Am Pult wird vom Bildschirm gelesen, oft im Halbdunkel und mit Abstand –
+ * je nach Gerät und Augen braucht das mehr oder weniger Grösse. Deshalb
+ * eine Wahl statt einer festen Grösse. Die Klassen stehen ausgeschrieben da,
+ * sonst fände Tailwind sie beim Übersetzen nicht.
+ */
+type ViewSize = 'kompakt' | 'mittel' | 'weit'
+
+interface ViewStyle {
+  label: string
+  /** Innenabstand des Blattes */
+  pad: string
+  /** Grundschrift – alle Zeilen darin erben sie */
+  text: string
+  /** Abstand zwischen zwei Programmpunkten */
+  steps: string
+  /** Titel eines Punktes */
+  title: string
+  /** Nummer vor dem Titel */
+  badge: string
+  /** Abstand zwischen Nummer und Text */
+  gap: string
+  /** Einzug auf die Höhe des Titels – für die Knöpfe unter dem Ablauf */
+  indent: string
+  /** Abstand unter dem Titel */
+  body: string
+  /** Abstand zwischen zwei Zeilen eines Punktes */
+  rows: string
+}
+
+const VIEWS: Record<ViewSize, ViewStyle> = {
+  kompakt: {
+    label: 'Kompakt',
+    pad: 'p-5',
+    text: 'text-sm',
+    steps: 'space-y-4',
+    title: 'text-base',
+    badge: 'size-6 text-xs',
+    gap: 'gap-3',
+    indent: 'pl-9',
+    body: 'mt-1',
+    rows: 'space-y-1',
+  },
+  mittel: {
+    label: 'Mittel',
+    pad: 'p-6',
+    text: 'text-base',
+    steps: 'space-y-7',
+    title: 'text-xl',
+    badge: 'size-7 text-sm',
+    gap: 'gap-3.5',
+    indent: 'pl-11',
+    body: 'mt-1.5',
+    rows: 'space-y-1.5',
+  },
+  weit: {
+    label: 'Weit',
+    pad: 'p-8',
+    text: 'text-lg',
+    steps: 'space-y-10',
+    title: 'text-2xl',
+    badge: 'size-8 text-base',
+    gap: 'gap-4',
+    indent: 'pl-12',
+    body: 'mt-2',
+    rows: 'space-y-2',
+  },
 }
 
 /**
@@ -90,6 +161,11 @@ interface StepDef {
  * Der Aufbau folgt dem Handbuch (Abschnitt 29.2.1), bewusst gekürzt auf das,
  * was am Pult gebraucht wird: Vorspiel, Willkommensgruss und Nachspiel stehen
  * nicht im Programm, sie ergeben sich von selbst.
+ *
+ * Zwei Ansichten, ein Inhalt: Wer «Bearbeiten» drückt, sieht Felder und
+ * Knöpfe; sonst steht da nur der Ablauf, wie er in der Versammlung gebraucht
+ * wird. In dieser Ansicht steht kein erklärender Satz und kein leerer Punkt –
+ * was nicht vorgesehen ist, erscheint gar nicht erst.
  *
  * Nichts wird doppelt geführt. Ansprachen liegen in `talks`, alles Übrige im
  * Programm des Sonntags – dieselben Daten, die «Ansprachen», «Musik», «Gebet»,
@@ -107,9 +183,13 @@ export function Conducting() {
   const { data: prayers } = usePrayers(400)
   const toast = useToast()
 
-  // Wer plant, bearbeitet; wer druckt, will das reine Programm. Die Wahl
-  // bleibt erhalten, damit man sie nicht jedes Mal neu treffen muss.
-  const [editing, setEditing] = useLocalStorage<boolean>('bss:abendmahl:ablauf-bearbeiten', true)
+  // Gelesen wird häufiger als geplant: Wer die Seite öffnet, sieht den
+  // Ablauf, wie er in der Versammlung gebraucht wird. Bearbeitet wird erst
+  // auf Knopfdruck. Beide Wahlen bleiben erhalten, damit man sie nicht jedes
+  // Mal neu treffen muss.
+  const [editing, setEditing] = useLocalStorage<boolean>('bss:leitung:bearbeiten', false)
+  const [size, setSize] = useLocalStorage<ViewSize>('bss:leitung:ansicht', 'mittel')
+  const view = VIEWS[size] ?? VIEWS.mittel
 
   const dateKey = toDateInput(date)
   const sundayTalks = useMemo(() => talksForDate(talks, date), [talks, date])
@@ -197,17 +277,6 @@ export function Conducting() {
     return map
   }, [prayers, dateKey])
 
-  const gaps = useMemo(
-    () =>
-      findGaps(
-        effective,
-        sundayTalks,
-        { opening: prayerBySlot.has('opening'), closing: prayerBySlot.has('closing') },
-        planned,
-      ),
-    [effective, sundayTalks, prayerBySlot, planned],
-  )
-
   /* ---------------- Vorschlagslisten --------------------------------- */
 
   const talkCandidates = useMemo(
@@ -290,42 +359,6 @@ export function Conducting() {
   const assignPrayer = (slot: PrayerSlot, member: Member | null) =>
     void guard(() => setPrayer(date, slot, member), 'Gebet konnte nicht gespeichert werden.')
 
-  /* ---------------- Drucken ------------------------------------------ */
-
-  const [printPending, setPrintPending] = useState(false)
-  const resumeEditing = useRef(false)
-
-  useEffect(() => {
-    if (!printPending || editing) return
-    setPrintPending(false)
-    // Erst nach dem Neuzeichnen drucken, sonst stünden die Eingabefelder
-    // statt des Programms auf dem Blatt.
-    const frame = requestAnimationFrame(() => {
-      const restore = () => {
-        window.removeEventListener('afterprint', restore)
-        if (!resumeEditing.current) return
-        resumeEditing.current = false
-        setEditing(true)
-      }
-      window.addEventListener('afterprint', restore)
-      window.print()
-    })
-    return () => cancelAnimationFrame(frame)
-  }, [printPending, editing, setEditing])
-
-  const print = () => {
-    if (!editing) {
-      window.print()
-      return
-    }
-    // Gedruckt wird das Programm, nicht das Formular: kurz in die Ansicht
-    // wechseln und danach dorthin zurück, wo man war.
-    void draft.flush()
-    resumeEditing.current = true
-    setPrintPending(true)
-    setEditing(false)
-  }
-
   /* ---------------- Ablauf ------------------------------------------- */
 
   /** Der Name hinter «Es präsidiert» und «Es leitet» – Konto oder Person ohne Konto. */
@@ -339,6 +372,24 @@ export function Conducting() {
 
   const talkOf = (talkId: string | undefined) =>
     talkId ? sundayTalks.find((talk) => talk.id === talkId) : undefined
+
+  /*
+   * Punkte, zu denen an diesem Sonntag nichts ansteht.
+   *
+   * Sie stehen nur beim Bearbeiten da – sonst wäre am Pult eine Überschrift
+   * anzusagen, unter der nichts folgt. Wer etwas einträgt, holt sie damit
+   * zurück in den Ablauf. Eine angefangene, aber leer gebliebene Zeile zählt
+   * nicht mit: Sie gehört ins Formular, nicht in die Ansage.
+   */
+  const announced = current.announcements.filter((entry) => entry.text.trim())
+  const business = current.business.filter((entry) => entry.text.trim())
+
+  const empty = new Set(
+    [
+      announced.length === 0 ? 'bekanntmachungen' : '',
+      business.length === 0 ? 'angelegenheiten' : '',
+    ].filter(Boolean),
+  )
 
   const before: StepDef[] = [
     {
@@ -397,44 +448,36 @@ export function Conducting() {
             label="Es leitet"
             value={leaderName(effective.conductingId, effective.conductingName)}
           />
-          {current.visitors.trim() ? (
-            <p className="text-sm">{current.visitors}</p>
-          ) : (
-            <Muted>Keine besuchenden Führungsverantwortlichen angekündigt.</Muted>
-          )}
+          {current.visitors.trim() && <p>{current.visitors}</p>}
         </>
       ),
     },
     {
       key: 'bekanntmachungen',
       title: 'Bekanntmachungen',
-      to: '/abendmahl/bekanntmachungen',
       content: editing ? (
         <AnnouncementEditor
           entries={current.announcements}
           onChange={(next) => change({ announcements: next })}
         />
-      ) : current.announcements.length > 0 ? (
-        <ol className="space-y-1.5 text-sm">
-          {current.announcements.map((entry) => (
+      ) : (
+        <ol className={view.rows}>
+          {announced.map((entry) => (
             <li key={entry.id}>
-              <span className="font-medium">{entry.text || '—'}</span>
+              <span className="font-medium">{entry.text}</span>
               {entry.details?.trim() && (
-                <span className="block text-xs text-slate-500 dark:text-slate-400">
+                <span className="block text-[0.85em] text-slate-500 dark:text-slate-400">
                   {entry.details}
                 </span>
               )}
             </li>
           ))}
         </ol>
-      ) : (
-        <Muted>Keine Bekanntmachungen.</Muted>
       ),
     },
     {
       key: 'anfang',
       title: 'Anfangslied und Anfangsgebet',
-      to: '/abendmahl/musik',
       content: editing ? (
         <div className="no-print space-y-3">
           <HymnField
@@ -453,15 +496,10 @@ export function Conducting() {
         </div>
       ) : (
         <>
-          <Line
-            label={HYMN_SLOT_LABELS.opening}
-            value={formatHymn(current.hymns.opening)}
-            to="/abendmahl/musik"
-          />
+          <Line label={HYMN_SLOT_LABELS.opening} value={formatHymn(current.hymns.opening)} />
           <Line
             label={PRAYER_SLOT_LABELS.opening}
             value={prayerBySlot.get('opening')?.memberName ?? '–'}
-            to="/abendmahl/gebet"
           />
         </>
       ),
@@ -469,20 +507,18 @@ export function Conducting() {
     {
       key: 'angelegenheiten',
       title: 'Angelegenheiten der Gemeinde',
-      to: '/abendmahl/angelegenheiten',
       content: editing ? (
         <BusinessEditor
           entries={current.business}
           onChange={(next) => change({ business: next })}
         />
       ) : (
-        <BusinessList entries={current.business} />
+        <BusinessList entries={business} rows={view.rows} />
       ),
     },
     {
       key: 'sakrament',
-      title: 'Abendmahlslied und Spendung des Abendmahls',
-      to: '/abendmahl/musik',
+      title: 'Abendmahlslied und Abendmahl',
       content: editing ? (
         <div className="no-print">
           <HymnField
@@ -493,20 +529,10 @@ export function Conducting() {
           />
         </div>
       ) : (
-        <>
-          <Line
-            label={HYMN_SLOT_LABELS.sacrament}
-            value={formatHymn(current.hymns.sacrament)}
-            to="/abendmahl/musik"
-          />
-          <Muted>
-            Das Abendmahl steht im Mittelpunkt. Andere Teile der Versammlung dürfen nicht davon
-            ablenken.
-          </Muted>
-        </>
+        <Line label={HYMN_SLOT_LABELS.sacrament} value={formatHymn(current.hymns.sacrament)} />
       ),
     },
-  ]
+  ].filter((step) => editing || !empty.has(step.key))
 
   const middle: StepDef[] = program.map((entry, index) => {
     const talk = talkOf(entry.talkId)
@@ -527,10 +553,6 @@ export function Conducting() {
     return {
       key: entry.key,
       title: entry.label,
-      to:
-        entry.kind === 'hymn' || entry.kind === 'music'
-          ? '/abendmahl/musik'
-          : '/abendmahl/ansprachen',
       content: (
         <>
           {!editing && <ProgramView entry={entry} performers={performers} />}
@@ -651,7 +673,6 @@ export function Conducting() {
     {
       key: 'schluss',
       title: 'Schlusslied und Schlussgebet',
-      to: '/abendmahl/musik',
       content: editing ? (
         <div className="no-print space-y-3">
           <HymnField
@@ -670,15 +691,10 @@ export function Conducting() {
         </div>
       ) : (
         <>
-          <Line
-            label={HYMN_SLOT_LABELS.closing}
-            value={formatHymn(current.hymns.closing)}
-            to="/abendmahl/musik"
-          />
+          <Line label={HYMN_SLOT_LABELS.closing} value={formatHymn(current.hymns.closing)} />
           <Line
             label={PRAYER_SLOT_LABELS.closing}
             value={prayerBySlot.get('closing')?.memberName ?? '–'}
-            to="/abendmahl/gebet"
           />
         </>
       ),
@@ -693,68 +709,51 @@ export function Conducting() {
     <>
       <SectionHeader
         title="Ablauf"
-        description={
-          editing
-            ? 'Alles hier änderbar – Ansprachen, Lieder, Gebete und Bekanntmachungen erscheinen genauso in ihren Bereichen. Gespeichert wird laufend.'
-            : 'Alle Angaben stammen aus den übrigen Bereichen und aktualisieren sich automatisch.'
-        }
         actions={
           <>
             <button
               type="button"
               className={editing ? 'btn-primary' : 'btn-secondary'}
-              onClick={() => setEditing(!editing)}
+              onClick={() => {
+                // Beim Verlassen nicht auf die Tippause warten: Was noch
+                // aussteht, gehört sofort geschrieben.
+                if (editing) void draft.flush()
+                setEditing(!editing)
+              }}
               aria-pressed={editing}
             >
               <Pencil className="size-4" aria-hidden />
               {editing ? 'Fertig' : 'Bearbeiten'}
             </button>
-            <button type="button" className="btn-secondary" onClick={print}>
-              <Printer className="size-4" aria-hidden />
-              <span className="hidden sm:inline">Drucken</span>
-            </button>
+            <select
+              className="input w-auto py-1.5 text-sm"
+              value={size}
+              onChange={(event) => setSize(event.target.value as ViewSize)}
+              aria-label="Grösse der Ansicht"
+            >
+              {(Object.keys(VIEWS) as ViewSize[]).map((value) => (
+                <option key={value} value={value}>
+                  {VIEWS[value].label}
+                </option>
+              ))}
+            </select>
           </>
         }
       />
 
       {draft.conflict && <ConflictNotice onDiscard={draft.reset} />}
 
-      {gaps.length > 0 && (
-        <section className="no-print mb-4 rounded-xl border border-amber-200 bg-amber-50 p-4 dark:border-amber-800 dark:bg-amber-950">
-          <h3 className="flex items-center gap-2 text-sm font-semibold text-amber-900 dark:text-amber-100">
-            <CircleAlert className="size-4" aria-hidden />
-            Noch offen für diesen Sonntag
-          </h3>
-          <ul className="mt-2 flex flex-wrap gap-2">
-            {gaps.map((gap) => (
-              <li key={gap.area}>
-                <Link to={gap.to} className="btn-secondary btn-sm">
-                  {gap.area}: {gap.label}
-                </Link>
-              </li>
-            ))}
-          </ul>
-        </section>
-      )}
-
-      <article className="card p-5">
-        <header className="mb-4 border-b border-slate-200 pb-4 dark:border-slate-800">
-          <h2 className="text-lg font-semibold">{SACRAMENT_KIND_LABELS[current.kind]}</h2>
-          <p className="text-sm text-slate-500 dark:text-slate-400">
-            {formatDateLong(date)} · {settings.sacramentTime} Uhr · {settings.wardName}
-          </p>
-        </header>
-
+      <article className={cn('card leading-relaxed', view.pad, view.text)}>
         {/* Die Nummerierung ergibt sich aus der Liste: Ein zusätzlicher
             Programmpunkt verschiebt alles Folgende automatisch. */}
-        <ol className="space-y-3">
+        <ol className={view.steps}>
           {steps.map((step, index) => (
             <Fragment key={step.key}>
-              <Step number={index + 1} title={step.title} to={step.to}>
+              <Step number={index + 1} title={step.title} view={view}>
                 {step.content}
               </Step>
               {editing && index + 1 === toolsAfter && (
-                <li className="no-print flex flex-wrap gap-2 pl-9">
+                <li className={cn('no-print flex flex-wrap gap-2', view.indent)}>
                   <button
                     type="button"
                     className="btn-secondary btn-sm"
@@ -794,24 +793,24 @@ export function Conducting() {
           ))}
         </ol>
 
-        <section className="mt-5 border-t border-slate-200 pt-4 dark:border-slate-800">
-          <h3 className="text-sm font-semibold">Notizen</h3>
-          {editing ? (
-            <textarea
-              className="input no-print mt-1 min-h-20 resize-y"
-              value={current.notes}
-              onChange={(event) => change({ notes: event.target.value })}
-              placeholder="Hinweise für die Person am Pult …"
-              aria-label="Notizen zur Versammlung"
-            />
-          ) : current.notes.trim() ? (
-            <p className="mt-1 text-sm whitespace-pre-wrap text-slate-600 dark:text-slate-300">
-              {current.notes}
-            </p>
-          ) : (
-            <Muted>Keine Notizen.</Muted>
-          )}
-        </section>
+        {/* Notizen stehen nur da, wenn welche erfasst sind – am Pult zählt,
+            was gesagt wird, nicht die Überschrift darüber. */}
+        {(editing || current.notes.trim()) && (
+          <section className="mt-6 border-t border-slate-200 pt-5 dark:border-slate-800">
+            <h3 className={cn('font-semibold', view.title)}>Notizen</h3>
+            {editing ? (
+              <textarea
+                className={cn('input no-print min-h-20 resize-y', view.body)}
+                value={current.notes}
+                onChange={(event) => change({ notes: event.target.value })}
+                placeholder="Hinweise für die Person am Pult …"
+                aria-label="Notizen zur Versammlung"
+              />
+            ) : (
+              <p className={cn('whitespace-pre-wrap', view.body)}>{current.notes}</p>
+            )}
+          </section>
+        )}
       </article>
 
       {(draft.dirty || draft.saving) && (
@@ -830,39 +829,30 @@ export function Conducting() {
 function Step({
   number,
   title,
-  to,
+  view,
   children,
 }: {
   number: number
   title: string
-  to?: string
+  view: ViewStyle
   children: ReactNode
 }) {
   return (
-    <li className="flex gap-3">
-      <span className="tabular mt-0.5 grid size-6 shrink-0 place-items-center rounded-full bg-slate-100 text-xs font-semibold dark:bg-slate-800">
+    <li className={cn('flex', view.gap)}>
+      <span
+        className={cn(
+          'tabular mt-0.5 grid shrink-0 place-items-center rounded-full bg-slate-100 font-semibold dark:bg-slate-800',
+          view.badge,
+        )}
+      >
         {number}
       </span>
       <div className="min-w-0 flex-1">
-        <div className="flex flex-wrap items-baseline gap-2">
-          <h3 className="text-sm font-semibold">{title}</h3>
-          {to && (
-            <Link
-              to={to}
-              className="text-brand-600 dark:text-brand-300 no-print text-xs hover:underline"
-            >
-              Bereich öffnen
-            </Link>
-          )}
-        </div>
-        <div className="mt-1 space-y-1">{children}</div>
+        <h3 className={cn('font-semibold', view.title)}>{title}</h3>
+        <div className={cn(view.body, view.rows)}>{children}</div>
       </div>
     </li>
   )
-}
-
-function Muted({ children }: { children: ReactNode }) {
-  return <p className="text-sm text-slate-500 dark:text-slate-400">{children}</p>
 }
 
 function Field({
@@ -884,22 +874,21 @@ function Field({
   )
 }
 
-function Line({ label, value, to }: { label: string; value: string; to?: string }) {
+/**
+ * Eine Zeile «Angabe: Wert».
+ *
+ * Fehlt der Wert, steht «noch offen» da – in Orange, damit es beim
+ * Durchgehen vor der Versammlung auffällt. Geändert wird es dort, wo es
+ * hingehört: über «Bearbeiten».
+ */
+function Line({ label, value }: { label: string; value: string }) {
   const missing = value === '–'
   return (
-    <p className="flex flex-wrap items-baseline gap-x-2 text-sm">
+    <p className="flex flex-wrap items-baseline gap-x-2">
       <span className="text-slate-500 dark:text-slate-400">{label}:</span>
       <span className={cn('font-medium', missing && 'text-amber-600 dark:text-amber-400')}>
         {missing ? 'noch offen' : value}
       </span>
-      {missing && to && (
-        <Link
-          to={to}
-          className="text-brand-600 dark:text-brand-300 no-print text-xs hover:underline"
-        >
-          festlegen
-        </Link>
-      )}
     </p>
   )
 }
@@ -907,13 +896,15 @@ function Line({ label, value, to }: { label: string; value: string; to?: string 
 function ProgramView({ entry, performers }: { entry: ProgramEntry; performers: string }) {
   return (
     <>
-      {entry.title ? (
-        <p className="text-sm font-medium">{entry.title}</p>
-      ) : (
-        <p className="text-sm font-medium text-amber-600 dark:text-amber-400">noch offen</p>
+      <p className={cn('font-medium', !entry.title && 'text-amber-600 dark:text-amber-400')}>
+        {entry.title || 'noch offen'}
+      </p>
+      {entry.detail && (
+        <p className="text-[0.85em] text-slate-500 dark:text-slate-400">{entry.detail}</p>
       )}
-      {entry.detail && <p className="text-xs text-slate-500 dark:text-slate-400">{entry.detail}</p>}
-      {performers && <p className="text-xs text-slate-500 dark:text-slate-400">{performers}</p>}
+      {performers && (
+        <p className="text-[0.85em] text-slate-500 dark:text-slate-400">{performers}</p>
+      )}
     </>
   )
 }
@@ -954,16 +945,15 @@ function MoveButtons({
   )
 }
 
-function BusinessList({ entries }: { entries: BusinessEntry[] }) {
-  if (entries.length === 0) return <Muted>Keine Angelegenheiten.</Muted>
+function BusinessList({ entries, rows }: { entries: BusinessEntry[]; rows: string }) {
   return (
-    <ul className="space-y-1 text-sm">
+    <ul className={rows}>
       {entries.map((entry) => (
         <li key={entry.id}>
-          <span className="badge bg-slate-100 text-slate-600 dark:bg-slate-800 dark:text-slate-300">
+          <span className="badge bg-slate-100 text-[0.8em] text-slate-600 dark:bg-slate-800 dark:text-slate-300">
             {BUSINESS_TYPE_LABELS[entry.type]}
           </span>{' '}
-          <span className="font-medium">{entry.text || '—'}</span>
+          <span className="font-medium">{entry.text}</span>
         </li>
       ))}
     </ul>

@@ -231,14 +231,14 @@ Dieselben Tests laufen in der CI, bevor Regeln ausgerollt werden.
 Ein Bereich, sechs Unterpunkte – oben wird der Sonntag gewählt, und er gilt
 für alle Unterpunkte.
 
-| Unterpunkt           | Wofür                                                                      |
-| -------------------- | -------------------------------------------------------------------------- |
-| **Leitung**          | Der ganze Ablauf auf einer Seite – hier änderbar, zum Ausdrucken fürs Pult |
-| **Bekanntmachungen** | Liste pro Sonntag, in der Reihenfolge des Vorlesens; speichert von selbst  |
-| **Angelegenheiten**  | Bestätigungen, Entlassungen, Segnungen, Konfirmierungen                    |
-| **Ansprachen**       | Programmplätze vergeben, Vorschlagsliste, Verlauf                          |
-| **Musik**            | Drei bis vier Lieder und Musikeinlagen                                     |
-| **Gebet**            | Anfangs- und Schlussgebet, mit «zuletzt gebetet»                           |
+| Unterpunkt           | Wofür                                                                          |
+| -------------------- | ------------------------------------------------------------------------------ |
+| **Leitung**          | Der ganze Ablauf auf einer Seite – zum Leiten am Pult, auf Knopfdruck änderbar |
+| **Bekanntmachungen** | Liste pro Sonntag, in der Reihenfolge des Vorlesens; speichert von selbst      |
+| **Angelegenheiten**  | Bestätigungen, Entlassungen, Segnungen, Konfirmierungen                        |
+| **Ansprachen**       | Programmplätze vergeben, Vorschlagsliste, Verlauf                              |
+| **Musik**            | Drei bis vier Lieder und Musikeinlagen                                         |
+| **Gebet**            | Anfangs- und Schlussgebet, mit «zuletzt gebetet»                               |
 
 **Leitung** zeigt den ganzen Ablauf – und alles darin lässt sich hier ändern:
 Vorsitz und Begrüssung, Bekanntmachungen, Angelegenheiten, Lieder, Gebete,
@@ -247,10 +247,17 @@ die freigeschalteten Konten zur Wahl – und mit **Person hinzufügen** jede
 weitere Person: Ist Besuch aus der Pfahlführung da, präsidiert er, und ein
 Konto in der App hat er nicht. Ein einmal erfasster Name ist an jedem Sonntag
 wählbar und lässt sich im selben Fenster wieder aus der Auswahl nehmen, ohne
-aus schon erfassten Programmen zu verschwinden. Der Knopf **Bearbeiten** schaltet zwischen dem
-reinen Programm (so wird es gedruckt) und den Eingabefeldern um; gespeichert
-wird laufend, ohne Speichern-Knopf. Was noch fehlt, steht als kurze Liste
-zuoberst.
+aus schon erfassten Programmen zu verschwinden. Der Knopf **Bearbeiten**
+blendet die Eingabefelder ein; gespeichert wird laufend, ohne Speichern-Knopf.
+
+Ohne **Bearbeiten** steht da nur der Ablauf – so, wie er in der Versammlung
+gebraucht wird: keine erklärenden Sätze, keine Verweise in andere Bereiche und
+kein Punkt, zu dem nichts ansteht. Sind keine Bekanntmachungen oder
+Angelegenheiten erfasst, fehlen sie in dieser Ansicht ganz und erscheinen erst
+beim Bearbeiten wieder. Was noch offen ist, steht in Orange an seiner Stelle im
+Ablauf. Ein Auswahlfeld daneben stellt mit **Kompakt · Mittel · Weit** ein, wie
+gross Schrift und Abstände sind – am Pult wird aus Distanz gelesen, am
+Schreibtisch zählt die Übersicht.
 
 Erfasst wird trotzdem nichts doppelt: Es sind dieselben Daten wie in den
 übrigen Bereichen. Eine hier eingefügte Ansprache steht auch unter
