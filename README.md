@@ -319,9 +319,19 @@ zweiter – steht in der Quelle «Christiane», passt das zu «Anne Christiane»
 und abgekürzte Zweitnamen («Joshua B.») ebenso. Ein halber Treffer gilt
 bewusst nicht als Treffer: Was übrig bleibt, wird gemeldet statt geraten.
 
-**Berufungen.** Gelesen werden die Seite *Organisationen* und die Seite
-*Berufungen ausserhalb der Einheit*; welche der beiden vorliegt, erkennt die
-App selbst. Bestehende Berufungen werden über Person, Rolle und Organisation
+**Berufungen.** Zwei Listen, getrennt geführt: *Berufungen der Gemeinde* (die
+LCR-Seite «Organisationen») und *Ausserhalb der Einheit*. Welche vorliegt,
+wird vor dem Einfügen gewählt – die zweite Seite trägt kein Merkmal, an dem
+sie sich erkennen liesse, und die Wahl entscheidet mit, welcher Bereich
+ersetzt wird.
+
+Die Trennung ist keine Kosmetik: Der Sonntagsschulpräsident des Pfahls ist
+nicht der Sonntagsschulpräsident der Gemeinde. Beide tragen dieselbe
+Bezeichnung, und ohne die Unterscheidung überschriebe der eine den anderen.
+In der Berufungsliste stehen sie deshalb in eigenen Sparten, im Detail einer
+Person sind die auswärtigen als solche gekennzeichnet.
+
+Bestehende Berufungen werden über Person, Rolle, Organisation und Bereich
 erkannt und aktualisiert. Offene Berufungen («Berufung offen») werden gezählt,
 aber nicht geschrieben.
 

@@ -32,6 +32,8 @@ export interface CallingInput {
   releasedDate?: Date | null
   responsibleId?: string | null
   notes?: string
+  /** Berufung ausserhalb der eigenen Einheit (Pfahl, Seminar, Institut) */
+  outOfUnit?: boolean
 }
 
 const DATE_FIELDS = [
@@ -58,6 +60,7 @@ export async function createCalling(
       memberName: input.memberName,
       position: input.position.trim(),
       organization: input.organization,
+      outOfUnit: input.outOfUnit ?? false,
       status: input.status ?? 'proposed',
       responsibleId: input.responsibleId ?? null,
       createdAt: serverTimestamp(),
@@ -117,6 +120,16 @@ export async function deleteCalling(id: string): Promise<SaveOutcome> {
 /** Laufende Berufungen (alles ausser entlassen/abgelehnt). */
 export function activeCallings(callings: Calling[]): Calling[] {
   return callings.filter((c) => ACTIVE_CALLING_STATUSES.includes(c.status))
+}
+
+/**
+ * Gehört die Berufung zur Gemeinde?
+ *
+ * Alles ohne Vermerk zählt dazu – so bleiben von Hand erfasste und ältere
+ * Datensätze dort, wo man sie erwartet.
+ */
+export function isWardCalling(calling: Calling): boolean {
+  return !calling.outOfUnit
 }
 
 /** Berufungen eines Mitglieds, aktuelle zuerst. */

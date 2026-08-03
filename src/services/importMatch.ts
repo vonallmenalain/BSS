@@ -127,14 +127,23 @@ export interface CallingsPreview {
 }
 
 /**
- * Schlüssel für den Abgleich: Person, Rolle und Organisation.
+ * Schlüssel für den Abgleich: Person, Rolle, Organisation und Bereich.
  *
  * Die Organisation gehört bewusst dazu. Das LCR führt die Bischofschaft
  * doppelt – einmal als «Bischofschaft», einmal als «Präsidentschaft des
  * Aaronischen Priestertums» – und das sind zwei echte Berufungen.
+ *
+ * Ebenso der Bereich: Der Sonntagsschulpräsident des Pfahls ist nicht der
+ * Sonntagsschulpräsident der Gemeinde. Beide tragen dieselbe Bezeichnung,
+ * und ohne diese Unterscheidung überschriebe der eine den anderen.
  */
-function callingKey(memberId: string, position: string, organization: string): string {
-  return `${memberId}|${normalize(position)}|${organization}`
+function callingKey(
+  memberId: string,
+  position: string,
+  organization: string,
+  outOfUnit: boolean | undefined,
+): string {
+  return `${memberId}|${normalize(position)}|${organization}|${outOfUnit ? 'aus' : 'gem'}`
 }
 
 /**
@@ -184,7 +193,10 @@ export function buildCallingsPreview(
 
   const existingByKey = new Map<string, Calling>()
   for (const calling of existing) {
-    existingByKey.set(callingKey(calling.memberId, calling.position, calling.organization), calling)
+    existingByKey.set(
+      callingKey(calling.memberId, calling.position, calling.organization, calling.outOfUnit),
+      calling,
+    )
   }
 
   const rows: CallingRow[] = pasted.callings.map((entry) => {
@@ -195,7 +207,9 @@ export function buildCallingsPreview(
     else if (!member) warnings.push('Keine passende Person in der Mitgliederliste')
 
     const existingId = member
-      ? (existingByKey.get(callingKey(member.id, entry.position, entry.organization))?.id ?? null)
+      ? (existingByKey.get(
+          callingKey(member.id, entry.position, entry.organization, entry.outOfUnit),
+        )?.id ?? null)
       : null
 
     return {

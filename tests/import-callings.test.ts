@@ -216,6 +216,29 @@ test('entlässt, was die Quelle für eine abgedeckte Organisation nicht mehr fü
   )
 })
 
+test('hält Gemeinde und Pfahl auseinander, auch bei gleicher Bezeichnung', () => {
+  // Dieselbe Person, dieselbe Bezeichnung, verschiedene Einheiten: Der
+  // Import darf die eine Berufung nicht für die andere halten.
+  const page = [
+    'Sonntagsschule',
+    'Berufung\tName\tBestätigt\tEingesetzt',
+    'Sonntagsschulpräsident',
+    'Amsler, Peter Daniel',
+    '4 Feb 2024',
+    'Anzahl: 1',
+  ].join('\n')
+
+  const stakeCalling = calling('c1', 'm1', 'Sonntagsschulpräsident', 'other', 'sustained', {
+    outOfUnit: true,
+  })
+  const preview = buildCallingsPreview(parsePastedCallings(page), MEMBERS, [stakeCalling])
+
+  // Angelegt, nicht aktualisiert – und die Pfahlberufung bleibt stehen.
+  assert.equal(preview.createCount, 1)
+  assert.equal(preview.updateCount, 0)
+  assert.deepEqual(preview.releases, [])
+})
+
 test('lässt Organisationen unberührt, die nicht eingefügt wurden', () => {
   const existing = [calling('c1', 'm6', 'FHV-Leiterin', 'relief_society', 'set_apart')]
   const preview = buildCallingsPreview(parsePastedCallings(ORGANIZATION_PAGE), MEMBERS, existing)
