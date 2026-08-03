@@ -112,7 +112,7 @@ gilt für alle.
 ```
 Bekanntmachungen ─┐
 Angelegenheiten  ─┤
-Ansprachen       ─┼─►  Leitung  ──►  Ablauf zum Ausdrucken
+Ansprachen       ─┼─►  Leitung  ──►  Ablauf fürs Pult
 Musik            ─┤
 Gebet            ─┘
 ```
@@ -124,7 +124,14 @@ Namensgebung und Konfirmierung (nur wenn erfasst), Abendmahl, Botschaften und
 Musik, Schlusslied und Schlussgebet, Nachspiel. Alle Werte erscheinen
 automatisch. Angepasst wird hier nur, wer leitet und präsidiert, wen man
 begrüsst – und die Reihenfolge von Ansprachen, Zeugnissen, Zwischenlied und
-Musikeinlagen. Was noch fehlt, steht als kurze Liste zuoberst.
+Musikeinlagen.
+
+Diese Seite wird während der Versammlung gelesen, nicht nur davor ausgefüllt.
+Ohne «Bearbeiten» steht deshalb nur der Ablauf da: kein erklärender Satz, kein
+Verweis in einen anderen Bereich, kein Punkt ohne Inhalt – wozu nichts ansteht,
+erscheint erst beim Bearbeiten wieder. Offene Stellen stehen in Orange an ihrem
+Platz im Ablauf. Wie gross Schrift und Abstände sind, ist wählbar (kompakt,
+mittel, weit): Am Pult wird aus Distanz gelesen.
 
 Zur Wahl für «Es präsidiert» und «Es leitet» stehen die freigeschalteten
 Konten und Personen ohne Konto: Ist Besuch aus der Pfahlführung da,
@@ -480,7 +487,7 @@ immer dasselbe: Termin verstrichen.
 - Ansprachen und Zeugnisse mit Vorschlagsliste, Verlauf, Zusatzplätzen und
   Einträgen von Hand für alle, die nicht in der Mitgliederliste stehen
 - Abendmahlsversammlung: Leitung, Bekanntmachungen, Angelegenheiten, Musik,
-  Gebet – mit Ablauf zum Ausdrucken
+  Gebet – mit dem ganzen Ablauf fürs Pult
 - Liederlisten aus dem Musikarchiv oder aus Excel bzw. CSV – Gesangbuch,
   PV-Liederbuch und «Für zuhause und für die Kirche» getrennt, Liedtitel aus
   der Nummer

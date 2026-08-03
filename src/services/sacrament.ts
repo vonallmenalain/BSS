@@ -8,10 +8,8 @@ import { updateTalk } from '@/services/talks'
 import {
   ACTIVE_TALK_STATUSES,
   HYMN_SLOTS,
-  HYMN_SLOT_LABELS,
   type AnnouncementEntry,
   type BusinessEntry,
-  type HymnSlot,
   type MusicalNumber,
   type SacramentMeeting,
   type Talk,
@@ -239,56 +237,4 @@ export function openTalkSlots(
   let open = 0
   for (let slot = 1; slot <= planned; slot++) if (!taken.has(slot)) open++
   return open
-}
-
-/* ------------------------------------------------------------------ */
-/* Vollständigkeit                                                     */
-/* ------------------------------------------------------------------ */
-
-export interface ProgramGap {
-  area: string
-  label: string
-  to: string
-}
-
-/**
- * Was fehlt für diesen Sonntag noch?
- * Wird unter «Leitung» als kurze Liste gezeigt, damit vor dem Sonntag klar
- * ist, wo noch etwas offen ist.
- */
-export function findGaps(
-  meeting: SacramentMeeting | null,
-  talks: Talk[],
-  prayerSlots: { opening: boolean; closing: boolean },
-  defaultTalkCount: number,
-): ProgramGap[] {
-  const gaps: ProgramGap[] = []
-
-  const open = openTalkSlots(meeting, talks, defaultTalkCount)
-  if (open > 0) {
-    gaps.push({
-      area: 'Ansprachen',
-      label: `${open} Programmplatz${open === 1 ? '' : 'plätze'} offen`,
-      to: '/abendmahl/ansprachen',
-    })
-  }
-
-  const requiredHymns: HymnSlot[] = ['opening', 'sacrament', 'closing']
-  const missingHymns = requiredHymns.filter((slot) => !meeting?.hymns?.[slot]?.number)
-  if (missingHymns.length > 0) {
-    gaps.push({
-      area: 'Musik',
-      label: missingHymns.map((slot) => HYMN_SLOT_LABELS[slot]).join(', ') + ' fehlt',
-      to: '/abendmahl/musik',
-    })
-  }
-
-  if (!prayerSlots.opening || !prayerSlots.closing) {
-    const missing = [!prayerSlots.opening && 'Anfangsgebet', !prayerSlots.closing && 'Schlussgebet']
-      .filter(Boolean)
-      .join(', ')
-    gaps.push({ area: 'Gebet', label: `${missing} offen`, to: '/abendmahl/gebet' })
-  }
-
-  return gaps
 }
