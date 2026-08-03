@@ -19,6 +19,7 @@ const MemberDetail = lazy(() =>
   import('@/pages/MemberDetail').then((m) => ({ default: m.MemberDetail })),
 )
 const Notes = lazy(() => import('@/pages/Notes').then((m) => ({ default: m.Notes })))
+const Cleaning = lazy(() => import('@/pages/Cleaning').then((m) => ({ default: m.Cleaning })))
 const Talks = lazy(() => import('@/pages/Talks').then((m) => ({ default: m.Talks })))
 const Callings = lazy(() => import('@/pages/Callings').then((m) => ({ default: m.Callings })))
 const Settings = lazy(() => import('@/pages/Settings').then((m) => ({ default: m.Settings })))
@@ -36,6 +37,9 @@ const ImportHistory = lazy(() =>
 )
 const ImportHymns = lazy(() =>
   import('@/pages/ImportHymns').then((m) => ({ default: m.ImportHymns })),
+)
+const ImportCleaning = lazy(() =>
+  import('@/pages/ImportCleaning').then((m) => ({ default: m.ImportCleaning })),
 )
 
 /* Abendmahlsversammlung – der Rahmen hält den gewählten Sonntag,
@@ -100,6 +104,14 @@ export default function App() {
                   element={
                     <Suspense fallback={<LoadingScreen />}>
                       <Notes />
+                    </Suspense>
+                  }
+                />
+                <Route
+                  path="putzplan"
+                  element={
+                    <Suspense fallback={<LoadingScreen />}>
+                      <Cleaning />
                     </Suspense>
                   }
                 />
@@ -223,6 +235,14 @@ export default function App() {
                   element={
                     <Suspense fallback={<LoadingScreen />}>
                       <ImportMinistering />
+                    </Suspense>
+                  }
+                />
+                <Route
+                  path="import/putzplan"
+                  element={
+                    <Suspense fallback={<LoadingScreen />}>
+                      <ImportCleaning />
                     </Suspense>
                   }
                 />

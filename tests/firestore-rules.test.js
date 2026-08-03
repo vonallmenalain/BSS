@@ -113,6 +113,24 @@ async function seed() {
       title: 'Gemeindeausflug',
       body: 'Termin mit der JD absprechen.',
     })
+
+    await setDoc(doc(db, 'announcementSeries', 'serie-1'), {
+      text: 'Tempeltag der Gemeinde',
+      rhythm: 'monthly',
+      weeks: [3],
+      startDate: '2026-01-01',
+      endDate: null,
+      skipDates: [],
+      source: 'manual',
+    })
+
+    await setDoc(doc(db, 'cleaningWeeks', '2026-06-29'), {
+      startDate: '2026-06-29',
+      endDate: '2026-07-04',
+      group: 'Gruppe 2',
+      team: 'Muster Hans & Anna',
+      note: '',
+    })
   })
 }
 
@@ -219,6 +237,32 @@ describe('Alle Rollen sehen denselben Bestand', () => {
     await assertFails(getDocs(collection(asPending(), 'notes')))
     await assertFails(setDoc(doc(asPending(), 'notes', 'notiz-2'), { title: 'Versuch', body: '' }))
     await assertFails(getDocs(collection(asAnonymous(), 'notes')))
+  })
+
+  it('lässt jede Rolle wiederkehrende Bekanntmachungen führen – und wartende Konten nicht', async () => {
+    // Eine Serie gilt für viele Sonntage zugleich; sie gehört wie die
+    // Programme selbst der ganzen Bischofschaft.
+    await assertSucceeds(getDoc(doc(asSecretary(), 'announcementSeries', 'serie-1')))
+    await assertSucceeds(
+      updateDoc(doc(asCounselor2(), 'announcementSeries', 'serie-1'), {
+        skipDates: ['2026-08-16'],
+      }),
+    )
+    await assertFails(getDocs(collection(asPending(), 'announcementSeries')))
+    await assertFails(setDoc(doc(asPending(), 'announcementSeries', 'serie-2'), { text: 'x' }))
+    await assertFails(getDocs(collection(asAnonymous(), 'announcementSeries')))
+  })
+
+  it('lässt jede Rolle den Putzplan führen – und wartende Konten nicht', async () => {
+    await assertSucceeds(getDoc(doc(asSecretary(), 'cleaningWeeks', '2026-06-29')))
+    await assertSucceeds(
+      updateDoc(doc(asBishop(), 'cleaningWeeks', '2026-06-29'), { note: 'Generalkonf.' }),
+    )
+    await assertFails(getDocs(collection(asPending(), 'cleaningWeeks')))
+    await assertFails(
+      setDoc(doc(asPending(), 'cleaningWeeks', '2026-07-06'), { team: 'Versuch' }),
+    )
+    await assertFails(getDocs(collection(asAnonymous(), 'cleaningWeeks')))
   })
 
   it('lässt Sekretäre Mitglieder bearbeiten und löschen', async () => {

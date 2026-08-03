@@ -21,10 +21,21 @@ export interface ParsedSheet {
   rows: string[][]
 }
 
+/**
+ * Liest XLSX oder CSV Zeile für Zeile, ohne etwas zu deuten.
+ *
+ * Für Tabellen ohne Kopfzeile – der Putzplan etwa beginnt mit einem Titel
+ * und hat gar keine Spaltenüberschriften. Wer eine Kopfzeile erwartet,
+ * nimmt `parseFile()`.
+ */
+export async function readSheetRows(file: File): Promise<string[][]> {
+  const isCsv = /\.csv$/i.test(file.name) || file.type === 'text/csv'
+  return isCsv ? parseCsv(file) : parseXlsx(file)
+}
+
 /** Liest XLSX oder CSV und liefert immer dieselbe Struktur zurück. */
 export async function parseFile(file: File): Promise<ParsedSheet> {
-  const isCsv = /\.csv$/i.test(file.name) || file.type === 'text/csv'
-  const raw = isCsv ? await parseCsv(file) : await parseXlsx(file)
+  const raw = await readSheetRows(file)
 
   // Führende Leerzeilen überspringen – Exporte haben oft einen Titelkopf.
   const firstDataRow = raw.findIndex((row) => row.filter((cell) => cell.trim()).length >= 2)

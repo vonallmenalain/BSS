@@ -127,7 +127,7 @@ export function ImportHistory() {
 
   return (
     <>
-      <BackLink to="/abendmahl/ansprachen" label="Ansprachen" />
+      <BackLink to="/einstellungen" label="Einstellungen" />
       <PageHeader
         title="Verlauf importieren"
         subtitle="Ansprachen und Gebete aus der bisherigen Excel-Tabelle übernehmen"

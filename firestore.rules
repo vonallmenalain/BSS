@@ -131,6 +131,17 @@ service cloud.firestore {
       allow read, write: if approved();
     }
 
+    // Wiederkehrende Bekanntmachungen gelten für viele Sonntage zugleich.
+    match /announcementSeries/{seriesId} {
+      allow read, write: if approved();
+    }
+
+    /* ---------------- Putzplan ---------------- */
+
+    match /cleaningWeeks/{weekId} {
+      allow read, write: if approved();
+    }
+
     /* ---------------- Gesangbuch ---------------- */
 
     match /hymns/{number} {

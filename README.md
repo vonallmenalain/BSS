@@ -16,12 +16,17 @@ Abendmahlsversammlung, Berufungsverwaltung und Mitgliederdaten.
 | **Sitzungen**             | Termin festlegen, Traktanden sammeln, Sitzungsmodus zum Durchgehen, Protokoll drucken               |
 | **Pendenzen**             | Offenes über alle Sitzungen hinweg, gefiltert nach «meine», «überfällig», «ohne Sitzung»            |
 | **Notizen**               | Was nicht an eine Sitzung gehört – für alle sichtbar, speichert von selbst                          |
+| **Putzplan**              | Die Halbjahrestabelle der Gemeinde als Wochenplan – Grundlage für die Ansage am Sonntag             |
 | **Abendmahlsversammlung** | Ganzer Ablauf pro Sonntag: Leitung, Bekanntmachungen, Angelegenheiten, Ansprachen, Musik, Gebet     |
 | **Berufungen**            | Vom Vorschlag bis zur Einsetzung, gruppiert nach Organisation; Verlauf aus der bisherigen Liste     |
-| **Mitglieder**            | Stammdaten, Notizen, Suche und Sortierung; Import aus eingefügter Liste, Excel oder CSV, CSV-Export |
+| **Mitglieder**            | Stammdaten, Notizen, Suche und Sortierung                                                           |
 
 Traktandum und Pendenz sind derselbe Datensatz: Was in einer Sitzung offen
 bleibt, erscheint automatisch wieder – ohne Umtragen.
+
+**Importe stehen gesammelt unter «Einstellungen → Importe»** und nirgends
+sonst. Ein Import ersetzt ganze Bereiche; ein Knopf dafür neben der Arbeit am
+einzelnen Eintrag lädt zu Unfällen ein.
 
 ---
 
@@ -234,7 +239,7 @@ für alle Unterpunkte.
 | Unterpunkt           | Wofür                                                                          |
 | -------------------- | ------------------------------------------------------------------------------ |
 | **Leitung**          | Der ganze Ablauf auf einer Seite – zum Leiten am Pult, auf Knopfdruck änderbar |
-| **Bekanntmachungen** | Liste pro Sonntag, in der Reihenfolge des Vorlesens; speichert von selbst      |
+| **Bekanntmachungen** | Liste pro Sonntag und wiederkehrende Serien; speichert von selbst              |
 | **Angelegenheiten**  | Bestätigungen, Entlassungen, Segnungen, Konfirmierungen                        |
 | **Ansprachen**       | Programmplätze vergeben, Vorschlagsliste, Verlauf                              |
 | **Musik**            | Drei bis vier Lieder und Musikeinlagen                                         |
@@ -288,7 +293,7 @@ war lange nicht dran» unberücksichtigt. Ein Mitglied wird ausschliesslich dann
 zugeordnet, wenn es in der Vorschlagsliste angetippt wird – getippter Text
 allein genügt dafür nie.
 
-**Liederliste.** Unter **Import → Lieder** einlesen, dann genügt beim Erfassen
+**Liederliste.** Unter **Einstellungen → Importe → Liederlisten** einlesen, dann genügt beim Erfassen
 der Musik die Nummer – der Titel erscheint automatisch. Nur die Zahl, aus dem
 PV-Liederbuch mit dem Kürzel davor: **«PV 6»**; es zählt wie das Gesangbuch ab
 1, ohne das Kürzel wäre nicht zu sagen, welches gemeint ist. Doppelnummern
@@ -300,6 +305,101 @@ einem Neuimport gleich bleibt.
 **Gebet.** Beim Zuteilen steht bei jedem Vorschlag, wann die Person zuletzt
 gebetet hat; zuoberst steht, wer noch nie an der Reihe war – dieselbe Logik
 wie bei den Ansprachen.
+
+---
+
+## Wiederkehrende Bekanntmachungen
+
+**Abendmahlsversammlung → Bekanntmachungen → Wiederkehrend**.
+
+Manches wird nicht einmal gesagt, sondern immer wieder: der Tempeltag jeden
+dritten Sonntag, der Dank ans Putzteam jede Woche. Eine **Serie** wird einmal
+erfasst und erscheint danach von selbst an jedem Sonntag, an dem sie fällig
+ist – auch an einem, den noch nie jemand geöffnet hat.
+
+Sie wird **nicht** in die einzelnen Sonntage geschrieben, sondern bei jedem
+Aufruf dazugerechnet. Das hat zwei Folgen, und beide sind gewollt: Wer den
+Wortlaut ändert, ändert ihn für jeden künftigen Sonntag; und die Serie steht
+auch dort, wo sonst noch nichts erfasst ist.
+
+**Wie oft.** Entweder jeden Sonntag oder bestimmte Sonntage im Monat – 1. bis
+5. und «letzter», auch mehrere zugleich. Gezählt wird im Kalender: Der
+3. Sonntag ist der dritte Sonntag dieses Monats, ganz gleich, auf welchen
+Wochentag der Monatsanfang fällt. Dazu ein **Ab**-Datum und wahlweise ein
+**Bis**.
+
+**Löschen – die Wahl.** Der Papierkorb an einer wiederkehrenden Bekanntmachung
+fragt:
+
+| Wahl                            | Was geschieht                                                                          |
+| ------------------------------- | -------------------------------------------------------------------------------------- |
+| **Nur diesen Sonntag**          | Der Sonntag wird gestrichen, die Serie läuft weiter                                     |
+| **Diesen und alle künftigen**   | Die Serie endet am Vortag; vergangene Sonntage behalten die Bekanntmachung              |
+| **Ganz löschen** (im Fenster)   | Die Bekanntmachung verschwindet auch aus vergangenen Sonntagen                          |
+
+Vergangene Sonntage werden in den ersten beiden Fällen nie angetastet: Was
+einmal von der Kanzel gesagt wurde, lässt sich nicht nachträglich streichen.
+
+**Nur für diesen Sonntag anpassen** (das Sternchen) macht aus der Serie an
+diesem einen Sonntag einen gewöhnlichen Eintrag: frei änderbar und
+verschiebbar, während die Serie an allen anderen Sonntagen bleibt, wie sie
+war.
+
+Serien stehen in der Liste hinter den erfassten Einträgen – was diesen Sonntag
+besonders macht, gehört nach vorn. Sie erscheinen genauso unter **Leitung**,
+dort nur zum Vorlesen.
+
+---
+
+## Putzplan
+
+**Putzplan** in der Seitenleiste, gleich unter den Notizen.
+
+Die Gemeinde erstellt zweimal im Jahr eine Excel-Tabelle: je Woche eine
+Gruppe, die Namen und der Zeitraum. Sie wird unter **Einstellungen → Importe →
+Putzplan** eingelesen und steht danach als Wochenplan da – mit der laufenden
+Woche hervorgehoben und, ganz oben, den zwei Zeilen für den nächsten Sonntag:
+wem gedankt wird und wer als Nächstes an der Reihe ist.
+
+**Gelesen wird nach Inhalt, nicht nach Spalte.** Die Tabelle hat keine
+Kopfzeile, und wer sie pflegt, verschiebt die Spalten gelegentlich. Erkannt
+werden deshalb die Zellen selbst: «Gruppe 7» ist die Gruppe, «13.7. - 18.7.»
+der Zeitraum, die längste übrige Zelle sind die Namen, der Rest ist Bemerkung
+(«Generalkonf.»). Zeilen ohne Zeitraum – Titel, Legenden, Leerzeilen – fallen
+von selbst weg.
+
+Das **Jahr** steht in der Überschrift («Putzplan 2026 Juli – Dezember»); fehlt
+es, wird das laufende angenommen und das gemeldet. Wechselt es innerhalb des
+Plans («27.12. – 2.1.»), wird das erkannt.
+
+Der erste Tag einer Woche ist ihr Schlüssel: Derselbe Plan lässt sich beliebig
+oft einlesen, ohne Dubletten anzulegen, und der Plan fürs zweite Halbjahr
+ergänzt den ersten, statt ihn abzuräumen. Einzelne Wochen lassen sich von Hand
+ändern – wer kurzfristig tauscht, soll dafür nicht die ganze Tabelle neu
+einlesen müssen; ein späterer Import derselben Woche überschreibt die Korrektur
+allerdings wieder.
+
+### Die Ansage am Sonntag
+
+Unter **Bekanntmachungen → Wiederkehrend → Aus dem Putzplan** entsteht eine
+Serie, deren Text sich jede Woche selbst füllt:
+
+> Herzlichen Dank an **Bader Roger & Sylvie** (Gruppe 2) für das Putzen in der
+> vergangenen Woche. In der kommenden Woche ist **Gruppe 3** an der Reihe:
+> Nanogjoka Arbi & Melina.
+
+Der Wortlaut lässt sich frei umstellen; gefüllt werden vier Platzhalter:
+`{gruppe-vorher}`, `{team-vorher}`, `{gruppe-neu}`, `{team-neu}`.
+
+Welche Woche welche ist, wird nicht gezählt, sondern verglichen: **davor** ist
+die zuletzt begonnene Woche, die spätestens am Sonntag endet, **danach** die
+erste, die am Sonntag oder später beginnt. Damit stimmt die Ansage auch dort,
+wo die Tabelle ihre Zählweise wechselt – der Plan der Gemeinde läuft zuerst von
+Montag bis Samstag und ab August von Sonntag bis Samstag.
+
+Findet der Plan zu einem gebrauchten Platzhalter nichts – am Rand des Plans
+oder in einer Lücke –, bleibt die Bekanntmachung an diesem Sonntag weg. Ein
+Dank an niemanden wäre schlimmer als gar keiner.
 
 ---
 
@@ -346,7 +446,7 @@ keine Reihenfolge festhalten.
 
 ## Mitgliederliste importieren
 
-**Mitglieder → Import**.
+**Einstellungen → Importe → Mitglieder**.
 
 Der Assistent führt durch vier Schritte: Quelle wählen, Spalten zuordnen
 (wird geraten), Vorschau prüfen, importieren. Als Quelle dienen wahlweise
@@ -382,8 +482,8 @@ mit der Mitglieds-Nummer mitzuliefern und als «Mitglieds-Nr.» zuzuordnen.
 ## Berufungen und Betreuung importieren
 
 Reiter im Import-Bereich führen zu allem, was sich von aussen übernehmen lässt:
-**Mitglieder**, **Berufungen**, **Betreuung**, **Verlauf** und **Lieder**. Die
-ersten drei kommen aus dem LCR, und der Weg ist derselbe wie beim
+**Mitglieder**, **Berufungen**, **Betreuung**, **Putzplan**, **Verlauf** und
+**Lieder**. Die drei aus dem LCR gehen denselben Weg wie beim
 Mitgliederverzeichnis – Seite markieren, kopieren, einfügen; nur die
 Spaltenzuordnung entfällt, weil der Aufbau feststeht.
 
@@ -443,11 +543,43 @@ Drei Vorkehrungen halten die Ersetzung in Grenzen:
 Wer bewusst nur einen Ausschnitt einfügt, kann das Entlassen in der Vorschau
 zusätzlich abschalten.
 
+### Berufungswechsel
+
+Der Regelfall einer Umberufung: Jemand gibt eine Aufgabe ab und erhält am
+selben Sonntag eine neue. Das LCR erzählt davon nichts – dort ist die alte
+Berufung schlicht verschwunden, und ohne weiteres Zutun stünde als
+Entlassungsdatum der Tag, an dem zufällig importiert wurde.
+
+Fällt bei einer Person eine Berufung weg und kommt zugleich eine neue dazu,
+zeigt die Vorschau das deshalb als eigenen Punkt:
+
+> **Cadonau, Rita**
+> Neue Berufung: Sonntagsschullehrer · Sonntagsschule · bestätigt 4 Feb 2024
+> Wurde entlassen als: JD-Leiterin · Junge Damen
+> Entlassung per **04.02.2024**
+
+Das vorgeschlagene Datum ist das Berufungsdatum der neuen Berufung – der Tag,
+an dem die bisherige Aufgabe endete. Es lässt sich vor dem Schreiben von Hand
+ändern, und wer den Haken entfernt, macht daraus eine gewöhnliche Entlassung
+auf den heutigen Tag.
+
+Eine so entlassene Berufung wandert in die **Historie**: Sie ist ein
+abgeschlossener Abschnitt und bleibt es. Erhält die Person dieselbe Aufgabe
+Jahre später erneut, entsteht ein zweiter Eintrag, und beide Abschnitte stehen
+im Profil nebeneinander. Eine gewöhnliche Entlassung ohne neue Berufung lebt
+dagegen wieder auf, wenn das LCR die Berufung erneut führt – dort ist meist
+eine unvollständige Kopie im Spiel.
+
+Gepaart wird der Reihe nach und höchstens einmal: Wer zwei Berufungen abgibt
+und eine neue erhält, hat einen Wechsel und eine gewöhnliche Entlassung –
+welche welche ist, weiss die Quelle nicht, und geraten wird nichts. Beides
+steht in der Vorschau und lässt sich dort richtigstellen.
+
 ---
 
 ## Berufungshistorie übernehmen
 
-**Import → Berufungen → Berufungshistorie**, einmalig.
+**Einstellungen → Importe → Berufungen → Berufungshistorie**, einmalig.
 
 Das LCR kennt nur den heutigen Stand. Was jemand vorher schon getan hat –
 zwei Jahre PV-Lehrerin, davor Sekretärin der JD –, steht dort nicht, wohl
@@ -528,7 +660,7 @@ sich «Früher» aufklappen, mit Zeitraum je Eintrag.
 
 ## Verlauf aus der bisherigen Excel-Tabelle
 
-**Import → Verlauf**, einmalig.
+**Einstellungen → Importe → Verlauf**, einmalig.
 
 Ohne Verlauf beginnt die App bei null: Sie hielte alle für gleich lange nicht
 dran und bräuchte Jahre, bis die Vorschlagslisten wieder etwas taugen. Der
@@ -575,9 +707,24 @@ Verlauf zu verdoppeln. Was in der App gepflegt wurde, bleibt unangetastet.
 
 ---
 
+## Putzplan importieren
+
+**Einstellungen → Importe → Putzplan**, zweimal im Jahr.
+
+Die Halbjahrestabelle der Gemeinde als `.xlsx` oder `.csv` einlesen, per
+Auswahl oder Drag-and-drop. Wie sie gelesen wird und was danach damit möglich
+ist, steht unter [Putzplan](#putzplan).
+
+Die Vorschau zeigt jede erkannte Woche mit ihrer Zeilennummer aus der Datei,
+dazu die Zahl der Teams und die Zeilen, die einen Zeitraum haben, aber keine
+Namen – die werden übersprungen und gemeldet. Stimmt eine Zeile nicht, lässt
+sie sich nach dem Import auf der Seite **Putzplan** einzeln richtigstellen.
+
+---
+
 ## Liederlisten importieren
 
-**Import → Lieder**, einmalig – einmal je Buch.
+**Einstellungen → Importe → Liederlisten**, einmalig – einmal je Buch.
 
 Zur Auswahl stehen drei Bücher:
 
@@ -667,8 +814,8 @@ src/
 │   ├── Layout.tsx       Navigation (Seitenleiste bzw. untere Leiste)
 │   └── UpdatePrompt.tsx Hinweis auf neue Version
 ├── contexts/            Anmeldung, Stammdaten, Meldungen
-├── hooks/               Firestore-Abfragen, lokale Einstellungen, Uhrzeit
-├── lib/                 Firebase-Anbindung, Typen, Datums-, Programm- und Hilfsfunktionen
+├── hooks/               Firestore-Abfragen, Bekanntmachungen eines Sonntags, lokale Einstellungen
+├── lib/                 Firebase-Anbindung, Typen, Datums-, Serien-, Programm- und Hilfsfunktionen
 ├── pages/
 │   ├── sacrament/       Leitung, Bekanntmachungen, Angelegenheiten, Musik, Gebet
 │   └── …                Eine Datei pro übriger Ansicht

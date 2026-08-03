@@ -5,6 +5,7 @@ import {
   CalendarDays,
   ListTodo,
   NotebookPen,
+  Brush,
   Church,
   CloudUpload,
   Users,
@@ -97,6 +98,7 @@ export function Layout() {
       badge: overdueCount || undefined,
     },
     { to: '/notizen', label: 'Notizen', shortLabel: 'Notiz', icon: NotebookPen },
+    { to: '/putzplan', label: 'Putzplan', shortLabel: 'Putzen', icon: Brush },
     {
       to: '/abendmahl/leitung',
       label: 'Abendmahlsversammlung',

@@ -92,4 +92,8 @@ export const COLLECTIONS = {
   prayers: 'prayers',
   hymns: 'hymns',
   notes: 'notes',
+  /** Wiederkehrende Bekanntmachungen – gelten für viele Sonntage zugleich */
+  announcementSeries: 'announcementSeries',
+  /** Putzplan der Gemeinde, Dokument-ID ist der erste Tag der Woche */
+  cleaningWeeks: 'cleaningWeeks',
 } as const

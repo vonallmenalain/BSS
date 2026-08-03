@@ -616,6 +616,85 @@ export interface AnnouncementEntry {
   text: string
   /** Zusatz für die Person am Pult: Wortlaut, Datum, Ort … */
   details?: string
+  /**
+   * Die Serie, aus der dieser Eintrag stammt.
+   *
+   * Nur gesetzt, wenn eine wiederkehrende Bekanntmachung für diesen Sonntag
+   * von Hand angepasst wurde: Dann steht sie ab jetzt als eigener Eintrag im
+   * Programm und folgt der Serie nicht mehr. Errechnete Einträge tragen das
+   * Feld ebenfalls, werden aber gar nicht erst gespeichert.
+   */
+  seriesId?: string | null
+}
+
+/* ------------------------------------------------------------------ */
+/* Wiederkehrende Bekanntmachungen                                     */
+/* ------------------------------------------------------------------ */
+
+/**
+ * Wie oft eine Serie fällig ist.
+ *
+ * `weekly` meint jede Abendmahlsversammlung, `monthly` bestimmte Sonntage
+ * im Monat – «jeden 3. Sonntag» ist der Fall, für den es diese Serien gibt.
+ */
+export type SeriesRhythm = 'weekly' | 'monthly'
+
+export const SERIES_RHYTHM_LABELS: Record<SeriesRhythm, string> = {
+  weekly: 'Jeden Sonntag',
+  monthly: 'Bestimmte Sonntage im Monat',
+}
+
+/** Auswahl für «welcher Sonntag im Monat» – `-1` ist der letzte. */
+export const SERIES_WEEK_LABELS: [number, string][] = [
+  [1, '1. Sonntag'],
+  [2, '2. Sonntag'],
+  [3, '3. Sonntag'],
+  [4, '4. Sonntag'],
+  [5, '5. Sonntag'],
+  [-1, 'Letzter Sonntag'],
+]
+
+/**
+ * Woher der Text einer Serie kommt.
+ *
+ * `manual` ist der Normalfall: Was erfasst wurde, wird vorgelesen.
+ * `cleaning` füllt die Platzhalter aus dem Putzplan – das dankende und
+ * ankündigende «wer putzt diese Woche» ändert sich schliesslich jede Woche,
+ * die Serie selbst aber nie.
+ */
+export type SeriesSource = 'manual' | 'cleaning'
+
+/**
+ * Eine wiederkehrende Bekanntmachung.
+ *
+ * Sie wird **nicht** in die einzelnen Sonntage hineingeschrieben, sondern
+ * bei jedem Aufruf dazugerechnet. Das ist der ganze Unterschied zur
+ * gewöhnlichen Bekanntmachung, und er entscheidet über alles Weitere: Wer
+ * den Wortlaut ändert, ändert ihn für jeden künftigen Sonntag; wer die
+ * Serie beendet, räumt keine Vergangenheit weg; und ein Sonntag, den
+ * niemand je geöffnet hat, hat die Bekanntmachung trotzdem.
+ *
+ * Ausnahmen sind zwei Listen: `skipDates` streicht einzelne Sonntage, und
+ * `endDate` beendet die Serie. Beides entsteht beim Löschen – die Wahl
+ * zwischen «nur dieser Sonntag» und «dieser und alle künftigen».
+ */
+export interface AnnouncementSeries extends WithId {
+  text: string
+  details?: string
+  rhythm: SeriesRhythm
+  /** Bei `monthly`: welche Sonntage im Monat (1–5, `-1` = letzter) */
+  weeks: number[]
+  /** Ab wann die Serie gilt, «yyyy-MM-dd» */
+  startDate: string
+  /** Bis wann – `null` heisst offen */
+  endDate?: string | null
+  /** Einzeln gestrichene Sonntage, «yyyy-MM-dd» */
+  skipDates: string[]
+  /** Fehlt das Feld (Altbestand), gilt «manual». */
+  source?: SeriesSource
+  createdById?: string | null
+  createdAt?: TS
+  updatedAt?: TS
 }
 
 export type BusinessType =
@@ -775,6 +854,36 @@ export interface Hymn extends WithId {
   /** Fehlt das Feld (Altbestand), gilt das Gesangbuch. */
   book?: HymnBook
   title: string
+  updatedAt?: TS
+}
+
+/* ------------------------------------------------------------------ */
+/* Putzplan                                                            */
+/* ------------------------------------------------------------------ */
+
+/**
+ * Eine Woche im Putzplan der Gemeinde.
+ *
+ * Der Plan wird zweimal im Jahr als Tabelle erstellt und hier eingelesen.
+ * Die Dokument-ID ist der erste Tag der Woche («2026-06-29»); damit lässt
+ * sich derselbe Plan beliebig oft einlesen, ohne Dubletten anzulegen, und
+ * eine korrigierte Fassung ersetzt schlicht die alte.
+ *
+ * Die Woche läuft von Montag bis Samstag – der Sonntag dazwischen ist der
+ * Tag, an dem in der Abendmahlsversammlung gedankt und angekündigt wird.
+ */
+export interface CleaningWeek extends WithId {
+  /** Erster Tag der Woche, «yyyy-MM-dd» – zugleich die Dokument-ID */
+  startDate: string
+  /** Letzter Tag der Woche, «yyyy-MM-dd» */
+  endDate: string
+  /** «Gruppe 2» */
+  group: string
+  /** «Bader Roger & Sylvie» */
+  team: string
+  /** Bemerkung aus der Tabelle, z. B. «Generalkonf.» */
+  note?: string
+  createdAt?: TS
   updatedAt?: TS
 }
 

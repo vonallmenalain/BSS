@@ -50,6 +50,22 @@ export interface ImportOutcome {
 export interface CallingsOutcome extends ImportOutcome {
   /** Berufungen, die als entlassen markiert wurden */
   released: number
+  /** Davon Wechsel: entlassen auf das Datum der neuen Berufung, ab jetzt Historie */
+  changed: number
+}
+
+/**
+ * Was in der Vorschau zu den Wechseln bestätigt wurde.
+ *
+ * Berufungs-ID der wegfallenden Berufung → Entlassungsdatum «yyyy-MM-dd».
+ * Was hier steht, wandert mit diesem Datum in die Historie; alles übrige
+ * wird wie bisher auf den heutigen Tag entlassen.
+ */
+export type ConfirmedChanges = Record<string, string>
+
+export interface CallingsImportOptions {
+  releaseMissing?: boolean
+  changes?: ConfirmedChanges
 }
 
 /* ------------------------------------------------------------------ */
@@ -68,15 +84,25 @@ type CallingWrite = { kind: 'row'; row: CallingRow } | { kind: 'release'; callin
  * Verlauf und erscheint weiterhin unter «Entlassen», damit die
  * Bischofschaft nachvollziehen kann, wer wann was getan hat.
  *
+ * **Ein bestätigter Wechsel wird anders entlassen.** Erhält dieselbe Person
+ * im selben Import eine neue Berufung, gilt deren Berufungsdatum auch als
+ * Tag der Entlassung – nicht der heutige, an dem zufällig importiert wurde.
+ * Ein solcher Eintrag trägt danach das Kennzeichen `history`: Er ist ein
+ * abgeschlossener Abschnitt und soll es bleiben, auch wenn die Person die
+ * Aufgabe Jahre später erneut erhält. Dann entsteht ein zweiter Eintrag,
+ * und beide Abschnitte bleiben nebeneinander lesbar.
+ *
  * `releaseMissing` lässt sich abschalten, wenn die Quelle bewusst
  * unvollständig ist.
  */
 export async function runCallingsImport(
   preview: CallingsPreview,
-  options: { releaseMissing?: boolean } = {},
+  options: CallingsImportOptions = {},
   onProgress?: (done: number, total: number) => void,
 ): Promise<CallingsOutcome> {
   requireOnline()
+
+  const confirmed = options.changes ?? {}
 
   const writes: CallingWrite[] = [
     ...preview.rows
@@ -88,11 +114,12 @@ export async function runCallingsImport(
   ]
 
   const callings = collection(db, COLLECTIONS.callings)
-  // Alle Entlassungen desselben Imports tragen dasselbe Datum.
+  // Alle gewöhnlichen Entlassungen desselben Imports tragen dasselbe Datum.
   const releasedDate = Timestamp.fromDate(new Date())
   let created = 0
   let updated = 0
   let released = 0
+  let changed = 0
 
   for (let offset = 0; offset < writes.length; offset += CHUNK_SIZE) {
     const chunk = writes.slice(offset, offset + CHUNK_SIZE)
@@ -100,12 +127,15 @@ export async function runCallingsImport(
 
     for (const write of chunk) {
       if (write.kind === 'release') {
+        const change = confirmed[write.calling.id]
         batch.update(doc(db, COLLECTIONS.callings, write.calling.id), {
           status: 'released',
-          releasedDate,
+          releasedDate: change ? Timestamp.fromDate(fromIsoDate(change)) : releasedDate,
+          ...(change ? { history: true } : {}),
           updatedAt: serverTimestamp(),
         })
         released++
+        if (change) changed++
         continue
       }
 
@@ -156,7 +186,7 @@ export async function runCallingsImport(
     onProgress?.(Math.min(offset + chunk.length, writes.length), writes.length)
   }
 
-  return { created, updated, released, skipped: preview.skipCount }
+  return { created, updated, released, changed, skipped: preview.skipCount }
 }
 
 /* ------------------------------------------------------------------ */

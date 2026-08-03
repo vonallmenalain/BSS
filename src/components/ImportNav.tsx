@@ -1,5 +1,5 @@
 import { NavLink } from 'react-router-dom'
-import { ClipboardList, Award, HeartHandshake, History, Music } from 'lucide-react'
+import { ClipboardList, Award, Brush, HeartHandshake, History, Music } from 'lucide-react'
 import { cn } from '@/lib/utils'
 
 /**
@@ -12,12 +12,14 @@ import { cn } from '@/lib/utils'
  *
  * Verlauf und Liederliste braucht man je nur einmal. Sie stehen trotzdem
  * hier, weil man sie hier sucht – und stehen hinten, weil sie nach der
- * Einrichtung niemanden mehr beschäftigen.
+ * Einrichtung niemanden mehr beschäftigen. Der Putzplan kommt zweimal im
+ * Jahr und steht dazwischen.
  */
 const TABS = [
   { to: '/import', label: 'Mitglieder', icon: ClipboardList },
   { to: '/import/berufungen', label: 'Berufungen', icon: Award },
   { to: '/import/betreuung', label: 'Betreuung', icon: HeartHandshake },
+  { to: '/import/putzplan', label: 'Putzplan', icon: Brush },
   { to: '/import/verlauf', label: 'Verlauf', icon: History },
   { to: '/import/lieder', label: 'Lieder', icon: Music },
 ]

@@ -1,5 +1,4 @@
 import { useId, useMemo, useState } from 'react'
-import { Link } from 'react-router-dom'
 import { Check, Music, TriangleAlert } from 'lucide-react'
 import { useData } from '@/contexts/DataContext'
 import { useToast } from '@/contexts/ToastContext'
@@ -172,12 +171,11 @@ export function HymnField({
 
       <p id={`${fieldId}-hilfe`} className="hint">
         {hymns.length === 0 ? (
+          // Kein Knopf, nur der Hinweis: Importe laufen gesammelt über die
+          // Einstellungen, damit sie niemandem beim Arbeiten in die Quere kommen.
           <>
-            Damit Titel automatisch erscheinen:{' '}
-            <Link to="/import/lieder" className="underline">
-              Liederliste importieren
-            </Link>
-            .
+            Damit Titel automatisch erscheinen, unter «Einstellungen › Importe» die Liederliste
+            übernehmen.
           </>
         ) : (
           'Nur die Nummer – aus dem PV-Liederbuch mit «PV» davor: «PV 6».'

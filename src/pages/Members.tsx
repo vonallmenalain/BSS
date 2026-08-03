@@ -1,8 +1,7 @@
 import { useMemo, useState } from 'react'
 import { Link } from 'react-router-dom'
-import { ArrowDownUp, Download, Mail, Phone, Plus, Search, Upload, Users } from 'lucide-react'
+import { ArrowDownUp, Mail, Phone, Plus, Search, Users } from 'lucide-react'
 import { useData } from '@/contexts/DataContext'
-import { useAuth } from '@/contexts/AuthContext'
 import { EmptyState, SkeletonList } from '@/components/ui/Feedback'
 import { PageHeader, SegmentedControl } from '@/components/ui/Pickers'
 import { MemberStatusBadge } from '@/components/ui/Badge'
@@ -17,7 +16,6 @@ import {
   type MemberFilter,
   type MemberSortKey,
 } from '@/services/members'
-import { downloadCsv, membersToCsv } from '@/services/import'
 import type { MemberStatus } from '@/lib/types'
 
 const SORT_OPTIONS: { value: MemberSortKey; label: string }[] = [
@@ -30,7 +28,6 @@ const SORT_OPTIONS: { value: MemberSortKey; label: string }[] = [
 
 export function Members() {
   const { members, loading } = useData()
-  const { isApproved } = useAuth()
 
   const [search, setSearch] = useState('')
   const [status, setStatus] = useState<MemberStatus | 'all'>('active')
@@ -58,34 +55,14 @@ export function Members() {
         title="Mitglieder"
         subtitle={`${counts.all} Personen erfasst`}
         actions={
-          <>
-            {isApproved && (
-              <>
-                <Link to="/import" className="btn-secondary">
-                  <Upload className="size-4" aria-hidden />
-                  <span className="hidden sm:inline">Import</span>
-                </Link>
-                <button
-                  type="button"
-                  className="btn-secondary"
-                  onClick={() =>
-                    downloadCsv(
-                      membersToCsv(members),
-                      `mitglieder-${new Date().toISOString().slice(0, 10)}.csv`,
-                    )
-                  }
-                  title="Als CSV sichern"
-                >
-                  <Download className="size-4" aria-hidden />
-                  <span className="hidden sm:inline">Export</span>
-                </button>
-              </>
-            )}
-            <button type="button" className="btn-primary" onClick={() => setFormOpen(true)}>
-              <Plus className="size-4" aria-hidden />
-              <span className="hidden sm:inline">Neu</span>
-            </button>
-          </>
+          /* Import und Export stehen gesammelt unter «Einstellungen ›
+             Importe». Auf dieser Seite geht es um die Personen selbst –
+             ein Knopf, der die halbe Liste ersetzen kann, gehört nicht
+             neben «Neu». */
+          <button type="button" className="btn-primary" onClick={() => setFormOpen(true)}>
+            <Plus className="size-4" aria-hidden />
+            <span className="hidden sm:inline">Neu</span>
+          </button>
         }
       />
 
@@ -151,16 +128,15 @@ export function Members() {
             title={members.length === 0 ? 'Noch keine Mitglieder' : 'Nichts gefunden'}
             description={
               members.length === 0
-                ? 'Importiere die Mitgliederliste aus Excel oder erfasse Personen einzeln.'
+                ? 'Erfasse Personen einzeln – oder übernimm die ganze Liste unter «Einstellungen › Importe».'
                 : 'Passe Suche oder Filter an.'
             }
             action={
-              members.length === 0 &&
-              isApproved && (
-                <Link to="/import" className="btn-primary">
-                  <Upload className="size-4" aria-hidden />
-                  Liste importieren
-                </Link>
+              members.length === 0 && (
+                <button type="button" className="btn-primary" onClick={() => setFormOpen(true)}>
+                  <Plus className="size-4" aria-hidden />
+                  Person erfassen
+                </button>
               )
             }
           />

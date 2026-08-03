@@ -1,9 +1,10 @@
 import { Fragment, useEffect, useMemo, useState, type ReactNode } from 'react'
-import { ChevronDown, ChevronUp, Pencil, Plus, Trash2 } from 'lucide-react'
+import { ChevronDown, ChevronUp, Pencil, Plus, Repeat, Trash2 } from 'lucide-react'
 import { useAuth } from '@/contexts/AuthContext'
 import { useData } from '@/contexts/DataContext'
 import { useToast } from '@/contexts/ToastContext'
 import { usePrayers, useTalks } from '@/hooks/useFirestore'
+import { useSundayAnnouncements } from '@/hooks/useAnnouncements'
 import { useLocalStorage } from '@/hooks/useLocalStorage'
 import { MemberPicker } from '@/components/ui/Pickers'
 import { HymnField } from '@/components/sacrament/HymnField'
@@ -12,6 +13,7 @@ import { MemberSearchSelect } from '@/components/sacrament/MemberSearchSelect'
 import { ConflictNotice, SectionHeader, useSacrament } from '@/components/sacrament/SacramentLayout'
 import { useAutoDraft } from '@/components/sacrament/useDraft'
 import { formatDate, toDate, toDateInput } from '@/lib/dates'
+import { isSeriesEntry } from '@/lib/series'
 import { cn } from '@/lib/utils'
 import { formatHymn } from '@/services/hymns'
 import { lastPrayerByMember, rankPrayerCandidates, setPrayer } from '@/services/prayers'
@@ -235,6 +237,13 @@ export function Conducting() {
   const current = draft.value
   const change = (patch: Partial<MeetingDraft>) => draft.set({ ...current, ...patch })
 
+  /*
+   * Wiederkehrende Bekanntmachungen gehören genauso ins Blatt am Pult wie
+   * die erfassten – hier stehen sie nur zum Vorlesen. Geändert werden sie
+   * unter «Bekanntmachungen», wo auch die Serie selbst zu Hause ist.
+   */
+  const sunday = useSundayAnnouncements(dateKey, current.announcements)
+
   const setHymn = (slot: HymnSlot, choice: HymnChoice | undefined) => {
     const hymns = { ...current.hymns }
     // Firestore lehnt `undefined` ab – ein geleertes Lied fällt deshalb aus
@@ -381,7 +390,7 @@ export function Conducting() {
    * zurück in den Ablauf. Eine angefangene, aber leer gebliebene Zeile zählt
    * nicht mit: Sie gehört ins Formular, nicht in die Ansage.
    */
-  const announced = current.announcements.filter((entry) => entry.text.trim())
+  const announced = sunday.entries.filter((entry) => entry.text.trim())
   const business = current.business.filter((entry) => entry.text.trim())
 
   const empty = new Set(
@@ -458,6 +467,7 @@ export function Conducting() {
       content: editing ? (
         <AnnouncementEditor
           entries={current.announcements}
+          recurring={sunday.entries.filter(isSeriesEntry)}
           onChange={(next) => change({ announcements: next })}
         />
       ) : (
@@ -991,9 +1001,12 @@ function TopicInput({ topic, onSave }: { topic: string; onSave: (next: string) =
 
 function AnnouncementEditor({
   entries,
+  recurring,
   onChange,
 }: {
   entries: AnnouncementEntry[]
+  /** Errechnete Serien-Einträge – hier nur sichtbar, bearbeitet werden sie unter «Bekanntmachungen» */
+  recurring: AnnouncementEntry[]
   onChange: (next: AnnouncementEntry[]) => void
 }) {
   return (
@@ -1026,6 +1039,22 @@ function AnnouncementEditor({
             onMove={(delta) => onChange(moveInList(entries, index, delta))}
             onRemove={() => onChange(entries.filter((e) => e.id !== entry.id))}
           />
+        </div>
+      ))}
+
+      {recurring.map((entry) => (
+        <div
+          key={entry.id}
+          className="rounded-lg border border-dashed border-slate-300 px-3 py-2 text-sm dark:border-slate-700"
+        >
+          <p className="flex items-center gap-1.5 text-xs text-slate-500 dark:text-slate-400">
+            <Repeat className="size-3.5" aria-hidden />
+            Wiederkehrend – zu ändern unter «Bekanntmachungen»
+          </p>
+          <p className="mt-0.5">{entry.text}</p>
+          {entry.details?.trim() && (
+            <p className="text-xs text-slate-500 dark:text-slate-400">{entry.details}</p>
+          )}
         </div>
       ))}
 

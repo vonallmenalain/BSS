@@ -19,10 +19,20 @@ import { PageHeader } from '@/components/ui/Pickers'
 import { SummaryTile } from '@/components/ui/Feedback'
 import { ImportCallingHistory } from '@/pages/ImportCallingHistory'
 import { cn } from '@/lib/utils'
+import { formatDate } from '@/lib/dates'
 import { parsePastedCallings, type CallingSource } from '@/services/importCallings'
 import { parsePastedMinistering } from '@/services/importMinistering'
-import { buildCallingsPreview, buildMinisteringPreview } from '@/services/importMatch'
-import { loadAllCallings, runCallingsImport, runMinisteringImport } from '@/services/importApply'
+import {
+  buildCallingsPreview,
+  buildMinisteringPreview,
+  type CallingChange,
+} from '@/services/importMatch'
+import {
+  loadAllCallings,
+  runCallingsImport,
+  runMinisteringImport,
+  type ConfirmedChanges,
+} from '@/services/importApply'
 import { ORGANIZATION_LABELS, type Calling, type Organization } from '@/lib/types'
 
 /**
@@ -109,7 +119,7 @@ export function ImportCallings() {
 
   return (
     <>
-      <BackLink to="/berufungen" label="Berufungen" />
+      <BackLink to="/einstellungen" label="Einstellungen" />
       <PageHeader
         title="Berufungen importieren"
         subtitle={
@@ -160,8 +170,21 @@ function PastedCallings({ source, picker }: { source: CallingSource; picker: Rea
     created: number
     updated: number
     released: number
+    changed: number
     skipped: number
   } | null>(null)
+
+  /*
+   * Was von Hand an den Wechseln geändert wurde: Berufungs-ID →
+   * Entlassungsdatum, `null` für einen abgewählten Wechsel.
+   *
+   * Gespeichert wird nur die Abweichung, nicht der ganze Stand: Jeder
+   * Wechsel beginnt bestätigt und mit dem Datum aus der Quelle. Ein
+   * Nachziehen beim Einfügen einer anderen Liste erübrigt sich damit – die
+   * Schlüssel sind Berufungs-IDs, und was nicht mehr vorkommt, wirkt auch
+   * nicht mehr.
+   */
+  const [overrides, setOverrides] = useState<Record<string, string | null>>({})
 
   // Die Quelle wird gewählt, nicht geraten: Die Seite «ausserhalb der
   // Einheit» trägt kein Merkmal, an dem sie sich erkennen liesse, und die
@@ -176,15 +199,36 @@ function PastedCallings({ source, picker }: { source: CallingSource; picker: Rea
   )
 
   const releases = releaseMissing ? (preview?.releases ?? []) : []
+  const changes = releaseMissing ? (preview?.changes ?? []) : []
   const writeCount = preview ? preview.createCount + preview.updateCount + releases.length : 0
+
+  // Die Wechsel stehen in einer eigenen Liste, mit Datum und zum Bestätigen –
+  // hier bleibt, was schlicht wegfällt.
+  const paired = new Set(changes.map((change) => change.released.id))
+  const plainReleases = releases.filter((calling) => !paired.has(calling.id))
+
+  /*
+   * Der Stand, wie er geschrieben würde: Vorschlag aus der Quelle, sofern
+   * ihn niemand geändert hat. Ein Wechsel ohne Datum bleibt offen – dort
+   * ist nichts bekannt, das sich vorschlagen liesse.
+   */
+  const decisions: ConfirmedChanges = Object.fromEntries(
+    changes.flatMap((change) => {
+      const date =
+        change.released.id in overrides ? overrides[change.released.id] : change.releaseDate
+      return date ? [[change.released.id, date]] : []
+    }),
+  )
 
   const start = async () => {
     if (!preview) return
     setBusy(true)
     setProgress({ done: 0, total: writeCount })
     try {
-      const outcome = await runCallingsImport(preview, { releaseMissing }, (done, total) =>
-        setProgress({ done, total }),
+      const outcome = await runCallingsImport(
+        preview,
+        { releaseMissing, changes: decisions },
+        (done, total) => setProgress({ done, total }),
       )
       setResult(outcome)
       setStep('done')
@@ -265,6 +309,12 @@ function PastedCallings({ source, picker }: { source: CallingSource; picker: Rea
                 Berufung bleibt mit ihrem Verlauf erhalten. Offene Berufungen und Namen ohne
                 erfasste Person werden übersprungen.
               </p>
+              <p className="mt-2">
+                Erhält dieselbe Person zugleich eine neue Berufung, ist das ein{' '}
+                <strong>Wechsel</strong>: Die bisherige wird auf das Berufungsdatum der neuen
+                entlassen und wandert in die Historie. Diese Fälle stehen in der Vorschau einzeln da
+                und lassen sich dort bestätigen oder von Hand anpassen.
+              </p>
             </ImportHint>
           }
         />
@@ -272,7 +322,7 @@ function PastedCallings({ source, picker }: { source: CallingSource; picker: Rea
 
       {step === 'preview' && preview && (
         <>
-          <div className="mb-4 grid grid-cols-2 gap-2 sm:grid-cols-4">
+          <div className="mb-4 grid grid-cols-2 gap-2 sm:grid-cols-5">
             <SummaryTile
               value={preview.createCount}
               label="Neu anlegen"
@@ -287,6 +337,11 @@ function PastedCallings({ source, picker }: { source: CallingSource; picker: Rea
               value={releases.length}
               label="Entlassen"
               className="text-amber-600 dark:text-amber-400"
+            />
+            <SummaryTile
+              value={changes.length}
+              label="Wechsel"
+              className="text-violet-600 dark:text-violet-400"
             />
             <SummaryTile
               value={preview.skipCount}
@@ -351,13 +406,27 @@ function PastedCallings({ source, picker }: { source: CallingSource; picker: Rea
             ))}
           </PreviewTable>
 
-          {releases.length > 0 && (
+          {changes.length > 0 && (
+            <ChangeList
+              changes={changes}
+              decisions={decisions}
+              onChange={(callingId, date) =>
+                setOverrides((current) => ({ ...current, [callingId]: date }))
+              }
+            />
+          )}
+
+          {plainReleases.length > 0 && (
             <div className="mt-4">
               <h2 className="mb-2 text-sm font-semibold">
                 Wird entlassen – steht nicht mehr im LCR
               </h2>
+              <p className="hint mt-0 mb-2">
+                Ohne neue Berufung derselben Person. Entlassen wird auf den heutigen Tag; taucht die
+                Berufung später wieder auf, lebt derselbe Eintrag wieder auf.
+              </p>
               <div className="card divide-y divide-slate-100 dark:divide-slate-800">
-                {releases.map((calling) => (
+                {plainReleases.map((calling) => (
                   <p key={calling.id} className="px-3 py-2 text-sm">
                     <span className="font-medium">{calling.memberName}</span>
                     <span className="text-slate-500 dark:text-slate-400">
@@ -385,14 +454,122 @@ function PastedCallings({ source, picker }: { source: CallingSource; picker: Rea
       {step === 'done' && result && (
         <DoneCard
           summary={`${result.created} neu angelegt · ${result.updated} aktualisiert · ${result.released} entlassen${
-            result.skipped > 0 ? ` · ${result.skipped} übersprungen` : ''
-          }`}
+            result.changed > 0 ? ` (davon ${result.changed} als Wechsel in die Historie)` : ''
+          }${result.skipped > 0 ? ` · ${result.skipped} übersprungen` : ''}`}
           onReset={reset}
           onLeave={() => navigate('/berufungen')}
           leaveLabel="Zu den Berufungen"
         />
       )}
     </>
+  )
+}
+
+/* ------------------------------------------------------------------ */
+/* Berufungswechsel                                                    */
+/* ------------------------------------------------------------------ */
+
+/**
+ * Die erkannten Wechsel zum Bestätigen.
+ *
+ * Jede Zeile sagt in einem Satz, was geschieht: Diese Person hat eine neue
+ * Berufung, und die bisherige endet an ebendiesem Tag. Das Datum steht als
+ * Feld da, weil die Quelle es nicht immer richtig weiss – bei einer
+ * Umberufung über den Jahreswechsel etwa steht im LCR das
+ * Bestätigungsdatum der neuen Berufung, die Entlassung fand aber schon in
+ * der Woche davor statt.
+ *
+ * Wer den Haken entfernt, macht daraus eine gewöhnliche Entlassung auf den
+ * heutigen Tag – so, wie es die App vor dieser Erweiterung immer tat.
+ */
+function ChangeList({
+  changes,
+  decisions,
+  onChange,
+}: {
+  changes: CallingChange[]
+  decisions: ConfirmedChanges
+  onChange: (callingId: string, date: string | null) => void
+}) {
+  return (
+    <div className="mt-4">
+      <h2 className="mb-2 text-sm font-semibold">
+        Berufungswechsel ({changes.length}) – bitte prüfen
+      </h2>
+      <p className="hint mt-0 mb-2">
+        Diese Personen erhalten eine neue Berufung, und ihre bisherige steht nicht mehr im LCR. Das
+        Entlassungsdatum ist deshalb das Berufungsdatum der neuen Berufung. Die entlassene Berufung
+        wandert in die Historie und bleibt dort unverändert stehen.
+      </p>
+
+      <ul className="card divide-y divide-slate-100 dark:divide-slate-800">
+        {changes.map((change) => {
+          const date = decisions[change.released.id] ?? ''
+          const active = Boolean(date)
+          return (
+            <li key={change.released.id} className="px-3 py-3">
+              <div className="flex flex-wrap items-start gap-3">
+                <input
+                  type="checkbox"
+                  className="mt-1 size-4 shrink-0 rounded"
+                  checked={active}
+                  onChange={(event) =>
+                    onChange(
+                      change.released.id,
+                      event.target.checked
+                        ? (change.releaseDate ?? new Date().toISOString().slice(0, 10))
+                        : null,
+                    )
+                  }
+                  aria-label={`Wechsel von ${change.memberName} übernehmen`}
+                />
+
+                <div className="min-w-48 flex-1 text-sm">
+                  <p className="font-medium">{change.memberName}</p>
+                  <p className="mt-0.5 text-emerald-700 dark:text-emerald-400">
+                    Neue Berufung: {change.incoming.parsed.position}
+                    <span className="text-slate-500 dark:text-slate-400">
+                      {' · '}
+                      {change.incoming.parsed.outOfUnit
+                        ? 'Ausserhalb der Einheit'
+                        : ORGANIZATION_LABELS[change.incoming.parsed.organization]}
+                      {change.incoming.parsed.sustained &&
+                        ` · bestätigt ${change.incoming.parsed.sustained}`}
+                    </span>
+                  </p>
+                  <p className="mt-0.5 text-amber-700 dark:text-amber-400">
+                    Wurde entlassen als: {change.released.position}
+                    <span className="text-slate-500 dark:text-slate-400">
+                      {' · '}
+                      {change.released.outOfUnit
+                        ? 'Ausserhalb der Einheit'
+                        : ORGANIZATION_LABELS[change.released.organization]}
+                    </span>
+                  </p>
+                </div>
+
+                <div className="w-40 shrink-0">
+                  <label className="label text-xs" htmlFor={`change-${change.released.id}`}>
+                    Entlassung per
+                  </label>
+                  <input
+                    id={`change-${change.released.id}`}
+                    type="date"
+                    className="input py-1.5 text-sm"
+                    value={date}
+                    disabled={!active}
+                    onChange={(event) => onChange(change.released.id, event.target.value || null)}
+                  />
+                  {!active && (
+                    <p className="hint mt-1">Entlassung auf heute, {formatDate(new Date())}</p>
+                  )}
+                </div>
+              </div>
+            </li>
+          )
+        })}
+      </ul>
+    </div>
   )
 }
 
@@ -445,7 +622,7 @@ export function ImportMinistering() {
 
   return (
     <>
-      <BackLink to="/mitglieder" label="Mitglieder" />
+      <BackLink to="/einstellungen" label="Einstellungen" />
       <PageHeader
         title="Betreuung importieren"
         subtitle="Betreuungspartner und Betreuungsauftrag aus dem LCR übernehmen"

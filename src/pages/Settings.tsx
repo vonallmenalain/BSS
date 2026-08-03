@@ -1,10 +1,17 @@
 import { useEffect, useState } from 'react'
 import { Link } from 'react-router-dom'
 import {
+  Award,
+  Brush,
   Building2,
   CalendarCog,
   Check,
+  ChevronRight,
+  ClipboardList,
+  HeartHandshake,
+  History,
   Mic,
+  Music,
   ShieldCheck,
   Trash2,
   Upload,
@@ -20,6 +27,52 @@ import { WEEKDAYS } from '@/lib/dates'
 import { saveSettings } from '@/services/settings'
 import { deleteUserProfile, setUserActive, setUserRole, updateUserProfile } from '@/services/users'
 import { ASSIGNABLE_ROLES, ROLE_LABELS, type AppSettings, type Role } from '@/lib/types'
+
+/**
+ * Alles, was sich von aussen übernehmen lässt – der einzige Weg dorthin.
+ *
+ * Die Reihenfolge ist die des Einrichtens: Zuerst die Mitglieder, denn
+ * Berufungen und Betreuung ordnen ihre Einträge erfassten Personen zu.
+ * Danach, was jeweils zu seiner Zeit anfällt.
+ */
+const IMPORTS = [
+  {
+    to: '/import',
+    label: 'Mitglieder',
+    description: 'Mitgliederverzeichnis aus dem LCR – Grundlage für alles Übrige',
+    icon: ClipboardList,
+  },
+  {
+    to: '/import/berufungen',
+    label: 'Berufungen',
+    description: 'Organisationen, Berufungen ausserhalb der Einheit und die Berufungshistorie',
+    icon: Award,
+  },
+  {
+    to: '/import/betreuung',
+    label: 'Betreuung',
+    description: 'Betreuungspartner und Betreuungsaufträge',
+    icon: HeartHandshake,
+  },
+  {
+    to: '/import/putzplan',
+    label: 'Putzplan',
+    description: 'Die Excel-Tabelle der Gemeinde als Wochenplan',
+    icon: Brush,
+  },
+  {
+    to: '/import/verlauf',
+    label: 'Verlauf',
+    description: 'Frühere Ansprachen und Gebete – einmalig beim Einrichten',
+    icon: History,
+  },
+  {
+    to: '/import/lieder',
+    label: 'Liederlisten',
+    description: 'Damit beim Erfassen der Musik die Liednummer genügt',
+    icon: Music,
+  },
+]
 
 export function Settings() {
   const { profile } = useAuth()
@@ -372,14 +425,33 @@ export function Settings() {
         <section className="card p-5">
           <h2 className="mb-1 flex items-center gap-2 text-sm font-semibold">
             <Upload className="size-4 text-slate-400" aria-hidden />
-            Import
+            Importe
           </h2>
-          <div className="mt-3 flex flex-wrap gap-2">
-            <Link to="/import" className="btn-secondary">
-              <Upload className="size-4" aria-hidden />
-              Zu den Importen
-            </Link>
-          </div>
+          <p className="hint mb-4">
+            Hier laufen alle Importe zusammen – und nur hier. In der übrigen App gibt es keine
+            Import-Knöpfe: Ein Import ersetzt ganze Bereiche und gehört deshalb nicht neben die
+            Arbeit am einzelnen Eintrag.
+          </p>
+
+          <ul className="divide-list">
+            {IMPORTS.map((entry) => (
+              <li key={entry.to}>
+                <Link
+                  to={entry.to}
+                  className="-mx-2 flex items-center gap-3 rounded-lg px-2 py-3 transition hover:bg-slate-50 dark:hover:bg-slate-800/60"
+                >
+                  <entry.icon className="size-4 shrink-0 text-slate-400" aria-hidden />
+                  <span className="min-w-0 flex-1">
+                    <span className="block text-sm font-medium">{entry.label}</span>
+                    <span className="block text-xs text-slate-500 dark:text-slate-400">
+                      {entry.description}
+                    </span>
+                  </span>
+                  <ChevronRight className="size-4 shrink-0 text-slate-300" aria-hidden />
+                </Link>
+              </li>
+            ))}
+          </ul>
         </section>
       </div>
     </>

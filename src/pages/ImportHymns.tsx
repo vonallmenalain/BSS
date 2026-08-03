@@ -164,7 +164,7 @@ export function ImportHymns() {
 
   return (
     <>
-      <BackLink to="/abendmahl/musik" label="Musik" />
+      <BackLink to="/einstellungen" label="Einstellungen" />
       <PageHeader
         title="Liederliste importieren"
         subtitle="Damit beim Erfassen der Musik die Liednummer genügt"
