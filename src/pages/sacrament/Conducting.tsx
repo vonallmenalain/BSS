@@ -8,6 +8,7 @@ import { usePrayers, useTalks } from '@/hooks/useFirestore'
 import { useLocalStorage } from '@/hooks/useLocalStorage'
 import { MemberPicker } from '@/components/ui/Pickers'
 import { HymnField } from '@/components/sacrament/HymnField'
+import { LeaderField } from '@/components/sacrament/LeaderField'
 import { MemberSearchSelect } from '@/components/sacrament/MemberSearchSelect'
 import { ConflictNotice, SectionHeader, useSacrament } from '@/components/sacrament/SacramentLayout'
 import { useAutoDraft } from '@/components/sacrament/useDraft'
@@ -56,7 +57,9 @@ import {
 interface MeetingDraft {
   kind: SacramentKind
   presidingId: string
+  presidingName: string
   conductingId: string
+  conductingName: string
   visitors: string
   notes: string
   announcements: AnnouncementEntry[]
@@ -109,7 +112,9 @@ export function Conducting() {
     () => ({
       kind: meeting?.kind ?? 'regular',
       presidingId: meeting?.presidingId ?? '',
+      presidingName: meeting?.presidingName ?? '',
       conductingId: meeting?.conductingId ?? '',
+      conductingName: meeting?.conductingName ?? '',
       visitors: meeting?.visitors ?? '',
       notes: meeting?.notes ?? '',
       announcements: meeting?.announcements ?? [],
@@ -126,7 +131,9 @@ export function Conducting() {
       saveSacramentMeeting(date, {
         kind: value.kind,
         presidingId: value.presidingId || null,
+        presidingName: value.presidingName || null,
         conductingId: value.conductingId || null,
+        conductingName: value.conductingName || null,
         visitors: value.visitors,
         notes: value.notes,
         announcements: value.announcements,
@@ -158,7 +165,9 @@ export function Conducting() {
       ...(meeting ?? {}),
       ...current,
       presidingId: current.presidingId || null,
+      presidingName: current.presidingName || null,
       conductingId: current.conductingId || null,
+      conductingName: current.conductingName || null,
     }),
     [date, meeting, current],
   )
@@ -320,10 +329,11 @@ export function Conducting() {
 
   /* ---------------- Ablauf ------------------------------------------- */
 
-  const nameOf = (id: string | null | undefined) =>
-    id ? (users.find((user) => user.id === id)?.displayName ?? '–') : '–'
-
-  const selectableUsers = users.filter((user) => user.active && user.role !== 'pending')
+  /** Der Name hinter «Es präsidiert» und «Es leitet» – Konto oder Person ohne Konto. */
+  const leaderName = (id: string | null | undefined, name: string | null | undefined) => {
+    if (id) return users.find((user) => user.id === id)?.displayName ?? name?.trim() ?? '–'
+    return name?.trim() || '–'
+  }
 
   const musicalNumberOf = (key: string) =>
     current.musicalNumbers.find((number) => key === `music:${number.id}`)
@@ -353,37 +363,19 @@ export function Conducting() {
               </select>
             </Field>
 
-            <Field label="Es präsidiert" htmlFor="lead-presiding">
-              <select
-                id="lead-presiding"
-                className="input"
-                value={current.presidingId}
-                onChange={(event) => change({ presidingId: event.target.value })}
-              >
-                <option value="">– nicht festgelegt –</option>
-                {selectableUsers.map((user) => (
-                  <option key={user.id} value={user.id}>
-                    {user.displayName}
-                  </option>
-                ))}
-              </select>
-            </Field>
+            <LeaderField
+              label="Es präsidiert"
+              id="lead-presiding"
+              value={{ userId: current.presidingId, name: current.presidingName }}
+              onChange={(next) => change({ presidingId: next.userId, presidingName: next.name })}
+            />
 
-            <Field label="Es leitet" htmlFor="lead-conducting">
-              <select
-                id="lead-conducting"
-                className="input"
-                value={current.conductingId}
-                onChange={(event) => change({ conductingId: event.target.value })}
-              >
-                <option value="">– nicht festgelegt –</option>
-                {selectableUsers.map((user) => (
-                  <option key={user.id} value={user.id}>
-                    {user.displayName}
-                  </option>
-                ))}
-              </select>
-            </Field>
+            <LeaderField
+              label="Es leitet"
+              id="lead-conducting"
+              value={{ userId: current.conductingId, name: current.conductingName }}
+              onChange={(next) => change({ conductingId: next.userId, conductingName: next.name })}
+            />
           </div>
 
           <Field label="Besuchende Führungsverantwortliche" htmlFor="lead-visitors">
@@ -398,8 +390,14 @@ export function Conducting() {
         </div>
       ) : (
         <>
-          <Line label="Es präsidiert" value={nameOf(effective.presidingId)} />
-          <Line label="Es leitet" value={nameOf(effective.conductingId)} />
+          <Line
+            label="Es präsidiert"
+            value={leaderName(effective.presidingId, effective.presidingName)}
+          />
+          <Line
+            label="Es leitet"
+            value={leaderName(effective.conductingId, effective.conductingName)}
+          />
           {current.visitors.trim() ? (
             <p className="text-sm">{current.visitors}</p>
           ) : (

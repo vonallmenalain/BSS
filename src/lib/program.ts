@@ -53,6 +53,16 @@ function isOpenSlotKey(key: string): boolean {
   return key.startsWith('slot:')
 }
 
+/**
+ * Steht an diesem Schlüssel eine Ansprache – vergeben oder noch offen?
+ *
+ * Beide zählen gleich viel: Ein offener Platz ist im Ablauf eine Zeile wie
+ * jede andere, und ein Zwischenlied lässt sich davor oder dahinter schieben.
+ */
+function isTalkPosition(key: string): boolean {
+  return key.startsWith('talk:') || isOpenSlotKey(key)
+}
+
 /** Der nächste freie Programmplatz – Lücken werden zuerst gefüllt. */
 export function nextTalkSlot(talks: Talk[]): number {
   const taken = new Set(talks.map((talk) => talk.slot))
@@ -70,9 +80,10 @@ export function nextTalkSlot(talks: Talk[]): number {
  * stehen als offene Punkte an ihrer Position mit drin.
  *
  * **Reihenfolge von Zwischenlied und Musikeinlagen** steht in `programOrder`;
- * daraus wird gelesen, nach wie vielen vergebenen Ansprachen ein Punkt folgt.
- * Ist dazu nichts hinterlegt, steht er vor der Schlussansprache – das ist der
- * Normalfall: eine Ansprache, das Zwischenlied, die Schlussansprache.
+ * daraus wird gelesen, nach wie vielen Ansprachenplätzen ein Punkt folgt –
+ * offene Plätze zählen wie vergebene. Ist dazu nichts hinterlegt, steht er vor
+ * der Schlussansprache – das ist der Normalfall: eine Ansprache, das
+ * Zwischenlied, die Schlussansprache.
  */
 export function buildProgram(
   meeting: ProgramSource | null,
@@ -153,27 +164,24 @@ export function buildProgram(
     if (!rank.has(key)) rank.set(key, index)
   })
 
-  const assignedKeys = new Set(sequence.filter((entry) => entry.talkId).map((entry) => entry.key))
-
-  /** Nach wie vielen vergebenen Ansprachen steht dieser Punkt? */
+  /**
+   * Nach wie vielen Ansprachenplätzen steht dieser Punkt?
+   *
+   * Gezählt werden **alle** Plätze, vergebene wie offene. Zählte man nur die
+   * vergebenen, liesse sich ein Punkt an einem offenen Platz nicht
+   * vorbeischieben: Sind an einem Sonntag noch alle Plätze offen, ergäbe jede
+   * Reihenfolge dieselbe Null – das Zwischenlied bliebe vorne kleben, ganz
+   * gleich, wohin es geschoben wurde.
+   *
+   * Weil `sequence` genau aus diesen Plätzen besteht, ist die Zahl zugleich
+   * die Stelle, an der der Punkt einzufügen ist.
+   */
   const talksBefore = (key: string): number | null => {
     const index = rank.get(key)
     if (index === undefined) return null
     let count = 0
-    for (let i = 0; i < index; i++) if (assignedKeys.has(order[i])) count++
-    return count
-  }
-
-  /** … und an welcher Stelle der Liste liegt das? */
-  const positionAfter = (count: number): number => {
-    if (count <= 0) return 0
-    let seen = 0
-    for (let i = 0; i < sequence.length; i++) {
-      if (!sequence[i].talkId) continue
-      seen++
-      if (seen === count) return i + 1
-    }
-    return sequence.length
+    for (let i = 0; i < index; i++) if (isTalkPosition(order[i])) count++
+    return Math.min(count, sequence.length)
   }
 
   const fallback = sequence.length > 1 ? sequence.length - 1 : sequence.length
@@ -183,7 +191,7 @@ export function buildProgram(
       const before = talksBefore(entry.key)
       return {
         entry,
-        at: before === null ? fallback : positionAfter(before),
+        at: before ?? fallback,
         rank: rank.get(entry.key) ?? Number.MAX_SAFE_INTEGER,
         natural,
       }
@@ -208,9 +216,12 @@ export function buildProgram(
  * Ansprachen als Position (`slot`). Beide müssen zusammen nachgeführt werden,
  * sonst zeigte «Ansprachen» eine andere Folge als «Leitung».
  *
- * Offene Programmplätze zählen als Position mit, verschwinden aber aus dem
- * gespeicherten Schlüsselband: Ihre Nummer ergibt sich ohnehin daraus, welche
- * Plätze vergeben sind.
+ * Offene Programmplätze zählen als Position mit und bleiben im gespeicherten
+ * Schlüsselband stehen – auf ihre neue Nummer umgeschrieben. Sie wegzulassen
+ * wäre naheliegend, ihre Nummer ergibt sich ja aus den vergebenen Plätzen;
+ * dann fehlte aber genau die Angabe, ob ein Zwischenlied vor oder nach einem
+ * offenen Platz steht. Ein noch unbesetzter Sonntag liesse sich gar nicht
+ * ordnen.
  */
 export function planProgramOrder(
   keys: string[],
@@ -224,6 +235,7 @@ export function planProgramOrder(
   for (const key of keys) {
     if (isOpenSlotKey(key)) {
       position++
+      order.push(openSlotKey(position))
       continue
     }
     order.push(key)

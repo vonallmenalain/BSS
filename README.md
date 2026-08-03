@@ -240,7 +240,12 @@ für alle Unterpunkte.
 
 **Leitung** zeigt den ganzen Ablauf – und alles darin lässt sich hier ändern:
 Vorsitz und Begrüssung, Bekanntmachungen, Angelegenheiten, Lieder, Gebete,
-Ansprachen und Musikeinlagen. Der Knopf **Bearbeiten** schaltet zwischen dem
+Ansprachen und Musikeinlagen. Bei **Es präsidiert** und **Es leitet** stehen
+die freigeschalteten Konten zur Wahl – und mit **Person hinzufügen** jede
+weitere Person: Ist Besuch aus der Pfahlführung da, präsidiert er, und ein
+Konto in der App hat er nicht. Ein einmal erfasster Name ist an jedem Sonntag
+wählbar und lässt sich im selben Fenster wieder aus der Auswahl nehmen, ohne
+aus schon erfassten Programmen zu verschwinden. Der Knopf **Bearbeiten** schaltet zwischen dem
 reinen Programm (so wird es gedruckt) und den Eingabefeldern um; gespeichert
 wird laufend, ohne Speichern-Knopf. Was noch fehlt, steht als kurze Liste
 zuoberst.

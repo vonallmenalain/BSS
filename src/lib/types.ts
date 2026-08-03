@@ -505,6 +505,16 @@ export interface AppSettings {
   talkMinAge: number
   /** Ab wie vielen Monaten ohne Gebet gilt jemand als «lange nicht dran»? */
   prayerGapMonths: number
+  /**
+   * Personen ohne Konto, die eine Abendmahlsversammlung präsidieren oder
+   * leiten können.
+   *
+   * Präsidieren tut nicht immer die Bischofschaft: Ist Besuch aus der
+   * Pfahlführung da, präsidiert er. Solcher Besuch kommt wieder – deshalb
+   * steht die Liste in den Einstellungen und nicht am einzelnen Sonntag; ein
+   * Name wird einmal erfasst und ist danach an jedem Sonntag wählbar.
+   */
+  extraLeaders: string[]
   updatedAt?: TS
 }
 
@@ -520,6 +530,7 @@ export const DEFAULT_SETTINGS: AppSettings = {
   talkGapMonths: 18,
   talkMinAge: 12,
   prayerGapMonths: 6,
+  extraLeaders: [],
 }
 
 /* ------------------------------------------------------------------ */
@@ -625,6 +636,16 @@ export interface SacramentMeeting extends WithId {
   /** Wer präsidiert bzw. leitet (UID aus `users`) */
   presidingId?: string | null
   conductingId?: string | null
+  /**
+   * Dasselbe für Personen ohne Konto – Pfahlpräsidentschaft, Hoher Rat, ein
+   * Ratgeber, der die App nicht benutzt.
+   *
+   * Gespeichert wird der ausgeschriebene Name und kein Verweis: Ein Programm
+   * von vor zwei Jahren soll auch dann lesbar bleiben, wenn die Person längst
+   * aus der Auswahl genommen wurde – wie beim Liedtitel.
+   */
+  presidingName?: string | null
+  conductingName?: string | null
   /** Besuchende Führungsverantwortliche, die offiziell begrüsst werden */
   visitors?: string
   /** Abweichende Anzahl Ansprachen nur für diesen Sonntag */

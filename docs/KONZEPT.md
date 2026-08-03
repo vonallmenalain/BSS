@@ -126,6 +126,13 @@ automatisch. Angepasst wird hier nur, wer leitet und präsidiert, wen man
 begrüsst – und die Reihenfolge von Ansprachen, Zeugnissen, Zwischenlied und
 Musikeinlagen. Was noch fehlt, steht als kurze Liste zuoberst.
 
+Zur Wahl für «Es präsidiert» und «Es leitet» stehen die freigeschalteten
+Konten und Personen ohne Konto: Ist Besuch aus der Pfahlführung da,
+präsidiert er. Ein solcher Name wird einmal erfasst, bleibt in den
+Einstellungen stehen und ist an jedem weiteren Sonntag wählbar – im Programm
+selbst steht er ausgeschrieben, damit ein altes Programm auch dann lesbar
+bleibt, wenn die Person später aus der Auswahl genommen wird.
+
 **Bekanntmachungen und Angelegenheiten.** Je eine Liste pro Sonntag, in der
 Reihenfolge des Vorlesens. Angelegenheiten kennen ihre Art (Bestätigung,
 Entlassung, Ordinierung, Konfirmierung, Namensgebung, Begrüssung) und lassen
@@ -345,6 +352,8 @@ sacramentMeetings/{yyyy-MM-dd}
                        Programm eines Sonntags
                        ├─ kind          regulär | Fast- und Zeugnisversammlung
                        ├─ presidingId, conductingId, visitors
+                       ├─ presidingName, conductingName
+                       │                Personen ohne Konto, ausgeschrieben
                        ├─ talkSlots     Ausnahme zur Standardanzahl
                        ├─ hymns         opening | sacrament |
                        │                intermediate | closing
@@ -354,7 +363,8 @@ prayers/{yyyy-MM-dd_slot}
                        Datum, Anfangs- oder Schlussgebet, Mitglied
 hymns/{nummer}         Liednummer und Titel (importiert)
 settings/app           Gemeindename, Sitzungsrhythmus, Vorgaben zur
-                       Abendmahlsversammlung
+                       Abendmahlsversammlung, Personen ohne Konto für
+                       Vorsitz und Leitung
 ```
 
 Das Datum als **Dokument-ID** – bei `sacramentMeetings` und `prayers` – ist

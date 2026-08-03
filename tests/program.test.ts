@@ -159,11 +159,56 @@ test('ein offener Platz zählt beim Verschieben als Position mit', () => {
     'Schlussansprache:Anna',
     'Zwischenlied:100 – Lied',
   ])
-  assert.equal(
-    applied.source.programOrder?.includes('slot:2'),
-    false,
-    'Offene Plätze gehören nicht ins gespeicherte Schlüsselband.',
+  assert.deepEqual(
+    applied.source.programOrder,
+    ['slot:1', 'talk:a', 'hymn:intermediate'],
+    'Der offene Platz bleibt im Schlüsselband – auf seine neue Nummer umgeschrieben.',
   )
+})
+
+test('das Zwischenlied lässt sich auch an offenen Plätzen vorbeischieben', () => {
+  // Ein frisch geplanter Sonntag: drei Ansprachen vorgesehen, noch keine
+  // vergeben. Genau hier stand das Zwischenlied bisher fest.
+  const before = buildProgram(withIntermediate(), [], hymnTitle, 3)
+  assert.deepEqual(
+    before.map((entry) => entry.key),
+    ['slot:1', 'slot:2', 'hymn:intermediate', 'slot:3'],
+  )
+
+  // Zwischenlied hinter die zweite Ansprache – eine Position nach unten.
+  const down = apply(withIntermediate(), [], ['slot:1', 'slot:2', 'slot:3', 'hymn:intermediate'])
+  assert.deepEqual(shape(down.source, down.talks, 3), [
+    'Ansprache:?',
+    'Ansprache:?',
+    'Schlussansprache:?',
+    'Zwischenlied:100 – Lied',
+  ])
+
+  // … und wieder ganz nach vorne.
+  const up = apply(down.source, [], ['hymn:intermediate', 'slot:1', 'slot:2', 'slot:3'])
+  assert.deepEqual(shape(up.source, up.talks, 3), [
+    'Zwischenlied:100 – Lied',
+    'Ansprache:?',
+    'Ansprache:?',
+    'Schlussansprache:?',
+  ])
+})
+
+test('eine vergebene Ansprache schiebt sich an einem offenen Platz vorbei', () => {
+  const talks = [talk('a', 1, 'Anna')]
+  // Anna hinter den offenen zweiten Platz – sie rückt damit auf Platz 2.
+  const applied = apply(withIntermediate(), talks, ['slot:1', 'talk:a', 'hymn:intermediate'])
+
+  assert.deepEqual(
+    applied.talks.map((entry) => `${entry.id}=${entry.slot}`),
+    ['a=2'],
+    'Die Position folgt der neuen Reihenfolge – sonst ordnete «Ansprachen» anders.',
+  )
+  assert.deepEqual(shape(applied.source, applied.talks, 2), [
+    'Ansprache:?',
+    'Schlussansprache:Anna',
+    'Zwischenlied:100 – Lied',
+  ])
 })
 
 test('Musikeinlage und Zwischenlied stehen beide vor der Schlussansprache', () => {
