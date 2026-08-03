@@ -17,13 +17,16 @@ on:
     paths:
       - 'firestore.rules'
       - 'firestore.indexes.json'
-      - 'tests/**'
+      # Genau die Dateien, die `npm run test:rules` ausführt. In `tests/`
+      # liegen auch Tests ohne Bezug zu den Regeln – die sollen weder den
+      # Emulator starten noch ein Ausrollen auslösen.
+      - 'tests/*.test.js'
       - '.github/workflows/firestore.yml'
   pull_request:
     paths:
       - 'firestore.rules'
       - 'firestore.indexes.json'
-      - 'tests/**'
+      - 'tests/*.test.js'
       - '.github/workflows/firestore.yml'
   # Erlaubt das Ausrollen von Hand über den Reiter «Actions».
   workflow_dispatch:
