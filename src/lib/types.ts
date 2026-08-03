@@ -280,8 +280,13 @@ export interface Member extends WithId {
 
   /** Freie Notiz, z. B. Kontaktperson, Besonderheiten, Betreuungshinweise */
   notes?: string
-  /** Verweis auf ein anderes Mitglied als Kontaktperson */
-  contactPersonId?: string | null
+  /**
+   * Betreuung (aus dem LCR importierbar):
+   * `ministeringPartnerIds` sind die Personen, mit denen zusammen betreut
+   * wird, `ministeringAssignedIds` die Personen, die betreut werden.
+   */
+  ministeringPartnerIds?: string[]
+  ministeringAssignedIds?: string[]
 
   /** Denormalisiert aus der Ansprachen-Sammlung – ermöglicht Sortierung ohne Join */
   lastTalkDate: TS | null
