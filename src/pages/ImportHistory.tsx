@@ -18,9 +18,14 @@ import {
 } from '@/components/ImportShell'
 import { PageHeader } from '@/components/ui/Pickers'
 import { SummaryTile } from '@/components/ui/Feedback'
+import { MemberSearchSelect } from '@/components/sacrament/MemberSearchSelect'
 import { cn } from '@/lib/utils'
 import { parseTalkHistory, type ParsedHistory, type RawSheet } from '@/services/importHistory'
-import { buildHistoryPreview, type HistoryPreview } from '@/services/importMatch'
+import {
+  buildHistoryPreview,
+  type HistoryOverrides,
+  type HistoryPreview,
+} from '@/services/importMatch'
 import { loadKnownHistory, runHistoryImport, type HistoryOutcome } from '@/services/importApply'
 
 /**
@@ -52,6 +57,7 @@ export function ImportHistory() {
   const [dragging, setDragging] = useState(false)
   const [progress, setProgress] = useState<Progress | null>(null)
   const [result, setResult] = useState<HistoryOutcome | null>(null)
+  const [overrides, setOverrides] = useState<HistoryOverrides>({})
 
   const handleFile = useCallback(
     async (file: File) => {
@@ -82,8 +88,10 @@ export function ImportHistory() {
 
   const preview: HistoryPreview | null = useMemo(
     () =>
-      parsed && known ? buildHistoryPreview(parsed, members, known.talks, known.prayers) : null,
-    [parsed, known, members],
+      parsed && known
+        ? buildHistoryPreview(parsed, members, known.talks, known.prayers, overrides)
+        : null,
+    [parsed, known, members, overrides],
   )
 
   const writeCount = preview
@@ -113,6 +121,7 @@ export function ImportHistory() {
     setKnown(null)
     setFileName('')
     setResult(null)
+    setOverrides({})
     setStep('file')
   }
 
@@ -224,11 +233,50 @@ export function ImportHistory() {
           </div>
 
           {preview.unmatched.length > 0 && (
-            <Warning className="mb-4">
-              {preview.unmatched.reduce((sum, entry) => sum + entry.count, 0)} Einträge von{' '}
-              {preview.unmatched.length} Namen liessen sich keiner erfassten Person zuordnen – meist
-              Weggezogene und Besuchende. Sie werden übersprungen.
-            </Warning>
+            <div className="card mb-4 p-4">
+              <h2 className="text-sm font-semibold">
+                {preview.unmatched.length} Namen ohne Zuordnung
+              </h2>
+              <p className="hint mb-3">
+                Meist Weggezogene und Besuchende – die bleiben zu Recht liegen. Wo aber eine Heirat
+                den Namen geändert hat oder zwei Personen sich Vor- und Nachname teilen, hilft nur
+                die Hand: Wähle die Person, und ihre Einträge kommen mit. Was du offen lässt, wird
+                übersprungen.
+              </p>
+
+              <ul className="divide-list">
+                {preview.unmatched.map((entry) => (
+                  <li key={entry.fullName} className="py-3">
+                    <p className="text-sm font-medium">
+                      {entry.fullName}
+                      <span className="ml-2 text-xs font-normal text-slate-500 dark:text-slate-400">
+                        {entry.count} {entry.count === 1 ? 'Eintrag' : 'Einträge'}
+                      </span>
+                    </p>
+                    <div className="mt-1.5">
+                      <MemberSearchSelect
+                        value={overrides[entry.fullName] ?? null}
+                        onChange={(member) =>
+                          setOverrides((current) => {
+                            const next = { ...current }
+                            if (member) next[entry.fullName] = member.id
+                            else delete next[entry.fullName]
+                            return next
+                          })
+                        }
+                        placeholder="Person suchen …"
+                      />
+                    </div>
+                  </li>
+                ))}
+              </ul>
+            </div>
+          )}
+
+          {Object.keys(overrides).length > 0 && (
+            <p className="mb-4 text-sm text-emerald-700 dark:text-emerald-400">
+              {Object.keys(overrides).length} Namen von Hand zugeordnet.
+            </p>
           )}
 
           {preview.crowded.length > 0 && (

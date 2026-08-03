@@ -49,11 +49,7 @@ export function PendingApproval() {
         )}
 
         <div className="mt-5 flex flex-wrap justify-center gap-2">
-          <button
-            type="button"
-            className="btn-secondary"
-            onClick={() => window.location.reload()}
-          >
+          <button type="button" className="btn-secondary" onClick={() => window.location.reload()}>
             <RefreshCw className="size-4" aria-hidden />
             Neu prüfen
           </button>

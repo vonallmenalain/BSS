@@ -222,12 +222,11 @@ export function parseGender(value: string): Gender {
 export function parseStatus(value: string): MemberStatus {
   const text = normalize(value)
   if (!text) return 'active'
-  if (text.includes('weniger')) return 'less_active'
-  if (text.includes('weggezogen') || text.includes('moved')) return 'moved'
-  if (['inaktiv', 'inactive', 'nein', 'no', 'false', '0'].some((t) => text.includes(t))) {
-    return 'inactive'
-  }
-  return 'active'
+  // «Weniger aktiv» und «weggezogen» kannte die App früher als eigene
+  // Zustände. Sie kommen in alten Dateien noch vor und zählen jetzt,
+  // wie alles andere ausser «aktiv», als inaktiv.
+  const inactive = ['inaktiv', 'inactive', 'weniger', 'weggezogen', 'moved', 'nein', 'no', 'false']
+  return inactive.some((word) => text.includes(word)) ? 'inactive' : 'active'
 }
 
 /** Zerlegt «von Allmen, Alain» oder «Alain von Allmen» in Vor- und Nachname. */

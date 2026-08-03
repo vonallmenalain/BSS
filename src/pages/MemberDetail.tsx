@@ -4,6 +4,7 @@ import {
   ArrowLeft,
   Award,
   Cake,
+  ChevronsLeftRight,
   Mail,
   MapPin,
   Mic,
@@ -19,10 +20,10 @@ import { useCallings, useTalks } from '@/hooks/useFirestore'
 import { Modal, ConfirmDialog } from '@/components/ui/Modal'
 import { EmptyState } from '@/components/ui/Feedback'
 import { Avatar } from '@/components/ui/Avatar'
-import { CallingStatusBadge, MemberStatusBadge, TalkStatusBadge } from '@/components/ui/Badge'
+import { CallingStatusBadge, TalkStatusBadge } from '@/components/ui/Badge'
 import { MemberPicker } from '@/components/ui/Pickers'
 import { formatDate, getAge, monthsSince, toDateInput } from '@/lib/dates'
-import { formatPhone, telHref } from '@/lib/utils'
+import { cn, formatPhone, telHref } from '@/lib/utils'
 import { createMember, deleteMember, updateMember } from '@/services/members'
 import { callingsForMember } from '@/services/callings'
 import {
@@ -115,7 +116,7 @@ export function MemberDetail() {
               <h1 className="text-xl font-semibold tracking-tight">
                 {member.firstName} {member.lastName}
               </h1>
-              <MemberStatusBadge status={member.status} />
+              <StatusToggle member={member} />
               {!member.availableForTalks && (
                 <span className="badge bg-slate-100 text-slate-500 dark:bg-slate-800 dark:text-slate-400">
                   Keine Ansprachen
@@ -304,6 +305,47 @@ export function MemberDetail() {
 
 /* ------------------------------------------------------------------ */
 /* Formular                                                            */
+/* ------------------------------------------------------------------ */
+
+/**
+ * Status umschalten, ohne den Bearbeiten-Dialog.
+ *
+ * Aktiv oder inaktiv ist die Angabe, die sich am häufigsten ändert – nach
+ * einem Besuch, einem Gespräch, einem Wegzug. Sie dafür jedes Mal durch ein
+ * Formular zu führen, hielte niemanden davon ab, es einfach zu lassen.
+ */
+function StatusToggle({ member }: { member: Member }) {
+  const toast = useToast()
+  const [saving, setSaving] = useState(false)
+  const active = member.status === 'active'
+
+  return (
+    <button
+      type="button"
+      disabled={saving}
+      aria-pressed={active}
+      title={active ? 'Auf «inaktiv» setzen' : 'Auf «aktiv» setzen'}
+      onClick={() => {
+        setSaving(true)
+        void updateMember(member.id, { status: active ? 'inactive' : 'active' })
+          .then(() => toast.success(active ? 'Als inaktiv vermerkt.' : 'Als aktiv vermerkt.'))
+          .catch(() => toast.error('Speichern fehlgeschlagen.'))
+          .finally(() => setSaving(false))
+      }}
+      className={cn(
+        'badge inline-flex items-center gap-1 transition',
+        active
+          ? 'bg-emerald-100 text-emerald-800 hover:bg-emerald-200 dark:bg-emerald-950 dark:text-emerald-200'
+          : 'bg-slate-200 text-slate-600 hover:bg-slate-300 dark:bg-slate-800 dark:text-slate-300',
+        saving && 'opacity-50',
+      )}
+    >
+      {MEMBER_STATUS_LABELS[member.status]}
+      <ChevronsLeftRight className="size-3" aria-hidden />
+    </button>
+  )
+}
+
 /* ------------------------------------------------------------------ */
 
 interface FormState {

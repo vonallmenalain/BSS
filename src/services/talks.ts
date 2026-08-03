@@ -14,7 +14,7 @@ import {
   Timestamp,
 } from 'firebase/firestore'
 import { db, COLLECTIONS } from '@/lib/firebase'
-import { monthsSince, toDate } from '@/lib/dates'
+import { getAge, monthsSince, toDate } from '@/lib/dates'
 import { stripUndefined } from '@/lib/utils'
 import { commit, type SaveOutcome } from '@/lib/sync'
 import {
@@ -165,6 +165,8 @@ export async function deleteTalk(id: string): Promise<SaveOutcome> {
 
 export interface TalkCandidate {
   member: Member
+  /** Alter in Jahren; `null`, wenn kein Geburtsdatum erfasst ist */
+  age: number | null
   /** Monate seit der letzten Ansprache; `null` = noch nie gesprochen */
   monthsSince: number | null
   /** Bereits eine Ansprache eingeplant? Dann nicht doppelt anfragen. */
@@ -179,24 +181,30 @@ export interface TalkCandidate {
  * Ganz oben stehen aktive Mitglieder, die noch nie gesprochen haben, danach
  * jene mit dem längsten Abstand. Bereits eingeplante Personen werden nach
  * hinten sortiert, statt sie zu verstecken – so bleibt sichtbar, dass sie dran sind.
+ *
+ * `minAge` hält die Kinder heraus. Ohne diese Grenze stünden sie zuoberst,
+ * denn sie haben noch nie gesprochen. Wer kein Geburtsdatum hat, bleibt in
+ * der Liste: Ein fehlendes Datum ist kein Grund, jemanden zu übergehen.
  */
 export function rankTalkCandidates(
   members: Member[],
   plannedTalks: Talk[],
-  options: { gapMonths?: number; onlyActive?: boolean } = {},
+  options: { gapMonths?: number; onlyActive?: boolean; minAge?: number } = {},
 ): TalkCandidate[] {
-  const { gapMonths = 18, onlyActive = true } = options
+  const { gapMonths = 18, onlyActive = true, minAge = 0 } = options
   const plannedMemberIds = new Set(
     plannedTalks.filter((t) => ACTIVE_TALK_STATUSES.includes(t.status)).map((t) => t.memberId),
   )
 
   return members
-    .filter((member) => {
+    .map((member) => ({ member, age: getAge(member.birthDate) }))
+    .filter(({ member, age }) => {
       if (!member.availableForTalks) return false
       if (onlyActive && member.status !== 'active') return false
+      if (minAge > 0 && age !== null && age < minAge) return false
       return true
     })
-    .map((member) => {
+    .map(({ member, age }) => {
       const months = monthsSince(member.lastTalkDate)
       const alreadyPlanned = plannedMemberIds.has(member.id)
 
@@ -204,7 +212,7 @@ export function rankTalkCandidates(
       let score = months === null ? gapMonths * 2 + 24 : months
       if (alreadyPlanned) score -= 1000
 
-      return { member, monthsSince: months, alreadyPlanned, score }
+      return { member, age, monthsSince: months, alreadyPlanned, score }
     })
     .sort((a, b) => b.score - a.score)
 }

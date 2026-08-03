@@ -163,7 +163,11 @@ export function Login() {
 
             <button type="submit" className="btn-primary btn-lg w-full" disabled={busy}>
               {busy && <Loader2 className="size-4 animate-spin" aria-hidden />}
-              {mode === 'signin' ? 'Anmelden' : mode === 'signup' ? 'Konto erstellen' : 'Link senden'}
+              {mode === 'signin'
+                ? 'Anmelden'
+                : mode === 'signup'
+                  ? 'Konto erstellen'
+                  : 'Link senden'}
             </button>
           </form>
 

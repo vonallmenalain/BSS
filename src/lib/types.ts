@@ -249,13 +249,24 @@ export const GENDER_LABELS: Record<Gender, string> = {
   unknown: 'Unbekannt',
 }
 
-export type MemberStatus = 'active' | 'less_active' | 'inactive' | 'moved'
+/**
+ * Zwei Zustände, mehr nicht.
+ *
+ * Frühere Fassungen kannten «weniger aktiv» und «weggezogen». Beides klang
+ * genauer, half aber niemandem: Für jede Frage, die die App stellt – wer
+ * kommt für eine Ansprache in Frage, wer für ein Gebet –, zählt nur, ob
+ * jemand da ist. Alte Werte lesen sich deshalb als «inaktiv».
+ */
+export type MemberStatus = 'active' | 'inactive'
 
 export const MEMBER_STATUS_LABELS: Record<MemberStatus, string> = {
   active: 'Aktiv',
-  less_active: 'Weniger aktiv',
   inactive: 'Inaktiv',
-  moved: 'Weggezogen',
+}
+
+/** Was in Firestore steht, auf die zwei Zustände zurückführen. */
+export function toMemberStatus(value: unknown): MemberStatus {
+  return value === 'active' ? 'active' : 'inactive'
 }
 
 export interface Member extends WithId {
@@ -448,6 +459,13 @@ export interface Calling extends WithId {
   custom?: boolean
   /** Untergruppe innerhalb der Organisation, z. B. «Lehrkräfte» */
   group?: string
+  /**
+   * Stelle in der Liste des LCR – Präsident, Ratgeber, dann die übrigen.
+   *
+   * Fehlt das Feld (von Hand erfasst oder aus einem älteren Import), wird
+   * die Berufung hinten einsortiert und dort nach Bezeichnung geordnet.
+   */
+  order?: number
 
   createdAt?: TS
   updatedAt?: TS
@@ -477,6 +495,14 @@ export interface AppSettings {
   talksPerSunday: number
   /** Ab wie vielen Monaten ohne Ansprache gilt jemand als «lange nicht dran»? */
   talkGapMonths: number
+  /**
+   * Ab welchem Alter kommt jemand für eine Ansprache in Frage?
+   *
+   * Die Mitgliederliste enthält die ganze Gemeinde, Kinder eingeschlossen.
+   * Ohne diese Grenze stünden sie in der Vorschlagsliste zuoberst – sie
+   * haben ja noch nie gesprochen.
+   */
+  talkMinAge: number
   /** Ab wie vielen Monaten ohne Gebet gilt jemand als «lange nicht dran»? */
   prayerGapMonths: number
   updatedAt?: TS
@@ -492,6 +518,7 @@ export const DEFAULT_SETTINGS: AppSettings = {
   sacramentTime: '10:00',
   talksPerSunday: 3,
   talkGapMonths: 18,
+  talkMinAge: 12,
   prayerGapMonths: 6,
 }
 

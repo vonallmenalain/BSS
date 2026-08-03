@@ -1,6 +1,7 @@
 // Mit Dateiendung, damit sich das Modul auch ohne Bundler ausführen lässt
 // (`node --test`). Vite und TypeScript lösen das genauso auf.
 import { normalize } from '../lib/utils.ts'
+import { matchesGivenNames, nameKeys, sameGivenNames } from '../lib/names.ts'
 import { isoDate } from './importHistory.ts'
 import type { PastedCalling, PastedCallings } from './importCallings.ts'
 import type { MinisteringEntry } from './importMinistering.ts'
@@ -25,9 +26,7 @@ import type { Calling, CallingStatus, Member, PrayerSlot } from '../lib/types.ts
 /* ------------------------------------------------------------------ */
 
 export interface MemberIndex {
-  /** «nachname|vorname» → Mitglied */
-  exact: Map<string, Member[]>
-  /** «nachname» → Mitglieder */
+  /** Vergleichsform des Nachnamens → Mitglieder */
   byLastName: Map<string, Member[]>
 }
 
@@ -38,13 +37,13 @@ function push<T>(map: Map<string, T[]>, key: string, value: T) {
 }
 
 export function buildMemberIndex(members: Member[]): MemberIndex {
-  const exact = new Map<string, Member[]>()
   const byLastName = new Map<string, Member[]>()
   for (const member of members) {
-    push(exact, normalize(`${member.lastName}|${member.firstName}`), member)
-    push(byLastName, normalize(member.lastName), member)
+    // Beide Schreibweisen des Nachnamens – «Bürge» ist auch unter
+    // «buerge» zu finden, und umgekehrt.
+    for (const key of nameKeys(member.lastName)) push(byLastName, key, member)
   }
-  return { exact, byLastName }
+  return { byLastName }
 }
 
 export interface MemberMatch {
@@ -55,42 +54,51 @@ export interface MemberMatch {
 
 const NO_MATCH: MemberMatch = { member: null, ambiguous: false }
 
+function single(members: Member[]): MemberMatch | null {
+  if (members.length === 1) return { member: members[0], ambiguous: false }
+  if (members.length > 1) return { member: null, ambiguous: true }
+  return null
+}
+
 /**
  * Ordnet «Nachname, Vorname» einer erfassten Person zu.
  *
- * Drei Stufen: genaue Übereinstimmung, dann Nachname mit passendem
- * ersten Vornamen (das LCR kürzt Zweitnamen gelegentlich ab, etwa
- * «Bader, Joshua B.»), zuletzt ein eindeutiger Nachname allein.
+ * Der Nachname grenzt ein – in beiden Schreibweisen, damit «Buerge» und
+ * «Bürge» zusammenfinden. Unter den Übriggebliebenen gilt zuerst der
+ * ganze Vorname; erst wenn das niemanden oder mehrere ergibt, zählt die
+ * lockerere Regel, dass jeder genannte Vorname vorkommen muss. So bleibt
+ * eine genaue Übereinstimmung eindeutig, auch wenn daneben jemand mit
+ * einem zusätzlichen Zweitnamen steht.
+ *
+ * Was danach offenbleibt, wird gemeldet statt geraten.
  */
 export function matchMemberByName(fullName: string, index: MemberIndex): MemberMatch {
   const text = fullName.trim()
   if (!text) return NO_MATCH
 
   const [rawLast, ...rest] = text.split(',')
-  const last = normalize(rawLast)
-  const first = normalize(rest.join(',').trim())
-  if (!last) return NO_MATCH
+  const given = rest.join(',').trim()
+  if (!rawLast.trim()) return NO_MATCH
 
-  const exact = index.exact.get(`${last}|${first}`)
-  if (exact?.length === 1) return { member: exact[0], ambiguous: false }
-  if (exact && exact.length > 1) return { member: null, ambiguous: true }
-
-  const sameLastName = index.byLastName.get(last) ?? []
-  if (sameLastName.length === 0) return NO_MATCH
-
-  if (first) {
-    const firstToken = first.split(/\s+/)[0]
-    const byFirstToken = sameLastName.filter((member) => {
-      const candidate = normalize(member.firstName).split(/\s+/)[0]
-      return candidate === firstToken
-    })
-    if (byFirstToken.length === 1) return { member: byFirstToken[0], ambiguous: false }
-    if (byFirstToken.length > 1) return { member: null, ambiguous: true }
-    return NO_MATCH
+  const seen = new Set<string>()
+  const candidates: Member[] = []
+  for (const key of nameKeys(rawLast)) {
+    for (const member of index.byLastName.get(key) ?? []) {
+      if (seen.has(member.id)) continue
+      seen.add(member.id)
+      candidates.push(member)
+    }
   }
 
-  if (sameLastName.length === 1) return { member: sameLastName[0], ambiguous: false }
-  return { member: null, ambiguous: true }
+  if (candidates.length === 0) return NO_MATCH
+  if (!given) return single(candidates) ?? NO_MATCH
+
+  const exact = candidates.filter((member) => sameGivenNames(given, member.firstName))
+  if (exact.length > 0) return single(exact) ?? NO_MATCH
+
+  return (
+    single(candidates.filter((member) => matchesGivenNames(given, member.firstName))) ?? NO_MATCH
+  )
 }
 
 /* ------------------------------------------------------------------ */
@@ -331,6 +339,17 @@ export interface HistoryMemberRow {
   lastTalkDate: string | null
 }
 
+/**
+ * Namen aus der Tabelle, die von Hand einer Person zugewiesen wurden.
+ *
+ * Nicht jeder Unterschied lässt sich aus den Namen ableiten: Nach einer
+ * Heirat steht in der alten Tabelle noch der frühere Nachname, und wo zwei
+ * Personen Vor- und Nachname teilen, hilft kein Verfahren weiter. Statt
+ * solche Fälle im Code zu hinterlegen – wo sie veralten und Personendaten
+ * ins Repository tragen –, werden sie einmalig in der Vorschau zugewiesen.
+ */
+export type HistoryOverrides = Record<string, string>
+
 export interface HistoryPreview {
   talks: HistoryTalkRow[]
   prayers: HistoryPrayerRow[]
@@ -368,8 +387,10 @@ export function buildHistoryPreview(
   members: Member[],
   knownTalks: KnownTalk[],
   knownPrayers: KnownPrayer[],
+  overrides: HistoryOverrides = {},
 ): HistoryPreview {
   const index = buildMemberIndex(members)
+  const byId = new Map(members.map((member) => [member.id, member]))
 
   // Reihenfolge festklopfen: Erst danach werden Plätze vergeben, und die
   // sollen bei gleichem Ausgangsstand immer gleich herauskommen.
@@ -407,9 +428,12 @@ export function buildHistoryPreview(
   const newTalksByMember = new Map<string, string[]>()
 
   for (const entry of entries) {
-    const { member } = matchMemberByName(entry.fullName, index)
+    const assigned = overrides[entry.fullName]
+    const member = assigned ? byId.get(assigned) : matchMemberByName(entry.fullName, index).member
     if (!member) {
-      unmatched.set(entry.fullName, (unmatched.get(entry.fullName) ?? 0) + 1)
+      // Eine Zuweisung ins Leere zählt als «nicht übernehmen» und wird
+      // nicht noch einmal als offen gemeldet.
+      if (!assigned) unmatched.set(entry.fullName, (unmatched.get(entry.fullName) ?? 0) + 1)
       continue
     }
 
@@ -449,7 +473,6 @@ export function buildHistoryPreview(
 
   /* Statistik der Mitglieder -------------------------------------- */
 
-  const byId = new Map(members.map((member) => [member.id, member]))
   const memberRows: HistoryMemberRow[] = []
   for (const [memberId, dates] of newTalksByMember) {
     const member = byId.get(memberId)

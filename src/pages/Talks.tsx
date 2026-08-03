@@ -122,9 +122,19 @@ export function Talks() {
     }
   }
 
+  // Die beiden Filter gehören der Seite, nicht der Liste: Sie bestimmen,
+  // wer überhaupt bewertet wird.
+  const [onlyActive, setOnlyActive] = useState(true)
+  const [hideChildren, setHideChildren] = useState(true)
+
   const candidates = useMemo(
-    () => rankTalkCandidates(members, talks, { gapMonths: settings.talkGapMonths }),
-    [members, talks, settings.talkGapMonths],
+    () =>
+      rankTalkCandidates(members, talks, {
+        gapMonths: settings.talkGapMonths,
+        onlyActive,
+        minAge: hideChildren ? settings.talkMinAge : 0,
+      }),
+    [members, talks, settings.talkGapMonths, settings.talkMinAge, onlyActive, hideChildren],
   )
 
   const history = useMemo(
@@ -267,6 +277,11 @@ export function Talks() {
         <CandidateList
           candidates={candidates}
           gapMonths={settings.talkGapMonths}
+          minAge={settings.talkMinAge}
+          onlyActive={onlyActive}
+          onOnlyActive={setOnlyActive}
+          hideChildren={hideChildren}
+          onHideChildren={setHideChildren}
           onAssign={(member) => {
             // Den nächsten freien Programmplatz vorschlagen.
             const target = schedule.find((sunday) => sunday.openCount > 0)
@@ -349,10 +364,20 @@ function TalkRow({ talk, onEdit }: { talk: Talk; onEdit: () => void }) {
 function CandidateList({
   candidates,
   gapMonths,
+  minAge,
+  onlyActive,
+  onOnlyActive,
+  hideChildren,
+  onHideChildren,
   onAssign,
 }: {
   candidates: ReturnType<typeof rankTalkCandidates>
   gapMonths: number
+  minAge: number
+  onlyActive: boolean
+  onOnlyActive: (next: boolean) => void
+  hideChildren: boolean
+  onHideChildren: (next: boolean) => void
   onAssign: (member: Member) => void
 }) {
   const [search, setSearch] = useState('')
@@ -407,6 +432,24 @@ function CandidateList({
           />
           Nur seit über {gapMonths} Monaten
         </label>
+        <label className="flex cursor-pointer items-center gap-2 text-sm">
+          <input
+            type="checkbox"
+            className="size-4 rounded"
+            checked={hideChildren}
+            onChange={(event) => onHideChildren(event.target.checked)}
+          />
+          Erst ab {minAge} Jahren
+        </label>
+        <label className="flex cursor-pointer items-center gap-2 text-sm">
+          <input
+            type="checkbox"
+            className="size-4 rounded"
+            checked={onlyActive}
+            onChange={(event) => onOnlyActive(event.target.checked)}
+          />
+          Nur Aktive
+        </label>
       </div>
 
       <p className="mb-2 flex items-center gap-1.5 text-xs text-slate-500 dark:text-slate-400">
@@ -415,7 +458,7 @@ function CandidateList({
       </p>
 
       <ul className="card divide-list overflow-hidden">
-        {visible.slice(0, 60).map(({ member, monthsSince: months, alreadyPlanned }) => (
+        {visible.slice(0, 60).map(({ member, age, monthsSince: months, alreadyPlanned }) => (
           <li
             key={member.id}
             className={`flex items-center gap-3 px-4 py-3 ${alreadyPlanned ? 'opacity-50' : ''}`}
@@ -440,6 +483,8 @@ function CandidateList({
                     {member.lastTalkDate && ` (${formatDate(member.lastTalkDate)})`}
                   </>
                 )}
+                {age !== null && ` · ${age} Jahre`}
+                {member.status !== 'active' && ' · inaktiv'}
                 {alreadyPlanned && ' · bereits eingeplant'}
               </p>
             </div>
@@ -550,8 +595,12 @@ function AssignDialog({
   }, [open, date, slot, initialKind, preset])
 
   const ranked = useMemo(
-    () => rankTalkCandidates(members, talks, { gapMonths: settings.talkGapMonths }),
-    [members, talks, settings.talkGapMonths],
+    () =>
+      rankTalkCandidates(members, talks, {
+        gapMonths: settings.talkGapMonths,
+        minAge: settings.talkMinAge,
+      }),
+    [members, talks, settings.talkGapMonths, settings.talkMinAge],
   )
 
   const results = useMemo(() => {

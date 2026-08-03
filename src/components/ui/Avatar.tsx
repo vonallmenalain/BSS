@@ -59,10 +59,7 @@ export function AssigneeAvatars({
     return (
       <div className="flex flex-wrap items-center gap-1.5">
         {userIds.map((id) => (
-          <span
-            key={id}
-            className={cn('chip', colorForId(id))}
-          >
+          <span key={id} className={cn('chip', colorForId(id))}>
             <Avatar name={userName(id)} id={id} size="xs" className="-ml-1" />
             {userName(id)}
           </span>

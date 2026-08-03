@@ -42,8 +42,7 @@ export function Members() {
     () => ({
       all: members.length,
       active: members.filter((m) => m.status === 'active').length,
-      less_active: members.filter((m) => m.status === 'less_active').length,
-      inactive: members.filter((m) => m.status === 'inactive' || m.status === 'moved').length,
+      inactive: members.filter((m) => m.status !== 'active').length,
     }),
     [members],
   )
@@ -112,7 +111,6 @@ export function Members() {
             size="sm"
             options={[
               { value: 'active', label: 'Aktiv', count: counts.active },
-              { value: 'less_active', label: 'Weniger aktiv', count: counts.less_active },
               { value: 'inactive', label: 'Inaktiv', count: counts.inactive },
               { value: 'all', label: 'Alle', count: counts.all },
             ]}

@@ -155,28 +155,26 @@ export function Callings() {
                 {ORGANIZATION_LABELS[organization]} ({entries.length})
               </h2>
               <ul className="card divide-list overflow-hidden">
-                {entries
-                  .sort((a, b) => compareNames(a.position, b.position))
-                  .map((calling) => (
-                    <li key={calling.id}>
-                      <button
-                        type="button"
-                        onClick={() => setEditCalling(calling)}
-                        className="flex w-full items-center gap-3 px-4 py-3 text-left transition hover:bg-slate-50 dark:hover:bg-slate-800/60"
-                      >
-                        <Avatar name={calling.memberName} id={calling.memberId} size="md" />
-                        <div className="min-w-0 flex-1">
-                          <p className="truncate text-sm font-medium">{calling.position}</p>
-                          <p className="truncate text-xs text-slate-500 dark:text-slate-400">
-                            {calling.memberName}
-                            {calling.setApartDate && ` · seit ${formatDate(calling.setApartDate)}`}
-                          </p>
-                        </div>
-                        <CallingStatusBadge status={calling.status} />
-                        <ChevronRight className="size-4 shrink-0 text-slate-300" aria-hidden />
-                      </button>
-                    </li>
-                  ))}
+                {entries.sort(compareByImportOrder).map((calling) => (
+                  <li key={calling.id}>
+                    <button
+                      type="button"
+                      onClick={() => setEditCalling(calling)}
+                      className="flex w-full items-center gap-3 px-4 py-3 text-left transition hover:bg-slate-50 dark:hover:bg-slate-800/60"
+                    >
+                      <Avatar name={calling.memberName} id={calling.memberId} size="md" />
+                      <div className="min-w-0 flex-1">
+                        <p className="truncate text-sm font-medium">{calling.position}</p>
+                        <p className="truncate text-xs text-slate-500 dark:text-slate-400">
+                          {calling.memberName}
+                          {calling.setApartDate && ` · seit ${formatDate(calling.setApartDate)}`}
+                        </p>
+                      </div>
+                      <CallingStatusBadge status={calling.status} />
+                      <ChevronRight className="size-4 shrink-0 text-slate-300" aria-hidden />
+                    </button>
+                  </li>
+                ))}
               </ul>
             </section>
           ))}
@@ -191,6 +189,25 @@ export function Callings() {
       />
     </>
   )
+}
+
+/* ------------------------------------------------------------------ */
+
+/**
+ * Reihenfolge innerhalb einer Organisation – wie im LCR.
+ *
+ * Dort steht zuoberst der Präsident, dann die Ratgeber, dann die übrigen.
+ * Das ist die Ordnung, in der die Bischofschaft eine Organisation denkt;
+ * alphabetisch sortiert stünde der Bischof unter «B» zwischen den Lehrern.
+ *
+ * Von Hand erfasste Berufungen tragen keine Nummer. Sie kommen ans Ende
+ * und sind dort nach Bezeichnung geordnet – irgendwo müssen sie hin, und
+ * hinten stören sie die eingelesene Ordnung nicht.
+ */
+function compareByImportOrder(a: Calling, b: Calling): number {
+  const left = a.order ?? Number.MAX_SAFE_INTEGER
+  const right = b.order ?? Number.MAX_SAFE_INTEGER
+  return left - right || compareNames(a.position, b.position)
 }
 
 /* ------------------------------------------------------------------ */
