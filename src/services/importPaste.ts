@@ -11,10 +11,10 @@ import type { MemberField, ParsedSheet } from './import'
  *
  * Aufbau eines Eintrags (Tabulatoren als → dargestellt):
  *
- *     Aeschbacher, Branden Charles → M → 30 → 13 Apr 1996
- *     Gässli 4
- *     3472 Wynigen
- *     079 341 53 75 → branden.aeschbacher@gmail.com
+ *     Muster, Hans Peter → M → 42 → 13 Apr 1984
+ *     Musterweg 4
+ *     3400 Burgdorf
+ *     079 123 45 67 → hans.muster@example.ch
  *
  * Nicht jeder Eintrag ist vollständig: Telefon, E-Mail und die ganze
  * Anschrift können fehlen, die Anschrift kann eine Zusatzzeile haben, und
