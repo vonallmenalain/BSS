@@ -3,6 +3,7 @@
 import { normalize } from '../lib/utils.ts'
 import { matchesGivenNames, nameKeys, sameGivenNames } from '../lib/names.ts'
 import { isoDate } from './importHistory.ts'
+import { parseDirectoryDate } from './importPaste.ts'
 import type { PastedCalling, PastedCallings } from './importCallings.ts'
 import type { MinisteringEntry } from './importMinistering.ts'
 import type { ParsedHistory } from './importHistory.ts'
@@ -116,10 +117,40 @@ export interface CallingRow {
   warnings: string[]
 }
 
+/**
+ * Ein Berufungswechsel: Dieselbe Person verliert eine Berufung und erhält
+ * im selben Import eine neue.
+ *
+ * Das ist der Regelfall einer Umberufung, und er ist der einzige Moment, in
+ * dem sich das Entlassungsdatum ehrlich bestimmen lässt: Wer am 6. Juli als
+ * Sekretär bestätigt wird, ist an ebendiesem Tag aus der bisherigen Aufgabe
+ * entlassen worden. Das LCR schreibt darüber nichts – es zeigt nur den
+ * heutigen Stand, und die alte Berufung ist dort schlicht verschwunden.
+ *
+ * Deshalb wird der Wechsel vor dem Schreiben gezeigt und nicht still
+ * angenommen: Bestätigt werden kann er mit einem Blick, und wo das Datum
+ * nicht stimmt, lässt es sich von Hand setzen.
+ */
+export interface CallingChange {
+  memberId: string
+  memberName: string
+  /** Die laufende Berufung, die in der Quelle fehlt */
+  released: Calling
+  /** Die neue Berufung derselben Person aus der Quelle */
+  incoming: CallingRow
+  /**
+   * Vorgeschlagenes Entlassungsdatum «yyyy-MM-dd» – das Berufungsdatum der
+   * neuen Berufung. `null`, wenn die Quelle dazu nichts hergibt.
+   */
+  releaseDate: string | null
+}
+
 export interface CallingsPreview {
   rows: CallingRow[]
   /** Laufende Berufungen, die in der Quelle fehlen – werden entlassen */
   releases: Calling[]
+  /** Entlassungen, zu denen dieselbe Person eine neue Berufung erhält */
+  changes: CallingChange[]
   createCount: number
   updateCount: number
   skipCount: number
@@ -264,11 +295,53 @@ export function buildCallingsPreview(
   return {
     rows,
     releases,
+    changes: pairChanges(rows, releases),
     createCount: rows.filter((r) => r.action === 'create').length,
     updateCount: rows.filter((r) => r.action === 'update').length,
     skipCount: rows.filter((r) => r.action === 'skip').length,
     vacant: pasted.vacant,
   }
+}
+
+/** Das Berufungsdatum einer gelesenen Zeile als «yyyy-MM-dd». */
+function startDateOf(row: CallingRow): string | null {
+  // Bestätigt zuerst: Ab da erfüllt jemand die Aufgabe, das Einsetzen folgt
+  // oft erst eine Woche später. Fehlt es, dient das Einsetzungsdatum.
+  const date = parseDirectoryDate(row.parsed.sustained) ?? parseDirectoryDate(row.parsed.setApart)
+  return date ? isoDate(date.getFullYear(), date.getMonth() + 1, date.getDate()) : null
+}
+
+/**
+ * Ordnet jeder wegfallenden Berufung eine neue derselben Person zu.
+ *
+ * Gepaart wird der Reihe nach und höchstens einmal: Wer zwei Berufungen
+ * abgibt und eine neue erhält, hat einen Wechsel und eine gewöhnliche
+ * Entlassung – welche welche ist, weiss die Quelle nicht, und geraten wird
+ * hier nichts. Beides steht in der Vorschau und lässt sich dort richtigstellen.
+ *
+ * Nur **neue** Berufungen zählen als Gegenstück. Eine bloss aktualisierte
+ * bestand schon vorher; sie erklärt keine Entlassung.
+ */
+function pairChanges(rows: CallingRow[], releases: Calling[]): CallingChange[] {
+  const open = new Map<string, CallingRow[]>()
+  for (const row of rows) {
+    if (row.action !== 'create' || !row.memberId) continue
+    push(open, row.memberId, row)
+  }
+
+  return releases.flatMap((released) => {
+    const incoming = open.get(released.memberId)?.shift()
+    if (!incoming) return []
+    return [
+      {
+        memberId: released.memberId,
+        memberName: released.memberName,
+        released,
+        incoming,
+        releaseDate: startDateOf(incoming),
+      },
+    ]
+  })
 }
 
 /* ------------------------------------------------------------------ */

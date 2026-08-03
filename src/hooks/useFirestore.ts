@@ -14,7 +14,9 @@ import { useAuth } from '@/contexts/AuthContext'
 import {
   OPEN_STATUSES,
   type AgendaItem,
+  type AnnouncementSeries,
   type Calling,
+  type CleaningWeek,
   type Meeting,
   type Note,
   type Prayer,
@@ -266,6 +268,32 @@ export function usePrayers(limitCount = 400) {
   const { isApproved } = useAuth()
   const constraints = useMemo(() => [orderBy('date', 'desc'), fbLimit(limitCount)], [limitCount])
   return useCollection<Prayer>(COLLECTIONS.prayers, constraints, isApproved)
+}
+
+/**
+ * Wiederkehrende Bekanntmachungen.
+ *
+ * Ohne Obergrenze und ohne Filter: Es sind wenige, jede einzelne kann
+ * jeden Sonntag betreffen, und ob sie es tut, entscheidet sich erst beim
+ * Rechnen – nach Datum liesse sich das nicht abfragen.
+ */
+export function useAnnouncementSeries() {
+  const { isApproved } = useAuth()
+  const constraints = useMemo(() => [orderBy('createdAt')], [])
+  return useCollection<AnnouncementSeries>(COLLECTIONS.announcementSeries, constraints, isApproved)
+}
+
+/**
+ * Der Putzplan.
+ *
+ * Ein halbes Jahr umfasst rund 26 Wochen; die Voreinstellung deckt damit
+ * mehrere Jahre ab. Sortiert wird nach dem ersten Tag der Woche – der
+ * zugleich die Dokument-ID ist.
+ */
+export function useCleaningWeeks(limitCount = 400) {
+  const { isApproved } = useAuth()
+  const constraints = useMemo(() => [orderBy('startDate'), fbLimit(limitCount)], [limitCount])
+  return useCollection<CleaningWeek>(COLLECTIONS.cleaningWeeks, constraints, isApproved)
 }
 
 /* ------------------------------------------------------------------ */

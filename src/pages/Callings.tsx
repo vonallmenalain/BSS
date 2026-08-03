@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState, type FormEvent } from 'react'
 import { Link } from 'react-router-dom'
-import { Award, ChevronRight, Plus, Search, Trash2, Upload } from 'lucide-react'
+import { Award, ChevronRight, Plus, Search, Trash2 } from 'lucide-react'
 import { useData } from '@/contexts/DataContext'
 import { useToast } from '@/contexts/ToastContext'
 import { useCallings } from '@/hooks/useFirestore'
@@ -99,16 +99,12 @@ export function Callings() {
         title="Berufungen"
         subtitle="Vom Vorschlag über die Bestätigung bis zur Einsetzung"
         actions={
-          <>
-            <Link to="/import/berufungen" className="btn-secondary">
-              <Upload className="size-4" aria-hidden />
-              <span className="hidden sm:inline">Import</span>
-            </Link>
-            <button type="button" className="btn-primary" onClick={() => setFormOpen(true)}>
-              <Plus className="size-4" aria-hidden />
-              <span className="hidden sm:inline">Neue Berufung</span>
-            </button>
-          </>
+          /* Der Import aus dem LCR steht unter «Einstellungen › Importe».
+             Hier bleibt nur der Weg, der eine einzelne Berufung betrifft. */
+          <button type="button" className="btn-primary" onClick={() => setFormOpen(true)}>
+            <Plus className="size-4" aria-hidden />
+            <span className="hidden sm:inline">Neue Berufung</span>
+          </button>
         }
       />
 

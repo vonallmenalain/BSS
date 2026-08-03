@@ -294,3 +294,175 @@ test('entlässt nichts, wenn die Quelle nichts hergibt', () => {
     assert.deepEqual(preview.releases, [], `Quelle: «${text}»`)
   }
 })
+
+/* ------------------------------------------------------------------ */
+/* Berufungswechsel                                                    */
+/* ------------------------------------------------------------------ */
+
+/*
+ * Der häufigste Fall im Alltag: Jemand gibt eine Aufgabe ab und erhält am
+ * selben Sonntag eine neue. Das LCR erzählt davon nichts – dort ist die
+ * alte Berufung einfach weg. Erst die Paarung macht daraus ein Datum,
+ * mit dem sich die Vergangenheit ehrlich festhalten lässt.
+ */
+
+test('paart eine wegfallende Berufung mit der neuen derselben Person', () => {
+  // Cadonau, Rita steht auf der Seite neu als Sonntagsschullehrerin,
+  // bestätigt am 4. Feb 2024. Ihre bisherige Berufung fehlt dort.
+  const existing = [calling('c1', 'm3', 'JD-Leiterin', 'young_women', 'set_apart')]
+  const preview = buildCallingsPreview(
+    parsePastedCallings(
+      [
+        'Sonntagsschule',
+        'Berufung\tName\tBestätigt\tEingesetzt',
+        'Sonntagsschullehrer',
+        'Cadonau, Rita',
+        '4 Feb 2024',
+        'Anzahl: 1',
+        '',
+        'Junge Damen',
+        'Berufung\tName\tBestätigt\tEingesetzt',
+        'JD-Leiterin',
+        'Berufung offen',
+        'Anzahl: 1',
+      ].join('\n'),
+    ),
+    MEMBERS,
+    existing,
+  )
+
+  assert.equal(preview.changes.length, 1)
+  const [change] = preview.changes
+  assert.equal(change.memberId, 'm3')
+  assert.equal(change.released.id, 'c1')
+  assert.equal(change.incoming.parsed.position, 'Sonntagsschullehrer')
+  assert.equal(change.releaseDate, '2024-02-04')
+})
+
+test('nimmt das Einsetzungsdatum, wenn die Bestätigung fehlt', () => {
+  const existing = [calling('c1', 'm3', 'JD-Leiterin', 'young_women', 'sustained')]
+  const preview = buildCallingsPreview(
+    parsePastedCallings(
+      [
+        'Sonntagsschule',
+        'Berufung\tName\tBestätigt\tEingesetzt',
+        'Sonntagsschullehrer',
+        'Cadonau, Rita',
+        '\t11 Feb 2024',
+        'Anzahl: 1',
+        '',
+        'Junge Damen',
+        'Berufung\tName\tBestätigt\tEingesetzt',
+        'JD-Leiterin',
+        'Berufung offen',
+        'Anzahl: 1',
+      ].join('\n'),
+    ),
+    MEMBERS,
+    existing,
+  )
+
+  assert.equal(preview.changes.length, 1)
+  assert.equal(preview.changes[0].releaseDate, '2024-02-11')
+})
+
+test('paart nur Neuzugänge – eine bloss aktualisierte Berufung erklärt nichts', () => {
+  // Amsler ist schon Bischof und bleibt es; seine zweite Berufung fällt weg.
+  // Das ist eine gewöhnliche Entlassung, kein Wechsel.
+  const existing = [
+    calling('c1', 'm1', 'Bischof', 'bishopric', 'set_apart'),
+    calling('c2', 'm1', 'Sonntagsschullehrer', 'sunday_school', 'sustained'),
+  ]
+  const preview = buildCallingsPreview(
+    parsePastedCallings(
+      [
+        'Bischofschaft',
+        'Berufung\tName\tBestätigt\tEingesetzt',
+        'Bischof',
+        'Amsler, Peter Daniel',
+        '6 Nov 2022\t13 Nov 2022',
+        'Anzahl: 1',
+        '',
+        'Sonntagsschule',
+        'Berufung\tName\tBestätigt\tEingesetzt',
+        'Sonntagsschullehrer',
+        'Berufung offen',
+        'Anzahl: 1',
+      ].join('\n'),
+    ),
+    MEMBERS,
+    existing,
+  )
+
+  assert.deepEqual(
+    preview.releases.map((c) => c.id),
+    ['c2'],
+  )
+  assert.deepEqual(preview.changes, [])
+})
+
+test('paart höchstens einmal – zwei Entlassungen, eine neue Berufung', () => {
+  const existing = [
+    calling('c1', 'm3', 'JD-Leiterin', 'young_women', 'set_apart'),
+    calling('c2', 'm3', 'PV-Lehrerin', 'primary', 'sustained'),
+  ]
+  const preview = buildCallingsPreview(
+    parsePastedCallings(
+      [
+        'Sonntagsschule',
+        'Berufung\tName\tBestätigt\tEingesetzt',
+        'Sonntagsschullehrer',
+        'Cadonau, Rita',
+        '4 Feb 2024',
+        'Anzahl: 1',
+        '',
+        'Junge Damen',
+        'Berufung\tName\tBestätigt\tEingesetzt',
+        'JD-Leiterin',
+        'Berufung offen',
+        'Anzahl: 1',
+        '',
+        'Primarvereinigung',
+        'Berufung\tName\tBestätigt\tEingesetzt',
+        'PV-Lehrerin',
+        'Berufung offen',
+        'Anzahl: 1',
+      ].join('\n'),
+    ),
+    MEMBERS,
+    existing,
+  )
+
+  assert.equal(preview.releases.length, 2)
+  assert.equal(preview.changes.length, 1)
+  assert.equal(preview.changes[0].released.id, 'c1')
+})
+
+test('paart nicht über Personen hinweg', () => {
+  // Brunner verliert seine Berufung, Cadonau erhält eine neue. Das sind
+  // zwei Vorgänge und kein Wechsel.
+  const existing = [calling('c1', 'm2', 'JD-Leiterin', 'young_women', 'set_apart')]
+  const preview = buildCallingsPreview(
+    parsePastedCallings(
+      [
+        'Sonntagsschule',
+        'Berufung\tName\tBestätigt\tEingesetzt',
+        'Sonntagsschullehrer',
+        'Cadonau, Rita',
+        '4 Feb 2024',
+        'Anzahl: 1',
+        '',
+        'Junge Damen',
+        'Berufung\tName\tBestätigt\tEingesetzt',
+        'JD-Leiterin',
+        'Berufung offen',
+        'Anzahl: 1',
+      ].join('\n'),
+    ),
+    MEMBERS,
+    existing,
+  )
+
+  assert.equal(preview.releases.length, 1)
+  assert.deepEqual(preview.changes, [])
+})

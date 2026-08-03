@@ -159,11 +159,11 @@ export function ImportMembers() {
   return (
     <>
       <Link
-        to="/mitglieder"
+        to="/einstellungen"
         className="mb-3 inline-flex items-center gap-1 text-sm text-slate-500 hover:underline dark:text-slate-400"
       >
         <ArrowLeft className="size-4" aria-hidden />
-        Mitglieder
+        Einstellungen
       </Link>
 
       <PageHeader
