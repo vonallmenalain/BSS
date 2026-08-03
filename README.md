@@ -252,8 +252,11 @@ vorsehen: eine zusätzliche Ansprache, ein Zeugnis oder ein leerer Platz zum
 späteren Vergeben. Der Standard bleibt davon unberührt.
 
 **Liederliste.** Unter **Import → Lieder** einlesen, dann genügt beim Erfassen
-der Musik die Nummer – der Titel erscheint automatisch. Eine Nummer, die nicht
-in der Liste steht, lässt sich von Hand ergänzen und auf Wunsch in die Liste
+der Musik die Nummer – der Titel erscheint automatisch. Aus dem Gesangbuch nur
+die Zahl, aus dem PV-Liederbuch mit dem Kürzel davor: **«PV 6»**; beide Bücher
+zählen ab 1, ohne das Kürzel wäre nicht zu sagen, welches gemeint ist.
+Doppelnummern behalten ihren Buchstaben: «PV 18a». Eine Nummer, die nicht in
+der Liste steht, lässt sich von Hand ergänzen und auf Wunsch in die Liste
 aufnehmen. Der Titel wird im Programm mitgespeichert, damit ein bereits
 verteiltes Programm nach einem Neuimport gleich bleibt.
 
@@ -387,22 +390,41 @@ Verlauf zu verdoppeln. Was in der App gepflegt wurde, bleibt unangetastet.
 
 ---
 
-## Liederliste importieren
+## Liederlisten importieren
 
-**Import → Lieder**, einmalig.
+**Import → Lieder**, einmalig – einmal je Buch.
 
-Der übliche Weg führt übers **Musikarchiv** der Kirche: dort das Gesangbuch
-öffnen, «Alles einblenden» wählen, die Seite markieren, kopieren und einfügen.
-Menü, Filterleiste, Rubriken und das laufende Hörbeispiel dürfen mitkommen –
-gelesen wird nur, was wie «Nummer. Titel» aussieht. Der Punkt hinter der Zahl
-ist dabei das entscheidende Merkmal: ohne ihn wäre «210 Ergebnisse» ein Lied.
+Zur Auswahl stehen das **Gesangbuch** und das **Liederbuch für Kinder (PV)**.
+Sie werden getrennt eingelesen und getrennt geleert, denn ihre Nummern laufen
+unabhängig voneinander: Nr. 6 ist im Gesangbuch «Israel, der Herr ruft alle»,
+im PV-Liederbuch «Gebet eines Kindes». Ein gemeinsamer Import überschriebe das
+eine mit dem anderen.
+
+Der übliche Weg führt übers **Musikarchiv** der Kirche: dort das gewünschte
+Buch öffnen, «Alles einblenden» wählen, die Seite markieren, kopieren und
+einfügen. Menü, Filterleiste, Rubriken und das laufende Hörbeispiel dürfen
+mitkommen – gelesen wird nur, was wie «Nummer. Titel» aussieht. Der Punkt
+hinter der Zahl ist dabei das entscheidende Merkmal: ohne ihn wäre
+«210 Ergebnisse» ein Lied.
+
+Zwei Eigenheiten bringt das PV-Liederbuch mit:
+
+- **Doppelnummern.** «18a. Dankkanon» und «18b. Den Kopf geneigt» teilen sich
+  die Seite. Der Buchstabe bleibt erhalten.
+- **Kopieren als Markdown.** Je nach Browser kommen die Einträge als Liste mit
+  Verweisen, und darüber steht ein Brotkrumenpfad – «1. Musikarchiv» –, der
+  die Form eines Liedes hat. Er verrät sich am Ziel: Lieder verweisen auf
+  `/music/songs/`, der Pfad nicht.
 
 Alternativ lässt sich eine `.xlsx`- oder `.csv`-Datei mit je einer Spalte für
 Nummer und Titel einlesen; welche das sind, erkennt der Import selbst.
 
-Die Vorschau meldet Lücken in der Nummernfolge – der übliche Grund ist, dass
-«Alles einblenden» vergessen ging und die Seite nur einen Teil zeigte. Die
-Nummer ist der Schlüssel: Dieselbe Nummer wird aktualisiert statt doppelt
+Beim Gesangbuch meldet die Vorschau Lücken in der Nummernfolge – der übliche
+Grund ist, dass «Alles einblenden» vergessen ging und die Seite nur einen Teil
+zeigte. Beim PV-Liederbuch entfällt der Hinweis: Dort stehen Seitenzahlen,
+Sprünge sind normal.
+
+Der Code ist der Schlüssel: Derselbe Code wird aktualisiert statt doppelt
 angelegt.
 
 ---
