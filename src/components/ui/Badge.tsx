@@ -47,7 +47,9 @@ const ITEM_STATUS_STYLES: Record<ItemStatus, string> = {
 
 export function StatusBadge({ status, className }: { status: ItemStatus; className?: string }) {
   return (
-    <Badge className={cn(ITEM_STATUS_STYLES[status], className)}>{ITEM_STATUS_LABELS[status]}</Badge>
+    <Badge className={cn(ITEM_STATUS_STYLES[status], className)}>
+      {ITEM_STATUS_LABELS[status]}
+    </Badge>
   )
 }
 
@@ -115,9 +117,7 @@ export function MeetingStatusBadge({ status }: { status: MeetingStatus }) {
 
 const MEMBER_STATUS_STYLES: Record<MemberStatus, string> = {
   active: 'bg-emerald-100 text-emerald-800 dark:bg-emerald-950 dark:text-emerald-200',
-  less_active: 'bg-amber-100 text-amber-800 dark:bg-amber-950 dark:text-amber-200',
   inactive: 'bg-slate-100 text-slate-600 dark:bg-slate-800 dark:text-slate-400',
-  moved: 'bg-slate-100 text-slate-500 dark:bg-slate-800 dark:text-slate-500',
 }
 
 export function MemberStatusBadge({ status }: { status: MemberStatus }) {

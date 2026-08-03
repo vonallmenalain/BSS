@@ -313,6 +313,12 @@ Die Mitglieder kommen zuerst. Berufungen und Betreuungsaufträge ordnen ihre
 Einträge erfassten Personen zu und überspringen, was sie nicht findet – so
 entstehen aus einem Tippfehler keine stillen Karteileichen.
 
+Beim Abgleich zählt der Nachname in **beiden Schreibweisen**: «Buerge» findet
+«Bürge», «Graeppi» findet «Gräppi», und umgekehrt. Ein Vorname greift auch als
+zweiter – steht in der Quelle «Christiane», passt das zu «Anne Christiane» –,
+und abgekürzte Zweitnamen («Joshua B.») ebenso. Ein halber Treffer gilt
+bewusst nicht als Treffer: Was übrig bleibt, wird gemeldet statt geraten.
+
 **Berufungen.** Gelesen werden die Seite *Organisationen* und die Seite
 *Berufungen ausserhalb der Einheit*; welche der beiden vorliegt, erkennt die
 App selbst. Bestehende Berufungen werden über Person, Rolle und Organisation
@@ -383,6 +389,14 @@ Zwei Grenzen sind zu kennen:
   Ansprachen gibt es diese Grenze nicht.
 - **Die Gebets-Auswertung liest die jüngsten 400 Einträge.** Wer länger nicht
   dran war, erscheint dort als «noch nie» – und steht damit ohnehin zuoberst.
+
+**Namen von Hand zuordnen.** Nicht jeder Unterschied lässt sich aus den Namen
+ableiten. Nach einer Heirat steht in der alten Tabelle noch der frühere
+Nachname, und wo zwei Personen Vor- und Nachname teilen, hilft kein Verfahren.
+Die Vorschau listet deshalb jeden offenen Namen mit seiner Trefferzahl auf und
+lässt die Person auswählen; die Einträge kommen dann mit. Was offen bleibt,
+wird übersprungen – meist zu Recht, denn dahinter stecken Weggezogene und
+Besuchende.
 
 Der Import ist wiederholbar: Die Dokument-IDs entstehen aus Datum und Person,
 ein zweiter Durchlauf schreibt deshalb dieselben Einträge noch einmal, statt den

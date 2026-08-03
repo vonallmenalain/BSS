@@ -204,11 +204,7 @@ export function Pendenzen() {
         </div>
       )}
 
-      <AgendaItemForm
-        open={formOpen}
-        onClose={() => setFormOpen(false)}
-        meetingId={null}
-      />
+      <AgendaItemForm open={formOpen} onClose={() => setFormOpen(false)} meetingId={null} />
 
       <AgendaItemForm
         open={Boolean(editItem)}

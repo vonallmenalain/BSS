@@ -174,7 +174,11 @@ export function MeetingFocus({ items, onEdit, onAdd, nextMeeting, readOnly = fal
                       : 'bg-slate-100 text-slate-600 hover:bg-slate-200 dark:bg-slate-800 dark:text-slate-300 dark:hover:bg-slate-700',
                 )}
               >
-                {isDone && itemIndex !== index ? <Check className="size-3.5" aria-hidden /> : itemIndex + 1}
+                {isDone && itemIndex !== index ? (
+                  <Check className="size-3.5" aria-hidden />
+                ) : (
+                  itemIndex + 1
+                )}
               </button>
             )
           })}
@@ -396,7 +400,6 @@ export function MeetingFocus({ items, onEdit, onAdd, nextMeeting, readOnly = fal
               Tastatur: ← → blättern · N springt ins Notizfeld
             </p>
           </div>
-
         </>
       )}
     </div>

@@ -1,3 +1,5 @@
+import { nameKeys } from './names.ts'
+
 /** Klassennamen zusammensetzen und Falsy-Werte verwerfen. */
 export function cn(...classes: (string | false | null | undefined)[]): string {
   return classes.filter(Boolean).join(' ')
@@ -28,13 +30,22 @@ export function normalize(text: string): string {
     .trim()
 }
 
-/** Prüft, ob alle Suchbegriffe irgendwo im Text vorkommen (Reihenfolge egal). */
+/**
+ * Prüft, ob alle Suchbegriffe irgendwo im Text vorkommen (Reihenfolge egal).
+ *
+ * Verglichen wird über beide Schreibweisen eines Umlauts – wer «Buerge»
+ * tippt, findet «Bürge», und wer «Burge» tippt, ebenso.
+ */
 export function matchesSearch(haystack: string, needle: string): boolean {
   if (!needle.trim()) return true
-  const text = normalize(haystack)
-  return normalize(needle)
+  const text = nameKeys(haystack)
+  return needle
+    .trim()
     .split(/\s+/)
-    .every((term) => text.includes(term))
+    .every((term) => {
+      const keys = nameKeys(term)
+      return text.some((form) => keys.some((key) => form.includes(key)))
+    })
 }
 
 /** Stabile Farbe aus einem String ableiten – gleicher Name, gleiche Farbe. */
@@ -67,7 +78,10 @@ export function truncate(text: string, max = 120): string {
 }
 
 /** Elemente nach einem Schlüssel gruppieren. */
-export function groupBy<T, K extends string | number>(items: T[], key: (item: T) => K): Map<K, T[]> {
+export function groupBy<T, K extends string | number>(
+  items: T[],
+  key: (item: T) => K,
+): Map<K, T[]> {
   const map = new Map<K, T[]>()
   for (const item of items) {
     const k = key(item)

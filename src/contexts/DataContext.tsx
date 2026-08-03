@@ -9,6 +9,7 @@ import {
   type AppUser,
   type Hymn,
   type HymnChoice,
+  toMemberStatus,
   type Member,
 } from '@/lib/types'
 
@@ -83,7 +84,14 @@ export function DataProvider({ children }: { children: ReactNode }) {
     return onSnapshot(
       query(collection(db, COLLECTIONS.members), orderBy('lastName')),
       (snapshot) => {
-        setMembers(snapshot.docs.map((d) => ({ id: d.id, ...d.data() }) as Member))
+        setMembers(
+          snapshot.docs.map((d) => {
+            const data = d.data()
+            // Alte Datensätze tragen noch «weniger aktiv» oder «weggezogen».
+            // Sie hier einmal zurückzuführen erspart jeder Ansicht die Frage.
+            return { id: d.id, ...data, status: toMemberStatus(data.status) } as Member
+          }),
+        )
         setMembersLoaded(true)
       },
       (error) => {

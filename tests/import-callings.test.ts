@@ -127,6 +127,20 @@ test('liest die Organisationsseite mit Untergruppe und offener Berufung', () => 
   assert.equal(parsed.callings[1].setApart, '')
 })
 
+test('behält die Reihenfolge der Quelle', () => {
+  // Im LCR steht der Bischof zuoberst, dann die Ratgeber. Alphabetisch
+  // sortiert stünde er zwischen den Lehrern.
+  const parsed = parsePastedCallings(ORGANIZATION_PAGE)
+  assert.deepEqual(
+    parsed.callings.map((c) => [c.order, c.position]),
+    [
+      [0, 'Bischof'],
+      [1, 'Erster Ratgeber'],
+      [2, 'Sonntagsschullehrer'],
+    ],
+  )
+})
+
 test('meldet, welche Organisationen die Quelle abdeckt', () => {
   const parsed = parsePastedCallings(ORGANIZATION_PAGE)
   assert.deepEqual([...parsed.organizations].sort(), ['bishopric', 'sunday_school'])

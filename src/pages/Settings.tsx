@@ -295,6 +295,24 @@ export function Settings() {
               <p className="hint">Steuert die Vorschlagsliste.</p>
             </div>
             <div>
+              <label className="label" htmlFor="s-min-age">
+                Ansprachen: erst ab Alter
+              </label>
+              <input
+                id="s-min-age"
+                type="number"
+                min={0}
+                max={30}
+                className="input"
+                value={form.talkMinAge}
+                onChange={(event) => update('talkMinAge', Number(event.target.value))}
+              />
+              <p className="hint">
+                Hält die Kinder aus der Vorschlagsliste – sie stünden sonst zuoberst, weil sie noch
+                nie gesprochen haben. Wer kein Geburtsdatum hat, bleibt in der Liste.
+              </p>
+            </div>
+            <div>
               <label className="label" htmlFor="s-prayer-gap">
                 Gebet: «lange nicht dran» ab (Monate)
               </label>

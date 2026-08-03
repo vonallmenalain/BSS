@@ -171,6 +171,14 @@ export interface PastedCalling {
   custom: boolean
   /** Berufung ausserhalb der eigenen Einheit */
   outOfUnit: boolean
+  /**
+   * Stelle in der Quelle.
+   *
+   * Das LCR listet jede Organisation in ihrer eigenen Ordnung – Präsident,
+   * Ratgeber, dann die übrigen. Alphabetisch sortiert ginge sie verloren,
+   * und niemand sucht den Bischof unter «B».
+   */
+  order: number
 }
 
 export interface PastedCallings {
@@ -243,6 +251,7 @@ function parseOrganizationPage(lines: string[]): PastedCallings {
       setApart,
       custom: wasCustom,
       outOfUnit: false,
+      order: callings.length,
     })
   }
 
@@ -338,6 +347,7 @@ function parseOutOfUnitPage(lines: string[]): PastedCallings {
       setApart: '',
       custom: false,
       outOfUnit: true,
+      order: callings.length,
     })
   }
 

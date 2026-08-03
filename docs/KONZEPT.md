@@ -162,6 +162,12 @@ dran»: eine nach Dringlichkeit sortierte Liste. Zuoberst, wer noch nie
 gesprochen hat, danach nach Abstand absteigend. Wer bereits eingeplant ist,
 rutscht nach unten – aber bleibt sichtbar, damit klar ist warum.
 
+Zwei Grenzen halten die Liste brauchbar: ein Mindestalter, sonst stünden die
+Kinder zuoberst (sie haben ja noch nie gesprochen), und der Status. Beides
+lässt sich in der Liste umschalten, das Mindestalter steht in den
+Einstellungen. Wer kein Geburtsdatum hat, bleibt drin – ein fehlendes Datum
+ist kein Grund, jemanden zu übergehen.
+
 **Nachführen.** Beim Wechsel auf «gehalten» schreibt die App das Datum der
 letzten Ansprache beim Mitglied fort und erhöht den Zähler. Ein nachgetragener
 alter Termin überschreibt dabei nie ein neueres Datum.
@@ -186,7 +192,11 @@ Berufungen durchlaufen feste Schritte, und jeder hat sein Datum:
 (→ *Entlassen*)
 
 Die Ansicht gruppiert nach Organisation (Ältestenkollegium, FHV, JD, JM, PV,
-Sonntagsschule …) und kennt die üblichen Positionen als Eingabehilfe. Ein
+Sonntagsschule …) und behält innerhalb jeder Organisation die Reihenfolge des
+LCR: zuoberst der Präsident, dann die Ratgeber, dann die übrigen. Alphabetisch
+sortiert stünde der Bischof unter «B» zwischen den Lehrern. Von Hand erfasste
+Berufungen tragen keine Nummer und kommen ans Ende. Die Ansicht kennt die
+üblichen Positionen als Eingabehilfe. Ein
 Knopf «Mit heutigem Datum» schiebt eine Berufung einen Schritt weiter, ohne
 dass jemand ein Datum tippen muss.
 
@@ -214,6 +224,12 @@ Die gemeinsame Datenbasis für alles andere.
 Mobile, Adresse, Status (aktiv / weniger aktiv / inaktiv / weggezogen),
 Notiz, Betreuungspartner und Betreuungsauftrag, Schlagworte, Datum der
 letzten Ansprache, Anzahl Ansprachen.
+
+**Status.** Nur aktiv oder inaktiv. Frühere Fassungen kannten «weniger aktiv»
+und «weggezogen»; das klang genauer, half aber nirgends – für jede Frage, die
+die App stellt, zählt nur, ob jemand da ist. Umschalten lässt sich der Status
+direkt im Detail einer Person, ohne den Bearbeiten-Dialog: Es ist die Angabe,
+die sich am häufigsten ändert.
 
 **Sortieren und filtern.** Nach Nachname, Vorname, Alter, letzter Ansprache
 oder Status; dazu Volltextsuche über Name, E-Mail, Telefon, Ort und Notiz.

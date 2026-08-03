@@ -117,6 +117,7 @@ export async function runCallingsImport(
         position: row.parsed.position,
         organization: row.parsed.organization,
         group: row.parsed.group,
+        order: row.parsed.order,
         custom: row.parsed.custom,
         outOfUnit: row.parsed.outOfUnit,
         sustainedDate: sustained ? Timestamp.fromDate(sustained) : null,
