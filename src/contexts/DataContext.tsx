@@ -2,24 +2,41 @@ import { createContext, useContext, useEffect, useMemo, useState, type ReactNode
 import { collection, doc, onSnapshot, orderBy, query } from 'firebase/firestore'
 import { db, COLLECTIONS } from '@/lib/firebase'
 import { useAuth } from '@/contexts/AuthContext'
-import { DEFAULT_SETTINGS, type AppSettings, type AppUser, type Member } from '@/lib/types'
+import {
+  DEFAULT_SETTINGS,
+  type AppSettings,
+  type AppUser,
+  type Hymn,
+  type HymnChoice,
+  type Member,
+} from '@/lib/types'
 
 /**
  * Stammdaten, die praktisch jede Ansicht braucht: Team, Mitglieder,
- * Einstellungen. Sie werden einmal zentral abonniert statt in jeder Seite neu –
- * das spart Firestore-Leseoperationen und hält die Daten überall konsistent.
+ * Einstellungen, Liederliste. Sie werden einmal zentral abonniert statt in
+ * jeder Seite neu – das spart Firestore-Leseoperationen und hält die Daten
+ * überall konsistent.
  */
 interface DataContextValue {
   users: AppUser[]
   usersById: Map<string, AppUser>
   members: Member[]
   membersById: Map<string, Member>
+  hymns: Hymn[]
+  hymnsByNumber: Map<number, Hymn>
   settings: AppSettings
   loading: boolean
   /** Namen einer UID auflösen, mit Rückfallwert */
   userName: (uid: string) => string
   /** Namen eines Mitglieds auflösen */
   memberName: (id: string) => string
+  /** Liedtitel zu einer Nummer – leer, wenn die Nummer nicht in der Liste steht */
+  hymnTitle: (number: number | null | undefined) => string
+  /**
+   * Titel einer Liedauswahl für die Anzeige. Der gespeicherte Titel gewinnt,
+   * damit ein bereits gedrucktes Programm nach einem Neuimport gleich bleibt.
+   */
+  hymnLabel: (choice: HymnChoice | null | undefined) => string
 }
 
 const DataContext = createContext<DataContextValue | undefined>(undefined)
@@ -29,6 +46,7 @@ export function DataProvider({ children }: { children: ReactNode }) {
 
   const [users, setUsers] = useState<AppUser[]>([])
   const [members, setMembers] = useState<Member[]>([])
+  const [hymns, setHymns] = useState<Hymn[]>([])
   const [settings, setSettings] = useState<AppSettings>(DEFAULT_SETTINGS)
   const [usersLoaded, setUsersLoaded] = useState(false)
   const [membersLoaded, setMembersLoaded] = useState(false)
@@ -73,6 +91,19 @@ export function DataProvider({ children }: { children: ReactNode }) {
     )
   }, [isApproved])
 
+  /* Liederliste ------------------------------------------------------ */
+  useEffect(() => {
+    if (!isApproved) {
+      setHymns([])
+      return
+    }
+    return onSnapshot(
+      query(collection(db, COLLECTIONS.hymns), orderBy('number')),
+      (snapshot) => setHymns(snapshot.docs.map((d) => ({ id: d.id, ...d.data() }) as Hymn)),
+      (error) => console.error('[data] Liederliste konnte nicht geladen werden:', error),
+    )
+  }, [isApproved])
+
   /* Einstellungen ---------------------------------------------------- */
   useEffect(() => {
     if (!isApproved) return
@@ -90,11 +121,17 @@ export function DataProvider({ children }: { children: ReactNode }) {
   const value = useMemo<DataContextValue>(() => {
     const usersById = new Map(users.map((u) => [u.id, u]))
     const membersById = new Map(members.map((m) => [m.id, m]))
+    const hymnsByNumber = new Map(hymns.map((h) => [h.number, h]))
+    const hymnTitle = (number: number | null | undefined) =>
+      number == null ? '' : (hymnsByNumber.get(number)?.title ?? '')
+
     return {
       users,
       usersById,
       members,
       membersById,
+      hymns,
+      hymnsByNumber,
       settings,
       loading: isApproved && (!usersLoaded || !membersLoaded),
       userName: (id) => usersById.get(id)?.displayName ?? 'Unbekannt',
@@ -102,8 +139,13 @@ export function DataProvider({ children }: { children: ReactNode }) {
         const member = membersById.get(id)
         return member ? `${member.firstName} ${member.lastName}` : 'Unbekannt'
       },
+      hymnTitle,
+      hymnLabel: (choice) => {
+        if (!choice) return ''
+        return choice.title || hymnTitle(choice.number)
+      },
     }
-  }, [users, members, settings, usersLoaded, membersLoaded, isApproved])
+  }, [users, members, hymns, settings, usersLoaded, membersLoaded, isApproved])
 
   return <DataContext.Provider value={value}>{children}</DataContext.Provider>
 }

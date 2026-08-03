@@ -19,7 +19,7 @@ import {
 import { doc, getDoc, onSnapshot, serverTimestamp, setDoc } from 'firebase/firestore'
 import { auth, db, COLLECTIONS, isFirebaseConfigured } from '@/lib/firebase'
 import { getInitials } from '@/lib/utils'
-import { LEADERSHIP_ROLES, type AppUser, type Role } from '@/lib/types'
+import { BISHOPRIC_ROLES, FULL_ACCESS_ROLES, type AppUser, type Role } from '@/lib/types'
 
 interface AuthContextValue {
   /** Firebase-Auth-Benutzer (Anmeldeidentität) */
@@ -27,10 +27,15 @@ interface AuthContextValue {
   /** Profil aus Firestore inkl. Rolle – `null`, solange kein Profil existiert */
   profile: AppUser | null
   loading: boolean
-  /** Angemeldet und durch einen Leiter freigeschaltet */
+  /**
+   * Angemeldet, aktiv und freigeschaltet.
+   *
+   * Damit ist zugleich der volle Zugriff verbunden: Bischof, beide Ratgeber
+   * und die Sekretäre sehen und dürfen dasselbe. Nur `pending` sieht nichts.
+   */
   isApproved: boolean
-  /** Bischof oder Ratgeber – darf vertrauliche Traktanden sehen */
-  isLeadership: boolean
+  /** Gehört zur Bischofschaft im engeren Sinn (leitet die Versammlung). */
+  isBishopric: boolean
   isBishop: boolean
   role: Role | null
   error: string | null
@@ -204,13 +209,15 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   const value = useMemo<AuthContextValue>(() => {
     const role = profile?.role ?? null
-    const isApproved = Boolean(profile && profile.active && profile.role !== 'pending')
+    const isApproved = Boolean(
+      profile && profile.active && role && FULL_ACCESS_ROLES.includes(role),
+    )
     return {
       firebaseUser,
       profile,
       loading,
       isApproved,
-      isLeadership: Boolean(role && LEADERSHIP_ROLES.includes(role)),
+      isBishopric: Boolean(role && BISHOPRIC_ROLES.includes(role)),
       isBishop: role === 'bishop',
       role,
       error,

@@ -16,7 +16,13 @@ import {
 import { db, COLLECTIONS } from '@/lib/firebase'
 import { monthsSince, toDate } from '@/lib/dates'
 import { stripUndefined } from '@/lib/utils'
-import { ACTIVE_TALK_STATUSES, type Member, type Talk, type TalkStatus } from '@/lib/types'
+import {
+  ACTIVE_TALK_STATUSES,
+  type Member,
+  type Talk,
+  type TalkKind,
+  type TalkStatus,
+} from '@/lib/types'
 
 const talksRef = collection(db, COLLECTIONS.talks)
 
@@ -25,6 +31,8 @@ export interface TalkInput {
   memberName: string
   date: Date
   slot: number
+  /** Ansprache oder Zeugnis – beides belegt einen Programmplatz */
+  kind?: TalkKind
   topic?: string
   durationMinutes?: number
   status?: TalkStatus
@@ -43,6 +51,7 @@ export async function createTalk(input: TalkInput): Promise<string> {
     memberName: input.memberName,
     date: Timestamp.fromDate(input.date),
     slot: input.slot,
+    kind: input.kind ?? 'talk',
     status: input.status ?? 'planned',
     askedById: input.askedById ?? null,
     askedAt: input.status === 'asked' ? serverTimestamp() : null,

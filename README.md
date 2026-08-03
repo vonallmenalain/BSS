@@ -1,8 +1,8 @@
 # Bischofschaft
 
 Progressive Web App für die administrativen Aufgaben einer Bischofschaft:
-Sitzungen mit Traktanden- und Pendenzenliste, Ansprachenplanung,
-Berufungsverwaltung und Mitgliederdaten.
+Sitzungen mit Traktanden- und Pendenzenliste, Programm der
+Abendmahlsversammlung, Berufungsverwaltung und Mitgliederdaten.
 
 - **Produktion:** [bss.alae.app](https://bss.alae.app) (Netlify)
 - **Konzept:** [`docs/KONZEPT.md`](docs/KONZEPT.md)
@@ -11,13 +11,13 @@ Berufungsverwaltung und Mitgliederdaten.
 
 ## Auf einen Blick
 
-| Bereich          | Was die App leistet                                                                     |
-| ---------------- | --------------------------------------------------------------------------------------- |
-| **Sitzungen**    | Termin festlegen, Traktanden sammeln, Sitzungsmodus zum Durchgehen, Protokoll drucken     |
-| **Pendenzen**    | Offenes über alle Sitzungen hinweg, gefiltert nach «meine», «überfällig», «ohne Sitzung»  |
-| **Ansprachen**   | Programm der nächsten Sonntage, Vorschlagsliste «wer war lange nicht dran»                |
-| **Berufungen**   | Vom Vorschlag bis zur Einsetzung, gruppiert nach Organisation                             |
-| **Mitglieder**   | Stammdaten, Notizen, Suche und Sortierung; Excel-/CSV-Import und -Export                  |
+| Bereich                     | Was die App leistet                                                                      |
+| --------------------------- | ---------------------------------------------------------------------------------------- |
+| **Sitzungen**               | Termin festlegen, Traktanden sammeln, Sitzungsmodus zum Durchgehen, Protokoll drucken      |
+| **Pendenzen**               | Offenes über alle Sitzungen hinweg, gefiltert nach «meine», «überfällig», «ohne Sitzung»   |
+| **Abendmahlsversammlung**   | Ganzer Ablauf pro Sonntag: Leitung, Bekanntmachungen, Angelegenheiten, Ansprachen, Musik, Gebet |
+| **Berufungen**              | Vom Vorschlag bis zur Einsetzung, gruppiert nach Organisation                              |
+| **Mitglieder**              | Stammdaten, Notizen, Suche und Sortierung; Excel-/CSV-Import und -Export                   |
 
 Traktandum und Pendenz sind derselbe Datensatz: Was in einer Sitzung offen
 bleibt, erscheint automatisch wieder – ohne Umtragen.
@@ -213,24 +213,60 @@ npm run test:rules
 ```
 
 Startet den Emulator, führt die Tests aus `tests/` aus und fährt ihn wieder
-herunter. Geprüft wird unter anderem, dass Sekretäre vertrauliche Traktanden
-weder einzeln lesen noch über eine ungefilterte Abfrage erhalten und dass sich
-niemand selbst eine höhere Rolle geben kann.
-
-Der Test ist bewusst so gebaut, dass er die naheliegenden Fehler auch wirklich
-bemerkt: Wird der Vergleich in `firestore.rules` zu
-`resource.data.get('confidential', false)` umgeschrieben – eine Form, die
-Firestore nicht gegen den Abfragefilter abgleichen kann –, schlägt er fehl.
-Genau dieser Fall lieferte in einer früheren Fassung vertrauliche Dokumente an
-Sekretäre aus.
+herunter. Die entscheidende Trennlinie verläuft zwischen `pending` und allen
+übrigen Rollen. Geprüft wird deshalb vor allem, dass ein wartendes Konto
+nichts liest, nichts schreibt und sich nicht selbst freischalten kann – und
+dass umgekehrt jede freigeschaltete Rolle auf denselben Bestand kommt,
+einschliesslich Programm der Abendmahlsversammlung, Gebete und Liederliste.
 
 Dieselben Tests laufen in der CI, bevor Regeln ausgerollt werden.
 
 ---
 
+## Abendmahlsversammlung
+
+Ein Bereich, sechs Unterpunkte – oben wird der Sonntag gewählt, und er gilt
+für alle Unterpunkte.
+
+| Unterpunkt            | Wofür |
+| --------------------- | ----- |
+| **Leitung**           | Der ganze Ablauf auf einer Seite, zum Ausdrucken fürs Pult |
+| **Bekanntmachungen**  | Liste pro Sonntag, in der Reihenfolge des Vorlesens |
+| **Angelegenheiten**   | Bestätigungen, Entlassungen, Segnungen, Konfirmierungen |
+| **Ansprachen**        | Programmplätze vergeben, Vorschlagsliste, Verlauf |
+| **Musik**             | Drei bis vier Lieder und Musikeinlagen |
+| **Gebet**             | Anfangs- und Schlussgebet, mit «zuletzt gebetet» |
+
+**Leitung** erfasst nichts doppelt. Ansprachen, Bekanntmachungen, Lieder und
+Gebete stammen aus ihren Bereichen und erscheinen dort automatisch; der Ablauf
+folgt dem Handbuch (Abschnitt 29.2.1), vereinfacht auf das, was am Pult
+gebraucht wird. Anpassbar ist an dieser Stelle, wer leitet und präsidiert, wen
+man begrüsst – und mit den Pfeiltasten die Reihenfolge von Ansprachen,
+Zeugnissen, Zwischenlied und Musikeinlagen. Was noch fehlt, steht als kurze
+Liste zuoberst.
+
+**Ansprachen und Zeugnisse.** Wie viele Ansprachen eine Versammlung hat, steht
+als Standard in den Einstellungen. Für einen einzelnen Sonntag lässt sich mehr
+vorsehen: eine zusätzliche Ansprache, ein Zeugnis oder ein leerer Platz zum
+späteren Vergeben. Der Standard bleibt davon unberührt.
+
+**Liederliste.** Unter **Einstellungen → Liederliste** eine Excel- oder
+CSV-Datei mit Liednummer und Titel hochladen. Welche Spalten das sind, erkennt
+der Import selbst und zeigt es vor dem Übernehmen zur Kontrolle. Danach genügt
+beim Erfassen der Musik die Nummer – der Titel erscheint automatisch. Eine
+Nummer, die nicht in der Liste steht, lässt sich von Hand ergänzen und auf
+Wunsch in die Liste aufnehmen. Der Titel wird im Programm mitgespeichert,
+damit ein bereits verteiltes Programm nach einem Neuimport gleich bleibt.
+
+**Gebet.** Beim Zuteilen steht bei jedem Vorschlag, wann die Person zuletzt
+gebetet hat; zuoberst steht, wer noch nie an der Reihe war – dieselbe Logik
+wie bei den Ansprachen.
+
+---
+
 ## Mitgliederliste importieren
 
-**Mitglieder → Import** (nur für Bischof und Ratgeber).
+**Mitglieder → Import**.
 
 Unterstützt werden `.xlsx` und `.csv`. Der Assistent führt durch vier
 Schritte: Datei wählen, Spalten zuordnen (wird geraten), Vorschau prüfen,
@@ -251,15 +287,34 @@ mit der Mitglieds-Nummer mitzuliefern und als «Mitglieds-Nr.» zuzuordnen.
 
 ## Rollen
 
-| Rolle         | Sitzungen & Pendenzen | Mitglieder | Vertrauliche Traktanden | Benutzer verwalten | Import |
-| ------------- | :-------------------: | :--------: | :---------------------: | :----------------: | :----: |
-| **Bischof**   |           ✓           |     ✓      |            ✓            |         ✓          |   ✓    |
-| **Ratgeber**  |           ✓           |     ✓      |            ✓            |         ✓          |   ✓    |
-| **Sekretär**  |           ✓           |     ✓      |            –            |         –          |   –    |
-| *pending*     |           –           |     –      |            –            |         –          |   –    |
+Die Rolle beschreibt die **Aufgabe** in der Bischofschaft, nicht den Umfang
+der Rechte. Bischof, beide Ratgeber und die Sekretäre arbeiten am selben
+Datenbestand und sehen alles – auch vertrauliche Traktanden. Einzig ein noch
+nicht freigeschaltetes Konto sieht nichts.
 
-Vertrauliche Traktanden werden Sekretären nicht bloss ausgeblendet – die
-Firestore-Regeln liefern sie gar nicht erst aus.
+| Rolle                   | Zugriff |
+| ----------------------- | ------- |
+| **Bischof**             | alles   |
+| **1. Ratgeber**         | alles   |
+| **2. Ratgeber**         | alles   |
+| **Exekutivsekretär**    | alles   |
+| **Sekretär**            | alles   |
+| *Wartet auf Freigabe*   | nichts  |
+
+Wozu dann überhaupt Rollen? Sie halten fest, wer welche Aufgabe hat – etwa
+wer die Abendmahlsversammlung leitet oder präsidiert – und sie steuern die
+Freigabe neuer Konten.
+
+Jede und jeder kann die **eigene Rolle** anpassen, unter
+**Einstellungen → Mein Profil** oder in der Liste unter **Benutzer und
+Rollen**. Wer beim Einrichten versehentlich als Bischof angelegt wurde, trägt
+sich also selbst als 1. Ratgeber ein. Nur den eigenen Zugang entziehen kann
+man sich nicht – «Wartet auf Freigabe» steht für das eigene Konto nicht zur
+Wahl.
+
+Das Kennzeichen «vertraulich» an einem Traktandum bleibt bestehen: Es markiert
+seelsorgerische Anliegen, die nicht nach aussen getragen werden, schränkt den
+Zugriff innerhalb der Bischofschaft aber nicht ein.
 
 ---
 
@@ -269,13 +324,16 @@ Firestore-Regeln liefern sie gar nicht erst aus.
 src/
 ├── components/
 │   ├── agenda/          Traktanden: Karte, Formular, Sitzungsmodus, Verschieben
+│   ├── sacrament/       Abendmahlsversammlung: Rahmen mit Sonntagswahl, Lied- und Personenfelder
 │   ├── ui/              Bausteine: Modal, Badges, Avatare, Auswahlfelder
 │   ├── Layout.tsx       Navigation (Seitenleiste bzw. untere Leiste)
 │   └── UpdatePrompt.tsx Hinweis auf neue Version
 ├── contexts/            Anmeldung, Stammdaten, Meldungen
 ├── hooks/               Firestore-Abfragen, lokale Einstellungen, Uhrzeit
 ├── lib/                 Firebase-Anbindung, Typen, Datums- und Hilfsfunktionen
-├── pages/               Eine Datei pro Ansicht
+├── pages/
+│   ├── sacrament/       Leitung, Bekanntmachungen, Angelegenheiten, Musik, Gebet
+│   └── …                Eine Datei pro übriger Ansicht
 └── services/            Schreibzugriffe und Fachlogik pro Sammlung
 
 tests/                   Tests der Zugriffsregeln (laufen in der CI)

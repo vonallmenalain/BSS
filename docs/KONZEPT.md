@@ -8,19 +8,26 @@ Stand: erste Fassung, umgesetzt als lauffähiger Entwurf.
 
 Die Bischofschaft leitet eine Kirchengemeinde. Die Arbeit verteilt sich auf
 
-| Rolle         | Personen | Zugriff                                                             |
-| ------------- | -------- | ------------------------------------------------------------------- |
-| **Bischof**   | 1        | alles, inklusive vertraulicher Traktanden                            |
-| **Ratgeber**  | 2        | alles, inklusive vertraulicher Traktanden                            |
-| **Sekretäre** | 2        | alles ausser vertraulichen Traktanden; arbeiten bei Bedarf mit       |
+| Rolle                 | Personen | Aufgabe                                              |
+| --------------------- | -------- | ---------------------------------------------------- |
+| **Bischof**           | 1        | leitet die Gemeinde und die Bischofschaft            |
+| **1. Ratgeber**       | 1        | vertritt und unterstützt den Bischof                 |
+| **2. Ratgeber**       | 1        | vertritt und unterstützt den Bischof                 |
+| **Exekutivsekretär**  | 1        | Sitzungen, Termine, Nachverfolgung                   |
+| **Sekretär**          | 1–2      | Protokolle, Aufzeichnungen, Berichte                 |
+
+Alle fünf arbeiten am selben Datenbestand und sehen dasselbe. Die Rolle hält
+die Aufgabe fest, nicht den Rechteumfang – sie beantwortet etwa, wer die
+Abendmahlsversammlung leitet, und nicht, wer welches Dokument sehen darf.
 
 Der Takt ist die **wöchentliche Sitzung**. Dazwischen sammeln sich Themen an,
 in der Sitzung werden sie abgearbeitet, und was offen bleibt, muss beim
 nächsten Mal wieder auf den Tisch.
 
-Daneben laufen zwei wiederkehrende Aufgaben: **Ansprachen vergeben** und
-**Berufungen begleiten**. Beide brauchen dieselbe Grundlage – eine gepflegte
-**Mitgliederliste**.
+Der zweite Takt ist der **Sonntag**: Für jede Abendmahlsversammlung braucht es
+Ansprachen, Bekanntmachungen, Angelegenheiten, Lieder und Gebete. Daneben
+laufen die **Berufungen**. Alles zusammen braucht dieselbe Grundlage – eine
+gepflegte **Mitgliederliste**.
 
 ---
 
@@ -42,10 +49,19 @@ der Sitzungsmodus im Mittelpunkt – ein Traktandum gross im Bild, Notizfeld und
 Statusknöpfe darunter, weiter zum nächsten. Die Listenansicht bleibt für die
 Vorbereitung.
 
-**Vertrauliches bleibt vertraulich.**
-Seelsorgerische Themen gehen Sekretäre nichts an. Das ist keine
-Anzeige-Einstellung, sondern in den Firestore-Sicherheitsregeln verankert:
-Sekretäre bekommen solche Dokumente gar nicht erst ausgeliefert.
+**Die Bischofschaft ist eine Einheit.**
+Eine Abstufung innerhalb der Bischofschaft würde mehr Reibung erzeugen als
+Schutz: Wer im Sitzungszimmer sitzt, muss ohnehin alles wissen. Deshalb gibt
+es nur eine Grenze, und die liegt aussen – ein neu registriertes Konto sieht
+nichts, bis es freigeschaltet wird. Das Kennzeichen «vertraulich» an einem
+Traktandum bleibt als Hinweis erhalten: Es markiert seelsorgerische Anliegen,
+die nicht nach aussen getragen werden.
+
+**Jeder Wert wird an einer Stelle erfasst.**
+Das Programm des Sonntags entsteht in sechs Bereichen und läuft unter
+«Leitung» zusammen. Dort wird nichts noch einmal eingetippt, sondern nur
+angeordnet. Sonst hätte man zwei Wahrheiten – und die falsche steht dann am
+Pult.
 
 **Der Import ist Nebensache, aber muss verlässlich sein.**
 Alle drei bis vier Monate eine Excel-Datei einlesen – das darf ruhig versteckt
@@ -88,10 +104,51 @@ plus freies Datum. Jede Verschiebung zählt mit: Ein Traktandum mit
 Archiv, und die App bietet gleich die Folgeplanung an. Ein Protokoll lässt
 sich drucken.
 
-### 3.2 Ansprachenmanagement
+### 3.2 Abendmahlsversammlung
 
-**Programm.** Die nächsten acht Abendmahlsversammlungen mit je drei
-Programmplätzen (einstellbar). Freie Plätze sind sofort als solche erkennbar.
+Ein Bereich mit sechs Unterpunkten. Der Sonntag wird einmal oben gewählt und
+gilt für alle.
+
+```
+Bekanntmachungen ─┐
+Angelegenheiten  ─┤
+Ansprachen       ─┼─►  Leitung  ──►  Ablauf zum Ausdrucken
+Musik            ─┤
+Gebet            ─┘
+```
+
+**Leitung.** Der Ablauf gemäss Handbuch (Abschnitt 29.2.1), vereinfacht auf
+das, was am Pult gebraucht wird: Vorspiel, Willkommensgrüsse, Begrüssung der
+Besucher, Bekanntmachungen, Anfangslied und Anfangsgebet, Angelegenheiten,
+Namensgebung und Konfirmierung (nur wenn erfasst), Abendmahl, Botschaften und
+Musik, Schlusslied und Schlussgebet, Nachspiel. Alle Werte erscheinen
+automatisch. Angepasst wird hier nur, wer leitet und präsidiert, wen man
+begrüsst – und die Reihenfolge von Ansprachen, Zeugnissen, Zwischenlied und
+Musikeinlagen. Was noch fehlt, steht als kurze Liste zuoberst.
+
+**Bekanntmachungen und Angelegenheiten.** Je eine Liste pro Sonntag, in der
+Reihenfolge des Vorlesens. Angelegenheiten kennen ihre Art (Bestätigung,
+Entlassung, Ordinierung, Konfirmierung, Namensgebung, Begrüssung) und lassen
+sich aus den Berufungen übernehmen, statt den Namen ein zweites Mal zu tippen.
+
+**Musik.** Anfangs-, Abendmahls- und Schlusslied, dazu das freiwillige
+Zwischenlied und beliebig viele Musikeinlagen mit den vortragenden
+Mitgliedern. Erfasst wird nur die Liednummer – den Titel liefert die
+importierte Liederliste. Er wird im Programm mitgespeichert, damit ein
+verteiltes Programm nach einem Neuimport gleich bleibt.
+
+**Gebet.** Anfangs- und Schlussgebet, zwei Personen pro Sonntag. Bei jedem
+Vorschlag steht, wann die Person zuletzt gebetet hat; zuoberst steht, wer noch
+nie an der Reihe war. Berechnet wird das aus der Sammlung `prayers` – anders
+als bei den Ansprachen ohne redundantes Feld am Mitglied, weil Gebete häufig
+umdisponiert werden und ein nachgeführtes Datum dabei leicht falsch würde.
+
+**Ansprachen: Programm.** Acht Versammlungen ab dem gewählten Sonntag mit je
+so vielen Programmplätzen, wie in den Einstellungen stehen. Freie Plätze sind
+sofort als solche erkennbar. Für einen einzelnen Sonntag lässt sich mehr
+vorsehen – eine zusätzliche Ansprache, ein Zeugnis oder ein leerer Platz zum
+späteren Vergeben. Der Standard bleibt davon unberührt; die Ausnahme steht als
+`talkSlots` beim betreffenden Sonntag.
 
 **Vorschläge.** Die eigentliche Antwort auf «wer war schon lange nicht mehr
 dran»: eine nach Dringlichkeit sortierte Liste. Zuoberst, wer noch nie
@@ -191,10 +248,33 @@ agendaItems/{id}       Traktandum = Pendenz
                        ├─ confidential
                        └─ notes[], history[]
 members/{id}           Stammdaten, Status, Notiz, lastTalkDate, talkCount
-talks/{id}             Mitglied, Datum, Programmplatz, Thema, Status
+talks/{id}             Mitglied, Datum, Programmplatz, Art (Ansprache |
+                       Zeugnis), Thema, Status
 callings/{id}          Mitglied, Position, Organisation, Status, Meilensteine
-settings/app           Gemeindename, Sitzungsrhythmus, Ansprachen-Vorgaben
+sacramentMeetings/{yyyy-MM-dd}
+                       Programm eines Sonntags
+                       ├─ kind          regulär | Fast- und Zeugnisversammlung
+                       ├─ presidingId, conductingId, visitors
+                       ├─ talkSlots     Ausnahme zur Standardanzahl
+                       ├─ hymns         opening | sacrament |
+                       │                intermediate | closing
+                       ├─ musicalNumbers[], announcements[], business[]
+                       └─ programOrder  Reihenfolge «Botschaften und Musik»
+prayers/{yyyy-MM-dd_slot}
+                       Datum, Anfangs- oder Schlussgebet, Mitglied
+hymns/{nummer}         Liednummer und Titel (importiert)
+settings/app           Gemeindename, Sitzungsrhythmus, Vorgaben zur
+                       Abendmahlsversammlung
 ```
+
+Das Datum als **Dokument-ID** – bei `sacramentMeetings` und `prayers` – ist
+kein Schönheitsentscheid: Sechs Bereiche schreiben unabhängig voneinander am
+selben Sonntag. Mit einer erzeugten ID entstünden über kurz oder lang zwei
+Programme für denselben Tag.
+
+Ansprachen und Zeugnisse liegen bewusst **nicht** im Programm, sondern in
+`talks`. Sie haben einen eigenen Lebenszyklus – vorgesehen, angefragt,
+zugesagt, gehalten – und treiben die Auswertung «wer war lange nicht dran».
 
 `lastTalkDate` und `talkCount` liegen bewusst redundant beim Mitglied. Ohne
 diese Vorberechnung liesse sich die Frage «wer war lange nicht dran» nicht
@@ -203,13 +283,15 @@ sortieren, ohne bei jedem Aufruf sämtliche Ansprachen zu laden.
 ### Rechte
 
 Zugriff bekommt nur, wer angemeldet **und** freigeschaltet ist. Neue Konten
-starten als `pending` und sehen nichts – erst ein Bischof oder Ratgeber
+starten als `pending` und sehen nichts – erst ein freigeschaltetes Konto
 vergibt eine Rolle. Durchgesetzt wird das in `firestore.rules`, nicht im
 Frontend.
 
-Vertrauliche Traktanden sind der einzige Fall einer feineren Abstufung: Für
-Sekretäre filtert bereits die Abfrage auf `confidential == false`, und die
-Regeln erzwingen genau das.
+Innerhalb der Bischofschaft gibt es keine weitere Abstufung: Alle Rollen lesen
+und schreiben dasselbe, und jede Person kann ihre eigene Rolle korrigieren –
+mangels Rechteunterschied ist damit keine Rechteausweitung verbunden. Ein
+wartendes Konto darf zwar seinen Namen pflegen, aber weder `role` noch
+`active` anfassen. Genau diese Sperre halten die Regeltests fest.
 
 ---
 
@@ -238,9 +320,12 @@ immer dasselbe: Termin verstrichen.
 - Pendenzenübersicht mit Filtern (alle / meine / überfällig / ohne Sitzung)
 - Mitgliederliste mit Suche, Sortierung, Detailansicht, Notizen
 - Excel-/CSV-Import mit Spaltenzuordnung, Abgleich und Vorschau; CSV-Export
-- Ansprachenplanung mit Vorschlagsliste und Verlauf
+- Ansprachen und Zeugnisse mit Vorschlagsliste, Verlauf und Zusatzplätzen
+- Abendmahlsversammlung: Leitung, Bekanntmachungen, Angelegenheiten, Musik,
+  Gebet – mit Ablauf zum Ausdrucken
+- Liederliste aus Excel oder CSV, Liedtitel aus der Nummer
 - Berufungsverwaltung mit Prozessschritten
-- Einstellungen für Gemeinde, Sitzungsrhythmus und Ansprachen
+- Einstellungen für Gemeinde, Sitzungsrhythmus und Abendmahlsversammlung
 - PWA: installierbar, offline, Update-Hinweis
 - Firestore-Sicherheitsregeln und Indizes
 

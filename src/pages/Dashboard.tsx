@@ -13,7 +13,7 @@ import {
 } from 'lucide-react'
 import { useAuth } from '@/contexts/AuthContext'
 import { useData } from '@/contexts/DataContext'
-import { useMeetings, useOpenItems, useTalks } from '@/hooks/useFirestore'
+import { useMeetings, useOpenItems, useSacramentMeetings, useTalks } from '@/hooks/useFirestore'
 import { AgendaItemCard } from '@/components/agenda/AgendaItemCard'
 import { AgendaItemForm } from '@/components/agenda/AgendaItemForm'
 import { MeetingStatusBadge } from '@/components/ui/Badge'
@@ -31,7 +31,8 @@ import {
   upcomingWeekdays,
 } from '@/lib/dates'
 import { sortForPendenzen } from '@/services/agenda'
-import { ACTIVE_TALK_STATUSES, type AgendaItem } from '@/lib/types'
+import { openTalkSlots, sacramentDocId, talksForDate } from '@/services/sacrament'
+import type { AgendaItem } from '@/lib/types'
 
 export function Dashboard() {
   const { profile } = useAuth()
@@ -40,6 +41,7 @@ export function Dashboard() {
   const { data: meetings, loading: meetingsLoading } = useMeetings(20)
   const { data: openItems, loading: itemsLoading } = useOpenItems()
   const { data: talks } = useTalks(100)
+  const { data: sacramentMeetings } = useSacramentMeetings(20)
   const [formOpen, setFormOpen] = useState(false)
 
   /* Nächste Sitzung: die zeitlich nächste, die noch nicht abgeschlossen ist. */
@@ -61,8 +63,7 @@ export function Dashboard() {
 
   /* Pendenzen ------------------------------------------------------- */
   const myItems = useMemo(
-    () =>
-      sortForPendenzen(openItems.filter((item) => item.assignees?.includes(profile?.id ?? ''))),
+    () => sortForPendenzen(openItems.filter((item) => item.assignees?.includes(profile?.id ?? ''))),
     [openItems, profile?.id],
   )
 
@@ -80,21 +81,20 @@ export function Dashboard() {
 
   /* Ansprachen: die nächsten Sonntage und ihre Lücken ---------------- */
   const talkGaps = useMemo(() => {
-    const sundays = upcomingWeekdays(settings.sacramentWeekday, 6)
-    return sundays.map((sunday) => {
-      const assigned = talks.filter((talk) => {
-        const date = toDate(talk.date)
-        return (
-          date &&
-          date.toDateString() === sunday.toDateString() &&
-          ACTIVE_TALK_STATUSES.concat('held').includes(talk.status)
-        )
-      })
-      return { date: sunday, assigned: assigned.length, open: Math.max(0, settings.talksPerSunday - assigned.length) }
+    const byKey = new Map(sacramentMeetings.map((meeting) => [meeting.id, meeting]))
+    return upcomingWeekdays(settings.sacramentWeekday, 6).map((sunday) => {
+      const assigned = talksForDate(talks, sunday)
+      const meeting = byKey.get(sacramentDocId(sunday)) ?? null
+      return {
+        date: sunday,
+        assigned: assigned.length,
+        // Berücksichtigt eine für diesen Sonntag abweichende Anzahl Ansprachen.
+        open: openTalkSlots(meeting, assigned, settings.talksPerSunday),
+      }
     })
-  }, [talks, settings.sacramentWeekday, settings.talksPerSunday])
+  }, [talks, sacramentMeetings, settings.sacramentWeekday, settings.talksPerSunday])
 
-  const openTalkSlots = talkGaps.reduce((sum, gap) => sum + gap.open, 0)
+  const openTalkCount = talkGaps.reduce((sum, gap) => sum + gap.open, 0)
 
   /* Geburtstage ------------------------------------------------------ */
   const birthdays = useMemo(
@@ -253,11 +253,7 @@ export function Dashboard() {
 
         {/* ---------- Rechte Spalte ---------- */}
         <div className="space-y-4">
-          <StatRow
-            overdue={overdueItems.length}
-            mine={myItems.length}
-            openTalks={openTalkSlots}
-          />
+          <StatRow overdue={overdueItems.length} mine={myItems.length} openTalks={openTalkCount} />
 
           {/* Ansprachen */}
           <section className="card p-4">
@@ -267,7 +263,7 @@ export function Dashboard() {
                 Ansprachen
               </h3>
               <Link
-                to="/ansprachen"
+                to="/abendmahl/ansprachen"
                 className="text-brand-600 dark:text-brand-300 text-xs hover:underline"
               >
                 Planen
@@ -316,7 +312,11 @@ export function Dashboard() {
                         (() => {
                           const date = toDate(member.birthDate)!
                           const today = startOfDay(new Date())
-                          const next = new Date(today.getFullYear(), date.getMonth(), date.getDate())
+                          const next = new Date(
+                            today.getFullYear(),
+                            date.getMonth(),
+                            date.getDate(),
+                          )
                           if (next < today) next.setFullYear(today.getFullYear() + 1)
                           return next
                         })(),
@@ -412,17 +412,13 @@ function StatRow({
   const stats = [
     { label: 'Überfällig', value: overdue, to: '/pendenzen', danger: overdue > 0 },
     { label: 'Meine', value: mine, to: '/pendenzen' },
-    { label: 'Reden offen', value: openTalks, to: '/ansprachen' },
+    { label: 'Reden offen', value: openTalks, to: '/abendmahl/ansprachen' },
   ]
 
   return (
     <div className="grid grid-cols-3 gap-2">
       {stats.map((stat) => (
-        <Link
-          key={stat.label}
-          to={stat.to}
-          className="card card-hover p-3 text-center"
-        >
+        <Link key={stat.label} to={stat.to} className="card card-hover p-3 text-center">
           <p
             className={`tabular text-2xl font-semibold ${
               stat.danger ? 'text-rose-600 dark:text-rose-400' : ''

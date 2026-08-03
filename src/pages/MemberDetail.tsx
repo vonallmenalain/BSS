@@ -19,11 +19,7 @@ import { useCallings, useTalks } from '@/hooks/useFirestore'
 import { Modal, ConfirmDialog } from '@/components/ui/Modal'
 import { EmptyState } from '@/components/ui/Feedback'
 import { Avatar } from '@/components/ui/Avatar'
-import {
-  CallingStatusBadge,
-  MemberStatusBadge,
-  TalkStatusBadge,
-} from '@/components/ui/Badge'
+import { CallingStatusBadge, MemberStatusBadge, TalkStatusBadge } from '@/components/ui/Badge'
 import { MemberPicker } from '@/components/ui/Pickers'
 import { formatDate, getAge, monthsSince, toDateInput } from '@/lib/dates'
 import { formatPhone, telHref } from '@/lib/utils'
@@ -41,7 +37,7 @@ import {
 export function MemberDetail() {
   const { memberId } = useParams<{ memberId: string }>()
   const { membersById, loading } = useData()
-  const { isLeadership } = useAuth()
+  const { isApproved } = useAuth()
   const toast = useToast()
   const navigate = useNavigate()
   const { data: talks } = useTalks(300)
@@ -89,9 +85,7 @@ export function MemberDetail() {
 
   const age = getAge(member.birthDate)
   const months = monthsSince(member.lastTalkDate)
-  const contactPerson = member.contactPersonId
-    ? membersById.get(member.contactPersonId)
-    : undefined
+  const contactPerson = member.contactPersonId ? membersById.get(member.contactPersonId) : undefined
 
   return (
     <>
@@ -172,7 +166,7 @@ export function MemberDetail() {
               <Pencil className="size-4" aria-hidden />
               Bearbeiten
             </button>
-            {isLeadership && (
+            {isApproved && (
               <button
                 type="button"
                 className="btn-ghost text-rose-600 dark:text-rose-400"
@@ -237,7 +231,10 @@ export function MemberDetail() {
               <>
                 Zuletzt <strong>{formatDate(member.lastTalkDate)}</strong>
                 {months !== null && (
-                  <span className="text-slate-500 dark:text-slate-400"> · vor {months} Monaten</span>
+                  <span className="text-slate-500 dark:text-slate-400">
+                    {' '}
+                    · vor {months} Monaten
+                  </span>
                 )}
               </>
             ) : (

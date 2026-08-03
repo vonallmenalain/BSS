@@ -11,7 +11,15 @@ import {
 } from 'firebase/firestore'
 import { db, COLLECTIONS } from '@/lib/firebase'
 import { useAuth } from '@/contexts/AuthContext'
-import { OPEN_STATUSES, type AgendaItem, type Calling, type Meeting, type Talk } from '@/lib/types'
+import {
+  OPEN_STATUSES,
+  type AgendaItem,
+  type Calling,
+  type Meeting,
+  type Prayer,
+  type SacramentMeeting,
+  type Talk,
+} from '@/lib/types'
 
 interface CollectionState<T> {
   data: T[]
@@ -69,10 +77,7 @@ function useCollection<T>(
 
 export function useMeetings(limitCount = 100) {
   const { isApproved } = useAuth()
-  const constraints = useMemo(
-    () => [orderBy('date', 'desc'), fbLimit(limitCount)],
-    [limitCount],
-  )
+  const constraints = useMemo(() => [orderBy('date', 'desc'), fbLimit(limitCount)], [limitCount])
   return useCollection<Meeting>(COLLECTIONS.meetings, constraints, isApproved)
 }
 
@@ -108,30 +113,12 @@ export function useMeeting(meetingId: string | undefined) {
 /* Traktanden                                                          */
 /* ------------------------------------------------------------------ */
 
-/**
- * Zusatzbedingung für vertrauliche Traktanden.
- *
- * Die Sicherheitsregeln lassen Sekretäre nur Dokumente mit
- * `confidential == false` lesen – und prüfen das bei einer Abfrage für
- * jedes einzelne Ergebnis. Ohne diesen Filter würde die gesamte Abfrage
- * mit «permission denied» scheitern, statt bloss weniger zu liefern.
- */
-function useConfidentialFilter(): QueryConstraint[] {
-  const { isLeadership } = useAuth()
-  return useMemo(
-    () => (isLeadership ? [] : [where('confidential', '==', false)]),
-    [isLeadership],
-  )
-}
-
 /** Alle Traktanden einer bestimmten Sitzung. */
 export function useMeetingItems(meetingId: string | undefined) {
   const { isApproved } = useAuth()
-  const visibility = useConfidentialFilter()
   const constraints = useMemo(
-    () =>
-      meetingId ? [where('meetingId', '==', meetingId), ...visibility, orderBy('order')] : [],
-    [meetingId, visibility],
+    () => (meetingId ? [where('meetingId', '==', meetingId), orderBy('order')] : []),
+    [meetingId],
   )
   return useCollection<AgendaItem>(
     COLLECTIONS.agendaItems,
@@ -146,10 +133,9 @@ export function useMeetingItems(meetingId: string | undefined) {
  */
 export function useUnassignedItems() {
   const { isApproved } = useAuth()
-  const visibility = useConfidentialFilter()
   const constraints = useMemo(
-    () => [where('meetingId', '==', null), where('status', 'in', OPEN_STATUSES), ...visibility],
-    [visibility],
+    () => [where('meetingId', '==', null), where('status', 'in', OPEN_STATUSES)],
+    [],
   )
   return useCollection<AgendaItem>(COLLECTIONS.agendaItems, constraints, isApproved)
 }
@@ -157,21 +143,16 @@ export function useUnassignedItems() {
 /** Sämtliche offenen Traktanden – unabhängig von der Sitzungszuordnung. */
 export function useOpenItems() {
   const { isApproved } = useAuth()
-  const visibility = useConfidentialFilter()
-  const constraints = useMemo(
-    () => [where('status', 'in', OPEN_STATUSES), ...visibility],
-    [visibility],
-  )
+  const constraints = useMemo(() => [where('status', 'in', OPEN_STATUSES)], [])
   return useCollection<AgendaItem>(COLLECTIONS.agendaItems, constraints, isApproved)
 }
 
 /** Traktanden für die Archiv-/Suchansicht. */
 export function useAllItems(limitCount = 500) {
   const { isApproved } = useAuth()
-  const visibility = useConfidentialFilter()
   const constraints = useMemo(
-    () => [...visibility, orderBy('updatedAt', 'desc'), fbLimit(limitCount)],
-    [limitCount, visibility],
+    () => [orderBy('updatedAt', 'desc'), fbLimit(limitCount)],
+    [limitCount],
   )
   return useCollection<AgendaItem>(COLLECTIONS.agendaItems, constraints, isApproved)
 }
@@ -182,10 +163,7 @@ export function useAllItems(limitCount = 500) {
 
 export function useTalks(limitCount = 300) {
   const { isApproved } = useAuth()
-  const constraints = useMemo(
-    () => [orderBy('date', 'desc'), fbLimit(limitCount)],
-    [limitCount],
-  )
+  const constraints = useMemo(() => [orderBy('date', 'desc'), fbLimit(limitCount)], [limitCount])
   return useCollection<Talk>(COLLECTIONS.talks, constraints, isApproved)
 }
 
@@ -196,4 +174,63 @@ export function useCallings(limitCount = 300) {
     [limitCount],
   )
   return useCollection<Calling>(COLLECTIONS.callings, constraints, isApproved)
+}
+
+/* ------------------------------------------------------------------ */
+/* Abendmahlsversammlung                                               */
+/* ------------------------------------------------------------------ */
+
+/**
+ * Programm eines einzelnen Sonntags live beobachten.
+ *
+ * `dateKey` ist das Datum als «yyyy-MM-dd» und zugleich die Dokument-ID.
+ * Existiert noch kein Dokument, liefert der Hook `null` – die Seiten zeigen
+ * dann den leeren Zustand und legen beim ersten Speichern an.
+ */
+export function useSacramentMeeting(dateKey: string | undefined) {
+  const { isApproved } = useAuth()
+  const [meeting, setMeeting] = useState<SacramentMeeting | null>(null)
+  const [loading, setLoading] = useState(Boolean(dateKey))
+
+  useEffect(() => {
+    if (!dateKey || !isApproved) {
+      setMeeting(null)
+      setLoading(false)
+      return
+    }
+    return onSnapshot(
+      doc(db, COLLECTIONS.sacramentMeetings, dateKey),
+      (snapshot) => {
+        setMeeting(
+          snapshot.exists() ? ({ id: snapshot.id, ...snapshot.data() } as SacramentMeeting) : null,
+        )
+        setLoading(false)
+      },
+      (error) => {
+        console.error('[firestore] Abendmahlsversammlung:', error)
+        setLoading(false)
+      },
+    )
+  }, [dateKey, isApproved])
+
+  return { meeting, loading }
+}
+
+/** Die zuletzt bearbeiteten Programme – für Übersichten über mehrere Sonntage. */
+export function useSacramentMeetings(limitCount = 30) {
+  const { isApproved } = useAuth()
+  const constraints = useMemo(() => [orderBy('date', 'desc'), fbLimit(limitCount)], [limitCount])
+  return useCollection<SacramentMeeting>(COLLECTIONS.sacramentMeetings, constraints, isApproved)
+}
+
+/**
+ * Gehaltene und geplante Gebete.
+ *
+ * Die Voreinstellung deckt mehrere Jahre ab (zwei Gebete pro Sonntag) und
+ * reicht damit für die Frage «wann hat diese Person zuletzt gebetet?».
+ */
+export function usePrayers(limitCount = 400) {
+  const { isApproved } = useAuth()
+  const constraints = useMemo(() => [orderBy('date', 'desc'), fbLimit(limitCount)], [limitCount])
+  return useCollection<Prayer>(COLLECTIONS.prayers, constraints, isApproved)
 }

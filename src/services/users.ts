@@ -4,8 +4,11 @@ import { getInitials } from '@/lib/utils'
 import type { AppUser, Role } from '@/lib/types'
 
 /**
- * Schaltet ein wartendes Konto frei bzw. ändert die Rolle.
- * Nur Bischof und Ratgeber dürfen das – durchgesetzt in `firestore.rules`.
+ * Schaltet ein wartendes Konto frei bzw. ändert die Rolle – auch die eigene.
+ *
+ * Freigeschaltete Konten dürfen das, wartende nicht: Andernfalls könnte sich
+ * jedes neu registrierte Konto selbst Zugriff auf Personendaten geben.
+ * Durchgesetzt wird das in `firestore.rules`.
  */
 export async function setUserRole(userId: string, role: Role): Promise<void> {
   await updateDoc(doc(db, COLLECTIONS.users, userId), {

@@ -13,41 +13,7 @@
       "queryScope": "COLLECTION",
       "fields": [
         { "fieldPath": "meetingId", "order": "ASCENDING" },
-        { "fieldPath": "confidential", "order": "ASCENDING" },
-        { "fieldPath": "order", "order": "ASCENDING" }
-      ]
-    },
-    {
-      "collectionGroup": "agendaItems",
-      "queryScope": "COLLECTION",
-      "fields": [
-        { "fieldPath": "meetingId", "order": "ASCENDING" },
         { "fieldPath": "status", "order": "ASCENDING" }
-      ]
-    },
-    {
-      "collectionGroup": "agendaItems",
-      "queryScope": "COLLECTION",
-      "fields": [
-        { "fieldPath": "meetingId", "order": "ASCENDING" },
-        { "fieldPath": "status", "order": "ASCENDING" },
-        { "fieldPath": "confidential", "order": "ASCENDING" }
-      ]
-    },
-    {
-      "collectionGroup": "agendaItems",
-      "queryScope": "COLLECTION",
-      "fields": [
-        { "fieldPath": "status", "order": "ASCENDING" },
-        { "fieldPath": "confidential", "order": "ASCENDING" }
-      ]
-    },
-    {
-      "collectionGroup": "agendaItems",
-      "queryScope": "COLLECTION",
-      "fields": [
-        { "fieldPath": "confidential", "order": "ASCENDING" },
-        { "fieldPath": "updatedAt", "order": "DESCENDING" }
       ]
     },
     {
