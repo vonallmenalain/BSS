@@ -197,9 +197,14 @@ anderes Mitglied setzen.
 **Import (alle 3–4 Monate).** Ein vierstufiger Assistent, erreichbar über
 *Mitglieder → Import* – nicht prominent, aber auffindbar:
 
-1. **Datei** – `.xlsx` oder `.csv`, per Auswahl oder Drag-and-drop.
+1. **Quelle** – die aus dem LCR-Mitgliederverzeichnis kopierte Liste in ein
+   freies Textfeld einfügen, oder `.xlsx` bzw. `.csv` per Auswahl und
+   Drag-and-drop. Das Verzeichnis gibt es dort nur zum Ansehen, nicht zum
+   Herunterladen – deshalb ist Einfügen der übliche Weg. Der Parser trennt
+   die Einträge selbst auf und überspringt Navigation und Fusszeile.
 2. **Spalten** – die App rät die Zuordnung anhand der Überschriften
-   (deutsch und englisch) und lässt sie korrigieren.
+   (deutsch und englisch) und lässt sie korrigieren. Beim eingefügten Text
+   steht die Zuordnung bereits fest und ist nur noch zu bestätigen.
 3. **Prüfen** – eine Vorschau zeigt pro Zeile, ob neu angelegt oder
    aktualisiert wird, und warnt bei unsicheren Zuordnungen.
 4. **Schreiben** – in Blöcken, mit Fortschrittsanzeige.
@@ -341,7 +346,8 @@ immer dasselbe: Termin verstrichen.
 - Sitzungsmodus mit Notizen, Statuswechsel, Verschieben, Tastatursteuerung
 - Pendenzenübersicht mit Filtern (alle / meine / überfällig / ohne Sitzung)
 - Mitgliederliste mit Suche, Sortierung, Detailansicht, Notizen
-- Excel-/CSV-Import mit Spaltenzuordnung, Abgleich und Vorschau; CSV-Export
+- Import aus eingefügter Liste, Excel oder CSV mit Spaltenzuordnung, Abgleich
+  und Vorschau; CSV-Export
 - Ansprachen und Zeugnisse mit Vorschlagsliste, Verlauf und Zusatzplätzen
 - Abendmahlsversammlung: Leitung, Bekanntmachungen, Angelegenheiten, Musik,
   Gebet – mit Ablauf zum Ausdrucken

@@ -6,6 +6,7 @@ import Papa from 'papaparse'
 // Blätter, und mehrblättrige Mitgliederlisten kommen in der Praxis nicht vor.
 import { readSheet } from 'read-excel-file/browser'
 import { db, COLLECTIONS } from '@/lib/firebase'
+import { parseDirectoryDate } from '@/services/importPaste'
 import { normalize } from '@/lib/utils'
 import { requireOnline } from '@/lib/sync'
 import { buildSearchName } from '@/services/members'
@@ -171,7 +172,7 @@ export function guessMapping(headers: string[]): MemberField[] {
 
 /**
  * Erkennt die gängigen Datumsschreibweisen: «14.08.1985», «1985-08-14»,
- * «14/08/1985» sowie Excel-Seriennummern.
+ * «14/08/1985», «14 Aug 1985» sowie Excel-Seriennummern.
  */
 export function parseImportDate(value: string): Date | null {
   const text = value.trim()
@@ -202,6 +203,10 @@ export function parseImportDate(value: string): Date | null {
     )
     return Number.isNaN(date.getTime()) ? null : date
   }
+
+  // «13 Apr 1996» und Verwandte – deutsche Monatsnamen versteht `new Date()` nicht.
+  const named = parseDirectoryDate(text)
+  if (named) return named
 
   const fallback = new Date(text)
   return Number.isNaN(fallback.getTime()) ? null : fallback

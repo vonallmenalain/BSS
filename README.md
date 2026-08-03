@@ -17,7 +17,7 @@ Abendmahlsversammlung, Berufungsverwaltung und Mitgliederdaten.
 | **Pendenzen**               | Offenes über alle Sitzungen hinweg, gefiltert nach «meine», «überfällig», «ohne Sitzung»   |
 | **Abendmahlsversammlung**   | Ganzer Ablauf pro Sonntag: Leitung, Bekanntmachungen, Angelegenheiten, Ansprachen, Musik, Gebet |
 | **Berufungen**              | Vom Vorschlag bis zur Einsetzung, gruppiert nach Organisation                              |
-| **Mitglieder**              | Stammdaten, Notizen, Suche und Sortierung; Excel-/CSV-Import und -Export                   |
+| **Mitglieder**              | Stammdaten, Notizen, Suche und Sortierung; Import aus eingefügter Liste, Excel oder CSV, CSV-Export |
 
 Traktandum und Pendenz sind derselbe Datensatz: Was in einer Sitzung offen
 bleibt, erscheint automatisch wieder – ohne Umtragen.
@@ -268,9 +268,23 @@ wie bei den Ansprachen.
 
 **Mitglieder → Import**.
 
-Unterstützt werden `.xlsx` und `.csv`. Der Assistent führt durch vier
-Schritte: Datei wählen, Spalten zuordnen (wird geraten), Vorschau prüfen,
-importieren.
+Der Assistent führt durch vier Schritte: Quelle wählen, Spalten zuordnen
+(wird geraten), Vorschau prüfen, importieren. Als Quelle dienen wahlweise
+eine eingefügte Liste oder eine Datei.
+
+**Liste einfügen (der übliche Weg).** Das Mitgliederverzeichnis im LCR lässt
+sich nicht herunterladen – kopieren aber schon. Die Seite markieren
+(Strg bzw. Cmd + A), kopieren und ins Textfeld einfügen. Kopf- und Fusszeilen
+der Seite dürfen mitkommen, sie werden übersprungen. Gelesen werden Name,
+Geschlecht und Geburtsdatum aus der Kopfzeile jeder Person, danach Strasse,
+PLZ und Ort sowie Telefonnummer und E-Mail; Nummern mit Vorwahl 076–079
+landen unter «Mobile», alle übrigen unter «Telefon». Vermerke wie «nicht
+getauft» stehen als Spalte «Hinweis» bereit und lassen sich im
+Zuordnungsschritt der Notiz zuweisen. Unter dem Textfeld steht laufend, wie
+viele Personen erkannt wurden.
+
+**Datei.** Unterstützt werden `.xlsx` und `.csv`, per Auswahl oder
+Drag-and-drop. Die erste Zeile mit Inhalt gilt als Spaltenüberschrift.
 
 Beim wiederholten Import erkennt die App bestehende Personen – zuerst über die
 Mitglieds-Nummer, sonst über Name und Geburtsdatum, notfalls über den Namen

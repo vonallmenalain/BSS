@@ -5,6 +5,7 @@ import {
   ArrowLeft,
   ArrowRight,
   CheckCircle2,
+  ClipboardList,
   FileSpreadsheet,
   Loader2,
   Upload,
@@ -25,23 +26,34 @@ import {
   type MemberField,
   type ParsedSheet,
 } from '@/services/import'
+import { parsePastedDirectory, type PastedPerson } from '@/services/importPaste'
 
 type Step = 'upload' | 'mapping' | 'preview' | 'done'
+type Source = 'text' | 'file'
 
 const STEPS: { key: Step; label: string }[] = [
-  { key: 'upload', label: 'Datei' },
+  { key: 'upload', label: 'Quelle' },
   { key: 'mapping', label: 'Spalten' },
   { key: 'preview', label: 'Prüfen' },
   { key: 'done', label: 'Fertig' },
 ]
 
+const PASTE_EXAMPLE = `Muster, Hans Peter\tM\t42\t13 Apr 1984
+Musterweg 4
+3400 Burgdorf
+079 123 45 67\thans.muster@example.ch`
+
 /**
  * Import-Assistent für die Mitgliederliste.
  *
- * Vier Schritte, weil der Abgleich der heikle Teil ist: Datei einlesen,
+ * Vier Schritte, weil der Abgleich der heikle Teil ist: Quelle einlesen,
  * Spalten zuordnen, Vorschau prüfen, schreiben. Beim Wiederholungsimport
  * erkennt die Vorschau bestehende Datensätze und aktualisiert sie, statt
  * Dubletten anzulegen.
+ *
+ * Als Quelle dienen eine Datei oder – das ist der Normalfall – die aus dem
+ * LCR-Mitgliederverzeichnis kopierte Liste. Beide Wege münden in dieselbe
+ * Tabelle, ab Schritt 2 unterscheidet sich nichts mehr.
  */
 export function ImportMembers() {
   const { members } = useData()
@@ -50,7 +62,9 @@ export function ImportMembers() {
   const fileInput = useRef<HTMLInputElement>(null)
 
   const [step, setStep] = useState<Step>('upload')
-  const [fileName, setFileName] = useState('')
+  const [source, setSource] = useState<Source>('text')
+  const [pasted, setPasted] = useState('')
+  const [sourceLabel, setSourceLabel] = useState('')
   const [sheet, setSheet] = useState<ParsedSheet | null>(null)
   const [mapping, setMapping] = useState<MemberField[]>([])
   const [options, setOptions] = useState<ImportOptions>(DEFAULT_IMPORT_OPTIONS)
@@ -72,7 +86,7 @@ export function ImportMembers() {
           toast.error('In der Datei wurden keine Datenzeilen gefunden.')
           return
         }
-        setFileName(file.name)
+        setSourceLabel(file.name)
         setSheet(parsed)
         setMapping(guessMapping(parsed.headers))
         setStep('mapping')
@@ -85,6 +99,21 @@ export function ImportMembers() {
     },
     [toast],
   )
+
+  /**
+   * Der eingefügte Text wird bei jeder Änderung ausgewertet, damit direkt
+   * sichtbar ist, wie viele Personen erkannt wurden – noch bevor man den
+   * Assistenten weiterklickt.
+   */
+  const parsedPaste = useMemo(() => (pasted.trim() ? parsePastedDirectory(pasted) : null), [pasted])
+
+  const takePaste = () => {
+    if (!parsedPaste || parsedPaste.people.length === 0) return
+    setSourceLabel('Eingefügte Liste')
+    setSheet({ headers: parsedPaste.headers, rows: parsedPaste.rows })
+    setMapping(parsedPaste.mapping)
+    setStep('mapping')
+  }
 
   const preview: ImportPreview | null = useMemo(() => {
     if (!sheet || step === 'upload') return null
@@ -122,7 +151,7 @@ export function ImportMembers() {
     setSheet(null)
     setMapping([])
     setResult(null)
-    setFileName('')
+    setSourceLabel('')
   }
 
   return (
@@ -137,7 +166,7 @@ export function ImportMembers() {
 
       <PageHeader
         title="Mitglieder importieren"
-        subtitle="Excel- oder CSV-Datei einlesen und mit dem Bestand abgleichen"
+        subtitle="Liste einfügen oder Datei einlesen und mit dem Bestand abgleichen"
       />
 
       {/* Schrittanzeige */}
@@ -175,8 +204,99 @@ export function ImportMembers() {
         })}
       </ol>
 
-      {/* ---------- Schritt 1: Datei ---------- */}
+      {/* ---------- Schritt 1: Quelle ---------- */}
       {step === 'upload' && (
+        <div className="mb-4 inline-flex gap-1 rounded-lg bg-slate-100 p-1 dark:bg-slate-800">
+          {(
+            [
+              ['text', 'Liste einfügen', ClipboardList],
+              ['file', 'Datei', FileSpreadsheet],
+            ] as [Source, string, typeof ClipboardList][]
+          ).map(([key, label, Icon]) => (
+            <button
+              key={key}
+              type="button"
+              onClick={() => setSource(key)}
+              aria-pressed={source === key}
+              className={cn(
+                'inline-flex items-center gap-2 rounded-md px-3 py-1.5 text-sm font-medium transition',
+                source === key
+                  ? 'bg-white text-slate-900 shadow-xs dark:bg-slate-900 dark:text-slate-100'
+                  : 'text-slate-500 hover:text-slate-800 dark:text-slate-400 dark:hover:text-slate-200',
+              )}
+            >
+              <Icon className="size-4" aria-hidden />
+              {label}
+            </button>
+          ))}
+        </div>
+      )}
+
+      {/* ---------- Schritt 1a: Liste einfügen ---------- */}
+      {step === 'upload' && source === 'text' && (
+        <div className="card p-4 sm:p-6">
+          <h2 className="text-base font-semibold">Mitgliederverzeichnis einfügen</h2>
+          <p className="mt-1 max-w-2xl text-sm text-slate-500 dark:text-slate-400">
+            Im LCR das Mitgliederverzeichnis öffnen, die Seite markieren (Strg bzw. Cmd + A),
+            kopieren und hier einfügen. Kopf- und Fusszeilen der Seite dürfen mit dabei sein – sie
+            werden übersprungen.
+          </p>
+
+          <label htmlFor="paste" className="sr-only">
+            Eingefügte Mitgliederliste
+          </label>
+          <textarea
+            id="paste"
+            value={pasted}
+            onChange={(event) => setPasted(event.target.value)}
+            onKeyDown={(event) => {
+              // Strg/Cmd + Enter übernimmt, ohne zur Maus zu greifen.
+              if (event.key === 'Enter' && (event.metaKey || event.ctrlKey)) takePaste()
+            }}
+            spellCheck={false}
+            rows={14}
+            placeholder={`Hier einfügen. Erwartet wird der Aufbau des Verzeichnisses:\n\n${PASTE_EXAMPLE}`}
+            className="input mt-4 resize-y font-mono text-xs leading-relaxed whitespace-pre"
+          />
+
+          <div className="mt-3 flex flex-wrap items-center justify-between gap-3">
+            <PasteStatus people={parsedPaste?.people ?? []} hasText={Boolean(pasted.trim())} />
+
+            <div className="flex gap-2">
+              <button
+                type="button"
+                className="btn-ghost"
+                onClick={() => setPasted('')}
+                disabled={!pasted}
+              >
+                Leeren
+              </button>
+              <button
+                type="button"
+                className="btn-primary"
+                onClick={takePaste}
+                disabled={!parsedPaste || parsedPaste.people.length === 0}
+              >
+                Weiter zur Zuordnung
+                <ArrowRight className="size-4" aria-hidden />
+              </button>
+            </div>
+          </div>
+
+          <div className="mt-6 rounded-lg bg-slate-50 p-4 text-xs text-slate-500 dark:bg-slate-800/60 dark:text-slate-400">
+            <p className="mb-1 font-medium text-slate-700 dark:text-slate-200">Was gelesen wird</p>
+            <p>
+              Name, Geschlecht und Geburtsdatum aus der Kopfzeile, danach Strasse, PLZ und Ort sowie
+              Telefonnummer und E-Mail. Nummern mit Vorwahl 076–079 landen im Feld «Mobile», alle
+              übrigen unter «Telefon». Fehlende Angaben bleiben leer, Vermerke wie «nicht getauft»
+              stehen im Zuordnungsschritt als Spalte «Hinweis» bereit.
+            </p>
+          </div>
+        </div>
+      )}
+
+      {/* ---------- Schritt 1b: Datei ---------- */}
+      {step === 'upload' && source === 'file' && (
         <div
           onDragOver={(event) => {
             event.preventDefault()
@@ -228,17 +348,19 @@ export function ImportMembers() {
               event.target.value = ''
             }}
           />
+        </div>
+      )}
 
-          <div className="mt-8 max-w-lg rounded-lg bg-slate-50 p-4 text-left text-xs text-slate-500 dark:bg-slate-800/60 dark:text-slate-400">
-            <p className="mb-1 font-medium text-slate-700 dark:text-slate-200">
-              Was beim wiederholten Import passiert
-            </p>
-            <p>
-              Bestehende Personen werden erkannt (über Mitglieds-Nr., sonst über Name und
-              Geburtsdatum) und aktualisiert. Notizen, Status und das Datum der letzten Ansprache
-              bleiben dabei auf Wunsch unangetastet – so gehen gepflegte Angaben nicht verloren.
-            </p>
-          </div>
+      {step === 'upload' && (
+        <div className="mt-4 rounded-lg bg-slate-50 p-4 text-xs text-slate-500 dark:bg-slate-800/60 dark:text-slate-400">
+          <p className="mb-1 font-medium text-slate-700 dark:text-slate-200">
+            Was beim wiederholten Import passiert
+          </p>
+          <p>
+            Bestehende Personen werden erkannt (über Mitglieds-Nr., sonst über Name und
+            Geburtsdatum) und aktualisiert. Notizen, Status und das Datum der letzten Ansprache
+            bleiben dabei auf Wunsch unangetastet – so gehen gepflegte Angaben nicht verloren.
+          </p>
         </div>
       )}
 
@@ -247,7 +369,7 @@ export function ImportMembers() {
         <>
           <div className="card mb-4 p-4">
             <p className="text-sm">
-              <strong>{fileName}</strong> · {sheet.rows.length} Zeilen, {sheet.headers.length}{' '}
+              <strong>{sourceLabel}</strong> · {sheet.rows.length} Zeilen, {sheet.headers.length}{' '}
               Spalten
             </p>
             <p className="hint">
@@ -306,7 +428,7 @@ export function ImportMembers() {
 
           <div className="mt-4 flex flex-wrap justify-end gap-2">
             <button type="button" className="btn-secondary" onClick={reset}>
-              Andere Datei
+              Andere Quelle
             </button>
             <button
               type="button"
@@ -486,7 +608,7 @@ export function ImportMembers() {
           </p>
           <div className="mt-5 flex flex-wrap justify-center gap-2">
             <button type="button" className="btn-secondary" onClick={reset}>
-              Weitere Datei importieren
+              Weitere Liste importieren
             </button>
             <button type="button" className="btn-primary" onClick={() => navigate('/mitglieder')}>
               Zur Mitgliederliste
@@ -495,6 +617,43 @@ export function ImportMembers() {
         </div>
       )}
     </>
+  )
+}
+
+/**
+ * Rückmeldung direkt unter dem Textfeld: wie viele Personen erkannt wurden
+ * und – als Stichprobe – die erste und die letzte davon. Damit sieht man
+ * sofort, ob die Liste vollständig kopiert wurde.
+ */
+function PasteStatus({ people, hasText }: { people: PastedPerson[]; hasText: boolean }) {
+  if (!hasText) {
+    return <p className="hint mt-0">Noch nichts eingefügt.</p>
+  }
+
+  if (people.length === 0) {
+    return (
+      <p className="flex items-start gap-2 text-sm text-amber-700 dark:text-amber-400">
+        <AlertTriangle className="mt-0.5 size-4 shrink-0" aria-hidden />
+        <span>
+          Keine Person erkannt. Erwartet wird pro Person eine Zeile mit Name, Geschlecht, Alter und
+          Geburtsdatum.
+        </span>
+      </p>
+    )
+  }
+
+  const first = people[0]
+  const last = people[people.length - 1]
+
+  return (
+    <p className="text-sm text-emerald-700 dark:text-emerald-400">
+      <span className="font-medium">
+        {people.length} {people.length === 1 ? 'Person' : 'Personen'} erkannt
+      </span>
+      <span className="block text-xs text-slate-500 dark:text-slate-400">
+        {first.fullName} … {last.fullName}
+      </span>
+    </p>
   )
 }
 
