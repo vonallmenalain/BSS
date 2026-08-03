@@ -1,6 +1,6 @@
 import { createContext, useCallback, useContext, useMemo, type ReactNode } from 'react'
 import { NavLink, Outlet, useSearchParams } from 'react-router-dom'
-import { ChevronLeft, ChevronRight } from 'lucide-react'
+import { ChevronLeft, ChevronRight, TriangleAlert } from 'lucide-react'
 import { useData } from '@/contexts/DataContext'
 import { useSacramentMeeting } from '@/hooks/useFirestore'
 import { useLocalStorage } from '@/hooks/useLocalStorage'
@@ -208,6 +208,29 @@ function SundayPicker({
 }
 
 /* ------------------------------------------------------------------ */
+
+/**
+ * Hinweis, dass jemand anders denselben Sonntag geändert hat, während hier
+ * noch getippt wurde.
+ *
+ * Firestore entscheidet solche Fälle nach «wer zuletzt schreibt, gewinnt».
+ * Bei ganzen Listen verschwänden die fremden Einträge dabei stillschweigend –
+ * deshalb wird gefragt, statt einfach zu überschreiben.
+ */
+export function ConflictNotice({ onDiscard }: { onDiscard: () => void }) {
+  return (
+    <div className="no-print mb-3 flex flex-wrap items-center gap-3 rounded-xl border border-amber-200 bg-amber-50 p-3 text-sm dark:border-amber-800 dark:bg-amber-950">
+      <TriangleAlert className="size-4 shrink-0 text-amber-600 dark:text-amber-400" aria-hidden />
+      <p className="min-w-48 flex-1 text-amber-900 dark:text-amber-100">
+        Jemand hat diesen Sonntag inzwischen geändert. Wenn du jetzt speicherst, ersetzt deine
+        Fassung die andere.
+      </p>
+      <button type="button" className="btn-secondary btn-sm" onClick={onDiscard}>
+        Meine Änderungen verwerfen
+      </button>
+    </div>
+  )
+}
 
 /** Überschrift einer Unterseite – hält die Bereiche optisch beieinander. */
 export function SectionHeader({

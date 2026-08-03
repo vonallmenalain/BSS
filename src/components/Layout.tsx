@@ -5,6 +5,7 @@ import {
   CalendarDays,
   ListTodo,
   Church,
+  CloudUpload,
   Users,
   Award,
   Settings,
@@ -24,6 +25,7 @@ import { useData } from '@/contexts/DataContext'
 import { useOnlineStatus, useTheme } from '@/hooks/useLocalStorage'
 import { useNow } from '@/hooks/useNow'
 import { useOpenItems } from '@/hooks/useFirestore'
+import { usePendingWrites } from '@/hooks/useSync'
 import { Avatar } from '@/components/ui/Avatar'
 import { ROLE_LABELS } from '@/lib/types'
 import { UpdatePrompt } from '@/components/UpdatePrompt'
@@ -59,6 +61,7 @@ export function Layout() {
   const { settings } = useData()
   const { data: openItems } = useOpenItems()
   const online = useOnlineStatus()
+  const unsent = usePendingWrites()
   const now = useNow()
   const [theme, setTheme] = useTheme()
   const [menuOpen, setMenuOpen] = useState(false)
@@ -142,10 +145,23 @@ export function Layout() {
           {!online && (
             <span
               className="badge bg-amber-100 text-amber-800 dark:bg-amber-950 dark:text-amber-200"
-              title="Änderungen werden gespeichert und später synchronisiert."
+              title="Änderungen werden gespeichert und später übertragen."
             >
               <WifiOff className="size-3.5" aria-hidden />
               <span className="hidden sm:inline">Offline</span>
+            </span>
+          )}
+
+          {/* Zeigt, dass noch etwas unterwegs ist – auch wenn die Verbindung
+              inzwischen wieder steht. Erst wenn das weg ist, ist alles beim Server. */}
+          {unsent > 0 && (
+            <span
+              className="badge bg-sky-100 text-sky-800 dark:bg-sky-950 dark:text-sky-200"
+              title={`${unsent} Änderung${unsent === 1 ? '' : 'en'} lokal gespeichert, Übertragung läuft.`}
+            >
+              <CloudUpload className="size-3.5 animate-pulse" aria-hidden />
+              <span className="tabular hidden sm:inline">{unsent} unterwegs</span>
+              <span className="tabular sm:hidden">{unsent}</span>
             </span>
           )}
 

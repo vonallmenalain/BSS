@@ -512,14 +512,14 @@ function LeadershipForm({
   const save = async () => {
     setSaving(true)
     try {
-      await saveSacramentMeeting(date, {
+      const outcome = await saveSacramentMeeting(date, {
         kind,
         presidingId: presidingId || null,
         conductingId: conductingId || null,
         visitors: visitors.trim(),
         notes: notes.trim(),
       })
-      toast.success('Angaben zur Leitung gespeichert.')
+      toast.saved('Angaben zur Leitung gespeichert.', outcome)
       onDone()
     } catch (error) {
       console.error(error)

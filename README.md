@@ -350,12 +350,62 @@ docs/KONZEPT.md          Fachliches Konzept
 ## PWA
 
 Die App ist installierbar (Browser-Menü → «Zum Startbildschirm hinzufügen»)
-und läuft offline. Firestore hält eine lokale Kopie der Daten vor; Änderungen
-ohne Netz werden gepuffert und später synchronisiert.
+und läuft offline. Firestore hält eine lokale Kopie der Daten vor.
 
 Neue Versionen werden nicht ungefragt geladen – stattdessen erscheint ein
 Hinweis mit einer Schaltfläche. So startet die App nicht mitten in der Sitzung
 neu und verliert Eingaben.
+
+---
+
+## Offline speichern
+
+**Speichern funktioniert ohne Netz genauso.** Eine Änderung landet sofort in
+der lokalen Datenbank des Geräts und wird von dort übertragen, sobald wieder
+Verbindung besteht – auch über einen Neustart der App oder des Telefons
+hinweg. Firestore behält die Reihenfolge bei.
+
+Die Rückmeldung sagt, woran man ist:
+
+| Anzeige | Bedeutung |
+| --- | --- |
+| «Gespeichert.» | Der Server hat bestätigt. |
+| «… Wird übertragen, sobald wieder Verbindung besteht.» | Lokal gespeichert, Übertragung steht aus. |
+| Wolken-Symbol in der Kopfzeile mit Zahl | So viele Änderungen sind noch unterwegs. Verschwindet es, ist alles beim Server. |
+
+Technisch löst sich das Versprechen eines Firestore-Schreibvorgangs erst auf,
+wenn der Server bestätigt hat – ohne Netz also nie. Deshalb geht jeder
+Schreibzugriff durch `commit()` in [`src/lib/sync.ts`](src/lib/sync.ts): Es
+wartet höchstens zwei Sekunden auf die Bestätigung und meldet sonst
+«zwischengespeichert». Scheitert die Übertragung später doch – etwa weil die
+Zugriffsregeln sie ablehnen –, erscheint eine Fehlermeldung, statt dass der
+Fehler verschwindet.
+
+**Zwei Ausnahmen brauchen eine Verbindung:** der Mitglieder- und der
+Liederimport. Beide schreiben Hunderte Dokumente auf einmal; die gehören nicht
+in eine Warteschlange, deren Fortschritt sich nicht ehrlich anzeigen lässt.
+Ohne Netz sagt die App das und bricht ab, statt halb zu beginnen.
+
+### Wenn zwei Personen dasselbe ändern
+
+Firestore kennt keine Versionskonflikte: Es gewinnt, wer zuletzt schreibt.
+Das ist meistens unproblematisch, weil nur die tatsächlich geänderten Felder
+übertragen werden.
+
+- **Verschiedene Felder, gleiches Dokument** – beide Änderungen bleiben
+  erhalten. Wer die Anwesenden einträgt, überschreibt keine Notiz.
+- **Dasselbe Feld** – die zuletzt eintreffende Fassung gilt. Es gibt keine
+  Rückfrage und keinen Fehler.
+- **Ganze Listen** (Bekanntmachungen, Angelegenheiten, Musik) sind der heikle
+  Fall: Sie werden als Ganzes gespeichert. Ohne Schutz verschwänden fremde
+  Einträge stillschweigend.
+
+Deshalb merkt sich jede dieser Seiten, auf welchem Stand der Entwurf aufsetzt.
+Ändert jemand denselben Sonntag, während hier noch getippt wird, erscheint ein
+Hinweis, die Schaltfläche heisst «Trotzdem speichern», und ein Klick verwirft
+die eigenen Änderungen zugunsten der fremden Fassung. Solange nichts bearbeitet
+wird, zeigen die Seiten ohnehin live, was in Firestore steht – fremde
+Änderungen erscheinen dort sofort.
 
 Icons ändern:
 

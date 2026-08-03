@@ -1,6 +1,7 @@
-import { collection, doc, getDocs, serverTimestamp, writeBatch } from 'firebase/firestore'
+import { collection, doc, getDocs, serverTimestamp, setDoc, writeBatch } from 'firebase/firestore'
 import { db, COLLECTIONS } from '@/lib/firebase'
 import { normalize } from '@/lib/utils'
+import { commit, requireOnline, type SaveOutcome } from '@/lib/sync'
 import type { Hymn, HymnChoice } from '@/lib/types'
 import type { ParsedSheet } from '@/services/import'
 
@@ -12,14 +13,14 @@ import type { ParsedSheet } from '@/services/import'
  * Legt ein Lied an oder korrigiert es. Die Dokument-ID ist die Nummer,
  * damit dieselbe Nummer nie zweimal in der Liste steht.
  */
-export async function saveHymn(number: number, title: string): Promise<void> {
-  const batch = writeBatch(db)
-  batch.set(
-    doc(db, COLLECTIONS.hymns, String(number)),
-    { number, title: title.trim(), updatedAt: serverTimestamp() },
-    { merge: true },
+export async function saveHymn(number: number, title: string): Promise<SaveOutcome> {
+  return commit(
+    setDoc(
+      doc(db, COLLECTIONS.hymns, String(number)),
+      { number, title: title.trim(), updatedAt: serverTimestamp() },
+      { merge: true },
+    ),
   )
-  await batch.commit()
 }
 
 /* ------------------------------------------------------------------ */
@@ -110,6 +111,8 @@ export async function importHymns(
   rows: HymnRow[],
   onProgress?: (done: number, total: number) => void,
 ): Promise<number> {
+  // Hunderte Lieder gehören nicht in die Offline-Warteschlange – siehe requireOnline().
+  requireOnline()
   for (let offset = 0; offset < rows.length; offset += 400) {
     const chunk = rows.slice(offset, offset + 400)
     const batch = writeBatch(db)
@@ -128,6 +131,7 @@ export async function importHymns(
 
 /** Entfernt die gesamte Liederliste – für einen sauberen Neuimport. */
 export async function clearHymns(): Promise<number> {
+  requireOnline()
   const snapshot = await getDocs(collection(db, COLLECTIONS.hymns))
   const ids = snapshot.docs.map((d) => d.id)
   for (let offset = 0; offset < ids.length; offset += 400) {

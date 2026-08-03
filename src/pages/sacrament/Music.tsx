@@ -4,11 +4,12 @@ import { useData } from '@/contexts/DataContext'
 import { useToast } from '@/contexts/ToastContext'
 import { MemberPicker } from '@/components/ui/Pickers'
 import { HymnField } from '@/components/sacrament/HymnField'
-import { SectionHeader, useSacrament } from '@/components/sacrament/SacramentLayout'
+import { ConflictNotice, SectionHeader, useSacrament } from '@/components/sacrament/SacramentLayout'
+import { useDraft } from '@/components/sacrament/useDraft'
 import { newMusicalNumber, replaceInList, saveSacramentMeeting } from '@/services/sacrament'
 import { HYMN_SLOT_LABELS, type HymnChoice, type HymnSlot, type MusicalNumber } from '@/lib/types'
 
-interface Draft {
+interface MusicDraft {
   hymns: Partial<Record<HymnSlot, HymnChoice>>
   numbers: MusicalNumber[]
 }
@@ -26,16 +27,13 @@ export function Music() {
   const { hymns } = useData()
   const toast = useToast()
 
-  // Entwurfsmuster wie in den übrigen Bereichen: ohne Bearbeitung folgt die
-  // Anzeige direkt Firestore, danach übernimmt der Entwurf bis zum Speichern.
-  const [draft, setDraft] = useState<Draft | null>(null)
-  const [saving, setSaving] = useState(false)
-
-  const current: Draft = draft ?? {
+  const draft = useDraft<MusicDraft>({
     hymns: meeting?.hymns ?? {},
     numbers: meeting?.musicalNumbers ?? [],
-  }
-  const dirty = draft !== null
+  })
+  const [saving, setSaving] = useState(false)
+
+  const current = draft.value
 
   const setHymn = (slot: HymnSlot, choice: HymnChoice | undefined) => {
     const hymnChoices = { ...current.hymns }
@@ -43,10 +41,10 @@ export function Music() {
     // aus dem Objekt entfernt statt auf `undefined` gesetzt.
     if (choice) hymnChoices[slot] = choice
     else delete hymnChoices[slot]
-    setDraft({ ...current, hymns: hymnChoices })
+    draft.set({ ...current, hymns: hymnChoices })
   }
 
-  const changeNumbers = (next: MusicalNumber[]) => setDraft({ ...current, numbers: next })
+  const changeNumbers = (next: MusicalNumber[]) => draft.set({ ...current, numbers: next })
 
   const save = async () => {
     setSaving(true)
@@ -54,12 +52,12 @@ export function Music() {
       const cleanedNumbers = current.numbers.filter(
         (entry) => entry.title.trim() || entry.memberIds.length > 0 || entry.performers?.trim(),
       )
-      await saveSacramentMeeting(date, {
+      const outcome = await saveSacramentMeeting(date, {
         hymns: current.hymns,
         musicalNumbers: cleanedNumbers,
       })
-      setDraft(null)
-      toast.success('Musik gespeichert.')
+      draft.reset()
+      toast.saved('Musik gespeichert.', outcome)
     } catch (error) {
       console.error(error)
       toast.error('Speichern fehlgeschlagen.')
@@ -82,12 +80,14 @@ export function Music() {
             type="button"
             className="btn-primary"
             onClick={() => void save()}
-            disabled={!dirty || saving}
+            disabled={!draft.dirty || saving}
           >
-            {saving ? 'Wird gespeichert …' : 'Speichern'}
+            {saving ? 'Wird gespeichert …' : draft.conflict ? 'Trotzdem speichern' : 'Speichern'}
           </button>
         }
       />
+
+      {draft.conflict && <ConflictNotice onDiscard={draft.reset} />}
 
       <section className="card mb-4 space-y-3 p-4">
         <h3 className="text-sm font-semibold">Gemeindelieder</h3>
@@ -182,7 +182,7 @@ export function Music() {
         )}
       </section>
 
-      {dirty && (
+      {draft.dirty && (
         <p className="mt-3 text-center text-xs text-amber-700 dark:text-amber-400">
           Ungespeicherte Änderungen
         </p>

@@ -58,8 +58,8 @@ export function AgendaItemCard({
   const changeStatus = async (status: ItemStatus) => {
     if (!actor) return
     try {
-      await setItemStatus(item.id, status, actor)
-      if (status === 'done') toast.success('Als erledigt markiert.')
+      const outcome = await setItemStatus(item.id, status, actor)
+      if (status === 'done') toast.saved('Als erledigt markiert.', outcome)
     } catch (error) {
       console.error(error)
       toast.error('Status konnte nicht geändert werden.')
@@ -138,9 +138,7 @@ export function AgendaItemCard({
             {item.status !== 'open' && <StatusBadge status={item.status} />}
             <PriorityBadge priority={item.priority} />
             {!compact && <CategoryBadge category={item.category} />}
-            {due && !isDone && (
-              <DueBadge label={due.label} overdue={due.overdue} soon={due.soon} />
-            )}
+            {due && !isDone && <DueBadge label={due.label} overdue={due.overdue} soon={due.soon} />}
             {item.deferCount > 0 && !isDone && (
               <span
                 className="badge bg-slate-100 text-slate-500 dark:bg-slate-800 dark:text-slate-400"
@@ -189,7 +187,11 @@ export function AgendaItemCard({
 
             {menuOpen && (
               <>
-                <div className="fixed inset-0 z-10" onClick={() => setMenuOpen(false)} aria-hidden />
+                <div
+                  className="fixed inset-0 z-10"
+                  onClick={() => setMenuOpen(false)}
+                  aria-hidden
+                />
                 <div className="animate-scale-in absolute right-0 z-20 mt-1 w-52 origin-top-right rounded-xl border border-slate-200 bg-white p-1 shadow-lg dark:border-slate-700 dark:bg-slate-800">
                   {onEdit && (
                     <MenuButton
@@ -263,8 +265,8 @@ export function AgendaItemCard({
         title="Traktandum löschen?"
         message={
           <>
-            «{item.title}» wird endgültig gelöscht – samt Notizen und Verlauf.
-            Möchtest du es stattdessen nur verwerfen, bleibt es im Archiv erhalten.
+            «{item.title}» wird endgültig gelöscht – samt Notizen und Verlauf. Möchtest du es
+            stattdessen nur verwerfen, bleibt es im Archiv erhalten.
           </>
         }
         confirmLabel="Endgültig löschen"

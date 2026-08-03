@@ -2,7 +2,8 @@ import { useState } from 'react'
 import { ChevronDown, ChevronUp, Megaphone, Plus, Trash2 } from 'lucide-react'
 import { useToast } from '@/contexts/ToastContext'
 import { EmptyState } from '@/components/ui/Feedback'
-import { SectionHeader, useSacrament } from '@/components/sacrament/SacramentLayout'
+import { ConflictNotice, SectionHeader, useSacrament } from '@/components/sacrament/SacramentLayout'
+import { useDraft } from '@/components/sacrament/useDraft'
 import {
   moveInList,
   newAnnouncement,
@@ -22,28 +23,20 @@ export function Announcements() {
   const { date, meeting } = useSacrament()
   const toast = useToast()
 
-  /**
-   * Solange nichts bearbeitet wurde, ist `draft` leer und die Anzeige folgt
-   * direkt Firestore – Änderungen von einem anderen Gerät erscheinen also
-   * sofort. Sobald hier getippt wird, übernimmt der Entwurf, bis gespeichert
-   * ist. Der Sonntagswechsel setzt die Seite ohnehin zurück (siehe Outlet-Key).
-   */
-  const [draft, setDraft] = useState<AnnouncementEntry[] | null>(null)
+  const draft = useDraft<AnnouncementEntry[]>(meeting?.announcements ?? [])
   const [saving, setSaving] = useState(false)
 
-  const entries = draft ?? meeting?.announcements ?? []
-  const dirty = draft !== null
-
-  const change = (next: AnnouncementEntry[]) => setDraft(next)
+  const entries = draft.value
+  const change = draft.set
 
   const save = async () => {
     setSaving(true)
     try {
       // Leere Einträge fallen beim Speichern weg – so bleibt die Liste sauber.
       const cleaned = entries.filter((entry) => entry.text.trim())
-      await saveSacramentMeeting(date, { announcements: cleaned })
-      setDraft(null)
-      toast.success('Bekanntmachungen gespeichert.')
+      const outcome = await saveSacramentMeeting(date, { announcements: cleaned })
+      draft.reset()
+      toast.saved('Bekanntmachungen gespeichert.', outcome)
     } catch (error) {
       console.error(error)
       toast.error('Speichern fehlgeschlagen.')
@@ -75,13 +68,15 @@ export function Announcements() {
               type="button"
               className="btn-primary"
               onClick={() => void save()}
-              disabled={!dirty || saving}
+              disabled={!draft.dirty || saving}
             >
-              {saving ? 'Wird gespeichert …' : 'Speichern'}
+              {saving ? 'Wird gespeichert …' : draft.conflict ? 'Trotzdem speichern' : 'Speichern'}
             </button>
           </>
         }
       />
+
+      {draft.conflict && <ConflictNotice onDiscard={draft.reset} />}
 
       {entries.length === 0 ? (
         <div className="card">
@@ -165,7 +160,7 @@ export function Announcements() {
         </ul>
       )}
 
-      {dirty && (
+      {draft.dirty && (
         <p className="mt-3 text-center text-xs text-amber-700 dark:text-amber-400">
           Ungespeicherte Änderungen
         </p>

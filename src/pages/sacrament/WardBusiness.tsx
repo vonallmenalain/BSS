@@ -5,7 +5,8 @@ import { useToast } from '@/contexts/ToastContext'
 import { useCallings } from '@/hooks/useFirestore'
 import { EmptyState } from '@/components/ui/Feedback'
 import { MemberPicker } from '@/components/ui/Pickers'
-import { SectionHeader, useSacrament } from '@/components/sacrament/SacramentLayout'
+import { ConflictNotice, SectionHeader, useSacrament } from '@/components/sacrament/SacramentLayout'
+import { useDraft } from '@/components/sacrament/useDraft'
 import {
   moveInList,
   newBusinessEntry,
@@ -32,15 +33,11 @@ export function WardBusiness() {
   const { data: callings } = useCallings(300)
   const toast = useToast()
 
-  // Entwurfsmuster wie bei den Bekanntmachungen: ohne Bearbeitung folgt die
-  // Anzeige direkt Firestore, danach übernimmt der Entwurf bis zum Speichern.
-  const [draft, setDraft] = useState<BusinessEntry[] | null>(null)
+  const draft = useDraft<BusinessEntry[]>(meeting?.business ?? [])
   const [saving, setSaving] = useState(false)
 
-  const entries = draft ?? meeting?.business ?? []
-  const dirty = draft !== null
-
-  const change = (next: BusinessEntry[]) => setDraft(next)
+  const entries = draft.value
+  const change = draft.set
 
   /* Berufungen, die noch bestätigt bzw. entlassen werden müssen. */
   const openCallings = useMemo(() => {
@@ -59,9 +56,9 @@ export function WardBusiness() {
     setSaving(true)
     try {
       const cleaned = entries.filter((entry) => entry.text.trim() || entry.memberIds.length > 0)
-      await saveSacramentMeeting(date, { business: cleaned })
-      setDraft(null)
-      toast.success('Angelegenheiten gespeichert.')
+      const outcome = await saveSacramentMeeting(date, { business: cleaned })
+      draft.reset()
+      toast.saved('Angelegenheiten gespeichert.', outcome)
     } catch (error) {
       console.error(error)
       toast.error('Speichern fehlgeschlagen.')
@@ -89,13 +86,15 @@ export function WardBusiness() {
               type="button"
               className="btn-primary"
               onClick={() => void save()}
-              disabled={!dirty || saving}
+              disabled={!draft.dirty || saving}
             >
-              {saving ? 'Wird gespeichert …' : 'Speichern'}
+              {saving ? 'Wird gespeichert …' : draft.conflict ? 'Trotzdem speichern' : 'Speichern'}
             </button>
           </>
         }
       />
+
+      {draft.conflict && <ConflictNotice onDiscard={draft.reset} />}
 
       {openCallings.length > 0 && (
         <section className="card mb-3 p-4">
@@ -240,7 +239,7 @@ export function WardBusiness() {
         </ul>
       )}
 
-      {dirty && (
+      {draft.dirty && (
         <p className="mt-3 text-center text-xs text-amber-700 dark:text-amber-400">
           Ungespeicherte Änderungen
         </p>

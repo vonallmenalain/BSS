@@ -1,5 +1,4 @@
 import {
-  addDoc,
   collection,
   deleteDoc,
   doc,
@@ -9,6 +8,7 @@ import {
   orderBy,
   query,
   serverTimestamp,
+  setDoc,
   updateDoc,
   where,
   Timestamp,
@@ -16,6 +16,7 @@ import {
 import { db, COLLECTIONS } from '@/lib/firebase'
 import { monthsSince, toDate } from '@/lib/dates'
 import { stripUndefined } from '@/lib/utils'
+import { commit, type SaveOutcome } from '@/lib/sync'
 import {
   ACTIVE_TALK_STATUSES,
   type Member,
@@ -40,34 +41,40 @@ export interface TalkInput {
   notes?: string
 }
 
-export async function createTalk(input: TalkInput): Promise<string> {
-  const docRef = await addDoc(talksRef, {
-    ...stripUndefined({
-      topic: input.topic?.trim(),
-      notes: input.notes?.trim(),
-      durationMinutes: input.durationMinutes,
+export async function createTalk(input: TalkInput): Promise<{ id: string; outcome: SaveOutcome }> {
+  // Die ID entsteht im Client, damit sie auch ohne Netz sofort feststeht.
+  const docRef = doc(talksRef)
+  const outcome = await commit(
+    setDoc(docRef, {
+      ...stripUndefined({
+        topic: input.topic?.trim(),
+        notes: input.notes?.trim(),
+        durationMinutes: input.durationMinutes,
+      }),
+      memberId: input.memberId,
+      memberName: input.memberName,
+      date: Timestamp.fromDate(input.date),
+      slot: input.slot,
+      kind: input.kind ?? 'talk',
+      status: input.status ?? 'planned',
+      askedById: input.askedById ?? null,
+      askedAt: input.status === 'asked' ? serverTimestamp() : null,
+      createdAt: serverTimestamp(),
+      updatedAt: serverTimestamp(),
     }),
-    memberId: input.memberId,
-    memberName: input.memberName,
-    date: Timestamp.fromDate(input.date),
-    slot: input.slot,
-    kind: input.kind ?? 'talk',
-    status: input.status ?? 'planned',
-    askedById: input.askedById ?? null,
-    askedAt: input.status === 'asked' ? serverTimestamp() : null,
-    createdAt: serverTimestamp(),
-    updatedAt: serverTimestamp(),
-  })
-  return docRef.id
+  )
+  return { id: docRef.id, outcome }
 }
 
 export async function updateTalk(
   id: string,
   patch: Partial<Omit<Talk, 'id' | 'date'>> & { date?: Date },
-): Promise<void> {
+): Promise<SaveOutcome> {
   const data: Record<string, unknown> = stripUndefined(patch as Record<string, unknown>)
   if (patch.date) data.date = Timestamp.fromDate(patch.date)
-  await updateDoc(doc(db, COLLECTIONS.talks, id), { ...data, updatedAt: serverTimestamp() })
+  return commit(
+    updateDoc(doc(db, COLLECTIONS.talks, id), { ...data, updatedAt: serverTimestamp() }),
+  )
 }
 
 /**
@@ -78,26 +85,28 @@ export async function updateTalk(
  * Der Zähler wird nur bei einem echten Statuswechsel verändert, damit
  * mehrfaches Klicken die Zahl nicht verfälscht.
  */
-export async function setTalkStatus(id: string, status: TalkStatus): Promise<void> {
+export async function setTalkStatus(id: string, status: TalkStatus): Promise<SaveOutcome | null> {
   const ref = doc(db, COLLECTIONS.talks, id)
   const snapshot = await getDoc(ref)
-  if (!snapshot.exists()) return
+  if (!snapshot.exists()) return null
 
   const talk = { id: snapshot.id, ...snapshot.data() } as Talk
   const wasHeld = talk.status === 'held'
   const isHeld = status === 'held'
 
-  await updateDoc(ref, {
-    status,
-    askedAt: status === 'asked' && !talk.askedAt ? serverTimestamp() : (talk.askedAt ?? null),
-    updatedAt: serverTimestamp(),
-  })
+  const outcome = await commit(
+    updateDoc(ref, {
+      status,
+      askedAt: status === 'asked' && !talk.askedAt ? serverTimestamp() : (talk.askedAt ?? null),
+      updatedAt: serverTimestamp(),
+    }),
+  )
 
-  if (isHeld === wasHeld) return
+  if (isHeld === wasHeld) return outcome
 
   const memberRef = doc(db, COLLECTIONS.members, talk.memberId)
   const memberSnapshot = await getDoc(memberRef)
-  if (!memberSnapshot.exists()) return
+  if (!memberSnapshot.exists()) return outcome
 
   if (isHeld) {
     const member = memberSnapshot.data() as Member
@@ -106,20 +115,23 @@ export async function setTalkStatus(id: string, status: TalkStatus): Promise<voi
     // Nur nach vorne korrigieren: ein nachgetragener alter Termin darf
     // ein neueres Datum nicht überschreiben.
     const shouldUpdate = talkDate && (!existing || talkDate > existing)
-    await updateDoc(memberRef, {
-      ...(shouldUpdate ? { lastTalkDate: Timestamp.fromDate(talkDate) } : {}),
-      talkCount: increment(1),
-      updatedAt: serverTimestamp(),
-    })
+    await commit(
+      updateDoc(memberRef, {
+        ...(shouldUpdate ? { lastTalkDate: Timestamp.fromDate(talkDate) } : {}),
+        talkCount: increment(1),
+        updatedAt: serverTimestamp(),
+      }),
+    )
   } else {
     // Zurückgenommen: Zähler korrigieren und letztes Datum neu bestimmen.
-    await updateDoc(memberRef, { talkCount: increment(-1), updatedAt: serverTimestamp() })
+    await commit(updateDoc(memberRef, { talkCount: increment(-1), updatedAt: serverTimestamp() }))
     await recalculateLastTalk(talk.memberId)
   }
+  return outcome
 }
 
 /** Ermittelt `lastTalkDate` neu aus den tatsächlich gehaltenen Ansprachen. */
-export async function recalculateLastTalk(memberId: string): Promise<void> {
+export async function recalculateLastTalk(memberId: string): Promise<SaveOutcome> {
   const snapshot = await getDocs(
     query(talksRef, where('memberId', '==', memberId), where('status', '==', 'held')),
   )
@@ -128,20 +140,23 @@ export async function recalculateLastTalk(memberId: string): Promise<void> {
     const date = toDate((d.data() as Talk).date)
     if (date && (!latest || date > latest)) latest = date
   })
-  await updateDoc(doc(db, COLLECTIONS.members, memberId), {
-    lastTalkDate: latest ? Timestamp.fromDate(latest) : null,
-    talkCount: snapshot.size,
-    updatedAt: serverTimestamp(),
-  })
+  return commit(
+    updateDoc(doc(db, COLLECTIONS.members, memberId), {
+      lastTalkDate: latest ? Timestamp.fromDate(latest) : null,
+      talkCount: snapshot.size,
+      updatedAt: serverTimestamp(),
+    }),
+  )
 }
 
-export async function deleteTalk(id: string): Promise<void> {
+export async function deleteTalk(id: string): Promise<SaveOutcome> {
   const ref = doc(db, COLLECTIONS.talks, id)
   const snapshot = await getDoc(ref)
   const talk = snapshot.exists() ? ({ id: snapshot.id, ...snapshot.data() } as Talk) : null
-  await deleteDoc(ref)
+  const outcome = await commit(deleteDoc(ref))
   // War die Ansprache bereits gehalten, muss die Mitgliederstatistik nachgeführt werden.
   if (talk?.status === 'held') await recalculateLastTalk(talk.memberId)
+  return outcome
 }
 
 /* ------------------------------------------------------------------ */

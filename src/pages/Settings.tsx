@@ -50,8 +50,8 @@ export function Settings() {
   const save = async () => {
     setSaving(true)
     try {
-      await saveSettings(form)
-      toast.success('Einstellungen gespeichert.')
+      const outcome = await saveSettings(form)
+      toast.saved('Einstellungen gespeichert.', outcome)
     } catch (error) {
       console.error(error)
       toast.error('Speichern fehlgeschlagen.')
@@ -63,8 +63,8 @@ export function Settings() {
   const saveProfile = async () => {
     if (!profile || !displayName.trim()) return
     try {
-      await updateUserProfile(profile.id, { displayName: displayName.trim() })
-      toast.success('Profil aktualisiert.')
+      const outcome = await updateUserProfile(profile.id, { displayName: displayName.trim() })
+      toast.saved('Profil aktualisiert.', outcome)
     } catch (error) {
       console.error(error)
       toast.error('Speichern fehlgeschlagen.')
@@ -81,8 +81,8 @@ export function Settings() {
   const changeOwnRole = async (role: Role) => {
     if (!profile || role === profile.role) return
     try {
-      await setUserRole(profile.id, role)
-      toast.success(`Deine Rolle: ${ROLE_LABELS[role]}`)
+      const outcome = await setUserRole(profile.id, role)
+      toast.saved(`Deine Rolle: ${ROLE_LABELS[role]}`, outcome)
     } catch (error) {
       console.error(error)
       toast.error('Rolle konnte nicht geändert werden.')
@@ -451,7 +451,9 @@ function HymnListSection() {
       setFileName('')
     } catch (error) {
       console.error(error)
-      toast.error('Der Import ist fehlgeschlagen.')
+      toast.error(
+        error instanceof Error && error.message ? error.message : 'Der Import ist fehlgeschlagen.',
+      )
     } finally {
       setBusy(false)
     }
@@ -544,7 +546,15 @@ function HymnListSection() {
         open={confirmClear}
         onClose={() => setConfirmClear(false)}
         onConfirm={() => {
-          void clearHymns().then((count) => toast.success(`${count} Lieder entfernt.`))
+          void clearHymns()
+            .then((count) => toast.success(`${count} Lieder entfernt.`))
+            .catch((error: unknown) =>
+              toast.error(
+                error instanceof Error && error.message
+                  ? error.message
+                  : 'Die Liste konnte nicht geleert werden.',
+              ),
+            )
         }}
         title="Liederliste leeren?"
         message="Bereits erfasste Programme behalten ihre Liedtitel – nur die Nachschlageliste wird gelöscht."
@@ -569,8 +579,8 @@ function UserRow({
 
   const changeRole = async (role: Role) => {
     try {
-      await setUserRole(user.id, role)
-      toast.success(`${user.displayName}: ${ROLE_LABELS[role]}`)
+      const outcome = await setUserRole(user.id, role)
+      toast.saved(`${user.displayName}: ${ROLE_LABELS[role]}`, outcome)
     } catch (error) {
       console.error(error)
       toast.error('Rolle konnte nicht geändert werden.')
@@ -631,7 +641,9 @@ function UserRow({
         open={confirmDelete}
         onClose={() => setConfirmDelete(false)}
         onConfirm={() => {
-          void deleteUserProfile(user.id).then(() => toast.success('Profil entfernt.'))
+          void deleteUserProfile(user.id).then((outcome) =>
+            toast.saved('Profil entfernt.', outcome),
+          )
         }}
         title="Profil entfernen?"
         message={

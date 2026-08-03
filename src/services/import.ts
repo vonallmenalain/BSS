@@ -7,6 +7,7 @@ import Papa from 'papaparse'
 import { readSheet } from 'read-excel-file/browser'
 import { db, COLLECTIONS } from '@/lib/firebase'
 import { normalize } from '@/lib/utils'
+import { requireOnline } from '@/lib/sync'
 import { buildSearchName } from '@/services/members'
 import type { Gender, Member, MemberStatus } from '@/lib/types'
 
@@ -314,7 +315,8 @@ export function buildPreview(
     if (values.birthDate && !birthDate) warnings.push('Geburtsdatum nicht lesbar')
 
     const lastTalkDate = values.lastTalkDate ? parseImportDate(values.lastTalkDate) : null
-    if (values.lastTalkDate && !lastTalkDate) warnings.push('Datum der letzten Ansprache nicht lesbar')
+    if (values.lastTalkDate && !lastTalkDate)
+      warnings.push('Datum der letzten Ansprache nicht lesbar')
 
     const externalId = values.externalId ?? null
 
@@ -326,7 +328,10 @@ export function buildPreview(
     if (externalId && byExternalId.has(externalId)) {
       matchId = byExternalId.get(externalId)!.id
       matchReason = 'externalId'
-    } else if (birthDate && byNameAndBirth.has(`${nameKey}|${birthDate.toISOString().slice(0, 10)}`)) {
+    } else if (
+      birthDate &&
+      byNameAndBirth.has(`${nameKey}|${birthDate.toISOString().slice(0, 10)}`)
+    ) {
       matchId = byNameAndBirth.get(`${nameKey}|${birthDate.toISOString().slice(0, 10)}`)!.id
       matchReason = 'name+birth'
     } else {
@@ -412,6 +417,9 @@ export async function runImport(
   options: ImportOptions = DEFAULT_IMPORT_OPTIONS,
   onProgress?: (done: number, total: number) => void,
 ): Promise<ImportResult> {
+  // Ein Import schreibt Hunderte Dokumente. Die gehören nicht in die
+  // Offline-Warteschlange – siehe requireOnline().
+  requireOnline()
   const rows = preview.rows.filter((row) => row.action !== 'skip')
   const membersCollection = collection(db, COLLECTIONS.members)
   let created = 0
@@ -506,8 +514,7 @@ export function membersToCsv(members: Member[]): string {
 
   const asDate = (value: unknown): string => {
     if (!value) return ''
-    const date =
-      value instanceof Timestamp ? value.toDate() : new Date(String(value))
+    const date = value instanceof Timestamp ? value.toDate() : new Date(String(value))
     return Number.isNaN(date.getTime()) ? '' : date.toISOString().slice(0, 10)
   }
 

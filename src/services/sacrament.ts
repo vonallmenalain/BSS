@@ -2,6 +2,7 @@ import { doc, serverTimestamp, setDoc, Timestamp } from 'firebase/firestore'
 import { db, COLLECTIONS } from '@/lib/firebase'
 import { toDate, toDateInput } from '@/lib/dates'
 import { stripUndefined, uid } from '@/lib/utils'
+import { commit, type SaveOutcome } from '@/lib/sync'
 import {
   ACTIVE_TALK_STATUSES,
   HYMN_SLOT_LABELS,
@@ -61,15 +62,17 @@ export function emptySacramentMeeting(date: Date): SacramentMeeting {
 export async function saveSacramentMeeting(
   date: Date,
   patch: Partial<Omit<SacramentMeeting, 'id' | 'date'>>,
-): Promise<void> {
-  await setDoc(
-    doc(db, COLLECTIONS.sacramentMeetings, sacramentDocId(date)),
-    {
-      ...stripUndefined(patch as Record<string, unknown>),
-      date: Timestamp.fromDate(date),
-      updatedAt: serverTimestamp(),
-    },
-    { merge: true },
+): Promise<SaveOutcome> {
+  return commit(
+    setDoc(
+      doc(db, COLLECTIONS.sacramentMeetings, sacramentDocId(date)),
+      {
+        ...stripUndefined(patch as Record<string, unknown>),
+        date: Timestamp.fromDate(date),
+        updatedAt: serverTimestamp(),
+      },
+      { merge: true },
+    ),
   )
 }
 

@@ -233,6 +233,28 @@ Sitzungszimmer das Netz aus, wird weitergearbeitet; die Änderungen fliessen
 nach, sobald wieder Verbindung besteht. Die PWA-Hülle sorgt dafür, dass die
 App selbst auch ohne Netz startet.
 
+Eine Feinheit entscheidet darüber, ob sich das auch so anfühlt: Das Versprechen
+eines Firestore-Schreibvorgangs löst sich erst auf, wenn der **Server**
+bestätigt hat. Wer darauf wartet, zeigt ohne Netz endlos «wird gespeichert» –
+obwohl die Daten längst sicher in der lokalen Datenbank liegen. Deshalb geht
+jeder Schreibzugriff durch `commit()` (`src/lib/sync.ts`): kurz auf die
+Bestätigung warten, sonst «zwischengespeichert» melden. In der Kopfzeile zeigt
+ein Zähler, wie viele Änderungen noch unterwegs sind; ein Fehler, der erst beim
+Übertragen auftritt, wird nachträglich gemeldet statt verschluckt.
+
+Auch die Dokument-IDs entstehen deshalb im Client statt über `addDoc()`. Nur so
+steht die ID einer neuen Sitzung sofort fest und die Ansicht kann dorthin
+springen, ohne auf den Server zu warten.
+
+**Konflikte.** Firestore kennt keine Versionen: Wer zuletzt schreibt, gewinnt.
+Bei einzelnen Feldern geht das gut, weil nur Geändertes übertragen wird. Bei
+ganzen Listen – Bekanntmachungen, Angelegenheiten, Musik – nicht: Dort
+verschwänden fremde Einträge stillschweigend. Diese Seiten merken sich deshalb
+den Stand, auf dem der Entwurf aufsetzt, und melden eine Abweichung, statt sie
+zu überschreiben (`src/components/sacrament/useDraft.ts`). Zwei
+Sperrmechanismen wären der falsche Weg gewesen – eine Bischofschaft ist klein
+genug, dass ein Hinweis reicht.
+
 ### Datenmodell
 
 ```
@@ -326,7 +348,8 @@ immer dasselbe: Termin verstrichen.
 - Liederliste aus Excel oder CSV, Liedtitel aus der Nummer
 - Berufungsverwaltung mit Prozessschritten
 - Einstellungen für Gemeinde, Sitzungsrhythmus und Abendmahlsversammlung
-- PWA: installierbar, offline, Update-Hinweis
+- PWA: installierbar, offline speichern mit Warteschlange und Konflikthinweis,
+  Update-Hinweis
 - Firestore-Sicherheitsregeln und Indizes
 
 **Bewusst zurückgestellt:**

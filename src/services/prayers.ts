@@ -1,6 +1,7 @@
 import { deleteDoc, doc, serverTimestamp, setDoc, Timestamp } from 'firebase/firestore'
 import { db, COLLECTIONS } from '@/lib/firebase'
 import { differenceInMonths, toDate, toDateInput } from '@/lib/dates'
+import { commit, type SaveOutcome } from '@/lib/sync'
 import type { Member, Prayer, PrayerSlot } from '@/lib/types'
 
 /**
@@ -18,25 +19,24 @@ export async function setPrayer(
   slot: PrayerSlot,
   member: Member | null,
   notes = '',
-): Promise<void> {
+): Promise<SaveOutcome> {
   const ref = doc(db, COLLECTIONS.prayers, prayerDocId(date, slot))
 
-  if (!member) {
-    await deleteDoc(ref)
-    return
-  }
+  if (!member) return commit(deleteDoc(ref))
 
-  await setDoc(
-    ref,
-    {
-      date: Timestamp.fromDate(date),
-      slot,
-      memberId: member.id,
-      memberName: `${member.firstName} ${member.lastName}`.trim(),
-      notes,
-      updatedAt: serverTimestamp(),
-    },
-    { merge: true },
+  return commit(
+    setDoc(
+      ref,
+      {
+        date: Timestamp.fromDate(date),
+        slot,
+        memberId: member.id,
+        memberName: `${member.firstName} ${member.lastName}`.trim(),
+        notes,
+        updatedAt: serverTimestamp(),
+      },
+      { merge: true },
+    ),
   )
 }
 
@@ -44,11 +44,13 @@ export async function updatePrayerNotes(
   date: Date,
   slot: PrayerSlot,
   notes: string,
-): Promise<void> {
-  await setDoc(
-    doc(db, COLLECTIONS.prayers, prayerDocId(date, slot)),
-    { notes, updatedAt: serverTimestamp() },
-    { merge: true },
+): Promise<SaveOutcome> {
+  return commit(
+    setDoc(
+      doc(db, COLLECTIONS.prayers, prayerDocId(date, slot)),
+      { notes, updatedAt: serverTimestamp() },
+      { merge: true },
+    ),
   )
 }
 

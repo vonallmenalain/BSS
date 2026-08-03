@@ -68,7 +68,8 @@ export function Meetings() {
     }
   }, [meetings, now])
 
-  const visible = filter === 'upcoming' ? upcoming : filter === 'past' ? past : [...upcoming, ...past]
+  const visible =
+    filter === 'upcoming' ? upcoming : filter === 'past' ? past : [...upcoming, ...past]
   const unassignedCount = openItems.filter((item) => !item.meetingId).length
 
   return (
@@ -155,10 +156,7 @@ function MeetingRow({ meeting, openCount }: { meeting: Meeting; openCount: numbe
 
   return (
     <li>
-      <Link
-        to={`/sitzungen/${meeting.id}`}
-        className="card card-hover flex items-center gap-4 p-4"
-      >
+      <Link to={`/sitzungen/${meeting.id}`} className="card card-hover flex items-center gap-4 p-4">
         <div
           className={`grid size-12 shrink-0 place-items-center rounded-xl ${
             isToday || meeting.status === 'running'
@@ -253,11 +251,11 @@ export function MeetingForm({
 
     setSaving(true)
     try {
-      const id = await createMeeting(
+      const { id, outcome } = await createMeeting(
         { date: when, title: title.trim() || 'Bischofschaftssitzung', location, attendees },
         profile.id,
       )
-      toast.success('Sitzung geplant.')
+      toast.saved('Sitzung geplant.', outcome)
       onClose()
       if (onCreated) onCreated(id)
       else navigate(`/sitzungen/${id}`)

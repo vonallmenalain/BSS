@@ -421,11 +421,11 @@ export function MemberForm({
       }
 
       if (member) {
-        await updateMember(member.id, payload)
-        toast.success('Mitglied aktualisiert.')
+        const outcome = await updateMember(member.id, payload)
+        toast.saved('Mitglied aktualisiert.', outcome)
       } else {
-        await createMember(payload)
-        toast.success('Mitglied erfasst.')
+        const { outcome } = await createMember(payload)
+        toast.saved('Mitglied erfasst.', outcome)
       }
       onClose()
     } catch (error) {

@@ -58,11 +58,12 @@ export function Prayers() {
 
   const assign = async (slot: PrayerSlot, member: Member | null) => {
     try {
-      await setPrayer(date, slot, member)
-      toast.success(
+      const outcome = await setPrayer(date, slot, member)
+      toast.saved(
         member
           ? `${PRAYER_SLOT_LABELS[slot]}: ${member.firstName} ${member.lastName}`
           : `${PRAYER_SLOT_LABELS[slot]} freigegeben.`,
+        outcome,
       )
     } catch (error) {
       console.error(error)

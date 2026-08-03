@@ -29,11 +29,7 @@ import { AssigneePicker, SegmentedControl } from '@/components/ui/Pickers'
 import { AssigneeAvatars } from '@/components/ui/Avatar'
 import { MeetingForm } from '@/pages/Meetings'
 import { formatDateLong, formatTime, toDate } from '@/lib/dates'
-import {
-  assignToMeeting,
-  carryOverOpenItems,
-  sortForMeeting,
-} from '@/services/agenda'
+import { assignToMeeting, carryOverOpenItems, sortForMeeting } from '@/services/agenda'
 import {
   closeMeeting,
   deleteMeeting,
@@ -76,7 +72,9 @@ export function MeetingDetail() {
     const next = meetings
       .filter((m) => m.id !== meetingId && m.status !== 'closed')
       .map((m) => ({ meeting: m, date: toDate(m.date) }))
-      .filter((entry): entry is { meeting: typeof entry.meeting; date: Date } => entry.date !== null)
+      .filter(
+        (entry): entry is { meeting: typeof entry.meeting; date: Date } => entry.date !== null,
+      )
       .filter((entry) => entry.date.getTime() > currentDate)
       .sort((a, b) => a.date.getTime() - b.date.getTime())[0]
     return next ? { id: next.meeting.id, date: next.date } : null
@@ -221,7 +219,11 @@ export function MeetingDetail() {
 
         <div className="flex flex-wrap items-center gap-2">
           {poolItems.length > 0 && !isClosed && (
-            <button type="button" className="btn-secondary btn-sm" onClick={() => setPoolOpen(true)}>
+            <button
+              type="button"
+              className="btn-secondary btn-sm"
+              onClick={() => setPoolOpen(true)}
+            >
               <Inbox className="size-4" aria-hidden />
               {poolItems.length} Pendenz{poolItems.length === 1 ? '' : 'en'}
             </button>
@@ -258,7 +260,11 @@ export function MeetingDetail() {
                     Traktandum
                   </button>
                   {poolItems.length > 0 && (
-                    <button type="button" className="btn-secondary" onClick={() => void handleCarryOver()}>
+                    <button
+                      type="button"
+                      className="btn-secondary"
+                      onClick={() => void handleCarryOver()}
+                    >
                       {poolItems.length} Pendenzen übernehmen
                     </button>
                   )}
@@ -306,11 +312,7 @@ export function MeetingDetail() {
       )}
 
       {/* ---------- Dialoge ---------- */}
-      <AgendaItemForm
-        open={formOpen}
-        onClose={() => setFormOpen(false)}
-        meetingId={meetingId}
-      />
+      <AgendaItemForm open={formOpen} onClose={() => setFormOpen(false)} meetingId={meetingId} />
 
       <AgendaItemForm
         open={Boolean(editItem)}
@@ -344,9 +346,9 @@ export function MeetingDetail() {
             {items.length - doneCount > 0 ? (
               <>
                 {items.length - doneCount} Traktand
-                {items.length - doneCount === 1 ? 'um bleibt' : 'en bleiben'} offen und
-                erscheint{items.length - doneCount === 1 ? '' : 'en'} automatisch als Pendenz
-                in der nächsten Sitzung.
+                {items.length - doneCount === 1 ? 'um bleibt' : 'en bleiben'} offen und erscheint
+                {items.length - doneCount === 1 ? '' : 'en'} automatisch als Pendenz in der nächsten
+                Sitzung.
               </>
             ) : (
               <>Alle Traktanden sind erledigt.</>
@@ -476,8 +478,11 @@ function PoolDialog({
   const add = async (item: AgendaItem) => {
     if (!profile) return
     try {
-      await assignToMeeting(item.id, meetingId, { id: profile.id, name: profile.displayName })
-      toast.success('Zur Sitzung hinzugefügt.')
+      const outcome = await assignToMeeting(item.id, meetingId, {
+        id: profile.id,
+        name: profile.displayName,
+      })
+      toast.saved('Zur Sitzung hinzugefügt.', outcome)
     } catch (error) {
       console.error(error)
       toast.error('Hinzufügen fehlgeschlagen.')
@@ -538,7 +543,13 @@ function MeetingDetailsDialog({
   open: boolean
   onClose: () => void
   meetingId: string
-  meeting: { attendees?: string[]; openingPrayer?: string; closingPrayer?: string; spiritualThought?: string; notes?: string }
+  meeting: {
+    attendees?: string[]
+    openingPrayer?: string
+    closingPrayer?: string
+    spiritualThought?: string
+    notes?: string
+  }
 }) {
   const toast = useToast()
   const [attendees, setAttendees] = useState(meeting.attendees ?? [])
@@ -551,14 +562,14 @@ function MeetingDetailsDialog({
   const save = async () => {
     setSaving(true)
     try {
-      await updateMeeting(meetingId, {
+      const outcome = await updateMeeting(meetingId, {
         attendees,
         openingPrayer,
         closingPrayer,
         spiritualThought,
         notes,
       })
-      toast.success('Gespeichert.')
+      toast.saved('Gespeichert.', outcome)
       onClose()
     } catch (error) {
       console.error(error)
@@ -579,7 +590,12 @@ function MeetingDetailsDialog({
           <button type="button" className="btn-secondary" onClick={onClose} disabled={saving}>
             Abbrechen
           </button>
-          <button type="button" className="btn-primary" onClick={() => void save()} disabled={saving}>
+          <button
+            type="button"
+            className="btn-primary"
+            onClick={() => void save()}
+            disabled={saving}
+          >
             Speichern
           </button>
         </>

@@ -56,9 +56,11 @@ export function ImportMembers() {
   const [options, setOptions] = useState<ImportOptions>(DEFAULT_IMPORT_OPTIONS)
   const [busy, setBusy] = useState(false)
   const [progress, setProgress] = useState<{ done: number; total: number } | null>(null)
-  const [result, setResult] = useState<{ created: number; updated: number; skipped: number } | null>(
-    null,
-  )
+  const [result, setResult] = useState<{
+    created: number
+    updated: number
+    skipped: number
+  } | null>(null)
   const [dragging, setDragging] = useState(false)
 
   const handleFile = useCallback(
@@ -89,9 +91,7 @@ export function ImportMembers() {
     return buildPreview(sheet, mapping, members)
   }, [sheet, mapping, members, step])
 
-  const hasName = mapping.some((field) =>
-    ['lastName', 'firstName', 'fullName'].includes(field),
-  )
+  const hasName = mapping.some((field) => ['lastName', 'firstName', 'fullName'].includes(field))
 
   const start = async () => {
     if (!preview) return
@@ -106,7 +106,11 @@ export function ImportMembers() {
       toast.success(`${outcome.created} neu, ${outcome.updated} aktualisiert.`)
     } catch (error) {
       console.error(error)
-      toast.error('Der Import ist fehlgeschlagen. Es wurden möglicherweise nur Teile geschrieben.')
+      toast.error(
+        error instanceof Error && error.message
+          ? error.message
+          : 'Der Import ist fehlgeschlagen. Es wurden möglicherweise nur Teile geschrieben.',
+      )
     } finally {
       setBusy(false)
       setProgress(null)
@@ -427,8 +431,8 @@ export function ImportMembers() {
             </table>
             {preview.rows.length > 100 && (
               <p className="border-t border-slate-200 px-3 py-2 text-center text-xs text-slate-400 dark:border-slate-700">
-                Vorschau auf 100 Zeilen begrenzt – importiert werden alle{' '}
-                {preview.rows.length} Zeilen.
+                Vorschau auf 100 Zeilen begrenzt – importiert werden alle {preview.rows.length}{' '}
+                Zeilen.
               </p>
             )}
           </div>
@@ -484,11 +488,7 @@ export function ImportMembers() {
             <button type="button" className="btn-secondary" onClick={reset}>
               Weitere Datei importieren
             </button>
-            <button
-              type="button"
-              className="btn-primary"
-              onClick={() => navigate('/mitglieder')}
-            >
+            <button type="button" className="btn-primary" onClick={() => navigate('/mitglieder')}>
               Zur Mitgliederliste
             </button>
           </div>

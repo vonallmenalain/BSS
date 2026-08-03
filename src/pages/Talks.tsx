@@ -570,7 +570,7 @@ function AssignDialog({
 
     setSaving(true)
     try {
-      await createTalk({
+      const { outcome } = await createTalk({
         memberId: selected.id,
         memberName: `${selected.firstName} ${selected.lastName}`,
         date: new Date(`${dateValue}T${settings.sacramentTime}:00`),
@@ -581,7 +581,7 @@ function AssignDialog({
         status,
         askedById: profile?.id ?? null,
       })
-      toast.success(`${TALK_KIND_LABELS[kind]} eingetragen.`)
+      toast.saved(`${TALK_KIND_LABELS[kind]} eingetragen.`, outcome)
       onClose()
     } catch (error) {
       console.error(error)
@@ -825,8 +825,12 @@ function EditTalkDialog({ talk, onClose }: { talk: Talk | null; onClose: () => v
 
   const save = async () => {
     try {
-      await updateTalk(talk.id, { kind, topic: topic.trim(), notes: notes.trim() })
-      toast.success('Gespeichert.')
+      const outcome = await updateTalk(talk.id, {
+        kind,
+        topic: topic.trim(),
+        notes: notes.trim(),
+      })
+      toast.saved('Gespeichert.', outcome)
       onClose()
     } catch (error) {
       console.error(error)
@@ -930,8 +934,8 @@ function EditTalkDialog({ talk, onClose }: { talk: Talk | null; onClose: () => v
         open={confirmDelete}
         onClose={() => setConfirmDelete(false)}
         onConfirm={() => {
-          void deleteTalk(talk.id).then(() => {
-            toast.success('Eintrag entfernt.')
+          void deleteTalk(talk.id).then((outcome) => {
+            toast.saved('Eintrag entfernt.', outcome)
             onClose()
           })
         }}

@@ -100,7 +100,7 @@ export function AgendaItemForm({ open, onClose, item, meetingId = null, onSaved 
       }
 
       if (item) {
-        await updateAgendaItem(item.id, {
+        const outcome = await updateAgendaItem(item.id, {
           title: payload.title,
           description: payload.description,
           category: payload.category,
@@ -110,7 +110,7 @@ export function AgendaItemForm({ open, onClose, item, meetingId = null, onSaved 
           dueDate: payload.dueDate,
           confidential: payload.confidential,
         })
-        toast.success('Traktandum aktualisiert.')
+        toast.saved('Traktandum aktualisiert.', outcome)
         onSaved?.(item.id)
       } else {
         const id = await createAgendaItem(payload, actor)
