@@ -2,7 +2,7 @@ import { useMemo, useState } from 'react'
 import { ChevronDown, ChevronUp, ClipboardList, Plus, Trash2, Wand2 } from 'lucide-react'
 import { useData } from '@/contexts/DataContext'
 import { useToast } from '@/contexts/ToastContext'
-import { useCallings } from '@/hooks/useFirestore'
+import { useCallingsInPreparation } from '@/hooks/useFirestore'
 import { EmptyState } from '@/components/ui/Feedback'
 import { MemberPicker } from '@/components/ui/Pickers'
 import { ConflictNotice, SectionHeader, useSacrament } from '@/components/sacrament/SacramentLayout'
@@ -30,7 +30,7 @@ import {
 export function WardBusiness() {
   const { date, meeting } = useSacrament()
   const { memberName } = useData()
-  const { data: callings } = useCallings(300)
+  const { data: callings } = useCallingsInPreparation()
   const toast = useToast()
 
   const draft = useDraft<BusinessEntry[]>(meeting?.business ?? [])

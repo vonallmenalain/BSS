@@ -19,12 +19,11 @@ import { Avatar } from '@/components/ui/Avatar'
 import { WEEKDAYS } from '@/lib/dates'
 import { saveSettings } from '@/services/settings'
 import { deleteUserProfile, setUserActive, setUserRole, updateUserProfile } from '@/services/users'
-import { downloadCsv, membersToCsv } from '@/services/import'
 import { ASSIGNABLE_ROLES, ROLE_LABELS, type AppSettings, type Role } from '@/lib/types'
 
 export function Settings() {
   const { profile } = useAuth()
-  const { settings, users, members } = useData()
+  const { settings, users } = useData()
   const toast = useToast()
 
   const [form, setForm] = useState<AppSettings>(settings)
@@ -375,37 +374,13 @@ export function Settings() {
             <Upload className="size-4 text-slate-400" aria-hidden />
             Import
           </h2>
-          <p className="hint mb-4">
-            Mitglieder, Berufungen, Betreuung, Liederliste und der Verlauf der Ansprachen und Gebete
-            – alles an einem Ort, jedes mit Vorschau vor dem Schreiben.
-          </p>
-          <div className="flex flex-wrap gap-2">
+          <div className="mt-3 flex flex-wrap gap-2">
             <Link to="/import" className="btn-secondary">
               <Upload className="size-4" aria-hidden />
               Zu den Importen
             </Link>
-            <button
-              type="button"
-              className="btn-secondary"
-              onClick={() =>
-                downloadCsv(
-                  membersToCsv(members),
-                  `mitglieder-${new Date().toISOString().slice(0, 10)}.csv`,
-                )
-              }
-            >
-              Mitgliederliste als CSV sichern
-            </button>
           </div>
-          <p className="hint mt-3">
-            {members.length} Mitglieder erfasst. Die Daten liegen in deinem Firebase-Projekt – eine
-            regelmässige Sicherung ist trotzdem sinnvoll.
-          </p>
         </section>
-
-        <p className="pb-4 text-center text-xs text-slate-400">
-          Bischofschaft · PWA · Daten in Firebase (Firestore + Authentication)
-        </p>
       </div>
     </>
   )

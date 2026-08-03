@@ -14,8 +14,10 @@ import { toDate } from '@/lib/dates'
 import { requireOnline } from '@/lib/sync'
 import { parseDirectoryDate } from '@/services/importPaste'
 import { fromIsoDate, isoDate } from '@/services/importHistory'
+import { historyNote } from '@/services/importCallingHistory'
 import { prayerDocId } from '@/services/prayers'
 import type {
+  CallingHistoryPreview,
   CallingRow,
   CallingsPreview,
   HistoryPreview,
@@ -155,6 +157,109 @@ export async function runCallingsImport(
   }
 
   return { created, updated, released, skipped: preview.skipCount }
+}
+
+/* ------------------------------------------------------------------ */
+/* Berufungshistorie                                                   */
+/* ------------------------------------------------------------------ */
+
+export interface CallingHistoryOutcome {
+  created: number
+  /** Einträge, die eine laufende Berufung meinen – unberührt geblieben */
+  running: number
+  skipped: number
+  ignored: number
+  /** Übernommene Berufungen ohne erfasste Entlassung – gehören nachgeprüft */
+  withoutRelease: number
+}
+
+/**
+ * Liest den erfassten Bestand an Berufungen – einmal und vollständig.
+ *
+ * Ohne Obergrenze, anders als die Abfragen der Ansichten: Der Abgleich muss
+ * den ganzen Bestand sehen. Sähe er nur einen Ausschnitt, entstünden
+ * Dubletten für Berufungen, die knapp ausserhalb lägen – und beim
+ * LCR-Import gälte als entlassen, was er bloss nicht geladen hat.
+ */
+export async function loadAllCallings(): Promise<Calling[]> {
+  const snapshot = await getDocs(collection(db, COLLECTIONS.callings))
+  return snapshot.docs.map((entry) => ({ id: entry.id, ...entry.data() }) as Calling)
+}
+
+/**
+ * Schreibt die eingelesene Berufungshistorie.
+ *
+ * **Es entstehen ausschliesslich neue, abgeschlossene Berufungen.** Kein
+ * bestehender Datensatz wird angefasst – weder geändert noch ergänzt noch
+ * entlassen. Der laufende Stand kommt aus dem LCR und bleibt dessen
+ * Angelegenheit; was hier ankommt, ist Vergangenheit und trägt das
+ * Kennzeichen `history`, damit es der LCR-Abgleich später in Ruhe lässt.
+ *
+ * Die Dokument-IDs entstehen aus Blatt und Zeile der Quelle, nicht
+ * zufällig. Damit bleibt ein zweiter Durchlauf folgenlos – auch dann, wenn
+ * beim zweiten Mal mehr Namen von Hand zugeordnet wurden: Dieselbe Zeile
+ * schreibt dasselbe Dokument, nur eben mit der richtigen Person.
+ */
+export async function runCallingHistoryImport(
+  preview: CallingHistoryPreview,
+  onProgress?: (done: number, total: number) => void,
+): Promise<CallingHistoryOutcome> {
+  requireOnline()
+
+  // Ohne Person keine Berufung: Was sich niemandem zuordnen liess, wurde in
+  // der Vorschau gemeldet und bleibt hier liegen. Und was im Bestand noch
+  // läuft, gehört dem LCR – dazu wird nichts geschrieben.
+  const writes = preview.rows.filter((row) => row.action === 'create' && row.memberId)
+
+  for (let offset = 0; offset < writes.length; offset += CHUNK_SIZE) {
+    const chunk = writes.slice(offset, offset + CHUNK_SIZE)
+    const batch = writeBatch(db)
+
+    for (const row of chunk) {
+      const { calling } = row
+      const date = (value: string | null) => (value ? Timestamp.fromDate(fromIsoDate(value)) : null)
+
+      batch.set(
+        doc(db, COLLECTIONS.callings, `bh-${calling.ref}`),
+        {
+          memberId: row.memberId,
+          memberName: row.memberName,
+          position: calling.position,
+          organization: calling.organization,
+          outOfUnit: calling.outOfUnit,
+          group: '',
+          custom: false,
+          history: true,
+          // Jede übernommene Berufung ist abgeschlossen. Fehlt das Datum der
+          // Entlassung, bleibt es leer – erfunden wird keines.
+          status: 'released',
+          proposedDate: null,
+          extendedDate: date(calling.extendedDate),
+          sustainedDate: date(calling.sustainedDate),
+          setApartDate: date(calling.setApartDate),
+          releasedDate: date(calling.releasedDate),
+          responsibleId: null,
+          notes: historyNote(calling),
+          createdAt: serverTimestamp(),
+          updatedAt: serverTimestamp(),
+        },
+        // Zusammenführen statt ersetzen: Was jemand in der App an einer
+        // übernommenen Berufung ergänzt hat, überlebt einen zweiten Import.
+        { merge: true },
+      )
+    }
+
+    await batch.commit()
+    onProgress?.(Math.min(offset + chunk.length, writes.length), writes.length)
+  }
+
+  return {
+    created: writes.length,
+    running: preview.runningCount,
+    skipped: preview.skipCount,
+    ignored: preview.ignoredCount,
+    withoutRelease: preview.withoutRelease.length,
+  }
 }
 
 /* ------------------------------------------------------------------ */

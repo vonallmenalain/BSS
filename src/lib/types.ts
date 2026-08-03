@@ -469,6 +469,16 @@ export interface Calling extends WithId {
   outOfUnit?: boolean
   /** Im LCR als «Benutzerdefinierte Berufung» angelegt */
   custom?: boolean
+  /**
+   * Aus der Berufungshistorie übernommen – ein abgeschlossener Abschnitt.
+   *
+   * Das Kennzeichen hält den LCR-Abgleich von diesen Einträgen fern. Ohne
+   * es träfe er beim nächsten Import unter Umständen den alten statt den
+   * laufenden Datensatz, weckte ihn wieder auf und überschriebe damit ein
+   * Stück Vergangenheit. Wer eine Aufgabe erneut erhält, bekommt einen
+   * neuen Eintrag – der frühere bleibt, wie er war.
+   */
+  history?: boolean
   /** Untergruppe innerhalb der Organisation, z. B. «Lehrkräfte» */
   group?: string
   /**

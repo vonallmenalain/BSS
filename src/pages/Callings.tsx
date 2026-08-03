@@ -9,10 +9,11 @@ import { EmptyState, SkeletonList } from '@/components/ui/Feedback'
 import { PageHeader, SegmentedControl, MemberPicker } from '@/components/ui/Pickers'
 import { CallingStatusBadge } from '@/components/ui/Badge'
 import { Avatar } from '@/components/ui/Avatar'
-import { formatDate, toDateInput } from '@/lib/dates'
+import { toDateInput } from '@/lib/dates'
 import { cn, compareNames, groupBy, matchesSearch } from '@/lib/utils'
 import {
   advanceCalling,
+  callingPeriod,
   COMMON_POSITIONS,
   createCalling,
   deleteCalling,
@@ -33,7 +34,11 @@ type Scope = 'active' | 'process' | 'released' | 'all'
 const FLOW: CallingStatus[] = ['proposed', 'approved', 'extended', 'sustained', 'set_apart']
 
 export function Callings() {
-  const { data: callings, loading } = useCallings(400)
+  // Grosszügig bemessen: Die Seite zählt und filtert selbst, und seit die
+  // Berufungshistorie mitkommt, umfasst der Bestand einer Gemeinde leicht
+  // einige hundert Einträge. Ein zu kleiner Ausschnitt liesse ausgerechnet
+  // die laufenden Berufungen verschwinden – sie sind die ältesten.
+  const { data: callings, loading } = useCallings(2000)
   const [scope, setScope] = useState<Scope>('active')
   const [search, setSearch] = useState('')
   const [formOpen, setFormOpen] = useState(false)
@@ -242,7 +247,7 @@ function CallingSection({
                 <p className="truncate text-sm font-medium">{calling.position}</p>
                 <p className="truncate text-xs text-slate-500 dark:text-slate-400">
                   {calling.memberName}
-                  {calling.setApartDate && ` · seit ${formatDate(calling.setApartDate)}`}
+                  {callingPeriod(calling) && ` · ${callingPeriod(calling)}`}
                 </p>
               </div>
               <CallingStatusBadge status={calling.status} />

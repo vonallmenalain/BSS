@@ -6,6 +6,7 @@ import { isoDate } from './importHistory.ts'
 import type { PastedCalling, PastedCallings } from './importCallings.ts'
 import type { MinisteringEntry } from './importMinistering.ts'
 import type { ParsedHistory } from './importHistory.ts'
+import type { HistoricCalling, ParsedCallingHistory } from './importCallingHistory.ts'
 import type { Calling, CallingStatus, Member, PrayerSlot } from '../lib/types.ts'
 
 /**
@@ -147,6 +148,41 @@ function callingKey(
 }
 
 /**
+ * Bestehende Berufungen nach diesem Schlüssel greifbar machen.
+ *
+ * Zu einer Rolle kann es mehrere Einträge geben, seit die Berufungshistorie
+ * mitkommt: Wer heute FHV-Lehrerin ist, war es vielleicht schon einmal.
+ * Zwei Regeln halten den Abgleich davon ab, den falschen zu treffen.
+ *
+ * **Übernommene Vergangenheit zählt nicht mit.** Sie ist abgeschlossen und
+ * soll es bleiben; ein Import würde sie sonst wieder aufwecken und dabei
+ * ihre Daten überschreiben.
+ *
+ * **Unter den übrigen gilt die laufende.** Sonst entliesse ein Import die
+ * laufende Berufung und weckte eine frühere – und beim nächsten Mal
+ * wanderte es zurück.
+ */
+function indexByKey(callings: Calling[]): Map<string, Calling> {
+  const index = new Map<string, Calling>()
+  for (const calling of callings) {
+    if (calling.history) continue
+    const key = callingKey(
+      calling.memberId,
+      calling.position,
+      calling.organization,
+      calling.outOfUnit,
+    )
+    const current = index.get(key)
+    if (!current || (!isRunning(current) && isRunning(calling))) index.set(key, calling)
+  }
+  return index
+}
+
+function isRunning(calling: Calling): boolean {
+  return calling.status !== 'released' && calling.status !== 'declined'
+}
+
+/**
  * Status, die das LCR kennt.
  *
  * Nur wer dort steht, kann dort auch fehlen. Was die Bischofschaft erst
@@ -191,13 +227,7 @@ export function buildCallingsPreview(
 ): CallingsPreview {
   const index = buildMemberIndex(members)
 
-  const existingByKey = new Map<string, Calling>()
-  for (const calling of existing) {
-    existingByKey.set(
-      callingKey(calling.memberId, calling.position, calling.organization, calling.outOfUnit),
-      calling,
-    )
-  }
+  const existingByKey = indexByKey(existing)
 
   const rows: CallingRow[] = pasted.callings.map((entry) => {
     const warnings: string[] = []
@@ -239,6 +269,214 @@ export function buildCallingsPreview(
     skipCount: rows.filter((r) => r.action === 'skip').length,
     vacant: pasted.vacant,
   }
+}
+
+/* ------------------------------------------------------------------ */
+/* Berufungshistorie                                                   */
+/* ------------------------------------------------------------------ */
+
+/**
+ * Was mit einer gelesenen Berufung geschieht.
+ *
+ *  - `create`  – wird als abgeschlossene Berufung in den Verlauf geschrieben.
+ *  - `running` – die Person erfüllt diese Berufung laut Bestand heute noch;
+ *                der Eintrag wird **nicht** geschrieben und der laufende
+ *                Datensatz **nicht** angefasst.
+ *  - `skip`    – kein Mitglied gefunden; wird gemeldet, nicht geschrieben.
+ *  - `ignore`  – als «kein Mitglied unserer Gemeinde» abgelegt.
+ */
+export type CallingHistoryAction = 'create' | 'running' | 'skip' | 'ignore'
+
+export interface CallingHistoryRow {
+  calling: HistoricCalling
+  memberId: string | null
+  memberName: string
+  /** Laufende Berufung derselben Person in derselben Rolle – bleibt unberührt */
+  existingId: string | null
+  action: CallingHistoryAction
+  warnings: string[]
+}
+
+/**
+ * Entscheidungen, die in der Vorschau von Hand getroffen wurden.
+ *
+ * Beides gehört zusammen und beides gehört in die Oberfläche, nicht in den
+ * Code: Wer nach einer Heirat anders heisst, wird zugeordnet – wer gar nie
+ * zur Gemeinde gehörte, wird weggelegt. Ohne die zweite Möglichkeit bliebe
+ * die Liste der offenen Namen für immer lang, und man sähe nicht mehr, was
+ * darin noch der Bearbeitung harrt.
+ */
+export interface CallingHistoryDecisions {
+  /** «Nachname, Vorname» → Mitglied */
+  overrides: Record<string, string>
+  /** Namen, die zu keinem Mitglied der Gemeinde gehören */
+  ignored: string[]
+}
+
+export interface CallingHistoryPreview {
+  rows: CallingHistoryRow[]
+  createCount: number
+  runningCount: number
+  skipCount: number
+  ignoredCount: number
+  /** Personen, die Verlauf erhalten – mit der Anzahl ihrer Berufungen */
+  members: { memberId: string; memberName: string; count: number }[]
+  /** Namen ohne erfasste Person, mit der Anzahl ihrer Einträge */
+  unmatched: { fullName: string; count: number }[]
+  /** Weggelegte Namen – «kein Mitglied unserer Gemeinde» */
+  dismissed: { fullName: string; count: number }[]
+  /**
+   * Übernommene Berufungen, zu denen keine Entlassung in der Liste steht
+   * und die im laufenden Bestand fehlen.
+   *
+   * Sie sind der Grund, weshalb dieser Import nichts anlegt, was laufen
+   * könnte: Ob die Person die Aufgabe heute noch hat oder ob bloss die
+   * Entlassung nie eingetragen wurde, weiss die Tabelle nicht. Deshalb
+   * kommen sie als Verlauf mit und stehen danach hier – zum Nachschauen
+   * und Nachtragen von Hand.
+   */
+  withoutRelease: CallingHistoryRow[]
+}
+
+/**
+ * Ordnet die gelesene Berufungshistorie den erfassten Personen zu.
+ *
+ * **Dieser Import schreibt nur Vergangenes.** Die Wahrheit über den
+ * laufenden Stand steht im LCR; was von dort kommt, wird hier weder
+ * geändert noch ergänzt noch entlassen. Jede übernommene Berufung ist
+ * deshalb eine abgeschlossene – auch die, zu der keine Entlassung erfasst
+ * ist.
+ *
+ * Das ist keine Bequemlichkeit, sondern die einzige Lesart, die nichts
+ * kaputtmacht. Wo in der Tabelle keine Entlassung steht, ist entweder
+ * keine eingetragen worden oder die Person hat die Aufgabe heute noch –
+ * beides sieht gleich aus. Eine laufende Berufung daraus abzuleiten hiesse
+ * raten, und geraten würde ausgerechnet dort, wo der Organisationsplan der
+ * Gemeinde steht. Solche Einträge kommen deshalb als Verlauf mit dem
+ * Vermerk «keine Entlassung erfasst» und erscheinen danach in
+ * `withoutRelease` – von Hand nachzutragen, wenn wirklich etwas fehlt.
+ *
+ * Wo derselbe Eintrag im Bestand noch läuft, wird gar nichts geschrieben:
+ * Der laufende Datensatz bleibt, wie das LCR ihn kennt, und daneben soll
+ * kein zweiter mit denselben Angaben stehen.
+ */
+export function buildCallingHistoryPreview(
+  parsed: ParsedCallingHistory,
+  members: Member[],
+  existing: Calling[],
+  decisions: CallingHistoryDecisions = { overrides: {}, ignored: [] },
+): CallingHistoryPreview {
+  const index = buildMemberIndex(members)
+  const byId = new Map(members.map((member) => [member.id, member]))
+  const existingByKey = indexByKey(existing)
+  const ignored = new Set(decisions.ignored)
+
+  const unmatched = new Map<string, number>()
+  const dismissed = new Map<string, number>()
+  const perMember = new Map<string, number>()
+
+  const rows: CallingHistoryRow[] = parsed.callings.map((calling) => {
+    const warnings: string[] = []
+    const assigned = decisions.overrides[calling.fullName]
+    const found = assigned ? byId.get(assigned) : null
+    const match = assigned
+      ? { member: found ?? null, ambiguous: false }
+      : matchMemberByName(calling.fullName, index)
+    const member = match.member
+
+    if (ignored.has(calling.fullName)) {
+      dismissed.set(calling.fullName, (dismissed.get(calling.fullName) ?? 0) + 1)
+      return {
+        calling,
+        memberId: null,
+        memberName: calling.fullName,
+        existingId: null,
+        action: 'ignore',
+        warnings: [],
+      }
+    }
+
+    if (!member) {
+      if (match.ambiguous) warnings.push('Mehrere Personen mit diesem Namen')
+      else warnings.push('Keine passende Person in der Mitgliederliste')
+      unmatched.set(calling.fullName, (unmatched.get(calling.fullName) ?? 0) + 1)
+      return {
+        calling,
+        memberId: null,
+        memberName: calling.fullName,
+        existingId: null,
+        action: 'skip',
+        warnings,
+      }
+    }
+
+    if (!calling.position) warnings.push('Ohne Amt in der Quelle')
+
+    /*
+     * Nur eine Berufung ohne erfasste Entlassung kann die laufende meinen.
+     * Eine abgeschlossene ist immer ein eigener Abschnitt – wer eine
+     * Aufgabe zweimal innehatte, soll sie auch zweimal sehen.
+     */
+    const running = calling.released
+      ? undefined
+      : existingByKey.get(
+          callingKey(member.id, calling.position, calling.organization, calling.outOfUnit),
+        )
+
+    if (running && isRunning(running)) {
+      return {
+        calling,
+        memberId: member.id,
+        memberName: `${member.lastName}, ${member.firstName}`,
+        existingId: running.id,
+        action: 'running',
+        warnings,
+      }
+    }
+
+    perMember.set(member.id, (perMember.get(member.id) ?? 0) + 1)
+    return {
+      calling,
+      memberId: member.id,
+      memberName: `${member.lastName}, ${member.firstName}`,
+      existingId: null,
+      action: 'create',
+      warnings,
+    }
+  })
+
+  const count = (action: CallingHistoryAction) => rows.filter((row) => row.action === action).length
+
+  return {
+    rows,
+    createCount: count('create'),
+    runningCount: count('running'),
+    skipCount: count('skip'),
+    ignoredCount: count('ignore'),
+    members: [...perMember.entries()]
+      .flatMap(([memberId, entries]) => {
+        const member = byId.get(memberId)
+        return member
+          ? [{ memberId, memberName: `${member.lastName}, ${member.firstName}`, count: entries }]
+          : []
+      })
+      .sort((a, b) => b.count - a.count || a.memberName.localeCompare(b.memberName)),
+    unmatched: byCount(unmatched),
+    dismissed: byCount(dismissed),
+    // Die jüngsten zuoberst: Je näher der Eintrag an heute liegt, desto eher
+    // steckt dahinter eine Aufgabe, die jemand noch erfüllt – und desto eher
+    // lohnt das Nachschauen.
+    withoutRelease: rows
+      .filter((row) => row.action === 'create' && !row.calling.released)
+      .sort((a, b) => (b.calling.startDate ?? '').localeCompare(a.calling.startDate ?? '')),
+  }
+}
+
+/** Namen mit ihrer Trefferzahl, die häufigsten zuerst. */
+function byCount(counts: Map<string, number>): { fullName: string; count: number }[] {
+  return [...counts.entries()]
+    .map(([fullName, count]) => ({ fullName, count }))
+    .sort((a, b) => b.count - a.count || a.fullName.localeCompare(b.fullName))
 }
 
 /* ------------------------------------------------------------------ */
