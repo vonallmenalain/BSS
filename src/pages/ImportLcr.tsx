@@ -1,6 +1,5 @@
-import { useMemo, useState, type ReactNode } from 'react'
+import { useMemo, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { ArrowRight } from 'lucide-react'
 import { useData } from '@/contexts/DataContext'
 import { useToast } from '@/contexts/ToastContext'
 import { useCallings } from '@/hooks/useFirestore'
@@ -9,6 +8,7 @@ import {
   BackLink,
   DoneCard,
   ImportHint,
+  PasteCard,
   PreviewTable,
   ProgressBar,
   StepButtons,
@@ -463,74 +463,6 @@ function sourceLabel(source: CallingSource, organizations: Organization[]): stri
   if (source === 'outOfUnit') return 'Berufungen ausserhalb der Einheit'
   const names = organizations.map((organization) => ORGANIZATION_LABELS[organization])
   return names.length ? `Organisationen: ${names.join(', ')}` : 'Organisationen'
-}
-
-function PasteCard({
-  title,
-  description,
-  placeholder,
-  value,
-  onChange,
-  onSubmit,
-  canSubmit,
-  status,
-  hint,
-}: {
-  title: string
-  description: ReactNode
-  placeholder: string
-  value: string
-  onChange: (next: string) => void
-  onSubmit: () => void
-  canSubmit: boolean
-  status: ReactNode
-  hint: ReactNode
-}) {
-  return (
-    <div className="card p-4 sm:p-6">
-      <h2 className="text-base font-semibold">{title}</h2>
-      <p className="mt-1 max-w-2xl text-sm text-slate-500 dark:text-slate-400">{description}</p>
-
-      <label htmlFor="paste" className="sr-only">
-        {title}
-      </label>
-      <textarea
-        id="paste"
-        value={value}
-        onChange={(event) => onChange(event.target.value)}
-        onKeyDown={(event) => {
-          // Strg/Cmd + Enter übernimmt, ohne zur Maus zu greifen.
-          if (event.key === 'Enter' && (event.metaKey || event.ctrlKey) && canSubmit) onSubmit()
-        }}
-        spellCheck={false}
-        rows={14}
-        placeholder={placeholder}
-        className="input mt-4 resize-y font-mono text-xs leading-relaxed whitespace-pre"
-      />
-
-      <div className="mt-3 flex flex-wrap items-center justify-between gap-3">
-        {status}
-        <div className="flex gap-2">
-          <button
-            type="button"
-            className="btn-ghost"
-            onClick={() => onChange('')}
-            disabled={!value}
-          >
-            Leeren
-          </button>
-          <button type="button" className="btn-primary" onClick={onSubmit} disabled={!canSubmit}>
-            Weiter zur Vorschau
-            <ArrowRight className="size-4" aria-hidden />
-          </button>
-        </div>
-      </div>
-
-      <div className="mt-6 rounded-lg bg-slate-50 p-4 text-xs text-slate-500 dark:bg-slate-800/60 dark:text-slate-400">
-        {hint}
-      </div>
-    </div>
-  )
 }
 
 function ActionBadge({ action }: { action: 'create' | 'update' | 'skip' }) {
