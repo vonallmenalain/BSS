@@ -57,7 +57,6 @@ const SACRAMENT_CHILDREN = [
 ]
 
 export function Layout() {
-  const { profile, signOut } = useAuth()
   const { settings } = useData()
   const { data: openItems } = useOpenItems()
   const online = useOnlineStatus()
@@ -184,33 +183,11 @@ export function Layout() {
       <div className="mx-auto flex w-full max-w-7xl flex-1">
         {/* ---------- Seitennavigation (Desktop) ---------- */}
         <nav className="no-print sticky top-14 hidden h-[calc(100dvh-3.5rem)] w-56 shrink-0 flex-col gap-0.5 overflow-y-auto border-r border-slate-200 px-3 py-4 lg:flex dark:border-slate-800">
+          {/* Name, Rolle und Abmelden stehen nur noch im Benutzermenü oben
+              rechts – einmal genügt, und die Navigation bleibt ruhig. */}
           {navItems.map((item) => (
             <SidebarLink key={item.to} item={item} />
           ))}
-
-          <div className="mt-auto pt-4">
-            {profile && (
-              <div className="rounded-lg bg-slate-100 p-3 dark:bg-slate-900">
-                <div className="flex items-center gap-2">
-                  <Avatar name={profile.displayName} id={profile.id} size="md" />
-                  <div className="min-w-0 flex-1">
-                    <p className="truncate text-sm font-medium">{profile.displayName}</p>
-                    <p className="truncate text-xs text-slate-500 dark:text-slate-400">
-                      {ROLE_LABELS[profile.role]}
-                    </p>
-                  </div>
-                </div>
-                <button
-                  type="button"
-                  onClick={() => void signOut()}
-                  className="btn-ghost btn-sm mt-2 w-full justify-start"
-                >
-                  <LogOut className="size-4" aria-hidden />
-                  Abmelden
-                </button>
-              </div>
-            )}
-          </div>
         </nav>
 
         {/* ---------- Mobiles Menü ---------- */}
@@ -236,19 +213,6 @@ export function Layout() {
               {navItems.map((item) => (
                 <SidebarLink key={item.to} item={item} />
               ))}
-              {profile && (
-                <p className="mt-4 px-3 text-xs text-slate-400">
-                  Angemeldet als {ROLE_LABELS[profile.role]}
-                </p>
-              )}
-              <button
-                type="button"
-                onClick={() => void signOut()}
-                className="btn-ghost mt-2 justify-start"
-              >
-                <LogOut className="size-4" aria-hidden />
-                Abmelden
-              </button>
             </nav>
           </div>
         )}

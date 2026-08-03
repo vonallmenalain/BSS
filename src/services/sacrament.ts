@@ -1,21 +1,35 @@
-import { doc, serverTimestamp, setDoc, Timestamp } from 'firebase/firestore'
+import { deleteField, doc, serverTimestamp, setDoc, Timestamp } from 'firebase/firestore'
 import { db, COLLECTIONS } from '@/lib/firebase'
 import { toDate, toDateInput } from '@/lib/dates'
 import { stripUndefined, uid } from '@/lib/utils'
 import { commit, type SaveOutcome } from '@/lib/sync'
+import { planProgramOrder } from '@/lib/program'
+import { updateTalk } from '@/services/talks'
 import {
   ACTIVE_TALK_STATUSES,
+  HYMN_SLOTS,
   HYMN_SLOT_LABELS,
-  TALK_KIND_LABELS,
   type AnnouncementEntry,
   type BusinessEntry,
-  type HymnChoice,
   type HymnSlot,
   type MusicalNumber,
   type SacramentMeeting,
   type Talk,
-  type TalkKind,
 } from '@/lib/types'
+
+/*
+ * Das Ordnen des Programmteils liegt firestore-frei in `lib/program` – von
+ * hier mitverteilt, damit die Oberfläche nur einen Ort kennen muss.
+ */
+export {
+  buildProgram,
+  nextTalkSlot,
+  openSlotKey,
+  planProgramOrder,
+  programKey,
+  type ProgramEntry,
+  type ProgramEntryKind,
+} from '@/lib/program'
 
 /* ------------------------------------------------------------------ */
 /* Dokumente pro Sonntag                                               */
@@ -63,11 +77,25 @@ export async function saveSacramentMeeting(
   date: Date,
   patch: Partial<Omit<SacramentMeeting, 'id' | 'date'>>,
 ): Promise<SaveOutcome> {
+  const data = stripUndefined(patch as Record<string, unknown>)
+
+  /*
+   * `merge: true` führt auch verschachtelte Objekte zusammen. Ein entferntes
+   * Zwischenlied bliebe deshalb stehen: Es fehlt zwar im neuen Objekt, wird
+   * aber nicht überschrieben. Jeder Liedplatz wird darum ausdrücklich gesetzt
+   * oder gelöscht.
+   */
+  if (patch.hymns) {
+    data.hymns = Object.fromEntries(
+      HYMN_SLOTS.map((slot) => [slot, patch.hymns?.[slot] ?? deleteField()]),
+    )
+  }
+
   return commit(
     setDoc(
       doc(db, COLLECTIONS.sacramentMeetings, sacramentDocId(date)),
       {
-        ...stripUndefined(patch as Record<string, unknown>),
+        ...data,
         date: Timestamp.fromDate(date),
         updatedAt: serverTimestamp(),
       },
@@ -123,25 +151,6 @@ export function moveInList<T>(list: T[], index: number, delta: number): T[] {
 /* Programmteil «Botschaften und Musik»                                */
 /* ------------------------------------------------------------------ */
 
-export type ProgramEntryKind = 'talk' | 'testimony' | 'hymn' | 'music'
-
-export interface ProgramEntry {
-  /** Stabiler Schlüssel, z. B. «talk:abc123» oder «hymn:intermediate» */
-  key: string
-  kind: ProgramEntryKind
-  /** Art des Punktes: «Ansprache», «Zeugnis», «Zwischenlied», «Musikeinlage» */
-  label: string
-  /** Wer bzw. was – Name der Person oder Titel des Liedes */
-  title: string
-  detail?: string
-  /** Noch unvollständig (z. B. Lied ohne Nummer) – im Ablauf sichtbar machen */
-  incomplete?: boolean
-}
-
-export function programKey(kind: 'talk' | 'music' | 'hymn', id: string): string {
-  return `${kind}:${id}`
-}
-
 /** Ansprachen und Zeugnisse eines Sonntags, ohne abgesagte, nach Position sortiert. */
 export function talksForDate(talks: Talk[], date: Date): Talk[] {
   const key = toDateInput(date)
@@ -152,69 +161,65 @@ export function talksForDate(talks: Talk[], date: Date): Talk[] {
 }
 
 /**
- * Setzt den Teil «Botschaften und Musik» zusammen.
+ * Hält eine neue Reihenfolge fest – an beiden Orten zugleich.
  *
- * Die Werte kommen aus den Fachbereichen: Ansprachen aus `talks`, Lieder und
- * Musikeinlagen aus dem Programm. Eine unter «Leitung» festgelegte
- * Reihenfolge hat Vorrang; alles, was danach neu dazukommt, hängt sich hinten
- * an und kann von dort verschoben werden.
+ * Die Reihenfolge steht zweimal: im Ablauf als `programOrder` und bei den
+ * Ansprachen als Position (`slot`). Beide werden hier zusammen nachgeführt,
+ * sonst zeigte «Ansprachen» eine andere Folge als «Leitung». Offene
+ * Programmplätze zählen als Position mit, verschwinden aber aus dem
+ * gespeicherten Schlüsselband: Ihre Nummer ergibt sich ohnehin daraus,
+ * welche Plätze vergeben sind.
  */
-export function buildProgram(
-  meeting: SacramentMeeting | null,
+export async function saveProgramOrder(
+  date: Date,
+  keys: string[],
   talks: Talk[],
-  hymnTitle: (choice: HymnChoice | undefined) => string,
-): ProgramEntry[] {
-  const entries: ProgramEntry[] = []
-
-  talks.forEach((talk) => {
-    const kind: TalkKind = talk.kind ?? 'talk'
-    entries.push({
-      key: programKey('talk', talk.id),
-      kind,
-      label: TALK_KIND_LABELS[kind],
-      title: talk.memberName,
-      detail: talk.topic,
-    })
-  })
-
-  const intermediate = meeting?.hymns?.intermediate
-  if (intermediate && (intermediate.number || intermediate.title)) {
-    entries.push({
-      key: programKey('hymn', 'intermediate'),
-      kind: 'hymn',
-      label: HYMN_SLOT_LABELS.intermediate,
-      title: hymnTitle(intermediate),
-      incomplete: !intermediate.number,
-    })
-  }
-
-  ;(meeting?.musicalNumbers ?? []).forEach((number) => {
-    entries.push({
-      key: programKey('music', number.id),
-      kind: 'music',
-      label: 'Musikeinlage',
-      title: number.title || 'Musikeinlage',
-      incomplete: !number.title,
-    })
-  })
-
-  const order = meeting?.programOrder ?? []
-  if (order.length === 0) return entries
-
-  const rank = new Map(order.map((key, index) => [key, index]))
-  return [...entries].sort((a, b) => {
-    const rankA = rank.get(a.key) ?? Number.MAX_SAFE_INTEGER
-    const rankB = rank.get(b.key) ?? Number.MAX_SAFE_INTEGER
-    if (rankA !== rankB) return rankA - rankB
-    // Gleichstand heisst: beide sind neu. Dann zählt die Standardreihenfolge.
-    return entries.indexOf(a) - entries.indexOf(b)
-  })
+): Promise<SaveOutcome> {
+  const { order, slots } = planProgramOrder(keys, talks)
+  await Promise.all(slots.map((entry) => updateTalk(entry.id, { slot: entry.slot })))
+  return saveSacramentMeeting(date, { programOrder: order })
 }
 
-/** Anzahl vorgesehener Ansprachen für einen Sonntag (Standard oder Ausnahme). */
+/**
+ * Anzahl vorgesehener Ansprachen für einen Sonntag (Standard oder Ausnahme).
+ * `0` ist eine gültige Ausnahme – an einer Zeugnisversammlung wird keine
+ * Ansprache vergeben.
+ */
 export function talkSlotsFor(meeting: SacramentMeeting | null, defaultCount: number): number {
   const override = meeting?.talkSlots
-  return typeof override === 'number' && override > 0 ? override : defaultCount
+  return typeof override === 'number' && override >= 0 ? override : defaultCount
+}
+
+/**
+ * Einen weiteren Programmplatz für Ansprachen vorsehen.
+ *
+ * Gezählt wird ab dem höchsten belegten Platz: Sonst käme bei drei bereits
+ * vergebenen Ansprachen und zwei vorgesehenen Plätzen kein freier Platz dazu.
+ */
+export async function addTalkSlot(
+  date: Date,
+  talks: Talk[],
+  planned: number,
+): Promise<SaveOutcome> {
+  const highest = talks.reduce((max, talk) => Math.max(max, talk.slot), planned)
+  return saveSacramentMeeting(date, { talkSlots: highest + 1 })
+}
+
+/** Einen offenen Programmplatz streichen – die dahinterliegenden rücken auf. */
+export async function removeTalkSlot(
+  date: Date,
+  slot: number,
+  talks: Talk[],
+  planned: number,
+  defaultCount: number,
+): Promise<SaveOutcome> {
+  await Promise.all(
+    talks
+      .filter((talk) => talk.slot > slot)
+      .map((talk) => updateTalk(talk.id, { slot: talk.slot - 1 })),
+  )
+  const next = Math.max(0, planned - 1)
+  return saveSacramentMeeting(date, { talkSlots: next === defaultCount ? null : next })
 }
 
 /** Wie viele Programmplätze sind an diesem Sonntag noch offen? */

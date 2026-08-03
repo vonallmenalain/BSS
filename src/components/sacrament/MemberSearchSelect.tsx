@@ -22,6 +22,7 @@ export function MemberSearchSelect({
   suggestions,
   meta,
   disabled = false,
+  compact = false,
 }: {
   value: string | null
   onChange: (member: Member | null) => void
@@ -30,9 +31,17 @@ export function MemberSearchSelect({
   suggestions?: Member[]
   meta?: (member: Member) => ReactNode
   disabled?: boolean
+  /**
+   * Vorschläge erst zeigen, wenn das Feld angetippt wird.
+   *
+   * Im Ablauf stehen mehrere solche Felder untereinander; dauerhaft
+   * ausgeklappte Listen machten die Seite unübersichtlich lang.
+   */
+  compact?: boolean
 }) {
   const { members, membersById } = useData()
   const [search, setSearch] = useState('')
+  const [active, setActive] = useState(false)
 
   const selected = value ? (membersById.get(value) ?? null) : null
 
@@ -80,8 +89,17 @@ export function MemberSearchSelect({
     )
   }
 
+  const showResults = !compact || active || search.trim().length > 0
+
   return (
-    <div>
+    <div
+      onFocus={() => setActive(true)}
+      onBlur={(event) => {
+        // Ein Klick auf einen Vorschlag ist auch ein Fokuswechsel – nur
+        // schliessen, wenn er aus dem Feld herausführt.
+        if (!event.currentTarget.contains(event.relatedTarget as Node | null)) setActive(false)
+      }}
+    >
       {label && <span className="label">{label}</span>}
       <div className="relative">
         <Search
@@ -99,7 +117,7 @@ export function MemberSearchSelect({
         />
       </div>
 
-      {results.length > 0 ? (
+      {showResults && results.length > 0 ? (
         <ul className="mt-2 max-h-56 space-y-0.5 overflow-y-auto">
           {results.map((member) => (
             <li key={member.id}>
