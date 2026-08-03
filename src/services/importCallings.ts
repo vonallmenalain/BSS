@@ -174,10 +174,22 @@ export interface PastedCalling {
 }
 
 export interface PastedCallings {
+  /** Welche der beiden Seiten gelesen wurde */
+  source: CallingSource
   /** Berufungen mit zugewiesener Person */
   callings: PastedCalling[]
   /** Anzahl gelesener, aber offener Berufungen */
   vacant: number
+  /**
+   * Organisationen, deren Tabelle in der Quelle stand – auch dann, wenn
+   * darin nur offene Berufungen standen.
+   *
+   * Sie legen fest, wie weit die Quelle reicht. Das LCR zeigt die Seite
+   * zwar vollständig, kopiert wird aber gelegentlich nur ein Ausschnitt;
+   * wer die Sonntagsschule einfügt, soll nicht die ganze Gemeinde
+   * entlassen.
+   */
+  organizations: Organization[]
 }
 
 /* ------------------------------------------------------------------ */
@@ -199,6 +211,7 @@ function isDate(value: string): boolean {
  */
 function parseOrganizationPage(lines: string[]): PastedCallings {
   const callings: PastedCalling[] = []
+  const covered = new Set<Organization>()
   let vacant = 0
 
   let organization: Organization = 'other'
@@ -240,6 +253,10 @@ function parseOrganizationPage(lines: string[]): PastedCallings {
       inTable = true
       buffer = []
       custom = false
+      // Die Tabelle gehört zur zuletzt gelesenen Überschrift. Sie hier zu
+      // vermerken erfasst auch Organisationen, in denen alle Berufungen
+      // offen sind – auch das ist eine Aussage der Quelle.
+      covered.add(organization)
       continue
     }
 
@@ -292,7 +309,7 @@ function parseOrganizationPage(lines: string[]): PastedCallings {
     buffer.push(line)
   }
 
-  return { callings, vacant }
+  return { source: 'organizations', callings, vacant, organizations: [...covered] }
 }
 
 /* ------------------------------------------------------------------ */
@@ -346,7 +363,7 @@ function parseOutOfUnitPage(lines: string[]): PastedCallings {
     buffer.push(line)
   }
 
-  return { callings, vacant: 0 }
+  return { source: 'outOfUnit', callings, vacant: 0, organizations: [] }
 }
 
 /* ------------------------------------------------------------------ */

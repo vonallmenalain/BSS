@@ -12,7 +12,7 @@
     "lint": "eslint .",
     "format": "prettier --write \"src/**/*.{ts,tsx,css,json,md}\"",
     "emulators": "npx --yes firebase-tools@15 emulators:start --only auth,firestore",
-    "test:import": "node --test tests/import-paste.test.ts",
+    "test:import": "node --test tests/*.test.ts",
     "test:rules": "npx --yes firebase-tools@15 emulators:exec --only firestore --project bss-rules-test \"node --test tests/*.test.js\"",
     "deploy:rules": "npx --yes firebase-tools@15 deploy --only firestore:rules,firestore:indexes"
   },
