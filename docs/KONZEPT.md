@@ -8,13 +8,13 @@ Stand: erste Fassung, umgesetzt als lauffähiger Entwurf.
 
 Die Bischofschaft leitet eine Kirchengemeinde. Die Arbeit verteilt sich auf
 
-| Rolle                 | Personen | Aufgabe                                              |
-| --------------------- | -------- | ---------------------------------------------------- |
-| **Bischof**           | 1        | leitet die Gemeinde und die Bischofschaft            |
-| **1. Ratgeber**       | 1        | vertritt und unterstützt den Bischof                 |
-| **2. Ratgeber**       | 1        | vertritt und unterstützt den Bischof                 |
-| **Exekutivsekretär**  | 1        | Sitzungen, Termine, Nachverfolgung                   |
-| **Sekretär**          | 1–2      | Protokolle, Aufzeichnungen, Berichte                 |
+| Rolle                | Personen | Aufgabe                                   |
+| -------------------- | -------- | ----------------------------------------- |
+| **Bischof**          | 1        | leitet die Gemeinde und die Bischofschaft |
+| **1. Ratgeber**      | 1        | vertritt und unterstützt den Bischof      |
+| **2. Ratgeber**      | 1        | vertritt und unterstützt den Bischof      |
+| **Exekutivsekretär** | 1        | Sitzungen, Termine, Nachverfolgung        |
+| **Sekretär**         | 1–2      | Protokolle, Aufzeichnungen, Berichte      |
 
 Alle fünf arbeiten am selben Datenbestand und sehen dasselbe. Die Rolle hält
 die Aufgabe fest, nicht den Rechteumfang – sie beantwortet etwa, wer die
@@ -69,7 +69,7 @@ sein, darf aber niemals Dubletten erzeugen oder gepflegte Notizen überschreiben
 
 ---
 
-## 3. Die drei Arbeitsbereiche
+## 3. Die Arbeitsbereiche
 
 ### 3.1 Sitzungsmanagement
 
@@ -91,7 +91,7 @@ Klick übernimmt alle offenen Pendenzen in die neue Sitzung.
 **Durchführen (Sitzungsmodus).** Fortschrittsbalken, Sprungleiste über alle
 Traktanden, dann das aktuelle Thema in voller Breite: Beschreibung,
 Zuständige, betroffene Mitglieder, Notizen. Darunter die Aktionsleiste –
-*Erledigt*, *In Arbeit*, *Verschieben*, *Verwerfen* – und Vor/Zurück.
+_Erledigt_, _In Arbeit_, _Verschieben_, _Verwerfen_ – und Vor/Zurück.
 Nach «Erledigt» rückt die App von selbst zum nächsten Punkt. Am Laptop geht
 das Blättern auch mit den Pfeiltasten, `N` springt ins Notizfeld.
 
@@ -179,8 +179,8 @@ ist kein Grund, jemanden zu übergehen.
 letzten Ansprache beim Mitglied fort und erhöht den Zähler. Ein nachgetragener
 alter Termin überschreibt dabei nie ein neueres Datum.
 
-Statusfolge: *Vorgesehen → Angefragt → Zugesagt → Gehalten*
-(mit *Abgesagt* und *Gestrichen* als Ausstieg).
+Statusfolge: _Vorgesehen → Angefragt → Zugesagt → Gehalten_
+(mit _Abgesagt_ und _Gestrichen_ als Ausstieg).
 
 **Verlauf übernehmen.** Die Vorschlagsliste ist nur so gut wie das, was sie
 über die Vergangenheit weiss – ohne Verlauf hielte sie anfangs alle für gleich
@@ -195,8 +195,8 @@ werden gemeldet, nicht gedeutet.
 
 Berufungen durchlaufen feste Schritte, und jeder hat sein Datum:
 
-*Vorgeschlagen → Genehmigt → Berufung ausgesprochen → Bestätigt → Eingesetzt*
-(→ *Entlassen*)
+_Vorgeschlagen → Genehmigt → Berufung ausgesprochen → Bestätigt → Eingesetzt_
+(→ _Entlassen_)
 
 Die Ansicht gruppiert nach Organisation (Ältestenkollegium, FHV, JD, JM, PV,
 Sonntagsschule …) und behält innerhalb jeder Organisation die Reihenfolge des
@@ -215,8 +215,8 @@ wären sie nicht auseinanderzuhalten, und beim Abgleich hielte der Import den
 einen für den anderen. Auswärtige Berufungen zählen für die Person, erscheinen
 aber nicht im Organisationsplan der Gemeinde.
 
-**Import aus dem LCR.** Die Seiten *Organisationen* und *Berufungen
-ausserhalb der Einheit* lassen sich hineinkopieren; welche vorliegt, wird
+**Import aus dem LCR.** Die Seiten _Organisationen_ und _Berufungen
+ausserhalb der Einheit_ lassen sich hineinkopieren; welche vorliegt, wird
 gewählt. Der Abgleich zählt Person, Rolle, Organisation und Bereich – so
 bleibt die Bischofschaft doppelt bestehen, wie das LCR sie auch führt.
 
@@ -227,6 +227,30 @@ ersetzt der Import nur, was die Quelle abdeckt: Wer bloss die Sonntagsschule
 kopiert, entlässt niemanden in der FHV. Unberührt bleibt, was die
 Bischofschaft erst vorbereitet – Vorgeschlagenes und Ausgesprochenes steht
 nicht im LCR und kann dort deshalb auch nicht fehlen.
+
+### 3.4 Notizen
+
+Was sich nicht an eine Sitzung, ein Mitglied oder einen Sonntag hängen lässt:
+der Gedanke aus einem Telefonat, eine Liste zum Mitdenken, der Entwurf einer
+Ansage. Bisher landete das auf einem Zettel oder in einer Notiz-App auf einem
+einzelnen Telefon – und damit ausserhalb dessen, was die Bischofschaft
+gemeinsam sieht.
+
+**Titel und Text, mehr nicht.** Keine Farben, kein Anheften, keine
+Checklisten. Wer eine Aufgabe festhalten will, legt eine Pendenz an: Sie kann
+terminiert und zugewiesen werden und kommt in der nächsten Sitzung von selbst
+wieder. Eine Notiz, die dasselbe zu können versucht, wäre nur die schlechtere
+Pendenz.
+
+**Für alle.** Es gibt keine private Notiz und deshalb auch keinen Schalter
+dafür – wie bei allem Übrigen in dieser App sehen alle freigeschalteten Rollen
+denselben Bestand. Was niemand sonst sehen soll, gehört nicht in diese
+Datenbank.
+
+**Geschrieben wird laufend**, kurz nach dem letzten Tastendruck und noch
+einmal beim Schliessen. Ein Speichern-Knopf wäre hier die einzige
+Gelegenheit, Geschriebenes zu verlieren. Eine leere Notiz entsteht gar nicht
+erst; angelegt wird beim ersten Speichern.
 
 ---
 
@@ -255,13 +279,13 @@ sich kümmert.
 
 **Betreuung.** Zwei Listen statt einer einzelnen Kontaktperson, weil die
 Betreuungsorganisation genau so aufgebaut ist: mit wem zusammen betreut wird
-(*Betreuungspartner*) und wer betreut wird (*Betreuungsauftrag*). Beides kommt
+(_Betreuungspartner_) und wer betreut wird (_Betreuungsauftrag_). Beides kommt
 mehrfach vor und lässt sich aus dem LCR übernehmen – auch hier ist die
 eingefügte Seite die vollständige Wahrheit, beide Listen werden ersetzt statt
 ergänzt.
 
 **Import (alle 3–4 Monate).** Ein vierstufiger Assistent, erreichbar über
-*Mitglieder → Import* – nicht prominent, aber auffindbar. Von dort führen
+_Mitglieder → Import_ – nicht prominent, aber auffindbar. Von dort führen
 Reiter zu allem, was sich von aussen übernehmen lässt: Mitglieder, Berufungen
 und Betreuung aus dem LCR, dazu der einmalige Verlauf aus der bisherigen
 Excel-Tabelle. Die Mitglieder kommen zuerst, weil alle übrigen ihre Einträge
@@ -290,14 +314,14 @@ Ein CSV-Export dient als Sicherung.
 
 ## 5. Technik
 
-| Baustein     | Wahl                                       | Begründung                                                     |
-| ------------ | ------------------------------------------ | -------------------------------------------------------------- |
-| Frontend     | React 19, TypeScript, Vite                 | schnelle Entwicklung, gute Typsicherheit                        |
-| Gestaltung   | Tailwind CSS v4                            | einheitliches Erscheinungsbild ohne separate CSS-Pflege         |
-| PWA          | vite-plugin-pwa (Workbox)                  | installierbar, offline lauffähig                                |
-| Daten        | Firebase Firestore                         | Echtzeit-Synchronisation, Offline-Cache eingebaut               |
-| Anmeldung    | Firebase Authentication (E-Mail/Passwort)  | bereits vorhanden                                               |
-| Auslieferung | Netlify → `bss.alae.app`                   | bereits eingerichtet                                            |
+| Baustein     | Wahl                                      | Begründung                                              |
+| ------------ | ----------------------------------------- | ------------------------------------------------------- |
+| Frontend     | React 19, TypeScript, Vite                | schnelle Entwicklung, gute Typsicherheit                |
+| Gestaltung   | Tailwind CSS v4                           | einheitliches Erscheinungsbild ohne separate CSS-Pflege |
+| PWA          | vite-plugin-pwa (Workbox)                 | installierbar, offline lauffähig                        |
+| Daten        | Firebase Firestore                        | Echtzeit-Synchronisation, Offline-Cache eingebaut       |
+| Anmeldung    | Firebase Authentication (E-Mail/Passwort) | bereits vorhanden                                       |
+| Auslieferung | Netlify → `bss.alae.app`                  | bereits eingerichtet                                    |
 
 **Warum Echtzeit zählt.** Wenn in der Sitzung drei Personen dieselbe Liste
 offen haben, sieht jede sofort, was die andere ändert. Firestore liefert das
@@ -329,6 +353,11 @@ den Stand, auf dem der Entwurf aufsetzt, und melden eine Abweichung, statt sie
 zu überschreiben (`src/components/sacrament/useDraft.ts`). Zwei
 Sperrmechanismen wären der falsche Weg gewesen – eine Bischofschaft ist klein
 genug, dass ein Hinweis reicht.
+
+Der eigene Schreibvorgang zählt dabei nicht: Firestore hält ihn sofort lokal
+fest und meldet ihn als Schnappschuss zurück, lange bevor der Server
+bestätigt. Wer das nicht auseinanderhält, zeigt den Hinweis bei jeder Eingabe
+für einen Sekundenbruchteil – und schiebt die halbe Seite mit.
 
 ### Datenmodell
 
@@ -362,6 +391,7 @@ sacramentMeetings/{yyyy-MM-dd}
 prayers/{yyyy-MM-dd_slot}
                        Datum, Anfangs- oder Schlussgebet, Mitglied
 hymns/{nummer}         Liednummer und Titel (importiert)
+notes/{id}             Notiz: Titel, Text, wer zuletzt geschrieben hat
 settings/app           Gemeindename, Sitzungsrhythmus, Vorgaben zur
                        Abendmahlsversammlung, Personen ohne Konto für
                        Vorsitz und Leitung
@@ -418,6 +448,8 @@ immer dasselbe: Termin verstrichen.
 - Sitzungen planen, starten, durchführen, abschliessen, Protokoll drucken
 - Sitzungsmodus mit Notizen, Statuswechsel, Verschieben, Tastatursteuerung
 - Pendenzenübersicht mit Filtern (alle / meine / überfällig / ohne Sitzung)
+- Notizen für alle: Titel und Text, Suche, Liste oder Kacheln, laufendes
+  Speichern
 - Mitgliederliste mit Suche, Sortierung, Detailansicht, Notizen
 - Import aus eingefügter Liste, Excel oder CSV mit Spaltenzuordnung, Abgleich
   und Vorschau; CSV-Export

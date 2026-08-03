@@ -18,6 +18,7 @@ const Members = lazy(() => import('@/pages/Members').then((m) => ({ default: m.M
 const MemberDetail = lazy(() =>
   import('@/pages/MemberDetail').then((m) => ({ default: m.MemberDetail })),
 )
+const Notes = lazy(() => import('@/pages/Notes').then((m) => ({ default: m.Notes })))
 const Talks = lazy(() => import('@/pages/Talks').then((m) => ({ default: m.Talks })))
 const Callings = lazy(() => import('@/pages/Callings').then((m) => ({ default: m.Callings })))
 const Settings = lazy(() => import('@/pages/Settings').then((m) => ({ default: m.Settings })))
@@ -94,6 +95,14 @@ export default function App() {
                 <Route path="sitzungen" element={<Meetings />} />
                 <Route path="sitzungen/:meetingId" element={<MeetingDetail />} />
                 <Route path="pendenzen" element={<Pendenzen />} />
+                <Route
+                  path="notizen"
+                  element={
+                    <Suspense fallback={<LoadingScreen />}>
+                      <Notes />
+                    </Suspense>
+                  }
+                />
 
                 <Route
                   path="mitglieder"

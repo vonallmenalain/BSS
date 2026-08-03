@@ -4,6 +4,7 @@ import {
   LayoutDashboard,
   CalendarDays,
   ListTodo,
+  NotebookPen,
   Church,
   CloudUpload,
   Users,
@@ -95,6 +96,7 @@ export function Layout() {
       primary: true,
       badge: overdueCount || undefined,
     },
+    { to: '/notizen', label: 'Notizen', shortLabel: 'Notiz', icon: NotebookPen },
     {
       to: '/abendmahl/leitung',
       label: 'Abendmahlsversammlung',

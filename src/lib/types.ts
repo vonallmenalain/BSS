@@ -755,3 +755,25 @@ export interface Hymn extends WithId {
   title: string
   updatedAt?: TS
 }
+
+/* ------------------------------------------------------------------ */
+/* Notizen                                                             */
+/* ------------------------------------------------------------------ */
+
+/**
+ * Eine Notiz der Bischofschaft.
+ *
+ * Bewusst schmal: Titel, Text, wer zuletzt geschrieben hat. Keine Farben,
+ * kein Anheften, keine Checklisten – und keine private Notiz. In einer
+ * Bischofschaft arbeiten alle am selben Bestand, wie bei allem Übrigen in
+ * dieser App; was niemand sonst sehen soll, gehört nicht in diese Datenbank.
+ */
+export interface Note extends WithId {
+  title: string
+  body: string
+  /** Wer sie angelegt bzw. zuletzt geändert hat (UID aus `users`) */
+  createdById?: string | null
+  updatedById?: string | null
+  createdAt?: TS
+  updatedAt?: TS
+}

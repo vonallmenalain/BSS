@@ -143,6 +143,14 @@ service cloud.firestore {
       allow read, write: if approved();
     }
 
+    /* ---------------- Notizen ---------------- */
+
+    // Notizen gehören der ganzen Bischofschaft: Es gibt keine private Notiz,
+    // deshalb auch keine Einschränkung auf die Person, die sie angelegt hat.
+    match /notes/{noteId} {
+      allow read, write: if approved();
+    }
+
     /* ---------------- Einstellungen ---------------- */
 
     match /settings/{docId} {

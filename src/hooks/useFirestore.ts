@@ -16,6 +16,7 @@ import {
   type AgendaItem,
   type Calling,
   type Meeting,
+  type Note,
   type Prayer,
   type SacramentMeeting,
   type Talk,
@@ -233,4 +234,18 @@ export function usePrayers(limitCount = 400) {
   const { isApproved } = useAuth()
   const constraints = useMemo(() => [orderBy('date', 'desc'), fbLimit(limitCount)], [limitCount])
   return useCollection<Prayer>(COLLECTIONS.prayers, constraints, isApproved)
+}
+
+/* ------------------------------------------------------------------ */
+/* Notizen                                                             */
+/* ------------------------------------------------------------------ */
+
+/** Notizen, zuletzt bearbeitete zuoberst. */
+export function useNotes(limitCount = 300) {
+  const { isApproved } = useAuth()
+  const constraints = useMemo(
+    () => [orderBy('updatedAt', 'desc'), fbLimit(limitCount)],
+    [limitCount],
+  )
+  return useCollection<Note>(COLLECTIONS.notes, constraints, isApproved)
 }
