@@ -27,6 +27,11 @@ export interface Draft<T> {
   set: (next: T) => void
   /** Entwurf verwerfen – nach dem Speichern oder zugunsten der fremden Fassung. */
   reset: () => void
+  /**
+   * Den Ausgangsstand auf den aktuellen Serverstand nachziehen, ohne den
+   * Entwurf anzutasten – nach einem eigenen Schreibvorgang.
+   */
+  rebase: () => void
 }
 
 export function useDraft<T>(serverValue: T): Draft<T> {
@@ -44,6 +49,10 @@ export function useDraft<T>(serverValue: T): Draft<T> {
     // danach stehen – er ist der Bezugspunkt für die Konfliktprüfung.
     set: (next: T) => setDraft((current) => ({ base: current?.base ?? serverJson, value: next })),
     reset: () => setDraft(null),
+    rebase: () =>
+      setDraft((current) =>
+        current && current.base !== serverJson ? { ...current, base: serverJson } : current,
+      ),
   }
 }
 
@@ -78,6 +87,8 @@ export function useAutoDraft<T>(
   const { delay = 700, onError } = options
   const draft = useDraft(serverValue)
   const [saving, setSaving] = useState(false)
+  /** Was zuletzt geschrieben wurde – daran ist der eigene Schnappschuss zu erkennen. */
+  const [written, setWritten] = useState<string | null>(null)
 
   /*
    * Alles Veränderliche liegt in Refs: Der Aufräumer beim Verlassen der Seite
@@ -86,10 +97,10 @@ export function useAutoDraft<T>(
    */
   const pending = useRef<{ value: T } | null>(null)
   const timer = useRef<ReturnType<typeof setTimeout> | null>(null)
-  const latest = useRef({ save, onError, reset: draft.reset, set: draft.set })
+  const latest = useRef({ save, onError, reset: draft.reset, set: draft.set, rebase: draft.rebase })
 
   useEffect(() => {
-    latest.current = { save, onError, reset: draft.reset, set: draft.set }
+    latest.current = { save, onError, reset: draft.reset, set: draft.set, rebase: draft.rebase }
   })
 
   const flush = useCallback(async () => {
@@ -102,11 +113,17 @@ export function useAutoDraft<T>(
     pending.current = null
 
     setSaving(true)
+    setWritten(JSON.stringify(waiting.value))
     try {
       await latest.current.save(waiting.value)
       // Nur zurücksetzen, wenn zwischenzeitlich nichts Neues getippt wurde –
       // sonst überschriebe der Serverstand die frischere Eingabe.
       if (!pending.current) latest.current.reset()
+      // Wer weitertippt, behält seinen Entwurf – aber auf dem eben
+      // geschriebenen Stand. Bliebe der alte Ausgangsstand stehen, käme der
+      // eigene Schreibvorgang beim nächsten Schnappschuss als fremde
+      // Änderung zurück.
+      else latest.current.rebase()
     } catch (error) {
       // Der Entwurf bleibt bestehen und wird beim nächsten Anlauf erneut
       // versucht; verloren geht dadurch nichts.
@@ -142,11 +159,26 @@ export function useAutoDraft<T>(
     }
   }, [flush])
 
+  /*
+   * Der eigene Schreibvorgang ist keine fremde Änderung.
+   *
+   * Firestore hält ihn sofort lokal fest und meldet ihn als Schnappschuss
+   * zurück, lange bevor der Server bestätigt. Für den Entwurf sah das aus wie
+   * eine fremde Fassung: Bei jeder Eingabe blitzte die Konfliktmeldung einen
+   * Sekundenbruchteil auf und schob die ganze Seite an – erst nach unten, dann
+   * wieder nach oben. Solange geschrieben wird und solange der Serverstand
+   * genau dem Geschriebenen entspricht, gilt deshalb kein Konflikt. Eine
+   * fremde Änderung weicht davon ab und wird weiterhin gemeldet.
+   */
+  const ownWrite = written !== null && written === JSON.stringify(serverValue ?? null)
+
   return {
     ...draft,
+    conflict: draft.conflict && !saving && !ownWrite,
     set,
     reset: () => {
       pending.current = null
+      setWritten(null)
       if (timer.current) clearTimeout(timer.current)
       draft.reset()
     },

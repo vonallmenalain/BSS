@@ -11,13 +11,14 @@ Abendmahlsversammlung, Berufungsverwaltung und Mitgliederdaten.
 
 ## Auf einen Blick
 
-| Bereich                     | Was die App leistet                                                                      |
-| --------------------------- | ---------------------------------------------------------------------------------------- |
-| **Sitzungen**               | Termin festlegen, Traktanden sammeln, Sitzungsmodus zum Durchgehen, Protokoll drucken      |
-| **Pendenzen**               | Offenes über alle Sitzungen hinweg, gefiltert nach «meine», «überfällig», «ohne Sitzung»   |
-| **Abendmahlsversammlung**   | Ganzer Ablauf pro Sonntag: Leitung, Bekanntmachungen, Angelegenheiten, Ansprachen, Musik, Gebet |
-| **Berufungen**              | Vom Vorschlag bis zur Einsetzung, gruppiert nach Organisation                              |
-| **Mitglieder**              | Stammdaten, Notizen, Suche und Sortierung; Import aus eingefügter Liste, Excel oder CSV, CSV-Export |
+| Bereich                   | Was die App leistet                                                                                 |
+| ------------------------- | --------------------------------------------------------------------------------------------------- |
+| **Sitzungen**             | Termin festlegen, Traktanden sammeln, Sitzungsmodus zum Durchgehen, Protokoll drucken               |
+| **Pendenzen**             | Offenes über alle Sitzungen hinweg, gefiltert nach «meine», «überfällig», «ohne Sitzung»            |
+| **Notizen**               | Was nicht an eine Sitzung gehört – für alle sichtbar, speichert von selbst                          |
+| **Abendmahlsversammlung** | Ganzer Ablauf pro Sonntag: Leitung, Bekanntmachungen, Angelegenheiten, Ansprachen, Musik, Gebet     |
+| **Berufungen**            | Vom Vorschlag bis zur Einsetzung, gruppiert nach Organisation                                       |
+| **Mitglieder**            | Stammdaten, Notizen, Suche und Sortierung; Import aus eingefügter Liste, Excel oder CSV, CSV-Export |
 
 Traktandum und Pendenz sind derselbe Datensatz: Was in einer Sitzung offen
 bleibt, erscheint automatisch wieder – ohne Umtragen.
@@ -138,7 +139,7 @@ und arbeitet in zwei Schritten:
    Personendaten öffnet.
 
 Der Reiter **Actions** auf GitHub erlaubt zusätzlich das Ausrollen von Hand
-(*Firestore-Regeln → Run workflow*), etwa nach einem Wechsel des Projekts.
+(_Firestore-Regeln → Run workflow_), etwa nach einem Wechsel des Projekts.
 
 ### Einmalige Einrichtung
 
@@ -157,18 +158,18 @@ richtige Projekt wählen, in der Liste den Eintrag
 `firebase-adminsdk-…@dein-projekt.iam.gserviceaccount.com` suchen, auf das
 Stift-Symbol klicken und zwei Rollen ergänzen:
 
-| Rolle | Wofür |
-| --- | --- |
-| **Firebase Rules Admin** | `firestore.rules` veröffentlichen |
-| **Cloud Datastore Index Admin** | Indizes anlegen und ändern |
+| Rolle                           | Wofür                             |
+| ------------------------------- | --------------------------------- |
+| **Firebase Rules Admin**        | `firestore.rules` veröffentlichen |
+| **Cloud Datastore Index Admin** | Indizes anlegen und ändern        |
 
 **3. Zwei Secrets hinterlegen.** GitHub → Repository → **Settings** →
 **Secrets and variables** → **Actions** → **New repository secret**:
 
-| Name | Inhalt |
-| --- | --- |
-| `FIREBASE_SERVICE_ACCOUNT` | der **gesamte** Inhalt der JSON-Datei aus Schritt 1 |
-| `FIREBASE_PROJECT_ID` | die Projekt-ID, derselbe Wert wie `VITE_FIREBASE_PROJECT_ID` |
+| Name                       | Inhalt                                                       |
+| -------------------------- | ------------------------------------------------------------ |
+| `FIREBASE_SERVICE_ACCOUNT` | der **gesamte** Inhalt der JSON-Datei aus Schritt 1          |
+| `FIREBASE_PROJECT_ID`      | die Projekt-ID, derselbe Wert wie `VITE_FIREBASE_PROJECT_ID` |
 
 Beim JSON die komplette Datei einfügen, von der ersten geschweiften Klammer
 bis zur letzten. Fehlt eines der beiden Secrets, bricht der Workflow mit einer
@@ -179,9 +180,9 @@ Rechner entfernen, sobald sie in GitHub hinterlegt ist.
 
 ### Wenn das Ausrollen scheitert
 
-- *«Missing permissions»* → Schritt 2 wurde übersprungen oder betraf das
+- _«Missing permissions»_ → Schritt 2 wurde übersprungen oder betraf das
   falsche Dienstkonto.
-- *Indizes können nicht gelöscht werden* → Der Workflow entfernt bewusst keine
+- _Indizes können nicht gelöscht werden_ → Der Workflow entfernt bewusst keine
   Indizes, die aus `firestore.indexes.json` verschwunden sind. Das wäre ein
   Eingriff, der laufende Abfragen brechen kann, und passiert deshalb nur von
   Hand über die Firebase-Konsole.
@@ -218,7 +219,8 @@ herunter. Die entscheidende Trennlinie verläuft zwischen `pending` und allen
 übrigen Rollen. Geprüft wird deshalb vor allem, dass ein wartendes Konto
 nichts liest, nichts schreibt und sich nicht selbst freischalten kann – und
 dass umgekehrt jede freigeschaltete Rolle auf denselben Bestand kommt,
-einschliesslich Programm der Abendmahlsversammlung, Gebete und Liederliste.
+einschliesslich Programm der Abendmahlsversammlung, Gebete, Liederliste und
+Notizen.
 
 Dieselben Tests laufen in der CI, bevor Regeln ausgerollt werden.
 
@@ -229,18 +231,23 @@ Dieselben Tests laufen in der CI, bevor Regeln ausgerollt werden.
 Ein Bereich, sechs Unterpunkte – oben wird der Sonntag gewählt, und er gilt
 für alle Unterpunkte.
 
-| Unterpunkt            | Wofür |
-| --------------------- | ----- |
-| **Leitung**           | Der ganze Ablauf auf einer Seite – hier änderbar, zum Ausdrucken fürs Pult |
-| **Bekanntmachungen**  | Liste pro Sonntag, in der Reihenfolge des Vorlesens; speichert von selbst |
-| **Angelegenheiten**   | Bestätigungen, Entlassungen, Segnungen, Konfirmierungen |
-| **Ansprachen**        | Programmplätze vergeben, Vorschlagsliste, Verlauf |
-| **Musik**             | Drei bis vier Lieder und Musikeinlagen |
-| **Gebet**             | Anfangs- und Schlussgebet, mit «zuletzt gebetet» |
+| Unterpunkt           | Wofür                                                                      |
+| -------------------- | -------------------------------------------------------------------------- |
+| **Leitung**          | Der ganze Ablauf auf einer Seite – hier änderbar, zum Ausdrucken fürs Pult |
+| **Bekanntmachungen** | Liste pro Sonntag, in der Reihenfolge des Vorlesens; speichert von selbst  |
+| **Angelegenheiten**  | Bestätigungen, Entlassungen, Segnungen, Konfirmierungen                    |
+| **Ansprachen**       | Programmplätze vergeben, Vorschlagsliste, Verlauf                          |
+| **Musik**            | Drei bis vier Lieder und Musikeinlagen                                     |
+| **Gebet**            | Anfangs- und Schlussgebet, mit «zuletzt gebetet»                           |
 
 **Leitung** zeigt den ganzen Ablauf – und alles darin lässt sich hier ändern:
 Vorsitz und Begrüssung, Bekanntmachungen, Angelegenheiten, Lieder, Gebete,
-Ansprachen und Musikeinlagen. Der Knopf **Bearbeiten** schaltet zwischen dem
+Ansprachen und Musikeinlagen. Bei **Es präsidiert** und **Es leitet** stehen
+die freigeschalteten Konten zur Wahl – und mit **Person hinzufügen** jede
+weitere Person: Ist Besuch aus der Pfahlführung da, präsidiert er, und ein
+Konto in der App hat er nicht. Ein einmal erfasster Name ist an jedem Sonntag
+wählbar und lässt sich im selben Fenster wieder aus der Auswahl nehmen, ohne
+aus schon erfassten Programmen zu verschwinden. Der Knopf **Bearbeiten** schaltet zwischen dem
 reinen Programm (so wird es gedruckt) und den Eingabefeldern um; gespeichert
 wird laufend, ohne Speichern-Knopf. Was noch fehlt, steht als kurze Liste
 zuoberst.
@@ -276,6 +283,39 @@ einem Neuimport gleich bleibt.
 **Gebet.** Beim Zuteilen steht bei jedem Vorschlag, wann die Person zuletzt
 gebetet hat; zuoberst steht, wer noch nie an der Reihe war – dieselbe Logik
 wie bei den Ansprachen.
+
+---
+
+## Notizen
+
+**Notizen** in der Seitenleiste, gleich unter den Pendenzen.
+
+Für alles, was nicht an einer Sitzung, einem Mitglied oder einem Sonntag
+hängt: der Gedanke aus einem Telefonat, eine Liste zum Mitdenken, der Entwurf
+einer Ansage. Eine Notiz hat einen Titel und einen Text – mehr nicht. Keine
+Farben, kein Anheften, keine Checklisten: Wer eine Aufgabe festhalten will,
+legt eine Pendenz an; sie kann terminiert und zugewiesen werden und taucht in
+der nächsten Sitzung wieder auf.
+
+Jede Notiz gehört der ganzen Bischofschaft. Es gibt keine private Notiz und
+darum auch keinen Schalter dafür – wie bei allem Übrigen in dieser App sehen
+alle freigeschalteten Rollen denselben Bestand.
+
+**Gespeichert wird laufend**, kurz nach dem letzten Tastendruck und noch
+einmal beim Schliessen des Fensters; einen Speichern-Knopf gibt es nicht. Eine
+neue Notiz entsteht erst beim ersten Speichern – wer das Fenster ohne Eingabe
+wieder schliesst, hinterlässt keine leere Zeile in der Liste.
+
+**Verweise** im Text – `https://…`, `www.…` und E-Mail-Adressen – sind
+anklickbar, sobald das Feld verlassen wird. Ein Griff in den Text macht daraus
+wieder das Eingabefeld.
+
+Über **Ansicht** lässt sich einstellen, ob die Notizen als Liste oder als
+Kacheln erscheinen und wie viel jede von sich zeigt (klein, komprimiert,
+alles). Am grossen Bildschirm bestimmt zusätzlich ein Schalter im Fenster, wie
+breit eine geöffnete Notiz werden darf. Beides gilt pro Gerät, nicht pro
+Notiz. Die Suche durchsucht Titel und Text; zuoberst steht, was zuletzt
+bearbeitet wurde – mit Datum und Namen dessen, der es getan hat.
 
 ---
 
@@ -332,8 +372,8 @@ zweiter – steht in der Quelle «Christiane», passt das zu «Anne Christiane»
 und abgekürzte Zweitnamen («Joshua B.») ebenso. Ein halber Treffer gilt
 bewusst nicht als Treffer: Was übrig bleibt, wird gemeldet statt geraten.
 
-**Berufungen.** Zwei Listen, getrennt geführt: *Berufungen der Gemeinde* (die
-LCR-Seite «Organisationen») und *Ausserhalb der Einheit*. Welche vorliegt,
+**Berufungen.** Zwei Listen, getrennt geführt: _Berufungen der Gemeinde_ (die
+LCR-Seite «Organisationen») und _Ausserhalb der Einheit_. Welche vorliegt,
 wird vor dem Einfügen gewählt – die zweite Seite trägt kein Merkmal, an dem
 sie sich erkennen liesse, und die Wahl entscheidet mit, welcher Bereich
 ersetzt wird.
@@ -348,7 +388,7 @@ Bestehende Berufungen werden über Person, Rolle, Organisation und Bereich
 erkannt und aktualisiert. Offene Berufungen («Berufung offen») werden gezählt,
 aber nicht geschrieben.
 
-**Betreuung.** Die Seite *Betreuungsaufträge* mit allen Organisationen und
+**Betreuung.** Die Seite _Betreuungsaufträge_ mit allen Organisationen und
 allen Personen anzeigen lassen, dann kopieren. Pro Person entstehen zwei
 Listen: mit wem zusammen betreut wird und wer betreut wird.
 
@@ -384,7 +424,7 @@ zusätzlich abschalten.
 
 Ohne Verlauf beginnt die App bei null: Sie hielte alle für gleich lange nicht
 dran und bräuchte Jahre, bis die Vorschlagslisten wieder etwas taugen. Der
-Import holt nach, was bisher in der Tabelle *AMV_AnsprGeb* stand – ein Blatt je
+Import holt nach, was bisher in der Tabelle _AMV_AnsprGeb_ stand – ein Blatt je
 Jahr, eine Zeile je Person, zwei Spalten je Monat: «A» für die Ansprache, «G»
 für das Gebet.
 
@@ -433,11 +473,11 @@ Verlauf zu verdoppeln. Was in der App gepflegt wurde, bleibt unangetastet.
 
 Zur Auswahl stehen drei Bücher:
 
-| Buch | Nummern | Kürzel |
-| ---- | ------- | ------ |
-| Gesangbuch | 1–210 | – |
-| Liederbuch für Kinder (PV) | 2–148, mit Doppelnummern | `PV` |
-| Für zuhause und für die Kirche | ab 1001 | – |
+| Buch                           | Nummern                  | Kürzel |
+| ------------------------------ | ------------------------ | ------ |
+| Gesangbuch                     | 1–210                    | –      |
+| Liederbuch für Kinder (PV)     | 2–148, mit Doppelnummern | `PV`   |
+| Für zuhause und für die Kirche | ab 1001                  | –      |
 
 Jedes wird für sich eingelesen und für sich geleert. Gesangbuch und
 PV-Liederbuch zählen beide ab 1 – Nr. 6 ist dort «Israel, der Herr ruft alle»,
@@ -482,14 +522,14 @@ der Rechte. Bischof, beide Ratgeber und die Sekretäre arbeiten am selben
 Datenbestand und sehen alles – auch vertrauliche Traktanden. Einzig ein noch
 nicht freigeschaltetes Konto sieht nichts.
 
-| Rolle                   | Zugriff |
-| ----------------------- | ------- |
-| **Bischof**             | alles   |
-| **1. Ratgeber**         | alles   |
-| **2. Ratgeber**         | alles   |
-| **Exekutivsekretär**    | alles   |
-| **Sekretär**            | alles   |
-| *Wartet auf Freigabe*   | nichts  |
+| Rolle                 | Zugriff |
+| --------------------- | ------- |
+| **Bischof**           | alles   |
+| **1. Ratgeber**       | alles   |
+| **2. Ratgeber**       | alles   |
+| **Exekutivsekretär**  | alles   |
+| **Sekretär**          | alles   |
+| _Wartet auf Freigabe_ | nichts  |
 
 Wozu dann überhaupt Rollen? Sie halten fest, wer welche Aufgabe hat – etwa
 wer die Abendmahlsversammlung leitet oder präsidiert – und sie steuern die
@@ -557,11 +597,11 @@ hinweg. Firestore behält die Reihenfolge bei.
 
 Die Rückmeldung sagt, woran man ist:
 
-| Anzeige | Bedeutung |
-| --- | --- |
-| «Gespeichert.» | Der Server hat bestätigt. |
-| «… Wird übertragen, sobald wieder Verbindung besteht.» | Lokal gespeichert, Übertragung steht aus. |
-| Wolken-Symbol in der Kopfzeile mit Zahl | So viele Änderungen sind noch unterwegs. Verschwindet es, ist alles beim Server. |
+| Anzeige                                                | Bedeutung                                                                        |
+| ------------------------------------------------------ | -------------------------------------------------------------------------------- |
+| «Gespeichert.»                                         | Der Server hat bestätigt.                                                        |
+| «… Wird übertragen, sobald wieder Verbindung besteht.» | Lokal gespeichert, Übertragung steht aus.                                        |
+| Wolken-Symbol in der Kopfzeile mit Zahl                | So viele Änderungen sind noch unterwegs. Verschwindet es, ist alles beim Server. |
 
 Technisch löst sich das Versprechen eines Firestore-Schreibvorgangs erst auf,
 wenn der Server bestätigt hat – ohne Netz also nie. Deshalb geht jeder
@@ -593,7 +633,10 @@ Das ist meistens unproblematisch, weil nur die tatsächlich geänderten Felder
 Deshalb merkt sich jede dieser Seiten, auf welchem Stand der Entwurf aufsetzt.
 Ändert jemand denselben Sonntag, während hier noch getippt wird, erscheint ein
 Hinweis, die Schaltfläche heisst «Trotzdem speichern», und ein Klick verwirft
-die eigenen Änderungen zugunsten der fremden Fassung. Solange nichts bearbeitet
+die eigenen Änderungen zugunsten der fremden Fassung. Der eigene
+Schreibvorgang zählt dabei nicht als fremde Änderung – Firestore meldet ihn
+sofort wieder als Schnappschuss zurück, und der Hinweis blitzte sonst bei
+jeder Eingabe kurz auf. Solange nichts bearbeitet
 wird, zeigen die Seiten ohnehin live, was in Firestore steht – fremde
 Änderungen erscheinen dort sofort.
 
@@ -612,6 +655,6 @@ node scripts/generate-icons.mjs
 Die Daten liegen im Firebase-Projekt. Eine regelmässige Sicherung ist trotzdem
 sinnvoll:
 
-- **Mitgliederliste:** *Einstellungen → Import → Mitgliederliste als CSV sichern*
+- **Mitgliederliste:** _Einstellungen → Import → Mitgliederliste als CSV sichern_
 - **Vollständig:** [geplante Firestore-Exporte](https://firebase.google.com/docs/firestore/manage-data/export-import)
   in einen Cloud-Storage-Bucket

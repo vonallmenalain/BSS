@@ -91,4 +91,5 @@ export const COLLECTIONS = {
   sacramentMeetings: 'sacramentMeetings',
   prayers: 'prayers',
   hymns: 'hymns',
+  notes: 'notes',
 } as const

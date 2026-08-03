@@ -108,6 +108,11 @@ async function seed() {
       memberName: 'Peter Meier',
     })
     await setDoc(doc(db, 'hymns', '2'), { number: 2, title: 'Der Geist aus den Höhen' })
+
+    await setDoc(doc(db, 'notes', 'notiz-1'), {
+      title: 'Gemeindeausflug',
+      body: 'Termin mit der JD absprechen.',
+    })
   })
 }
 
@@ -205,6 +210,15 @@ describe('Alle Rollen sehen denselben Bestand', () => {
   it('verwehrt wartenden Konten das Schreiben', async () => {
     await assertFails(setDoc(doc(asPending(), 'settings', 'app'), { wardName: 'Test' }))
     await assertFails(updateDoc(doc(asPending(), 'members', 'mitglied-1'), { city: 'Bern' }))
+  })
+
+  it('lässt jede Rolle Notizen lesen und schreiben – und wartende Konten nicht', async () => {
+    // Notizen gehören der ganzen Bischofschaft; es gibt keine private Notiz.
+    await assertSucceeds(getDoc(doc(asSecretary(), 'notes', 'notiz-1')))
+    await assertSucceeds(updateDoc(doc(asCounselor2(), 'notes', 'notiz-1'), { body: 'Erledigt.' }))
+    await assertFails(getDocs(collection(asPending(), 'notes')))
+    await assertFails(setDoc(doc(asPending(), 'notes', 'notiz-2'), { title: 'Versuch', body: '' }))
+    await assertFails(getDocs(collection(asAnonymous(), 'notes')))
   })
 
   it('lässt Sekretäre Mitglieder bearbeiten und löschen', async () => {

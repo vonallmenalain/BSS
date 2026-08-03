@@ -54,6 +54,8 @@ export function emptySacramentMeeting(date: Date): SacramentMeeting {
     kind: 'regular',
     presidingId: null,
     conductingId: null,
+    presidingName: null,
+    conductingName: null,
     visitors: '',
     talkSlots: null,
     hymns: {},
@@ -166,9 +168,9 @@ export function talksForDate(talks: Talk[], date: Date): Talk[] {
  * Die Reihenfolge steht zweimal: im Ablauf als `programOrder` und bei den
  * Ansprachen als Position (`slot`). Beide werden hier zusammen nachgeführt,
  * sonst zeigte «Ansprachen» eine andere Folge als «Leitung». Offene
- * Programmplätze zählen als Position mit, verschwinden aber aus dem
- * gespeicherten Schlüsselband: Ihre Nummer ergibt sich ohnehin daraus,
- * welche Plätze vergeben sind.
+ * Programmplätze zählen als Position mit und bleiben – auf ihre neue Nummer
+ * umgeschrieben – im Schlüsselband stehen; sonst wäre nicht festgehalten, ob
+ * ein Zwischenlied vor oder nach einem noch offenen Platz steht.
  */
 export async function saveProgramOrder(
   date: Date,
