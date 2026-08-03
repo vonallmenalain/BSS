@@ -41,9 +41,8 @@ export function Callings() {
   const counts = useMemo(
     () => ({
       active: callings.filter((c) => c.status === 'set_apart' || c.status === 'sustained').length,
-      process: callings.filter((c) =>
-        ['proposed', 'approved', 'extended'].includes(c.status),
-      ).length,
+      process: callings.filter((c) => ['proposed', 'approved', 'extended'].includes(c.status))
+        .length,
       released: callings.filter((c) => c.status === 'released' || c.status === 'declined').length,
       all: callings.length,
     }),
@@ -286,11 +285,11 @@ function CallingForm({
     setSaving(true)
     try {
       if (calling) {
-        await updateCalling(calling.id, payload)
-        toast.success('Berufung aktualisiert.')
+        const outcome = await updateCalling(calling.id, payload)
+        toast.saved('Berufung aktualisiert.', outcome)
       } else {
-        await createCalling(payload)
-        toast.success('Berufung erfasst.')
+        const { outcome } = await createCalling(payload)
+        toast.saved('Berufung erfasst.', outcome)
       }
       onClose()
     } catch (error) {
@@ -347,8 +346,8 @@ function CallingForm({
                 type="button"
                 className="btn-primary btn-sm"
                 onClick={() =>
-                  void advanceCalling(calling.id, nextStep).then(() => {
-                    toast.success(`Status: ${CALLING_STATUS_LABELS[nextStep]}`)
+                  void advanceCalling(calling.id, nextStep).then((outcome) => {
+                    toast.saved(`Status: ${CALLING_STATUS_LABELS[nextStep]}`, outcome)
                     onClose()
                   })
                 }

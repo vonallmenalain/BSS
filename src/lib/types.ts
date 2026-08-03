@@ -17,20 +17,62 @@ export interface WithId {
 
 /**
  * Rollen der App. `pending` erhält jeder neu registrierte Account, bis ihn
- * der Bischof oder ein Ratgeber freischaltet – so kann sich niemand selbst
+ * jemand aus der Bischofschaft freischaltet – so kann sich niemand selbst
  * Zugriff auf Personendaten verschaffen.
+ *
+ * Die Rolle beschreibt die **Aufgabe** in der Bischofschaft, nicht den
+ * Umfang der Rechte: Bischof, beide Ratgeber und die Sekretäre arbeiten am
+ * selben Datenbestand und sehen alles. Sie steuert damit vor allem, wer im
+ * Programm der Abendmahlsversammlung als leitend erscheint.
  */
-export type Role = 'bishop' | 'counselor' | 'secretary' | 'pending'
+export type Role =
+  | 'bishop'
+  | 'counselor1'
+  | 'counselor2'
+  | 'executive_secretary'
+  | 'secretary'
+  /** Sammelrolle aus früheren Versionen – bleibt lesbar, wird nicht mehr vergeben. */
+  | 'counselor'
+  | 'pending'
 
 export const ROLE_LABELS: Record<Role, string> = {
   bishop: 'Bischof',
-  counselor: 'Ratgeber',
+  counselor1: '1. Ratgeber',
+  counselor2: '2. Ratgeber',
+  executive_secretary: 'Exekutivsekretär',
   secretary: 'Sekretär',
+  counselor: 'Ratgeber',
   pending: 'Wartet auf Freigabe',
 }
 
-/** Rollen, die Sitzungen leiten und vertrauliche Traktanden sehen dürfen. */
-export const LEADERSHIP_ROLES: Role[] = ['bishop', 'counselor']
+/** Rollen, die in der Benutzerverwaltung zur Auswahl stehen (in dieser Reihenfolge). */
+export const ASSIGNABLE_ROLES: Role[] = [
+  'bishop',
+  'counselor1',
+  'counselor2',
+  'executive_secretary',
+  'secretary',
+]
+
+/**
+ * Rollen mit vollem Zugriff auf alle Daten.
+ *
+ * Bewusst identisch mit «freigeschaltet»: In einer Bischofschaft arbeiten
+ * alle am selben Bestand, deshalb gibt es keine Abstufung mehr. Einzig
+ * `pending` sieht nichts. Dieselbe Liste steht in `firestore.rules` –
+ * beide müssen zusammen geändert werden.
+ */
+export const FULL_ACCESS_ROLES: Role[] = [
+  'bishop',
+  'counselor1',
+  'counselor2',
+  'executive_secretary',
+  'secretary',
+  'counselor',
+]
+
+/** Rollen der Bischofschaft im engeren Sinn – leiten die Abendmahlsversammlung. */
+export const BISHOPRIC_ROLES: Role[] = ['bishop', 'counselor1', 'counselor2', 'counselor']
 
 export interface AppUser extends WithId {
   /** entspricht der Firebase-Auth-UID */
@@ -279,6 +321,17 @@ export const TALK_STATUS_LABELS: Record<TalkStatus, string> = {
 /** Status, bei denen der Platz im Programm noch belegt ist. */
 export const ACTIVE_TALK_STATUSES: TalkStatus[] = ['planned', 'asked', 'confirmed']
 
+/**
+ * Ein Programmpunkt kann eine reguläre Ansprache oder ein Zeugnis sein.
+ * Beides wird gleich verwaltet – nur die Beschriftung im Ablauf ändert sich.
+ */
+export type TalkKind = 'talk' | 'testimony'
+
+export const TALK_KIND_LABELS: Record<TalkKind, string> = {
+  talk: 'Ansprache',
+  testimony: 'Zeugnis',
+}
+
 export interface Talk extends WithId {
   memberId: string
   /** Denormalisiert, damit Listen ohne zusätzliche Abfrage darstellbar sind */
@@ -286,6 +339,8 @@ export interface Talk extends WithId {
 
   /** Datum der Abendmahlsversammlung */
   date: TS
+  /** Fehlt das Feld (Altbestand), gilt «Ansprache». */
+  kind?: TalkKind
   topic?: string
   /** Geplante Redezeit in Minuten */
   durationMinutes?: number
@@ -307,13 +362,7 @@ export interface Talk extends WithId {
 /* ------------------------------------------------------------------ */
 
 export type CallingStatus =
-  | 'proposed'
-  | 'approved'
-  | 'extended'
-  | 'sustained'
-  | 'set_apart'
-  | 'released'
-  | 'declined'
+  'proposed' | 'approved' | 'extended' | 'sustained' | 'set_apart' | 'released' | 'declined'
 
 export const CALLING_STATUS_LABELS: Record<CallingStatus, string> = {
   proposed: 'Vorgeschlagen',
@@ -400,10 +449,18 @@ export interface AppSettings {
   meetingTitle: string
   /** Wochentag der Abendmahlsversammlung (für die Ansprachenplanung) */
   sacramentWeekday: number
-  /** Anzahl Ansprachen pro Abendmahlsversammlung */
+  /** Startzeit der Abendmahlsversammlung «HH:mm» */
+  sacramentTime: string
+  /**
+   * Anzahl Ansprachen pro Abendmahlsversammlung – der Normalfall.
+   * Für einen einzelnen Sonntag lässt sich der Wert übersteuern
+   * (siehe `SacramentMeeting.talkSlots`).
+   */
   talksPerSunday: number
   /** Ab wie vielen Monaten ohne Ansprache gilt jemand als «lange nicht dran»? */
   talkGapMonths: number
+  /** Ab wie vielen Monaten ohne Gebet gilt jemand als «lange nicht dran»? */
+  prayerGapMonths: number
   updatedAt?: TS
 }
 
@@ -414,6 +471,174 @@ export const DEFAULT_SETTINGS: AppSettings = {
   meetingLocation: 'Bischofsbüro',
   meetingTitle: 'Bischofschaftssitzung',
   sacramentWeekday: 0, // Sonntag
+  sacramentTime: '10:00',
   talksPerSunday: 3,
   talkGapMonths: 18,
+  prayerGapMonths: 6,
+}
+
+/* ------------------------------------------------------------------ */
+/* Abendmahlsversammlung                                               */
+/* ------------------------------------------------------------------ */
+
+export type SacramentKind = 'regular' | 'fast_testimony' | 'special'
+
+export const SACRAMENT_KIND_LABELS: Record<SacramentKind, string> = {
+  regular: 'Abendmahlsversammlung',
+  fast_testimony: 'Fast- und Zeugnisversammlung',
+  special: 'Besondere Versammlung',
+}
+
+/** Die vier festen Liedplätze einer Abendmahlsversammlung. */
+export type HymnSlot = 'opening' | 'sacrament' | 'intermediate' | 'closing'
+
+export const HYMN_SLOTS: HymnSlot[] = ['opening', 'sacrament', 'intermediate', 'closing']
+
+export const HYMN_SLOT_LABELS: Record<HymnSlot, string> = {
+  opening: 'Anfangslied',
+  sacrament: 'Abendmahlslied',
+  intermediate: 'Zwischenlied',
+  closing: 'Schlusslied',
+}
+
+/** Das Zwischenlied ist optional – die übrigen drei gehören zu jeder Versammlung. */
+export const OPTIONAL_HYMN_SLOTS: HymnSlot[] = ['intermediate']
+
+export interface HymnChoice {
+  /** Liednummer aus dem Gesangbuch; `null`, solange nichts festgelegt ist */
+  number: number | null
+  /**
+   * Titel des Liedes. Wird aus der importierten Liederliste ergänzt und
+   * mitgespeichert, damit ein altes Programm auch dann lesbar bleibt,
+   * wenn die Liste später ersetzt wird.
+   */
+  title: string
+}
+
+export interface MusicalNumber {
+  id: string
+  /** Titel des Vortrags */
+  title: string
+  /** Mitglieder, die vortragen */
+  memberIds: string[]
+  /** Freitext für Gäste, Gruppen oder Instrumente */
+  performers?: string
+  notes?: string
+}
+
+export interface AnnouncementEntry {
+  id: string
+  text: string
+  /** Zusatz für die Person am Pult: Wortlaut, Datum, Ort … */
+  details?: string
+}
+
+export type BusinessType =
+  'sustaining' | 'release' | 'ordination' | 'confirmation' | 'baby_blessing' | 'welcome' | 'other'
+
+export const BUSINESS_TYPE_LABELS: Record<BusinessType, string> = {
+  sustaining: 'Bestätigung',
+  release: 'Entlassung',
+  ordination: 'Ordinierung (Aaronisches Priestertum)',
+  confirmation: 'Konfirmierung',
+  baby_blessing: 'Namensgebung und Segnung',
+  welcome: 'Begrüssung neuer Mitglieder',
+  other: 'Übriges',
+}
+
+export interface BusinessEntry {
+  id: string
+  type: BusinessType
+  /** z. B. «Peter Meier – Lehrer in der Sonntagsschule» */
+  text: string
+  memberIds: string[]
+  /** Verknüpfte Berufung, falls aus dem Bereich «Berufungen» übernommen */
+  callingId?: string | null
+}
+
+/**
+ * Programm einer einzelnen Abendmahlsversammlung.
+ *
+ * Es gibt genau ein Dokument pro Sonntag; die Dokument-ID ist das Datum
+ * («2026-08-09»). Damit kann jeder Bereich – Bekanntmachungen, Musik,
+ * Gebet – unabhängig schreiben, ohne dass Dubletten entstehen.
+ *
+ * Ansprachen und Zeugnisse liegen bewusst **nicht** hier, sondern in der
+ * Sammlung `talks`: Sie haben einen eigenen Lebenszyklus (angefragt,
+ * zugesagt, gehalten) und treiben die Auswertung «wer war lange nicht dran».
+ */
+export interface SacramentMeeting extends WithId {
+  date: TS
+  kind: SacramentKind
+  /** Wer präsidiert bzw. leitet (UID aus `users`) */
+  presidingId?: string | null
+  conductingId?: string | null
+  /** Besuchende Führungsverantwortliche, die offiziell begrüsst werden */
+  visitors?: string
+  /** Abweichende Anzahl Ansprachen nur für diesen Sonntag */
+  talkSlots?: number | null
+
+  hymns: Partial<Record<HymnSlot, HymnChoice>>
+  musicalNumbers: MusicalNumber[]
+  announcements: AnnouncementEntry[]
+  business: BusinessEntry[]
+
+  /**
+   * Reihenfolge im Teil «Botschaften und Musik».
+   * Einträge sind Schlüssel wie «talk:abc123», «music:xyz» oder
+   * «hymn:intermediate». Was fehlt, wird hinten angehängt – so überlebt die
+   * Reihenfolge das Löschen und Hinzufügen einzelner Punkte.
+   */
+  programOrder: string[]
+
+  notes?: string
+  createdAt?: TS
+  updatedAt?: TS
+}
+
+/* ------------------------------------------------------------------ */
+/* Gebete                                                              */
+/* ------------------------------------------------------------------ */
+
+export type PrayerSlot = 'opening' | 'closing'
+
+export const PRAYER_SLOTS: PrayerSlot[] = ['opening', 'closing']
+
+export const PRAYER_SLOT_LABELS: Record<PrayerSlot, string> = {
+  opening: 'Anfangsgebet',
+  closing: 'Schlussgebet',
+}
+
+/**
+ * Wer spricht wann ein Gebet.
+ *
+ * Eigene Sammlung statt eines Feldes in `SacramentMeeting`, weil daraus die
+ * Frage «wann hat diese Person zuletzt gebetet?» beantwortet wird – genau wie
+ * bei den Ansprachen. Die Dokument-ID ist «2026-08-09_opening», damit pro
+ * Sonntag und Platz höchstens ein Eintrag entsteht.
+ */
+export interface Prayer extends WithId {
+  date: TS
+  slot: PrayerSlot
+  memberId: string
+  /** Denormalisiert, damit die Liste ohne Join lesbar bleibt */
+  memberName: string
+  notes?: string
+  createdAt?: TS
+  updatedAt?: TS
+}
+
+/* ------------------------------------------------------------------ */
+/* Gesangbuch                                                          */
+/* ------------------------------------------------------------------ */
+
+/**
+ * Ein Lied aus dem Gesangbuch. Die Dokument-ID ist die Liednummer als Text,
+ * damit sich die Liste beliebig oft neu importieren lässt, ohne Dubletten
+ * anzulegen. Erfasst wird nur die Nummer – den Titel ergänzt die App.
+ */
+export interface Hymn extends WithId {
+  number: number
+  title: string
+  updatedAt?: TS
 }

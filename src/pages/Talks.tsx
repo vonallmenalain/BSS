@@ -15,10 +15,11 @@ import {
 import { useData } from '@/contexts/DataContext'
 import { useAuth } from '@/contexts/AuthContext'
 import { useToast } from '@/contexts/ToastContext'
-import { useTalks } from '@/hooks/useFirestore'
+import { useSacramentMeetings, useTalks } from '@/hooks/useFirestore'
 import { Modal, ConfirmDialog } from '@/components/ui/Modal'
 import { EmptyState, SkeletonList } from '@/components/ui/Feedback'
-import { PageHeader, SegmentedControl } from '@/components/ui/Pickers'
+import { SegmentedControl } from '@/components/ui/Pickers'
+import { SectionHeader, useSacrament } from '@/components/sacrament/SacramentLayout'
 import { TalkStatusBadge } from '@/components/ui/Badge'
 import { Avatar } from '@/components/ui/Avatar'
 import {
@@ -30,42 +31,96 @@ import {
   WEEKDAYS,
 } from '@/lib/dates'
 import { formatPhone, matchesSearch, telHref } from '@/lib/utils'
-import { createTalk, deleteTalk, rankTalkCandidates, setTalkStatus, updateTalk } from '@/services/talks'
-import { TALK_STATUS_LABELS, type Member, type Talk, type TalkStatus } from '@/lib/types'
+import {
+  createTalk,
+  deleteTalk,
+  rankTalkCandidates,
+  setTalkStatus,
+  updateTalk,
+} from '@/services/talks'
+import {
+  sacramentDocId,
+  saveSacramentMeeting,
+  talkSlotsFor,
+  talksForDate,
+} from '@/services/sacrament'
+import {
+  TALK_KIND_LABELS,
+  TALK_STATUS_LABELS,
+  type Member,
+  type Talk,
+  type TalkKind,
+  type TalkStatus,
+} from '@/lib/types'
 
 type Tab = 'plan' | 'candidates' | 'history'
 
 export function Talks() {
   const { settings, members } = useData()
+  const { date: selectedDate } = useSacrament()
   const { data: talks, loading } = useTalks(400)
+  const { data: sacramentMeetings } = useSacramentMeetings(40)
+  const toast = useToast()
   const [tab, setTab] = useState<Tab>('plan')
-  const [assignFor, setAssignFor] = useState<{ date: Date; slot: number } | null>(null)
+  const [assignFor, setAssignFor] = useState<{ date: Date; slot: number; kind: TalkKind } | null>(
+    null,
+  )
   const [editTalk, setEditTalk] = useState<Talk | null>(null)
   /** Aus der Vorschlagsliste vorgewähltes Mitglied für den Zuteilungs-Dialog */
   const [presetMember, setPresetMember] = useState<Member | null>(null)
 
-  /* Die nächsten Abendmahlsversammlungen mit ihren Programmplätzen. */
-  const schedule = useMemo(() => {
-    const sundays = upcomingWeekdays(settings.sacramentWeekday, 8)
-    return sundays.map((date) => {
-      const assigned = talks
-        .filter((talk) => {
-          const talkDate = toDate(talk.date)
-          return talkDate && talkDate.toDateString() === date.toDateString()
-        })
-        .filter((talk) => talk.status !== 'cancelled' && talk.status !== 'declined')
-        .sort((a, b) => a.slot - b.slot)
+  const meetingByKey = useMemo(
+    () => new Map(sacramentMeetings.map((meeting) => [meeting.id, meeting])),
+    [sacramentMeetings],
+  )
 
-      const slots = Array.from({ length: Math.max(settings.talksPerSunday, assigned.length) }, (_, index) => ({
+  /*
+   * Acht Versammlungen ab dem oben gewählten Sonntag.
+   *
+   * Der gewählte Sonntag steht damit immer zuoberst – wer ihn im Kopf der
+   * Seite wechselt, sieht sofort dessen Programm, kann aber wie bisher
+   * mehrere Wochen im Voraus planen.
+   */
+  const schedule = useMemo(() => {
+    const sundays = upcomingWeekdays(settings.sacramentWeekday, 8, selectedDate)
+    return sundays.map((date) => {
+      const assigned = talksForDate(talks, date)
+      const meeting = meetingByKey.get(sacramentDocId(date)) ?? null
+      // Standard aus den Einstellungen, für diesen Sonntag übersteuerbar.
+      const planned = talkSlotsFor(meeting, settings.talksPerSunday)
+      const highest = assigned.reduce((max, talk) => Math.max(max, talk.slot), 0)
+
+      const slots = Array.from({ length: Math.max(planned, highest) }, (_, index) => ({
         slot: index + 1,
         talk: assigned.find((talk) => talk.slot === index + 1) ?? null,
+        /** Über die vorgesehene Anzahl hinaus – ein Zusatzpunkt */
+        extra: index + 1 > planned,
       }))
 
-      return { date, slots, openCount: slots.filter((s) => !s.talk).length }
+      return {
+        date,
+        meeting,
+        planned,
+        slots,
+        // Nur die regulären Plätze gelten als «offen»; Zusatzpunkte sind freiwillig.
+        openCount: slots.filter((entry) => !entry.talk && !entry.extra).length,
+      }
     })
-  }, [talks, settings.sacramentWeekday, settings.talksPerSunday])
+  }, [talks, meetingByKey, selectedDate, settings.sacramentWeekday, settings.talksPerSunday])
 
   const openSlots = schedule.reduce((sum, sunday) => sum + sunday.openCount, 0)
+
+  /** Zusätzlichen Programmplatz für einen einzelnen Sonntag vorsehen. */
+  const changeSlots = async (date: Date, next: number) => {
+    try {
+      await saveSacramentMeeting(date, {
+        talkSlots: next === settings.talksPerSunday ? null : next,
+      })
+    } catch (error) {
+      console.error(error)
+      toast.error('Anzahl konnte nicht gespeichert werden.')
+    }
+  }
 
   const candidates = useMemo(
     () => rankTalkCandidates(members, talks, { gapMonths: settings.talkGapMonths }),
@@ -82,14 +137,16 @@ export function Talks() {
 
   return (
     <>
-      <PageHeader
-        title="Ansprachen"
-        subtitle={`${WEEKDAYS[settings.sacramentWeekday]}s · ${settings.talksPerSunday} Ansprachen pro Versammlung`}
+      <SectionHeader
+        title="Ansprachen und Zeugnisse"
+        description={`${WEEKDAYS[settings.sacramentWeekday]}s · ${settings.talksPerSunday} Ansprachen pro Versammlung als Standard`}
         actions={
           <button
             type="button"
             className="btn-primary"
-            onClick={() => setAssignFor({ date: schedule[0]?.date ?? new Date(), slot: 1 })}
+            onClick={() =>
+              setAssignFor({ date: schedule[0]?.date ?? new Date(), slot: 1, kind: 'talk' })
+            }
           >
             <Plus className="size-4" aria-hidden />
             <span className="hidden sm:inline">Zuteilen</span>
@@ -112,45 +169,99 @@ export function Talks() {
         <SkeletonList rows={4} />
       ) : tab === 'plan' ? (
         <div className="space-y-3">
-          {schedule.map((sunday) => (
-            <section key={sunday.date.toISOString()} className="card p-4">
-              <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
-                <h2 className="text-sm font-semibold">{formatDateLong(sunday.date)}</h2>
-                {sunday.openCount === 0 ? (
-                  <span className="badge bg-emerald-100 text-emerald-800 dark:bg-emerald-950 dark:text-emerald-200">
-                    <Check className="size-3" aria-hidden />
-                    Vollständig
-                  </span>
-                ) : (
-                  <span className="badge bg-amber-100 text-amber-800 dark:bg-amber-950 dark:text-amber-200">
-                    {sunday.openCount} offen
-                  </span>
-                )}
-              </div>
-
-              <ul className="space-y-2">
-                {sunday.slots.map(({ slot, talk }) => (
-                  <li key={slot}>
-                    {talk ? (
-                      <TalkRow talk={talk} onEdit={() => setEditTalk(talk)} />
-                    ) : (
-                      <button
-                        type="button"
-                        onClick={() => setAssignFor({ date: sunday.date, slot })}
-                        className="flex w-full items-center gap-3 rounded-lg border border-dashed border-slate-300 px-3 py-2.5 text-sm text-slate-500 transition hover:border-slate-400 hover:bg-slate-50 dark:border-slate-700 dark:text-slate-400 dark:hover:bg-slate-800/50"
-                      >
-                        <span className="tabular grid size-7 shrink-0 place-items-center rounded-full bg-slate-100 text-xs font-semibold dark:bg-slate-800">
-                          {slot}
-                        </span>
-                        <CalendarPlus className="size-4" aria-hidden />
-                        Ansprache vergeben
-                      </button>
+          {schedule.map((sunday) => {
+            // Erst eine bestehende Lücke füllen, sonst hinten anhängen –
+            // sonst entstünde beim Nachtragen ein Loch im Programm.
+            const nextSlot =
+              sunday.slots.find((entry) => !entry.talk)?.slot ?? sunday.slots.length + 1
+            return (
+              <section key={sunday.date.toISOString()} className="card p-4">
+                <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
+                  <h2 className="text-sm font-semibold">{formatDateLong(sunday.date)}</h2>
+                  <div className="flex items-center gap-2">
+                    {sunday.planned !== settings.talksPerSunday && (
+                      <span className="badge bg-slate-100 text-slate-600 dark:bg-slate-800 dark:text-slate-300">
+                        {sunday.planned} statt {settings.talksPerSunday}
+                      </span>
                     )}
-                  </li>
-                ))}
-              </ul>
-            </section>
-          ))}
+                    {sunday.openCount === 0 ? (
+                      <span className="badge bg-emerald-100 text-emerald-800 dark:bg-emerald-950 dark:text-emerald-200">
+                        <Check className="size-3" aria-hidden />
+                        Vollständig
+                      </span>
+                    ) : (
+                      <span className="badge bg-amber-100 text-amber-800 dark:bg-amber-950 dark:text-amber-200">
+                        {sunday.openCount} offen
+                      </span>
+                    )}
+                  </div>
+                </div>
+
+                <ul className="space-y-2">
+                  {sunday.slots.map(({ slot, talk, extra }) => (
+                    <li key={slot}>
+                      {talk ? (
+                        <TalkRow talk={talk} onEdit={() => setEditTalk(talk)} />
+                      ) : (
+                        <button
+                          type="button"
+                          onClick={() => setAssignFor({ date: sunday.date, slot, kind: 'talk' })}
+                          className="flex w-full items-center gap-3 rounded-lg border border-dashed border-slate-300 px-3 py-2.5 text-sm text-slate-500 transition hover:border-slate-400 hover:bg-slate-50 dark:border-slate-700 dark:text-slate-400 dark:hover:bg-slate-800/50"
+                        >
+                          <span className="tabular grid size-7 shrink-0 place-items-center rounded-full bg-slate-100 text-xs font-semibold dark:bg-slate-800">
+                            {slot}
+                          </span>
+                          <CalendarPlus className="size-4" aria-hidden />
+                          {extra ? 'Zusätzlichen Platz vergeben' : 'Ansprache vergeben'}
+                        </button>
+                      )}
+                    </li>
+                  ))}
+                </ul>
+
+                {/* Für einen einzelnen Sonntag lässt sich mehr vorsehen als der
+                    Standard – etwa eine zusätzliche Ansprache oder ein Zeugnis. */}
+                <div className="mt-3 flex flex-wrap items-center gap-2 border-t border-slate-100 pt-3 dark:border-slate-800">
+                  <button
+                    type="button"
+                    className="btn-secondary btn-sm"
+                    onClick={() =>
+                      setAssignFor({ date: sunday.date, slot: nextSlot, kind: 'talk' })
+                    }
+                  >
+                    <Plus className="size-3.5" aria-hidden />
+                    Ansprache
+                  </button>
+                  <button
+                    type="button"
+                    className="btn-secondary btn-sm"
+                    onClick={() =>
+                      setAssignFor({ date: sunday.date, slot: nextSlot, kind: 'testimony' })
+                    }
+                  >
+                    <Plus className="size-3.5" aria-hidden />
+                    Zeugnis
+                  </button>
+                  <button
+                    type="button"
+                    className="btn-ghost btn-sm"
+                    onClick={() => void changeSlots(sunday.date, sunday.planned + 1)}
+                  >
+                    Leeren Platz hinzufügen
+                  </button>
+                  {sunday.planned !== settings.talksPerSunday && (
+                    <button
+                      type="button"
+                      className="btn-ghost btn-sm"
+                      onClick={() => void changeSlots(sunday.date, settings.talksPerSunday)}
+                    >
+                      Auf Standard zurücksetzen
+                    </button>
+                  )}
+                </div>
+              </section>
+            )
+          })}
         </div>
       ) : tab === 'candidates' ? (
         <CandidateList
@@ -159,9 +270,9 @@ export function Talks() {
           onAssign={(member) => {
             // Den nächsten freien Programmplatz vorschlagen.
             const target = schedule.find((sunday) => sunday.openCount > 0)
-            const slot = target?.slots.find((s) => !s.talk)?.slot ?? 1
+            const slot = target?.slots.find((s) => !s.talk && !s.extra)?.slot ?? 1
             setPresetMember(member)
-            setAssignFor({ date: target?.date ?? new Date(), slot })
+            setAssignFor({ date: target?.date ?? new Date(), slot, kind: 'talk' })
           }}
         />
       ) : (
@@ -176,6 +287,7 @@ export function Talks() {
         }}
         date={assignFor?.date ?? new Date()}
         slot={assignFor?.slot ?? 1}
+        kind={assignFor?.kind ?? 'talk'}
         presetMember={presetMember}
       />
 
@@ -189,6 +301,7 @@ export function Talks() {
 function TalkRow({ talk, onEdit }: { talk: Talk; onEdit: () => void }) {
   const { membersById } = useData()
   const member = membersById.get(talk.memberId)
+  const kind: TalkKind = talk.kind ?? 'talk'
 
   return (
     <button
@@ -201,7 +314,14 @@ function TalkRow({ talk, onEdit }: { talk: Talk; onEdit: () => void }) {
       </span>
       <Avatar name={talk.memberName} id={talk.memberId} size="sm" />
       <span className="min-w-0 flex-1">
-        <span className="block truncate text-sm font-medium">{talk.memberName}</span>
+        <span className="block truncate text-sm font-medium">
+          {talk.memberName}
+          {kind === 'testimony' && (
+            <span className="ml-1.5 align-middle text-xs font-normal text-slate-500 dark:text-slate-400">
+              · {TALK_KIND_LABELS.testimony}
+            </span>
+          )}
+        </span>
         {talk.topic && (
           <span className="block truncate text-xs text-slate-500 dark:text-slate-400">
             {talk.topic}
@@ -241,9 +361,7 @@ function CandidateList({
   const visible = useMemo(() => {
     let result = candidates
     if (onlyOverdue) {
-      result = result.filter(
-        (c) => c.monthsSince === null || c.monthsSince >= gapMonths,
-      )
+      result = result.filter((c) => c.monthsSince === null || c.monthsSince >= gapMonths)
     }
     if (search.trim()) {
       result = result.filter((c) =>
@@ -393,12 +511,14 @@ function AssignDialog({
   onClose,
   date,
   slot,
+  kind: initialKind,
   presetMember: preset,
 }: {
   open: boolean
   onClose: () => void
   date: Date
   slot: number
+  kind: TalkKind
   presetMember: Member | null
 }) {
   const { members, settings } = useData()
@@ -410,6 +530,7 @@ function AssignDialog({
   const [selected, setSelected] = useState<Member | null>(null)
   const [dateValue, setDateValue] = useState('')
   const [slotValue, setSlotValue] = useState(1)
+  const [kind, setKind] = useState<TalkKind>('talk')
   const [topic, setTopic] = useState('')
   const [duration, setDuration] = useState<number | ''>(10)
   const [status, setStatus] = useState<TalkStatus>('asked')
@@ -419,12 +540,14 @@ function AssignDialog({
     if (!open) return
     setDateValue(toDateInput(date))
     setSlotValue(slot)
+    setKind(initialKind)
     setSelected(preset)
     setSearch('')
     setTopic('')
-    setDuration(10)
+    // Zeugnisse sind deutlich kürzer als eine Ansprache.
+    setDuration(initialKind === 'testimony' ? 5 : 10)
     setStatus('asked')
-  }, [open, date, slot, preset])
+  }, [open, date, slot, initialKind, preset])
 
   const ranked = useMemo(
     () => rankTalkCandidates(members, talks, { gapMonths: settings.talkGapMonths }),
@@ -447,17 +570,18 @@ function AssignDialog({
 
     setSaving(true)
     try {
-      await createTalk({
+      const { outcome } = await createTalk({
         memberId: selected.id,
         memberName: `${selected.firstName} ${selected.lastName}`,
-        date: new Date(`${dateValue}T10:00:00`),
+        date: new Date(`${dateValue}T${settings.sacramentTime}:00`),
         slot: slotValue,
+        kind,
         topic: topic.trim(),
         durationMinutes: typeof duration === 'number' ? duration : undefined,
         status,
         askedById: profile?.id ?? null,
       })
-      toast.success('Ansprache eingetragen.')
+      toast.saved(`${TALK_KIND_LABELS[kind]} eingetragen.`, outcome)
       onClose()
     } catch (error) {
       console.error(error)
@@ -471,7 +595,7 @@ function AssignDialog({
     <Modal
       open={open}
       onClose={onClose}
-      title="Ansprache vergeben"
+      title={`${TALK_KIND_LABELS[kind]} vergeben`}
       description={formatDateLong(date)}
       size="lg"
       footer={
@@ -479,7 +603,12 @@ function AssignDialog({
           <button type="button" className="btn-secondary" onClick={onClose} disabled={saving}>
             Abbrechen
           </button>
-          <button type="submit" form="talk-form" className="btn-primary" disabled={saving || !selected}>
+          <button
+            type="submit"
+            form="talk-form"
+            className="btn-primary"
+            disabled={saving || !selected}
+          >
             {saving ? 'Wird gespeichert …' : 'Eintragen'}
           </button>
         </>
@@ -560,6 +689,26 @@ function AssignDialog({
           )}
         </div>
 
+        <div>
+          <span className="label">Art des Programmpunkts</span>
+          <div className="flex flex-wrap gap-2">
+            {(['talk', 'testimony'] as TalkKind[]).map((value) => (
+              <button
+                key={value}
+                type="button"
+                onClick={() => setKind(value)}
+                aria-pressed={kind === value}
+                className={kind === value ? 'btn-primary btn-sm' : 'btn-secondary btn-sm'}
+              >
+                {TALK_KIND_LABELS[value]}
+              </button>
+            ))}
+          </div>
+          <p className="hint">
+            Ein Zeugnis belegt wie eine Ansprache einen Platz im Programm, dauert aber kürzer.
+          </p>
+        </div>
+
         <div className="grid gap-4 sm:grid-cols-3">
           <div>
             <label className="label" htmlFor="talk-date">
@@ -582,7 +731,7 @@ function AssignDialog({
               id="talk-slot"
               type="number"
               min={1}
-              max={6}
+              max={10}
               className="input"
               value={slotValue}
               onChange={(event) => setSlotValue(Number.parseInt(event.target.value, 10) || 1)}
@@ -647,12 +796,14 @@ function AssignDialog({
 
 function EditTalkDialog({ talk, onClose }: { talk: Talk | null; onClose: () => void }) {
   const toast = useToast()
+  const [kind, setKind] = useState<TalkKind>('talk')
   const [topic, setTopic] = useState('')
   const [notes, setNotes] = useState('')
   const [confirmDelete, setConfirmDelete] = useState(false)
 
   useEffect(() => {
     if (!talk) return
+    setKind(talk.kind ?? 'talk')
     setTopic(talk.topic ?? '')
     setNotes(talk.notes ?? '')
   }, [talk])
@@ -674,8 +825,12 @@ function EditTalkDialog({ talk, onClose }: { talk: Talk | null; onClose: () => v
 
   const save = async () => {
     try {
-      await updateTalk(talk.id, { topic: topic.trim(), notes: notes.trim() })
-      toast.success('Gespeichert.')
+      const outcome = await updateTalk(talk.id, {
+        kind,
+        topic: topic.trim(),
+        notes: notes.trim(),
+      })
+      toast.saved('Gespeichert.', outcome)
       onClose()
     } catch (error) {
       console.error(error)
@@ -689,7 +844,7 @@ function EditTalkDialog({ talk, onClose }: { talk: Talk | null; onClose: () => v
         open
         onClose={onClose}
         title={talk.memberName}
-        description={`${formatDate(talk.date)} · Position ${talk.slot}`}
+        description={`${formatDate(talk.date)} · Position ${talk.slot} · ${TALK_KIND_LABELS[talk.kind ?? 'talk']}`}
         footer={
           <>
             <button
@@ -713,26 +868,39 @@ function EditTalkDialog({ talk, onClose }: { talk: Talk | null; onClose: () => v
           <div>
             <span className="label">Status</span>
             <div className="flex flex-wrap gap-2">
-              {(['planned', 'asked', 'confirmed', 'held', 'declined', 'cancelled'] as TalkStatus[]).map(
-                (value) => (
-                  <button
-                    key={value}
-                    type="button"
-                    onClick={() => void changeStatus(value)}
-                    className={
-                      talk.status === value
-                        ? 'btn-primary btn-sm'
-                        : 'btn-secondary btn-sm'
-                    }
-                  >
-                    {TALK_STATUS_LABELS[value]}
-                  </button>
-                ),
-              )}
+              {(
+                ['planned', 'asked', 'confirmed', 'held', 'declined', 'cancelled'] as TalkStatus[]
+              ).map((value) => (
+                <button
+                  key={value}
+                  type="button"
+                  onClick={() => void changeStatus(value)}
+                  className={talk.status === value ? 'btn-primary btn-sm' : 'btn-secondary btn-sm'}
+                >
+                  {TALK_STATUS_LABELS[value]}
+                </button>
+              ))}
             </div>
             <p className="hint">
               «Gehalten» aktualisiert automatisch das Datum der letzten Ansprache beim Mitglied.
             </p>
+          </div>
+
+          <div>
+            <span className="label">Art</span>
+            <div className="flex flex-wrap gap-2">
+              {(['talk', 'testimony'] as TalkKind[]).map((value) => (
+                <button
+                  key={value}
+                  type="button"
+                  onClick={() => setKind(value)}
+                  aria-pressed={kind === value}
+                  className={kind === value ? 'btn-primary btn-sm' : 'btn-secondary btn-sm'}
+                >
+                  {TALK_KIND_LABELS[value]}
+                </button>
+              ))}
+            </div>
           </div>
 
           <div>
@@ -766,8 +934,8 @@ function EditTalkDialog({ talk, onClose }: { talk: Talk | null; onClose: () => v
         open={confirmDelete}
         onClose={() => setConfirmDelete(false)}
         onConfirm={() => {
-          void deleteTalk(talk.id).then(() => {
-            toast.success('Eintrag entfernt.')
+          void deleteTalk(talk.id).then((outcome) => {
+            toast.saved('Eintrag entfernt.', outcome)
             onClose()
           })
         }}

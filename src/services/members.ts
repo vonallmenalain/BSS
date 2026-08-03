@@ -1,11 +1,11 @@
 import {
-  addDoc,
   collection,
   deleteDoc,
   doc,
   getDocs,
   query,
   serverTimestamp,
+  setDoc,
   updateDoc,
   where,
   writeBatch,
@@ -14,6 +14,7 @@ import {
 import { db, COLLECTIONS } from '@/lib/firebase'
 import { monthsSince } from '@/lib/dates'
 import { compareNames, normalize, stripUndefined } from '@/lib/utils'
+import { commit, type SaveOutcome } from '@/lib/sync'
 import type { Gender, Member, MemberStatus } from '@/lib/types'
 
 const membersRef = collection(db, COLLECTIONS.members)
@@ -43,33 +44,39 @@ export function buildSearchName(firstName: string, lastName: string): string {
   return normalize(`${lastName} ${firstName}`)
 }
 
-export async function createMember(input: MemberInput): Promise<string> {
-  const docRef = await addDoc(membersRef, {
-    ...stripUndefined({
-      email: input.email?.trim(),
-      phone: input.phone?.trim(),
-      mobile: input.mobile?.trim(),
-      street: input.street?.trim(),
-      zip: input.zip?.trim(),
-      city: input.city?.trim(),
-      notes: input.notes?.trim(),
-      externalId: input.externalId ?? null,
+export async function createMember(
+  input: MemberInput,
+): Promise<{ id: string; outcome: SaveOutcome }> {
+  // Die ID entsteht im Client, damit sie auch ohne Netz sofort feststeht.
+  const docRef = doc(membersRef)
+  const outcome = await commit(
+    setDoc(docRef, {
+      ...stripUndefined({
+        email: input.email?.trim(),
+        phone: input.phone?.trim(),
+        mobile: input.mobile?.trim(),
+        street: input.street?.trim(),
+        zip: input.zip?.trim(),
+        city: input.city?.trim(),
+        notes: input.notes?.trim(),
+        externalId: input.externalId ?? null,
+      }),
+      lastName: input.lastName.trim(),
+      firstName: input.firstName.trim(),
+      searchName: buildSearchName(input.firstName, input.lastName),
+      gender: input.gender ?? 'unknown',
+      birthDate: input.birthDate ? Timestamp.fromDate(input.birthDate) : null,
+      status: input.status ?? 'active',
+      availableForTalks: input.availableForTalks ?? true,
+      contactPersonId: input.contactPersonId ?? null,
+      lastTalkDate: input.lastTalkDate ? Timestamp.fromDate(input.lastTalkDate) : null,
+      talkCount: 0,
+      tags: input.tags ?? [],
+      createdAt: serverTimestamp(),
+      updatedAt: serverTimestamp(),
     }),
-    lastName: input.lastName.trim(),
-    firstName: input.firstName.trim(),
-    searchName: buildSearchName(input.firstName, input.lastName),
-    gender: input.gender ?? 'unknown',
-    birthDate: input.birthDate ? Timestamp.fromDate(input.birthDate) : null,
-    status: input.status ?? 'active',
-    availableForTalks: input.availableForTalks ?? true,
-    contactPersonId: input.contactPersonId ?? null,
-    lastTalkDate: input.lastTalkDate ? Timestamp.fromDate(input.lastTalkDate) : null,
-    talkCount: 0,
-    tags: input.tags ?? [],
-    createdAt: serverTimestamp(),
-    updatedAt: serverTimestamp(),
-  })
-  return docRef.id
+  )
+  return { id: docRef.id, outcome }
 }
 
 export async function updateMember(
@@ -78,7 +85,7 @@ export async function updateMember(
     birthDate?: Date | null
     lastTalkDate?: Date | null
   },
-): Promise<void> {
+): Promise<SaveOutcome> {
   const data: Record<string, unknown> = stripUndefined(patch as Record<string, unknown>)
   if ('birthDate' in patch) {
     data.birthDate = patch.birthDate ? Timestamp.fromDate(patch.birthDate) : null
@@ -90,11 +97,13 @@ export async function updateMember(
     // searchName konsistent halten – sonst findet die Suche den Datensatz nicht mehr.
     data.searchName = buildSearchName(patch.firstName ?? '', patch.lastName ?? '')
   }
-  await updateDoc(doc(db, COLLECTIONS.members, id), { ...data, updatedAt: serverTimestamp() })
+  return commit(
+    updateDoc(doc(db, COLLECTIONS.members, id), { ...data, updatedAt: serverTimestamp() }),
+  )
 }
 
-export async function deleteMember(id: string): Promise<void> {
-  await deleteDoc(doc(db, COLLECTIONS.members, id))
+export async function deleteMember(id: string): Promise<SaveOutcome> {
+  return commit(deleteDoc(doc(db, COLLECTIONS.members, id)))
 }
 
 /** Setzt bei vielen Mitgliedern auf einmal denselben Status (z. B. nach Import). */
@@ -108,7 +117,7 @@ export async function bulkUpdateStatus(ids: string[], status: MemberStatus): Pro
         updatedAt: serverTimestamp(),
       })
     })
-    await batch.commit()
+    await commit(batch.commit())
   }
 }
 
@@ -123,13 +132,7 @@ export async function loadMembersForMatching(): Promise<Member[]> {
 /* ------------------------------------------------------------------ */
 
 export type MemberSortKey =
-  | 'name'
-  | 'firstName'
-  | 'birthDate'
-  | 'age'
-  | 'lastTalk'
-  | 'status'
-  | 'talkCount'
+  'name' | 'firstName' | 'birthDate' | 'age' | 'lastTalk' | 'status' | 'talkCount'
 
 export interface MemberFilter {
   search?: string
@@ -145,7 +148,10 @@ export function filterMembers(members: Member[], filter: MemberFilter): Member[]
   return members.filter((member) => {
     if (filter.status && filter.status !== 'all' && member.status !== filter.status) return false
     if (filter.gender && filter.gender !== 'all' && member.gender !== filter.gender) return false
-    if (filter.availableForTalks !== undefined && member.availableForTalks !== filter.availableForTalks) {
+    if (
+      filter.availableForTalks !== undefined &&
+      member.availableForTalks !== filter.availableForTalks
+    ) {
       return false
     }
     if (filter.tag && !(member.tags ?? []).includes(filter.tag)) return false
@@ -158,7 +164,15 @@ export function filterMembers(members: Member[], filter: MemberFilter): Member[]
 
     if (filter.search?.trim()) {
       const haystack = normalize(
-        [member.firstName, member.lastName, member.email, member.phone, member.mobile, member.city, member.notes]
+        [
+          member.firstName,
+          member.lastName,
+          member.email,
+          member.phone,
+          member.mobile,
+          member.city,
+          member.notes,
+        ]
           .filter(Boolean)
           .join(' '),
       )

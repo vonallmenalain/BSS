@@ -1,5 +1,4 @@
 import {
-  addDoc,
   collection,
   deleteDoc,
   doc,
@@ -7,6 +6,7 @@ import {
   getDocs,
   query,
   serverTimestamp,
+  setDoc,
   updateDoc,
   where,
   writeBatch,
@@ -16,6 +16,7 @@ import {
 import { db, COLLECTIONS } from '@/lib/firebase'
 import { addMonths, startOfDay, toDate } from '@/lib/dates'
 import { stripUndefined, uid } from '@/lib/utils'
+import { commit, type SaveOutcome } from '@/lib/sync'
 import type {
   AgendaItem,
   HistoryEntry,
@@ -58,43 +59,49 @@ function historyEntry(action: string, actor: Actor): HistoryEntry {
 }
 
 export async function createAgendaItem(input: AgendaItemInput, actor: Actor): Promise<string> {
-  const docRef = await addDoc(itemsRef, {
-    title: input.title.trim(),
-    description: input.description?.trim() ?? '',
-    meetingId: input.meetingId ?? null,
-    firstMeetingId: input.meetingId ?? null,
-    order: input.order ?? Date.now(),
-    status: input.status ?? 'open',
-    priority: input.priority ?? 'normal',
-    category: input.category ?? 'general',
-    assignees: input.assignees ?? [],
-    memberRefs: input.memberRefs ?? [],
-    dueDate: input.dueDate ? Timestamp.fromDate(input.dueDate) : null,
-    confidential: input.confidential ?? false,
-    deferCount: 0,
-    notes: [],
-    history: [historyEntry('Traktandum erstellt', actor)],
-    createdAt: serverTimestamp(),
-    updatedAt: serverTimestamp(),
-    createdBy: actor.id,
-    completedAt: null,
-    completedBy: null,
-  })
+  // Die ID entsteht im Client, damit sie auch ohne Netz sofort feststeht.
+  const docRef = doc(itemsRef)
+  await commit(
+    setDoc(docRef, {
+      title: input.title.trim(),
+      description: input.description?.trim() ?? '',
+      meetingId: input.meetingId ?? null,
+      firstMeetingId: input.meetingId ?? null,
+      order: input.order ?? Date.now(),
+      status: input.status ?? 'open',
+      priority: input.priority ?? 'normal',
+      category: input.category ?? 'general',
+      assignees: input.assignees ?? [],
+      memberRefs: input.memberRefs ?? [],
+      dueDate: input.dueDate ? Timestamp.fromDate(input.dueDate) : null,
+      confidential: input.confidential ?? false,
+      deferCount: 0,
+      notes: [],
+      history: [historyEntry('Traktandum erstellt', actor)],
+      createdAt: serverTimestamp(),
+      updatedAt: serverTimestamp(),
+      createdBy: actor.id,
+      completedAt: null,
+      completedBy: null,
+    }),
+  )
   return docRef.id
 }
 
 export async function updateAgendaItem(
   id: string,
   patch: Partial<Omit<AgendaItem, 'id' | 'dueDate'>> & { dueDate?: Date | null },
-): Promise<void> {
+): Promise<SaveOutcome> {
   const data: Record<string, unknown> = stripUndefined(patch as Record<string, unknown>)
   if ('dueDate' in patch) {
     data.dueDate = patch.dueDate ? Timestamp.fromDate(patch.dueDate) : null
   }
-  await updateDoc(doc(db, COLLECTIONS.agendaItems, id), {
-    ...data,
-    updatedAt: serverTimestamp(),
-  })
+  return commit(
+    updateDoc(doc(db, COLLECTIONS.agendaItems, id), {
+      ...data,
+      updatedAt: serverTimestamp(),
+    }),
+  )
 }
 
 /** Status ändern und den Wechsel im Verlauf festhalten. */
@@ -102,18 +109,20 @@ export async function setItemStatus(
   id: string,
   status: ItemStatus,
   actor: Actor,
-): Promise<void> {
+): Promise<SaveOutcome> {
   const isDone = status === 'done'
-  await updateDoc(doc(db, COLLECTIONS.agendaItems, id), {
-    status,
-    completedAt: isDone ? serverTimestamp() : null,
-    completedBy: isDone ? actor.id : null,
-    history: arrayUnion(historyEntry(`Status: ${ITEM_STATUS_LABELS[status]}`, actor)),
-    updatedAt: serverTimestamp(),
-  })
+  return commit(
+    updateDoc(doc(db, COLLECTIONS.agendaItems, id), {
+      status,
+      completedAt: isDone ? serverTimestamp() : null,
+      completedBy: isDone ? actor.id : null,
+      history: arrayUnion(historyEntry(`Status: ${ITEM_STATUS_LABELS[status]}`, actor)),
+      updatedAt: serverTimestamp(),
+    }),
+  )
 }
 
-export async function addNote(id: string, text: string, actor: Actor): Promise<void> {
+export async function addNote(id: string, text: string, actor: Actor): Promise<SaveOutcome> {
   const note: ItemNote = {
     id: uid(),
     text: text.trim(),
@@ -121,18 +130,20 @@ export async function addNote(id: string, text: string, actor: Actor): Promise<v
     authorName: actor.name,
     createdAt: new Date().toISOString(),
   }
-  await updateDoc(doc(db, COLLECTIONS.agendaItems, id), {
-    notes: arrayUnion(note),
-    updatedAt: serverTimestamp(),
-  })
+  return commit(
+    updateDoc(doc(db, COLLECTIONS.agendaItems, id), {
+      notes: arrayUnion(note),
+      updatedAt: serverTimestamp(),
+    }),
+  )
 }
 
-export async function removeNote(id: string, noteId: string): Promise<void> {
+export async function removeNote(id: string, noteId: string): Promise<SaveOutcome | null> {
   const ref = doc(db, COLLECTIONS.agendaItems, id)
   const snapshot = await getDoc(ref)
-  if (!snapshot.exists()) return
+  if (!snapshot.exists()) return null
   const notes = ((snapshot.data().notes as ItemNote[]) ?? []).filter((n) => n.id !== noteId)
-  await updateDoc(ref, { notes, updatedAt: serverTimestamp() })
+  return commit(updateDoc(ref, { notes, updatedAt: serverTimestamp() }))
 }
 
 export type DeferTarget = 'next_meeting' | 'one_week' | 'one_month' | 'three_months' | 'custom'
@@ -153,11 +164,15 @@ export async function deferItem(
   id: string,
   target: DeferTarget,
   actor: Actor,
-  options: { customDate?: Date | null; nextMeetingId?: string | null; nextMeetingDate?: Date | null } = {},
-): Promise<void> {
+  options: {
+    customDate?: Date | null
+    nextMeetingId?: string | null
+    nextMeetingDate?: Date | null
+  } = {},
+): Promise<SaveOutcome | null> {
   const ref = doc(db, COLLECTIONS.agendaItems, id)
   const snapshot = await getDoc(ref)
-  if (!snapshot.exists()) return
+  if (!snapshot.exists()) return null
 
   const current = snapshot.data() as AgendaItem
   const today = startOfDay(new Date())
@@ -190,14 +205,16 @@ export async function deferItem(
       break
   }
 
-  await updateDoc(ref, {
-    status: 'deferred' satisfies ItemStatus,
-    meetingId,
-    dueDate: newDueDate ? Timestamp.fromDate(newDueDate) : null,
-    deferCount: (current.deferCount ?? 0) + 1,
-    history: arrayUnion(historyEntry(label, actor)),
-    updatedAt: serverTimestamp(),
-  })
+  return commit(
+    updateDoc(ref, {
+      status: 'deferred' satisfies ItemStatus,
+      meetingId,
+      dueDate: newDueDate ? Timestamp.fromDate(newDueDate) : null,
+      deferCount: (current.deferCount ?? 0) + 1,
+      history: arrayUnion(historyEntry(label, actor)),
+      updatedAt: serverTimestamp(),
+    }),
+  )
 }
 
 /** Traktandum einer Sitzung zuordnen (oder mit `null` in den Pool zurücklegen). */
@@ -206,7 +223,7 @@ export async function assignToMeeting(
   meetingId: string | null,
   actor: Actor,
   order?: number,
-): Promise<void> {
+): Promise<SaveOutcome> {
   const patch: Record<string, unknown> = {
     meetingId,
     updatedAt: serverTimestamp(),
@@ -220,16 +237,16 @@ export async function assignToMeeting(
   if (meetingId && snapshot.exists() && snapshot.data().status === 'deferred') {
     patch.status = 'open'
   }
-  await updateDoc(doc(db, COLLECTIONS.agendaItems, id), patch)
+  return commit(updateDoc(doc(db, COLLECTIONS.agendaItems, id), patch))
 }
 
 /** Neue Reihenfolge einer Traktandenliste in einem Rutsch speichern. */
-export async function reorderItems(orderedIds: string[]): Promise<void> {
+export async function reorderItems(orderedIds: string[]): Promise<SaveOutcome> {
   const batch = writeBatch(db)
   orderedIds.forEach((id, index) => {
     batch.update(doc(db, COLLECTIONS.agendaItems, id), { order: (index + 1) * 100 })
   })
-  await batch.commit()
+  return commit(batch.commit())
 }
 
 /**
@@ -257,18 +274,17 @@ export async function carryOverOpenItems(meetingId: string, actor: Actor): Promi
       updatedAt: serverTimestamp(),
     })
   })
-  await batch.commit()
+  await commit(batch.commit())
   return snapshot.size
 }
 
-export async function deleteAgendaItem(id: string): Promise<void> {
-  await deleteDoc(doc(db, COLLECTIONS.agendaItems, id))
+export async function deleteAgendaItem(id: string): Promise<SaveOutcome> {
+  return commit(deleteDoc(doc(db, COLLECTIONS.agendaItems, id)))
 }
 
 /** Sortierung für die Sitzungsansicht: erledigte ans Ende, sonst nach `order`. */
 export function sortForMeeting(items: AgendaItem[]): AgendaItem[] {
-  const rank = (item: AgendaItem) =>
-    item.status === 'done' || item.status === 'cancelled' ? 1 : 0
+  const rank = (item: AgendaItem) => (item.status === 'done' || item.status === 'cancelled' ? 1 : 0)
   return [...items].sort((a, b) => rank(a) - rank(b) || (a.order ?? 0) - (b.order ?? 0))
 }
 

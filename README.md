@@ -1,8 +1,8 @@
 # Bischofschaft
 
 Progressive Web App für die administrativen Aufgaben einer Bischofschaft:
-Sitzungen mit Traktanden- und Pendenzenliste, Ansprachenplanung,
-Berufungsverwaltung und Mitgliederdaten.
+Sitzungen mit Traktanden- und Pendenzenliste, Programm der
+Abendmahlsversammlung, Berufungsverwaltung und Mitgliederdaten.
 
 - **Produktion:** [bss.alae.app](https://bss.alae.app) (Netlify)
 - **Konzept:** [`docs/KONZEPT.md`](docs/KONZEPT.md)
@@ -11,13 +11,13 @@ Berufungsverwaltung und Mitgliederdaten.
 
 ## Auf einen Blick
 
-| Bereich          | Was die App leistet                                                                     |
-| ---------------- | --------------------------------------------------------------------------------------- |
-| **Sitzungen**    | Termin festlegen, Traktanden sammeln, Sitzungsmodus zum Durchgehen, Protokoll drucken     |
-| **Pendenzen**    | Offenes über alle Sitzungen hinweg, gefiltert nach «meine», «überfällig», «ohne Sitzung»  |
-| **Ansprachen**   | Programm der nächsten Sonntage, Vorschlagsliste «wer war lange nicht dran»                |
-| **Berufungen**   | Vom Vorschlag bis zur Einsetzung, gruppiert nach Organisation                             |
-| **Mitglieder**   | Stammdaten, Notizen, Suche und Sortierung; Excel-/CSV-Import und -Export                  |
+| Bereich                     | Was die App leistet                                                                      |
+| --------------------------- | ---------------------------------------------------------------------------------------- |
+| **Sitzungen**               | Termin festlegen, Traktanden sammeln, Sitzungsmodus zum Durchgehen, Protokoll drucken      |
+| **Pendenzen**               | Offenes über alle Sitzungen hinweg, gefiltert nach «meine», «überfällig», «ohne Sitzung»   |
+| **Abendmahlsversammlung**   | Ganzer Ablauf pro Sonntag: Leitung, Bekanntmachungen, Angelegenheiten, Ansprachen, Musik, Gebet |
+| **Berufungen**              | Vom Vorschlag bis zur Einsetzung, gruppiert nach Organisation                              |
+| **Mitglieder**              | Stammdaten, Notizen, Suche und Sortierung; Excel-/CSV-Import und -Export                   |
 
 Traktandum und Pendenz sind derselbe Datensatz: Was in einer Sitzung offen
 bleibt, erscheint automatisch wieder – ohne Umtragen.
@@ -213,24 +213,60 @@ npm run test:rules
 ```
 
 Startet den Emulator, führt die Tests aus `tests/` aus und fährt ihn wieder
-herunter. Geprüft wird unter anderem, dass Sekretäre vertrauliche Traktanden
-weder einzeln lesen noch über eine ungefilterte Abfrage erhalten und dass sich
-niemand selbst eine höhere Rolle geben kann.
-
-Der Test ist bewusst so gebaut, dass er die naheliegenden Fehler auch wirklich
-bemerkt: Wird der Vergleich in `firestore.rules` zu
-`resource.data.get('confidential', false)` umgeschrieben – eine Form, die
-Firestore nicht gegen den Abfragefilter abgleichen kann –, schlägt er fehl.
-Genau dieser Fall lieferte in einer früheren Fassung vertrauliche Dokumente an
-Sekretäre aus.
+herunter. Die entscheidende Trennlinie verläuft zwischen `pending` und allen
+übrigen Rollen. Geprüft wird deshalb vor allem, dass ein wartendes Konto
+nichts liest, nichts schreibt und sich nicht selbst freischalten kann – und
+dass umgekehrt jede freigeschaltete Rolle auf denselben Bestand kommt,
+einschliesslich Programm der Abendmahlsversammlung, Gebete und Liederliste.
 
 Dieselben Tests laufen in der CI, bevor Regeln ausgerollt werden.
 
 ---
 
+## Abendmahlsversammlung
+
+Ein Bereich, sechs Unterpunkte – oben wird der Sonntag gewählt, und er gilt
+für alle Unterpunkte.
+
+| Unterpunkt            | Wofür |
+| --------------------- | ----- |
+| **Leitung**           | Der ganze Ablauf auf einer Seite, zum Ausdrucken fürs Pult |
+| **Bekanntmachungen**  | Liste pro Sonntag, in der Reihenfolge des Vorlesens |
+| **Angelegenheiten**   | Bestätigungen, Entlassungen, Segnungen, Konfirmierungen |
+| **Ansprachen**        | Programmplätze vergeben, Vorschlagsliste, Verlauf |
+| **Musik**             | Drei bis vier Lieder und Musikeinlagen |
+| **Gebet**             | Anfangs- und Schlussgebet, mit «zuletzt gebetet» |
+
+**Leitung** erfasst nichts doppelt. Ansprachen, Bekanntmachungen, Lieder und
+Gebete stammen aus ihren Bereichen und erscheinen dort automatisch; der Ablauf
+folgt dem Handbuch (Abschnitt 29.2.1), vereinfacht auf das, was am Pult
+gebraucht wird. Anpassbar ist an dieser Stelle, wer leitet und präsidiert, wen
+man begrüsst – und mit den Pfeiltasten die Reihenfolge von Ansprachen,
+Zeugnissen, Zwischenlied und Musikeinlagen. Was noch fehlt, steht als kurze
+Liste zuoberst.
+
+**Ansprachen und Zeugnisse.** Wie viele Ansprachen eine Versammlung hat, steht
+als Standard in den Einstellungen. Für einen einzelnen Sonntag lässt sich mehr
+vorsehen: eine zusätzliche Ansprache, ein Zeugnis oder ein leerer Platz zum
+späteren Vergeben. Der Standard bleibt davon unberührt.
+
+**Liederliste.** Unter **Einstellungen → Liederliste** eine Excel- oder
+CSV-Datei mit Liednummer und Titel hochladen. Welche Spalten das sind, erkennt
+der Import selbst und zeigt es vor dem Übernehmen zur Kontrolle. Danach genügt
+beim Erfassen der Musik die Nummer – der Titel erscheint automatisch. Eine
+Nummer, die nicht in der Liste steht, lässt sich von Hand ergänzen und auf
+Wunsch in die Liste aufnehmen. Der Titel wird im Programm mitgespeichert,
+damit ein bereits verteiltes Programm nach einem Neuimport gleich bleibt.
+
+**Gebet.** Beim Zuteilen steht bei jedem Vorschlag, wann die Person zuletzt
+gebetet hat; zuoberst steht, wer noch nie an der Reihe war – dieselbe Logik
+wie bei den Ansprachen.
+
+---
+
 ## Mitgliederliste importieren
 
-**Mitglieder → Import** (nur für Bischof und Ratgeber).
+**Mitglieder → Import**.
 
 Unterstützt werden `.xlsx` und `.csv`. Der Assistent führt durch vier
 Schritte: Datei wählen, Spalten zuordnen (wird geraten), Vorschau prüfen,
@@ -251,15 +287,34 @@ mit der Mitglieds-Nummer mitzuliefern und als «Mitglieds-Nr.» zuzuordnen.
 
 ## Rollen
 
-| Rolle         | Sitzungen & Pendenzen | Mitglieder | Vertrauliche Traktanden | Benutzer verwalten | Import |
-| ------------- | :-------------------: | :--------: | :---------------------: | :----------------: | :----: |
-| **Bischof**   |           ✓           |     ✓      |            ✓            |         ✓          |   ✓    |
-| **Ratgeber**  |           ✓           |     ✓      |            ✓            |         ✓          |   ✓    |
-| **Sekretär**  |           ✓           |     ✓      |            –            |         –          |   –    |
-| *pending*     |           –           |     –      |            –            |         –          |   –    |
+Die Rolle beschreibt die **Aufgabe** in der Bischofschaft, nicht den Umfang
+der Rechte. Bischof, beide Ratgeber und die Sekretäre arbeiten am selben
+Datenbestand und sehen alles – auch vertrauliche Traktanden. Einzig ein noch
+nicht freigeschaltetes Konto sieht nichts.
 
-Vertrauliche Traktanden werden Sekretären nicht bloss ausgeblendet – die
-Firestore-Regeln liefern sie gar nicht erst aus.
+| Rolle                   | Zugriff |
+| ----------------------- | ------- |
+| **Bischof**             | alles   |
+| **1. Ratgeber**         | alles   |
+| **2. Ratgeber**         | alles   |
+| **Exekutivsekretär**    | alles   |
+| **Sekretär**            | alles   |
+| *Wartet auf Freigabe*   | nichts  |
+
+Wozu dann überhaupt Rollen? Sie halten fest, wer welche Aufgabe hat – etwa
+wer die Abendmahlsversammlung leitet oder präsidiert – und sie steuern die
+Freigabe neuer Konten.
+
+Jede und jeder kann die **eigene Rolle** anpassen, unter
+**Einstellungen → Mein Profil** oder in der Liste unter **Benutzer und
+Rollen**. Wer beim Einrichten versehentlich als Bischof angelegt wurde, trägt
+sich also selbst als 1. Ratgeber ein. Nur den eigenen Zugang entziehen kann
+man sich nicht – «Wartet auf Freigabe» steht für das eigene Konto nicht zur
+Wahl.
+
+Das Kennzeichen «vertraulich» an einem Traktandum bleibt bestehen: Es markiert
+seelsorgerische Anliegen, die nicht nach aussen getragen werden, schränkt den
+Zugriff innerhalb der Bischofschaft aber nicht ein.
 
 ---
 
@@ -269,13 +324,16 @@ Firestore-Regeln liefern sie gar nicht erst aus.
 src/
 ├── components/
 │   ├── agenda/          Traktanden: Karte, Formular, Sitzungsmodus, Verschieben
+│   ├── sacrament/       Abendmahlsversammlung: Rahmen mit Sonntagswahl, Lied- und Personenfelder
 │   ├── ui/              Bausteine: Modal, Badges, Avatare, Auswahlfelder
 │   ├── Layout.tsx       Navigation (Seitenleiste bzw. untere Leiste)
 │   └── UpdatePrompt.tsx Hinweis auf neue Version
 ├── contexts/            Anmeldung, Stammdaten, Meldungen
 ├── hooks/               Firestore-Abfragen, lokale Einstellungen, Uhrzeit
 ├── lib/                 Firebase-Anbindung, Typen, Datums- und Hilfsfunktionen
-├── pages/               Eine Datei pro Ansicht
+├── pages/
+│   ├── sacrament/       Leitung, Bekanntmachungen, Angelegenheiten, Musik, Gebet
+│   └── …                Eine Datei pro übriger Ansicht
 └── services/            Schreibzugriffe und Fachlogik pro Sammlung
 
 tests/                   Tests der Zugriffsregeln (laufen in der CI)
@@ -292,12 +350,62 @@ docs/KONZEPT.md          Fachliches Konzept
 ## PWA
 
 Die App ist installierbar (Browser-Menü → «Zum Startbildschirm hinzufügen»)
-und läuft offline. Firestore hält eine lokale Kopie der Daten vor; Änderungen
-ohne Netz werden gepuffert und später synchronisiert.
+und läuft offline. Firestore hält eine lokale Kopie der Daten vor.
 
 Neue Versionen werden nicht ungefragt geladen – stattdessen erscheint ein
 Hinweis mit einer Schaltfläche. So startet die App nicht mitten in der Sitzung
 neu und verliert Eingaben.
+
+---
+
+## Offline speichern
+
+**Speichern funktioniert ohne Netz genauso.** Eine Änderung landet sofort in
+der lokalen Datenbank des Geräts und wird von dort übertragen, sobald wieder
+Verbindung besteht – auch über einen Neustart der App oder des Telefons
+hinweg. Firestore behält die Reihenfolge bei.
+
+Die Rückmeldung sagt, woran man ist:
+
+| Anzeige | Bedeutung |
+| --- | --- |
+| «Gespeichert.» | Der Server hat bestätigt. |
+| «… Wird übertragen, sobald wieder Verbindung besteht.» | Lokal gespeichert, Übertragung steht aus. |
+| Wolken-Symbol in der Kopfzeile mit Zahl | So viele Änderungen sind noch unterwegs. Verschwindet es, ist alles beim Server. |
+
+Technisch löst sich das Versprechen eines Firestore-Schreibvorgangs erst auf,
+wenn der Server bestätigt hat – ohne Netz also nie. Deshalb geht jeder
+Schreibzugriff durch `commit()` in [`src/lib/sync.ts`](src/lib/sync.ts): Es
+wartet höchstens zwei Sekunden auf die Bestätigung und meldet sonst
+«zwischengespeichert». Scheitert die Übertragung später doch – etwa weil die
+Zugriffsregeln sie ablehnen –, erscheint eine Fehlermeldung, statt dass der
+Fehler verschwindet.
+
+**Zwei Ausnahmen brauchen eine Verbindung:** der Mitglieder- und der
+Liederimport. Beide schreiben Hunderte Dokumente auf einmal; die gehören nicht
+in eine Warteschlange, deren Fortschritt sich nicht ehrlich anzeigen lässt.
+Ohne Netz sagt die App das und bricht ab, statt halb zu beginnen.
+
+### Wenn zwei Personen dasselbe ändern
+
+Firestore kennt keine Versionskonflikte: Es gewinnt, wer zuletzt schreibt.
+Das ist meistens unproblematisch, weil nur die tatsächlich geänderten Felder
+übertragen werden.
+
+- **Verschiedene Felder, gleiches Dokument** – beide Änderungen bleiben
+  erhalten. Wer die Anwesenden einträgt, überschreibt keine Notiz.
+- **Dasselbe Feld** – die zuletzt eintreffende Fassung gilt. Es gibt keine
+  Rückfrage und keinen Fehler.
+- **Ganze Listen** (Bekanntmachungen, Angelegenheiten, Musik) sind der heikle
+  Fall: Sie werden als Ganzes gespeichert. Ohne Schutz verschwänden fremde
+  Einträge stillschweigend.
+
+Deshalb merkt sich jede dieser Seiten, auf welchem Stand der Entwurf aufsetzt.
+Ändert jemand denselben Sonntag, während hier noch getippt wird, erscheint ein
+Hinweis, die Schaltfläche heisst «Trotzdem speichern», und ein Klick verwirft
+die eigenen Änderungen zugunsten der fremden Fassung. Solange nichts bearbeitet
+wird, zeigen die Seiten ohnehin live, was in Firestore steht – fremde
+Änderungen erscheinen dort sofort.
 
 Icons ändern:
 

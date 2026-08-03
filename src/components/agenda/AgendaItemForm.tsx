@@ -47,7 +47,7 @@ const EMPTY: FormState = {
 }
 
 export function AgendaItemForm({ open, onClose, item, meetingId = null, onSaved }: Props) {
-  const { profile, isLeadership } = useAuth()
+  const { profile } = useAuth()
   const toast = useToast()
   const [form, setForm] = useState<FormState>(EMPTY)
   const [saving, setSaving] = useState(false)
@@ -100,7 +100,7 @@ export function AgendaItemForm({ open, onClose, item, meetingId = null, onSaved 
       }
 
       if (item) {
-        await updateAgendaItem(item.id, {
+        const outcome = await updateAgendaItem(item.id, {
           title: payload.title,
           description: payload.description,
           category: payload.category,
@@ -110,7 +110,7 @@ export function AgendaItemForm({ open, onClose, item, meetingId = null, onSaved 
           dueDate: payload.dueDate,
           confidential: payload.confidential,
         })
-        toast.success('Traktandum aktualisiert.')
+        toast.saved('Traktandum aktualisiert.', outcome)
         onSaved?.(item.id)
       } else {
         const id = await createAgendaItem(payload, actor)
@@ -231,10 +231,7 @@ export function AgendaItemForm({ open, onClose, item, meetingId = null, onSaved 
           </div>
         </div>
 
-        <AssigneePicker
-          value={form.assignees}
-          onChange={(next) => update('assignees', next)}
-        />
+        <AssigneePicker value={form.assignees} onChange={(next) => update('assignees', next)} />
 
         <MemberPicker
           value={form.memberRefs}
@@ -242,26 +239,24 @@ export function AgendaItemForm({ open, onClose, item, meetingId = null, onSaved 
           label="Betrifft Mitglieder (optional)"
         />
 
-        {isLeadership && (
-          <label className="flex cursor-pointer items-start gap-3 rounded-lg border border-slate-200 p-3 dark:border-slate-700">
-            <input
-              type="checkbox"
-              className="mt-0.5 size-4 rounded"
-              checked={form.confidential}
-              onChange={(event) => update('confidential', event.target.checked)}
-            />
-            <span className="min-w-0 flex-1">
-              <span className="flex items-center gap-1.5 text-sm font-medium">
-                <Lock className="size-3.5" aria-hidden />
-                Vertraulich
-              </span>
-              <span className="hint mt-0.5 block">
-                Nur für Bischof und Ratgeber sichtbar – für seelsorgerische Anliegen.
-                Sekretäre sehen diesen Eintrag nicht.
-              </span>
+        <label className="flex cursor-pointer items-start gap-3 rounded-lg border border-slate-200 p-3 dark:border-slate-700">
+          <input
+            type="checkbox"
+            className="mt-0.5 size-4 rounded"
+            checked={form.confidential}
+            onChange={(event) => update('confidential', event.target.checked)}
+          />
+          <span className="min-w-0 flex-1">
+            <span className="flex items-center gap-1.5 text-sm font-medium">
+              <Lock className="size-3.5" aria-hidden />
+              Vertraulich
             </span>
-          </label>
-        )}
+            <span className="hint mt-0.5 block">
+              Kennzeichnet seelsorgerische Anliegen, die nicht nach aussen getragen werden.
+              Innerhalb der Bischofschaft bleibt der Eintrag für alle sichtbar.
+            </span>
+          </span>
+        </label>
 
         {item && (
           <p className="hint">

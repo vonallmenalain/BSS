@@ -1,5 +1,4 @@
 import {
-  addDoc,
   collection,
   doc,
   getDocs,
@@ -7,6 +6,7 @@ import {
   query,
   orderBy,
   serverTimestamp,
+  setDoc,
   updateDoc,
   where,
   writeBatch,
@@ -15,6 +15,7 @@ import {
 import { db, COLLECTIONS } from '@/lib/firebase'
 import { nextWeekday } from '@/lib/dates'
 import { stripUndefined } from '@/lib/utils'
+import { commit, type SaveOutcome } from '@/lib/sync'
 import type { AppSettings, Meeting, MeetingStatus } from '@/lib/types'
 
 const meetingsRef = collection(db, COLLECTIONS.meetings)
@@ -30,41 +31,53 @@ export interface MeetingInput {
   notes?: string
 }
 
-export async function createMeeting(input: MeetingInput, userId: string): Promise<string> {
-  const docRef = await addDoc(meetingsRef, {
-    ...stripUndefined({
-      title: input.title,
-      location: input.location ?? '',
-      openingPrayer: input.openingPrayer ?? '',
-      closingPrayer: input.closingPrayer ?? '',
-      spiritualThought: input.spiritualThought ?? '',
-      notes: input.notes ?? '',
+export async function createMeeting(
+  input: MeetingInput,
+  userId: string,
+): Promise<{ id: string; outcome: SaveOutcome }> {
+  // Die ID entsteht im Client, damit sie auch ohne Netz sofort feststeht –
+  // die Ansicht kann direkt zur neuen Sitzung springen.
+  const docRef = doc(meetingsRef)
+  const outcome = await commit(
+    setDoc(docRef, {
+      ...stripUndefined({
+        title: input.title,
+        location: input.location ?? '',
+        openingPrayer: input.openingPrayer ?? '',
+        closingPrayer: input.closingPrayer ?? '',
+        spiritualThought: input.spiritualThought ?? '',
+        notes: input.notes ?? '',
+      }),
+      date: Timestamp.fromDate(input.date),
+      status: 'planned' satisfies MeetingStatus,
+      attendees: input.attendees ?? [],
+      startedAt: null,
+      closedAt: null,
+      createdAt: serverTimestamp(),
+      updatedAt: serverTimestamp(),
+      createdBy: userId,
     }),
-    date: Timestamp.fromDate(input.date),
-    status: 'planned' satisfies MeetingStatus,
-    attendees: input.attendees ?? [],
-    startedAt: null,
-    closedAt: null,
-    createdAt: serverTimestamp(),
-    updatedAt: serverTimestamp(),
-    createdBy: userId,
-  })
-  return docRef.id
+  )
+  return { id: docRef.id, outcome }
 }
 
-export async function updateMeeting(id: string, patch: Partial<Meeting>): Promise<void> {
-  await updateDoc(doc(db, COLLECTIONS.meetings, id), {
-    ...stripUndefined(patch as Record<string, unknown>),
-    updatedAt: serverTimestamp(),
-  })
+export async function updateMeeting(id: string, patch: Partial<Meeting>): Promise<SaveOutcome> {
+  return commit(
+    updateDoc(doc(db, COLLECTIONS.meetings, id), {
+      ...stripUndefined(patch as Record<string, unknown>),
+      updatedAt: serverTimestamp(),
+    }),
+  )
 }
 
-export async function startMeeting(id: string): Promise<void> {
-  await updateDoc(doc(db, COLLECTIONS.meetings, id), {
-    status: 'running' satisfies MeetingStatus,
-    startedAt: serverTimestamp(),
-    updatedAt: serverTimestamp(),
-  })
+export async function startMeeting(id: string): Promise<SaveOutcome> {
+  return commit(
+    updateDoc(doc(db, COLLECTIONS.meetings, id), {
+      status: 'running' satisfies MeetingStatus,
+      startedAt: serverTimestamp(),
+      updatedAt: serverTimestamp(),
+    }),
+  )
 }
 
 /**
@@ -93,32 +106,34 @@ export async function closeMeeting(id: string): Promise<number> {
     closedAt: serverTimestamp(),
     updatedAt: serverTimestamp(),
   })
-  await batch.commit()
+  await commit(batch.commit())
 
   return openItems.size
 }
 
 /** Setzt eine abgeschlossene Sitzung zurück auf «läuft». */
-export async function reopenMeeting(id: string): Promise<void> {
-  await updateDoc(doc(db, COLLECTIONS.meetings, id), {
-    status: 'running' satisfies MeetingStatus,
-    closedAt: null,
-    updatedAt: serverTimestamp(),
-  })
+export async function reopenMeeting(id: string): Promise<SaveOutcome> {
+  return commit(
+    updateDoc(doc(db, COLLECTIONS.meetings, id), {
+      status: 'running' satisfies MeetingStatus,
+      closedAt: null,
+      updatedAt: serverTimestamp(),
+    }),
+  )
 }
 
 /**
  * Löscht eine Sitzung und gibt ihre Traktanden frei, damit keine
  * verwaisten Verweise zurückbleiben.
  */
-export async function deleteMeeting(id: string): Promise<void> {
+export async function deleteMeeting(id: string): Promise<SaveOutcome> {
   const items = await getDocs(
     query(collection(db, COLLECTIONS.agendaItems), where('meetingId', '==', id)),
   )
   const batch = writeBatch(db)
   items.docs.forEach((item) => batch.update(item.ref, { meetingId: null }))
   batch.delete(doc(db, COLLECTIONS.meetings, id))
-  await batch.commit()
+  return commit(batch.commit())
 }
 
 /** Terminvorschlag für die Folgesitzung aus den Einstellungen ableiten. */

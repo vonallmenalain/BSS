@@ -19,7 +19,8 @@ import {
 import { doc, getDoc, onSnapshot, serverTimestamp, setDoc } from 'firebase/firestore'
 import { auth, db, COLLECTIONS, isFirebaseConfigured } from '@/lib/firebase'
 import { getInitials } from '@/lib/utils'
-import { LEADERSHIP_ROLES, type AppUser, type Role } from '@/lib/types'
+import { commit } from '@/lib/sync'
+import { BISHOPRIC_ROLES, FULL_ACCESS_ROLES, type AppUser, type Role } from '@/lib/types'
 
 interface AuthContextValue {
   /** Firebase-Auth-Benutzer (Anmeldeidentität) */
@@ -27,10 +28,15 @@ interface AuthContextValue {
   /** Profil aus Firestore inkl. Rolle – `null`, solange kein Profil existiert */
   profile: AppUser | null
   loading: boolean
-  /** Angemeldet und durch einen Leiter freigeschaltet */
+  /**
+   * Angemeldet, aktiv und freigeschaltet.
+   *
+   * Damit ist zugleich der volle Zugriff verbunden: Bischof, beide Ratgeber
+   * und die Sekretäre sehen und dürfen dasselbe. Nur `pending` sieht nichts.
+   */
   isApproved: boolean
-  /** Bischof oder Ratgeber – darf vertrauliche Traktanden sehen */
-  isLeadership: boolean
+  /** Gehört zur Bischofschaft im engeren Sinn (leitet die Versammlung). */
+  isBishopric: boolean
   isBishop: boolean
   role: Role | null
   error: string | null
@@ -129,8 +135,14 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   /**
    * Legt das Firestore-Profil an, falls es fehlt.
-   * Neue Konten starten immer mit der Rolle `pending`; erst ein Bischof oder
-   * Ratgeber schaltet sie frei. So kommt niemand ungeprüft an Personendaten.
+   *
+   * Neue Konten starten immer mit der Rolle `pending`; erst ein bereits
+   * freigeschaltetes Konto vergibt eine Rolle. So kommt niemand ungeprüft an
+   * Personendaten.
+   *
+   * Auch hier wird über `commit()` geschrieben: Bricht die Verbindung
+   * ausgerechnet zwischen Anmeldung und Profilanlage ab, soll die App nicht
+   * auf einer Bestätigung stehen bleiben, die erst später kommt.
    */
   const ensureProfile = useCallback(async (user: FirebaseUser, displayName?: string) => {
     const ref = doc(db, COLLECTIONS.users, user.uid)
@@ -138,19 +150,21 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     const name = displayName || user.displayName || user.email?.split('@')[0] || 'Unbenannt'
 
     if (!existing.exists()) {
-      await setDoc(ref, {
-        email: user.email ?? '',
-        displayName: name,
-        initials: getInitials(name),
-        role: 'pending' satisfies Role,
-        active: true,
-        memberId: null,
-        createdAt: serverTimestamp(),
-        updatedAt: serverTimestamp(),
-        lastLoginAt: serverTimestamp(),
-      })
+      await commit(
+        setDoc(ref, {
+          email: user.email ?? '',
+          displayName: name,
+          initials: getInitials(name),
+          role: 'pending' satisfies Role,
+          active: true,
+          memberId: null,
+          createdAt: serverTimestamp(),
+          updatedAt: serverTimestamp(),
+          lastLoginAt: serverTimestamp(),
+        }),
+      )
     } else {
-      await setDoc(ref, { lastLoginAt: serverTimestamp() }, { merge: true })
+      await commit(setDoc(ref, { lastLoginAt: serverTimestamp() }, { merge: true }))
     }
   }, [])
 
@@ -204,13 +218,15 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   const value = useMemo<AuthContextValue>(() => {
     const role = profile?.role ?? null
-    const isApproved = Boolean(profile && profile.active && profile.role !== 'pending')
+    const isApproved = Boolean(
+      profile && profile.active && role && FULL_ACCESS_ROLES.includes(role),
+    )
     return {
       firebaseUser,
       profile,
       loading,
       isApproved,
-      isLeadership: Boolean(role && LEADERSHIP_ROLES.includes(role)),
+      isBishopric: Boolean(role && BISHOPRIC_ROLES.includes(role)),
       isBishop: role === 'bishop',
       role,
       error,

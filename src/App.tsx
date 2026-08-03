@@ -25,6 +25,25 @@ const ImportMembers = lazy(() =>
   import('@/pages/ImportMembers').then((m) => ({ default: m.ImportMembers })),
 )
 
+/* Abendmahlsversammlung – der Rahmen hält den gewählten Sonntag,
+   die Unterseiten werden bei Bedarf nachgeladen. */
+const SacramentLayout = lazy(() =>
+  import('@/components/sacrament/SacramentLayout').then((m) => ({ default: m.SacramentLayout })),
+)
+const Conducting = lazy(() =>
+  import('@/pages/sacrament/Conducting').then((m) => ({ default: m.Conducting })),
+)
+const Announcements = lazy(() =>
+  import('@/pages/sacrament/Announcements').then((m) => ({ default: m.Announcements })),
+)
+const WardBusiness = lazy(() =>
+  import('@/pages/sacrament/WardBusiness').then((m) => ({ default: m.WardBusiness })),
+)
+const Music = lazy(() => import('@/pages/sacrament/Music').then((m) => ({ default: m.Music })))
+const Prayers = lazy(() =>
+  import('@/pages/sacrament/Prayers').then((m) => ({ default: m.Prayers })),
+)
+
 /** Lässt nur angemeldete und freigeschaltete Personen durch. */
 function RequireAuth({ children }: { children: ReactNode }) {
   const { firebaseUser, loading, isApproved } = useAuth()
@@ -33,13 +52,6 @@ function RequireAuth({ children }: { children: ReactNode }) {
   if (!firebaseUser) return <Navigate to="/anmelden" replace />
   if (!isApproved) return <PendingApproval />
 
-  return <>{children}</>
-}
-
-/** Bereiche, die nur Bischof und Ratgeber offenstehen. */
-function RequireLeadership({ children }: { children: ReactNode }) {
-  const { isLeadership } = useAuth()
-  if (!isLeadership) return <Navigate to="/" replace />
   return <>{children}</>
 }
 
@@ -87,14 +99,72 @@ export default function App() {
                     </Suspense>
                   }
                 />
+                {/* ---------- Abendmahlsversammlung ---------- */}
                 <Route
-                  path="ansprachen"
+                  path="abendmahl"
                   element={
                     <Suspense fallback={<LoadingScreen />}>
-                      <Talks />
+                      <SacramentLayout />
                     </Suspense>
                   }
+                >
+                  <Route index element={<Navigate to="leitung" replace />} />
+                  <Route
+                    path="leitung"
+                    element={
+                      <Suspense fallback={<LoadingScreen />}>
+                        <Conducting />
+                      </Suspense>
+                    }
+                  />
+                  <Route
+                    path="bekanntmachungen"
+                    element={
+                      <Suspense fallback={<LoadingScreen />}>
+                        <Announcements />
+                      </Suspense>
+                    }
+                  />
+                  <Route
+                    path="angelegenheiten"
+                    element={
+                      <Suspense fallback={<LoadingScreen />}>
+                        <WardBusiness />
+                      </Suspense>
+                    }
+                  />
+                  <Route
+                    path="ansprachen"
+                    element={
+                      <Suspense fallback={<LoadingScreen />}>
+                        <Talks />
+                      </Suspense>
+                    }
+                  />
+                  <Route
+                    path="musik"
+                    element={
+                      <Suspense fallback={<LoadingScreen />}>
+                        <Music />
+                      </Suspense>
+                    }
+                  />
+                  <Route
+                    path="gebet"
+                    element={
+                      <Suspense fallback={<LoadingScreen />}>
+                        <Prayers />
+                      </Suspense>
+                    }
+                  />
+                </Route>
+
+                {/* Alte Adresse aus früheren Versionen – Lesezeichen sollen weiter funktionieren. */}
+                <Route
+                  path="ansprachen"
+                  element={<Navigate to="/abendmahl/ansprachen" replace />}
                 />
+
                 <Route
                   path="berufungen"
                   element={
@@ -114,11 +184,9 @@ export default function App() {
                 <Route
                   path="import"
                   element={
-                    <RequireLeadership>
-                      <Suspense fallback={<LoadingScreen />}>
-                        <ImportMembers />
-                      </Suspense>
-                    </RequireLeadership>
+                    <Suspense fallback={<LoadingScreen />}>
+                      <ImportMembers />
+                    </Suspense>
                   }
                 />
 

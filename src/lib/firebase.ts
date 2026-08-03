@@ -87,4 +87,8 @@ export const COLLECTIONS = {
   talks: 'talks',
   callings: 'callings',
   settings: 'settings',
+  /** Programm je Abendmahlsversammlung, Dokument-ID ist das Datum */
+  sacramentMeetings: 'sacramentMeetings',
+  prayers: 'prayers',
+  hymns: 'hymns',
 } as const

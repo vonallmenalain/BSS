@@ -1,6 +1,15 @@
-import { createContext, useCallback, useContext, useMemo, useState, type ReactNode } from 'react'
+import {
+  createContext,
+  useCallback,
+  useContext,
+  useEffect,
+  useMemo,
+  useState,
+  type ReactNode,
+} from 'react'
 import { CheckCircle2, AlertTriangle, Info, XCircle, X } from 'lucide-react'
 import { cn, uid } from '@/lib/utils'
+import { setSyncFailureReporter, type SaveOutcome } from '@/lib/sync'
 
 type ToastKind = 'success' | 'error' | 'info' | 'warning'
 
@@ -16,6 +25,12 @@ interface ToastContextValue {
   error: (message: string) => void
   info: (message: string) => void
   warning: (message: string) => void
+  /**
+   * Rückmeldung nach dem Speichern. Ohne Verbindung wird die Änderung
+   * zwischengespeichert – das sagt die Meldung dann auch, statt einen
+   * Erfolg zu behaupten, der noch aussteht.
+   */
+  saved: (message: string, outcome?: SaveOutcome) => void
 }
 
 const ToastContext = createContext<ToastContextValue | undefined>(undefined)
@@ -54,6 +69,19 @@ export function ToastProvider({ children }: { children: ReactNode }) {
     [dismiss],
   )
 
+  // Fehler, die erst beim Übertragen einer zwischengespeicherten Änderung
+  // auftreten, haben keinen Aufrufer mehr, der sie anzeigen könnte.
+  useEffect(() => {
+    setSyncFailureReporter((error) => {
+      console.error('[sync] Änderung konnte nicht übertragen werden:', error)
+      toast(
+        'Eine zwischengespeicherte Änderung konnte nicht übertragen werden. Bitte prüfe den Eintrag.',
+        'error',
+      )
+    })
+    return () => setSyncFailureReporter(null)
+  }, [toast])
+
   const value = useMemo<ToastContextValue>(
     () => ({
       toast,
@@ -61,6 +89,10 @@ export function ToastProvider({ children }: { children: ReactNode }) {
       error: (m: string) => toast(m, 'error'),
       info: (m: string) => toast(m, 'info'),
       warning: (m: string) => toast(m, 'warning'),
+      saved: (m: string, outcome?: SaveOutcome) =>
+        outcome === 'queued'
+          ? toast(`${m} Wird übertragen, sobald wieder Verbindung besteht.`, 'info')
+          : toast(m, 'success'),
     }),
     [toast],
   )

@@ -10,6 +10,7 @@ import {
   addMonths,
   addWeeks,
   nextDay,
+  previousDay,
   isSameDay,
   isValid,
   parse,
@@ -166,6 +167,25 @@ export function upcomingWeekdays(weekday: number, weeks: number, from = new Date
   return result
 }
 
+/** Der aktuelle bzw. zuletzt vergangene Termin dieses Wochentags. */
+export function currentOrPreviousWeekday(weekday: number, from = new Date()): Date {
+  const cursor = startOfDay(from)
+  return cursor.getDay() === weekday ? cursor : previousDay(cursor, weekday as Day)
+}
+
+/**
+ * Termine rund um heute: `past` Wochen zurück, `future` Wochen voraus.
+ * Damit lässt sich ein Sonntag auswählen, ohne einen Kalender zu öffnen –
+ * und ein vergangener bleibt zum Nachtragen erreichbar.
+ */
+export function weekdaysAround(weekday: number, past = 6, future = 16, from = new Date()): Date[] {
+  const anchor = currentOrPreviousWeekday(weekday, from)
+  const result: Date[] = []
+  for (let i = past; i > 0; i--) result.push(addWeeks(anchor, -i))
+  for (let i = 0; i <= future; i++) result.push(addWeeks(anchor, i))
+  return result
+}
+
 /** Monate seit einem Datum – für «wer war schon lange nicht mehr dran?» */
 export function monthsSince(value: Parameters<typeof toDate>[0]): number | null {
   const date = toDate(value)
@@ -190,7 +210,8 @@ export function hasBirthdaySoon(birthDate: Parameters<typeof toDate>[0], days = 
   if (!date) return false
   const today = startOfDay(new Date())
   const thisYear = new Date(today.getFullYear(), date.getMonth(), date.getDate())
-  const candidate = thisYear < today ? new Date(today.getFullYear() + 1, date.getMonth(), date.getDate()) : thisYear
+  const candidate =
+    thisYear < today ? new Date(today.getFullYear() + 1, date.getMonth(), date.getDate()) : thisYear
   const diff = differenceInCalendarDays(candidate, today)
   return diff >= 0 && diff <= days
 }

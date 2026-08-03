@@ -1,15 +1,6 @@
 import { useMemo, useState } from 'react'
 import { Link } from 'react-router-dom'
-import {
-  ArrowDownUp,
-  Download,
-  Mail,
-  Phone,
-  Plus,
-  Search,
-  Upload,
-  Users,
-} from 'lucide-react'
+import { ArrowDownUp, Download, Mail, Phone, Plus, Search, Upload, Users } from 'lucide-react'
 import { useData } from '@/contexts/DataContext'
 import { useAuth } from '@/contexts/AuthContext'
 import { EmptyState, SkeletonList } from '@/components/ui/Feedback'
@@ -39,7 +30,7 @@ const SORT_OPTIONS: { value: MemberSortKey; label: string }[] = [
 
 export function Members() {
   const { members, loading } = useData()
-  const { isLeadership } = useAuth()
+  const { isApproved } = useAuth()
 
   const [search, setSearch] = useState('')
   const [status, setStatus] = useState<MemberStatus | 'all'>('active')
@@ -69,7 +60,7 @@ export function Members() {
         subtitle={`${counts.all} Personen erfasst`}
         actions={
           <>
-            {isLeadership && (
+            {isApproved && (
               <>
                 <Link to="/import" className="btn-secondary">
                   <Upload className="size-4" aria-hidden />
@@ -167,7 +158,7 @@ export function Members() {
             }
             action={
               members.length === 0 &&
-              isLeadership && (
+              isApproved && (
                 <Link to="/import" className="btn-primary">
                   <Upload className="size-4" aria-hidden />
                   Liste importieren
@@ -202,9 +193,7 @@ export function Members() {
                         <span className="truncate text-sm font-medium">
                           {member.lastName}, {member.firstName}
                         </span>
-                        {member.status !== 'active' && (
-                          <MemberStatusBadge status={member.status} />
-                        )}
+                        {member.status !== 'active' && <MemberStatusBadge status={member.status} />}
                       </div>
                       <p className="mt-0.5 flex flex-wrap items-center gap-x-3 text-xs text-slate-500 dark:text-slate-400">
                         {age !== null && <span>{age} Jahre</span>}

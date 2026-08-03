@@ -4,7 +4,8 @@ import {
   LayoutDashboard,
   CalendarDays,
   ListTodo,
-  Mic,
+  Church,
+  CloudUpload,
   Users,
   Award,
   Settings,
@@ -24,6 +25,7 @@ import { useData } from '@/contexts/DataContext'
 import { useOnlineStatus, useTheme } from '@/hooks/useLocalStorage'
 import { useNow } from '@/hooks/useNow'
 import { useOpenItems } from '@/hooks/useFirestore'
+import { usePendingWrites } from '@/hooks/useSync'
 import { Avatar } from '@/components/ui/Avatar'
 import { ROLE_LABELS } from '@/lib/types'
 import { UpdatePrompt } from '@/components/UpdatePrompt'
@@ -36,13 +38,30 @@ interface NavItem {
   /** Auf dem Handy in der unteren Leiste sichtbar */
   primary?: boolean
   badge?: number
+  /** Unterpunkte eines ausklappbaren Bereichs */
+  children?: { to: string; label: string }[]
 }
 
+/**
+ * Die Abendmahlsversammlung ist der einzige Bereich mit Unterpunkten.
+ * «Leitung» steht bewusst zuoberst: Dort läuft alles zusammen, die übrigen
+ * Punkte sind die Zulieferer.
+ */
+const SACRAMENT_CHILDREN = [
+  { to: '/abendmahl/leitung', label: 'Leitung' },
+  { to: '/abendmahl/bekanntmachungen', label: 'Bekanntmachungen' },
+  { to: '/abendmahl/angelegenheiten', label: 'Angelegenheiten' },
+  { to: '/abendmahl/ansprachen', label: 'Ansprachen' },
+  { to: '/abendmahl/musik', label: 'Musik' },
+  { to: '/abendmahl/gebet', label: 'Gebet' },
+]
+
 export function Layout() {
-  const { profile, signOut, isLeadership } = useAuth()
+  const { profile, signOut } = useAuth()
   const { settings } = useData()
   const { data: openItems } = useOpenItems()
   const online = useOnlineStatus()
+  const unsent = usePendingWrites()
   const now = useNow()
   const [theme, setTheme] = useTheme()
   const [menuOpen, setMenuOpen] = useState(false)
@@ -62,7 +81,13 @@ export function Layout() {
 
   const navItems: NavItem[] = [
     { to: '/', label: 'Übersicht', shortLabel: 'Start', icon: LayoutDashboard, primary: true },
-    { to: '/sitzungen', label: 'Sitzungen', shortLabel: 'Sitzung', icon: CalendarDays, primary: true },
+    {
+      to: '/sitzungen',
+      label: 'Sitzungen',
+      shortLabel: 'Sitzung',
+      icon: CalendarDays,
+      primary: true,
+    },
     {
       to: '/pendenzen',
       label: 'Pendenzen',
@@ -71,7 +96,14 @@ export function Layout() {
       primary: true,
       badge: overdueCount || undefined,
     },
-    { to: '/ansprachen', label: 'Ansprachen', shortLabel: 'Reden', icon: Mic, primary: true },
+    {
+      to: '/abendmahl/leitung',
+      label: 'Abendmahlsversammlung',
+      shortLabel: 'Sonntag',
+      icon: Church,
+      primary: true,
+      children: SACRAMENT_CHILDREN,
+    },
     { to: '/mitglieder', label: 'Mitglieder', shortLabel: 'Mitglieder', icon: Users },
     { to: '/berufungen', label: 'Berufungen', shortLabel: 'Berufung', icon: Award },
     { to: '/einstellungen', label: 'Einstellungen', shortLabel: 'Mehr', icon: Settings },
@@ -113,17 +145,32 @@ export function Layout() {
           {!online && (
             <span
               className="badge bg-amber-100 text-amber-800 dark:bg-amber-950 dark:text-amber-200"
-              title="Änderungen werden gespeichert und später synchronisiert."
+              title="Änderungen werden gespeichert und später übertragen."
             >
               <WifiOff className="size-3.5" aria-hidden />
               <span className="hidden sm:inline">Offline</span>
             </span>
           )}
 
+          {/* Zeigt, dass noch etwas unterwegs ist – auch wenn die Verbindung
+              inzwischen wieder steht. Erst wenn das weg ist, ist alles beim Server. */}
+          {unsent > 0 && (
+            <span
+              className="badge bg-sky-100 text-sky-800 dark:bg-sky-950 dark:text-sky-200"
+              title={`${unsent} Änderung${unsent === 1 ? '' : 'en'} lokal gespeichert, Übertragung läuft.`}
+            >
+              <CloudUpload className="size-3.5 animate-pulse" aria-hidden />
+              <span className="tabular hidden sm:inline">{unsent} unterwegs</span>
+              <span className="tabular sm:hidden">{unsent}</span>
+            </span>
+          )}
+
           <button
             type="button"
             className="btn-ghost p-2"
-            onClick={() => setTheme(theme === 'light' ? 'dark' : theme === 'dark' ? 'system' : 'light')}
+            onClick={() =>
+              setTheme(theme === 'light' ? 'dark' : theme === 'dark' ? 'system' : 'light')
+            }
             aria-label={`Darstellung: ${theme === 'system' ? 'System' : theme === 'dark' ? 'Dunkel' : 'Hell'}`}
             title={`Darstellung: ${theme === 'system' ? 'System' : theme === 'dark' ? 'Dunkel' : 'Hell'}`}
           >
@@ -189,9 +236,9 @@ export function Layout() {
               {navItems.map((item) => (
                 <SidebarLink key={item.to} item={item} />
               ))}
-              {isLeadership && (
+              {profile && (
                 <p className="mt-4 px-3 text-xs text-slate-400">
-                  Angemeldet als {profile ? ROLE_LABELS[profile.role] : ''}
+                  Angemeldet als {ROLE_LABELS[profile.role]}
                 </p>
               )}
               <button
@@ -238,32 +285,91 @@ export function Layout() {
 
 function SidebarLink({ item }: { item: NavItem }) {
   const Icon = item.icon
+  const location = useLocation()
+
+  /**
+   * Ein Bereich mit Unterpunkten klappt auf, sobald man darin arbeitet, und
+   * lässt sich zusätzlich von Hand öffnen. So bleibt die Liste kurz, ohne
+   * dass man sich zu den Unterseiten durchklicken muss.
+   */
+  const section = item.children ? item.to.split('/')[1] : ''
+  const inSection = Boolean(section) && location.pathname.startsWith(`/${section}`)
+  const [manuallyOpen, setManuallyOpen] = useState(false)
+  const expanded = inSection || manuallyOpen
+
   return (
-    <NavLink
-      to={item.to}
-      end={item.to === '/'}
-      className={({ isActive }) =>
-        cn(
-          'flex items-center gap-3 rounded-lg px-3 py-2 text-sm font-medium transition',
-          isActive
-            ? 'bg-brand-50 text-brand-800 dark:bg-brand-950 dark:text-brand-100'
-            : 'text-slate-600 hover:bg-slate-100 dark:text-slate-300 dark:hover:bg-slate-800',
-        )
-      }
-    >
-      <Icon className="size-5 shrink-0" aria-hidden />
-      <span className="flex-1 truncate">{item.label}</span>
-      {item.badge ? (
-        <span className="tabular rounded-full bg-rose-100 px-1.5 py-0.5 text-[11px] font-semibold text-rose-700 dark:bg-rose-950 dark:text-rose-200">
-          {item.badge}
-        </span>
-      ) : null}
-    </NavLink>
+    <div>
+      <div className="flex items-center">
+        <NavLink
+          to={item.to}
+          end={item.to === '/'}
+          className={({ isActive }) =>
+            cn(
+              'flex min-w-0 flex-1 items-center gap-3 rounded-lg px-3 py-2 text-sm font-medium transition',
+              (item.children ? inSection : isActive)
+                ? 'bg-brand-50 text-brand-800 dark:bg-brand-950 dark:text-brand-100'
+                : 'text-slate-600 hover:bg-slate-100 dark:text-slate-300 dark:hover:bg-slate-800',
+            )
+          }
+        >
+          <Icon className="size-5 shrink-0" aria-hidden />
+          <span className="flex-1 truncate">{item.label}</span>
+          {item.badge ? (
+            <span className="tabular rounded-full bg-rose-100 px-1.5 py-0.5 text-[11px] font-semibold text-rose-700 dark:bg-rose-950 dark:text-rose-200">
+              {item.badge}
+            </span>
+          ) : null}
+        </NavLink>
+
+        {item.children && (
+          <button
+            type="button"
+            onClick={() => setManuallyOpen((v) => !v)}
+            className="btn-ghost shrink-0 p-1.5"
+            aria-expanded={expanded}
+            aria-label={`${item.label} ${expanded ? 'zuklappen' : 'aufklappen'}`}
+          >
+            <ChevronDown
+              className={cn('size-4 transition-transform', expanded && 'rotate-180')}
+              aria-hidden
+            />
+          </button>
+        )}
+      </div>
+
+      {item.children && expanded && (
+        <ul className="mt-0.5 ml-5 border-l border-slate-200 pl-2 dark:border-slate-800">
+          {item.children.map((child) => (
+            <li key={child.to}>
+              <NavLink
+                to={child.to}
+                className={({ isActive }) =>
+                  cn(
+                    'block truncate rounded-lg px-3 py-1.5 text-sm transition',
+                    isActive
+                      ? 'text-brand-700 dark:text-brand-200 font-medium'
+                      : 'text-slate-500 hover:bg-slate-100 dark:text-slate-400 dark:hover:bg-slate-800',
+                  )
+                }
+              >
+                {child.label}
+              </NavLink>
+            </li>
+          ))}
+        </ul>
+      )}
+    </div>
   )
 }
 
 function BottomLink({ item }: { item: NavItem }) {
   const Icon = item.icon
+  const location = useLocation()
+  // Bei einem Bereich mit Unterseiten zählt der ganze Zweig als aktiv –
+  // sonst wirkt die Leiste beim Wechsel auf «Musik» plötzlich leer.
+  const section = item.children ? item.to.split('/')[1] : ''
+  const inSection = Boolean(section) && location.pathname.startsWith(`/${section}`)
+
   return (
     <NavLink
       to={item.to}
@@ -271,7 +377,9 @@ function BottomLink({ item }: { item: NavItem }) {
       className={({ isActive }) =>
         cn(
           'relative flex flex-1 flex-col items-center gap-0.5 py-2 transition',
-          isActive ? 'text-brand-600 dark:text-brand-300' : 'text-slate-500 dark:text-slate-400',
+          isActive || inSection
+            ? 'text-brand-600 dark:text-brand-300'
+            : 'text-slate-500 dark:text-slate-400',
         )
       }
     >

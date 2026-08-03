@@ -3,14 +3,22 @@ rules_version = '2';
 // Sicherheitsregeln für die Bischofschafts-App.
 //
 // Grundsatz: Die Datenbank enthält Personendaten einer Kirchengemeinde.
-// Lesen darf nur, wer angemeldet UND von einem Leiter freigeschaltet wurde.
-// Neue Konten starten mit der Rolle `pending` und sehen nichts.
+// Lesen darf nur, wer angemeldet UND freigeschaltet wurde. Neue Konten
+// starten mit der Rolle `pending` und sehen nichts.
 //
 // Rollen:
-//   bishop     – Bischof, vollständiger Zugriff
-//   counselor  – Ratgeber, wie Bischof (ausser Benutzer endgültig löschen)
-//   secretary  – Sekretär, arbeitet mit, sieht keine vertraulichen Traktanden
-//   pending    – wartet auf Freigabe, kein Datenzugriff
+//   bishop              – Bischof
+//   counselor1          – 1. Ratgeber
+//   counselor2          – 2. Ratgeber
+//   executive_secretary – Exekutivsekretär
+//   secretary           – Sekretär
+//   counselor           – Sammelrolle früherer Versionen (weiterhin gültig)
+//   pending             – wartet auf Freigabe, kein Datenzugriff
+//
+// Die Rolle beschreibt die Aufgabe, nicht den Rechteumfang: Alle
+// freigeschalteten Rollen arbeiten am selben Datenbestand und sehen alles.
+// Die Liste unten muss mit `FULL_ACCESS_ROLES` in src/lib/types.ts
+// übereinstimmen.
 
 service cloud.firestore {
   match /databases/{database}/documents {
@@ -31,20 +39,14 @@ service cloud.firestore {
     }
 
     // Freigeschaltet: Profil vorhanden, aktiv und mit echter Rolle.
+    // Wer das erfüllt, hat vollen Zugriff.
     function approved() {
       return hasProfile()
         && userDoc().active == true
-        && userDoc().role in ['bishop', 'counselor', 'secretary'];
-    }
-
-    function isLeadership() {
-      return hasProfile()
-        && userDoc().active == true
-        && userDoc().role in ['bishop', 'counselor'];
-    }
-
-    function isBishop() {
-      return hasProfile() && userDoc().active == true && userDoc().role == 'bishop';
+        && userDoc().role in [
+             'bishop', 'counselor1', 'counselor2',
+             'executive_secretary', 'secretary', 'counselor'
+           ];
     }
 
     /*
@@ -77,91 +79,74 @@ service cloud.firestore {
         && request.resource.data.role == 'pending'
         && request.resource.data.active == true;
 
-      // Eigene Angaben ändern, aber niemals Rolle oder Aktivstatus.
+      // Wer noch nicht freigeschaltet ist, darf zwar seinen Namen pflegen,
+      // aber weder Rolle noch Aktivstatus anfassen. Das ist die Sperre gegen
+      // die Selbstfreischaltung.
       allow update: if signedIn()
         && request.auth.uid == userId
         && unchanged('role')
         && unchanged('active');
 
-      // Leiter vergeben Rollen und schalten Konten frei.
-      allow update: if isLeadership();
+      // Freigeschaltete verwalten das Team – auch die eigene Rolle, damit
+      // sich jede und jeder als 1. Ratgeber, Sekretär usw. eintragen kann.
+      allow update: if approved();
 
-      // Profile endgültig entfernen ist dem Bischof vorbehalten.
-      allow delete: if isBishop();
+      allow delete: if approved();
     }
 
     /* ---------------- Sitzungen ---------------- */
 
     match /meetings/{meetingId} {
-      allow read: if approved();
-      allow create, update: if approved();
-      allow delete: if isLeadership();
+      allow read, write: if approved();
     }
 
     /* ---------------- Traktanden und Pendenzen ---------------- */
 
     match /agendaItems/{itemId} {
-      // Vertrauliche Traktanden bleiben der Leitung vorbehalten.
-      //
-      // Wichtig: Auch `list` wird pro zurückgegebenem Dokument geprüft. Enthält
-      // eine Abfrage ein Dokument, das die Bedingung verletzt, schlägt die
-      // gesamte Abfrage fehl. Der Client hängt für Sekretäre deshalb
-      // `where('confidential', '==', false)` an – siehe src/hooks/useFirestore.ts.
-      // Der Vergleich muss genau so einfach bleiben: `resource.data.confidential
-      // == false`. Nur dann kann Firestore ihn gegen den Filter der Abfrage
-      // abgleichen und eine ungefilterte Abfrage von vornherein abweisen.
-      // Umschreibungen mit `data.get('confidential', false)` sind für die
-      // Auswertung undurchsichtig – dann laufen Abfragen durch und liefern
-      // auch vertrauliche Dokumente aus. Nachgewiesen mit dem Regeltest.
-      //
-      // Fehlt das Feld, greift die Regel nicht: kein Zugriff. Das ist die
-      // sichere Richtung, und die App setzt `confidential` beim Anlegen immer.
-      allow get, list: if approved()
-        && (isLeadership() || resource.data.confidential == false);
-
-      allow create: if approved()
-        && (isLeadership() || request.resource.data.confidential == false);
-
-      // Sekretäre dürfen ein Traktandum weder als vertraulich markieren noch
-      // ein bestehendes vertrauliches verändern.
-      allow update: if approved() && resource != null
-        && (isLeadership() || (resource.data.confidential == false
-                               && request.resource.data.confidential == false));
-
-      allow delete: if approved() && resource != null
-        && (isLeadership() || resource.data.confidential == false);
+      // `confidential` bleibt als Kennzeichnung im Datenmodell erhalten und
+      // wird in der Oberfläche angezeigt, schränkt den Zugriff aber nicht
+      // mehr ein: Die ganze Bischofschaft arbeitet am selben Bestand.
+      allow read, write: if approved();
     }
 
     /* ---------------- Mitglieder ---------------- */
 
     match /members/{memberId} {
-      allow read: if approved();
-      allow create, update: if approved();
-      // Löschen verändert die Datenbasis dauerhaft – nur die Leitung.
-      allow delete: if isLeadership();
+      allow read, write: if approved();
     }
 
-    /* ---------------- Ansprachen ---------------- */
+    /* ---------------- Ansprachen und Zeugnisse ---------------- */
 
     match /talks/{talkId} {
-      allow read, create, update, delete: if approved();
+      allow read, write: if approved();
+    }
+
+    /* ---------------- Abendmahlsversammlung ---------------- */
+
+    match /sacramentMeetings/{dateKey} {
+      allow read, write: if approved();
+    }
+
+    match /prayers/{prayerId} {
+      allow read, write: if approved();
+    }
+
+    /* ---------------- Gesangbuch ---------------- */
+
+    match /hymns/{number} {
+      allow read, write: if approved();
     }
 
     /* ---------------- Berufungen ---------------- */
 
     match /callings/{callingId} {
-      // Berufungen sind vertraulich, solange sie noch nicht bestätigt sind.
-      // Der Einfachheit halber bleibt der ganze Bereich der Leitung und den
-      // Sekretären vorbehalten – wie der Rest der App.
-      allow read, create, update: if approved();
-      allow delete: if isLeadership();
+      allow read, write: if approved();
     }
 
     /* ---------------- Einstellungen ---------------- */
 
     match /settings/{docId} {
-      allow read: if approved();
-      allow write: if isLeadership();
+      allow read, write: if approved();
     }
 
     /* ---------------- Alles Übrige ---------------- */
