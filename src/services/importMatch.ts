@@ -151,14 +151,21 @@ function callingKey(
  * Bestehende Berufungen nach diesem Schlüssel greifbar machen.
  *
  * Zu einer Rolle kann es mehrere Einträge geben, seit die Berufungshistorie
- * mitimportiert wird: Wer heute FHV-Lehrerin ist, war es vielleicht schon
- * einmal. Der Abgleich muss dann die **laufende** treffen – sonst weckte
- * ein Import die alte wieder auf und entliesse die laufende, und beim
- * nächsten Mal wanderte es zurück.
+ * mitkommt: Wer heute FHV-Lehrerin ist, war es vielleicht schon einmal.
+ * Zwei Regeln halten den Abgleich davon ab, den falschen zu treffen.
+ *
+ * **Übernommene Vergangenheit zählt nicht mit.** Sie ist abgeschlossen und
+ * soll es bleiben; ein Import würde sie sonst wieder aufwecken und dabei
+ * ihre Daten überschreiben.
+ *
+ * **Unter den übrigen gilt die laufende.** Sonst entliesse ein Import die
+ * laufende Berufung und weckte eine frühere – und beim nächsten Mal
+ * wanderte es zurück.
  */
 function indexByKey(callings: Calling[]): Map<string, Calling> {
   const index = new Map<string, Calling>()
   for (const calling of callings) {
+    if (calling.history) continue
     const key = callingKey(
       calling.memberId,
       calling.position,
@@ -271,24 +278,21 @@ export function buildCallingsPreview(
 /**
  * Was mit einer gelesenen Berufung geschieht.
  *
- *  - `create` – wird als neue Berufung geschrieben.
- *  - `merge`  – die Person hat diese Berufung bereits erfasst; ergänzt
- *               werden nur die Daten, die dort fehlen.
- *  - `known`  – bereits erfasst, und es gibt nichts zu ergänzen.
- *  - `skip`   – kein Mitglied gefunden; wird gemeldet, nicht geschrieben.
- *  - `ignore` – als «kein Mitglied unserer Gemeinde» abgelegt.
+ *  - `create`  – wird als abgeschlossene Berufung in den Verlauf geschrieben.
+ *  - `running` – die Person erfüllt diese Berufung laut Bestand heute noch;
+ *                der Eintrag wird **nicht** geschrieben und der laufende
+ *                Datensatz **nicht** angefasst.
+ *  - `skip`    – kein Mitglied gefunden; wird gemeldet, nicht geschrieben.
+ *  - `ignore`  – als «kein Mitglied unserer Gemeinde» abgelegt.
  */
-export type CallingHistoryAction = 'create' | 'merge' | 'known' | 'skip' | 'ignore'
+export type CallingHistoryAction = 'create' | 'running' | 'skip' | 'ignore'
 
 export interface CallingHistoryRow {
   calling: HistoricCalling
   memberId: string | null
   memberName: string
-  /** Bestehende Berufung derselben Person in derselben Rolle */
+  /** Laufende Berufung derselben Person in derselben Rolle – bleibt unberührt */
   existingId: string | null
-  /** Nur bei `merge`: die Felder, die dort noch fehlen */
-  patch: Partial<Record<'extendedDate' | 'sustainedDate' | 'setApartDate', string>>
-  status: CallingStatus
   action: CallingHistoryAction
   warnings: string[]
 }
@@ -312,8 +316,7 @@ export interface CallingHistoryDecisions {
 export interface CallingHistoryPreview {
   rows: CallingHistoryRow[]
   createCount: number
-  mergeCount: number
-  knownCount: number
+  runningCount: number
   skipCount: number
   ignoredCount: number
   /** Personen, die Verlauf erhalten – mit der Anzahl ihrer Berufungen */
@@ -322,38 +325,46 @@ export interface CallingHistoryPreview {
   unmatched: { fullName: string; count: number }[]
   /** Weggelegte Namen – «kein Mitglied unserer Gemeinde» */
   dismissed: { fullName: string; count: number }[]
+  /**
+   * Übernommene Berufungen, zu denen keine Entlassung in der Liste steht
+   * und die im laufenden Bestand fehlen.
+   *
+   * Sie sind der Grund, weshalb dieser Import nichts anlegt, was laufen
+   * könnte: Ob die Person die Aufgabe heute noch hat oder ob bloss die
+   * Entlassung nie eingetragen wurde, weiss die Tabelle nicht. Deshalb
+   * kommen sie als Verlauf mit und stehen danach hier – zum Nachschauen
+   * und Nachtragen von Hand.
+   */
+  withoutRelease: CallingHistoryRow[]
 }
-
-/** Welche Felder eine bestehende Berufung noch brauchen könnte. */
-const FILLABLE = ['extendedDate', 'sustainedDate', 'setApartDate'] as const
 
 /**
  * Ordnet die gelesene Berufungshistorie den erfassten Personen zu.
  *
- * Zwei Fragen entscheidet diese Stelle.
+ * **Dieser Import schreibt nur Vergangenes.** Die Wahrheit über den
+ * laufenden Stand steht im LCR; was von dort kommt, wird hier weder
+ * geändert noch ergänzt noch entlassen. Jede übernommene Berufung ist
+ * deshalb eine abgeschlossene – auch die, zu der keine Entlassung erfasst
+ * ist.
  *
- * **Wem gehört der Eintrag?** Wie überall gilt der Abgleich über den Namen;
- * was offenbleibt, wird gemeldet statt geraten. Von Hand zugeordnete Namen
- * kommen mit, weggelegte verschwinden ganz.
+ * Das ist keine Bequemlichkeit, sondern die einzige Lesart, die nichts
+ * kaputtmacht. Wo in der Tabelle keine Entlassung steht, ist entweder
+ * keine eingetragen worden oder die Person hat die Aufgabe heute noch –
+ * beides sieht gleich aus. Eine laufende Berufung daraus abzuleiten hiesse
+ * raten, und geraten würde ausgerechnet dort, wo der Organisationsplan der
+ * Gemeinde steht. Solche Einträge kommen deshalb als Verlauf mit dem
+ * Vermerk «keine Entlassung erfasst» und erscheinen danach in
+ * `withoutRelease` – von Hand nachzutragen, wenn wirklich etwas fehlt.
  *
- * **Läuft die Berufung noch?** Die Tabelle sagt es nur mittelbar: Wo keine
- * Entlassung steht, ist entweder keine erfasst worden oder die Person hat
- * die Aufgabe heute noch. Beides sieht gleich aus, und in der Mehrzahl ist
- * es das erste – über zehn Jahre sammeln sich mehr vergessene Entlassungen
- * als laufende Berufungen. Solche Einträge kommen deshalb als Verlauf in
- * die App, mit dem Vermerk «Entlassung nicht erfasst» statt mit einem
- * erfundenen Datum. Wer es anders will, stellt `keepOpen` um.
- *
- * Der laufende Bestand bleibt davon unberührt: Ist dieselbe Berufung schon
- * erfasst – aus dem LCR oder von Hand –, wird sie nicht verdoppelt, sondern
- * höchstens um fehlende Daten ergänzt.
+ * Wo derselbe Eintrag im Bestand noch läuft, wird gar nichts geschrieben:
+ * Der laufende Datensatz bleibt, wie das LCR ihn kennt, und daneben soll
+ * kein zweiter mit denselben Angaben stehen.
  */
 export function buildCallingHistoryPreview(
   parsed: ParsedCallingHistory,
   members: Member[],
   existing: Calling[],
   decisions: CallingHistoryDecisions = { overrides: {}, ignored: [] },
-  keepOpen = false,
 ): CallingHistoryPreview {
   const index = buildMemberIndex(members)
   const byId = new Map(members.map((member) => [member.id, member]))
@@ -373,9 +384,6 @@ export function buildCallingHistoryPreview(
       : matchMemberByName(calling.fullName, index)
     const member = match.member
 
-    const status: CallingStatus =
-      calling.released || !keepOpen ? 'released' : calling.setApartDate ? 'set_apart' : 'sustained'
-
     if (ignored.has(calling.fullName)) {
       dismissed.set(calling.fullName, (dismissed.get(calling.fullName) ?? 0) + 1)
       return {
@@ -383,8 +391,6 @@ export function buildCallingHistoryPreview(
         memberId: null,
         memberName: calling.fullName,
         existingId: null,
-        patch: {},
-        status,
         action: 'ignore',
         warnings: [],
       }
@@ -399,8 +405,6 @@ export function buildCallingHistoryPreview(
         memberId: null,
         memberName: calling.fullName,
         existingId: null,
-        patch: {},
-        status,
         action: 'skip',
         warnings,
       }
@@ -409,30 +413,23 @@ export function buildCallingHistoryPreview(
     if (!calling.position) warnings.push('Ohne Amt in der Quelle')
 
     /*
-     * Nur Berufungen ohne erfasste Entlassung können die laufende meinen.
+     * Nur eine Berufung ohne erfasste Entlassung kann die laufende meinen.
      * Eine abgeschlossene ist immer ein eigener Abschnitt – wer eine
      * Aufgabe zweimal innehatte, soll sie auch zweimal sehen.
      */
-    const existingCalling = calling.released
+    const running = calling.released
       ? undefined
       : existingByKey.get(
           callingKey(member.id, calling.position, calling.organization, calling.outOfUnit),
         )
 
-    if (existingCalling) {
-      const patch: CallingHistoryRow['patch'] = {}
-      for (const field of FILLABLE) {
-        const value = calling[field]
-        if (value && !existingCalling[field]) patch[field] = value
-      }
+    if (running && isRunning(running)) {
       return {
         calling,
         memberId: member.id,
         memberName: `${member.lastName}, ${member.firstName}`,
-        existingId: existingCalling.id,
-        patch,
-        status: existingCalling.status,
-        action: Object.keys(patch).length > 0 ? 'merge' : 'known',
+        existingId: running.id,
+        action: 'running',
         warnings,
       }
     }
@@ -443,8 +440,6 @@ export function buildCallingHistoryPreview(
       memberId: member.id,
       memberName: `${member.lastName}, ${member.firstName}`,
       existingId: null,
-      patch: {},
-      status,
       action: 'create',
       warnings,
     }
@@ -455,8 +450,7 @@ export function buildCallingHistoryPreview(
   return {
     rows,
     createCount: count('create'),
-    mergeCount: count('merge'),
-    knownCount: count('known'),
+    runningCount: count('running'),
     skipCount: count('skip'),
     ignoredCount: count('ignore'),
     members: [...perMember.entries()]
@@ -469,6 +463,12 @@ export function buildCallingHistoryPreview(
       .sort((a, b) => b.count - a.count || a.memberName.localeCompare(b.memberName)),
     unmatched: byCount(unmatched),
     dismissed: byCount(dismissed),
+    // Die jüngsten zuoberst: Je näher der Eintrag an heute liegt, desto eher
+    // steckt dahinter eine Aufgabe, die jemand noch erfüllt – und desto eher
+    // lohnt das Nachschauen.
+    withoutRelease: rows
+      .filter((row) => row.action === 'create' && !row.calling.released)
+      .sort((a, b) => (b.calling.startDate ?? '').localeCompare(a.calling.startDate ?? '')),
   }
 }
 

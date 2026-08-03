@@ -1,5 +1,5 @@
 import { useCallback, useMemo, useRef, useState, type ReactNode } from 'react'
-import { useNavigate } from 'react-router-dom'
+import { Link, useNavigate } from 'react-router-dom'
 import { FileSpreadsheet, Loader2, RotateCcw, Upload, UserX } from 'lucide-react'
 import readXlsxFile from 'read-excel-file/browser'
 import { useData } from '@/contexts/DataContext'
@@ -41,9 +41,10 @@ import { ORGANIZATION_LABELS, type Calling } from '@/lib/types'
  * die fehlt der App sonst, und niemand kann sie nachtragen, ohne zehn
  * Jahre Protokolle zu durchsuchen.
  *
- * Geschrieben wird deshalb ergänzend: Der laufende Bestand bleibt, wie er
- * ist, und wo dieselbe Berufung schon erfasst ist, kommen höchstens die
- * fehlenden Daten dazu.
+ * Der Import fasst deshalb **nichts** an, was heute gilt: Er legt nur
+ * abgeschlossene Berufungen an. Wo die Liste keine Entlassung kennt, wird
+ * daraus keine laufende Berufung gemacht – solche Einträge kommen als
+ * Verlauf mit und stehen danach als Liste zum Nachtragen von Hand.
  */
 
 type Step = 'file' | 'preview' | 'done'
@@ -60,7 +61,6 @@ export function ImportCallingHistory({ picker }: { picker: ReactNode }) {
   const [existing, setExisting] = useState<Calling[]>([])
   const [overrides, setOverrides] = useState<Record<string, string>>({})
   const [ignored, setIgnored] = useState<string[]>([])
-  const [keepOpen, setKeepOpen] = useState(false)
   const [busy, setBusy] = useState(false)
   const [dragging, setDragging] = useState(false)
   const [progress, setProgress] = useState<Progress | null>(null)
@@ -97,13 +97,11 @@ export function ImportCallingHistory({ picker }: { picker: ReactNode }) {
 
   const preview: CallingHistoryPreview | null = useMemo(
     () =>
-      parsed
-        ? buildCallingHistoryPreview(parsed, members, existing, { overrides, ignored }, keepOpen)
-        : null,
-    [parsed, members, existing, overrides, ignored, keepOpen],
+      parsed ? buildCallingHistoryPreview(parsed, members, existing, { overrides, ignored }) : null,
+    [parsed, members, existing, overrides, ignored],
   )
 
-  const writeCount = preview ? preview.createCount + preview.mergeCount : 0
+  const writeCount = preview ? preview.createCount : 0
 
   const assign = (fullName: string, memberId: string | null) =>
     setOverrides((current) => {
@@ -220,6 +218,11 @@ export function ImportCallingHistory({ picker }: { picker: ReactNode }) {
               «eingesetzt am» durchgestrichen ist. Eine Entlassung ohne Berufung bleibt erhalten –
               die Aufgabe begann dann vor der Tabelle.
             </p>
+            <p className="mt-2">
+              <strong>Der laufende Stand bleibt unberührt.</strong> Übernommen werden nur
+              abgeschlossene Berufungen; keine bestehende wird geändert, ergänzt oder entlassen. Wer
+              heute welche Berufung hat, sagt allein der Import aus dem LCR.
+            </p>
           </ImportHint>
         </>
       )}
@@ -246,8 +249,8 @@ export function ImportCallingHistory({ picker }: { picker: ReactNode }) {
               className="text-emerald-600 dark:text-emerald-400"
             />
             <SummaryTile
-              value={preview.mergeCount}
-              label="Ergänzen"
+              value={preview.runningCount}
+              label="Läuft – unberührt"
               className="text-sky-600 dark:text-sky-400"
             />
             <SummaryTile
@@ -343,33 +346,20 @@ export function ImportCallingHistory({ picker }: { picker: ReactNode }) {
             </details>
           )}
 
-          <div className="card mb-4 p-4">
-            <label className="flex cursor-pointer items-start gap-3">
-              <input
-                type="checkbox"
-                className="mt-0.5 size-4 rounded"
-                checked={keepOpen}
-                onChange={(event) => setKeepOpen(event.target.checked)}
-              />
-              <span>
-                <span className="text-sm font-medium">
-                  Berufungen ohne Entlassung als laufend übernehmen
-                </span>
-                <span className="hint mt-0.5 block">
-                  Zu {parsed.open} gelesenen Berufungen steht keine Entlassung in der Liste. Über
-                  die Jahre sammeln sich mehr vergessene Entlassungen als heute noch laufende
-                  Aufgaben – sie kommen deshalb als Verlauf in die App, mit dem Vermerk «keine
-                  Entlassung erfasst» statt mit einem erfundenen Datum. Den laufenden Stand liefert
-                  ohnehin der LCR-Import.
-                </span>
-              </span>
-            </label>
-          </div>
-
-          {preview.knownCount > 0 && (
+          {preview.runningCount > 0 && (
             <p className="mb-4 text-sm text-slate-500 dark:text-slate-400">
-              {preview.knownCount} Berufungen sind bereits erfasst und bleiben unverändert.
+              {preview.runningCount} Einträge meinen eine Berufung, die im Bestand noch läuft. Sie
+              werden nicht geschrieben, und der laufende Datensatz bleibt unverändert.
             </p>
+          )}
+
+          {preview.withoutRelease.length > 0 && (
+            <Warning className="mb-4">
+              Zu {preview.withoutRelease.length} übernommenen Berufungen steht keine Entlassung in
+              der Liste, und im laufenden Bestand fehlen sie. Sie kommen als Verlauf mit – ohne
+              Enddatum und ohne dass daraus eine laufende Berufung würde. Nach dem Import stehen sie
+              einzeln aufgeführt zum Nachtragen von Hand.
+            </Warning>
           )}
 
           {parsed.unknownOrganizations.length > 0 && (
@@ -385,10 +375,7 @@ export function ImportCallingHistory({ picker }: { picker: ReactNode }) {
             total={preview.rows.length}
           >
             {preview.rows.slice(0, 100).map((row) => (
-              <tr
-                key={row.calling.ref}
-                className={row.action === 'create' || row.action === 'merge' ? '' : 'opacity-50'}
-              >
+              <tr key={row.calling.ref} className={row.action === 'create' ? '' : 'opacity-50'}>
                 <td className="px-3 py-2">
                   <ActionBadge action={row.action} />
                 </td>
@@ -421,16 +408,22 @@ export function ImportCallingHistory({ picker }: { picker: ReactNode }) {
         </>
       )}
 
-      {step === 'done' && result && (
-        <DoneCard
-          summary={`${result.created} Berufungen übernommen · ${result.merged} ergänzt${
-            result.skipped > 0 ? ` · ${result.skipped} ohne Zuordnung übersprungen` : ''
-          }${result.ignored > 0 ? ` · ${result.ignored} weggelegt` : ''}`}
-          onReset={reset}
-          onLeave={() => navigate('/berufungen')}
-          leaveLabel="Zu den Berufungen"
-          resetLabel="Weitere Datei einlesen"
-        />
+      {step === 'done' && result && preview && (
+        <>
+          <DoneCard
+            summary={`${result.created} Berufungen in den Verlauf übernommen${
+              result.running > 0 ? ` · ${result.running} laufende unberührt gelassen` : ''
+            }${result.skipped > 0 ? ` · ${result.skipped} ohne Zuordnung übersprungen` : ''}${
+              result.ignored > 0 ? ` · ${result.ignored} weggelegt` : ''
+            }`}
+            onReset={reset}
+            onLeave={() => navigate('/berufungen')}
+            leaveLabel="Zu den Berufungen"
+            resetLabel="Weitere Datei einlesen"
+          />
+
+          <OpenEndedList rows={preview.withoutRelease} />
+        </>
       )}
     </>
   )
@@ -438,28 +431,74 @@ export function ImportCallingHistory({ picker }: { picker: ReactNode }) {
 
 /* ------------------------------------------------------------------ */
 
+/**
+ * Die Berufungen, zu denen keine Entlassung erfasst ist.
+ *
+ * Sie sind der Rest, den kein Verfahren auflöst: Entweder wurde die
+ * Entlassung nie eingetragen, oder die Person erfüllt die Aufgabe noch –
+ * und steht dann bloss nicht im LCR. Das eine gehört abgeschlossen, das
+ * andere im LCR nachgetragen; beides kann nur ein Mensch entscheiden.
+ * Deshalb steht die Liste hier, nach dem Import, mit dem Weg zur Person.
+ */
+function OpenEndedList({ rows }: { rows: CallingHistoryRow[] }) {
+  if (rows.length === 0) return null
+  return (
+    <section className="card mt-4 p-4">
+      <h2 className="text-sm font-semibold">
+        {rows.length} {rows.length === 1 ? 'Berufung' : 'Berufungen'} ohne erfasste Entlassung
+      </h2>
+      <p className="hint mb-3">
+        Übernommen als Verlauf, ohne Enddatum – im laufenden Bestand stehen sie nicht. Bitte von
+        Hand prüfen: Entweder das Datum der Entlassung nachtragen oder, wenn die Person die Aufgabe
+        noch erfüllt, die Berufung im LCR erfassen und von dort importieren.
+      </p>
+      <ul className="divide-list">
+        {rows.map((row) => (
+          <li key={row.calling.ref} className="flex flex-wrap items-center gap-2 py-2 text-sm">
+            {row.memberId ? (
+              <Link
+                to={`/mitglieder/${row.memberId}`}
+                className="text-brand-600 dark:text-brand-300 font-medium hover:underline"
+              >
+                {row.memberName}
+              </Link>
+            ) : (
+              <span className="font-medium">{row.memberName}</span>
+            )}
+            <span>{row.calling.position || '—'}</span>
+            <span className="text-slate-500 dark:text-slate-400">
+              {row.calling.outOfUnit
+                ? 'Ausserhalb der Einheit'
+                : ORGANIZATION_LABELS[row.calling.organization]}
+            </span>
+            <span className="tabular text-xs text-slate-400">{period(row)}</span>
+          </li>
+        ))}
+      </ul>
+    </section>
+  )
+}
+
 /** «2015–2017», «seit 2015», «bis 2017» – der Zeitraum in Jahren. */
 function period(row: CallingHistoryRow): string {
   const from = row.calling.startDate?.slice(0, 4)
   const to = row.calling.releasedDate?.slice(0, 4)
   if (from && to) return from === to ? from : `${from}–${to}`
-  if (from) return `seit ${from}`
+  if (from) return `ab ${from}`
   if (to) return `bis ${to}`
   return '—'
 }
 
 const ACTION_LABELS: Record<CallingHistoryAction, string> = {
-  create: 'Neu',
-  merge: 'Ergänzt',
-  known: 'Bekannt',
+  create: 'Verlauf',
+  running: 'Läuft',
   skip: 'Offen',
   ignore: 'Weggelegt',
 }
 
 const ACTION_STYLES: Record<CallingHistoryAction, string> = {
   create: 'bg-emerald-100 text-emerald-800 dark:bg-emerald-950 dark:text-emerald-200',
-  merge: 'bg-sky-100 text-sky-800 dark:bg-sky-950 dark:text-sky-200',
-  known: 'bg-slate-100 text-slate-500 dark:bg-slate-800',
+  running: 'bg-sky-100 text-sky-800 dark:bg-sky-950 dark:text-sky-200',
   skip: 'bg-amber-100 text-amber-800 dark:bg-amber-950 dark:text-amber-200',
   ignore: 'bg-slate-100 text-slate-500 dark:bg-slate-800',
 }

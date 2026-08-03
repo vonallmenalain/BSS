@@ -6,7 +6,8 @@ import {
   parseCallingHistory,
   parseListDate,
 } from '../src/services/importCallingHistory.ts'
-import { buildCallingHistoryPreview } from '../src/services/importMatch.ts'
+import { buildCallingHistoryPreview, buildCallingsPreview } from '../src/services/importMatch.ts'
+import { parsePastedCallings } from '../src/services/importCallings.ts'
 import type { RawSheet, SheetCell } from '../src/services/importHistory.ts'
 import type { Calling, Member } from '../src/lib/types.ts'
 
@@ -323,8 +324,7 @@ test('Berufungen werden den erfassten Personen zugeordnet', () => {
   const lehrerin = preview.rows.find((row) => row.calling.position === 'Lehrerin')
   assert.equal(lehrerin?.memberId, 'm1')
   assert.equal(lehrerin?.action, 'create')
-  // Auch ohne erfasste Entlassung kommt die Berufung als Verlauf mit.
-  assert.equal(lehrerin?.status, 'released')
+  assert.equal(lehrerin?.existingId, null)
 
   // «Bürge» findet «Buerge» – wie überall beim Abgleich.
   assert.equal(preview.rows.find((row) => row.calling.position === 'Präsidentin')?.memberId, 'm2')
@@ -380,29 +380,28 @@ const RUNNING: Calling = {
   releasedDate: null,
 }
 
-test('Was schon erfasst ist, wird ergänzt statt verdoppelt', () => {
+test('Was im Bestand noch läuft, bleibt unberührt', () => {
   const parsed = parseCallingHistory(LISTE)
   const preview = buildCallingHistoryPreview(parsed, MEMBERS, [RUNNING])
   const karten = preview.rows.find(
     (row) => row.calling.position === 'Beauftragte für Geburtstagskarten',
   )
 
-  assert.equal(karten?.action, 'merge')
+  // Kein Schreibvorgang: weder ein zweiter Eintrag noch eine Ergänzung am
+  // laufenden. Der LCR ist die Wahrheit über den heutigen Stand.
+  assert.equal(karten?.action, 'running')
   assert.equal(karten?.existingId, 'c1')
-  // Ergänzt wird nur, was dort fehlt – das Datum der Berufung.
-  assert.deepEqual(karten?.patch, { extendedDate: '2017-04-02' })
+  assert.equal(preview.runningCount, 1)
   assert.equal(preview.createCount, 5)
-  assert.equal(preview.mergeCount, 1)
+  assert.equal(preview.withoutRelease.length, 3)
 })
 
-test('Gibt es nichts zu ergänzen, wird nichts geschrieben', () => {
+test('Ein entlassener Eintrag im Bestand hält den Verlauf nicht auf', () => {
   const parsed = parseCallingHistory(LISTE)
-  const preview = buildCallingHistoryPreview(parsed, MEMBERS, [
-    { ...RUNNING, extendedDate: 'schon da' as unknown as Calling['extendedDate'] },
-  ])
+  const preview = buildCallingHistoryPreview(parsed, MEMBERS, [{ ...RUNNING, status: 'released' }])
 
-  assert.equal(preview.knownCount, 1)
-  assert.equal(preview.mergeCount, 0)
+  assert.equal(preview.runningCount, 0)
+  assert.equal(preview.createCount, 6)
 })
 
 test('Eine abgeschlossene Berufung ist immer ein eigener Abschnitt', () => {
@@ -416,14 +415,48 @@ test('Eine abgeschlossene Berufung ist immer ein eigener Abschnitt', () => {
   assert.equal(preview.rows.find((row) => row.calling.position === 'Lehrerin')?.action, 'create')
 })
 
-test('Auf Wunsch bleiben Berufungen ohne Entlassung laufend', () => {
+test('Aus einer fehlenden Entlassung wird nie eine laufende Berufung', () => {
   const parsed = parseCallingHistory(LISTE)
-  const preview = buildCallingHistoryPreview(parsed, MEMBERS, [], undefined, true)
+  const preview = buildCallingHistoryPreview(parsed, MEMBERS, [])
 
-  const karten = preview.rows.find(
-    (row) => row.calling.position === 'Beauftragte für Geburtstagskarten',
+  // Sie kommen als Verlauf mit und stehen danach zum Nachbearbeiten bereit.
+  assert.deepEqual(
+    new Set(preview.withoutRelease.map((row) => row.calling.position)),
+    new Set(['Lehrer', 'Beauftragte für Geburtstagskarten', 'Seminarlehrerin', 'Kontaktperson']),
   )
-  assert.equal(karten?.status, 'sustained')
-  // Wer eingesetzt wurde, gilt als eingesetzt.
-  assert.equal(preview.rows.find((row) => row.calling.position === 'Lehrerin')?.status, 'released')
+  assert.equal(
+    preview.withoutRelease.every((row) => row.action === 'create' && !row.calling.released),
+    true,
+  )
+})
+
+test('Übernommene Vergangenheit ist für den LCR-Abgleich unsichtbar', () => {
+  // Rita Amsler war 2013–2017 PV-Lehrerin und ist es seit 2024 wieder.
+  const earlier: Calling = {
+    ...RUNNING,
+    id: 'bh-2013-002',
+    position: 'Lehrerin',
+    organization: 'primary',
+    status: 'released',
+    history: true,
+  }
+
+  const pasted = parsePastedCallings(
+    [
+      'Primarvereinigung',
+      'Berufung\tName\tBestätigt\tEingesetzt',
+      'Lehrerin',
+      'Amsler, Rita',
+      '4 Feb 2024',
+      'Anzahl: 1',
+    ].join('\n'),
+    'organizations',
+  )
+  const preview = buildCallingsPreview(pasted, MEMBERS, [earlier])
+
+  // Der frühere Abschnitt wird nicht wiederbelebt, sondern bleibt stehen –
+  // die heutige Berufung entsteht als eigener Eintrag.
+  assert.equal(preview.rows[0].action, 'create')
+  assert.equal(preview.rows[0].existingId, null)
+  assert.equal(preview.releases.length, 0)
 })

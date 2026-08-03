@@ -165,9 +165,12 @@ export async function runCallingsImport(
 
 export interface CallingHistoryOutcome {
   created: number
-  merged: number
+  /** Einträge, die eine laufende Berufung meinen – unberührt geblieben */
+  running: number
   skipped: number
   ignored: number
+  /** Übernommene Berufungen ohne erfasste Entlassung – gehören nachgeprüft */
+  withoutRelease: number
 }
 
 /**
@@ -186,14 +189,16 @@ export async function loadAllCallings(): Promise<Calling[]> {
 /**
  * Schreibt die eingelesene Berufungshistorie.
  *
+ * **Es entstehen ausschliesslich neue, abgeschlossene Berufungen.** Kein
+ * bestehender Datensatz wird angefasst – weder geändert noch ergänzt noch
+ * entlassen. Der laufende Stand kommt aus dem LCR und bleibt dessen
+ * Angelegenheit; was hier ankommt, ist Vergangenheit und trägt das
+ * Kennzeichen `history`, damit es der LCR-Abgleich später in Ruhe lässt.
+ *
  * Die Dokument-IDs entstehen aus Blatt und Zeile der Quelle, nicht
  * zufällig. Damit bleibt ein zweiter Durchlauf folgenlos – auch dann, wenn
  * beim zweiten Mal mehr Namen von Hand zugeordnet wurden: Dieselbe Zeile
  * schreibt dasselbe Dokument, nur eben mit der richtigen Person.
- *
- * Bestehende Berufungen werden nicht ersetzt. Wo dieselbe Aufgabe schon
- * erfasst ist, ergänzt der Import höchstens die Daten, die dort fehlen –
- * das Datum der Berufung etwa, das im LCR gar nicht steht.
  */
 export async function runCallingHistoryImport(
   preview: CallingHistoryPreview,
@@ -202,11 +207,9 @@ export async function runCallingHistoryImport(
   requireOnline()
 
   // Ohne Person keine Berufung: Was sich niemandem zuordnen liess, wurde in
-  // der Vorschau gemeldet und bleibt hier liegen.
-  const writes = preview.rows.filter(
-    (row) =>
-      (row.action === 'create' && row.memberId) || (row.action === 'merge' && row.existingId),
-  )
+  // der Vorschau gemeldet und bleibt hier liegen. Und was im Bestand noch
+  // läuft, gehört dem LCR – dazu wird nichts geschrieben.
+  const writes = preview.rows.filter((row) => row.action === 'create' && row.memberId)
 
   for (let offset = 0; offset < writes.length; offset += CHUNK_SIZE) {
     const chunk = writes.slice(offset, offset + CHUNK_SIZE)
@@ -215,16 +218,6 @@ export async function runCallingHistoryImport(
     for (const row of chunk) {
       const { calling } = row
       const date = (value: string | null) => (value ? Timestamp.fromDate(fromIsoDate(value)) : null)
-
-      if (row.action === 'merge' && row.existingId) {
-        batch.update(doc(db, COLLECTIONS.callings, row.existingId), {
-          ...Object.fromEntries(
-            Object.entries(row.patch).map(([field, value]) => [field, date(value)]),
-          ),
-          updatedAt: serverTimestamp(),
-        })
-        continue
-      }
 
       batch.set(
         doc(db, COLLECTIONS.callings, `bh-${calling.ref}`),
@@ -236,7 +229,10 @@ export async function runCallingHistoryImport(
           outOfUnit: calling.outOfUnit,
           group: '',
           custom: false,
-          status: row.status,
+          history: true,
+          // Jede übernommene Berufung ist abgeschlossen. Fehlt das Datum der
+          // Entlassung, bleibt es leer – erfunden wird keines.
+          status: 'released',
           proposedDate: null,
           extendedDate: date(calling.extendedDate),
           sustainedDate: date(calling.sustainedDate),
@@ -258,10 +254,11 @@ export async function runCallingHistoryImport(
   }
 
   return {
-    created: preview.createCount,
-    merged: preview.mergeCount,
+    created: writes.length,
+    running: preview.runningCount,
     skipped: preview.skipCount,
     ignored: preview.ignoredCount,
+    withoutRelease: preview.withoutRelease.length,
   }
 }
 

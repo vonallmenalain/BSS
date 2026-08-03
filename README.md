@@ -489,19 +489,25 @@ mit **«Kein Mitglied unserer Gemeinde»** weglegen. Weggelegte Namen
 verschwinden aus der Liste und werden nirgends geschrieben; zurückholen
 lassen sie sich jederzeit. Was offen bleibt, wird übersprungen.
 
-**Was nicht erfasst wurde, wird nicht erfunden.** Zu vielen Berufungen steht
-keine Entlassung in der Liste – über die Jahre sammeln sich mehr vergessene
-Einträge als heute noch laufende Aufgaben. Sie kommen deshalb als Verlauf in
-die App, mit dem Vermerk «keine Entlassung erfasst» statt mit einem
-erfundenen Datum. Den laufenden Stand liefert ohnehin der LCR-Import. Wer es
-anders will, setzt in der Vorschau das Häkchen «Berufungen ohne Entlassung
-als laufend übernehmen».
+**Der laufende Stand bleibt unangetastet.** Dieser Import schreibt
+ausschliesslich abgeschlossene Berufungen. Kein bestehender Datensatz wird
+geändert, ergänzt oder entlassen: Wer heute welche Berufung hat, sagt allein
+der Import aus dem LCR. Wo ein gelesener Eintrag eine Berufung meint, die im
+Bestand noch läuft, wird gar nichts geschrieben – weder ein zweiter Eintrag
+noch eine Ergänzung am laufenden. Eine abgeschlossene Berufung ist dagegen
+immer ein eigener Abschnitt: Wer eine Aufgabe zweimal innehatte, soll sie
+auch zweimal sehen. Übernommene Einträge sind als Vergangenheit
+gekennzeichnet; der LCR-Abgleich lässt sie deshalb später in Ruhe, statt
+einen alten Abschnitt wiederzubeleben.
 
-**Der laufende Bestand bleibt unangetastet.** Ist dieselbe Berufung schon
-erfasst, wird sie nicht verdoppelt, sondern höchstens um die Daten ergänzt,
-die dort fehlen – das Datum der Berufung etwa, das im LCR gar nicht steht.
-Eine abgeschlossene Berufung ist dagegen immer ein eigener Abschnitt: Wer
-eine Aufgabe zweimal innehatte, soll sie auch zweimal sehen.
+**Was nicht erfasst wurde, wird nicht erfunden.** Zu vielen Berufungen steht
+keine Entlassung in der Liste. Ob die Person die Aufgabe heute noch hat oder
+ob bloss die Entlassung nie eingetragen wurde, weiss die Tabelle nicht –
+also wird auch nicht geraten: Solche Einträge kommen als Verlauf mit, ohne
+Enddatum und mit dem Vermerk «keine Entlassung erfasst». **Nach dem Import
+stehen sie einzeln aufgeführt**, mit dem Weg zur Person, damit sich von Hand
+entscheiden lässt, was fehlt: das Datum der Entlassung – oder die Berufung
+selbst, die dann ins LCR gehört und von dort importiert wird.
 
 Der Import ist wiederholbar: Die Dokument-IDs entstehen aus Blatt und Zeile
 der Quelle. Ein zweiter Durchlauf schreibt deshalb dieselben Berufungen noch
