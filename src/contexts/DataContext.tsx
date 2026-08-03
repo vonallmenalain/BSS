@@ -2,7 +2,7 @@ import { createContext, useContext, useEffect, useMemo, useState, type ReactNode
 import { collection, doc, onSnapshot, orderBy, query } from 'firebase/firestore'
 import { db, COLLECTIONS } from '@/lib/firebase'
 import { useAuth } from '@/contexts/AuthContext'
-import { codeOf, hymnKey } from '@/services/hymns'
+import { codeOf, hymnKey } from '@/lib/hymnCode'
 import {
   DEFAULT_SETTINGS,
   type AppSettings,

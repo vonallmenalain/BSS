@@ -2,57 +2,21 @@ import { collection, doc, getDocs, serverTimestamp, setDoc, writeBatch } from 'f
 import { db, COLLECTIONS } from '@/lib/firebase'
 import { normalize } from '@/lib/utils'
 import { commit, requireOnline, type SaveOutcome } from '@/lib/sync'
-import { HYMN_BOOK_PREFIX, type Hymn, type HymnBook, type HymnChoice } from '@/lib/types'
+import {
+  bookOf,
+  codeOf,
+  compareHymns,
+  hymnCode,
+  hymnDocId,
+  hymnKey,
+  parseHymnCode,
+} from '@/lib/hymnCode'
+import type { Hymn, HymnBook, HymnChoice } from '@/lib/types'
 import type { ParsedSheet } from '@/services/import'
 
-/* ------------------------------------------------------------------ */
-/* Code eines Liedes                                                   */
-/* ------------------------------------------------------------------ */
-
-/**
- * Der Code ist die Kurzform, unter der ein Lied angeschrieben, gesucht
- * und gespeichert wird: «6» aus dem Gesangbuch, «PV 6» aus dem
- * Liederbuch für Kinder, «PV 18a» bei einer Doppelnummer.
- *
- * Das Gesangbuch bleibt ohne Kürzel. Es ist der Normalfall, und alles,
- * was vor dem PV-Liederbuch erfasst wurde, bleibt damit gültig.
- */
-export function hymnCode(book: HymnBook, number: number, suffix = ''): string {
-  const prefix = HYMN_BOOK_PREFIX[book]
-  return `${prefix ? `${prefix} ` : ''}${number}${suffix}`
-}
-
-/** Der Code eines gespeicherten Liedes – auch für Altbestand ohne Feld. */
-export function codeOf(hymn: Hymn): string {
-  return hymn.code ?? String(hymn.number)
-}
-
-/**
- * Vergleichsform des Codes: klein, ohne Leerzeichen. «PV 18a», «pv18a»
- * und «Pv 18 a» führen damit alle zum selben Lied.
- */
-export function hymnKey(code: string): string {
-  return code.toLowerCase().replace(/\s+/g, '')
-}
-
-/** Dokument-ID: «6», «pv-18a». */
-function hymnDocId(code: string): string {
-  const key = hymnKey(code)
-  return key.startsWith('pv') ? `pv-${key.slice(2)}` : key
-}
-
-/** «PV 18a» → Buch, Zahl und Buchstabe. `null`, wenn nichts Brauchbares dasteht. */
-export function parseHymnCode(
-  text: string,
-): { book: HymnBook; number: number; suffix: string; code: string } | null {
-  const match = hymnKey(text).match(/^(pv)?(\d{1,3})([a-z])?$/)
-  if (!match) return null
-  const number = Number(match[2])
-  if (number < 1) return null
-  const book: HymnBook = match[1] ? 'children' : 'hymns'
-  const suffix = match[3] ?? ''
-  return { book, number, suffix, code: hymnCode(book, number, suffix) }
-}
+// Die Code-Regeln liegen firestore-frei in `lib/hymnCode` – von hier
+// mitverteilt, damit die Oberfläche nur einen Ort kennen muss.
+export { bookOf, codeOf, compareHymns, hymnCode, hymnKey, parseHymnCode }
 
 /* ------------------------------------------------------------------ */
 /* Einzelne Lieder                                                     */
@@ -114,7 +78,7 @@ export function guessHymnColumns(sheet: ParsedSheet): { number: number; title: n
 
   if (numberColumn === -1) {
     const scores = sheet.headers.map(
-      (_, index) => sheet.rows.filter((row) => /^\d{1,3}$/.test((row[index] ?? '').trim())).length,
+      (_, index) => sheet.rows.filter((row) => /^\d{1,4}$/.test((row[index] ?? '').trim())).length,
     )
     const best = Math.max(...scores, 0)
     numberColumn = best > 0 ? scores.indexOf(best) : 0
@@ -201,7 +165,7 @@ export async function clearHymns(book: HymnBook = 'hymns'): Promise<number> {
   requireOnline()
   const snapshot = await getDocs(collection(db, COLLECTIONS.hymns))
   const ids = snapshot.docs
-    .filter((entry) => ((entry.data() as Hymn).book ?? 'hymns') === book)
+    .filter((entry) => bookOf(entry.data() as Hymn) === book)
     .map((entry) => entry.id)
 
   for (let offset = 0; offset < ids.length; offset += 400) {
@@ -222,13 +186,6 @@ export function formatHymn(choice: HymnChoice | undefined | null): string {
   const code = choice.code ?? (choice.number != null ? String(choice.number) : '')
   if (!code) return choice.title
   return choice.title ? `${code} – ${choice.title}` : `Nr. ${code}`
-}
-
-/** Sortierung der Liste: erst das Gesangbuch, dann nach Nummer und Code. */
-export function compareHymns(a: Hymn, b: Hymn): number {
-  const book =
-    (a.book ?? 'hymns') === (b.book ?? 'hymns') ? 0 : (a.book ?? 'hymns') === 'hymns' ? -1 : 1
-  return book || a.number - b.number || codeOf(a).localeCompare(codeOf(b))
 }
 
 /** Findet Lieder über Code oder Titel – für die Suche im Liedfeld. */

@@ -252,13 +252,13 @@ vorsehen: eine zusätzliche Ansprache, ein Zeugnis oder ein leerer Platz zum
 späteren Vergeben. Der Standard bleibt davon unberührt.
 
 **Liederliste.** Unter **Import → Lieder** einlesen, dann genügt beim Erfassen
-der Musik die Nummer – der Titel erscheint automatisch. Aus dem Gesangbuch nur
-die Zahl, aus dem PV-Liederbuch mit dem Kürzel davor: **«PV 6»**; beide Bücher
-zählen ab 1, ohne das Kürzel wäre nicht zu sagen, welches gemeint ist.
-Doppelnummern behalten ihren Buchstaben: «PV 18a». Eine Nummer, die nicht in
-der Liste steht, lässt sich von Hand ergänzen und auf Wunsch in die Liste
-aufnehmen. Der Titel wird im Programm mitgespeichert, damit ein bereits
-verteiltes Programm nach einem Neuimport gleich bleibt.
+der Musik die Nummer – der Titel erscheint automatisch. Nur die Zahl, aus dem
+PV-Liederbuch mit dem Kürzel davor: **«PV 6»**; es zählt wie das Gesangbuch ab
+1, ohne das Kürzel wäre nicht zu sagen, welches gemeint ist. Doppelnummern
+behalten ihren Buchstaben: «PV 18a». Eine Nummer, die nicht in der Liste steht,
+lässt sich von Hand ergänzen und auf Wunsch in die Liste aufnehmen. Der Titel
+wird im Programm mitgespeichert, damit ein bereits verteiltes Programm nach
+einem Neuimport gleich bleibt.
 
 **Gebet.** Beim Zuteilen steht bei jedem Vorschlag, wann die Person zuletzt
 gebetet hat; zuoberst steht, wer noch nie an der Reihe war – dieselbe Logik
@@ -394,11 +394,19 @@ Verlauf zu verdoppeln. Was in der App gepflegt wurde, bleibt unangetastet.
 
 **Import → Lieder**, einmalig – einmal je Buch.
 
-Zur Auswahl stehen das **Gesangbuch** und das **Liederbuch für Kinder (PV)**.
-Sie werden getrennt eingelesen und getrennt geleert, denn ihre Nummern laufen
-unabhängig voneinander: Nr. 6 ist im Gesangbuch «Israel, der Herr ruft alle»,
-im PV-Liederbuch «Gebet eines Kindes». Ein gemeinsamer Import überschriebe das
-eine mit dem anderen.
+Zur Auswahl stehen drei Bücher:
+
+| Buch | Nummern | Kürzel |
+| ---- | ------- | ------ |
+| Gesangbuch | 1–210 | – |
+| Liederbuch für Kinder (PV) | 2–148, mit Doppelnummern | `PV` |
+| Für zuhause und für die Kirche | ab 1001 | – |
+
+Jedes wird für sich eingelesen und für sich geleert. Gesangbuch und
+PV-Liederbuch zählen beide ab 1 – Nr. 6 ist dort «Israel, der Herr ruft alle»,
+hier «Gebet eines Kindes» –, deshalb tragen die PV-Lieder ein Kürzel. Die neue
+Sammlung beginnt bei 1001 und braucht keines: Die Kirche zählt dort bewusst
+weiter, damit sich ihre Lieder ohne Zusatz ansagen lassen.
 
 Der übliche Weg führt übers **Musikarchiv** der Kirche: dort das gewünschte
 Buch öffnen, «Alles einblenden» wählen, die Seite markieren, kopieren und
@@ -407,7 +415,7 @@ mitkommen – gelesen wird nur, was wie «Nummer. Titel» aussieht. Der Punkt
 hinter der Zahl ist dabei das entscheidende Merkmal: ohne ihn wäre
 «210 Ergebnisse» ein Lied.
 
-Zwei Eigenheiten bringt das PV-Liederbuch mit:
+Zwei Eigenheiten bringen das PV-Liederbuch und die neue Sammlung mit:
 
 - **Doppelnummern.** «18a. Dankkanon» und «18b. Den Kopf geneigt» teilen sich
   die Seite. Der Buchstabe bleibt erhalten.
@@ -421,8 +429,9 @@ Nummer und Titel einlesen; welche das sind, erkennt der Import selbst.
 
 Beim Gesangbuch meldet die Vorschau Lücken in der Nummernfolge – der übliche
 Grund ist, dass «Alles einblenden» vergessen ging und die Seite nur einen Teil
-zeigte. Beim PV-Liederbuch entfällt der Hinweis: Dort stehen Seitenzahlen,
-Sprünge sind normal.
+zeigte. Bei den anderen beiden entfällt der Hinweis: Das PV-Liederbuch nennt
+Seitenzahlen, und «Für zuhause und für die Kirche» springt zwischen seinen
+Abschnitten (1001 ff., dann 1201 ff.) – dort wäre die Warnung nur Lärm.
 
 Der Code ist der Schlüssel: Derselbe Code wird aktualisiert statt doppelt
 angelegt.

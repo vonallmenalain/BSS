@@ -658,24 +658,35 @@ export interface Prayer extends WithId {
 /* ------------------------------------------------------------------ */
 
 /**
- * Die beiden Bücher, aus denen in der Gemeinde gesungen wird.
+ * Die Bücher, aus denen in der Gemeinde gesungen wird.
  *
- * Ihre Nummern laufen unabhängig voneinander: Nr. 6 ist im Gesangbuch
- * «Israel, der Herr ruft alle», im Liederbuch für Kinder «Gebet eines
- * Kindes». Ohne diese Unterscheidung überschriebe ein Import den anderen.
+ * Zwei davon zählen je ab 1: Nr. 6 ist im Gesangbuch «Israel, der Herr ruft
+ * alle», im Liederbuch für Kinder «Gebet eines Kindes». Ohne Unterscheidung
+ * überschriebe ein Import den anderen – deshalb tragen die PV-Lieder ein
+ * Kürzel.
+ *
+ * Das «Gesangbuch für zuhause und für die Kirche» braucht keines: Seine
+ * Nummern beginnen bei 1001 und stossen mit keinem der beiden zusammen. Die
+ * Kirche zählt dort bewusst so weiter, damit sich die Lieder ohne Zusatz
+ * ansagen lassen.
  */
-export type HymnBook = 'hymns' | 'children'
+export type HymnBook = 'hymns' | 'children' | 'home_church'
 
 export const HYMN_BOOK_LABELS: Record<HymnBook, string> = {
   hymns: 'Gesangbuch',
   children: 'Liederbuch für Kinder (PV)',
+  home_church: 'Für zuhause und für die Kirche',
 }
 
-/** Kürzel vor der Nummer. Das Gesangbuch bleibt ohne – es ist der Normalfall. */
+/** Kürzel vor der Nummer – nur wo die Nummern sonst zusammenstiessen. */
 export const HYMN_BOOK_PREFIX: Record<HymnBook, string> = {
   hymns: '',
   children: 'PV',
+  home_church: '',
 }
+
+/** Ab hier zählt das Gesangbuch für zuhause und für die Kirche. */
+export const HOME_CHURCH_FROM = 1000
 
 /**
  * Ein Lied aus einem der beiden Bücher. Die Dokument-ID ist der Code

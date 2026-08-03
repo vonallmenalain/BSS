@@ -23,6 +23,7 @@ import { cn } from '@/lib/utils'
 import { parseFile } from '@/services/import'
 import { parsePastedHymns, type PastedHymn } from '@/services/importHymns'
 import {
+  bookOf,
   clearHymns,
   codeOf,
   guessHymnColumns,
@@ -40,10 +41,11 @@ import { HYMN_BOOK_LABELS, type HymnBook } from '@/lib/types'
  * also eine einmalige Sache; er steht trotzdem bei den übrigen, weil man
  * ihn dort sucht.
  *
- * Die beiden Bücher werden **getrennt** eingelesen und getrennt geleert:
- * Ihre Nummern laufen unabhängig voneinander, ein gemeinsamer Import
- * überschriebe das eine mit dem anderen. Beim Erfassen unterscheidet sie
- * das Kürzel «PV».
+ * Jedes Buch wird **für sich** eingelesen und für sich geleert. Gesangbuch
+ * und PV-Liederbuch zählen beide ab 1; ein gemeinsamer Import überschriebe
+ * das eine mit dem anderen, beim Erfassen unterscheidet sie das Kürzel
+ * «PV». «Für zuhause und für die Kirche» beginnt bei 1001 und braucht
+ * keines.
  *
  * Zwei Wege, wie beim Mitgliederimport: die Liste aus dem Musikarchiv
  * einfügen – das ist der übliche – oder eine Datei mit Nummer und Titel
@@ -56,12 +58,14 @@ type Source = 'text' | 'file'
 const PASTE_EXAMPLE: Record<HymnBook, string> = {
   hymns: `1. Der Morgen naht\n2. Der Geist aus den Höhen\n3. O Fülle des Heiles`,
   children: `2. Ich bin ein Kind von Gott\n4. Kinder in aller Welt\n6. Gebet eines Kindes`,
+  home_church: `1001. Komm, du Quelle jedes Segens\n1002. Wenn der Heiland wiederkehrt\n1003. Meine Seel findet Ruhe im Herrn`,
 }
 
-/** Wo die Liste im Musikarchiv steht. */
+/** Wie die Sammlung im Musikarchiv heisst. */
 const COLLECTION_LABEL: Record<HymnBook, string> = {
   hymns: 'Gesangbuch',
   children: 'Liederbuch für Kinder',
+  home_church: 'Gesangbuch für zuhause und für die Kirche',
 }
 
 export function ImportHymns() {
@@ -138,16 +142,15 @@ export function ImportHymns() {
   }
 
   /** Lieder des gewählten Buchs, die schon in der Liste stehen. */
-  const inBook = useMemo(
-    () => hymns.filter((hymn) => (hymn.book ?? 'hymns') === book),
-    [hymns, book],
-  )
+  const inBook = useMemo(() => hymns.filter((hymn) => bookOf(hymn) === book), [hymns, book])
 
   /**
    * Lücken in der Nummernfolge – ein Hinweis auf unvollständiges Kopieren.
    *
    * Nur beim Gesangbuch aussagekräftig: Es zählt von 1 bis 210 durch. Das
-   * Liederbuch für Kinder nennt Seitenzahlen, dort sind Sprünge normal.
+   * Liederbuch für Kinder nennt Seitenzahlen, und «Für zuhause und für die
+   * Kirche» springt zwischen seinen Abschnitten (1001 ff., dann 1201 ff.) –
+   * dort wäre der Hinweis nur Lärm.
    */
   const missing = useMemo(() => {
     if (book !== 'hymns' || !rows || rows.length === 0) return 0
@@ -193,9 +196,10 @@ export function ImportHymns() {
             ))}
           </div>
           <p className="hint">
-            Die beiden Bücher werden getrennt geführt: Ihre Nummern laufen unabhängig voneinander –
-            Nr. 6 ist im Gesangbuch «Israel, der Herr ruft alle», im PV-Liederbuch «Gebet eines
-            Kindes». Beim Erfassen unterscheidet sie das Kürzel «PV».
+            Jedes Buch wird für sich geführt. Gesangbuch und PV-Liederbuch zählen beide ab 1 – Nr. 6
+            ist dort «Israel, der Herr ruft alle», hier «Gebet eines Kindes»; beim Erfassen
+            unterscheidet sie das Kürzel «PV». «Für zuhause und für die Kirche» beginnt bei 1001 und
+            braucht deshalb keines.
           </p>
         </div>
       )}
