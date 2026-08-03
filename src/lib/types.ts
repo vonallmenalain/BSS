@@ -394,6 +394,7 @@ export type Organization =
   | 'music'
   | 'temple_family_history'
   | 'missionary'
+  | 'welfare'
   | 'ward'
   | 'other'
 
@@ -408,6 +409,7 @@ export const ORGANIZATION_LABELS: Record<Organization, string> = {
   music: 'Musik',
   temple_family_history: 'Tempel & Familienforschung',
   missionary: 'Missionsarbeit',
+  welfare: 'Wohlfahrt und Eigenständigkeit',
   ward: 'Gemeinde (allgemein)',
   other: 'Übrige',
 }
