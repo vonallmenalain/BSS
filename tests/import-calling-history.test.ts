@@ -234,6 +234,15 @@ test('Datum: was sich nicht sicher lesen lässt, bleibt leer', () => {
   assert.equal(parseListDate('31.02.2017'), null)
 })
 
+test('Datum: ein verrutschtes Jahr bleibt liegen, statt den Import zu stürzen', () => {
+  // In der Liste steckt eine Zelle, die Excel als Tag Nummer 6 684 974 führt
+  // und damit als Jahr 20202 liest. Firestore nimmt so etwas nicht an.
+  assert.equal(parseListDate(new Date(20202, 10, 1)), null)
+  assert.equal(parseListDate(new Date(1732, 1, 22)), null)
+  // Die Jahre der Gemeinde selbst bleiben natürlich lesbar.
+  assert.equal(parseListDate(new Date(2013, 2, 24)), '2013-03-24')
+})
+
 /* ------------------------------------------------------------------ */
 /* Lesen und Zusammenfügen                                             */
 /* ------------------------------------------------------------------ */

@@ -75,8 +75,18 @@ function isStruck(cell: SheetCell | undefined): boolean {
   return value.length > 0 && /^[/\\\-–—\s]+$/.test(value)
 }
 
-/** Gibt es diesen Tag im Monat wirklich? */
+/**
+ * Ein Datum, das eine Berufung meinen kann.
+ *
+ * Den Tag muss es im Monat wirklich geben – «31. Februar» soll nicht
+ * durchrutschen –, und das Jahr muss in Reichweite einer Gemeindegeschichte
+ * liegen. Die Grenze nach oben ist keine Förmlichkeit: In der Liste steckt
+ * eine Zelle, die Excel als Tag Nummer 6 684 974 führt und damit als Jahr
+ * 20202 liest – ein Vertipper von 2013. Ungeprüft käme sie bis in die
+ * Datenbank und liesse den ganzen Import scheitern.
+ */
 function isRealDate(year: number, month: number, day: number): boolean {
+  if (year < 1900 || year > 2200) return false
   const date = new Date(year, month - 1, day)
   return date.getFullYear() === year && date.getMonth() === month - 1 && date.getDate() === day
 }
@@ -91,12 +101,16 @@ function isRealDate(year: number, month: number, day: number): boolean {
  * Trennzeichen; steht beim Schrägstrich vorne eine Zahl über zwölf, war
  * doch der Tag gemeint.
  *
- * Alles andere – «????», «längst», «######» – bleibt ungelesen. Ein
- * geratenes Datum wäre schlimmer als gar keines.
+ * Alles andere – «????», «längst», «######» – bleibt ungelesen, und ebenso
+ * ein Datum aus einer Zeit, in der es die Gemeinde nicht gab. Ein geratenes
+ * Datum wäre schlimmer als gar keines.
  */
 export function parseListDate(cell: SheetCell | undefined): string | null {
   if (cell instanceof Date) {
-    return isoDate(cell.getFullYear(), cell.getMonth() + 1, cell.getDate())
+    const year = cell.getFullYear()
+    const month = cell.getMonth() + 1
+    const day = cell.getDate()
+    return isRealDate(year, month, day) ? isoDate(year, month, day) : null
   }
 
   const raw = text(cell)
@@ -107,9 +121,7 @@ export function parseListDate(cell: SheetCell | undefined): string | null {
   if (!parts) return null
 
   const [, first, separator, second, yearText] = parts
-  let year = Number(yearText)
-  if (yearText.length <= 2) year += 2000
-  if (year < 1900 || year > 2200) return null
+  const year = Number(yearText) + (yearText.length <= 2 ? 2000 : 0)
 
   // Punkt: Tag zuerst (Schweiz). Schrägstrich: Monat zuerst (LCR) – es sei
   // denn, die vordere Zahl kann kein Monat sein.
