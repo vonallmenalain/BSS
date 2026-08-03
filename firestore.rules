@@ -13,12 +13,22 @@ rules_version = '2';
 //   executive_secretary – Exekutivsekretär
 //   secretary           – Sekretär
 //   counselor           – Sammelrolle früherer Versionen (weiterhin gültig)
+//   ap_editor           – nur der AP-Kalender, mit Schreibrecht
+//   ap_viewer           – nur der AP-Kalender, ausschliesslich lesend
 //   pending             – wartet auf Freigabe, kein Datenzugriff
 //
-// Die Rolle beschreibt die Aufgabe, nicht den Rechteumfang: Alle
-// freigeschalteten Rollen arbeiten am selben Datenbestand und sehen alles.
-// Die Liste unten muss mit `FULL_ACCESS_ROLES` in src/lib/types.ts
-// übereinstimmen.
+// Innerhalb der Bischofschaft beschreibt die Rolle die Aufgabe, nicht den
+// Rechteumfang: Alle freigeschalteten Rollen arbeiten am selben Datenbestand
+// und sehen alles. Die Liste unten muss mit `FULL_ACCESS_ROLES` in
+// src/lib/types.ts übereinstimmen.
+//
+// Die beiden AP-Rollen sind die Ausnahme. Der Aktivitätenplan wird mit den
+// Beratern und der Jugendführung geteilt; die haben keine Aufgabe, die
+// Einblick in Personendaten rechtfertigt. Sie erreichen deshalb genau zwei
+// Sammlungen – `apActivities` und `apMonths` – sowie lesend die
+// Einstellungen (für den Namen der Gemeinde in der Kopfzeile). Alles
+// Übrige bleibt ihnen verschlossen, und zwar hier und nicht erst in der
+// Oberfläche.
 
 service cloud.firestore {
   match /databases/{database}/documents {
@@ -46,6 +56,28 @@ service cloud.firestore {
         && userDoc().role in [
              'bishop', 'counselor1', 'counselor2',
              'executive_secretary', 'secretary', 'counselor'
+           ];
+    }
+
+    // Darf den AP-Kalender lesen – Vollzugriff eingeschlossen.
+    function apAccess() {
+      return hasProfile()
+        && userDoc().active == true
+        && userDoc().role in [
+             'bishop', 'counselor1', 'counselor2',
+             'executive_secretary', 'secretary', 'counselor',
+             'ap_editor', 'ap_viewer'
+           ];
+    }
+
+    // Darf im AP-Kalender auch schreiben. `ap_viewer` fehlt hier bewusst.
+    function apWrite() {
+      return hasProfile()
+        && userDoc().active == true
+        && userDoc().role in [
+             'bishop', 'counselor1', 'counselor2',
+             'executive_secretary', 'secretary', 'counselor',
+             'ap_editor'
            ];
     }
 
@@ -162,10 +194,27 @@ service cloud.firestore {
       allow read, write: if approved();
     }
 
+    /* ---------------- Aktivitäten AP ---------------- */
+
+    // Der Aktivitätenplan der Priestertumskollegien – der einzige Bereich,
+    // den auch Konten ohne Vollzugriff erreichen.
+    match /apActivities/{activityId} {
+      allow read: if apAccess();
+      allow write: if apWrite();
+    }
+
+    match /apMonths/{month} {
+      allow read: if apAccess();
+      allow write: if apWrite();
+    }
+
     /* ---------------- Einstellungen ---------------- */
 
+    // Lesen darf auch, wer nur den AP-Kalender sieht: Der Name der Gemeinde
+    // steht in der Kopfzeile. Ändern darf ihn nur der Vollzugriff.
     match /settings/{docId} {
-      allow read, write: if approved();
+      allow read: if apAccess();
+      allow write: if approved();
     }
 
     /* ---------------- Alles Übrige ---------------- */

@@ -96,4 +96,8 @@ export const COLLECTIONS = {
   announcementSeries: 'announcementSeries',
   /** Putzplan der Gemeinde, Dokument-ID ist der erste Tag der Woche */
   cleaningWeeks: 'cleaningWeeks',
+  /** Aktivitätenplan der Priestertumskollegien (AP) */
+  apActivities: 'apActivities',
+  /** Führendes Kollegium je Monat, Dokument-ID ist «yyyy-MM» */
+  apMonths: 'apMonths',
 } as const

@@ -1,5 +1,14 @@
 import { Fragment, useEffect, useMemo, useState, type ReactNode } from 'react'
-import { ChevronDown, ChevronUp, Pencil, Plus, Repeat, Trash2 } from 'lucide-react'
+import {
+  ChevronDown,
+  ChevronUp,
+  Maximize2,
+  Minimize2,
+  Pencil,
+  Plus,
+  Repeat,
+  Trash2,
+} from 'lucide-react'
 import { useAuth } from '@/contexts/AuthContext'
 import { useData } from '@/contexts/DataContext'
 import { useToast } from '@/contexts/ToastContext'
@@ -192,6 +201,47 @@ export function Conducting() {
   const [editing, setEditing] = useLocalStorage<boolean>('bss:leitung:bearbeiten', false)
   const [size, setSize] = useLocalStorage<ViewSize>('bss:leitung:ansicht', 'mittel')
   const view = VIEWS[size] ?? VIEWS.mittel
+
+  /*
+   * Vollbild: das Blatt allein auf dem Bildschirm.
+   *
+   * Am Pult stört alles, was nicht der Ablauf ist – Kopfzeile, Navigation,
+   * die Sonntagswahl. Ein Knopf oben rechts im Blatt lässt sie
+   * verschwinden; derselbe Knopf holt sie zurück, ebenso die
+   * Escape-Taste.
+   *
+   * Zusätzlich wird, wo der Browser es zulässt, sein echtes Vollbild
+   * angefordert: Auf dem Tablet verschwindet damit auch die Adresszeile.
+   * Wo das nicht geht – auf dem iPhone etwa –, genügt die Überlagerung.
+   * Deshalb steuert der eigene Zustand die Ansicht, nicht der des Browsers.
+   */
+  const [fullscreen, setFullscreen] = useState(false)
+
+  useEffect(() => {
+    if (!fullscreen) return
+
+    const { overflow } = document.body.style
+    document.body.style.overflow = 'hidden'
+
+    const onKeyDown = (event: KeyboardEvent) => {
+      if (event.key === 'Escape') setFullscreen(false)
+    }
+    // Verlässt jemand das Browser-Vollbild auf anderem Weg, geht auch die
+    // Überlagerung weg – sonst bliebe ein Blatt zurück, das den Rest der
+    // App verdeckt, ohne dass klar wäre, warum.
+    const onFullscreenChange = () => {
+      if (!document.fullscreenElement) setFullscreen(false)
+    }
+
+    document.addEventListener('keydown', onKeyDown)
+    document.addEventListener('fullscreenchange', onFullscreenChange)
+
+    return () => {
+      document.body.style.overflow = overflow
+      document.removeEventListener('keydown', onKeyDown)
+      document.removeEventListener('fullscreenchange', onFullscreenChange)
+    }
+  }, [fullscreen])
 
   const dateKey = toDateInput(date)
   const sundayTalks = useMemo(() => talksForDate(talks, date), [talks, date])
@@ -715,6 +765,23 @@ export function Conducting() {
   // Nach dem letzten Programmpunkt stehen die Knöpfe zum Ergänzen.
   const toolsAfter = before.length + middle.length
 
+  const toggleFullscreen = () => {
+    const next = !fullscreen
+    setFullscreen(next)
+
+    if (next) {
+      // Im Vollbild wird gelesen, nicht geschrieben: Was noch aussteht,
+      // gehört vorher geschrieben.
+      if (editing) {
+        void draft.flush()
+        setEditing(false)
+      }
+      void document.documentElement.requestFullscreen?.().catch(() => {})
+    } else if (document.fullscreenElement) {
+      void document.exitFullscreen().catch(() => {})
+    }
+  }
+
   return (
     <>
       <SectionHeader
@@ -753,10 +820,60 @@ export function Conducting() {
 
       {draft.conflict && <ConflictNotice onDiscard={draft.reset} />}
 
-      <article className={cn('card leading-relaxed', view.pad, view.text)}>
+      <article
+        className={cn(
+          'leading-relaxed',
+          view.pad,
+          view.text,
+          // Platz für den Knopf oben rechts, damit er nichts überdeckt.
+          'pr-14',
+          // Entweder Blatt oder Vollbild – die Klassen für Position, Rahmen
+          // und Ecken stehen bewusst in zwei Zweigen statt übereinander:
+          // Zwei Utilities für dieselbe Eigenschaft entscheidet sonst die
+          // Reihenfolge im Stylesheet, nicht die im Aufruf.
+          fullscreen
+            ? 'fixed inset-0 z-50 overflow-y-auto bg-white pt-safe pb-safe dark:bg-slate-950'
+            : 'card relative',
+        )}
+      >
+        {/* Vollbild – oben rechts im Blatt, wo er nichts verdeckt. Im
+            Vollbild steht die Grössenwahl daneben: Wer am Pult liest, will
+            sie dort verstellen können und nicht in der Kopfzeile, die
+            gerade weg ist. */}
+        <div className="no-print absolute top-3 right-3 z-10 flex items-center gap-2">
+          {fullscreen && (
+            <select
+              className="input w-auto bg-white/90 py-1 text-sm dark:bg-slate-900/90"
+              value={size}
+              onChange={(event) => setSize(event.target.value as ViewSize)}
+              aria-label="Grösse der Ansicht"
+            >
+              {(Object.keys(VIEWS) as ViewSize[]).map((value) => (
+                <option key={value} value={value}>
+                  {VIEWS[value].label}
+                </option>
+              ))}
+            </select>
+          )}
+          <button
+            type="button"
+            className="btn-ghost p-2"
+            onClick={toggleFullscreen}
+            aria-pressed={fullscreen}
+            aria-label={fullscreen ? 'Vollbild beenden' : 'Vollbild'}
+            title={fullscreen ? 'Vollbild beenden (Esc)' : 'Vollbild'}
+          >
+            {fullscreen ? (
+              <Minimize2 className="size-5" aria-hidden />
+            ) : (
+              <Maximize2 className="size-5" aria-hidden />
+            )}
+          </button>
+        </div>
+
         {/* Die Nummerierung ergibt sich aus der Liste: Ein zusätzlicher
             Programmpunkt verschiebt alles Folgende automatisch. */}
-        <ol className={view.steps}>
+        <ol className={cn(view.steps, fullscreen && 'mx-auto w-full max-w-3xl')}>
           {steps.map((step, index) => (
             <Fragment key={step.key}>
               <Step number={index + 1} title={step.title} view={view}>
@@ -806,7 +923,12 @@ export function Conducting() {
         {/* Notizen stehen nur da, wenn welche erfasst sind – am Pult zählt,
             was gesagt wird, nicht die Überschrift darüber. */}
         {(editing || current.notes.trim()) && (
-          <section className="mt-6 border-t border-slate-200 pt-5 dark:border-slate-800">
+          <section
+            className={cn(
+              'mt-6 border-t border-slate-200 pt-5 dark:border-slate-800',
+              fullscreen && 'mx-auto w-full max-w-3xl',
+            )}
+          >
             <h3 className={cn('font-semibold', view.title)}>Notizen</h3>
             {editing ? (
               <textarea

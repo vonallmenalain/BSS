@@ -18,6 +18,7 @@ Abendmahlsversammlung, Berufungsverwaltung und Mitgliederdaten.
 | **Notizen**               | Was nicht an eine Sitzung gehört – für alle sichtbar, speichert von selbst                          |
 | **Putzplan**              | Die Halbjahrestabelle der Gemeinde als Wochenplan – Grundlage für die Ansage am Sonntag             |
 | **Abendmahlsversammlung** | Ganzer Ablauf pro Sonntag: Leitung, Bekanntmachungen, Angelegenheiten, Ansprachen, Musik, Gebet     |
+| **Aktivitäten AP's**      | Aktivitätenplan der Priestertumskollegien – teilbar mit Beratern, ohne Einblick in Personendaten    |
 | **Berufungen**            | Vom Vorschlag bis zur Einsetzung, gruppiert nach Organisation; Verlauf aus der bisherigen Liste     |
 | **Mitglieder**            | Stammdaten, Notizen, Suche und Sortierung                                                           |
 
@@ -264,6 +265,16 @@ Ablauf. Ein Auswahlfeld daneben stellt mit **Kompakt · Mittel · Weit** ein, wi
 gross Schrift und Abstände sind – am Pult wird aus Distanz gelesen, am
 Schreibtisch zählt die Übersicht.
 
+Oben rechts im Blatt sitzt der **Vollbild**-Knopf. Ein Klick, und alles
+andere verschwindet: Kopfzeile, Navigation und Sonntagswahl weichen dem
+Ablauf, der allein den Bildschirm füllt. Derselbe Knopf – oder die
+Escape-Taste – holt sie zurück. Wo der Browser es zulässt, wird zusätzlich
+sein echtes Vollbild angefordert, sodass auf dem Tablet auch die Adresszeile
+verschwindet; wo nicht (auf dem iPhone etwa), genügt die Überlagerung. Die
+Grössenwahl steht im Vollbild neben dem Knopf, weil die Kopfzeile dann weg
+ist. Wer aus dem Bearbeiten heraus ins Vollbild geht, verlässt es dabei – was
+noch offen war, wird vorher geschrieben.
+
 Erfasst wird trotzdem nichts doppelt: Es sind dieselben Daten wie in den
 übrigen Bereichen. Eine hier eingefügte Ansprache steht auch unter
 **Ansprachen**, ein dort gewähltes Lied auch hier – und beide Seiten ordnen
@@ -400,6 +411,72 @@ Montag bis Samstag und ab August von Sonntag bis Samstag.
 Findet der Plan zu einem gebrauchten Platzhalter nichts – am Rand des Plans
 oder in einer Lücke –, bleibt die Bekanntmachung an diesem Sonntag weg. Ein
 Dank an niemanden wäre schlimmer als gar keiner.
+
+---
+
+## Aktivitäten AP's
+
+**Aktivitäten AP's** in der Seitenleiste, unter der Abendmahlsversammlung.
+
+Der Jahresplan der Priestertumskollegien – bisher eine Excel-Tabelle, die
+herumgereicht wurde. Die Seite beantwortet zuerst die Frage, die sich jede
+Woche neu stellt: **Was kommt als Nächstes?** Deshalb steht die Antwort ganz
+oben und gross, mit Treffpunkt, Leitung und den Teilnehmenden aus der
+Bischofschaft; rechts daneben die drei folgenden Termine. Darunter der ganze
+Plan als Kacheln, nach Monaten gruppiert wie in der Tabelle.
+
+### Der Takt
+
+Der Plan hat einen festen Rhythmus, und die App kennt ihn:
+
+- **jeden Mittwochabend** eine Aktivität,
+- **ausser am 3. Mittwoch im Monat** – dann ist FHV, und die AP-Aktivität
+  fällt aus,
+- **am 2. und 4. Sonntag** die AP-Klasse.
+
+Alles Übrige – Lager, Tempelbesuche, Pfahlanlässe, ein Samstag – ist ein
+besonderer Anlass und kann an jedem beliebigen Tag stehen, ein- oder
+mehrtägig.
+
+Die vier Arten färben die Kachel und sind auf einen Blick unterscheidbar:
+Aktivität (blau), AP-Klasse (violett), besonderer Anlass (gelb), fällt aus
+(grau, durchgestrichen). Ein ausgefallener Abend bleibt bewusst **im Plan
+stehen**: Ein fehlendes Datum sieht aus wie eine Lücke, die noch jemand
+füllen muss; steht «FHV – keine Aktivität» da, ist die Frage beantwortet.
+
+Ein Termin ohne Titel heisst «Noch offen» und ist genau das – ein Abend, der
+noch zu planen ist. Auch das ist Absicht: Was fehlt, soll man sehen.
+
+### Termine erzeugen
+
+Der Knopf **Termine erzeugen** legt den Takt für einen Zeitraum an – etwa das
+kommende Jahr –, ohne Titel, als Gerüst. Tage, an denen bereits etwas im Plan
+steht, bleiben unangetastet; der Knopf lässt sich deshalb gefahrlos ein
+zweites Mal drücken und füllt dann nur die Lücken.
+
+### Bearbeiten
+
+Jede Kachel öffnet sich zum Bearbeiten – alle Felder der bisherigen Tabelle:
+Datum (auf Wunsch mehrtägig), Uhrzeit, Art, Aktivität bzw. Klasse,
+Treffpunkt, Leitung, Teilnahme Bischofschaft, Teilnahme Berater und die
+Bemerkung. Die Personenfelder sind Freitext wie in der Tabelle – die
+Vorschlagsliste kommt aus dem, was schon im Plan steht, und hält die
+Schreibweise einheitlich.
+
+Welches Kollegium einen Monat führt, steht neben der Monatsüberschrift
+(«März 2026 · Leitung Diakone») und lässt sich dort direkt ändern.
+
+### Wer den Plan sieht
+
+Dieser Bereich ist der einzige, der über die Bischofschaft hinaus geteilt
+wird. Berater und Jugendführung bekommen einen Zugang, der **nur** den
+AP-Kalender zeigt – wahlweise mit Schreibrecht oder nur zum Ansehen. Wie das
+eingerichtet wird, steht unter [Rollen](#rollen).
+
+Der Unterschied ist sichtbar und nicht bloss gemeint: Ohne Schreibrecht gibt
+es keine Knöpfe zum Anlegen, und eine angeklickte Kachel öffnet die Angaben
+zum Nachlesen statt eines Formulars. Durchgesetzt wird beides in den
+Zugriffsregeln.
 
 ---
 
@@ -722,6 +799,45 @@ sie sich nach dem Import auf der Seite **Putzplan** einzeln richtigstellen.
 
 ---
 
+## Aktivitäten AP importieren
+
+**Einstellungen → Importe → Aktivitäten AP**, einmalig beim Umstieg.
+
+Den bisherigen Jahresplan als `.xlsx` oder `.csv` einlesen, per Auswahl oder
+Drag-and-drop. Gelesen wird das erste Arbeitsblatt: eine Kopfzeile mit
+«Datum», «Aktivität / Klasse», «Treffpunkt», «Leitung / Org», den beiden
+Teilnahmespalten und «Bemerkung», darunter je Zeile ein Termin. Wo die
+Spalten stehen, bestimmt die Kopfzeile; fehlt sie, gilt die gewohnte
+Reihenfolge – die Vorschau sagt, welcher Fall eingetreten ist.
+
+Zwei Dinge sind an dieser Tabelle heikel, und beide stecken in der
+Datumsspalte. Excel liefert ein echtes Datum als **Zahl** (46029 ist der
+7. Januar 2026), und Mehrtägiges wird von Hand hineingeschrieben:
+«03. April – 06. April 2026», «Freitag + Samstag, 30.01 -31.01.2026»,
+«30. Oktober – 1. November 2026». Die Zelle wird deshalb nicht nach einem
+Muster gelesen, sondern durchsucht: Alles, was wie ein Tagesdatum aussieht,
+wird eingesammelt; das erste ist der Anfang, das letzte das Ende. Eine Zeile
+ohne Datum ist kein Termin – so fallen Titel, Kopfzeile und Leerzeilen von
+selbst weg.
+
+Die **Art** ergibt sich aus dem Wochentag: Mittwoch ist Aktivität, Sonntag
+ist Klasse, alles Übrige und alles Mehrtägige ist ein besonderer Anlass.
+Steht «keine Aktivität» oder «keine Klasse» im Titel, gilt der Termin als
+ausgefallen – und bleibt trotzdem im Plan. Die Zwischenüberschriften
+(«JANUAR – LEITUNG LEHRER») werden zur Angabe, welches Kollegium den Monat
+führt.
+
+Die Vorschau zeigt jeden erkannten Termin mit seiner Zeilennummer aus der
+Datei, die Verteilung auf die vier Arten und die Zeilen, die Inhalt haben,
+aber kein lesbares Datum – die werden übersprungen und gemeldet.
+
+**Vorhandene Termine im Zeitraum der Datei vorher entfernen** steht
+standardmässig an: Die Tabelle **ist** der Plan, und ein zweiter Anlauf nach
+einer Korrektur soll nicht jeden Termin doppelt hinterlassen. Ohne den Haken
+kommen die Zeilen zum Bestehenden dazu – sinnvoll nur für einen Nachtrag.
+
+---
+
 ## Liederlisten importieren
 
 **Einstellungen → Importe → Liederlisten**, einmalig – einmal je Buch.
@@ -772,23 +888,48 @@ angelegt.
 
 ## Rollen
 
-Die Rolle beschreibt die **Aufgabe** in der Bischofschaft, nicht den Umfang
-der Rechte. Bischof, beide Ratgeber und die Sekretäre arbeiten am selben
-Datenbestand und sehen alles – auch vertrauliche Traktanden. Einzig ein noch
-nicht freigeschaltetes Konto sieht nichts.
+Innerhalb der Bischofschaft beschreibt die Rolle die **Aufgabe**, nicht den
+Umfang der Rechte. Bischof, beide Ratgeber und die Sekretäre arbeiten am
+selben Datenbestand und sehen alles – auch vertrauliche Traktanden.
 
-| Rolle                 | Zugriff |
-| --------------------- | ------- |
-| **Bischof**           | alles   |
-| **1. Ratgeber**       | alles   |
-| **2. Ratgeber**       | alles   |
-| **Exekutivsekretär**  | alles   |
-| **Sekretär**          | alles   |
-| _Wartet auf Freigabe_ | nichts  |
+Daneben stehen zwei Zugänge, die **ausschliesslich** den AP-Kalender zeigen.
+Sie sind für die Berater und die Jugendführung gedacht: Der Aktivitätenplan
+wird mit ihnen geteilt, eine Aufgabe, die Einblick in Personendaten
+rechtfertigt, haben sie aber nicht.
 
-Wozu dann überhaupt Rollen? Sie halten fest, wer welche Aufgabe hat – etwa
-wer die Abendmahlsversammlung leitet oder präsidiert – und sie steuern die
-Freigabe neuer Konten.
+| Rolle                            | Zugriff                                     |
+| -------------------------------- | ------------------------------------------- |
+| **Bischof**                      | alles                                       |
+| **1. Ratgeber**                  | alles                                       |
+| **2. Ratgeber**                  | alles                                       |
+| **Exekutivsekretär**             | alles                                       |
+| **Sekretär**                     | alles                                       |
+| **AP-Kalender · bearbeiten**     | nur «Aktivitäten AP's», mit Schreibrecht    |
+| **AP-Kalender · nur ansehen**    | nur «Aktivitäten AP's», ohne Schreibrecht   |
+| _Wartet auf Freigabe_            | nichts                                      |
+
+Wozu dann überhaupt Rollen mit Vollzugriff? Sie halten fest, wer welche
+Aufgabe hat – etwa wer die Abendmahlsversammlung leitet oder präsidiert – und
+sie steuern die Freigabe neuer Konten.
+
+Durchgesetzt wird die Trennung in `firestore.rules` und nicht erst in der
+Oberfläche: Ein AP-Zugang erreicht genau zwei Sammlungen (`apActivities`,
+`apMonths`) sowie lesend die Einstellungen – wegen des Gemeindenamens in der
+Kopfzeile. Jede andere Abfrage lehnt der Server ab. `npm run test:rules`
+prüft das in beide Richtungen.
+
+### Ein neues Konto freischalten
+
+Wer sich registriert, landet mit der Rolle «Wartet auf Freigabe» in der
+Datenbank und sieht nichts. In der App der Bischofschaft erscheint das Konto
+unter **Einstellungen → Benutzer und Rollen** in einem Kasten
+**«Neue Registrierungen»**. Zur Wahl stehen dort drei Zugriffsstufen –
+Vollzugriff, nur AP-Kalender mit Schreibrecht, nur AP-Kalender zum Ansehen –
+und bei Vollzugriff zusätzlich die Aufgabe in der Bischofschaft. Ein Klick
+auf **Freischalten** wirkt sofort; **Ablehnen** entfernt das Profil wieder.
+
+Freischalten darf jedes Konto mit Vollzugriff, nicht nur der Bischof. Die
+Zugriffsstufe lässt sich später jederzeit in der Liste darunter ändern.
 
 Jede und jeder kann die **eigene Rolle** anpassen, unter
 **Einstellungen → Mein Profil** oder in der Liste unter **Benutzer und
@@ -809,6 +950,7 @@ Zugriff innerhalb der Bischofschaft aber nicht ein.
 src/
 ├── components/
 │   ├── agenda/          Traktanden: Karte, Formular, Sitzungsmodus, Verschieben
+│   ├── ap/              Aktivitäten AP: Kachel, Formular, Termine erzeugen
 │   ├── sacrament/       Abendmahlsversammlung: Rahmen mit Sonntagswahl, Lied- und Personenfelder
 │   ├── ui/              Bausteine: Modal, Badges, Avatare, Auswahlfelder
 │   ├── Layout.tsx       Navigation (Seitenleiste bzw. untere Leiste)
@@ -821,7 +963,7 @@ src/
 │   └── …                Eine Datei pro übriger Ansicht
 └── services/            Schreibzugriffe und Fachlogik pro Sammlung
 
-tests/                   Tests der Zugriffsregeln (laufen in der CI)
+tests/                   Tests der Zugriffsregeln und der Import-Parser (laufen in der CI)
 .github/workflows/       Prüfen und Ausrollen der Firestore-Regeln
 firestore.rules          Zugriffsregeln (die eigentliche Absicherung)
 firestore.indexes.json   Zusammengesetzte Indizes

@@ -15,6 +15,8 @@ import {
   OPEN_STATUSES,
   type AgendaItem,
   type AnnouncementSeries,
+  type ApActivity,
+  type ApMonth,
   type Calling,
   type CleaningWeek,
   type Meeting,
@@ -294,6 +296,33 @@ export function useCleaningWeeks(limitCount = 400) {
   const { isApproved } = useAuth()
   const constraints = useMemo(() => [orderBy('startDate'), fbLimit(limitCount)], [limitCount])
   return useCollection<CleaningWeek>(COLLECTIONS.cleaningWeeks, constraints, isApproved)
+}
+
+/* ------------------------------------------------------------------ */
+/* Aktivitäten AP                                                      */
+/* ------------------------------------------------------------------ */
+
+/**
+ * Der Aktivitätenplan der Priestertumskollegien.
+ *
+ * Ohne Filter und über den ganzen Zeitraum: Ein Jahresplan zählt gut
+ * hundert Termine, und die Ansicht zeigt Vergangenes und Kommendes im
+ * selben Atemzug. Die Obergrenze deckt damit mehrere Jahre ab.
+ *
+ * Freigegeben ist er auch für Konten, die sonst nichts sehen – deshalb
+ * hängt er an `canViewAp` und nicht an `isApproved`.
+ */
+export function useApActivities(limitCount = 600) {
+  const { canViewAp } = useAuth()
+  const constraints = useMemo(() => [orderBy('date'), fbLimit(limitCount)], [limitCount])
+  return useCollection<ApActivity>(COLLECTIONS.apActivities, constraints, canViewAp)
+}
+
+/** Welches Kollegium welchen Monat führt. */
+export function useApMonths() {
+  const { canViewAp } = useAuth()
+  const constraints = useMemo(() => [orderBy('month')], [])
+  return useCollection<ApMonth>(COLLECTIONS.apMonths, constraints, canViewAp)
 }
 
 /* ------------------------------------------------------------------ */

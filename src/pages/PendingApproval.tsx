@@ -35,11 +35,13 @@ export function PendingApproval() {
         {!inactive && (
           <div className="mt-4 rounded-lg bg-slate-50 p-3 text-left text-xs text-slate-500 dark:bg-slate-800 dark:text-slate-400">
             <p className="mb-1 font-medium text-slate-700 dark:text-slate-200">
-              Für den Bischof: So schaltest du frei
+              Für die Bischofschaft: So schaltest du frei
             </p>
             <p>
-              Einstellungen → Benutzer → beim Konto <strong>{profile?.email}</strong> eine Rolle
-              wählen.
+              Einstellungen → Benutzer und Rollen → das Konto <strong>{profile?.email}</strong>{' '}
+              steht unter «Neue Registrierungen». Dort lässt sich wählen zwischen Vollzugriff und
+              einem Zugang, der ausschliesslich «Aktivitäten AP’s» zeigt – mit oder ohne
+              Schreibrecht.
             </p>
             <p className="mt-1">
               Beim allerersten Konto geht das noch nicht — setze das Feld <code>role</code> einmalig

@@ -3,7 +3,7 @@ import { Check, Search, UserPlus, X } from 'lucide-react'
 import { useData } from '@/contexts/DataContext'
 import { cn, colorForId, matchesSearch } from '@/lib/utils'
 import { Avatar } from '@/components/ui/Avatar'
-import type { Member } from '@/lib/types'
+import { FULL_ACCESS_ROLES, type Member } from '@/lib/types'
 
 /* ------------------------------------------------------------------ */
 /* Zuständige aus dem Team wählen                                      */
@@ -24,7 +24,9 @@ export function AssigneePicker({
   label?: string
 }) {
   const { users } = useData()
-  const selectable = users.filter((user) => user.active && user.role !== 'pending')
+  // Nur Konten mit Vollzugriff: Wer allein den AP-Kalender sieht, kann eine
+  // Pendenz weder öffnen noch erledigen.
+  const selectable = users.filter((user) => user.active && FULL_ACCESS_ROLES.includes(user.role))
 
   const toggle = (id: string) => {
     onChange(value.includes(id) ? value.filter((v) => v !== id) : [...value, id])

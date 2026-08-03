@@ -20,10 +20,17 @@ export interface WithId {
  * jemand aus der Bischofschaft freischaltet – so kann sich niemand selbst
  * Zugriff auf Personendaten verschaffen.
  *
- * Die Rolle beschreibt die **Aufgabe** in der Bischofschaft, nicht den
+ * Innerhalb der Bischofschaft beschreibt die Rolle die **Aufgabe**, nicht den
  * Umfang der Rechte: Bischof, beide Ratgeber und die Sekretäre arbeiten am
  * selben Datenbestand und sehen alles. Sie steuert damit vor allem, wer im
  * Programm der Abendmahlsversammlung als leitend erscheint.
+ *
+ * Daneben stehen die beiden AP-Rollen. Sie sind die Ausnahme von diesem
+ * Grundsatz: Der Aktivitätenplan der Priestertumskollegien wird mit den
+ * Beratern und der Jugendführung geteilt, und die haben in der Gemeinde
+ * keine Aufgabe, die Einblick in Personendaten rechtfertigt. Sie sehen
+ * deshalb **nur** den AP-Kalender – die einen mit, die anderen ohne
+ * Schreibrecht.
  */
 export type Role =
   | 'bishop'
@@ -33,6 +40,10 @@ export type Role =
   | 'secretary'
   /** Sammelrolle aus früheren Versionen – bleibt lesbar, wird nicht mehr vergeben. */
   | 'counselor'
+  /** Nur der AP-Kalender, mit Schreibrecht */
+  | 'ap_editor'
+  /** Nur der AP-Kalender, ausschliesslich lesend */
+  | 'ap_viewer'
   | 'pending'
 
 export const ROLE_LABELS: Record<Role, string> = {
@@ -42,6 +53,8 @@ export const ROLE_LABELS: Record<Role, string> = {
   executive_secretary: 'Exekutivsekretär',
   secretary: 'Sekretär',
   counselor: 'Ratgeber',
+  ap_editor: 'AP-Kalender · bearbeiten',
+  ap_viewer: 'AP-Kalender · nur ansehen',
   pending: 'Wartet auf Freigabe',
 }
 
@@ -73,6 +86,46 @@ export const FULL_ACCESS_ROLES: Role[] = [
 
 /** Rollen der Bischofschaft im engeren Sinn – leiten die Abendmahlsversammlung. */
 export const BISHOPRIC_ROLES: Role[] = ['bishop', 'counselor1', 'counselor2', 'counselor']
+
+/** Rollen, die ausser dem AP-Kalender nichts sehen. */
+export const AP_ONLY_ROLES: Role[] = ['ap_editor', 'ap_viewer']
+
+/** Wer den AP-Kalender überhaupt zu sehen bekommt – Vollzugriff eingeschlossen. */
+export const AP_ACCESS_ROLES: Role[] = [...FULL_ACCESS_ROLES, ...AP_ONLY_ROLES]
+
+/** Wer im AP-Kalender auch schreiben darf. Steht ebenso in `firestore.rules`. */
+export const AP_WRITE_ROLES: Role[] = [...FULL_ACCESS_ROLES, 'ap_editor']
+
+/**
+ * Was beim Freischalten zur Wahl steht.
+ *
+ * Die Rolle beantwortet zwei verschiedene Fragen zugleich – «welche Aufgabe?»
+ * und «wie viel darf diese Person sehen?». Beim Freischalten zählt nur die
+ * zweite; welche Aufgabe jemand in der Bischofschaft hat, lässt sich danach
+ * jederzeit umstellen, ohne dass sich am Zugriff etwas ändert.
+ */
+export type AccessLevel = 'full' | 'ap_write' | 'ap_read'
+
+export const ACCESS_LEVELS: { value: AccessLevel; role: Role; label: string; hint: string }[] = [
+  {
+    value: 'full',
+    role: 'secretary',
+    label: 'Vollzugriff',
+    hint: 'Sieht und bearbeitet alles – für die Bischofschaft und die Sekretäre.',
+  },
+  {
+    value: 'ap_write',
+    role: 'ap_editor',
+    label: 'Nur AP-Kalender · bearbeiten',
+    hint: 'Sieht ausschliesslich «Aktivitäten AP’s» und darf Einträge ändern.',
+  },
+  {
+    value: 'ap_read',
+    role: 'ap_viewer',
+    label: 'Nur AP-Kalender · ansehen',
+    hint: 'Sieht ausschliesslich «Aktivitäten AP’s», ohne etwas ändern zu können.',
+  },
+]
 
 export interface AppUser extends WithId {
   /** entspricht der Firebase-Auth-UID */
@@ -915,5 +968,85 @@ export interface Note extends WithId {
   createdById?: string | null
   updatedById?: string | null
   createdAt?: TS
+  updatedAt?: TS
+}
+
+/* ------------------------------------------------------------------ */
+/* Aktivitäten AP                                                      */
+/* ------------------------------------------------------------------ */
+
+/**
+ * Was für ein Termin im Aktivitätenplan steht.
+ *
+ * Der Plan hat einen festen Takt: Mittwochabend die Aktivität, am 2. und
+ * 4. Sonntag die Klasse, am 3. Mittwoch die FHV – und damit keine
+ * Aktivität. Alles Übrige – Lager, Tempelbesuche, Pfahlanlässe, ein
+ * Samstag – ist besonders. Genau diese vier Fälle unterscheidet die Art,
+ * und mehr braucht es nicht: Sie färbt die Kachel und sagt auf einen
+ * Blick, ob an einem Abend etwas stattfindet.
+ */
+export type ApActivityKind = 'activity' | 'class' | 'special' | 'cancelled'
+
+export const AP_ACTIVITY_KIND_LABELS: Record<ApActivityKind, string> = {
+  activity: 'Aktivität',
+  class: 'AP-Klasse',
+  special: 'Besonderer Anlass',
+  cancelled: 'Fällt aus',
+}
+
+/**
+ * Ein Eintrag im Aktivitätenplan der Priestertumskollegien.
+ *
+ * Die Felder sind die Spalten des bisherigen Excel-Plans, und sie bleiben
+ * bewusst Freitext: Wer eine Aktivität leitet und wer aus der
+ * Bischofschaft dabei ist, steht dort als Vorname – «Carden», «Josh,
+ * Alain». Ein Verweis auf die Mitgliederliste wäre genauer, aber die
+ * Personen, die diesen Plan pflegen, sehen die Mitgliederliste gar nicht.
+ *
+ * Das Datum ist «yyyy-MM-dd» und kein Zeitstempel: Ein Eintrag gehört zu
+ * einem Tag, nicht zu einem Zeitpunkt, und als Text lässt er sich sortieren,
+ * vergleichen und abfragen, ohne über Zeitzonen nachzudenken. Mehrtägige
+ * Anlässe – ein Lager, ein Wochenende – tragen zusätzlich `endDate`.
+ */
+export interface ApActivity extends WithId {
+  /** Erster Tag, «2026-01-07» – zugleich das Sortierfeld */
+  date: string
+  /** Letzter Tag bei mehrtägigen Anlässen, sonst `null` */
+  endDate?: string | null
+  /** «19:30» – leer, wenn die übliche Zeit gilt */
+  time?: string
+  kind: ApActivityKind
+  /** «Bouldern», «Kleine Entscheidungen – grosse Konsequenzen» */
+  title: string
+  /** Treffpunkt, «Gemeindehaus» */
+  location?: string
+  /** Leitung / Organisation, «Carden» oder «JM» */
+  leader?: string
+  /** Teilnahme Bischofschaft */
+  bishopric?: string
+  /** Teilnahme Berater */
+  advisor?: string
+  /** Bemerkung / sonstiges Programm */
+  note?: string
+  createdAt?: TS
+  updatedAt?: TS
+  createdById?: string | null
+  updatedById?: string | null
+}
+
+/**
+ * Welches Kollegium einen Monat führt.
+ *
+ * Im Excel-Plan steht das als Zwischenüberschrift über jedem Monat
+ * («JANUAR – LEITUNG LEHRER»). Ein eigenes Dokument je Monat, ID ist
+ * «2026-01»: Damit lässt sich der Plan beliebig oft einlesen, ohne
+ * Dubletten anzulegen, und die Angabe hängt nicht an einem einzelnen
+ * Termin, der gelöscht werden könnte.
+ */
+export interface ApMonth extends WithId {
+  /** «2026-01» – zugleich die Dokument-ID */
+  month: string
+  /** «Leitung Lehrer» */
+  leadership: string
   updatedAt?: TS
 }

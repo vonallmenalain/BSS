@@ -20,7 +20,14 @@ import { doc, getDoc, onSnapshot, serverTimestamp, setDoc } from 'firebase/fires
 import { auth, db, COLLECTIONS, isFirebaseConfigured } from '@/lib/firebase'
 import { getInitials } from '@/lib/utils'
 import { commit } from '@/lib/sync'
-import { BISHOPRIC_ROLES, FULL_ACCESS_ROLES, type AppUser, type Role } from '@/lib/types'
+import {
+  AP_ACCESS_ROLES,
+  AP_WRITE_ROLES,
+  BISHOPRIC_ROLES,
+  FULL_ACCESS_ROLES,
+  type AppUser,
+  type Role,
+} from '@/lib/types'
 
 interface AuthContextValue {
   /** Firebase-Auth-Benutzer (Anmeldeidentität) */
@@ -38,6 +45,12 @@ interface AuthContextValue {
   /** Gehört zur Bischofschaft im engeren Sinn (leitet die Versammlung). */
   isBishopric: boolean
   isBishop: boolean
+  /** Darf «Aktivitäten AP’s» sehen – Vollzugriff eingeschlossen. */
+  canViewAp: boolean
+  /** Darf im AP-Kalender auch schreiben. */
+  canEditAp: boolean
+  /** Sieht ausschliesslich den AP-Kalender und sonst nichts von der App. */
+  isApOnly: boolean
   role: Role | null
   error: string | null
   signIn: (email: string, password: string) => Promise<void>
@@ -218,9 +231,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   const value = useMemo<AuthContextValue>(() => {
     const role = profile?.role ?? null
-    const isApproved = Boolean(
-      profile && profile.active && role && FULL_ACCESS_ROLES.includes(role),
-    )
+    const active = Boolean(profile && profile.active && role)
+    const isApproved = active && Boolean(role && FULL_ACCESS_ROLES.includes(role))
+    const canViewAp = active && Boolean(role && AP_ACCESS_ROLES.includes(role))
+
     return {
       firebaseUser,
       profile,
@@ -228,6 +242,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       isApproved,
       isBishopric: Boolean(role && BISHOPRIC_ROLES.includes(role)),
       isBishop: role === 'bishop',
+      canViewAp,
+      canEditAp: active && Boolean(role && AP_WRITE_ROLES.includes(role)),
+      isApOnly: canViewAp && !isApproved,
       role,
       error,
       signIn,
