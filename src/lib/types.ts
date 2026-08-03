@@ -438,6 +438,17 @@ export interface Calling extends WithId {
   responsibleId?: string | null
   notes?: string
 
+  /**
+   * Berufung ausserhalb der eigenen Einheit (Pfahl, Seminar, Institut).
+   * Sie zählt für «hat eine Berufung», erscheint aber nicht im
+   * Organisationsplan der Gemeinde.
+   */
+  outOfUnit?: boolean
+  /** Im LCR als «Benutzerdefinierte Berufung» angelegt */
+  custom?: boolean
+  /** Untergruppe innerhalb der Organisation, z. B. «Lehrkräfte» */
+  group?: string
+
   createdAt?: TS
   updatedAt?: TS
 }
