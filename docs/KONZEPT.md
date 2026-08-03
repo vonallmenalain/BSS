@@ -137,10 +137,12 @@ Mitgliedern. Erfasst wird nur die Liednummer – den Titel liefert die
 importierte Liederliste. Er wird im Programm mitgespeichert, damit ein
 verteiltes Programm nach einem Neuimport gleich bleibt.
 
-Zwei Bücher stehen nebeneinander: das Gesangbuch und das Liederbuch für
-Kinder. Beide zählen ab 1, deshalb trägt das zweite ein Kürzel – «PV 6».
-Doppelnummern behalten ihren Buchstaben, «PV 18a». Ohne diese Unterscheidung
-überschriebe der eine Import den anderen.
+Drei Bücher stehen nebeneinander: das Gesangbuch, das Liederbuch für Kinder
+und «Für zuhause und für die Kirche». Die ersten beiden zählen ab 1, deshalb
+trägt das zweite ein Kürzel – «PV 6»; Doppelnummern behalten ihren Buchstaben,
+«PV 18a». Das dritte beginnt bei 1001 und braucht keines, weil die Kirche dort
+bewusst weiterzählt. Ohne diese Unterscheidung überschriebe ein Import den
+anderen.
 
 **Gebet.** Anfangs- und Schlussgebet, zwei Personen pro Sonntag. Bei jedem
 Vorschlag steht, wann die Person zuletzt gebetet hat; zuoberst steht, wer noch
@@ -393,8 +395,9 @@ immer dasselbe: Termin verstrichen.
 - Ansprachen und Zeugnisse mit Vorschlagsliste, Verlauf und Zusatzplätzen
 - Abendmahlsversammlung: Leitung, Bekanntmachungen, Angelegenheiten, Musik,
   Gebet – mit Ablauf zum Ausdrucken
-- Liederlisten aus dem Musikarchiv oder aus Excel bzw. CSV – Gesangbuch und
-  PV-Liederbuch getrennt, Liedtitel aus der Nummer
+- Liederlisten aus dem Musikarchiv oder aus Excel bzw. CSV – Gesangbuch,
+  PV-Liederbuch und «Für zuhause und für die Kirche» getrennt, Liedtitel aus
+  der Nummer
 - Berufungsverwaltung mit Prozessschritten
 - Einstellungen für Gemeinde, Sitzungsrhythmus und Abendmahlsversammlung
 - PWA: installierbar, offline speichern mit Warteschlange und Konflikthinweis,

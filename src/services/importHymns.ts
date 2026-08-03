@@ -38,8 +38,13 @@ export interface PastedHymn {
   title: string
 }
 
-/** «18a. Dankkanon» – Zahl, allenfalls ein Buchstabe, Punkt, Titel. */
-const ENTRY = /^(\d{1,3})([a-z])?\.\s*(.*)$/i
+/**
+ * «18a. Dankkanon» – Zahl, allenfalls ein Buchstabe, Punkt, Titel.
+ *
+ * Vier Stellen, weil das Gesangbuch für zuhause und für die Kirche bei
+ * 1001 zu zählen beginnt.
+ */
+const ENTRY = /^(\d{1,4})([a-z])?\.\s*(.*)$/i
 
 /** Markdown-Verweis: `[Titel](Adresse)`. */
 const LINK = /\[([^\]]*)\]\(([^)]*)\)/

@@ -2,6 +2,7 @@ import assert from 'node:assert/strict'
 import { test } from 'node:test'
 
 import { parsePastedHymns } from '../src/services/importHymns.ts'
+import { parseHymnCode } from '../src/lib/hymnCode.ts'
 
 /*
  * Läuft ohne Bundler direkt in Node (Typen werden beim Laden entfernt,
@@ -176,4 +177,92 @@ test('hält Doppelnummern auseinander und sortiert sie', () => {
     { number: 129, suffix: 'a', title: 'Kopf, Schulter' },
     { number: 129, suffix: 'b', title: 'Singen macht Spaß!' },
   ])
+})
+
+/* ------------------------------------------------------------------ */
+/* Gesangbuch für zuhause und für die Kirche                           */
+/* ------------------------------------------------------------------ */
+
+/*
+ * Die neue Sammlung zählt ab 1001 und springt zwischen ihren Abschnitten
+ * (1001 ff., dann 1201 ff.). Vierstellige Nummern müssen deshalb durch.
+ */
+const HOME_CHURCH_PAGE = [
+  'Derzeit wurden alle ausgewählten Filter angewendet.',
+  'Filtern',
+  '',
+  '1. [Musikarchiv](https://www.churchofjesuschrist.org/media/music?lang=deu)',
+  '2. ',
+  '',
+  'Gesangbuch für zuhause und für die Kirche',
+  'Komm, du Quelle jedes Segens',
+  'GesangBegleitungBegleitung (Gitarre)',
+  '00:00',
+  '02:33',
+  'Downloads',
+  'Alles einblenden',
+  '60 Ergebnisse',
+  'Sabbat und Wochentag',
+  '',
+  '* [1001. Komm, du Quelle jedes Segens](https://www.churchofjesuschrist.org/media/music/songs/come-thou-fount-of-every-blessing?crumbs=hymns-for-home-and-church&order=number&lang=deu)',
+  '* [1002. Wenn der Heiland wiederkehrt](https://www.churchofjesuschrist.org/media/music/songs/when-the-savior-comes-again?crumbs=hymns-for-home-and-church&order=number&lang=deu)',
+  '',
+  'Ostern und Weihnachten',
+  '',
+  '* [1201. Preist den Herrn, der auferstand](https://www.churchofjesuschrist.org/media/music/songs/hail-the-day-that-sees-him-rise?crumbs=hymns-for-home-and-church&order=number&lang=deu)',
+  '* [1207. Still, Still, Still](https://www.churchofjesuschrist.org/media/music/songs/still-still-still?crumbs=hymns-for-home-and-church&order=number&lang=deu)',
+].join('\n')
+
+test('liest die vierstelligen Nummern der neuen Sammlung', () => {
+  assert.deepEqual(parsePastedHymns(HOME_CHURCH_PAGE), [
+    { number: 1001, suffix: '', title: 'Komm, du Quelle jedes Segens' },
+    { number: 1002, suffix: '', title: 'Wenn der Heiland wiederkehrt' },
+    { number: 1201, suffix: '', title: 'Preist den Herrn, der auferstand' },
+    { number: 1207, suffix: '', title: 'Still, Still, Still' },
+  ])
+})
+
+test('lässt sich von der Trefferzahl der neuen Sammlung nicht täuschen', () => {
+  assert.deepEqual(parsePastedHymns('60 Ergebnisse'), [])
+})
+
+/* ------------------------------------------------------------------ */
+/* Codes                                                               */
+/* ------------------------------------------------------------------ */
+
+test('leitet das Buch aus dem Code ab', () => {
+  assert.deepEqual(parseHymnCode('6'), {
+    book: 'hymns',
+    number: 6,
+    suffix: '',
+    code: '6',
+  })
+  assert.deepEqual(parseHymnCode('pv 6'), {
+    book: 'children',
+    number: 6,
+    suffix: '',
+    code: 'PV 6',
+  })
+  // Ab 1001 die neue Sammlung – ohne Kürzel, weil nichts zusammenstösst.
+  assert.deepEqual(parseHymnCode('1001'), {
+    book: 'home_church',
+    number: 1001,
+    suffix: '',
+    code: '1001',
+  })
+  // Die Grenze liegt sauber zwischen den Büchern.
+  assert.equal(parseHymnCode('210')?.book, 'hymns')
+  assert.equal(parseHymnCode('1000')?.book, 'hymns')
+})
+
+test('führt Schreibweisen desselben Codes zusammen', () => {
+  for (const text of ['PV 18a', 'pv18a', 'Pv 18 a']) {
+    assert.equal(parseHymnCode(text)?.code, 'PV 18a', text)
+  }
+})
+
+test('weist zurück, was keine Liednummer ist', () => {
+  for (const text of ['', 'Abendmahl', '0', '12345', 'PV', '6x7']) {
+    assert.equal(parseHymnCode(text), null, text)
+  }
 })

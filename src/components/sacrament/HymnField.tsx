@@ -3,7 +3,8 @@ import { Link } from 'react-router-dom'
 import { Check, Music, TriangleAlert } from 'lucide-react'
 import { useData } from '@/contexts/DataContext'
 import { useToast } from '@/contexts/ToastContext'
-import { codeOf, hymnKey, parseHymnCode, saveHymn, searchHymns } from '@/services/hymns'
+import { saveHymn, searchHymns } from '@/services/hymns'
+import { codeOf, hymnKey, parseHymnCode } from '@/lib/hymnCode'
 import type { HymnChoice } from '@/lib/types'
 
 /**
@@ -14,9 +15,10 @@ import type { HymnChoice } from '@/lib/types'
  * noch keine Liste hochgeladen), lässt sich der Titel von Hand eintragen und
  * auf Wunsch in die Liste übernehmen.
  *
- * Aus dem Liederbuch für Kinder wird «PV» vorangestellt: «PV 6». Beide Bücher
- * zählen ab 1, ohne das Kürzel wäre nicht zu sagen, welches gemeint ist.
- * Doppelnummern behalten ihren Buchstaben: «PV 18a».
+ * Aus dem Liederbuch für Kinder wird «PV» vorangestellt: «PV 6». Es zählt wie
+ * das Gesangbuch ab 1, ohne das Kürzel wäre nicht zu sagen, welches gemeint
+ * ist. Doppelnummern behalten ihren Buchstaben: «PV 18a». «Für zuhause und
+ * für die Kirche» beginnt bei 1001 und braucht kein Kürzel.
  *
  * Der Titel wird immer mitgespeichert, damit ein bereits verteiltes Programm
  * auch nach einem Neuimport der Liederliste unverändert bleibt.
@@ -178,7 +180,7 @@ export function HymnField({
             .
           </>
         ) : (
-          'Aus dem Gesangbuch nur die Nummer, aus dem PV-Liederbuch mit «PV» davor: «PV 6».'
+          'Nur die Nummer – aus dem PV-Liederbuch mit «PV» davor: «PV 6».'
         )}
       </p>
 
