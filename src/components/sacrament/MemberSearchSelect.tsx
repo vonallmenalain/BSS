@@ -1,5 +1,5 @@
 import { useMemo, useState, type ReactNode } from 'react'
-import { Search, X } from 'lucide-react'
+import { Search, UserPlus, X } from 'lucide-react'
 import { useData } from '@/contexts/DataContext'
 import { Avatar } from '@/components/ui/Avatar'
 import { matchesSearch } from '@/lib/utils'
@@ -12,6 +12,10 @@ import type { Member } from '@/lib/types'
  * Vorschlag eine Zusatzinformation – bei Gebeten etwa, wann die Person zuletzt
  * gebetet hat. Genau das braucht es, um beim Zuteilen nicht immer dieselben
  * zu fragen. Ohne Suchbegriff erscheint die vorsortierte Vorschlagsliste.
+ *
+ * Mit `onFreeText` lässt sich zusätzlich ein Name von Hand erfassen. Getippter
+ * Text allein ordnet dabei nie ein Mitglied zu – das geschieht ausschliesslich
+ * über die Vorschlagsliste.
  */
 export function MemberSearchSelect({
   value,
@@ -23,6 +27,8 @@ export function MemberSearchSelect({
   meta,
   disabled = false,
   compact = false,
+  freeText = '',
+  onFreeText,
 }: {
   value: string | null
   onChange: (member: Member | null) => void
@@ -38,12 +44,23 @@ export function MemberSearchSelect({
    * ausgeklappte Listen machten die Seite unübersichtlich lang.
    */
   compact?: boolean
+  /** Bereits erfasster Name ohne Mitglied – wird wie eine Auswahl angezeigt. */
+  freeText?: string
+  /**
+   * Einen Namen ohne Mitglied übernehmen.
+   *
+   * Ist die Funktion gesetzt, darf im Feld alles stehen: ein besuchender Hoher
+   * Rat, die Missionare, «Zeugnisse der neuen Ältesten». Leerer Text hebt den
+   * Eintrag wieder auf.
+   */
+  onFreeText?: (name: string) => void
 }) {
   const { members, membersById } = useData()
   const [search, setSearch] = useState('')
   const [active, setActive] = useState(false)
 
   const selected = value ? (membersById.get(value) ?? null) : null
+  const manual = selected ? '' : freeText.trim()
 
   const results = useMemo(() => {
     // Ohne Suchbegriff die vorsortierten Vorschläge, bei einer Suche aber die
@@ -59,37 +76,51 @@ export function MemberSearchSelect({
     return (
       <div>
         {label && <span className="label">{label}</span>}
-        <div className="flex items-center gap-3 rounded-lg border border-slate-200 p-2.5 dark:border-slate-700">
-          <Avatar name={`${selected.firstName} ${selected.lastName}`} id={selected.id} size="sm" />
-          <div className="min-w-0 flex-1">
-            <p className="truncate text-sm font-medium">
-              {selected.firstName} {selected.lastName}
-            </p>
-            {meta && (
-              <p className="truncate text-xs text-slate-500 dark:text-slate-400">
-                {meta(selected)}
-              </p>
-            )}
-          </div>
-          {!disabled && (
-            <button
-              type="button"
-              className="btn-ghost p-1.5"
-              onClick={() => {
-                onChange(null)
-                setSearch('')
-              }}
-              aria-label="Auswahl aufheben"
-            >
-              <X className="size-4" aria-hidden />
-            </button>
-          )}
-        </div>
+        <Chosen
+          name={`${selected.firstName} ${selected.lastName}`}
+          id={selected.id}
+          meta={meta?.(selected)}
+          onClear={
+            disabled
+              ? undefined
+              : () => {
+                  onChange(null)
+                  setSearch('')
+                }
+          }
+        />
       </div>
     )
   }
 
-  const showResults = !compact || active || search.trim().length > 0
+  if (manual) {
+    return (
+      <div>
+        {label && <span className="label">{label}</span>}
+        <Chosen
+          name={manual}
+          meta="Keinem Mitglied zugeordnet"
+          onClear={
+            disabled
+              ? undefined
+              : () => {
+                  onFreeText?.('')
+                  setSearch('')
+                }
+          }
+        />
+      </div>
+    )
+  }
+
+  const term = search.trim()
+  const showResults = !compact || active || term.length > 0
+
+  const takeAsIs = () => {
+    if (!onFreeText || !term) return
+    onFreeText(term)
+    setSearch('')
+  }
 
   return (
     <div
@@ -112,12 +143,19 @@ export function MemberSearchSelect({
           placeholder={placeholder}
           value={search}
           onChange={(event) => setSearch(event.target.value)}
+          onKeyDown={(event) => {
+            if (event.key !== 'Enter' || !onFreeText || !term) return
+            // Das Feld steht auch in Formularen – ohne dies löste die
+            // Eingabetaste dort das Absenden aus, statt den Namen zu übernehmen.
+            event.preventDefault()
+            takeAsIs()
+          }}
           disabled={disabled}
           aria-label={label}
         />
       </div>
 
-      {showResults && results.length > 0 ? (
+      {showResults && results.length > 0 && (
         <ul className="mt-2 max-h-56 space-y-0.5 overflow-y-auto">
           {results.map((member) => (
             <li key={member.id}>
@@ -138,10 +176,51 @@ export function MemberSearchSelect({
             </li>
           ))}
         </ul>
-      ) : (
-        search.trim().length > 1 && (
-          <p className="hint">Keine Übereinstimmung in der Mitgliederliste.</p>
-        )
+      )}
+
+      {results.length === 0 && term.length > 1 && (
+        <p className="hint">Keine Übereinstimmung in der Mitgliederliste.</p>
+      )}
+
+      {/* Der getippte Text allein ordnet nichts zu – erst dieser Knopf
+          übernimmt ihn, und zwar ausdrücklich ohne Mitglied. */}
+      {onFreeText && !disabled && term.length > 0 && (
+        <button type="button" className="btn-secondary btn-sm mt-2" onClick={takeAsIs}>
+          <UserPlus className="size-3.5" aria-hidden />«{term}» ohne Mitglied eintragen
+        </button>
+      )}
+    </div>
+  )
+}
+
+/** Die getroffene Wahl – ein Mitglied oder ein Name von Hand. */
+function Chosen({
+  name,
+  id,
+  meta,
+  onClear,
+}: {
+  name: string
+  id?: string
+  meta?: ReactNode
+  onClear?: () => void
+}) {
+  return (
+    <div className="flex items-center gap-3 rounded-lg border border-slate-200 p-2.5 dark:border-slate-700">
+      <Avatar name={name} id={id} size="sm" />
+      <div className="min-w-0 flex-1">
+        <p className="truncate text-sm font-medium">{name}</p>
+        {meta && <p className="truncate text-xs text-slate-500 dark:text-slate-400">{meta}</p>}
+      </div>
+      {onClear && (
+        <button
+          type="button"
+          className="btn-ghost p-1.5"
+          onClick={onClear}
+          aria-label="Auswahl aufheben"
+        >
+          <X className="size-4" aria-hidden />
+        </button>
       )}
     </div>
   )

@@ -271,6 +271,16 @@ als Standard in den Einstellungen. Für einen einzelnen Sonntag lässt sich mehr
 vorsehen: eine zusätzliche Ansprache, ein Zeugnis oder ein leerer Platz zum
 späteren Vergeben. Der Standard bleibt davon unberührt.
 
+**Ein Name von Hand.** Am Pult steht nicht immer jemand aus der eigenen
+Gemeinde: ein besuchender Hoher Rat, die Missionare, «Zeugnisse der neuen
+Ältesten». In jedes Namensfeld einer Ansprache lässt sich deshalb schreiben,
+was dort stehen soll; darunter erscheint **«…» ohne Mitglied eintragen** (die
+Eingabetaste tut dasselbe). Der Eintrag belegt seinen Programmplatz wie jeder
+andere, ist aber keinem Mitglied zugeordnet und bleibt in der Auswertung «wer
+war lange nicht dran» unberücksichtigt. Ein Mitglied wird ausschliesslich dann
+zugeordnet, wenn es in der Vorschlagsliste angetippt wird – getippter Text
+allein genügt dafür nie.
+
 **Liederliste.** Unter **Import → Lieder** einlesen, dann genügt beim Erfassen
 der Musik die Nummer – der Titel erscheint automatisch. Nur die Zahl, aus dem
 PV-Liederbuch mit dem Kürzel davor: **«PV 6»**; es zählt wie das Gesangbuch ab
@@ -316,6 +326,14 @@ alles). Am grossen Bildschirm bestimmt zusätzlich ein Schalter im Fenster, wie
 breit eine geöffnete Notiz werden darf. Beides gilt pro Gerät, nicht pro
 Notiz. Die Suche durchsucht Titel und Text; zuoberst steht, was zuletzt
 bearbeitet wurde – mit Datum und Namen dessen, der es getan hat.
+
+**Reihenfolge.** Ebenfalls unter **Ansicht**: _Zuletzt bearbeitet_ (der
+Normalfall) oder _Eigene_. In der eigenen Reihenfolge stehen an jeder Notiz
+zwei Pfeile zum Verschieben; anders als Darstellung und Grösse gilt sie für
+alle, nicht nur für das eigene Gerät. Eine neue Notiz ist noch nicht
+einsortiert und steht zuoberst, bis sie verschoben wird. Während einer Suche
+fehlen die Pfeile – sie zeigt nur einen Ausschnitt, und danach liesse sich
+keine Reihenfolge festhalten.
 
 ---
 

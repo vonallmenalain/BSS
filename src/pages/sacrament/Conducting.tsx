@@ -16,7 +16,15 @@ import { formatDate, formatDateLong, toDate, toDateInput } from '@/lib/dates'
 import { cn } from '@/lib/utils'
 import { formatHymn } from '@/services/hymns'
 import { lastPrayerByMember, rankPrayerCandidates, setPrayer } from '@/services/prayers'
-import { createTalk, deleteTalk, rankTalkCandidates, updateTalk } from '@/services/talks'
+import {
+  createTalk,
+  deleteTalk,
+  rankTalkCandidates,
+  setTalkSpeaker,
+  speakerFields,
+  updateTalk,
+  type TalkSpeaker,
+} from '@/services/talks'
 import {
   addTalkSlot,
   buildProgram,
@@ -245,13 +253,11 @@ export function Conducting() {
     [dateKey, settings.sacramentTime],
   )
 
-  const assignTalk = (slot: number, member: Member | null) => {
-    if (!member) return
+  const assignTalk = (slot: number, speaker: TalkSpeaker) => {
     void guard(
       () =>
         createTalk({
-          memberId: member.id,
-          memberName: `${member.firstName} ${member.lastName}`.trim(),
+          ...speakerFields(speaker),
           date: talkDate,
           slot,
           kind: 'talk',
@@ -262,20 +268,13 @@ export function Conducting() {
     )
   }
 
-  const changeSpeaker = (talkId: string, member: Member | null) => {
-    if (!member) {
+  const changeSpeaker = (talkId: string, speaker: TalkSpeaker | null) => {
+    if (!speaker) {
       // Ohne Person gibt es keine Ansprache mehr – der Platz wird wieder frei.
       void guard(() => deleteTalk(talkId), 'Ansprache konnte nicht entfernt werden.')
       return
     }
-    void guard(
-      () =>
-        updateTalk(talkId, {
-          memberId: member.id,
-          memberName: `${member.firstName} ${member.lastName}`.trim(),
-        }),
-      'Ansprache konnte nicht geändert werden.',
-    )
+    void guard(() => setTalkSpeaker(talkId, speaker), 'Ansprache konnte nicht geändert werden.')
   }
 
   const move = (index: number, delta: number) => {
@@ -541,8 +540,10 @@ export function Conducting() {
               {talk ? (
                 <>
                   <MemberSearchSelect
-                    value={talk.memberId}
-                    onChange={(member) => changeSpeaker(talk.id, member)}
+                    value={talk.memberId || null}
+                    onChange={(member) => changeSpeaker(talk.id, member ? { member } : null)}
+                    freeText={talk.memberId ? '' : talk.memberName}
+                    onFreeText={(name) => changeSpeaker(talk.id, name.trim() ? { name } : null)}
                     suggestions={talkCandidates}
                     meta={describeTalk}
                     compact
@@ -603,7 +604,8 @@ export function Conducting() {
                 <>
                   <MemberSearchSelect
                     value={null}
-                    onChange={(member) => assignTalk(entry.slot ?? 1, member)}
+                    onChange={(member) => member && assignTalk(entry.slot ?? 1, { member })}
+                    onFreeText={(name) => assignTalk(entry.slot ?? 1, { name })}
                     suggestions={talkCandidates}
                     meta={describeTalk}
                     placeholder="Noch offen – Name eingeben oder wählen"

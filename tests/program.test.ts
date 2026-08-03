@@ -86,6 +86,17 @@ test('bei drei Ansprachen steht das Zwischenlied vor der letzten', () => {
   ])
 })
 
+test('ein Eintrag ohne Mitglied steht mit seinem Namen im Ablauf', () => {
+  // Nicht jeder Programmpunkt gehört zu jemandem aus der Mitgliederliste –
+  // ein besuchender Hoher Rat, «Zeugnisse der neuen Ältesten».
+  const gast: Talk = { ...talk('g', 2, 'Zeugnisse der neuen Ältesten'), memberId: '' }
+  assert.deepEqual(shape(withIntermediate(), [talk('a', 1, 'Anna'), gast], 2), [
+    'Ansprache:Anna',
+    'Zwischenlied:100 – Lied',
+    'Schlussansprache:Zeugnisse der neuen Ältesten',
+  ])
+})
+
 test('ein Zeugnis am Schluss bleibt ein Zeugnis', () => {
   const talks = [talk('a', 1, 'Anna'), talk('b', 2, 'Bea', 'testimony')]
   assert.deepEqual(shape(withIntermediate(), talks, 2), [
