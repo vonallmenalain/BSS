@@ -200,11 +200,18 @@ Berufungen tragen keine Nummer und kommen ans Ende. Die Ansicht kennt die
 Knopf «Mit heutigem Datum» schiebt eine Berufung einen Schritt weiter, ohne
 dass jemand ein Datum tippen muss.
 
+**Zwei Sparten.** Berufungen der Gemeinde und Berufungen ausserhalb der
+Einheit – Pfahl, Seminar, Institut, Mission – stehen getrennt. Der
+Sonntagsschulpräsident des Pfahls ist nicht der Sonntagsschulpräsident der
+Gemeinde: gleiche Bezeichnung, andere Einheit. Nebeneinander in einer Liste
+wären sie nicht auseinanderzuhalten, und beim Abgleich hielte der Import den
+einen für den anderen. Auswärtige Berufungen zählen für die Person, erscheinen
+aber nicht im Organisationsplan der Gemeinde.
+
 **Import aus dem LCR.** Die Seiten *Organisationen* und *Berufungen
-ausserhalb der Einheit* lassen sich hineinkopieren; welche der beiden
-vorliegt, erkennt die App am Tabellenkopf. Der Abgleich zählt Person, Rolle
-und Organisation – so bleibt die Bischofschaft doppelt bestehen, wie das
-LCR sie auch führt.
+ausserhalb der Einheit* lassen sich hineinkopieren; welche vorliegt, wird
+gewählt. Der Abgleich zählt Person, Rolle, Organisation und Bereich – so
+bleibt die Bischofschaft doppelt bestehen, wie das LCR sie auch führt.
 
 Die eingefügte Seite gilt als **vollständige Wahrheit** über die aktuelle
 Besetzung: Was sie nicht mehr führt, wird entlassen. Entlassen heisst nicht

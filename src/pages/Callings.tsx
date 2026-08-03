@@ -10,12 +10,13 @@ import { PageHeader, SegmentedControl, MemberPicker } from '@/components/ui/Pick
 import { CallingStatusBadge } from '@/components/ui/Badge'
 import { Avatar } from '@/components/ui/Avatar'
 import { formatDate, toDateInput } from '@/lib/dates'
-import { compareNames, groupBy, matchesSearch } from '@/lib/utils'
+import { cn, compareNames, groupBy, matchesSearch } from '@/lib/utils'
 import {
   advanceCalling,
   COMMON_POSITIONS,
   createCalling,
   deleteCalling,
+  isWardCalling,
   updateCalling,
 } from '@/services/callings'
 import {
@@ -72,12 +73,20 @@ export function Callings() {
     return result
   }, [callings, scope, search])
 
+  // Zwei Sparten. Der Sonntagsschulpräsident des Pfahls ist nicht der
+  // Sonntagsschulpräsident der Gemeinde – nebeneinander in derselben Liste
+  // sähen sie aber genau so aus.
   const byOrganization = useMemo(() => {
-    const grouped = groupBy(visible, (calling) => calling.organization)
+    const grouped = groupBy(visible.filter(isWardCalling), (calling) => calling.organization)
     return [...grouped.entries()].sort(([a], [b]) =>
       compareNames(ORGANIZATION_LABELS[a], ORGANIZATION_LABELS[b]),
     )
   }, [visible])
+
+  const outsideUnit = useMemo(
+    () => visible.filter((calling) => !isWardCalling(calling)).sort(compareByImportOrder),
+    [visible],
+  )
 
   return (
     <>
@@ -150,34 +159,24 @@ export function Callings() {
       ) : (
         <div className="space-y-5">
           {byOrganization.map(([organization, entries]) => (
-            <section key={organization}>
-              <h2 className="mb-2 text-xs font-semibold tracking-wide text-slate-500 uppercase dark:text-slate-400">
-                {ORGANIZATION_LABELS[organization]} ({entries.length})
-              </h2>
-              <ul className="card divide-list overflow-hidden">
-                {entries.sort(compareByImportOrder).map((calling) => (
-                  <li key={calling.id}>
-                    <button
-                      type="button"
-                      onClick={() => setEditCalling(calling)}
-                      className="flex w-full items-center gap-3 px-4 py-3 text-left transition hover:bg-slate-50 dark:hover:bg-slate-800/60"
-                    >
-                      <Avatar name={calling.memberName} id={calling.memberId} size="md" />
-                      <div className="min-w-0 flex-1">
-                        <p className="truncate text-sm font-medium">{calling.position}</p>
-                        <p className="truncate text-xs text-slate-500 dark:text-slate-400">
-                          {calling.memberName}
-                          {calling.setApartDate && ` · seit ${formatDate(calling.setApartDate)}`}
-                        </p>
-                      </div>
-                      <CallingStatusBadge status={calling.status} />
-                      <ChevronRight className="size-4 shrink-0 text-slate-300" aria-hidden />
-                    </button>
-                  </li>
-                ))}
-              </ul>
-            </section>
+            <CallingSection
+              key={organization}
+              title={ORGANIZATION_LABELS[organization]}
+              entries={entries.sort(compareByImportOrder)}
+              onSelect={setEditCalling}
+            />
           ))}
+
+          {outsideUnit.length > 0 && (
+            <div className="border-t border-slate-200 pt-5 dark:border-slate-700">
+              <CallingSection
+                title="Ausserhalb der Einheit"
+                hint="Pfahl, Seminar, Institut und Mission – nicht Teil des Organisationsplans der Gemeinde."
+                entries={outsideUnit}
+                onSelect={setEditCalling}
+              />
+            </div>
+          )}
         </div>
       )}
 
@@ -212,6 +211,52 @@ function compareByImportOrder(a: Calling, b: Calling): number {
 
 /* ------------------------------------------------------------------ */
 
+/** Eine Sparte der Berufungsliste – eine Organisation oder der Bereich ausserhalb. */
+function CallingSection({
+  title,
+  hint,
+  entries,
+  onSelect,
+}: {
+  title: string
+  hint?: string
+  entries: Calling[]
+  onSelect: (calling: Calling) => void
+}) {
+  return (
+    <section>
+      <h2 className="text-xs font-semibold tracking-wide text-slate-500 uppercase dark:text-slate-400">
+        {title} ({entries.length})
+      </h2>
+      {hint && <p className="hint mb-2">{hint}</p>}
+      <ul className={cn('card divide-list overflow-hidden', !hint && 'mt-2')}>
+        {entries.map((calling) => (
+          <li key={calling.id}>
+            <button
+              type="button"
+              onClick={() => onSelect(calling)}
+              className="flex w-full items-center gap-3 px-4 py-3 text-left transition hover:bg-slate-50 dark:hover:bg-slate-800/60"
+            >
+              <Avatar name={calling.memberName} id={calling.memberId} size="md" />
+              <div className="min-w-0 flex-1">
+                <p className="truncate text-sm font-medium">{calling.position}</p>
+                <p className="truncate text-xs text-slate-500 dark:text-slate-400">
+                  {calling.memberName}
+                  {calling.setApartDate && ` · seit ${formatDate(calling.setApartDate)}`}
+                </p>
+              </div>
+              <CallingStatusBadge status={calling.status} />
+              <ChevronRight className="size-4 shrink-0 text-slate-300" aria-hidden />
+            </button>
+          </li>
+        ))}
+      </ul>
+    </section>
+  )
+}
+
+/* ------------------------------------------------------------------ */
+
 interface FormState {
   memberIds: string[]
   position: string
@@ -223,12 +268,15 @@ interface FormState {
   setApartDate: string
   releasedDate: string
   notes: string
+  /** Berufung ausserhalb der eigenen Einheit */
+  outOfUnit: boolean
 }
 
 const EMPTY: FormState = {
   memberIds: [],
   position: '',
   organization: 'ward',
+  outOfUnit: false,
   status: 'proposed',
   proposedDate: '',
   extendedDate: '',
@@ -261,6 +309,7 @@ function CallingForm({
             memberIds: [calling.memberId],
             position: calling.position,
             organization: calling.organization,
+            outOfUnit: Boolean(calling.outOfUnit),
             status: calling.status,
             proposedDate: toDateInput(calling.proposedDate),
             extendedDate: toDateInput(calling.extendedDate),
@@ -296,6 +345,7 @@ function CallingForm({
       memberName: member ? `${member.firstName} ${member.lastName}` : 'Unbekannt',
       position: form.position.trim(),
       organization: form.organization,
+      outOfUnit: form.outOfUnit,
       status: form.status,
       proposedDate: asDate(form.proposedDate),
       extendedDate: asDate(form.extendedDate),
@@ -388,24 +438,56 @@ function CallingForm({
             placeholder="Name suchen …"
           />
 
-          <div className="grid gap-4 sm:grid-cols-2">
-            <div>
-              <label className="label" htmlFor="c-organization">
-                Organisation
-              </label>
-              <select
-                id="c-organization"
-                className="input"
-                value={form.organization}
-                onChange={(event) => update('organization', event.target.value as Organization)}
-              >
-                {Object.entries(ORGANIZATION_LABELS).map(([value, label]) => (
-                  <option key={value} value={value}>
-                    {label}
-                  </option>
-                ))}
-              </select>
+          <div>
+            <span className="label">Bereich</span>
+            <div className="flex flex-wrap gap-2">
+              {[
+                { value: false, label: 'Gemeinde' },
+                { value: true, label: 'Ausserhalb der Einheit' },
+              ].map((option) => (
+                <button
+                  key={String(option.value)}
+                  type="button"
+                  onClick={() => update('outOfUnit', option.value)}
+                  aria-pressed={form.outOfUnit === option.value}
+                  className={cn(
+                    'rounded-full border px-3 py-1.5 text-sm font-medium transition',
+                    form.outOfUnit === option.value
+                      ? 'border-brand-500 bg-brand-50 text-brand-900 dark:bg-brand-950 dark:text-brand-100'
+                      : 'border-slate-300 text-slate-600 hover:border-slate-400 dark:border-slate-700 dark:text-slate-300',
+                  )}
+                >
+                  {option.label}
+                </button>
+              ))}
             </div>
+            <p className="hint">
+              Pfahl, Seminar, Institut und Mission stehen für sich. Sie zählen als Berufung, aber
+              nicht im Organisationsplan der Gemeinde – und der Sonntagsschulpräsident des Pfahls
+              ist nicht derselbe wie der der Gemeinde.
+            </p>
+          </div>
+
+          <div className="grid gap-4 sm:grid-cols-2">
+            {!form.outOfUnit && (
+              <div>
+                <label className="label" htmlFor="c-organization">
+                  Organisation
+                </label>
+                <select
+                  id="c-organization"
+                  className="input"
+                  value={form.organization}
+                  onChange={(event) => update('organization', event.target.value as Organization)}
+                >
+                  {Object.entries(ORGANIZATION_LABELS).map(([value, label]) => (
+                    <option key={value} value={value}>
+                      {label}
+                    </option>
+                  ))}
+                </select>
+              </div>
+            )}
 
             <div>
               <label className="label" htmlFor="c-position">

@@ -55,6 +55,7 @@ export function ImportCallings() {
 
   const [pasted, setPasted] = useState('')
   const [step, setStep] = useState<Step>('paste')
+  const [source, setSource] = useState<CallingSource>('organizations')
   const [releaseMissing, setReleaseMissing] = useState(true)
   const [busy, setBusy] = useState(false)
   const [progress, setProgress] = useState<Progress | null>(null)
@@ -65,7 +66,13 @@ export function ImportCallings() {
     skipped: number
   } | null>(null)
 
-  const parsed = useMemo(() => (pasted.trim() ? parsePastedCallings(pasted) : null), [pasted])
+  // Die Quelle wird gewählt, nicht geraten: Die Seite «ausserhalb der
+  // Einheit» trägt kein Merkmal, an dem sie sich erkennen liesse, und die
+  // Wahl entscheidet mit, welcher Bereich ersetzt wird.
+  const parsed = useMemo(
+    () => (pasted.trim() ? parsePastedCallings(pasted, source) : null),
+    [pasted, source],
+  )
   const preview = useMemo(
     () => (parsed ? buildCallingsPreview(parsed, members, existing) : null),
     [parsed, members, existing],
@@ -112,15 +119,62 @@ export function ImportCallings() {
       <ImportNav />
 
       {step === 'paste' && (
+        <div className="card mb-4 p-4">
+          <span className="label">Welche Liste?</span>
+          <div className="flex flex-wrap gap-2">
+            {(
+              [
+                ['organizations', 'Berufungen der Gemeinde'],
+                ['outOfUnit', 'Ausserhalb der Einheit'],
+              ] as [CallingSource, string][]
+            ).map(([key, label]) => (
+              <button
+                key={key}
+                type="button"
+                onClick={() => {
+                  setSource(key)
+                  setPasted('')
+                }}
+                aria-pressed={source === key}
+                className={cn(
+                  'rounded-full border px-3 py-1.5 text-sm font-medium transition',
+                  source === key
+                    ? 'border-brand-500 bg-brand-50 text-brand-900 dark:bg-brand-950 dark:text-brand-100'
+                    : 'border-slate-300 text-slate-600 hover:border-slate-400 dark:border-slate-700 dark:text-slate-300',
+                )}
+              >
+                {label}
+              </button>
+            ))}
+          </div>
+          <p className="hint">
+            Die beiden Listen stehen im LCR auf eigenen Seiten und werden getrennt geführt: Der
+            Sonntagsschulpräsident des Pfahls ist nicht der Sonntagsschulpräsident der Gemeinde.
+            Jeder Import ersetzt nur seinen eigenen Bereich.
+          </p>
+        </div>
+      )}
+
+      {step === 'paste' && (
         <PasteCard
-          title="Berufungsliste einfügen"
+          title={
+            source === 'organizations'
+              ? 'Berufungen der Gemeinde einfügen'
+              : 'Berufungen ausserhalb der Einheit einfügen'
+          }
           description={
-            <>
-              Im LCR <strong>Organisationen</strong> öffnen, die Seite markieren (Strg bzw. Cmd +
-              A), kopieren und hier einfügen. Ebenso lässt sich die Seite{' '}
-              <strong>Berufungen ausserhalb der Einheit</strong> einlesen – welche der beiden
-              vorliegt, erkennt die App selbst.
-            </>
+            source === 'organizations' ? (
+              <>
+                Im LCR <strong>Organisationen</strong> öffnen, die Seite markieren (Strg bzw. Cmd +
+                A), kopieren und hier einfügen.
+              </>
+            ) : (
+              <>
+                Im LCR <strong>Berufungen ausserhalb der Einheit</strong> öffnen, die Seite
+                markieren (Strg bzw. Cmd + A), kopieren und hier einfügen. Diese Berufungen zählen
+                für die Person, erscheinen aber nicht im Organisationsplan der Gemeinde.
+              </>
+            )
           }
           placeholder={`Hier einfügen. Erwartet wird der Aufbau der Berufungsliste:\n\nBischofschaft\nBerufung\tName\tBestätigt\tEingesetzt\nBischof\nMuster, Hans Peter\n6 Nov 2022\t13 Nov 2022`}
           value={pasted}
@@ -227,7 +281,9 @@ export function ImportCallings() {
                 <td className="px-3 py-2 font-medium">{row.memberName}</td>
                 <td className="px-3 py-2">{row.parsed.position}</td>
                 <td className="px-3 py-2 text-slate-500 dark:text-slate-400">
-                  {ORGANIZATION_LABELS[row.parsed.organization]}
+                  {row.parsed.outOfUnit
+                    ? 'Ausserhalb der Einheit'
+                    : ORGANIZATION_LABELS[row.parsed.organization]}
                   {row.parsed.group && ` · ${row.parsed.group}`}
                 </td>
                 <td className="tabular px-3 py-2 text-slate-500 dark:text-slate-400">

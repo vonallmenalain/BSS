@@ -267,9 +267,18 @@ export function MemberDetail() {
               {memberCallings.map((calling) => (
                 <li key={calling.id} className="flex flex-wrap items-center gap-2 py-2 text-sm">
                   <span className="font-medium">{calling.position}</span>
-                  <span className="text-slate-500 dark:text-slate-400">
-                    {ORGANIZATION_LABELS[calling.organization]}
-                  </span>
+                  {calling.outOfUnit ? (
+                    <span
+                      className="badge bg-violet-100 text-violet-800 dark:bg-violet-950 dark:text-violet-200"
+                      title="Pfahl, Seminar, Institut oder Mission – nicht in der Gemeinde"
+                    >
+                      Ausserhalb der Einheit
+                    </span>
+                  ) : (
+                    <span className="text-slate-500 dark:text-slate-400">
+                      {ORGANIZATION_LABELS[calling.organization]}
+                    </span>
+                  )}
                   <CallingStatusBadge status={calling.status} />
                   {calling.setApartDate && (
                     <span className="text-xs text-slate-400">
