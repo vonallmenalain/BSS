@@ -1,9 +1,11 @@
 // Mit Dateiendung, damit sich das Modul auch ohne Bundler ausführen lässt
 // (`node --test`). Vite und TypeScript lösen das genauso auf.
 import { normalize } from '../lib/utils.ts'
+import { isoDate } from './importHistory.ts'
 import type { PastedCalling, PastedCallings } from './importCallings.ts'
 import type { MinisteringEntry } from './importMinistering.ts'
-import type { Calling, CallingStatus, Member } from '../lib/types.ts'
+import type { ParsedHistory } from './importHistory.ts'
+import type { Calling, CallingStatus, Member, PrayerSlot } from '../lib/types.ts'
 
 /**
  * Die Mitte der Text-Importe: gelesene Einträge einer Person zuordnen und
@@ -284,5 +286,192 @@ export function buildMinisteringPreview(
     updateCount: rows.filter((r) => r.action === 'update').length,
     skipCount: rows.filter((r) => r.action === 'skip').length,
     linkCount: rows.reduce((sum, r) => sum + r.partnerIds.length + r.assignedIds.length, 0),
+  }
+}
+
+/* ------------------------------------------------------------------ */
+/* Verlauf von Ansprachen und Gebeten                                  */
+/* ------------------------------------------------------------------ */
+
+/** Eine bereits erfasste, gehaltene Ansprache – auf das Nötige eingedampft. */
+export interface KnownTalk {
+  memberId: string
+  /** «2024-10-20» */
+  date: string
+}
+
+/** Ein bereits vergebener Gebetsplatz. */
+export interface KnownPrayer {
+  date: string
+  slot: PrayerSlot
+  memberId: string
+}
+
+export interface HistoryTalkRow {
+  memberId: string
+  memberName: string
+  date: string
+  /** Position im Programm – hinter dem, was für diesen Sonntag schon erfasst ist */
+  slot: number
+  note: string
+}
+
+export interface HistoryPrayerRow {
+  memberId: string
+  memberName: string
+  date: string
+  slot: PrayerSlot
+}
+
+/** Nachgeführte Statistik eines Mitglieds. */
+export interface HistoryMemberRow {
+  memberId: string
+  memberName: string
+  talkCount: number
+  lastTalkDate: string | null
+}
+
+export interface HistoryPreview {
+  talks: HistoryTalkRow[]
+  prayers: HistoryPrayerRow[]
+  members: HistoryMemberRow[]
+  /** Einträge, die bereits erfasst sind – sie werden nicht doppelt geschrieben */
+  known: number
+  /** Namen ohne erfasste Person, mit der Anzahl ihrer Einträge */
+  unmatched: { fullName: string; count: number }[]
+  /** Gebete, für die an ihrem Sonntag kein Platz mehr frei ist */
+  crowded: { date: string; memberName: string }[]
+}
+
+const PRAYER_SLOTS_IN_ORDER: PrayerSlot[] = ['opening', 'closing']
+
+/**
+ * Ordnet den gelesenen Verlauf den erfassten Personen zu.
+ *
+ * Zwei Eigenheiten prägen das Ergebnis:
+ *
+ * **Gebete kennen nur zwei Plätze pro Sonntag** – Anfang und Schluss –, und
+ * die Tabelle sagt nicht, welcher es war. Vergeben wird deshalb der Reihe
+ * nach; wo an einem Sonntag mehr als zwei Personen stehen (das kommt aus den
+ * Jahren mit zwei Versammlungen), bleibt der Rest liegen und wird gemeldet
+ * statt stillschweigend verworfen.
+ *
+ * **Ansprachen kennen keine solche Grenze.** Ihr Platz ist nur eine
+ * Reihenfolge im Programm, deshalb passen beliebig viele auf einen Sonntag.
+ *
+ * Was bereits erfasst ist, bleibt unangetastet: Ein zweiter Durchlauf
+ * schreibt nichts doppelt und überschreibt keine Zuteilung, die in der App
+ * gepflegt wurde.
+ */
+export function buildHistoryPreview(
+  parsed: ParsedHistory,
+  members: Member[],
+  knownTalks: KnownTalk[],
+  knownPrayers: KnownPrayer[],
+): HistoryPreview {
+  const index = buildMemberIndex(members)
+
+  // Reihenfolge festklopfen: Erst danach werden Plätze vergeben, und die
+  // sollen bei gleichem Ausgangsstand immer gleich herauskommen.
+  const entries = [...parsed.entries].sort(
+    (a, b) =>
+      isoDate(a.year, a.month, a.day).localeCompare(isoDate(b.year, b.month, b.day)) ||
+      a.fullName.localeCompare(b.fullName),
+  )
+
+  const talks: HistoryTalkRow[] = []
+  const prayers: HistoryPrayerRow[] = []
+  const crowded: HistoryPreview['crowded'] = []
+  const unmatched = new Map<string, number>()
+  let known = 0
+
+  /* Bestand ------------------------------------------------------- */
+
+  const talksByMember = new Map<string, string[]>()
+  const talksPerDate = new Map<string, number>()
+  for (const talk of knownTalks) {
+    push(talksByMember, talk.memberId, talk.date)
+    talksPerDate.set(talk.date, (talksPerDate.get(talk.date) ?? 0) + 1)
+  }
+
+  const takenSlots = new Map<string, Map<PrayerSlot, string>>()
+  for (const prayer of knownPrayers) {
+    const forDate = takenSlots.get(prayer.date) ?? new Map<PrayerSlot, string>()
+    forDate.set(prayer.slot, prayer.memberId)
+    takenSlots.set(prayer.date, forDate)
+  }
+
+  /* Einträge ------------------------------------------------------ */
+
+  const writtenTalks = new Set<string>()
+  const newTalksByMember = new Map<string, string[]>()
+
+  for (const entry of entries) {
+    const { member } = matchMemberByName(entry.fullName, index)
+    if (!member) {
+      unmatched.set(entry.fullName, (unmatched.get(entry.fullName) ?? 0) + 1)
+      continue
+    }
+
+    const date = isoDate(entry.year, entry.month, entry.day)
+    const memberName = `${member.firstName} ${member.lastName}`.trim()
+
+    if (entry.kind === 'talk') {
+      const key = `${member.id}|${date}`
+      if (writtenTalks.has(key) || talksByMember.get(member.id)?.includes(date)) {
+        known++
+        continue
+      }
+      writtenTalks.add(key)
+      push(newTalksByMember, member.id, date)
+
+      const slot = (talksPerDate.get(date) ?? 0) + 1
+      talksPerDate.set(date, slot)
+      talks.push({ memberId: member.id, memberName, date, slot, note: entry.note })
+      continue
+    }
+
+    const forDate = takenSlots.get(date) ?? new Map<PrayerSlot, string>()
+    takenSlots.set(date, forDate)
+    if ([...forDate.values()].includes(member.id)) {
+      known++
+      continue
+    }
+
+    const free = PRAYER_SLOTS_IN_ORDER.find((slot) => !forDate.has(slot))
+    if (!free) {
+      crowded.push({ date, memberName })
+      continue
+    }
+    forDate.set(free, member.id)
+    prayers.push({ memberId: member.id, memberName, date, slot: free })
+  }
+
+  /* Statistik der Mitglieder -------------------------------------- */
+
+  const byId = new Map(members.map((member) => [member.id, member]))
+  const memberRows: HistoryMemberRow[] = []
+  for (const [memberId, dates] of newTalksByMember) {
+    const member = byId.get(memberId)
+    if (!member) continue
+    const all = [...(talksByMember.get(memberId) ?? []), ...dates]
+    memberRows.push({
+      memberId,
+      memberName: `${member.firstName} ${member.lastName}`.trim(),
+      talkCount: all.length,
+      // ISO-Daten lassen sich als Text vergleichen – das jüngste ist das grösste.
+      lastTalkDate: all.reduce((latest, date) => (date > latest ? date : latest)),
+    })
+  }
+
+  return {
+    talks,
+    prayers,
+    members: memberRows,
+    known,
+    unmatched: [...unmatched.entries()]
+      .map(([fullName, count]) => ({ fullName, count }))
+      .sort((a, b) => b.count - a.count || a.fullName.localeCompare(b.fullName)),
+    crowded,
   }
 }

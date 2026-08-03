@@ -1,9 +1,29 @@
-import { collection, doc, serverTimestamp, writeBatch, Timestamp } from 'firebase/firestore'
+import {
+  collection,
+  doc,
+  getDocs,
+  query,
+  serverTimestamp,
+  where,
+  writeBatch,
+  Timestamp,
+  type DocumentReference,
+} from 'firebase/firestore'
 import { db, COLLECTIONS } from '@/lib/firebase'
+import { toDate } from '@/lib/dates'
 import { requireOnline } from '@/lib/sync'
 import { parseDirectoryDate } from '@/services/importPaste'
-import type { CallingRow, CallingsPreview, MinisteringPreview } from '@/services/importMatch'
-import type { Calling } from '@/lib/types'
+import { fromIsoDate, isoDate } from '@/services/importHistory'
+import { prayerDocId } from '@/services/prayers'
+import type {
+  CallingRow,
+  CallingsPreview,
+  HistoryPreview,
+  KnownPrayer,
+  KnownTalk,
+  MinisteringPreview,
+} from '@/services/importMatch'
+import type { Calling, Prayer, Talk } from '@/lib/types'
 
 /**
  * Der letzte Schritt der Text-Importe: die geprüfte Vorschau nach
@@ -174,4 +194,145 @@ export async function runMinisteringImport(
   }
 
   return { created: 0, updated, skipped: preview.skipCount }
+}
+
+/* ------------------------------------------------------------------ */
+/* Verlauf von Ansprachen und Gebeten                                  */
+/* ------------------------------------------------------------------ */
+
+export interface HistoryOutcome {
+  talks: number
+  prayers: number
+  members: number
+}
+
+/** Ein Schreibvorgang des Verlaufs – neue Dokumente und nachgeführte Statistik. */
+interface HistoryWrite {
+  mode: 'set' | 'update'
+  ref: DocumentReference
+  data: Record<string, unknown>
+}
+
+/**
+ * Liest den bereits erfassten Verlauf – einmal und vollständig.
+ *
+ * Ohne Obergrenze, anders als die Abfragen der Ansichten: Der Import muss
+ * den ganzen Bestand kennen. Sonst zählte er Ansprachen doppelt, die knapp
+ * ausserhalb eines Ausschnitts lägen, und überschriebe Gebete, die er nicht
+ * gesehen hat.
+ */
+export async function loadKnownHistory(): Promise<{
+  talks: KnownTalk[]
+  prayers: KnownPrayer[]
+}> {
+  const [talks, prayers] = await Promise.all([
+    getDocs(query(collection(db, COLLECTIONS.talks), where('status', '==', 'held'))),
+    getDocs(collection(db, COLLECTIONS.prayers)),
+  ])
+
+  const asIsoDate = (value: unknown): string | null => {
+    const date = toDate(value as Timestamp | null)
+    return date ? isoDate(date.getFullYear(), date.getMonth() + 1, date.getDate()) : null
+  }
+
+  return {
+    talks: talks.docs.flatMap((entry) => {
+      const talk = entry.data() as Talk
+      const date = asIsoDate(talk.date)
+      return date ? [{ memberId: talk.memberId, date }] : []
+    }),
+    prayers: prayers.docs.flatMap((entry) => {
+      const prayer = entry.data() as Prayer
+      const date = asIsoDate(prayer.date)
+      return date ? [{ date, slot: prayer.slot, memberId: prayer.memberId }] : []
+    }),
+  }
+}
+
+/**
+ * Schreibt den eingelesenen Verlauf.
+ *
+ * Die Dokument-IDs entstehen aus Datum und Person, nicht zufällig. Damit
+ * bleibt ein zweiter Durchlauf folgenlos: Er schreibt dieselben Dokumente
+ * noch einmal, statt den Verlauf zu verdoppeln.
+ *
+ * Zum Schluss werden `lastTalkDate` und `talkCount` der betroffenen
+ * Personen gesetzt – nicht hochgezählt, sondern auf den Wert, der sich aus
+ * Bestand und Import zusammen ergibt. Genau diese beiden Felder treiben die
+ * Frage «wer war lange nicht dran».
+ */
+export async function runHistoryImport(
+  preview: HistoryPreview,
+  onProgress?: (done: number, total: number) => void,
+): Promise<HistoryOutcome> {
+  requireOnline()
+
+  const writes: HistoryWrite[] = [
+    ...preview.talks.map((talk): HistoryWrite => {
+      return {
+        mode: 'set',
+        ref: doc(db, COLLECTIONS.talks, `${talk.date}_${talk.memberId}`),
+        data: {
+          memberId: talk.memberId,
+          memberName: talk.memberName,
+          date: Timestamp.fromDate(fromIsoDate(talk.date)),
+          slot: talk.slot,
+          kind: 'talk',
+          status: 'held',
+          topic: '',
+          notes: talk.note,
+          askedById: null,
+          askedAt: null,
+          createdAt: serverTimestamp(),
+          updatedAt: serverTimestamp(),
+        },
+      }
+    }),
+    ...preview.prayers.map((prayer): HistoryWrite => {
+      return {
+        mode: 'set',
+        ref: doc(db, COLLECTIONS.prayers, prayerDocId(prayer.date, prayer.slot)),
+        data: {
+          date: Timestamp.fromDate(fromIsoDate(prayer.date)),
+          slot: prayer.slot,
+          memberId: prayer.memberId,
+          memberName: prayer.memberName,
+          notes: '',
+          updatedAt: serverTimestamp(),
+        },
+      }
+    }),
+    ...preview.members.map((member): HistoryWrite => {
+      return {
+        mode: 'update',
+        ref: doc(db, COLLECTIONS.members, member.memberId),
+        data: {
+          talkCount: member.talkCount,
+          lastTalkDate: member.lastTalkDate
+            ? Timestamp.fromDate(fromIsoDate(member.lastTalkDate))
+            : null,
+          updatedAt: serverTimestamp(),
+        },
+      }
+    }),
+  ]
+
+  for (let offset = 0; offset < writes.length; offset += CHUNK_SIZE) {
+    const chunk = writes.slice(offset, offset + CHUNK_SIZE)
+    const batch = writeBatch(db)
+
+    for (const write of chunk) {
+      if (write.mode === 'set') batch.set(write.ref, write.data)
+      else batch.update(write.ref, write.data)
+    }
+
+    await batch.commit()
+    onProgress?.(Math.min(offset + chunk.length, writes.length), writes.length)
+  }
+
+  return {
+    talks: preview.talks.length,
+    prayers: preview.prayers.length,
+    members: preview.members.length,
+  }
 }

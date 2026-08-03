@@ -162,6 +162,15 @@ alter Termin überschreibt dabei nie ein neueres Datum.
 Statusfolge: *Vorgesehen → Angefragt → Zugesagt → Gehalten*
 (mit *Abgesagt* und *Gestrichen* als Ausstieg).
 
+**Verlauf übernehmen.** Die Vorschlagsliste ist nur so gut wie das, was sie
+über die Vergangenheit weiss – ohne Verlauf hielte sie anfangs alle für gleich
+lange nicht dran. Deshalb lässt sich die bisher geführte Excel-Tabelle
+einmalig einlesen: ein Blatt je Jahr, zwei Spalten je Monat, «A» für die
+Ansprache und «G» für das Gebet. Die Zählweise hat unterwegs gewechselt – bis
+2018 stand dort der wievielte Sonntag des Monats, danach der Tag selbst –,
+erkannt wird sie am Inhalt statt an der Beschriftung. Handnotizen ohne Datum
+werden gemeldet, nicht gedeutet.
+
 ### 3.3 Berufungsmanagement
 
 Berufungen durchlaufen feste Schritte, und jeder hat sein Datum:
@@ -215,10 +224,11 @@ eingefügte Seite die vollständige Wahrheit, beide Listen werden ersetzt statt
 ergänzt.
 
 **Import (alle 3–4 Monate).** Ein vierstufiger Assistent, erreichbar über
-*Mitglieder → Import* – nicht prominent, aber auffindbar. Von dort führen drei
-Reiter zu den drei Listen, die sich aus dem LCR übernehmen lassen: Mitglieder,
-Berufungen, Betreuung. Die Mitglieder kommen zuerst, weil die beiden anderen
-ihre Einträge erfassten Personen zuordnen und alles Unbekannte überspringen:
+*Mitglieder → Import* – nicht prominent, aber auffindbar. Von dort führen
+Reiter zu allem, was sich von aussen übernehmen lässt: Mitglieder, Berufungen
+und Betreuung aus dem LCR, dazu der einmalige Verlauf aus der bisherigen
+Excel-Tabelle. Die Mitglieder kommen zuerst, weil alle übrigen ihre Einträge
+erfassten Personen zuordnen und alles Unbekannte überspringen:
 
 1. **Quelle** – die aus dem LCR-Mitgliederverzeichnis kopierte Liste in ein
    freies Textfeld einfügen, oder `.xlsx` bzw. `.csv` per Auswahl und
@@ -373,6 +383,8 @@ immer dasselbe: Termin verstrichen.
   und Vorschau; CSV-Export
 - Import der Berufungen und der Betreuungsaufträge aus dem LCR; beide ersetzen
   ihren Bereich, statt ihn zu ergänzen
+- Einmaliger Import des Ansprachen- und Gebetsverlaufs aus der bisherigen
+  Excel-Tabelle, damit die Vorschlagslisten von Anfang an stimmen
 - Ansprachen und Zeugnisse mit Vorschlagsliste, Verlauf und Zusatzplätzen
 - Abendmahlsversammlung: Leitung, Bekanntmachungen, Angelegenheiten, Musik,
   Gebet – mit Ablauf zum Ausdrucken

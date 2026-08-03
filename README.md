@@ -347,6 +347,47 @@ zusätzlich abschalten.
 
 ---
 
+## Verlauf aus der bisherigen Excel-Tabelle
+
+**Import → Verlauf**, einmalig.
+
+Ohne Verlauf beginnt die App bei null: Sie hielte alle für gleich lange nicht
+dran und bräuchte Jahre, bis die Vorschlagslisten wieder etwas taugen. Der
+Import holt nach, was bisher in der Tabelle *AMV_AnsprGeb* stand – ein Blatt je
+Jahr, eine Zeile je Person, zwei Spalten je Monat: «A» für die Ansprache, «G»
+für das Gebet.
+
+Die Datei wird als `.xlsx` eingelesen, alle Jahresblätter auf einmal. Gelesen
+wird das Jahr aus dem Blattnamen, der Monat aus der Spaltenüberschrift und der
+Termin aus der Zelle. **Die Zählweise hat unterwegs gewechselt:** Bis 2018 stand
+dort, der wievielte Sonntag des Monats es war, ab 2019 der Tag selbst. Erkannt
+wird das am Inhalt – ein Monat hat höchstens fünf Sonntage, Tagesangaben liegen
+zu über vier Fünfteln darüber. Die alte Beschriftung «x-ter Sonntag im entspr.
+Monat» steht bis heute im Kopf jedes Blattes und taugt deshalb nicht als
+Merkmal.
+
+Was von Hand danebengeschrieben wurde, wird nicht gedeutet: «K» neben dem Tag
+kommt als Notiz «Kinderansprache» mit, zwei Termine in einer Zelle («10, 31»)
+ergeben zwei Einträge, und Vermerke ohne Datum («v» für vorgesehen, «auf
+Mission») erscheinen in der Vorschau als aufklappbare Liste zum Nachschauen.
+Zeilen, in denen statt einer Person eine Rolle steht – «Besucher»,
+«Pfahlpräsident» –, werden übersprungen.
+
+Zwei Grenzen sind zu kennen:
+
+- **Gebete kennen pro Sonntag nur zwei Plätze**, Anfang und Schluss, und die
+  Tabelle sagt nicht, welcher es war. Vergeben wird der Reihe nach; wo an einem
+  Sonntag mehr als zwei Personen stehen, meldet die Vorschau die übrigen. Bei
+  Ansprachen gibt es diese Grenze nicht.
+- **Die Gebets-Auswertung liest die jüngsten 400 Einträge.** Wer länger nicht
+  dran war, erscheint dort als «noch nie» – und steht damit ohnehin zuoberst.
+
+Der Import ist wiederholbar: Die Dokument-IDs entstehen aus Datum und Person,
+ein zweiter Durchlauf schreibt deshalb dieselben Einträge noch einmal, statt den
+Verlauf zu verdoppeln. Was in der App gepflegt wurde, bleibt unangetastet.
+
+---
+
 ## Rollen
 
 Die Rolle beschreibt die **Aufgabe** in der Bischofschaft, nicht den Umfang

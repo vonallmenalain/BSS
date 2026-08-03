@@ -1,19 +1,22 @@
 import { NavLink } from 'react-router-dom'
-import { ClipboardList, Award, HeartHandshake } from 'lucide-react'
+import { ClipboardList, Award, HeartHandshake, History } from 'lucide-react'
 import { cn } from '@/lib/utils'
 
 /**
- * Die drei Listen, die sich aus dem LCR übernehmen lassen.
+ * Was sich von aussen übernehmen lässt.
  *
- * Sie stehen nebeneinander, weil sie zusammengehören: Nach einem Wechsel
- * in der Gemeinde ist meist alles drei fällig, und die Reihenfolge ist
- * nicht beliebig – Berufungen und Betreuung ordnen ihre Einträge den
- * erfassten Personen zu, deshalb kommen die Mitglieder zuerst.
+ * Die ersten drei stammen aus dem LCR und gehören zusammen: Nach einem
+ * Wechsel in der Gemeinde ist meist alles drei fällig, und die Reihenfolge
+ * ist nicht beliebig – Berufungen und Betreuung ordnen ihre Einträge den
+ * erfassten Personen zu, deshalb kommen die Mitglieder zuerst. Der Verlauf
+ * kommt aus der bisherigen Excel-Tabelle und wird nur einmal gebraucht,
+ * steht aber am selben Ort, weil man ihn dort sucht.
  */
 const TABS = [
   { to: '/import', label: 'Mitglieder', icon: ClipboardList },
   { to: '/import/berufungen', label: 'Berufungen', icon: Award },
   { to: '/import/betreuung', label: 'Betreuung', icon: HeartHandshake },
+  { to: '/import/verlauf', label: 'Verlauf', icon: History },
 ]
 
 export function ImportNav() {

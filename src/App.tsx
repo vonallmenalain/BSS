@@ -30,6 +30,9 @@ const ImportCallings = lazy(() =>
 const ImportMinistering = lazy(() =>
   import('@/pages/ImportLcr').then((m) => ({ default: m.ImportMinistering })),
 )
+const ImportHistory = lazy(() =>
+  import('@/pages/ImportHistory').then((m) => ({ default: m.ImportHistory })),
+)
 
 /* Abendmahlsversammlung – der Rahmen hält den gewählten Sonntag,
    die Unterseiten werden bei Bedarf nachgeladen. */
@@ -208,6 +211,14 @@ export default function App() {
                   element={
                     <Suspense fallback={<LoadingScreen />}>
                       <ImportMinistering />
+                    </Suspense>
+                  }
+                />
+                <Route
+                  path="import/verlauf"
+                  element={
+                    <Suspense fallback={<LoadingScreen />}>
+                      <ImportHistory />
                     </Suspense>
                   }
                 />

@@ -78,7 +78,13 @@ function fold(text: string): string {
     .trim()
 }
 
-function monthIndex(token: string): number | null {
+/**
+ * Monatsname zu Index (0 = Januar), sonst `null`.
+ *
+ * Erkennt die abgekürzten wie die ausgeschriebenen Formen, deutsch und
+ * englisch: «Mär.», «März», «Sept.», «September», «May».
+ */
+export function parseMonthName(token: string): number | null {
   const key = fold(token)
   return key in MONTHS ? MONTHS[key] : null
 }
@@ -100,13 +106,13 @@ export function parseDirectoryDate(value: string): Date | null {
 
   const dmy = text.match(/^(\d{1,2})\.?\s+(\p{L}+)\.?\s+(\d{4})$/u)
   if (dmy) {
-    const month = monthIndex(dmy[2])
+    const month = parseMonthName(dmy[2])
     if (month !== null) return makeDate(Number(dmy[3]), month, Number(dmy[1]))
   }
 
   const mdy = text.match(/^(\p{L}+)\.?\s+(\d{1,2})\.?,?\s+(\d{4})$/u)
   if (mdy) {
-    const month = monthIndex(mdy[1])
+    const month = parseMonthName(mdy[1])
     if (month !== null) return makeDate(Number(mdy[3]), month, Number(mdy[2]))
   }
 
