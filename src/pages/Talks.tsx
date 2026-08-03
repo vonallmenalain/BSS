@@ -3,6 +3,8 @@ import { Link } from 'react-router-dom'
 import {
   CalendarPlus,
   Check,
+  ChevronDown,
+  ChevronUp,
   Clock,
   Mic,
   Phone,
@@ -122,6 +124,33 @@ export function Talks() {
     }
   }
 
+  /**
+   * Eine Ansprache eine Position weiter vor oder zurück.
+   *
+   * Getauscht werden die Positionen selbst – dieselbe Zahl, nach der auch der
+   * Ablauf unter «Leitung» ordnet. Damit stimmen beide Ansichten überein,
+   * gleich von welcher Seite aus verschoben wurde.
+   */
+  const moveTalk = async (
+    slots: { slot: number; talk: Talk | null }[],
+    slot: number,
+    delta: number,
+  ) => {
+    const target = slot + delta
+    const talk = slots.find((entry) => entry.slot === slot)?.talk
+    if (!talk || target < 1 || target > slots.length) return
+    const other = slots.find((entry) => entry.slot === target)?.talk ?? null
+    try {
+      await Promise.all([
+        updateTalk(talk.id, { slot: target }),
+        ...(other ? [updateTalk(other.id, { slot })] : []),
+      ])
+    } catch (error) {
+      console.error(error)
+      toast.error('Reihenfolge konnte nicht gespeichert werden.')
+    }
+  }
+
   // Die beiden Filter gehören der Seite, nicht der Liste: Sie bestimmen,
   // wer überhaupt bewertet wird.
   const [onlyActive, setOnlyActive] = useState(true)
@@ -211,7 +240,13 @@ export function Talks() {
                   {sunday.slots.map(({ slot, talk, extra }) => (
                     <li key={slot}>
                       {talk ? (
-                        <TalkRow talk={talk} onEdit={() => setEditTalk(talk)} />
+                        <TalkRow
+                          talk={talk}
+                          onEdit={() => setEditTalk(talk)}
+                          first={slot === 1}
+                          last={slot === sunday.slots.length}
+                          onMove={(delta) => void moveTalk(sunday.slots, slot, delta)}
+                        />
                       ) : (
                         <button
                           type="button"
@@ -313,49 +348,85 @@ export function Talks() {
 
 /* ------------------------------------------------------------------ */
 
-function TalkRow({ talk, onEdit }: { talk: Talk; onEdit: () => void }) {
+function TalkRow({
+  talk,
+  onEdit,
+  first,
+  last,
+  onMove,
+}: {
+  talk: Talk
+  onEdit: () => void
+  first: boolean
+  last: boolean
+  onMove: (delta: number) => void
+}) {
   const { membersById } = useData()
   const member = membersById.get(talk.memberId)
   const kind: TalkKind = talk.kind ?? 'talk'
 
   return (
-    <button
-      type="button"
-      onClick={onEdit}
-      className="flex w-full items-center gap-3 rounded-lg border border-slate-200 px-3 py-2.5 text-left transition hover:bg-slate-50 dark:border-slate-700 dark:hover:bg-slate-800/50"
-    >
-      <span className="tabular grid size-7 shrink-0 place-items-center rounded-full bg-slate-100 text-xs font-semibold dark:bg-slate-800">
-        {talk.slot}
-      </span>
-      <Avatar name={talk.memberName} id={talk.memberId} size="sm" />
-      <span className="min-w-0 flex-1">
-        <span className="block truncate text-sm font-medium">
-          {talk.memberName}
-          {kind === 'testimony' && (
-            <span className="ml-1.5 align-middle text-xs font-normal text-slate-500 dark:text-slate-400">
-              · {TALK_KIND_LABELS.testimony}
+    <div className="flex items-center gap-1 rounded-lg border border-slate-200 pr-1 dark:border-slate-700">
+      <button
+        type="button"
+        onClick={onEdit}
+        className="flex min-w-0 flex-1 items-center gap-3 rounded-lg px-3 py-2.5 text-left transition hover:bg-slate-50 dark:hover:bg-slate-800/50"
+      >
+        <span className="tabular grid size-7 shrink-0 place-items-center rounded-full bg-slate-100 text-xs font-semibold dark:bg-slate-800">
+          {talk.slot}
+        </span>
+        <Avatar name={talk.memberName} id={talk.memberId} size="sm" />
+        <span className="min-w-0 flex-1">
+          <span className="block truncate text-sm font-medium">
+            {talk.memberName}
+            {kind === 'testimony' && (
+              <span className="ml-1.5 align-middle text-xs font-normal text-slate-500 dark:text-slate-400">
+                · {TALK_KIND_LABELS.testimony}
+              </span>
+            )}
+          </span>
+          {talk.topic && (
+            <span className="block truncate text-xs text-slate-500 dark:text-slate-400">
+              {talk.topic}
             </span>
           )}
         </span>
-        {talk.topic && (
-          <span className="block truncate text-xs text-slate-500 dark:text-slate-400">
-            {talk.topic}
-          </span>
-        )}
-      </span>
+        <TalkStatusBadge status={talk.status} />
+      </button>
+
       {member?.mobile && (
         <a
           href={telHref(member.mobile) ?? '#'}
-          onClick={(event) => event.stopPropagation()}
-          className="btn-ghost hidden p-1.5 sm:inline-flex"
+          className="btn-ghost hidden shrink-0 p-1.5 sm:inline-flex"
           aria-label={`${talk.memberName} anrufen`}
           title={formatPhone(member.mobile)}
         >
           <Phone className="size-3.5" aria-hidden />
         </a>
       )}
-      <TalkStatusBadge status={talk.status} />
-    </button>
+
+      {/* Dieselbe Reihenfolge wie im Ablauf unter «Leitung». */}
+      <div className="flex shrink-0 flex-col">
+        <button
+          type="button"
+          className="btn-ghost p-0.5"
+          onClick={() => onMove(-1)}
+          disabled={first}
+          aria-label={`${talk.memberName} nach vorne`}
+        >
+          <ChevronUp className="size-4" aria-hidden />
+        </button>
+        <button
+          type="button"
+          className="btn-ghost p-0.5"
+          onClick={() => onMove(1)}
+          disabled={last}
+          aria-label={`${talk.memberName} nach hinten`}
+        >
+          <ChevronDown className="size-4" aria-hidden />
+        </button>
+      </div>
+    </div>
   )
 }
 

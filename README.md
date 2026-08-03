@@ -92,7 +92,7 @@ Alle weiteren Konten schaltest du danach in der App frei:
 
 ```bash
 npm run dev          # Entwicklungsserver auf http://localhost:5173
-npm run test:import  # Parser und Abgleich der Text-Importe prüfen
+npm run test:import  # Parser, Namensabgleich und Reihenfolge des Ablaufs prüfen
 npm run test:rules   # Zugriffsregeln gegen den Emulator prüfen
 npm run build        # Produktions-Build nach dist/
 npm run preview      # Build lokal prüfen
@@ -231,20 +231,33 @@ für alle Unterpunkte.
 
 | Unterpunkt            | Wofür |
 | --------------------- | ----- |
-| **Leitung**           | Der ganze Ablauf auf einer Seite, zum Ausdrucken fürs Pult |
-| **Bekanntmachungen**  | Liste pro Sonntag, in der Reihenfolge des Vorlesens |
+| **Leitung**           | Der ganze Ablauf auf einer Seite – hier änderbar, zum Ausdrucken fürs Pult |
+| **Bekanntmachungen**  | Liste pro Sonntag, in der Reihenfolge des Vorlesens; speichert von selbst |
 | **Angelegenheiten**   | Bestätigungen, Entlassungen, Segnungen, Konfirmierungen |
 | **Ansprachen**        | Programmplätze vergeben, Vorschlagsliste, Verlauf |
 | **Musik**             | Drei bis vier Lieder und Musikeinlagen |
 | **Gebet**             | Anfangs- und Schlussgebet, mit «zuletzt gebetet» |
 
-**Leitung** erfasst nichts doppelt. Ansprachen, Bekanntmachungen, Lieder und
-Gebete stammen aus ihren Bereichen und erscheinen dort automatisch; der Ablauf
-folgt dem Handbuch (Abschnitt 29.2.1), vereinfacht auf das, was am Pult
-gebraucht wird. Anpassbar ist an dieser Stelle, wer leitet und präsidiert, wen
-man begrüsst – und mit den Pfeiltasten die Reihenfolge von Ansprachen,
-Zeugnissen, Zwischenlied und Musikeinlagen. Was noch fehlt, steht als kurze
-Liste zuoberst.
+**Leitung** zeigt den ganzen Ablauf – und alles darin lässt sich hier ändern:
+Vorsitz und Begrüssung, Bekanntmachungen, Angelegenheiten, Lieder, Gebete,
+Ansprachen und Musikeinlagen. Der Knopf **Bearbeiten** schaltet zwischen dem
+reinen Programm (so wird es gedruckt) und den Eingabefeldern um; gespeichert
+wird laufend, ohne Speichern-Knopf. Was noch fehlt, steht als kurze Liste
+zuoberst.
+
+Erfasst wird trotzdem nichts doppelt: Es sind dieselben Daten wie in den
+übrigen Bereichen. Eine hier eingefügte Ansprache steht auch unter
+**Ansprachen**, ein dort gewähltes Lied auch hier – und beide Seiten ordnen
+gleich. Die Reihenfolge der Ansprachen ist ihre Position (`slot`), nach der
+auch **Ansprachen** sortiert; wird sie auf der einen Seite verschoben, folgt
+die andere. Zwischenlied und Musikeinlagen merken sich, nach wie vielen
+Ansprachen sie folgen. Ohne Zutun ergibt das den Normalfall: eine Ansprache,
+das Zwischenlied, die Schlussansprache.
+
+Der Ablauf folgt dem Handbuch (Abschnitt 29.2.1), gekürzt auf das, was am Pult
+gebraucht wird: Vorspiel, Willkommensgruss und Nachspiel stehen nicht im
+Programm, sie ergeben sich von selbst. Die Nummerierung entsteht aus der Liste
+– ein zusätzlicher Programmpunkt verschiebt alles Folgende.
 
 **Ansprachen und Zeugnisse.** Wie viele Ansprachen eine Versammlung hat, steht
 als Standard in den Einstellungen. Für einen einzelnen Sonntag lässt sich mehr
@@ -507,7 +520,7 @@ src/
 │   └── UpdatePrompt.tsx Hinweis auf neue Version
 ├── contexts/            Anmeldung, Stammdaten, Meldungen
 ├── hooks/               Firestore-Abfragen, lokale Einstellungen, Uhrzeit
-├── lib/                 Firebase-Anbindung, Typen, Datums- und Hilfsfunktionen
+├── lib/                 Firebase-Anbindung, Typen, Datums-, Programm- und Hilfsfunktionen
 ├── pages/
 │   ├── sacrament/       Leitung, Bekanntmachungen, Angelegenheiten, Musik, Gebet
 │   └── …                Eine Datei pro übriger Ansicht

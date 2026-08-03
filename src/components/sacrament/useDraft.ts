@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useCallback, useEffect, useRef, useState } from 'react'
 
 /**
  * Entwurf gegenüber dem Stand in Firestore.
@@ -44,5 +44,113 @@ export function useDraft<T>(serverValue: T): Draft<T> {
     // danach stehen – er ist der Bezugspunkt für die Konfliktprüfung.
     set: (next: T) => setDraft((current) => ({ base: current?.base ?? serverJson, value: next })),
     reset: () => setDraft(null),
+  }
+}
+
+/* ------------------------------------------------------------------ */
+/* Entwurf, der sich selbst speichert                                  */
+/* ------------------------------------------------------------------ */
+
+export interface AutoDraft<T> extends Draft<T> {
+  /** Ein Schreibvorgang läuft gerade. */
+  saving: boolean
+  /** Anstehende Änderung sofort schreiben, ohne die Pause abzuwarten. */
+  flush: () => Promise<void>
+}
+
+/**
+ * Entwurf, der kurz nach der letzten Eingabe von selbst speichert.
+ *
+ * Wer eine Bekanntmachung eintippt, soll nicht daran denken müssen, danach
+ * noch auf «Speichern» zu drücken. Geschrieben wird deshalb nach einer kurzen
+ * Tippause – und spätestens, wenn die Seite verlassen wird oder der Browser
+ * in den Hintergrund geht. Firestore hält die Änderung ohnehin sofort lokal
+ * fest, ein abrupt geschlossener Deckel kostet also nichts.
+ *
+ * Die Konfliktprüfung aus `useDraft` bleibt erhalten; sie greift jetzt nur
+ * noch für die Sekunde zwischen Eingabe und Schreibvorgang.
+ */
+export function useAutoDraft<T>(
+  serverValue: T,
+  save: (value: T) => Promise<unknown>,
+  options: { delay?: number; onError?: (error: unknown) => void } = {},
+): AutoDraft<T> {
+  const { delay = 700, onError } = options
+  const draft = useDraft(serverValue)
+  const [saving, setSaving] = useState(false)
+
+  /*
+   * Alles Veränderliche liegt in Refs: Der Aufräumer beim Verlassen der Seite
+   * läuft genau einmal und sähe sonst den Stand vom ersten Rendern statt den
+   * letzten Tastendruck.
+   */
+  const pending = useRef<{ value: T } | null>(null)
+  const timer = useRef<ReturnType<typeof setTimeout> | null>(null)
+  const latest = useRef({ save, onError, reset: draft.reset, set: draft.set })
+
+  useEffect(() => {
+    latest.current = { save, onError, reset: draft.reset, set: draft.set }
+  })
+
+  const flush = useCallback(async () => {
+    if (timer.current) {
+      clearTimeout(timer.current)
+      timer.current = null
+    }
+    const waiting = pending.current
+    if (!waiting) return
+    pending.current = null
+
+    setSaving(true)
+    try {
+      await latest.current.save(waiting.value)
+      // Nur zurücksetzen, wenn zwischenzeitlich nichts Neues getippt wurde –
+      // sonst überschriebe der Serverstand die frischere Eingabe.
+      if (!pending.current) latest.current.reset()
+    } catch (error) {
+      // Der Entwurf bleibt bestehen und wird beim nächsten Anlauf erneut
+      // versucht; verloren geht dadurch nichts.
+      pending.current = waiting
+      console.error(error)
+      latest.current.onError?.(error)
+    } finally {
+      setSaving(false)
+    }
+  }, [])
+
+  const set = useCallback(
+    (next: T) => {
+      pending.current = { value: next }
+      latest.current.set(next)
+      if (timer.current) clearTimeout(timer.current)
+      timer.current = setTimeout(() => void flush(), delay)
+    },
+    [delay, flush],
+  )
+
+  useEffect(() => {
+    const hide = () => void flush()
+    const onVisibility = () => {
+      if (document.visibilityState === 'hidden') hide()
+    }
+    document.addEventListener('visibilitychange', onVisibility)
+    window.addEventListener('pagehide', hide)
+    return () => {
+      document.removeEventListener('visibilitychange', onVisibility)
+      window.removeEventListener('pagehide', hide)
+      void flush()
+    }
+  }, [flush])
+
+  return {
+    ...draft,
+    set,
+    reset: () => {
+      pending.current = null
+      if (timer.current) clearTimeout(timer.current)
+      draft.reset()
+    },
+    saving,
+    flush,
   }
 }

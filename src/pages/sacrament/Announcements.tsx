@@ -1,9 +1,9 @@
-import { useState } from 'react'
+import { useLocation, useNavigate } from 'react-router-dom'
 import { ChevronDown, ChevronUp, Megaphone, Plus, Trash2 } from 'lucide-react'
 import { useToast } from '@/contexts/ToastContext'
 import { EmptyState } from '@/components/ui/Feedback'
 import { ConflictNotice, SectionHeader, useSacrament } from '@/components/sacrament/SacramentLayout'
-import { useDraft } from '@/components/sacrament/useDraft'
+import { useAutoDraft } from '@/components/sacrament/useDraft'
 import {
   moveInList,
   newAnnouncement,
@@ -18,31 +18,42 @@ import type { AnnouncementEntry } from '@/lib/types'
  * Das Handbuch verlangt, sie auf ein Minimum zu beschränken – deshalb steht
  * die Zahl der Einträge gut sichtbar oben. Die Reihenfolge ist die, in der sie
  * am Pult vorgelesen werden, und erscheint genauso unter «Leitung».
+ *
+ * Gespeichert wird laufend: kurz nach dem letzten Tastendruck und spätestens
+ * beim Verlassen der Seite. «Fertig» räumt leere Zeilen weg und bringt einen
+ * dorthin zurück, wo man hergekommen ist.
  */
 export function Announcements() {
   const { date, meeting } = useSacrament()
+  const navigate = useNavigate()
+  const location = useLocation()
   const toast = useToast()
 
-  const draft = useDraft<AnnouncementEntry[]>(meeting?.announcements ?? [])
-  const [saving, setSaving] = useState(false)
+  const draft = useAutoDraft<AnnouncementEntry[]>(
+    meeting?.announcements ?? [],
+    (value) => saveSacramentMeeting(date, { announcements: value }),
+    { onError: () => toast.error('Speichern fehlgeschlagen.') },
+  )
 
   const entries = draft.value
   const change = draft.set
 
-  const save = async () => {
-    setSaving(true)
+  const done = async () => {
+    // Leere Einträge fallen zum Schluss weg – so bleibt die Liste sauber.
+    const cleaned = entries.filter((entry) => entry.text.trim())
     try {
-      // Leere Einträge fallen beim Speichern weg – so bleibt die Liste sauber.
-      const cleaned = entries.filter((entry) => entry.text.trim())
       const outcome = await saveSacramentMeeting(date, { announcements: cleaned })
       draft.reset()
       toast.saved('Bekanntmachungen gespeichert.', outcome)
     } catch (error) {
       console.error(error)
       toast.error('Speichern fehlgeschlagen.')
-    } finally {
-      setSaving(false)
+      return
     }
+    // Zurück, wo man hergekommen ist. Wer die Seite direkt aufgerufen hat,
+    // landet beim Ablauf – dort laufen die Bekanntmachungen zusammen.
+    if (location.key === 'default') navigate('/abendmahl/leitung')
+    else navigate(-1)
   }
 
   return (
@@ -64,13 +75,8 @@ export function Announcements() {
               <Plus className="size-4" aria-hidden />
               Bekanntmachung
             </button>
-            <button
-              type="button"
-              className="btn-primary"
-              onClick={() => void save()}
-              disabled={!draft.dirty || saving}
-            >
-              {saving ? 'Wird gespeichert …' : draft.conflict ? 'Trotzdem speichern' : 'Speichern'}
+            <button type="button" className="btn-primary" onClick={() => void done()}>
+              Speichern
             </button>
           </>
         }
@@ -160,11 +166,9 @@ export function Announcements() {
         </ul>
       )}
 
-      {draft.dirty && (
-        <p className="mt-3 text-center text-xs text-amber-700 dark:text-amber-400">
-          Ungespeicherte Änderungen
-        </p>
-      )}
+      <p className="mt-3 text-center text-xs text-slate-500 dark:text-slate-400">
+        {draft.saving ? 'Wird gespeichert …' : 'Änderungen werden automatisch gespeichert.'}
+      </p>
     </>
   )
 }
