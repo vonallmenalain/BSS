@@ -154,6 +154,11 @@ export const COMMON_POSITIONS: Record<Organization, string[]> = {
   music: ['Gemeindemusikleiter', 'Organist', 'Chorleiter'],
   temple_family_history: ['Tempel- und Familienforschungsleiter', 'Berater Familienforschung'],
   missionary: ['Missionsleiter der Gemeinde', 'Missionarsbetreuer'],
+  welfare: [
+    'Spezialist für Wohlfahrt und Eigenständigkeit',
+    'Moderator einer Gesprächsgruppe für Eigenständigkeit',
+    'Behindertenbeauftragter',
+  ],
   ward: [
     'Gemeindemissionsleiter',
     'Beauftragter Öffentlichkeitsarbeit',

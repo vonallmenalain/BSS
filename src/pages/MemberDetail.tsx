@@ -85,7 +85,10 @@ export function MemberDetail() {
 
   const age = getAge(member.birthDate)
   const months = monthsSince(member.lastTalkDate)
-  const contactPerson = member.contactPersonId ? membersById.get(member.contactPersonId) : undefined
+  const resolve = (ids: string[] | undefined): Member[] =>
+    (ids ?? []).map((id) => membersById.get(id)).filter((m): m is Member => m !== undefined)
+  const partners = resolve(member.ministeringPartnerIds)
+  const assigned = resolve(member.ministeringAssignedIds)
 
   return (
     <>
@@ -203,20 +206,14 @@ export function MemberDetail() {
             </p>
           ) : (
             <p className="text-sm text-slate-400">
-              Keine Notiz erfasst. Hier passen Hinweise zur Betreuung, Kontaktperson oder
-              Besonderheiten hinein.
+              Keine Notiz erfasst. Hier passen Hinweise zur Betreuung oder Besonderheiten hinein.
             </p>
           )}
-          {contactPerson && (
-            <p className="mt-3 border-t border-slate-200 pt-3 text-sm dark:border-slate-800">
-              <span className="text-slate-500 dark:text-slate-400">Kontaktperson: </span>
-              <Link
-                to={`/mitglieder/${contactPerson.id}`}
-                className="text-brand-600 dark:text-brand-300 hover:underline"
-              >
-                {contactPerson.firstName} {contactPerson.lastName}
-              </Link>
-            </p>
+          {(partners.length > 0 || assigned.length > 0) && (
+            <div className="mt-3 space-y-2 border-t border-slate-200 pt-3 text-sm dark:border-slate-800">
+              <MemberLinkList label="Betreuungspartner" members={partners} />
+              <MemberLinkList label="Betreuungsauftrag" members={assigned} />
+            </div>
           )}
         </section>
 
@@ -323,7 +320,8 @@ interface FormState {
   status: MemberStatus
   availableForTalks: boolean
   notes: string
-  contactPersonId: string[]
+  ministeringPartnerIds: string[]
+  ministeringAssignedIds: string[]
   lastTalkDate: string
   tags: string
 }
@@ -342,7 +340,8 @@ const EMPTY: FormState = {
   status: 'active',
   availableForTalks: true,
   notes: '',
-  contactPersonId: [],
+  ministeringPartnerIds: [],
+  ministeringAssignedIds: [],
   lastTalkDate: '',
   tags: '',
 }
@@ -378,7 +377,8 @@ export function MemberForm({
             status: member.status,
             availableForTalks: member.availableForTalks ?? true,
             notes: member.notes ?? '',
-            contactPersonId: member.contactPersonId ? [member.contactPersonId] : [],
+            ministeringPartnerIds: member.ministeringPartnerIds ?? [],
+            ministeringAssignedIds: member.ministeringAssignedIds ?? [],
             lastTalkDate: toDateInput(member.lastTalkDate),
             tags: (member.tags ?? []).join(', '),
           }
@@ -412,7 +412,8 @@ export function MemberForm({
         status: form.status,
         availableForTalks: form.availableForTalks,
         notes: form.notes.trim(),
-        contactPersonId: form.contactPersonId[0] ?? null,
+        ministeringPartnerIds: form.ministeringPartnerIds,
+        ministeringAssignedIds: form.ministeringAssignedIds,
         lastTalkDate: form.lastTalkDate ? new Date(`${form.lastTalkDate}T12:00:00`) : null,
         tags: form.tags
           .split(',')
@@ -639,10 +640,16 @@ export function MemberForm({
         </div>
 
         <MemberPicker
-          value={form.contactPersonId}
-          onChange={(next) => update('contactPersonId', next)}
-          label="Kontaktperson"
-          single
+          value={form.ministeringPartnerIds}
+          onChange={(next) => update('ministeringPartnerIds', next)}
+          label="Betreuungspartner"
+          placeholder="Mitglied suchen …"
+        />
+
+        <MemberPicker
+          value={form.ministeringAssignedIds}
+          onChange={(next) => update('ministeringAssignedIds', next)}
+          label="Betreuungsauftrag"
           placeholder="Mitglied suchen …"
         />
 
@@ -675,5 +682,30 @@ export function MemberForm({
         </label>
       </form>
     </Modal>
+  )
+}
+
+/**
+ * Verlinkte Namensliste für Betreuungspartner und Betreuungsauftrag.
+ * Wird nichts übergeben, verschwindet die Zeile ganz – eine leere
+ * Beschriftung sagt nichts aus.
+ */
+function MemberLinkList({ label, members }: { label: string; members: Member[] }) {
+  if (members.length === 0) return null
+  return (
+    <p>
+      <span className="text-slate-500 dark:text-slate-400">{label}: </span>
+      {members.map((member, index) => (
+        <span key={member.id}>
+          {index > 0 && ', '}
+          <Link
+            to={`/mitglieder/${member.id}`}
+            className="text-brand-600 dark:text-brand-300 hover:underline"
+          >
+            {member.firstName} {member.lastName}
+          </Link>
+        </span>
+      ))}
+    </p>
   )
 }

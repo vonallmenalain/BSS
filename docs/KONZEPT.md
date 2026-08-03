@@ -162,6 +162,15 @@ alter Termin überschreibt dabei nie ein neueres Datum.
 Statusfolge: *Vorgesehen → Angefragt → Zugesagt → Gehalten*
 (mit *Abgesagt* und *Gestrichen* als Ausstieg).
 
+**Verlauf übernehmen.** Die Vorschlagsliste ist nur so gut wie das, was sie
+über die Vergangenheit weiss – ohne Verlauf hielte sie anfangs alle für gleich
+lange nicht dran. Deshalb lässt sich die bisher geführte Excel-Tabelle
+einmalig einlesen: ein Blatt je Jahr, zwei Spalten je Monat, «A» für die
+Ansprache und «G» für das Gebet. Die Zählweise hat unterwegs gewechselt – bis
+2018 stand dort der wievielte Sonntag des Monats, danach der Tag selbst –,
+erkannt wird sie am Inhalt statt an der Beschriftung. Handnotizen ohne Datum
+werden gemeldet, nicht gedeutet.
+
 ### 3.3 Berufungsmanagement
 
 Berufungen durchlaufen feste Schritte, und jeder hat sein Datum:
@@ -174,6 +183,20 @@ Sonntagsschule …) und kennt die üblichen Positionen als Eingabehilfe. Ein
 Knopf «Mit heutigem Datum» schiebt eine Berufung einen Schritt weiter, ohne
 dass jemand ein Datum tippen muss.
 
+**Import aus dem LCR.** Die Seiten *Organisationen* und *Berufungen
+ausserhalb der Einheit* lassen sich hineinkopieren; welche der beiden
+vorliegt, erkennt die App am Tabellenkopf. Der Abgleich zählt Person, Rolle
+und Organisation – so bleibt die Bischofschaft doppelt bestehen, wie das
+LCR sie auch führt.
+
+Die eingefügte Seite gilt als **vollständige Wahrheit** über die aktuelle
+Besetzung: Was sie nicht mehr führt, wird entlassen. Entlassen heisst nicht
+löschen – die Berufung behält ihren Verlauf. Damit das nie zu weit greift,
+ersetzt der Import nur, was die Quelle abdeckt: Wer bloss die Sonntagsschule
+kopiert, entlässt niemanden in der FHV. Unberührt bleibt, was die
+Bischofschaft erst vorbereitet – Vorgeschlagenes und Ausgesprochenes steht
+nicht im LCR und kann dort deshalb auch nicht fehlen.
+
 ---
 
 ## 4. Mitgliederverwaltung
@@ -182,8 +205,8 @@ Die gemeinsame Datenbasis für alles andere.
 
 **Felder.** Vor- und Nachname, Geschlecht, Geburtsdatum, E-Mail, Telefon und
 Mobile, Adresse, Status (aktiv / weniger aktiv / inaktiv / weggezogen),
-Notiz, Kontaktperson, Schlagworte, Datum der letzten Ansprache, Anzahl
-Ansprachen.
+Notiz, Betreuungspartner und Betreuungsauftrag, Schlagworte, Datum der
+letzten Ansprache, Anzahl Ansprachen.
 
 **Sortieren und filtern.** Nach Nachname, Vorname, Alter, letzter Ansprache
 oder Status; dazu Volltextsuche über Name, E-Mail, Telefon, Ort und Notiz.
@@ -191,11 +214,21 @@ Die Sortierung «letzte Ansprache» stellt bewusst diejenigen nach vorn, die
 noch nie gesprochen haben.
 
 **Notiz pro Mitglied.** Freitext für Betreuungshinweise, Absprachen oder wer
-Kontaktperson ist. Die Kontaktperson lässt sich zusätzlich als Verweis auf ein
-anderes Mitglied setzen.
+sich kümmert.
+
+**Betreuung.** Zwei Listen statt einer einzelnen Kontaktperson, weil die
+Betreuungsorganisation genau so aufgebaut ist: mit wem zusammen betreut wird
+(*Betreuungspartner*) und wer betreut wird (*Betreuungsauftrag*). Beides kommt
+mehrfach vor und lässt sich aus dem LCR übernehmen – auch hier ist die
+eingefügte Seite die vollständige Wahrheit, beide Listen werden ersetzt statt
+ergänzt.
 
 **Import (alle 3–4 Monate).** Ein vierstufiger Assistent, erreichbar über
-*Mitglieder → Import* – nicht prominent, aber auffindbar:
+*Mitglieder → Import* – nicht prominent, aber auffindbar. Von dort führen
+Reiter zu allem, was sich von aussen übernehmen lässt: Mitglieder, Berufungen
+und Betreuung aus dem LCR, dazu der einmalige Verlauf aus der bisherigen
+Excel-Tabelle. Die Mitglieder kommen zuerst, weil alle übrigen ihre Einträge
+erfassten Personen zuordnen und alles Unbekannte überspringen:
 
 1. **Quelle** – die aus dem LCR-Mitgliederverzeichnis kopierte Liste in ein
    freies Textfeld einfügen, oder `.xlsx` bzw. `.csv` per Auswahl und
@@ -348,6 +381,10 @@ immer dasselbe: Termin verstrichen.
 - Mitgliederliste mit Suche, Sortierung, Detailansicht, Notizen
 - Import aus eingefügter Liste, Excel oder CSV mit Spaltenzuordnung, Abgleich
   und Vorschau; CSV-Export
+- Import der Berufungen und der Betreuungsaufträge aus dem LCR; beide ersetzen
+  ihren Bereich, statt ihn zu ergänzen
+- Einmaliger Import des Ansprachen- und Gebetsverlaufs aus der bisherigen
+  Excel-Tabelle, damit die Vorschlagslisten von Anfang an stimmen
 - Ansprachen und Zeugnisse mit Vorschlagsliste, Verlauf und Zusatzplätzen
 - Abendmahlsversammlung: Leitung, Bekanntmachungen, Angelegenheiten, Musik,
   Gebet – mit Ablauf zum Ausdrucken

@@ -33,7 +33,8 @@ export interface MemberInput {
   status?: MemberStatus
   availableForTalks?: boolean
   notes?: string
-  contactPersonId?: string | null
+  ministeringPartnerIds?: string[]
+  ministeringAssignedIds?: string[]
   lastTalkDate?: Date | null
   tags?: string[]
   externalId?: string | null
@@ -68,7 +69,8 @@ export async function createMember(
       birthDate: input.birthDate ? Timestamp.fromDate(input.birthDate) : null,
       status: input.status ?? 'active',
       availableForTalks: input.availableForTalks ?? true,
-      contactPersonId: input.contactPersonId ?? null,
+      ministeringPartnerIds: input.ministeringPartnerIds ?? [],
+      ministeringAssignedIds: input.ministeringAssignedIds ?? [],
       lastTalkDate: input.lastTalkDate ? Timestamp.fromDate(input.lastTalkDate) : null,
       talkCount: 0,
       tags: input.tags ?? [],

@@ -92,6 +92,7 @@ Alle weiteren Konten schaltest du danach in der App frei:
 
 ```bash
 npm run dev          # Entwicklungsserver auf http://localhost:5173
+npm run test:import  # Parser und Abgleich der Text-Importe prüfen
 npm run test:rules   # Zugriffsregeln gegen den Emulator prüfen
 npm run build        # Produktions-Build nach dist/
 npm run preview      # Build lokal prüfen
@@ -296,6 +297,94 @@ allein (dann mit Warnung). Drei Schalter schützen gepflegte Daten:
 
 Damit der Abgleich beim nächsten Mal sicher greift, lohnt es sich, eine Spalte
 mit der Mitglieds-Nummer mitzuliefern und als «Mitglieds-Nr.» zuzuordnen.
+
+---
+
+## Berufungen und Betreuung importieren
+
+Drei Reiter im Import-Bereich führen zu den drei Listen, die sich aus dem LCR
+übernehmen lassen: **Mitglieder**, **Berufungen**, **Betreuung**. Der Weg ist
+derselbe wie beim Mitgliederverzeichnis – Seite markieren, kopieren, einfügen;
+nur die Spaltenzuordnung entfällt, weil der Aufbau feststeht.
+
+Die Mitglieder kommen zuerst. Berufungen und Betreuungsaufträge ordnen ihre
+Einträge erfassten Personen zu und überspringen, was sie nicht findet – so
+entstehen aus einem Tippfehler keine stillen Karteileichen.
+
+**Berufungen.** Gelesen werden die Seite *Organisationen* und die Seite
+*Berufungen ausserhalb der Einheit*; welche der beiden vorliegt, erkennt die
+App selbst. Bestehende Berufungen werden über Person, Rolle und Organisation
+erkannt und aktualisiert. Offene Berufungen («Berufung offen») werden gezählt,
+aber nicht geschrieben.
+
+**Betreuung.** Die Seite *Betreuungsaufträge* mit allen Organisationen und
+allen Personen anzeigen lassen, dann kopieren. Pro Person entstehen zwei
+Listen: mit wem zusammen betreut wird und wer betreut wird.
+
+### Was dabei wegfällt
+
+Beide Importe **ersetzen** ihren Bereich, statt ihn zu ergänzen: Die LCR-Seite
+ist die vollständige Wahrheit über den aktuellen Stand. Wer aus einer
+Betreuungspartnerschaft herausfällt, verschwindet auch hier; eine Berufung, die
+das LCR nicht mehr führt, wird entlassen.
+
+Entlassen heisst nicht löschen – die Berufung behält ihren Verlauf und steht
+weiterhin unter «Entlassen». Wer in der Vorschau prüfen will, was wegfällt,
+findet es dort einzeln aufgeführt, bevor etwas geschrieben wird.
+
+Drei Vorkehrungen halten die Ersetzung in Grenzen:
+
+- **Nur so weit wie die Quelle.** Ersetzt wird, was die eingefügte Seite
+  abdeckt. Wer bloss die Sonntagsschule kopiert, entlässt niemanden in der FHV,
+  und die Seite «ausserhalb der Einheit» rührt die Gemeinde nicht an.
+- **Nichts in Vorbereitung.** Vorgeschlagene und ausgesprochene Berufungen
+  stehen nicht im LCR und können dort deshalb auch nicht fehlen.
+- **Nichts bei leerer Quelle.** Gibt die Kopie nichts her, wird nichts
+  entlassen.
+
+Wer bewusst nur einen Ausschnitt einfügt, kann das Entlassen in der Vorschau
+zusätzlich abschalten.
+
+---
+
+## Verlauf aus der bisherigen Excel-Tabelle
+
+**Import → Verlauf**, einmalig.
+
+Ohne Verlauf beginnt die App bei null: Sie hielte alle für gleich lange nicht
+dran und bräuchte Jahre, bis die Vorschlagslisten wieder etwas taugen. Der
+Import holt nach, was bisher in der Tabelle *AMV_AnsprGeb* stand – ein Blatt je
+Jahr, eine Zeile je Person, zwei Spalten je Monat: «A» für die Ansprache, «G»
+für das Gebet.
+
+Die Datei wird als `.xlsx` eingelesen, alle Jahresblätter auf einmal. Gelesen
+wird das Jahr aus dem Blattnamen, der Monat aus der Spaltenüberschrift und der
+Termin aus der Zelle. **Die Zählweise hat unterwegs gewechselt:** Bis 2018 stand
+dort, der wievielte Sonntag des Monats es war, ab 2019 der Tag selbst. Erkannt
+wird das am Inhalt – ein Monat hat höchstens fünf Sonntage, Tagesangaben liegen
+zu über vier Fünfteln darüber. Die alte Beschriftung «x-ter Sonntag im entspr.
+Monat» steht bis heute im Kopf jedes Blattes und taugt deshalb nicht als
+Merkmal.
+
+Was von Hand danebengeschrieben wurde, wird nicht gedeutet: «K» neben dem Tag
+kommt als Notiz «Kinderansprache» mit, zwei Termine in einer Zelle («10, 31»)
+ergeben zwei Einträge, und Vermerke ohne Datum («v» für vorgesehen, «auf
+Mission») erscheinen in der Vorschau als aufklappbare Liste zum Nachschauen.
+Zeilen, in denen statt einer Person eine Rolle steht – «Besucher»,
+«Pfahlpräsident» –, werden übersprungen.
+
+Zwei Grenzen sind zu kennen:
+
+- **Gebete kennen pro Sonntag nur zwei Plätze**, Anfang und Schluss, und die
+  Tabelle sagt nicht, welcher es war. Vergeben wird der Reihe nach; wo an einem
+  Sonntag mehr als zwei Personen stehen, meldet die Vorschau die übrigen. Bei
+  Ansprachen gibt es diese Grenze nicht.
+- **Die Gebets-Auswertung liest die jüngsten 400 Einträge.** Wer länger nicht
+  dran war, erscheint dort als «noch nie» – und steht damit ohnehin zuoberst.
+
+Der Import ist wiederholbar: Die Dokument-IDs entstehen aus Datum und Person,
+ein zweiter Durchlauf schreibt deshalb dieselben Einträge noch einmal, statt den
+Verlauf zu verdoppeln. Was in der App gepflegt wurde, bleibt unangetastet.
 
 ---
 

@@ -280,8 +280,13 @@ export interface Member extends WithId {
 
   /** Freie Notiz, z. B. Kontaktperson, Besonderheiten, Betreuungshinweise */
   notes?: string
-  /** Verweis auf ein anderes Mitglied als Kontaktperson */
-  contactPersonId?: string | null
+  /**
+   * Betreuung (aus dem LCR importierbar):
+   * `ministeringPartnerIds` sind die Personen, mit denen zusammen betreut
+   * wird, `ministeringAssignedIds` die Personen, die betreut werden.
+   */
+  ministeringPartnerIds?: string[]
+  ministeringAssignedIds?: string[]
 
   /** Denormalisiert aus der Ansprachen-Sammlung – ermöglicht Sortierung ohne Join */
   lastTalkDate: TS | null
@@ -394,6 +399,7 @@ export type Organization =
   | 'music'
   | 'temple_family_history'
   | 'missionary'
+  | 'welfare'
   | 'ward'
   | 'other'
 
@@ -408,6 +414,7 @@ export const ORGANIZATION_LABELS: Record<Organization, string> = {
   music: 'Musik',
   temple_family_history: 'Tempel & Familienforschung',
   missionary: 'Missionsarbeit',
+  welfare: 'Wohlfahrt und Eigenständigkeit',
   ward: 'Gemeinde (allgemein)',
   other: 'Übrige',
 }
@@ -430,6 +437,17 @@ export interface Calling extends WithId {
   /** Wer spricht die Berufung aus / setzt ein? */
   responsibleId?: string | null
   notes?: string
+
+  /**
+   * Berufung ausserhalb der eigenen Einheit (Pfahl, Seminar, Institut).
+   * Sie zählt für «hat eine Berufung», erscheint aber nicht im
+   * Organisationsplan der Gemeinde.
+   */
+  outOfUnit?: boolean
+  /** Im LCR als «Benutzerdefinierte Berufung» angelegt */
+  custom?: boolean
+  /** Untergruppe innerhalb der Organisation, z. B. «Lehrkräfte» */
+  group?: string
 
   createdAt?: TS
   updatedAt?: TS
