@@ -4,7 +4,7 @@ import { useAuth } from '@/contexts/AuthContext'
 import { useToast } from '@/contexts/ToastContext'
 import { Modal, ConfirmDialog } from '@/components/ui/Modal'
 import { SegmentedControl } from '@/components/ui/Pickers'
-import { apDateLabel, apTitle } from '@/components/ap/ApActivityCard'
+import { apDateLabel, apTitle } from '@/components/ap/ApActivityRow'
 import {
   EMPTY_AP_ACTIVITY,
   apSuggestions,

@@ -193,6 +193,15 @@
     padding-top: env(safe-area-inset-top);
   }
 
+  /* Wie oben, aber mit Luft: für Flächen, die den ganzen Bildschirm
+     einnehmen – der Ablauf am Pult etwa soll nicht am oberen Rand kleben. */
+  .pt-safe-14 {
+    padding-top: calc(env(safe-area-inset-top) + 3.5rem);
+  }
+  .pb-safe-10 {
+    padding-bottom: calc(env(safe-area-inset-bottom) + 2.5rem);
+  }
+
   /* Horizontal scrollbare Bereiche mit Einrastpunkten */
   .snap-x-mandatory {
     scroll-snap-type: x mandatory;

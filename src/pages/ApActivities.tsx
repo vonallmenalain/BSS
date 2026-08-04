@@ -4,6 +4,7 @@ import {
   CalendarDays,
   CalendarPlus,
   Check,
+  Eye,
   Info,
   Pencil,
   Plus,
@@ -14,18 +15,18 @@ import { useToast } from '@/contexts/ToastContext'
 import { useApActivities, useApMonths } from '@/hooks/useFirestore'
 import { useNow } from '@/hooks/useNow'
 import {
-  ApActivityCard,
+  ApActivityRow,
   ApDetails,
   AP_KIND_STYLES,
   apCountdown,
   apDateLabel,
   apTitle,
-} from '@/components/ap/ApActivityCard'
+} from '@/components/ap/ApActivityRow'
 import { ApActivityForm } from '@/components/ap/ApActivityForm'
 import { ApScheduleDialog } from '@/components/ap/ApScheduleDialog'
 import { EmptyState, SkeletonList } from '@/components/ui/Feedback'
 import { PageHeader, SegmentedControl } from '@/components/ui/Pickers'
-import { cn, matchesSearch } from '@/lib/utils'
+import { cn } from '@/lib/utils'
 import { differenceInCalendarDays, formatMonth, startOfDay, toDateInput } from '@/lib/dates'
 import { apActivityEnd, saveApMonth } from '@/services/apActivities'
 import { nextFreeApDate } from '@/services/apSchedule'
@@ -39,17 +40,26 @@ type Scope = 'upcoming' | 'past' | 'all'
  *
  * Er beantwortet vor allem eine Frage, und die stellt sich jede Woche neu:
  * **Was kommt als Nächstes?** Deshalb steht die Antwort ganz oben und
- * gross, mit allem, was man dafür wissen muss – Treffpunkt, Leitung, wer
- * aus der Bischofschaft dabei ist. Darunter die drei folgenden Termine,
- * und erst danach der Plan im Ganzen, nach Monaten gruppiert wie in der
+ * gross, über die volle Breite, mit allem, was man dafür wissen muss –
+ * Treffpunkt, Leitung, wer aus der Bischofschaft dabei ist. Darunter der
+ * Plan im Ganzen: eine Zeile je Termin, nach Monaten gruppiert wie in der
  * Tabelle, aus der er stammt.
  *
  * Ausgefallene Abende bleiben stehen, zählen aber nicht als «das
  * Nächste»: Sie erklären eine Lücke, statt eine zu sein.
  *
+ * Die Seite hat zwei Zustände, und sie sind bewusst getrennt: Der
+ * **Ansichtsmodus** zeigt den Plan zum Lesen – nichts ist anklickbar,
+ * nichts lässt sich verstellen. Wer Schreibrecht hat, wechselt mit einem
+ * Knopf in den **Bearbeitungsmodus**; erst dort öffnen sich Termine und
+ * erscheinen die Knöpfe zum Anlegen. Gestartet wird immer im
+ * Ansichtsmodus, denn gelesen wird der Plan hundertmal öfter, als er
+ * geändert wird.
+ *
  * Der Bereich ist der einzige, den auch Konten ohne Vollzugriff sehen –
  * Berater und Jugendführung, die den Plan lesen oder pflegen, ohne je
- * Personendaten zu Gesicht zu bekommen.
+ * Personendaten zu Gesicht zu bekommen. Wer nur zusehen darf, bleibt im
+ * Ansichtsmodus und sieht den Umschalter gar nicht erst.
  */
 export function ApActivities() {
   const { canEditAp } = useAuth()
@@ -58,10 +68,14 @@ export function ApActivities() {
   const now = useNow(300_000)
 
   const [scope, setScope] = useState<Scope>('upcoming')
-  const [search, setSearch] = useState('')
+  const [wantsEdit, setWantsEdit] = useState(false)
   const [formOpen, setFormOpen] = useState(false)
   const [editing, setEditing] = useState<ApActivity | null>(null)
   const [scheduleOpen, setScheduleOpen] = useState(false)
+
+  /* Der Modus hängt am Recht, nicht nur am Knopf: Wird das Schreibrecht
+     entzogen, während die Seite offen ist, fällt sie sofort zurück. */
+  const editMode = canEditAp && wantsEdit
 
   const today = useMemo(() => toDateInput(new Date(now)), [now])
 
@@ -80,7 +94,6 @@ export function ApActivities() {
   )
 
   const next = upcoming[0] ?? null
-  const following = upcoming.slice(1, 4)
 
   const counts = useMemo(
     () => ({
@@ -100,25 +113,6 @@ export function ApActivities() {
       visible = visible.filter((activity) => apActivityEnd(activity) < today)
     }
 
-    if (search.trim()) {
-      visible = visible.filter((activity) =>
-        matchesSearch(
-          [
-            activity.title,
-            activity.location,
-            activity.leader,
-            activity.bishopric,
-            activity.advisor,
-            activity.note,
-            AP_ACTIVITY_KIND_LABELS[activity.kind],
-          ]
-            .filter(Boolean)
-            .join(' '),
-          search,
-        ),
-      )
-    }
-
     const sorted = [...visible].sort((a, b) => a.date.localeCompare(b.date))
     // Vergangenes andersherum: Das zuletzt Gewesene interessiert zuerst.
     if (scope === 'past') sorted.reverse()
@@ -131,7 +125,7 @@ export function ApActivities() {
       else byMonth.set(month, [activity])
     }
     return [...byMonth.entries()]
-  }, [activities, scope, search, today])
+  }, [activities, scope, today])
 
   /* Vorschlag für einen neuen Termin: der nächste freie Mittwoch bzw. Sonntag. */
   const suggestedDate = useMemo(
@@ -148,18 +142,34 @@ export function ApActivities() {
     setFormOpen(true)
   }
 
+  /* Der Weg zurück schliesst alles, was zum Bearbeiten offen war. */
+  const leaveEditMode = () => {
+    setWantsEdit(false)
+    setFormOpen(false)
+    setEditing(null)
+    setScheduleOpen(false)
+  }
+
+  const startSchedule = () => {
+    setWantsEdit(true)
+    setScheduleOpen(true)
+  }
+
   return (
     <>
       <PageHeader
         title="Aktivitäten AP’s"
         subtitle={
-          activities.length === 0
-            ? 'Noch kein Plan erfasst'
-            : `${counts.all} Termine · ${counts.upcoming} kommend`
+          editMode ? 'Bearbeitungsmodus – ein Klick auf einen Termin öffnet ihn' : undefined
         }
         actions={
-          canEditAp && (
+          canEditAp &&
+          (editMode ? (
             <>
+              <button type="button" className="btn-secondary" onClick={leaveEditMode}>
+                <Eye className="size-4" aria-hidden />
+                Ansichtsmodus
+              </button>
               <button type="button" className="btn-secondary" onClick={() => setScheduleOpen(true)}>
                 <CalendarPlus className="size-4" aria-hidden />
                 <span className="hidden sm:inline">Termine erzeugen</span>
@@ -169,7 +179,12 @@ export function ApActivities() {
                 <span className="hidden sm:inline">Termin</span>
               </button>
             </>
-          )
+          ) : (
+            <button type="button" className="btn-secondary" onClick={() => setWantsEdit(true)}>
+              <Pencil className="size-4" aria-hidden />
+              Bearbeitungsmodus
+            </button>
+          ))
         }
       />
 
@@ -187,7 +202,7 @@ export function ApActivities() {
             }
             action={
               canEditAp && (
-                <button type="button" className="btn-primary" onClick={() => setScheduleOpen(true)}>
+                <button type="button" className="btn-primary" onClick={startSchedule}>
                   <CalendarPlus className="size-4" aria-hidden />
                   Termine erzeugen
                 </button>
@@ -199,41 +214,16 @@ export function ApActivities() {
         <>
           {/* ---------- Was als Nächstes kommt ---------- */}
           {next && (
-            <div className="mb-5 grid gap-3 lg:grid-cols-3">
-              <NextCard
-                activity={next}
-                today={today}
-                leadership={leadershipOf.get(next.date.slice(0, 7)) ?? ''}
-                onOpen={() => open(next)}
-              />
-
-              {following.length > 0 && (
-                <div className="flex flex-col gap-2">
-                  <p className="px-1 text-xs font-semibold tracking-wide text-slate-400 uppercase">
-                    Danach
-                  </p>
-                  {following.map((activity) => (
-                    <FollowingRow
-                      key={activity.id}
-                      activity={activity}
-                      today={today}
-                      onOpen={() => open(activity)}
-                    />
-                  ))}
-                </div>
-              )}
-            </div>
+            <NextCard
+              activity={next}
+              today={today}
+              leadership={leadershipOf.get(next.date.slice(0, 7)) ?? ''}
+              onOpen={editMode ? () => open(next) : undefined}
+            />
           )}
 
-          {/* ---------- Filter ---------- */}
-          <div className="mb-4 space-y-3">
-            <input
-              type="search"
-              className="input"
-              placeholder="Aktivität, Ort, Leitung oder Bemerkung suchen …"
-              value={search}
-              onChange={(event) => setSearch(event.target.value)}
-            />
+          {/* ---------- Zeitraum ---------- */}
+          <div className="mb-4">
             <SegmentedControl<Scope>
               value={scope}
               onChange={setScope}
@@ -251,7 +241,7 @@ export function ApActivities() {
               <EmptyState
                 icon={CalendarDays}
                 title="Nichts gefunden"
-                description="Passe Suche oder Auswahl an."
+                description="In diesem Zeitraum steht nichts im Plan."
               />
             </div>
           ) : (
@@ -262,14 +252,14 @@ export function ApActivities() {
                     month={month}
                     leadership={leadershipOf.get(month) ?? ''}
                     count={entries.length}
-                    editable={canEditAp}
+                    editable={editMode}
                   />
-                  <div className="grid gap-2 sm:grid-cols-2 xl:grid-cols-3">
+                  <div className="card divide-y divide-slate-100 overflow-hidden dark:divide-slate-800">
                     {entries.map((activity) => (
-                      <ApActivityCard
+                      <ApActivityRow
                         key={activity.id}
                         activity={activity}
-                        onOpen={() => open(activity)}
+                        onOpen={editMode ? () => open(activity) : undefined}
                         highlight={activity.id === next?.id}
                         past={apActivityEnd(activity) < today}
                       />
@@ -307,12 +297,16 @@ export function ApActivities() {
 /* ------------------------------------------------------------------ */
 
 /**
- * Die grosse Karte.
+ * Die grosse Karte, über die ganze Breite.
  *
- * Sie zeigt dasselbe wie eine Kachel, nur ohne dass man etwas suchen muss:
+ * Sie zeigt dasselbe wie eine Zeile, nur ohne dass man etwas suchen muss:
  * Wie lange es noch dauert, was stattfindet, wo man sich trifft und wer
  * dabei ist – in dieser Reihenfolge, weil man sie in dieser Reihenfolge
  * fragt.
+ *
+ * Ohne `onOpen` – im Ansichtsmodus – ist sie eine Karte und keine
+ * Schaltfläche: kein Zeigefinger, kein «Öffnen», nichts, was ins Leere
+ * führt.
  */
 function NextCard({
   activity,
@@ -324,19 +318,15 @@ function NextCard({
   today: string
   /** Welches Kollegium den Monat führt – «Leitung Lehrer» */
   leadership: string
-  onOpen: () => void
+  onOpen?: () => void
 }) {
   const style = AP_KIND_STYLES[activity.kind]
   const Icon = style.icon
   const days = differenceInCalendarDays(fromIsoDate(activity.date), startOfDay(fromIsoDate(today)))
   const running = activity.date <= today && apActivityEnd(activity) >= today
 
-  return (
-    <button
-      type="button"
-      onClick={onOpen}
-      className="card card-hover group relative flex flex-col overflow-hidden p-5 text-left lg:col-span-2"
-    >
+  const content = (
+    <>
       <span className={cn('absolute inset-x-0 top-0 h-1', style.bar)} aria-hidden />
 
       <div className="flex flex-wrap items-center gap-2">
@@ -376,62 +366,31 @@ function NextCard({
         </p>
       )}
 
-      {/* Die Fusszeile sitzt unten, auch wenn oben wenig steht: Zwei Karten
-          nebeneinander sollen unten auf einer Linie enden. */}
-      <span className="mt-auto flex flex-wrap items-center justify-between gap-2 pt-4">
-        <span className="text-brand-600 dark:text-brand-300 inline-flex items-center gap-1 text-sm font-medium">
-          Öffnen
-          <ArrowRight className="size-4 transition group-hover:translate-x-0.5" aria-hidden />
+      {(onOpen || leadership) && (
+        <span className="mt-4 flex flex-wrap items-center justify-between gap-2">
+          {onOpen && (
+            <span className="text-brand-600 dark:text-brand-300 inline-flex items-center gap-1 text-sm font-medium">
+              Öffnen
+              <ArrowRight className="size-4 transition group-hover:translate-x-0.5" aria-hidden />
+            </span>
+          )}
+          {leadership && (
+            <span className="ml-auto text-xs text-slate-400">
+              {formatMonth(fromIsoDate(activity.date))} · {leadership}
+            </span>
+          )}
         </span>
-        {leadership && (
-          <span className="text-xs text-slate-400">
-            {formatMonth(fromIsoDate(activity.date))} · {leadership}
-          </span>
-        )}
-      </span>
-    </button>
+      )}
+    </>
   )
-}
 
-/** Ein Termin aus «Danach» – knapp, aber mit demselben Aufbau. */
-function FollowingRow({
-  activity,
-  today,
-  onOpen,
-}: {
-  activity: ApActivity
-  today: string
-  onOpen: () => void
-}) {
-  const style = AP_KIND_STYLES[activity.kind]
-  const Icon = style.icon
-  const days = differenceInCalendarDays(fromIsoDate(activity.date), startOfDay(fromIsoDate(today)))
+  const shell = 'card relative mb-5 flex w-full flex-col overflow-hidden p-5 text-left'
+
+  if (!onOpen) return <div className={shell}>{content}</div>
 
   return (
-    <button
-      type="button"
-      onClick={onOpen}
-      className="card card-hover flex flex-1 items-center gap-3 p-3 text-left"
-    >
-      <span className={cn('grid size-9 shrink-0 place-items-center rounded-lg', style.block)}>
-        <Icon className="size-4" aria-hidden />
-      </span>
-      <span className="min-w-0 flex-1">
-        <span
-          className={cn(
-            'block truncate text-sm font-medium',
-            !activity.title.trim() && 'text-slate-400 italic',
-          )}
-        >
-          {apTitle(activity)}
-        </span>
-        <span className="block truncate text-xs text-slate-500 dark:text-slate-400">
-          {apDateLabel(activity)}
-        </span>
-      </span>
-      <span className="shrink-0 text-xs font-medium text-slate-400">
-        {apCountdown(days, false)}
-      </span>
+    <button type="button" onClick={onOpen} className={cn(shell, 'card-hover group')}>
+      {content}
     </button>
   )
 }
@@ -444,9 +403,9 @@ function FollowingRow({
  * «März 2026 · Leitung Diakone».
  *
  * Welches Kollegium den Monat führt, stand im Excel-Plan als
- * Zwischenüberschrift – und steht hier an derselben Stelle. Anklicken
- * genügt zum Ändern; ein eigener Dialog wäre für ein einzelnes Wort zu
- * viel.
+ * Zwischenüberschrift – und steht hier an derselben Stelle. Im
+ * Bearbeitungsmodus genügt ein Klick zum Ändern; ein eigener Dialog wäre
+ * für ein einzelnes Wort zu viel.
  */
 function MonthHeader({
   month,
@@ -489,7 +448,7 @@ function MonthHeader({
         {formatMonth(fromIsoDate(`${month}-01`))}
       </h2>
 
-      {editing ? (
+      {editable && editing ? (
         <span className="flex items-center gap-1">
           <input
             className="input w-48 py-1 text-sm"

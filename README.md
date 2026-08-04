@@ -267,8 +267,11 @@ Schreibtisch zählt die Übersicht.
 
 Oben rechts im Blatt sitzt der **Vollbild**-Knopf. Ein Klick, und alles
 andere verschwindet: Kopfzeile, Navigation und Sonntagswahl weichen dem
-Ablauf, der allein den Bildschirm füllt. Derselbe Knopf – oder die
-Escape-Taste – holt sie zurück. Wo der Browser es zulässt, wird zusätzlich
+Ablauf, der allein den Bildschirm füllt. Damit trotzdem klar bleibt, worum
+es geht, steht im Vollbild zuoberst die Versammlung selbst –
+«Abendmahlsversammlung» oder «Fast- und Zeugnisversammlung» – und darunter
+der Sonntag; erst dann folgt der Ablauf, mit Luft zum oberen Bildschirmrand.
+Derselbe Knopf – oder die Escape-Taste – holt alles zurück. Wo der Browser es zulässt, wird zusätzlich
 sein echtes Vollbild angefordert, sodass auf dem Tablet auch die Adresszeile
 verschwindet; wo nicht (auf dem iPhone etwa), genügt die Überlagerung. Die
 Grössenwahl steht im Vollbild neben dem Knopf, weil die Kopfzeile dann weg
@@ -421,9 +424,12 @@ Dank an niemanden wäre schlimmer als gar keiner.
 Der Jahresplan der Priestertumskollegien – bisher eine Excel-Tabelle, die
 herumgereicht wurde. Die Seite beantwortet zuerst die Frage, die sich jede
 Woche neu stellt: **Was kommt als Nächstes?** Deshalb steht die Antwort ganz
-oben und gross, mit Treffpunkt, Leitung und den Teilnehmenden aus der
-Bischofschaft; rechts daneben die drei folgenden Termine. Darunter der ganze
-Plan als Kacheln, nach Monaten gruppiert wie in der Tabelle.
+oben und gross, über die ganze Breite, mit Treffpunkt, Leitung und den
+Teilnehmenden aus der Bischofschaft. Darunter der ganze Plan, nach Monaten
+gruppiert wie in der Tabelle – **eine Zeile je Termin**, und untereinander
+steht überall dasselbe: Datum, Aktivität, Treffpunkt, Leitung, Teilnahme.
+Auf schmalen Geräten rücken die Angaben unter die Aktivität, statt sich in
+Spalten zu quetschen.
 
 ### Der Takt
 
@@ -438,14 +444,33 @@ Alles Übrige – Lager, Tempelbesuche, Pfahlanlässe, ein Samstag – ist ein
 besonderer Anlass und kann an jedem beliebigen Tag stehen, ein- oder
 mehrtägig.
 
-Die vier Arten färben die Kachel und sind auf einen Blick unterscheidbar:
-Aktivität (blau), AP-Klasse (violett), besonderer Anlass (gelb), fällt aus
-(grau, durchgestrichen). Ein ausgefallener Abend bleibt bewusst **im Plan
+Die vier Arten färben Rand und Symbol der Zeile und sind auf einen Blick
+unterscheidbar: Aktivität (blau), AP-Klasse (violett), besonderer Anlass
+(gelb), fällt aus (grau, durchgestrichen). Ein ausgefallener Abend bleibt bewusst **im Plan
 stehen**: Ein fehlendes Datum sieht aus wie eine Lücke, die noch jemand
 füllen muss; steht «FHV – keine Aktivität» da, ist die Frage beantwortet.
 
 Ein Termin ohne Titel heisst «Noch offen» und ist genau das – ein Abend, der
 noch zu planen ist. Auch das ist Absicht: Was fehlt, soll man sehen.
+
+### Ansehen und bearbeiten
+
+Der Plan wird hundertmal öfter gelesen als geändert. Deshalb hat die Seite
+zwei Zustände, und sie sind sauber getrennt:
+
+- Der **Ansichtsmodus** ist der Normalfall und beim Aufruf immer der
+  Ausgangspunkt. Er zeigt den Plan zum Lesen: keine Knöpfe zum Anlegen,
+  keine anklickbaren Zeilen, nichts, was sich versehentlich verstellen
+  lässt. Bemerkungen stehen hier ganz da, weil kein Klick weiterführt.
+- Der **Bearbeitungsmodus** kommt auf Knopfdruck – **Bearbeitungsmodus**
+  oben rechts. Erst dort erscheinen **+ Termin** und **Termine erzeugen**,
+  erst dort öffnet ein Klick auf eine Zeile den Termin, und erst dort lässt
+  sich die Leitung des Monats ändern. Der Knopf **Ansichtsmodus** führt
+  zurück.
+
+Den Umschalter sieht nur, wer Schreibrecht hat. Ein Zugang zum Ansehen
+bleibt im Ansichtsmodus – nicht, weil ein Knopf fehlt, sondern weil es für
+ihn keinen anderen Zustand gibt.
 
 ### Termine erzeugen
 
@@ -454,9 +479,9 @@ kommende Jahr –, ohne Titel, als Gerüst. Tage, an denen bereits etwas im Plan
 steht, bleiben unangetastet; der Knopf lässt sich deshalb gefahrlos ein
 zweites Mal drücken und füllt dann nur die Lücken.
 
-### Bearbeiten
+### Einen Termin ändern
 
-Jede Kachel öffnet sich zum Bearbeiten – alle Felder der bisherigen Tabelle:
+Im Bearbeitungsmodus öffnet jede Zeile alle Felder der bisherigen Tabelle:
 Datum (auf Wunsch mehrtägig), Uhrzeit, Art, Aktivität bzw. Klasse,
 Treffpunkt, Leitung, Teilnahme Bischofschaft, Teilnahme Berater und die
 Bemerkung. Die Personenfelder sind Freitext wie in der Tabelle – die
@@ -474,8 +499,8 @@ AP-Kalender zeigt – wahlweise mit Schreibrecht oder nur zum Ansehen. Wie das
 eingerichtet wird, steht unter [Rollen](#rollen).
 
 Der Unterschied ist sichtbar und nicht bloss gemeint: Ohne Schreibrecht gibt
-es keine Knöpfe zum Anlegen, und eine angeklickte Kachel öffnet die Angaben
-zum Nachlesen statt eines Formulars. Durchgesetzt wird beides in den
+es keinen Umschalter, keine Knöpfe zum Anlegen und keine Zeile, die sich
+öffnen liesse. Durchgesetzt wird das nicht in der Oberfläche, sondern in den
 Zugriffsregeln.
 
 ---
@@ -950,7 +975,7 @@ Zugriff innerhalb der Bischofschaft aber nicht ein.
 src/
 ├── components/
 │   ├── agenda/          Traktanden: Karte, Formular, Sitzungsmodus, Verschieben
-│   ├── ap/              Aktivitäten AP: Kachel, Formular, Termine erzeugen
+│   ├── ap/              Aktivitäten AP: Zeile, Formular, Termine erzeugen
 │   ├── sacrament/       Abendmahlsversammlung: Rahmen mit Sonntagswahl, Lied- und Personenfelder
 │   ├── ui/              Bausteine: Modal, Badges, Avatare, Auswahlfelder
 │   ├── Layout.tsx       Navigation (Seitenleiste bzw. untere Leiste)
