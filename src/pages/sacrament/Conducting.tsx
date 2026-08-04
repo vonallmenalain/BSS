@@ -21,7 +21,7 @@ import { LeaderField } from '@/components/sacrament/LeaderField'
 import { MemberSearchSelect } from '@/components/sacrament/MemberSearchSelect'
 import { ConflictNotice, SectionHeader, useSacrament } from '@/components/sacrament/SacramentLayout'
 import { useAutoDraft } from '@/components/sacrament/useDraft'
-import { formatDate, toDate, toDateInput } from '@/lib/dates'
+import { formatDate, formatDateLong, toDate, toDateInput } from '@/lib/dates'
 import { isSeriesEntry } from '@/lib/series'
 import { cn } from '@/lib/utils'
 import { formatHymn } from '@/services/hymns'
@@ -113,6 +113,8 @@ interface ViewStyle {
   text: string
   /** Abstand zwischen zwei Programmpunkten */
   steps: string
+  /** Überschrift des Vollbilds – die Versammlung selbst */
+  heading: string
   /** Titel eines Punktes */
   title: string
   /** Nummer vor dem Titel */
@@ -133,6 +135,7 @@ const VIEWS: Record<ViewSize, ViewStyle> = {
     pad: 'p-5',
     text: 'text-sm',
     steps: 'space-y-4',
+    heading: 'text-lg sm:text-xl',
     title: 'text-base',
     badge: 'size-6 text-xs',
     gap: 'gap-3',
@@ -145,6 +148,7 @@ const VIEWS: Record<ViewSize, ViewStyle> = {
     pad: 'p-6',
     text: 'text-base',
     steps: 'space-y-7',
+    heading: 'text-xl sm:text-2xl',
     title: 'text-xl',
     badge: 'size-7 text-sm',
     gap: 'gap-3.5',
@@ -157,6 +161,7 @@ const VIEWS: Record<ViewSize, ViewStyle> = {
     pad: 'p-8',
     text: 'text-lg',
     steps: 'space-y-10',
+    heading: 'text-xl sm:text-3xl',
     title: 'text-2xl',
     badge: 'size-8 text-base',
     gap: 'gap-4',
@@ -831,8 +836,12 @@ export function Conducting() {
           // und Ecken stehen bewusst in zwei Zweigen statt übereinander:
           // Zwei Utilities für dieselbe Eigenschaft entscheidet sonst die
           // Reihenfolge im Stylesheet, nicht die im Aufruf.
+          //
+          // Im Vollbild kommt oben und unten Luft dazu: Ohne Kopfzeile
+          // beginnt der Bildschirmrand sonst unmittelbar am ersten Punkt,
+          // und das liest sich am Pult eng.
           fullscreen
-            ? 'fixed inset-0 z-50 overflow-y-auto bg-white pt-safe pb-safe dark:bg-slate-950'
+            ? 'pt-safe-14 pb-safe-10 fixed inset-0 z-50 overflow-y-auto bg-white dark:bg-slate-950'
             : 'card relative',
         )}
       >
@@ -870,6 +879,27 @@ export function Conducting() {
             )}
           </button>
         </div>
+
+        {/* Im Vollbild ist der Seitenkopf weg – und damit auch die Angabe,
+            welche Versammlung an welchem Tag hier eigentlich abläuft. Am
+            Pult ist beides die erste Zeile, die man sagt, also steht es
+            hier oben. */}
+        {fullscreen && (
+          <header className="mx-auto mb-7 w-full max-w-3xl border-b border-slate-200 pb-4 dark:border-slate-800">
+            {/* «Abendmahlsversammlung» ist ein Wort und passt auf dem Handy
+                nicht in eine Zeile – dann lieber getrennt als über den Rand
+                hinaus. */}
+            <h2
+              className={cn(
+                'font-semibold tracking-tight text-balance hyphens-auto break-words',
+                view.heading,
+              )}
+            >
+              {SACRAMENT_KIND_LABELS[current.kind]}
+            </h2>
+            <p className="mt-1 text-slate-500 dark:text-slate-400">{formatDateLong(date)}</p>
+          </header>
+        )}
 
         {/* Die Nummerierung ergibt sich aus der Liste: Ein zusätzlicher
             Programmpunkt verschiebt alles Folgende automatisch. */}

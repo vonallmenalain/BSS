@@ -267,8 +267,11 @@ Schreibtisch zählt die Übersicht.
 
 Oben rechts im Blatt sitzt der **Vollbild**-Knopf. Ein Klick, und alles
 andere verschwindet: Kopfzeile, Navigation und Sonntagswahl weichen dem
-Ablauf, der allein den Bildschirm füllt. Derselbe Knopf – oder die
-Escape-Taste – holt sie zurück. Wo der Browser es zulässt, wird zusätzlich
+Ablauf, der allein den Bildschirm füllt. Damit trotzdem klar bleibt, worum
+es geht, steht im Vollbild zuoberst die Versammlung selbst –
+«Abendmahlsversammlung» oder «Fast- und Zeugnisversammlung» – und darunter
+der Sonntag; erst dann folgt der Ablauf, mit Luft zum oberen Bildschirmrand.
+Derselbe Knopf – oder die Escape-Taste – holt alles zurück. Wo der Browser es zulässt, wird zusätzlich
 sein echtes Vollbild angefordert, sodass auf dem Tablet auch die Adresszeile
 verschwindet; wo nicht (auf dem iPhone etwa), genügt die Überlagerung. Die
 Grössenwahl steht im Vollbild neben dem Knopf, weil die Kopfzeile dann weg
