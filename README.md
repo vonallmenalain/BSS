@@ -463,6 +463,19 @@ als Standard in den Einstellungen. Für einen einzelnen Sonntag lässt sich mehr
 vorsehen: eine zusätzliche Ansprache, ein Zeugnis oder ein leerer Platz zum
 späteren Vergeben. Der Standard bleibt davon unberührt.
 
+**Drei Schritte:** _Vorgesehen → Angefragt → Zugesagt_. Ein vierter Schritt
+«gehalten» wäre ein Klick nach der Versammlung, den niemand macht – und ohne
+ihn stimmte die Auswertung «wer war lange nicht dran» nicht mehr. Deshalb
+**zählt die Zusage**: Wer zugesagt hat und dessen Eintrag im Programm stehen
+bleibt, hat gesprochen. Springt jemand kurzfristig ein, wird der Eintrag unter
+«Leitung» geändert oder gelöscht, und die Statistik stimmt wieder. Im Verlauf
+erscheint eine Zusage, sobald ihr Sonntag vorbei ist.
+
+«Abgesagt» und «Gestrichen» sind aus demselben Grund weggefallen: Eine Absage
+heisst, dass der Platz wieder frei ist, und das sagt man am deutlichsten,
+indem man den Eintrag entfernt. Wo im Bestand noch einer dieser beiden Werte
+steht, wird er nicht mehr angezeigt – der Platz gilt als frei.
+
 **Ein Name von Hand.** Am Pult steht nicht immer jemand aus der eigenen
 Gemeinde: ein besuchender Hoher Rat, die Missionare, «Zeugnisse der neuen
 Ältesten». In jedes Namensfeld einer Ansprache lässt sich deshalb schreiben,
@@ -1138,7 +1151,7 @@ rechtfertigt, haben sie aber nicht.
 | **Bischof**                   | alles                                     |
 | **1. Ratgeber**               | alles                                     |
 | **2. Ratgeber**               | alles                                     |
-| **Exekutivsekretär**          | alles                                     |
+| **Finanzsekretär**            | alles                                     |
 | **Sekretär**                  | alles                                     |
 | **AP-Kalender · bearbeiten**  | nur «Aktivitäten AP's», mit Schreibrecht  |
 | **AP-Kalender · nur ansehen** | nur «Aktivitäten AP's», ohne Schreibrecht |

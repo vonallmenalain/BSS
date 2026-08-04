@@ -50,7 +50,7 @@ export const ROLE_LABELS: Record<Role, string> = {
   bishop: 'Bischof',
   counselor1: '1. Ratgeber',
   counselor2: '2. Ratgeber',
-  executive_secretary: 'Exekutivsekretär',
+  executive_secretary: 'Finanzsekretär',
   secretary: 'Sekretär',
   counselor: 'Ratgeber',
   ap_editor: 'AP-Kalender · bearbeiten',
@@ -442,19 +442,60 @@ export interface Member extends WithId {
 /* Ansprachen                                                          */
 /* ------------------------------------------------------------------ */
 
-export type TalkStatus = 'planned' | 'asked' | 'confirmed' | 'declined' | 'held' | 'cancelled'
+/**
+ * Drei Schritte, mehr nicht: vorgesehen, angefragt, zugesagt.
+ *
+ * Ein vierter Schritt «gehalten» wäre ein Klick, den nach der Versammlung
+ * niemand macht – und ohne ihn stimmte die Auswertung «wer war lange nicht
+ * dran» nicht mehr. Deshalb zählt eine Zusage: Wer zugesagt hat und dessen
+ * Eintrag im Programm stehen bleibt, hat gesprochen. Wird jemand kurzfristig
+ * ersetzt, wird der Eintrag unter «Leitung» geändert oder gelöscht – und
+ * damit stimmt auch die Statistik wieder.
+ *
+ * «Abgesagt» und «Gestrichen» sind aus demselben Grund weggefallen: Eine
+ * Absage heisst, dass der Platz wieder frei ist, und das sagt man am
+ * deutlichsten, indem man den Eintrag entfernt.
+ */
+export type TalkStatus = 'planned' | 'asked' | 'confirmed'
 
 export const TALK_STATUS_LABELS: Record<TalkStatus, string> = {
   planned: 'Vorgesehen',
   asked: 'Angefragt',
   confirmed: 'Zugesagt',
-  declined: 'Abgesagt',
-  held: 'Gehalten',
-  cancelled: 'Gestrichen',
 }
 
-/** Status, bei denen der Platz im Programm noch belegt ist. */
+/** Status, bei denen der Platz im Programm belegt ist – alle drei. */
 export const ACTIVE_TALK_STATUSES: TalkStatus[] = ['planned', 'asked', 'confirmed']
+
+/**
+ * Was als gesprochen zählt – für Firestore-Abfragen, einschliesslich des
+ * Wertes früherer Fassungen.
+ *
+ * In der Datenbank stehen Jahre an übernommenem Verlauf mit «held». Er wird
+ * beim Lesen als «zugesagt» geführt (siehe `toTalkStatus`); Abfragen müssen
+ * ihn aber beim Namen nennen, sonst fehlte die halbe Vergangenheit.
+ */
+export const HELD_STATUS_QUERY: string[] = ['confirmed', 'held']
+
+/**
+ * Was in Firestore steht, auf die drei Schritte zurückführen.
+ *
+ * «Gehalten» wird zur Zusage – die Ansprache hat stattgefunden, und mehr
+ * sagt der Status nicht mehr aus. Für «Abgesagt» und «Gestrichen» gibt es
+ * keine Entsprechung: Diese Einträge werden beim Lesen übergangen (siehe
+ * `hooks/useFirestore`), denn sie beschreiben eine Ansprache, die nicht
+ * gehalten wurde.
+ */
+export function toTalkStatus(value: unknown): TalkStatus {
+  if (value === 'asked') return 'asked'
+  if (value === 'confirmed' || value === 'held') return 'confirmed'
+  return 'planned'
+}
+
+/** Einträge früherer Fassungen, die keine Ansprache mehr bezeichnen. */
+export function isWithdrawnTalk(value: unknown): boolean {
+  return value === 'declined' || value === 'cancelled'
+}
 
 /**
  * Ein Programmpunkt kann eine reguläre Ansprache oder ein Zeugnis sein.

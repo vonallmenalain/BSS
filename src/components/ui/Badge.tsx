@@ -128,10 +128,7 @@ export function MemberStatusBadge({ status }: { status: MemberStatus }) {
 const TALK_STATUS_STYLES: Record<TalkStatus, string> = {
   planned: 'bg-slate-100 text-slate-700 dark:bg-slate-800 dark:text-slate-300',
   asked: 'bg-amber-100 text-amber-800 dark:bg-amber-950 dark:text-amber-200',
-  confirmed: 'bg-sky-100 text-sky-800 dark:bg-sky-950 dark:text-sky-200',
-  declined: 'bg-rose-100 text-rose-800 dark:bg-rose-950 dark:text-rose-200',
-  held: 'bg-emerald-100 text-emerald-800 dark:bg-emerald-950 dark:text-emerald-200',
-  cancelled: 'bg-slate-100 text-slate-500 line-through dark:bg-slate-800 dark:text-slate-500',
+  confirmed: 'bg-emerald-100 text-emerald-800 dark:bg-emerald-950 dark:text-emerald-200',
 }
 
 export function TalkStatusBadge({ status }: { status: TalkStatus }) {

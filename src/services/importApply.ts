@@ -25,6 +25,7 @@ import type {
   KnownTalk,
   MinisteringPreview,
 } from '@/services/importMatch'
+import { HELD_STATUS_QUERY } from '@/lib/types'
 import type { Calling, Prayer, Talk } from '@/lib/types'
 
 /**
@@ -362,7 +363,7 @@ export async function loadKnownHistory(): Promise<{
   prayers: KnownPrayer[]
 }> {
   const [talks, prayers] = await Promise.all([
-    getDocs(query(collection(db, COLLECTIONS.talks), where('status', '==', 'held'))),
+    getDocs(query(collection(db, COLLECTIONS.talks), where('status', 'in', HELD_STATUS_QUERY))),
     getDocs(collection(db, COLLECTIONS.prayers)),
   ])
 
@@ -414,7 +415,9 @@ export async function runHistoryImport(
           date: Timestamp.fromDate(fromIsoDate(talk.date)),
           slot: talk.slot,
           kind: 'talk',
-          status: 'held',
+          // Eine übernommene Ansprache ist gehalten – und das heisst hier
+          // «zugesagt»: einen eigenen Status dafür gibt es nicht mehr.
+          status: 'confirmed',
           topic: '',
           notes: talk.note,
           askedById: null,

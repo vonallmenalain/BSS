@@ -12,9 +12,11 @@ import {
 import { db, COLLECTIONS } from '@/lib/firebase'
 import { useAuth } from '@/contexts/AuthContext'
 import {
+  isWithdrawnTalk,
   OPEN_STATUS_QUERY,
   toItemKind,
   toItemStatus,
+  toTalkStatus,
   type AgendaItem,
   type AnnouncementSeries,
   type ApActivity,
@@ -188,10 +190,28 @@ export function useAllItems(limitCount = 500) {
 /* Ansprachen & Berufungen                                             */
 /* ------------------------------------------------------------------ */
 
+/**
+ * Ansprachen und Zeugnisse.
+ *
+ * Der Status wird beim Lesen zurechtgerückt: «Gehalten» aus dem übernommenen
+ * Verlauf zählt als Zusage. Einträge, die als «abgesagt» oder «gestrichen»
+ * erfasst wurden, fallen ganz weg – sie beschreiben eine Ansprache, die nicht
+ * stattgefunden hat, und ein Platz im Programm ist damit frei. In Firestore
+ * bleiben sie stehen; gelesen werden sie nicht mehr.
+ */
 export function useTalks(limitCount = 300) {
   const { isApproved } = useAuth()
   const constraints = useMemo(() => [orderBy('date', 'desc'), fbLimit(limitCount)], [limitCount])
-  return useCollection<Talk>(COLLECTIONS.talks, constraints, isApproved)
+  const state = useCollection<Talk>(COLLECTIONS.talks, constraints, isApproved)
+  return useMemo(
+    () => ({
+      ...state,
+      data: state.data
+        .filter((talk) => !isWithdrawnTalk(talk.status))
+        .map((talk) => ({ ...talk, status: toTalkStatus(talk.status) })),
+    }),
+    [state],
+  )
 }
 
 export function useCallings(limitCount = 300) {

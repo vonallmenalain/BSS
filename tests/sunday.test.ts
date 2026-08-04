@@ -6,7 +6,9 @@ import {
   openTalkSlots,
   plannedTalksFor,
   sundayProgram,
+  wasHeld,
 } from '../src/lib/sunday.ts'
+import { isWithdrawnTalk, toTalkStatus } from '../src/lib/types.ts'
 import type { SacramentMeeting, Talk } from '../src/lib/types.ts'
 
 /*
@@ -168,7 +170,46 @@ test('offene Plätze zählen nur, wo Ansprachen vorgesehen sind', () => {
   assert.equal(openTalkSlots(sunday('2026-02-01'), null, talks, 3), 0)
 })
 
-test('abgesagte Zusagen geben ihren Platz wieder frei', () => {
-  const talks = [talk(1, 'cancelled'), talk(2)]
+test('ein abgesagter Eintrag aus einer früheren Fassung belegt keinen Platz', () => {
+  // «Abgesagt» und «Gestrichen» gibt es nicht mehr; im Bestand stehen sie noch.
+  const talks = [{ ...talk(1), status: 'cancelled' } as unknown as Talk, talk(2)]
   assert.equal(openTalkSlots(sunday('2026-02-08'), null, talks, 3), 2)
+})
+
+/* ------------------------------------------------------------------ */
+/* Drei Schritte statt sechs                                           */
+/* ------------------------------------------------------------------ */
+
+test('«gehalten» aus dem übernommenen Verlauf zählt als Zusage', () => {
+  assert.equal(toTalkStatus('held'), 'confirmed')
+  assert.equal(toTalkStatus('confirmed'), 'confirmed')
+  assert.equal(toTalkStatus('asked'), 'asked')
+  assert.equal(toTalkStatus('planned'), 'planned')
+  // Was niemand mehr kennt, ist bestenfalls vorgesehen.
+  assert.equal(toTalkStatus('irgendwas'), 'planned')
+})
+
+test('abgesagt und gestrichen beschreiben keine Ansprache mehr', () => {
+  assert.equal(isWithdrawnTalk('declined'), true)
+  assert.equal(isWithdrawnTalk('cancelled'), true)
+  assert.equal(isWithdrawnTalk('confirmed'), false)
+  assert.equal(isWithdrawnTalk(undefined), false)
+})
+
+test('gehalten heisst: zugesagt und vorbei', () => {
+  const jetzt = sunday('2026-02-10')
+  const zugesagt = (iso: string) =>
+    ({ ...talk(1), date: new Date(`${iso}T12:00:00`) }) as unknown as Talk
+
+  assert.equal(wasHeld(zugesagt('2026-02-08'), jetzt), true)
+  // Der nächste Sonntag steht noch bevor – gehalten ist da nichts.
+  assert.equal(wasHeld(zugesagt('2026-02-15'), jetzt), false)
+  // Angefragt, aber nicht zugesagt: ebenfalls nicht.
+  assert.equal(
+    wasHeld(
+      { ...talk(1, 'asked'), date: new Date('2026-02-08T12:00:00') } as unknown as Talk,
+      jetzt,
+    ),
+    false,
+  )
 })

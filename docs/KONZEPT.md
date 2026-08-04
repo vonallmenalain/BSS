@@ -8,13 +8,13 @@ Stand: erste Fassung, umgesetzt als lauffähiger Entwurf.
 
 Die Bischofschaft leitet eine Kirchengemeinde. Die Arbeit verteilt sich auf
 
-| Rolle                | Personen | Aufgabe                                   |
-| -------------------- | -------- | ----------------------------------------- |
-| **Bischof**          | 1        | leitet die Gemeinde und die Bischofschaft |
-| **1. Ratgeber**      | 1        | vertritt und unterstützt den Bischof      |
-| **2. Ratgeber**      | 1        | vertritt und unterstützt den Bischof      |
-| **Exekutivsekretär** | 1        | Sitzungen, Termine, Nachverfolgung        |
-| **Sekretär**         | 1–2      | Protokolle, Aufzeichnungen, Berichte      |
+| Rolle              | Personen | Aufgabe                                   |
+| ------------------ | -------- | ----------------------------------------- |
+| **Bischof**        | 1        | leitet die Gemeinde und die Bischofschaft |
+| **1. Ratgeber**    | 1        | vertritt und unterstützt den Bischof      |
+| **2. Ratgeber**    | 1        | vertritt und unterstützt den Bischof      |
+| **Finanzsekretär** | 1        | Sitzungen, Termine, Nachverfolgung        |
+| **Sekretär**       | 1–2      | Protokolle, Aufzeichnungen, Berichte      |
 
 Alle fünf arbeiten am selben Datenbestand und sehen dasselbe. Die Rolle hält
 die Aufgabe fest, nicht den Rechteumfang – sie beantwortet etwa, wer die
@@ -217,12 +217,15 @@ lässt sich in der Liste umschalten, das Mindestalter steht in den
 Einstellungen. Wer kein Geburtsdatum hat, bleibt drin – ein fehlendes Datum
 ist kein Grund, jemanden zu übergehen.
 
-**Nachführen.** Beim Wechsel auf «gehalten» schreibt die App das Datum der
-letzten Ansprache beim Mitglied fort und erhöht den Zähler. Ein nachgetragener
-alter Termin überschreibt dabei nie ein neueres Datum.
+**Nachführen.** Eine Zusage schreibt das Datum der letzten Ansprache beim
+Mitglied fort und setzt den Zähler neu – gezählt wird aus dem Bestand und
+nicht hoch und runter, damit sich nichts verzählen kann.
 
-Statusfolge: _Vorgesehen → Angefragt → Zugesagt → Gehalten_
-(mit _Abgesagt_ und _Gestrichen_ als Ausstieg).
+Statusfolge: _Vorgesehen → Angefragt → Zugesagt_. Einen vierten Schritt
+«gehalten» gibt es nicht: Er wäre ein Klick nach der Versammlung, den niemand
+macht, und ohne ihn stimmte die Auswertung nicht mehr. Wer zusagt und im
+Programm stehen bleibt, hat gesprochen; wer kurzfristig ersetzt wird, wird
+unter «Leitung» ausgetauscht – und damit stimmt auch die Statistik wieder.
 
 **Verlauf übernehmen.** Die Vorschlagsliste ist nur so gut wie das, was sie
 über die Vergangenheit weiss – ohne Verlauf hielte sie anfangs alle für gleich

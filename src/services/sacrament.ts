@@ -35,6 +35,7 @@ export {
   openTalkSlots,
   plannedTalksFor,
   sundayProgram,
+  wasHeld,
   type SundayProgram,
 } from '@/lib/sunday'
 
@@ -169,7 +170,6 @@ export function talksForDate(talks: Talk[], date: Date): Talk[] {
   const key = toDateInput(date)
   return talks
     .filter((talk) => toDateInput(toDate(talk.date)) === key)
-    .filter((talk) => talk.status !== 'cancelled' && talk.status !== 'declined')
     .sort((a, b) => a.slot - b.slot)
 }
 
