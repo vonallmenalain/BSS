@@ -77,7 +77,6 @@ async function seed() {
       memberRefs: [],
       dueDate: null,
       deferCount: 0,
-      notes: [],
       history: [],
     }
 

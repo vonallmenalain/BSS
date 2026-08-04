@@ -1,12 +1,9 @@
-import { useState, type RefObject } from 'react'
-import { Send, Trash2 } from 'lucide-react'
-import { useAuth } from '@/contexts/AuthContext'
-import { useToast } from '@/contexts/ToastContext'
-import { useAutosave, saveStateLabel } from '@/hooks/useAutosave'
+import { useState } from 'react'
+import { useAutosave } from '@/hooks/useAutosave'
 import { MentionEditable } from '@/components/ui/MentionText'
 import { AssigneePicker, SegmentedControl } from '@/components/ui/Pickers'
-import { formatDateTime, toDateInput } from '@/lib/dates'
-import { addNote, removeNote, updateAgendaItem } from '@/services/agenda'
+import { toDateInput } from '@/lib/dates'
+import { updateAgendaItem } from '@/services/agenda'
 import { PRIORITY_LABELS, type AgendaItem, type Priority } from '@/lib/types'
 
 /**
@@ -20,9 +17,10 @@ import { PRIORITY_LABELS, type AgendaItem, type Priority } from '@/lib/types'
  * nach dem letzten Tastendruck.
  *
  * Zu sehen sind nur die Angaben, die am Sitzungstisch gebraucht werden:
- * Priorität, Termin, Zuständige. Bereich, betroffene Mitglieder und das
- * Kennzeichen «vertraulich» sind weggefallen – sie wurden gepflegt, aber nie
- * gelesen.
+ * Priorität, Termin, Zuständige. Bereich, betroffene Mitglieder, das
+ * Kennzeichen «vertraulich» und die eigene Notizliste sind weggefallen – sie
+ * wurden gepflegt, aber nie gelesen. Was besprochen wurde, gehört in die
+ * Beschreibung.
  *
  * Der Aufrufer muss die Komponente je Eintrag frisch aufbauen
  * (`key={item.id}`): Der Stand im Feld gehört dem Eintrag, nicht der Stelle
@@ -66,6 +64,13 @@ export function AgendaItemEditor({
    */
   const linkMember = (memberId: string) =>
     setMemberRefs((current) => (current.includes(memberId) ? current : [...current, memberId]))
+
+  const hinweis =
+    title.trim() === ''
+      ? 'Titel ausfüllen'
+      : autosave.state === 'fehler'
+        ? 'Nicht gespeichert – die Änderung wird erneut versucht.'
+        : null
 
   return (
     <div className="space-y-3">
@@ -132,115 +137,15 @@ export function AgendaItemEditor({
 
           <AssigneePicker value={assignees} onChange={setAssignees} />
 
-          <p className="hint" aria-live="polite">
-            {saveStateLabel(autosave.state, title.trim() === '' ? 'Titel ausfüllen' : undefined)}
-          </p>
+          {/* Nur melden, was zu tun ist. «Wird laufend gespeichert» stand sonst
+              unter jedem Traktandum und sagte bei keinem etwas. */}
+          {hinweis && (
+            <p className="hint" aria-live="polite">
+              {hinweis}
+            </p>
+          )}
         </>
       )}
     </div>
-  )
-}
-
-/**
- * Was in der Sitzung zu einem Traktandum gesagt wurde.
- *
- * Bewusst eine eigene Liste und kein Teil der Beschreibung: Die Beschreibung
- * sagt, worum es geht, die Notiz, was daraus geworden ist – mit Namen und
- * Zeitpunkt, damit im Protokoll nachvollziehbar bleibt, wer was festgehalten
- * hat.
- */
-export function AgendaNotes({
-  item,
-  readOnly = false,
-  inputRef,
-}: {
-  item: AgendaItem
-  readOnly?: boolean
-  inputRef?: RefObject<HTMLTextAreaElement | null>
-}) {
-  const { profile } = useAuth()
-  const toast = useToast()
-  const [text, setText] = useState('')
-  const [saving, setSaving] = useState(false)
-
-  const submit = async () => {
-    const trimmed = text.trim()
-    if (!trimmed || !profile) return
-    setSaving(true)
-    try {
-      await addNote(item.id, trimmed, { id: profile.id, name: profile.displayName })
-      setText('')
-    } catch (error) {
-      console.error(error)
-      toast.error('Notiz konnte nicht gespeichert werden.')
-    } finally {
-      setSaving(false)
-    }
-  }
-
-  return (
-    <section className="border-t border-slate-200 pt-4 dark:border-slate-800">
-      <h3 className="mb-2 text-sm font-medium">Notizen</h3>
-
-      {item.notes?.length > 0 && (
-        <ul className="mb-3 space-y-2">
-          {[...item.notes]
-            .sort((a, b) => a.createdAt.localeCompare(b.createdAt))
-            .map((note) => (
-              <li
-                key={note.id}
-                className="group flex items-start gap-2 rounded-lg bg-slate-50 p-3 text-sm dark:bg-slate-800/60"
-              >
-                <div className="min-w-0 flex-1">
-                  <p className="whitespace-pre-wrap">{note.text}</p>
-                  <p className="mt-1 text-xs text-slate-400">
-                    {note.authorName} · {formatDateTime(note.createdAt)}
-                  </p>
-                </div>
-                {!readOnly && note.authorId === profile?.id && (
-                  <button
-                    type="button"
-                    onClick={() => void removeNote(item.id, note.id)}
-                    className="rounded p-1 text-slate-400 opacity-0 transition group-hover:opacity-100 hover:text-rose-600 focus-visible:opacity-100"
-                    aria-label="Notiz löschen"
-                  >
-                    <Trash2 className="size-3.5" aria-hidden />
-                  </button>
-                )}
-              </li>
-            ))}
-        </ul>
-      )}
-
-      {!readOnly && (
-        <div className="flex items-end gap-2">
-          <textarea
-            ref={inputRef}
-            className="input min-h-11 resize-y py-2.5"
-            rows={2}
-            aria-label="Neue Notiz"
-            placeholder="Was wurde besprochen oder beschlossen?"
-            value={text}
-            onChange={(event) => setText(event.target.value)}
-            onKeyDown={(event) => {
-              // Enter speichert, Shift+Enter macht einen Zeilenumbruch.
-              if (event.key === 'Enter' && !event.shiftKey) {
-                event.preventDefault()
-                void submit()
-              }
-            }}
-          />
-          <button
-            type="button"
-            className="btn-primary shrink-0"
-            onClick={() => void submit()}
-            disabled={!text.trim() || saving}
-            aria-label="Notiz speichern"
-          >
-            <Send className="size-4" aria-hidden />
-          </button>
-        </div>
-      )}
-    </section>
   )
 }

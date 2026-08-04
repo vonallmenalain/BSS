@@ -10,7 +10,6 @@ import {
   MapPin,
   Play,
   Plus,
-  Presentation,
   Printer,
   Settings2,
   Trash2,
@@ -27,14 +26,14 @@ import { FOCUS_PARAM, MeetingFocus } from '@/components/agenda/MeetingFocus'
 import { MeetingStatusBadge } from '@/components/ui/Badge'
 import { ConfirmDialog, Modal } from '@/components/ui/Modal'
 import { EmptyState, LoadingScreen } from '@/components/ui/Feedback'
-import { AssigneePicker, SegmentedControl } from '@/components/ui/Pickers'
-import { AssigneeAvatars } from '@/components/ui/Avatar'
+import { PeopleChoice, PersonChoice, SegmentedControl } from '@/components/ui/Pickers'
 import { MeetingForm } from '@/pages/Meetings'
 import { formatDateLong, formatTime, toDate } from '@/lib/dates'
 import {
   assignToMeeting,
   carryOverOpenItems,
   groupByKind,
+  ITEM_KIND_ORDER,
   reorderItems,
   sortForMeeting,
 } from '@/services/agenda'
@@ -46,7 +45,7 @@ import {
   suggestNextMeetingDate,
   updateMeeting,
 } from '@/services/meetings'
-import { ITEM_KIND_PLURAL, type AgendaItem, type ItemKind } from '@/lib/types'
+import { ITEM_KIND_PLURAL, type AgendaItem, type ItemKind, type Meeting } from '@/lib/types'
 
 type ViewMode = 'focus' | 'list'
 
@@ -69,7 +68,6 @@ export function MeetingDetail() {
   const [searchParams, setSearchParams] = useSearchParams()
   const [formOpen, setFormOpen] = useState(false)
   const [poolOpen, setPoolOpen] = useState(false)
-  const [detailsOpen, setDetailsOpen] = useState(false)
   const [confirmClose, setConfirmClose] = useState(false)
   const [confirmDelete, setConfirmDelete] = useState(false)
   const [followUpOpen, setFollowUpOpen] = useState(false)
@@ -107,12 +105,12 @@ export function MeetingDetail() {
 
   /*
    * Umsortiert wird innerhalb einer Gruppe; geschrieben wird die ganze
-   * Sitzung. Die Pendenzen behalten dabei ihren Platz vor den neuen
-   * Traktanden – das ist die Reihenfolge, in der eine Sitzung durchgeht.
+   * Sitzung. Die neuen Traktanden behalten dabei ihren Platz vor den
+   * Pendenzen – das ist die Reihenfolge, in der eine Sitzung durchgeht.
    */
   const saveOrder = async (kind: ItemKind, ordered: AgendaItem[]) => {
     const all =
-      kind === 'pendenz' ? [...ordered, ...groups.traktandum] : [...groups.pendenz, ...ordered]
+      kind === 'traktandum' ? [...ordered, ...groups.pendenz] : [...groups.traktandum, ...ordered]
     try {
       await reorderItems(all.map((item) => item.id))
     } catch (error) {
@@ -204,12 +202,6 @@ export function MeetingDetail() {
                 </span>
               )}
             </p>
-            {meeting.attendees?.length > 0 && (
-              <div className="mt-2 flex items-center gap-2">
-                <span className="text-xs text-slate-500 dark:text-slate-400">Anwesend:</span>
-                <AssigneeAvatars userIds={meeting.attendees} />
-              </div>
-            )}
           </div>
 
           <div className="flex flex-wrap items-center gap-2">
@@ -239,14 +231,13 @@ export function MeetingDetail() {
               </button>
             )}
 
-            <MeetingMenu
-              onDetails={() => setDetailsOpen(true)}
-              onPrint={() => window.print()}
-              onDelete={() => setConfirmDelete(true)}
-            />
+            <MeetingMenu onPrint={() => window.print()} onDelete={() => setConfirmDelete(true)} />
           </div>
         </div>
       </div>
+
+      {/* ---------- Anwesenheit, Gebete, geistiger Gedanke ---------- */}
+      <MeetingBasics meetingId={meetingId} meeting={meeting} readOnly={isClosed} />
 
       {/* ---------- Werkzeugleiste ---------- */}
       <div className="no-print mb-4 flex flex-wrap items-center justify-between gap-2">
@@ -316,16 +307,8 @@ export function MeetingDetail() {
         </div>
       ) : (
         <div className="space-y-5">
-          <ItemGroup
-            kind="pendenz"
-            hint="Aus früheren Sitzungen übernommen"
-            items={groups.pendenz}
-            openId={openId}
-            onToggle={toggleOpen}
-            onReorder={(ordered) => void saveOrder('pendenz', ordered)}
-            readOnly={isClosed}
-            nextMeeting={nextMeetingRef}
-          />
+          {/* Erst das Neue, danach das Liegengebliebene – dieselbe Folge wie
+              im Sitzungsmodus. */}
           <ItemGroup
             kind="traktandum"
             hint="Für diese Sitzung neu erfasst"
@@ -336,32 +319,20 @@ export function MeetingDetail() {
             readOnly={isClosed}
             nextMeeting={nextMeetingRef}
           />
+          <ItemGroup
+            kind="pendenz"
+            hint="Aus früheren Sitzungen übernommen"
+            items={groups.pendenz}
+            openId={openId}
+            onToggle={toggleOpen}
+            onReorder={(ordered) => void saveOrder('pendenz', ordered)}
+            readOnly={isClosed}
+            nextMeeting={nextMeetingRef}
+          />
           <p className="text-center text-xs text-slate-400">
             {doneCount} von {items.length} erledigt
           </p>
         </div>
-      )}
-
-      {/* ---------- Protokollnotizen ---------- */}
-      {(meeting.notes || meeting.spiritualThought) && (
-        <section className="card mt-6 p-4">
-          {meeting.spiritualThought && (
-            <div className="mb-3">
-              <h3 className="text-xs font-medium tracking-wide text-slate-500 uppercase dark:text-slate-400">
-                Geistiger Gedanke
-              </h3>
-              <p className="mt-1 text-sm whitespace-pre-wrap">{meeting.spiritualThought}</p>
-            </div>
-          )}
-          {meeting.notes && (
-            <div>
-              <h3 className="text-xs font-medium tracking-wide text-slate-500 uppercase dark:text-slate-400">
-                Sitzungsnotizen
-              </h3>
-              <p className="mt-1 text-sm whitespace-pre-wrap">{meeting.notes}</p>
-            </div>
-          )}
-        </section>
       )}
 
       {/* ---------- Dialoge ---------- */}
@@ -378,13 +349,6 @@ export function MeetingDetail() {
         items={poolItems}
         meetingId={meetingId}
         onCarryAll={handleCarryOver}
-      />
-
-      <MeetingDetailsDialog
-        open={detailsOpen}
-        onClose={() => setDetailsOpen(false)}
-        meetingId={meetingId}
-        meeting={meeting}
       />
 
       <ConfirmDialog
@@ -549,15 +513,7 @@ function ItemGroup({
   )
 }
 
-function MeetingMenu({
-  onDetails,
-  onPrint,
-  onDelete,
-}: {
-  onDetails: () => void
-  onPrint: () => void
-  onDelete: () => void
-}) {
+function MeetingMenu({ onPrint, onDelete }: { onPrint: () => void; onDelete: () => void }) {
   const [open, setOpen] = useState(false)
 
   return (
@@ -577,17 +533,6 @@ function MeetingMenu({
         <>
           <div className="fixed inset-0 z-10" onClick={() => setOpen(false)} aria-hidden />
           <div className="animate-scale-in absolute right-0 z-20 mt-1 w-52 origin-top-right rounded-xl border border-slate-200 bg-white p-1 shadow-lg dark:border-slate-700 dark:bg-slate-800">
-            <button
-              type="button"
-              onClick={() => {
-                setOpen(false)
-                onDetails()
-              }}
-              className="flex w-full items-center gap-2 rounded-lg px-3 py-2 text-sm transition hover:bg-slate-100 dark:hover:bg-slate-700"
-            >
-              <Presentation className="size-4" aria-hidden />
-              Sitzungsdetails
-            </button>
             <button
               type="button"
               onClick={() => {
@@ -692,128 +637,75 @@ function PoolDialog({
   )
 }
 
-/** Anwesenheit, Gebete, geistiger Gedanke und Protokollnotizen. */
-function MeetingDetailsDialog({
-  open,
-  onClose,
+/**
+ * Anwesenheit, Gebete und geistiger Gedanke – gleich oben, nicht im Fenster.
+ *
+ * Diese vier Angaben werden am Anfang jeder Sitzung festgehalten, in einer
+ * halben Minute und meist von der Person, die ohnehin schon schreibt. Ein
+ * Fenster, das sich dafür öffnet, ist ein Umweg. Deshalb stehen sie hier als
+ * Knopfleiste: ein Griff je Person, gespeichert wird sofort.
+ *
+ * Zur Wahl stehen der Bischof, beide Ratgeber und die Sekretäre. Beim Gebet
+ * und beim geistigen Gedanken wird der ausgeschriebene Name gespeichert, bei
+ * der Anwesenheit die UID – dieselbe Person bekommt schliesslich auch
+ * Traktanden zugewiesen.
+ */
+function MeetingBasics({
   meetingId,
   meeting,
+  readOnly,
 }: {
-  open: boolean
-  onClose: () => void
   meetingId: string
-  meeting: {
-    attendees?: string[]
-    openingPrayer?: string
-    closingPrayer?: string
-    spiritualThought?: string
-    notes?: string
-  }
+  meeting: Meeting
+  readOnly: boolean
 }) {
   const toast = useToast()
-  const [attendees, setAttendees] = useState(meeting.attendees ?? [])
-  const [openingPrayer, setOpeningPrayer] = useState(meeting.openingPrayer ?? '')
-  const [closingPrayer, setClosingPrayer] = useState(meeting.closingPrayer ?? '')
-  const [spiritualThought, setSpiritualThought] = useState(meeting.spiritualThought ?? '')
-  const [notes, setNotes] = useState(meeting.notes ?? '')
-  const [saving, setSaving] = useState(false)
 
-  const save = async () => {
-    setSaving(true)
+  const save = async (patch: Partial<Meeting>) => {
     try {
-      const outcome = await updateMeeting(meetingId, {
-        attendees,
-        openingPrayer,
-        closingPrayer,
-        spiritualThought,
-        notes,
-      })
-      toast.saved('Gespeichert.', outcome)
-      onClose()
+      await updateMeeting(meetingId, patch)
     } catch (error) {
       console.error(error)
       toast.error('Speichern fehlgeschlagen.')
-    } finally {
-      setSaving(false)
     }
   }
 
+  const leer =
+    (meeting.attendees?.length ?? 0) === 0 &&
+    !meeting.openingPrayer &&
+    !meeting.closingPrayer &&
+    !meeting.spiritualThought
+
+  // Bei einer abgeschlossenen Sitzung ohne Angaben gibt es nichts zu zeigen.
+  if (readOnly && leer) return null
+
   return (
-    <Modal
-      open={open}
-      onClose={onClose}
-      title="Sitzungsdetails"
-      size="lg"
-      footer={
-        <>
-          <button type="button" className="btn-secondary" onClick={onClose} disabled={saving}>
-            Abbrechen
-          </button>
-          <button
-            type="button"
-            className="btn-primary"
-            onClick={() => void save()}
-            disabled={saving}
-          >
-            Speichern
-          </button>
-        </>
-      }
-    >
-      <div className="space-y-4">
-        <AssigneePicker value={attendees} onChange={setAttendees} label="Anwesend" />
-
-        <div className="grid gap-4 sm:grid-cols-2">
-          <div>
-            <label className="label" htmlFor="opening-prayer">
-              Anfangsgebet
-            </label>
-            <input
-              id="opening-prayer"
-              className="input"
-              value={openingPrayer}
-              onChange={(event) => setOpeningPrayer(event.target.value)}
-            />
-          </div>
-          <div>
-            <label className="label" htmlFor="closing-prayer">
-              Schlussgebet
-            </label>
-            <input
-              id="closing-prayer"
-              className="input"
-              value={closingPrayer}
-              onChange={(event) => setClosingPrayer(event.target.value)}
-            />
-          </div>
-        </div>
-
-        <div>
-          <label className="label" htmlFor="spiritual-thought">
-            Geistiger Gedanke
-          </label>
-          <textarea
-            id="spiritual-thought"
-            className="input min-h-20 resize-y"
-            value={spiritualThought}
-            onChange={(event) => setSpiritualThought(event.target.value)}
-            placeholder="Schriftstelle, Gedanke, wer den Beitrag hält …"
-          />
-        </div>
-
-        <div>
-          <label className="label" htmlFor="meeting-notes">
-            Allgemeine Sitzungsnotizen
-          </label>
-          <textarea
-            id="meeting-notes"
-            className="input min-h-24 resize-y"
-            value={notes}
-            onChange={(event) => setNotes(event.target.value)}
-          />
-        </div>
-      </div>
-    </Modal>
+    <section className="card no-print mb-4 space-y-2 p-3">
+      <PeopleChoice
+        label="Anwesend"
+        value={meeting.attendees ?? []}
+        onChange={(next) => void save({ attendees: next })}
+        readOnly={readOnly}
+      />
+      <PersonChoice
+        label="Anfangsgebet"
+        value={meeting.openingPrayer ?? ''}
+        onChange={(next) => void save({ openingPrayer: next })}
+        readOnly={readOnly}
+      />
+      <PersonChoice
+        label="Schlussgebet"
+        value={meeting.closingPrayer ?? ''}
+        onChange={(next) => void save({ closingPrayer: next })}
+        readOnly={readOnly}
+      />
+      <PersonChoice
+        label="Geistiger Gedanke"
+        value={meeting.spiritualThought ?? ''}
+        onChange={(next) => void save({ spiritualThought: next })}
+        readOnly={readOnly}
+      />
+    </section>
   )
 }
 
@@ -830,6 +722,7 @@ function PrintProtocol({
     attendees?: string[]
     openingPrayer?: string
     closingPrayer?: string
+    spiritualThought?: string
   }
   groups: Record<ItemKind, AgendaItem[]>
   userName: (id: string) => string
@@ -844,15 +737,19 @@ function PrintProtocol({
       {meeting.attendees && meeting.attendees.length > 0 && (
         <p className="mt-1 text-sm">Anwesend: {meeting.attendees.map(userName).join(', ')}</p>
       )}
-      {(meeting.openingPrayer || meeting.closingPrayer) && (
+      {(meeting.openingPrayer || meeting.closingPrayer || meeting.spiritualThought) && (
         <p className="text-sm">
-          {meeting.openingPrayer && `Anfangsgebet: ${meeting.openingPrayer}`}
-          {meeting.openingPrayer && meeting.closingPrayer && ' · '}
-          {meeting.closingPrayer && `Schlussgebet: ${meeting.closingPrayer}`}
+          {[
+            meeting.openingPrayer && `Anfangsgebet: ${meeting.openingPrayer}`,
+            meeting.closingPrayer && `Schlussgebet: ${meeting.closingPrayer}`,
+            meeting.spiritualThought && `Geistiger Gedanke: ${meeting.spiritualThought}`,
+          ]
+            .filter(Boolean)
+            .join(' · ')}
         </p>
       )}
 
-      {(['pendenz', 'traktandum'] as ItemKind[]).map((kind) =>
+      {ITEM_KIND_ORDER.map((kind) =>
         groups[kind].length === 0 ? null : (
           <section key={kind} className="mt-4">
             <h2 className="text-sm font-bold uppercase">{ITEM_KIND_PLURAL[kind]}</h2>
@@ -867,11 +764,6 @@ function PrintProtocol({
                   {item.assignees?.length > 0 && (
                     <p className="text-sm">Zuständig: {item.assignees.map(userName).join(', ')}</p>
                   )}
-                  {item.notes?.map((note) => (
-                    <p key={note.id} className="mt-1 text-sm">
-                      – {note.text} <em>({note.authorName})</em>
-                    </p>
-                  ))}
                 </li>
               ))}
             </ol>

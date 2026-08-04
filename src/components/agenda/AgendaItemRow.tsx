@@ -8,7 +8,6 @@ import {
   ChevronUp,
   Clock,
   GripVertical,
-  MessageSquare,
   Repeat,
   Trash2,
 } from 'lucide-react'
@@ -19,7 +18,7 @@ import { useToast } from '@/contexts/ToastContext'
 import { AssigneeAvatars } from '@/components/ui/Avatar'
 import { DueBadge, KindBadge, PriorityBadge, StatusBadge } from '@/components/ui/Badge'
 import { ConfirmDialog } from '@/components/ui/Modal'
-import { AgendaItemEditor, AgendaNotes } from '@/components/agenda/AgendaItemEditor'
+import { AgendaItemEditor } from '@/components/agenda/AgendaItemEditor'
 import { DeferMenu } from '@/components/agenda/DeferMenu'
 import { deleteAgendaItem, setItemStatus } from '@/services/agenda'
 import { ITEM_KIND_LABELS, toItemKind, type AgendaItem } from '@/lib/types'
@@ -63,8 +62,8 @@ interface Props {
  * Die Liste ist zum Vorbereiten da: Man will auf einen Blick sehen, was
  * ansteht, und die Reihenfolge festlegen. Deshalb zeigt die Zeile nur den
  * Titel und das Nötigste daneben. Ein Klick klappt sie auf, und dann steht
- * alles da – Beschreibung, Priorität, Termin, Zuständige, Notizen – und lässt
- * sich unmittelbar ändern; ein Fenster dazwischen gibt es nicht mehr.
+ * alles da – Beschreibung, Priorität, Termin, Zuständige – und lässt sich
+ * unmittelbar ändern; ein Fenster dazwischen gibt es nicht mehr.
  *
  * Umsortiert wird auf zwei Wegen: mit den Pfeilen (auch am Handy) und durch
  * Ziehen und Ablegen (am Zeigergerät). Beides schreibt dieselbe Reihenfolge.
@@ -177,7 +176,9 @@ export function AgendaItemRow({
                 {ITEM_KIND_LABELS[kind]}
                 {position !== undefined && ` ${position}`}
               </span>
-              <StatusBadge status={item.status} />
+              {/* «Pendent» neben «Pendenz» sagt dasselbe zweimal – angeschrieben
+                  wird nur, was vom Normalfall abweicht. */}
+              {item.status !== 'pending' && <StatusBadge status={item.status} />}
               {item.deferCount > 0 && (
                 <span className="badge bg-amber-100 text-amber-800 dark:bg-amber-950 dark:text-amber-200">
                   <Repeat className="size-3" aria-hidden />
@@ -221,12 +222,6 @@ export function AgendaItemRow({
                 >
                   <Repeat className="size-3" aria-hidden />
                   {item.deferCount}×
-                </span>
-              )}
-              {item.notes?.length > 0 && (
-                <span className="badge bg-slate-100 text-slate-500 dark:bg-slate-800 dark:text-slate-400">
-                  <MessageSquare className="size-3" aria-hidden />
-                  {item.notes.length}
                 </span>
               )}
               {meetingLabel && (
@@ -285,10 +280,6 @@ export function AgendaItemRow({
               Eintrag neu auf. */}
           <AgendaItemEditor key={item.id} item={item} readOnly={readOnly} />
 
-          <div className="mt-4">
-            <AgendaNotes item={item} readOnly={readOnly} />
-          </div>
-
           {meetingHref && (
             <Link
               to={meetingHref}
@@ -342,8 +333,8 @@ export function AgendaItemRow({
         title={`${ITEM_KIND_LABELS[kind]} löschen?`}
         message={
           <>
-            «{item.title}» wird endgültig gelöscht – samt Notizen und Verlauf. Soll der Punkt bloss
-            aus dieser Sitzung verschwinden, ist «Verschieben» der richtige Weg.
+            «{item.title}» wird endgültig gelöscht – samt Verlauf. Soll der Punkt bloss aus dieser
+            Sitzung verschwinden, ist «Verschieben» der richtige Weg.
           </>
         }
         confirmLabel="Endgültig löschen"

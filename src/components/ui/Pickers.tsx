@@ -67,8 +67,158 @@ export function AssigneePicker({
           )
         })}
       </div>
-      <p className="hint">Alle freigeschalteten Konten können zugewiesen werden.</p>
     </div>
+  )
+}
+
+/* ------------------------------------------------------------------ */
+/* Eine Person aus dem Team                                            */
+/* ------------------------------------------------------------------ */
+
+/**
+ * Dasselbe für genau eine Person – Gebet, geistiger Gedanke.
+ *
+ * Gespeichert wird der ausgeschriebene Name und keine UID: Ein Protokoll von
+ * vor zwei Jahren soll auch dann lesbar bleiben, wenn die Person längst kein
+ * Konto mehr hat. Ein zweiter Griff auf denselben Namen nimmt die Wahl wieder
+ * zurück.
+ *
+ * Steht dort etwas, das zu niemandem passt – ein von Hand erfasster Name aus
+ * einer früheren Fassung –, bleibt es als eigener Knopf stehen, statt still
+ * zu verschwinden.
+ */
+export function PersonChoice({
+  label,
+  value,
+  onChange,
+  readOnly = false,
+}: {
+  label: string
+  value: string
+  onChange: (next: string) => void
+  readOnly?: boolean
+}) {
+  const { users } = useData()
+  const selectable = users.filter((user) => user.active && FULL_ACCESS_ROLES.includes(user.role))
+  const current = value.trim()
+  const foreign = current !== '' && !selectable.some((user) => user.displayName === current)
+
+  if (readOnly) {
+    return (
+      <div className="flex flex-wrap items-baseline gap-x-2">
+        <span className="shrink-0 text-xs text-slate-500 dark:text-slate-400">{label}:</span>
+        <span className="text-sm">{current || '–'}</span>
+      </div>
+    )
+  }
+
+  return (
+    <div className="flex flex-wrap items-center gap-x-2 gap-y-1">
+      <span className="w-full shrink-0 text-xs text-slate-500 sm:w-36 dark:text-slate-400">
+        {label}
+      </span>
+      <div className="flex flex-wrap gap-1">
+        {selectable.map((user) => (
+          <PersonButton
+            key={user.id}
+            id={user.id}
+            name={user.displayName}
+            selected={user.displayName === current}
+            onClick={() => onChange(user.displayName === current ? '' : user.displayName)}
+          />
+        ))}
+        {foreign && (
+          <PersonButton id={current} name={current} selected onClick={() => onChange('')} />
+        )}
+      </div>
+    </div>
+  )
+}
+
+/**
+ * Mehrere Personen aus dem Team – die Anwesenheit.
+ *
+ * Anders als beim Gebet werden hier UIDs gespeichert: Wer anwesend war, ist
+ * dieselbe Person, die auch Traktanden zugewiesen bekommt, und die Avatare in
+ * den Listen brauchen den Verweis.
+ */
+export function PeopleChoice({
+  label,
+  value,
+  onChange,
+  readOnly = false,
+}: {
+  label: string
+  value: string[]
+  onChange: (next: string[]) => void
+  readOnly?: boolean
+}) {
+  const { users, userName } = useData()
+  const selectable = users.filter((user) => user.active && FULL_ACCESS_ROLES.includes(user.role))
+
+  if (readOnly) {
+    return (
+      <div className="flex flex-wrap items-baseline gap-x-2">
+        <span className="shrink-0 text-xs text-slate-500 dark:text-slate-400">{label}:</span>
+        <span className="text-sm">{value.length ? value.map(userName).join(', ') : '–'}</span>
+      </div>
+    )
+  }
+
+  return (
+    <div className="flex flex-wrap items-center gap-x-2 gap-y-1">
+      <span className="w-full shrink-0 text-xs text-slate-500 sm:w-36 dark:text-slate-400">
+        {label}
+      </span>
+      <div className="flex flex-wrap gap-1">
+        {selectable.map((user) => (
+          <PersonButton
+            key={user.id}
+            id={user.id}
+            name={user.displayName}
+            selected={value.includes(user.id)}
+            onClick={() =>
+              onChange(
+                value.includes(user.id)
+                  ? value.filter((id) => id !== user.id)
+                  : [...value, user.id],
+              )
+            }
+          />
+        ))}
+      </div>
+    </div>
+  )
+}
+
+/** Ein Name als Knopf – nur der Vorname, der Rest steht im Tooltip. */
+function PersonButton({
+  id,
+  name,
+  selected,
+  onClick,
+}: {
+  id: string
+  name: string
+  selected: boolean
+  onClick: () => void
+}) {
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      aria-pressed={selected}
+      title={name}
+      className={cn(
+        'inline-flex items-center gap-1.5 rounded-full border py-0.5 pr-2.5 pl-0.5 text-xs font-medium transition',
+        selected
+          ? 'border-brand-500 bg-brand-50 text-brand-900 dark:border-brand-500 dark:bg-brand-950 dark:text-brand-100'
+          : 'border-slate-300 bg-white text-slate-600 hover:border-slate-400 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-300',
+      )}
+    >
+      <Avatar name={name} id={id} size="xs" />
+      <span className="max-w-28 truncate">{name.split(' ')[0]}</span>
+    </button>
   )
 }
 

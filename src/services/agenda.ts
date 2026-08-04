@@ -17,14 +17,7 @@ import { db, COLLECTIONS } from '@/lib/firebase'
 import { addMonths, startOfDay, toDate } from '@/lib/dates'
 import { stripUndefined, uid } from '@/lib/utils'
 import { commit, type SaveOutcome } from '@/lib/sync'
-import type {
-  AgendaItem,
-  HistoryEntry,
-  ItemKind,
-  ItemNote,
-  ItemStatus,
-  Priority,
-} from '@/lib/types'
+import type { AgendaItem, HistoryEntry, ItemKind, ItemStatus, Priority } from '@/lib/types'
 import { ITEM_STATUS_LABELS, OPEN_STATUS_QUERY, toItemKind } from '@/lib/types'
 
 const itemsRef = collection(db, COLLECTIONS.agendaItems)
@@ -75,7 +68,6 @@ export async function createAgendaItem(input: AgendaItemInput, actor: Actor): Pr
       memberRefs: input.memberRefs ?? [],
       dueDate: input.dueDate ? Timestamp.fromDate(input.dueDate) : null,
       deferCount: 0,
-      notes: [],
       history: [historyEntry('Traktandum erstellt', actor)],
       createdAt: serverTimestamp(),
       updatedAt: serverTimestamp(),
@@ -119,30 +111,6 @@ export async function setItemStatus(
       updatedAt: serverTimestamp(),
     }),
   )
-}
-
-export async function addNote(id: string, text: string, actor: Actor): Promise<SaveOutcome> {
-  const note: ItemNote = {
-    id: uid(),
-    text: text.trim(),
-    authorId: actor.id,
-    authorName: actor.name,
-    createdAt: new Date().toISOString(),
-  }
-  return commit(
-    updateDoc(doc(db, COLLECTIONS.agendaItems, id), {
-      notes: arrayUnion(note),
-      updatedAt: serverTimestamp(),
-    }),
-  )
-}
-
-export async function removeNote(id: string, noteId: string): Promise<SaveOutcome | null> {
-  const ref = doc(db, COLLECTIONS.agendaItems, id)
-  const snapshot = await getDoc(ref)
-  if (!snapshot.exists()) return null
-  const notes = ((snapshot.data().notes as ItemNote[]) ?? []).filter((n) => n.id !== noteId)
-  return commit(updateDoc(ref, { notes, updatedAt: serverTimestamp() }))
 }
 
 export type DeferTarget = 'next_meeting' | 'one_week' | 'one_month' | 'three_months' | 'custom'
@@ -292,8 +260,12 @@ export async function deleteAgendaItem(id: string): Promise<SaveOutcome> {
 }
 
 /**
- * Sortierung für die Sitzungsansicht: zuerst die Pendenzen, dann die neuen
- * Traktanden – innerhalb der beiden Gruppen nach `order`.
+ * Sortierung für die Sitzungsansicht: zuerst die neuen Traktanden, danach die
+ * Pendenzen – innerhalb der beiden Gruppen nach `order`.
+ *
+ * Die Sitzung beginnt mit dem, was ansteht, und arbeitet danach ab, was
+ * liegengeblieben ist. Umgekehrt wäre der erste Teil jeder Sitzung eine
+ * Wiederholung der letzten.
  *
  * Erledigtes bleibt bewusst stehen, wo es steht. Früher rutschte es ans Ende;
  * seit sich die Reihenfolge von Hand festlegen lässt, wäre das ein Ärgernis:
@@ -301,16 +273,19 @@ export async function deleteAgendaItem(id: string): Promise<SaveOutcome> {
  * wäre woanders.
  */
 export function sortForMeeting(items: AgendaItem[]): AgendaItem[] {
-  const rank = (item: AgendaItem) => (toItemKind(item) === 'pendenz' ? 0 : 1)
+  const rank = (item: AgendaItem) => (toItemKind(item) === 'traktandum' ? 0 : 1)
   return [...items].sort((a, b) => rank(a) - rank(b) || (a.order ?? 0) - (b.order ?? 0))
 }
 
-/** Dieselbe Liste, aufgeteilt in Pendenzen und neue Traktanden. */
+/** Die Reihenfolge der beiden Gruppen – neue Traktanden zuerst. */
+export const ITEM_KIND_ORDER: ItemKind[] = ['traktandum', 'pendenz']
+
+/** Dieselbe Liste, aufgeteilt in neue Traktanden und Pendenzen. */
 export function groupByKind(items: AgendaItem[]): Record<ItemKind, AgendaItem[]> {
   const sorted = sortForMeeting(items)
   return {
-    pendenz: sorted.filter((item) => toItemKind(item) === 'pendenz'),
     traktandum: sorted.filter((item) => toItemKind(item) === 'traktandum'),
+    pendenz: sorted.filter((item) => toItemKind(item) === 'pendenz'),
   }
 }
 
