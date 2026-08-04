@@ -58,6 +58,7 @@ import {
   sacramentDocId,
   saveSacramentMeeting,
   sundayProgram,
+  wasHeld,
   talksForDate,
 } from '@/services/sacrament'
 import {
@@ -190,10 +191,12 @@ export function Talks() {
     [members, talks, settings.talkGapMonths, settings.talkMinAge, onlyActive, hideChildren],
   )
 
+  /* Gehalten heisst: zugesagt und vorbei. Einen eigenen Status dafür gibt es
+     nicht mehr – niemand hakt nach der Versammlung noch etwas ab. */
   const history = useMemo(
     () =>
       talks
-        .filter((talk) => talk.status === 'held')
+        .filter((talk) => wasHeld(talk))
         .sort((a, b) => (toDate(b.date)?.getTime() ?? 0) - (toDate(a.date)?.getTime() ?? 0)),
     [talks],
   )
@@ -654,7 +657,7 @@ function HistoryList({ talks }: { talks: Talk[] }) {
   if (talks.length === 0) {
     return (
       <div className="card">
-        <EmptyState icon={Clock} title="Noch keine gehaltenen Ansprachen erfasst" />
+        <EmptyState icon={Clock} title="Noch keine gehaltene Ansprache" />
       </div>
     )
   }
@@ -1062,8 +1065,8 @@ function EditTalkDialog({ talk, onClose }: { talk: Talk | null; onClose: () => v
   const changeStatus = async (status: TalkStatus) => {
     try {
       await setTalkStatus(talk.id, status)
-      if (status === 'held') {
-        toast.success('Als gehalten vermerkt – die Mitgliederstatistik wurde nachgeführt.')
+      if (status === 'confirmed') {
+        toast.success('Zugesagt – die Ansprache zählt damit als gehalten.')
       }
       onClose()
     } catch (error) {
@@ -1117,9 +1120,7 @@ function EditTalkDialog({ talk, onClose }: { talk: Talk | null; onClose: () => v
           <div>
             <span className="label">Status</span>
             <div className="flex flex-wrap gap-2">
-              {(
-                ['planned', 'asked', 'confirmed', 'held', 'declined', 'cancelled'] as TalkStatus[]
-              ).map((value) => (
+              {(['planned', 'asked', 'confirmed'] as TalkStatus[]).map((value) => (
                 <button
                   key={value}
                   type="button"
@@ -1132,7 +1133,7 @@ function EditTalkDialog({ talk, onClose }: { talk: Talk | null; onClose: () => v
             </div>
             <p className="hint">
               {talk.memberId
-                ? '«Gehalten» aktualisiert automatisch das Datum der letzten Ansprache beim Mitglied.'
+                ? 'Eine Zusage gilt als gehalten und setzt das Datum der letzten Ansprache beim Mitglied. Springt jemand ein, wird der Eintrag unter «Leitung» geändert – dann stimmt die Statistik wieder.'
                 : 'Dieser Eintrag ist keinem Mitglied zugeordnet – er bleibt in der Mitgliederstatistik unberücksichtigt.'}
             </p>
           </div>

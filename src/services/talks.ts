@@ -4,7 +4,6 @@ import {
   doc,
   getDoc,
   getDocs,
-  increment,
   orderBy,
   query,
   serverTimestamp,
@@ -19,8 +18,9 @@ import { stripUndefined } from '@/lib/utils'
 import { commit, type SaveOutcome } from '@/lib/sync'
 import {
   ACTIVE_TALK_STATUSES,
-  type Member,
+  HELD_STATUS_QUERY,
   type Talk,
+  type Member,
   type TalkKind,
   type TalkStatus,
 } from '@/lib/types'
@@ -84,6 +84,11 @@ export async function createTalk(input: TalkInput): Promise<{ id: string; outcom
       updatedAt: serverTimestamp(),
     }),
   )
+  // Wer beim Erfassen gleich zusagt, hat gesprochen – die Statistik gehört
+  // schon hier nachgeführt und nicht erst beim nächsten Statuswechsel.
+  if ((input.status ?? 'planned') === 'confirmed' && input.memberId) {
+    await recalculateLastTalk(input.memberId)
+  }
   return { id: docRef.id, outcome }
 }
 
@@ -101,10 +106,12 @@ export async function updateTalk(
 /**
  * Trägt ein, wer spricht – ein Mitglied oder ein Name von Hand.
  *
- * Wechselt eine bereits gehaltene Ansprache die Person, werden beide
+ * Wechselt eine zugesagte Ansprache die Person, werden beide
  * Mitgliederstatistiken neu berechnet: Sonst zählte die Ansprache weiterhin
- * bei derjenigen, die sie gar nicht gehalten hat. Ohne Mitglied gibt es nichts
- * nachzuführen.
+ * bei derjenigen, die sie gar nicht gehalten hat. Genau dafür ist der
+ * Handgriff unter «Leitung» da – wer kurzfristig einspringt, wird dort
+ * eingetragen, und die Auswertung stimmt wieder. Ohne Mitglied gibt es
+ * nichts nachzuführen.
  */
 export async function setTalkSpeaker(id: string, speaker: TalkSpeaker): Promise<SaveOutcome> {
   const ref = doc(db, COLLECTIONS.talks, id)
@@ -114,20 +121,30 @@ export async function setTalkSpeaker(id: string, speaker: TalkSpeaker): Promise<
 
   const outcome = await commit(updateDoc(ref, { ...fields, updatedAt: serverTimestamp() }))
 
-  if (previous?.status === 'held' && previous.memberId !== fields.memberId) {
+  if (previous && countsAsHeld(previous.status) && previous.memberId !== fields.memberId) {
     if (previous.memberId) await recalculateLastTalk(previous.memberId)
     if (fields.memberId) await recalculateLastTalk(fields.memberId)
   }
   return outcome
 }
 
+/** Zählt dieser Status als gesprochen? «Gehalten» steht noch im Altbestand. */
+function countsAsHeld(status: unknown): boolean {
+  return status === 'confirmed' || status === 'held'
+}
+
 /**
  * Setzt den Status einer Ansprache.
  *
- * Beim Wechsel auf «gehalten» wird `lastTalkDate` des Mitglieds nachgeführt –
- * genau dieser Wert treibt später die Auswertung «wer war lange nicht dran».
- * Der Zähler wird nur bei einem echten Statuswechsel verändert, damit
- * mehrfaches Klicken die Zahl nicht verfälscht.
+ * Eine Zusage zählt: Wer zugesagt hat, spricht – ein zusätzlicher Klick
+ * «gehalten» nach der Versammlung wäre einer, den niemand macht, und ohne
+ * ihn stimmte die Auswertung «wer war lange nicht dran» nicht mehr. Wird
+ * die Zusage zurückgenommen oder die Person ausgetauscht, wird die
+ * Statistik hier gleich wieder berichtigt.
+ *
+ * Gezählt wird nicht hoch und runter, sondern aus dem Bestand neu bestimmt.
+ * Das ist eine Abfrage mehr und dafür immer richtig – ein Zähler, der sich
+ * einmal verzählt, bleibt für immer daneben.
  */
 export async function setTalkStatus(id: string, status: TalkStatus): Promise<SaveOutcome | null> {
   const ref = doc(db, COLLECTIONS.talks, id)
@@ -135,8 +152,7 @@ export async function setTalkStatus(id: string, status: TalkStatus): Promise<Sav
   if (!snapshot.exists()) return null
 
   const talk = { id: snapshot.id, ...snapshot.data() } as Talk
-  const wasHeld = talk.status === 'held'
-  const isHeld = status === 'held'
+  const before = countsAsHeld(talk.status)
 
   const outcome = await commit(
     updateDoc(ref, {
@@ -146,41 +162,16 @@ export async function setTalkStatus(id: string, status: TalkStatus): Promise<Sav
     }),
   )
 
-  if (isHeld === wasHeld) return outcome
   // Ein von Hand erfasster Name gehört zu keinem Mitglied – es gibt keine
   // Statistik, die nachzuführen wäre.
-  if (!talk.memberId) return outcome
-
-  const memberRef = doc(db, COLLECTIONS.members, talk.memberId)
-  const memberSnapshot = await getDoc(memberRef)
-  if (!memberSnapshot.exists()) return outcome
-
-  if (isHeld) {
-    const member = memberSnapshot.data() as Member
-    const existing = toDate(member.lastTalkDate)
-    const talkDate = toDate(talk.date)
-    // Nur nach vorne korrigieren: ein nachgetragener alter Termin darf
-    // ein neueres Datum nicht überschreiben.
-    const shouldUpdate = talkDate && (!existing || talkDate > existing)
-    await commit(
-      updateDoc(memberRef, {
-        ...(shouldUpdate ? { lastTalkDate: Timestamp.fromDate(talkDate) } : {}),
-        talkCount: increment(1),
-        updatedAt: serverTimestamp(),
-      }),
-    )
-  } else {
-    // Zurückgenommen: Zähler korrigieren und letztes Datum neu bestimmen.
-    await commit(updateDoc(memberRef, { talkCount: increment(-1), updatedAt: serverTimestamp() }))
-    await recalculateLastTalk(talk.memberId)
-  }
+  if (before !== countsAsHeld(status) && talk.memberId) await recalculateLastTalk(talk.memberId)
   return outcome
 }
 
-/** Ermittelt `lastTalkDate` neu aus den tatsächlich gehaltenen Ansprachen. */
+/** Ermittelt `lastTalkDate` und `talkCount` neu aus den zugesagten Ansprachen. */
 export async function recalculateLastTalk(memberId: string): Promise<SaveOutcome> {
   const snapshot = await getDocs(
-    query(talksRef, where('memberId', '==', memberId), where('status', '==', 'held')),
+    query(talksRef, where('memberId', '==', memberId), where('status', 'in', HELD_STATUS_QUERY)),
   )
   let latest: Date | null = null
   snapshot.docs.forEach((d) => {
@@ -201,8 +192,8 @@ export async function deleteTalk(id: string): Promise<SaveOutcome> {
   const snapshot = await getDoc(ref)
   const talk = snapshot.exists() ? ({ id: snapshot.id, ...snapshot.data() } as Talk) : null
   const outcome = await commit(deleteDoc(ref))
-  // War die Ansprache bereits gehalten, muss die Mitgliederstatistik nachgeführt werden.
-  if (talk?.status === 'held' && talk.memberId) await recalculateLastTalk(talk.memberId)
+  // Zählte die Ansprache bereits, muss die Mitgliederstatistik nachgeführt werden.
+  if (countsAsHeld(talk?.status) && talk?.memberId) await recalculateLastTalk(talk.memberId)
   return outcome
 }
 

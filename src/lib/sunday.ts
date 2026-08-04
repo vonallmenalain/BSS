@@ -1,3 +1,4 @@
+import { toDate } from './dates.ts'
 import {
   ACTIVE_TALK_STATUSES,
   SACRAMENT_KIND_INFO,
@@ -132,11 +133,25 @@ export function openTalkSlots(
 ): number {
   const planned = plannedTalksFor(date, meeting, defaultCount)
   const taken = new Set(
-    talks
-      .filter((talk) => ACTIVE_TALK_STATUSES.concat('held').includes(talk.status))
-      .map((talk) => talk.slot),
+    talks.filter((talk) => ACTIVE_TALK_STATUSES.includes(talk.status)).map((talk) => talk.slot),
   )
   let open = 0
   for (let slot = 1; slot <= planned; slot++) if (!taken.has(slot)) open++
   return open
+}
+
+/**
+ * Hat diese Ansprache stattgefunden?
+ *
+ * Eine Zusage in der Vergangenheit – mehr braucht es nicht. Einen Status
+ * «gehalten» gibt es nicht mehr: Er wäre ein Klick nach der Versammlung, den
+ * niemand macht, und ohne ihn stimmte der Verlauf nicht.
+ *
+ * Die Mitgliederstatistik zählt dagegen jede Zusage, auch die für den
+ * nächsten Sonntag – wer zugesagt hat, wird nicht gleich noch einmal
+ * angefragt (siehe `services/talks`).
+ */
+export function wasHeld(talk: Talk, now: Date = new Date()): boolean {
+  const date = toDate(talk.date)
+  return talk.status === 'confirmed' && date !== null && date < now
 }
