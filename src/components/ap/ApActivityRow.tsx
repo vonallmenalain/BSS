@@ -1,15 +1,5 @@
 import type { ComponentType } from 'react'
-import {
-  CalendarOff,
-  ChevronRight,
-  Clock,
-  GraduationCap,
-  Info,
-  MapPin,
-  Sparkles,
-  UserRound,
-  Users,
-} from 'lucide-react'
+import { CalendarOff, ChevronRight, GraduationCap, Sparkles, Users } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { formatDateLong, formatDayShort, formatDateShort } from '@/lib/dates'
 import { fromIsoDate } from '@/services/importHistory'
@@ -20,8 +10,8 @@ import { AP_ACTIVITY_KIND_LABELS, type ApActivity, type ApActivityKind } from '@
  * als «das kommt als Nächstes».
  *
  * Beide zeigen dasselbe und unterscheiden sich nur im Gewicht. Der Plan
- * ist eine Liste, eine Zeile je Termin – so wie die Tabelle, aus der er
- * stammt: Datum steht unter Datum, Treffpunkt unter Treffpunkt, und ein
+ * ist eine Liste, ein Eintrag je Termin – oben das Datum und der Titel,
+ * darunter die Angaben aus der Tabelle, jede mit ihrer Beschriftung. Ein
  * Blick von oben nach unten sagt, was der Monat bringt.
  */
 
@@ -110,22 +100,23 @@ export function apCountdown(days: number, running: boolean): string {
 /* Einzelne Angabe                                                     */
 /* ------------------------------------------------------------------ */
 
-function Detail({
-  icon: Icon,
-  label,
-  value,
-  className,
-}: {
-  icon: ComponentType<{ className?: string }>
-  label: string
-  value: string
-  className?: string
-}) {
-  if (!value.trim()) return null
+/**
+ * «Treffpunkt: Gemeindehaus» – Beschriftung und Wert.
+ *
+ * Ausgeschrieben und nicht als Symbol: Der Plan trägt fünf Angaben, die
+ * einander ähnlich sehen – wer leitet, wer aus der Bischofschaft kommt, wer
+ * von den Beratern. Ein Symbol dafür müsste man erst lernen; ein Wort nicht.
+ *
+ * Eine leere Angabe fällt weg. Der Plan ist an vielen Stellen lückenhaft,
+ * und eine Beschriftung ohne Wert sagt nichts.
+ */
+function Angabe({ label, value }: { label: string; value?: string | null }) {
+  const text = (value ?? '').trim()
+  if (!text) return null
   return (
-    <span className={cn('inline-flex min-w-0 items-center gap-1.5', className)} title={label}>
-      <Icon className="size-3.5 shrink-0 opacity-60" aria-hidden />
-      <span className="truncate">{value.trim()}</span>
+    <span className="min-w-0">
+      <span className="text-slate-400 dark:text-slate-500">{label}: </span>
+      <span className="break-words">{text}</span>
     </span>
   )
 }
@@ -133,50 +124,30 @@ function Detail({
 /**
  * Treffpunkt, Leitung und wer dabei ist.
  *
- * Alles in einer Zeile und nur, was ausgefüllt ist: Der Plan ist an vielen
- * Stellen lückenhaft, und leere Beschriftungen machen eine Karte unruhig,
- * ohne etwas zu sagen.
+ * Wer die Aktivität leitet, steht nur bei der AP-Klasse: Dort wechselt es
+ * von Sonntag zu Sonntag und ist die eigentliche Auskunft. Bei den übrigen
+ * Terminen führt ohnehin das Kollegium des Monats – das steht über der
+ * Gruppe und muss nicht an jedem Termin wiederholt werden.
  */
 export function ApDetails({ activity, className }: { activity: ApActivity; className?: string }) {
-  const hasAny = [activity.location, activity.leader, activity.bishopric, activity.advisor].some(
-    (value) => (value ?? '').trim(),
-  )
+  const leader = activity.kind === 'class' ? (activity.leader ?? '') : ''
+  const hasAny = [
+    activity.time,
+    activity.location,
+    leader,
+    activity.bishopric,
+    activity.advisor,
+  ].some((value) => (value ?? '').trim())
   if (!hasAny) return null
 
   return (
-    <div className={cn('flex flex-wrap items-center gap-x-3 gap-y-1', className)}>
-      <Detail icon={MapPin} label="Treffpunkt" value={activity.location ?? ''} />
-      <Detail icon={UserRound} label="Leitung" value={activity.leader ?? ''} />
-      <Detail icon={Users} label="Teilnahme Bischofschaft" value={activity.bishopric ?? ''} />
-      <Detail icon={UserRound} label="Teilnahme Berater" value={activity.advisor ?? ''} />
+    <div className={cn('grid gap-x-6 gap-y-1 sm:grid-cols-2', className)}>
+      <Angabe label="Startzeit" value={activity.time} />
+      <Angabe label="Treffpunkt" value={activity.location} />
+      <Angabe label="Leitung AP" value={leader} />
+      <Angabe label="Teilnahme BSS" value={activity.bishopric} />
+      <Angabe label="Teilnahme Berater" value={activity.advisor} />
     </div>
-  )
-}
-
-/**
- * Eine Spalte der Zeile.
- *
- * Eine leere Angabe lässt die Spalte trotzdem stehen, statt die folgenden
- * aufrücken zu lassen: Sonst steht in derselben Spalte einmal der
- * Treffpunkt und einmal die Leitung, und die Liste ist keine mehr. Wo es
- * für Spalten zu schmal wird und die Angaben ohnehin umbrechen,
- * verschwindet die leere Spalte ganz.
- */
-function Column({
-  icon: Icon,
-  label,
-  value,
-}: {
-  icon: ComponentType<{ className?: string }>
-  label: string
-  value: string
-}) {
-  if (!value.trim()) return <span className="hidden @4xl:block" aria-hidden />
-  return (
-    <span className="inline-flex min-w-0 items-center gap-1.5" title={label}>
-      <Icon className="size-3.5 shrink-0 opacity-60" aria-hidden />
-      <span className="truncate">{value.trim()}</span>
-    </span>
   )
 }
 
@@ -208,82 +179,62 @@ export function ApActivityRow({
     <>
       <span className={cn('absolute inset-y-0 left-0 w-1', style.bar)} aria-hidden />
 
-      {/* Ob die Angaben nebeneinander in Spalten stehen, entscheidet die
-          Breite der Zeile selbst und nicht die des Fensters: Mit
-          Seitenleiste bleibt vom Fenster deutlich weniger übrig, und eine
-          gequetschte Spalte ist schlechter als eine umgebrochene Zeile. */}
-      <span className="grid min-w-0 flex-1 grid-cols-[auto_minmax(0,1fr)] items-center gap-x-3 gap-y-1 @4xl:grid-cols-[7rem_minmax(0,2fr)_minmax(0,1fr)_minmax(0,0.9fr)_minmax(0,1.1fr)]">
-        {/* Datum – der Monat steht über der Gruppe, hier genügen Wochentag und Tag. */}
-        <span
-          className="tabular flex items-center gap-2 text-sm font-medium whitespace-nowrap text-slate-600 dark:text-slate-300"
-          title={AP_ACTIVITY_KIND_LABELS[activity.kind]}
-        >
-          <Icon className={cn('size-4 shrink-0', style.text)} aria-hidden />
-          {formatDayShort(start)}
-        </span>
-
-        {/* Aktivität – Uhrzeit und mehrtägige Anlässe stehen daneben, weil
-            beides selten vorkommt und keine eigene Spalte verdient. */}
-        <span className="min-w-0">
-          <span className="flex flex-wrap items-baseline gap-x-2">
-            <span
-              className={cn(
-                'min-w-0 truncate text-sm font-semibold',
-                cancelled && 'text-slate-500 line-through dark:text-slate-400',
-                !activity.title.trim() && !cancelled && 'font-normal text-slate-400 italic',
-              )}
-            >
-              {apTitle(activity)}
-            </span>
-            {activity.time?.trim() && (
-              <span
-                className="tabular inline-flex shrink-0 items-center gap-1 text-xs text-slate-500 dark:text-slate-400"
-                title="Uhrzeit"
-              >
-                <Clock className="size-3.5 opacity-60" aria-hidden />
-                {activity.time.trim()}
-              </span>
-            )}
-            {multiDay && (
-              <span className="shrink-0 text-xs font-medium text-amber-700 dark:text-amber-400">
-                bis {formatDateShort(fromIsoDate(activity.endDate ?? activity.date))}
-              </span>
-            )}
+      {/* Datum links, alles Übrige rechts – aber erst, wenn die Zeile breit
+          genug dafür ist. Ob das der Fall ist, entscheidet die Zeile selbst
+          und nicht das Fenster: Mit Seitenleiste bleibt davon deutlich
+          weniger übrig. Darunter steht das Datum über dem Titel. */}
+      <span className="grid min-w-0 flex-1 gap-x-4 gap-y-1 @2xl:grid-cols-[9rem_minmax(0,1fr)]">
+        {/* `self-start`, damit die Spalte nicht auf die Höhe der Angaben
+            daneben wächst – sonst rutschte das Symbol in die Mitte und
+            stünde unter dem Datum statt davor. */}
+        <span className="tabular self-start" title={AP_ACTIVITY_KIND_LABELS[activity.kind]}>
+          <span className="flex items-center gap-2 text-sm font-medium whitespace-nowrap text-slate-600 dark:text-slate-300">
+            <Icon className={cn('size-4 shrink-0', style.text)} aria-hidden />
+            {formatDayShort(start)}
           </span>
-
-          {note && (
-            <span
-              className="mt-0.5 flex items-start gap-1.5 text-xs text-slate-500 dark:text-slate-400"
-              title={note}
-            >
-              <Info className="mt-px size-3.5 shrink-0 opacity-60" aria-hidden />
-              {/* Im Ansichtsmodus führt kein Klick weiter – dort steht die
-                  Bemerkung ganz da, statt hinter drei Punkten. */}
-              <span className={onOpen ? 'truncate' : 'whitespace-pre-line'}>{note}</span>
+          {/* Der Enddatum-Zusatz steht darunter: In einer Zeile mit dem Datum
+              liefe er in den Titel hinein. */}
+          {multiDay && (
+            <span className="block pl-6 text-xs font-medium text-amber-700 dark:text-amber-400">
+              bis {formatDateShort(fromIsoDate(activity.endDate ?? activity.date))}
             </span>
           )}
         </span>
 
-        {/* Die Angaben aus der Tabelle: auf breiten Geräten je eine Spalte,
-            sonst umgebrochen unter der Aktivität. */}
-        <span className="col-span-2 flex flex-wrap items-center gap-x-3 gap-y-0.5 text-xs text-slate-600 @4xl:contents dark:text-slate-300">
-          <Column icon={MapPin} label="Treffpunkt" value={activity.location ?? ''} />
-          <Column icon={UserRound} label="Leitung" value={activity.leader ?? ''} />
-          <Column
-            icon={Users}
-            label="Teilnahme Bischofschaft / Berater"
-            value={[activity.bishopric, activity.advisor]
-              .map((value) => (value ?? '').trim())
-              .filter(Boolean)
-              .join(' · ')}
+        <span className="min-w-0">
+          {/* Der Titel bekommt die ganze Zeile und wird nicht abgeschnitten:
+              «Kleine Entscheidungen – grosse Konsequenzen» hinter drei
+              Punkten sagt nichts mehr. Er bricht lieber um. */}
+          <span
+            className={cn(
+              'block text-sm font-semibold break-words',
+              cancelled && 'text-slate-500 line-through dark:text-slate-400',
+              !activity.title.trim() && !cancelled && 'font-normal text-slate-400 italic',
+            )}
+          >
+            {apTitle(activity)}
+          </span>
+
+          <ApDetails
+            activity={activity}
+            className="mt-1 text-xs text-slate-600 dark:text-slate-300"
           />
+
+          {note && (
+            <span className="mt-1 block text-xs text-slate-600 dark:text-slate-300">
+              <span className="text-slate-400 dark:text-slate-500">Bemerkung: </span>
+              <span className="break-words whitespace-pre-line">{note}</span>
+            </span>
+          )}
         </span>
       </span>
     </>
   )
 
   const shell = cn(
-    '@container relative flex w-full items-center gap-2 py-2.5 pr-3 pl-4 text-left',
+    // Lieber genug Luft als alles hineingequetscht: Ein Termin trägt bis zu
+    // sechs Angaben, und die Liste wird zu Hause am Küchentisch gelesen.
+    '@container relative flex w-full items-start gap-2 py-3.5 pr-3 pl-4 text-left',
     highlight && 'bg-brand-50/70 dark:bg-brand-950/40',
     past && 'opacity-60',
   )
@@ -299,7 +250,7 @@ export function ApActivityRow({
     >
       {content}
       <ChevronRight
-        className="size-4 shrink-0 self-center text-slate-300 transition group-hover:translate-x-0.5"
+        className="mt-0.5 size-4 shrink-0 text-slate-300 transition group-hover:translate-x-0.5"
         aria-hidden
       />
     </button>

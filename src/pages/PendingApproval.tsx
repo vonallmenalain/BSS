@@ -4,6 +4,11 @@ import { useAuth } from '@/contexts/AuthContext'
 /**
  * Wartebereich für Konten, die noch keine Rolle haben.
  * Ohne Freigabe kommt niemand an Personendaten – das ist bewusst so.
+ *
+ * Hier steht nur, was die wartende Person angeht. Eine Anleitung zum
+ * Freischalten stand einmal darunter – sie richtete sich an jemand anderen
+ * und stand am falschen Bildschirm. Die Bischofschaft sieht die neue
+ * Registrierung von sich aus auf der Übersicht.
  */
 export function PendingApproval() {
   const { profile, firebaseUser, signOut } = useAuth()
@@ -31,24 +36,6 @@ export function PendingApproval() {
             </>
           )}
         </p>
-
-        {!inactive && (
-          <div className="mt-4 rounded-lg bg-slate-50 p-3 text-left text-xs text-slate-500 dark:bg-slate-800 dark:text-slate-400">
-            <p className="mb-1 font-medium text-slate-700 dark:text-slate-200">
-              Für die Bischofschaft: So schaltest du frei
-            </p>
-            <p>
-              Einstellungen → Benutzer und Rollen → das Konto <strong>{profile?.email}</strong>{' '}
-              steht unter «Neue Registrierungen». Dort lässt sich wählen zwischen Vollzugriff und
-              einem Zugang, der ausschliesslich «Aktivitäten AP’s» zeigt – mit oder ohne
-              Schreibrecht.
-            </p>
-            <p className="mt-1">
-              Beim allerersten Konto geht das noch nicht — setze das Feld <code>role</code> einmalig
-              in der Firebase-Konsole auf <code>bishop</code>.
-            </p>
-          </div>
-        )}
 
         <div className="mt-5 flex flex-wrap justify-center gap-2">
           <button type="button" className="btn-secondary" onClick={() => window.location.reload()}>

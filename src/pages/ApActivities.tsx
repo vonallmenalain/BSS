@@ -251,7 +251,6 @@ export function ApActivities() {
                   <MonthHeader
                     month={month}
                     leadership={leadershipOf.get(month) ?? ''}
-                    count={entries.length}
                     editable={editMode}
                   />
                   <div className="card divide-y divide-slate-100 overflow-hidden dark:divide-slate-800">
@@ -410,12 +409,10 @@ function NextCard({
 function MonthHeader({
   month,
   leadership,
-  count,
   editable,
 }: {
   month: string
   leadership: string
-  count: number
   editable: boolean
 }) {
   const toast = useToast()
@@ -495,10 +492,6 @@ function MonthHeader({
           </span>
         )
       )}
-
-      <span className="tabular ml-auto text-xs text-slate-400">
-        {count} {count === 1 ? 'Termin' : 'Termine'}
-      </span>
     </div>
   )
 }
