@@ -29,6 +29,10 @@ import {
   SundayProgramDialog,
   sundayProgramNote,
 } from '@/components/sacrament/SundayProgram'
+import {
+  ResponsibleButton,
+  SundayResponsibleDialog,
+} from '@/components/sacrament/SundayResponsible'
 import { TalkStatusBadge } from '@/components/ui/Badge'
 import { Avatar } from '@/components/ui/Avatar'
 import {
@@ -82,6 +86,7 @@ export function Talks() {
   const [presetMember, setPresetMember] = useState<Member | null>(null)
   /** Sonntag, dessen Programm gerade festgelegt wird – derselbe Dialog wie unter «Leitung» */
   const [programFor, setProgramFor] = useState<Date | null>(null)
+  const [responsibleFor, setResponsibleFor] = useState<Date | null>(null)
 
   const meetingByKey = useMemo(
     () => new Map(sacramentMeetings.map((meeting) => [meeting.id, meeting])),
@@ -253,6 +258,11 @@ export function Talks() {
                         {sunday.openCount} offen
                       </span>
                     )}
+                    <ResponsibleButton
+                      meeting={sunday.meeting}
+                      onClick={() => setResponsibleFor(sunday.date)}
+                      size="sm"
+                    />
                     <button
                       type="button"
                       className="btn-ghost btn-sm"
@@ -390,6 +400,13 @@ export function Talks() {
         date={programFor ?? new Date()}
         meeting={programFor ? (meetingByKey.get(sacramentDocId(programFor)) ?? null) : null}
         onClose={() => setProgramFor(null)}
+      />
+
+      <SundayResponsibleDialog
+        open={Boolean(responsibleFor)}
+        date={responsibleFor ?? new Date()}
+        meeting={responsibleFor ? (meetingByKey.get(sacramentDocId(responsibleFor)) ?? null) : null}
+        onClose={() => setResponsibleFor(null)}
       />
     </>
   )

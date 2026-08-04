@@ -992,6 +992,18 @@ export interface SacramentMeeting extends WithId {
    */
   meets?: boolean | null
   plansTalks?: boolean | null
+  /**
+   * Wer aus der Bischofschaft für diesen Sonntag zuständig ist (UID aus
+   * `users`).
+   *
+   * Eine Angabe für die Planung und nicht fürs Pult: Sie sagt, wer sich um
+   * diesen Sonntag kümmert – Ansprachen anfragen, Gebete verteilen, den
+   * Ablauf vorbereiten. Üblicherweise wird sie für einen ganzen Monat
+   * gesetzt; deshalb schreibt der Dialog sie auf Wunsch gleich auf alle
+   * Sonntage des Monats. Anders als beim Vorsitz steht hier eine UID und
+   * kein ausgeschriebener Name: Zuständig ist immer jemand mit Konto.
+   */
+  responsibleId?: string | null
   /** Wer präsidiert bzw. leitet (UID aus `users`) */
   presidingId?: string | null
   conductingId?: string | null
