@@ -275,7 +275,7 @@ function PastedCallings({ source, picker }: { source: CallingSource; picker: Rea
               </>
             )
           }
-          placeholder={`Hier einfügen. Erwartet wird der Aufbau der Berufungsliste:\n\nBischofschaft\nBerufung\tName\tBestätigt\tEingesetzt\nBischof\nMuster, Hans Peter\n6 Nov 2022\t13 Nov 2022`}
+          placeholder="Hier einfügen."
           value={pasted}
           onChange={setPasted}
           onSubmit={() => preview && setStep('preview')}
@@ -639,7 +639,7 @@ export function ImportMinistering() {
               einfügen.
             </>
           }
-          placeholder={`Hier einfügen. Erwartet wird der Aufbau der Betreuungsliste:\n\nMuster, Anna\t\t\nBeispiel, Beatrice\nAnderer, Christoph\nWeitere, Daniela`}
+          placeholder="Hier einfügen."
           value={pasted}
           onChange={setPasted}
           onSubmit={() => preview && setStep('preview')}

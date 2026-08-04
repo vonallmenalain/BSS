@@ -97,7 +97,6 @@ export function Callings() {
     <>
       <PageHeader
         title="Berufungen"
-        subtitle="Vom Vorschlag über die Bestätigung bis zur Einsetzung"
         actions={
           /* Der Import aus dem LCR steht unter «Einstellungen › Importe».
              Hier bleibt nur der Weg, der eine einzelne Berufung betrifft. */
@@ -500,7 +499,6 @@ function CallingForm({
                 value={form.position}
                 onChange={(event) => update('position', event.target.value)}
                 list="position-suggestions"
-                placeholder="z. B. Sekretär"
                 required
               />
               <datalist id="position-suggestions">
@@ -568,7 +566,6 @@ function CallingForm({
               className="input min-h-20 resize-y"
               value={form.notes}
               onChange={(event) => update('notes', event.target.value)}
-              placeholder="Absprachen, Rückmeldungen, wer spricht die Berufung aus …"
             />
           </div>
 

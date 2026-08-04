@@ -82,7 +82,9 @@ export function AgendaItemEditor({
         onMention={(member) => linkMember(member.id)}
         memberRefs={memberRefs}
         readOnly={readOnly}
-        placeholder="Worum geht es? «@» wählt ein Mitglied"
+        // Steht nur da, solange nichts geschrieben ist – sonst wäre die Fläche,
+        // in die man greift, unsichtbar. Bewusst der Feldname, kein Beispiel.
+        placeholder="Titel"
         maxLength={200}
         // Gelesen und geschrieben sitzt der Text im selben Kasten – sonst
         // ruckte er beim ersten Antippen um die Breite eines Rahmens zur Seite.
@@ -100,7 +102,7 @@ export function AgendaItemEditor({
         multiline
         rows={3}
         readOnly={readOnly}
-        placeholder="Hintergrund, Beschluss, was zu tun ist … «@» wählt ein Mitglied"
+        placeholder="Beschreibung"
         className="min-h-16 text-sm text-slate-600 dark:text-slate-300"
         fieldClassName="min-h-20 resize-y text-sm"
       />

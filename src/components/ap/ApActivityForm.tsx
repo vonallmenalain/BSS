@@ -284,7 +284,6 @@ export function ApActivityForm({
               className="input"
               value={form.title}
               onChange={(event) => update('title', event.target.value)}
-              placeholder="z. B. «Bouldern» oder «Warum lässt Gott Leid zu»"
             />
           </div>
 
@@ -296,7 +295,6 @@ export function ApActivityForm({
               onChange={(value) => update('location', value)}
               options={suggestions.location}
               listId={`${listId}-location`}
-              placeholder="z. B. «Gemeindehaus»"
             />
             <Field
               id="ap-leader"
@@ -305,7 +303,6 @@ export function ApActivityForm({
               onChange={(value) => update('leader', value)}
               options={suggestions.leader}
               listId={`${listId}-leader`}
-              placeholder="z. B. «Carden» oder «JM»"
             />
             <Field
               id="ap-bishopric"
@@ -335,7 +332,6 @@ export function ApActivityForm({
               rows={3}
               value={form.note}
               onChange={(event) => update('note', event.target.value)}
-              placeholder="z. B. «Gemeinsame Aktivität mit JD»"
             />
           </div>
         </form>
@@ -371,7 +367,6 @@ function Field({
   onChange,
   options,
   listId,
-  placeholder,
 }: {
   id: string
   label: string
@@ -379,7 +374,6 @@ function Field({
   onChange: (next: string) => void
   options: string[]
   listId: string
-  placeholder?: string
 }) {
   return (
     <div>
@@ -392,7 +386,6 @@ function Field({
         list={options.length > 0 ? listId : undefined}
         value={value}
         onChange={(event) => onChange(event.target.value)}
-        placeholder={placeholder}
       />
       {options.length > 0 && (
         <datalist id={listId}>

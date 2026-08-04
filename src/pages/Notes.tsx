@@ -159,7 +159,6 @@ export function Notes() {
     <>
       <PageHeader
         title="Notizen"
-        subtitle="Was nicht an eine Sitzung gehört – für alle sichtbar"
         actions={
           <button type="button" className="btn-primary" onClick={() => setOpen('neu')}>
             <Plus className="size-4" aria-hidden />

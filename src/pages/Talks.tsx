@@ -35,14 +35,7 @@ import {
 } from '@/components/sacrament/SundayResponsible'
 import { TalkStatusBadge } from '@/components/ui/Badge'
 import { Avatar } from '@/components/ui/Avatar'
-import {
-  formatDate,
-  formatDateLong,
-  toDate,
-  toDateInput,
-  upcomingWeekdays,
-  WEEKDAYS,
-} from '@/lib/dates'
+import { formatDate, formatDateLong, toDate, toDateInput, upcomingWeekdays } from '@/lib/dates'
 import { formatPhone, matchesSearch, telHref } from '@/lib/utils'
 import {
   createTalk,
@@ -205,7 +198,6 @@ export function Talks() {
     <>
       <SectionHeader
         title="Ansprachen und Zeugnisse"
-        description={`${WEEKDAYS[settings.sacramentWeekday]}s · ${settings.talksPerSunday} Ansprachen pro Versammlung als Standard`}
         actions={
           <button
             type="button"
@@ -1016,7 +1008,6 @@ function AssignDialog({
             className="input"
             value={topic}
             onChange={(event) => setTopic(event.target.value)}
-            placeholder="z. B. Glaube an Jesus Christus"
           />
         </div>
 
@@ -1176,7 +1167,6 @@ function EditTalkDialog({ talk, onClose }: { talk: Talk | null; onClose: () => v
               className="input min-h-20 resize-y"
               value={notes}
               onChange={(event) => setNotes(event.target.value)}
-              placeholder="Absprachen, Rückmeldungen …"
             />
           </div>
         </div>

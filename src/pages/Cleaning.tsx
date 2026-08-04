@@ -1,5 +1,4 @@
 import { useEffect, useMemo, useState, type FormEvent } from 'react'
-import { Link } from 'react-router-dom'
 import { Brush, CalendarRange, Pencil, Plus, Trash2 } from 'lucide-react'
 import { useToast } from '@/contexts/ToastContext'
 import { useCleaningWeeks } from '@/hooks/useFirestore'
@@ -69,11 +68,6 @@ export function Cleaning() {
     <>
       <PageHeader
         title="Putzplan"
-        subtitle={
-          weeks.length === 0
-            ? 'Noch nichts eingelesen'
-            : `${weeks.length} Wochen · ${counts.upcoming} noch bevorstehend`
-        }
         actions={
           <button
             type="button"
@@ -257,18 +251,6 @@ function NextSunday({ weeks }: { weeks: CleaningWeek[] }) {
           an solchen Sonntagen weg, statt eine Lücke vorzulesen.
         </p>
       )}
-
-      <p className="hint mt-3">
-        Diese beiden Zeilen füllen die wiederkehrende Bekanntmachung «Aus dem Putzplan». Einrichten
-        lässt sie sich unter{' '}
-        <Link
-          to={`/abendmahl/bekanntmachungen?sonntag=${sundayKey}`}
-          className="text-brand-600 dark:text-brand-300 hover:underline"
-        >
-          Abendmahlsversammlung › Bekanntmachungen
-        </Link>
-        .
-      </p>
     </div>
   )
 }
@@ -424,7 +406,6 @@ function WeekForm({
               className="input"
               value={form.team}
               onChange={(event) => update('team', event.target.value)}
-              placeholder="z. B. «Muster Hans & Anna»"
               required
             />
           </div>
@@ -439,7 +420,6 @@ function WeekForm({
                 className="input"
                 value={form.group}
                 onChange={(event) => update('group', event.target.value)}
-                placeholder="z. B. «Gruppe 3»"
               />
             </div>
             <div>
@@ -451,7 +431,6 @@ function WeekForm({
                 className="input"
                 value={form.note}
                 onChange={(event) => update('note', event.target.value)}
-                placeholder="z. B. «Generalkonf.»"
               />
             </div>
           </div>

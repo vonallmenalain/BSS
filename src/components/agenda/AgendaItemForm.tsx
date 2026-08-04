@@ -147,7 +147,6 @@ export function AgendaItemForm({
             value={form.title}
             onChange={(next) => update('title', next)}
             onMention={(member) => linkMember(member.id)}
-            placeholder="Worum geht es? «@» wählt ein Mitglied"
             required
             maxLength={200}
           />
@@ -164,13 +163,8 @@ export function AgendaItemForm({
             value={form.description}
             onChange={(next) => update('description', next)}
             onMention={(member) => linkMember(member.id)}
-            placeholder="Hintergrund, Vorgeschichte, konkrete Frage an die Sitzung …"
             rows={3}
           />
-          <p className="hint">
-            Mit <strong>@</strong> lässt sich mitten im Text ein Mitglied wählen – der Name wird
-            eingesetzt und bleibt anklickbar.
-          </p>
         </div>
 
         <div className="grid gap-4 sm:grid-cols-2">

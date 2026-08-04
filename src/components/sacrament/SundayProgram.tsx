@@ -335,7 +335,6 @@ export function SundayProgramDialog({
                 className="input"
                 value={neuerGrund}
                 onChange={(event) => setNeuerGrund(event.target.value)}
-                placeholder="Taufversammlung, Gemeindetag …"
                 maxLength={60}
                 autoFocus
               />

@@ -98,7 +98,6 @@ export function Pendenzen() {
     <>
       <PageHeader
         title="Pendenzen"
-        subtitle="Alles, was noch offen ist – über alle Sitzungen hinweg"
         actions={
           <button type="button" className="btn-primary" onClick={() => setFormOpen(true)}>
             <Plus className="size-4" aria-hidden />
