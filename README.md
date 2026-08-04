@@ -373,6 +373,15 @@ festgehalten, wenn sie davon abweichen – eine Pfahlkonferenz, die
 ausnahmsweise in der Gemeinde stattfindet, oder eine besondere Versammlung
 ohne Ansprachen.
 
+**Eigene Gründe.** Reicht die Liste nicht, steht in der Auswahl zuunterst
+**＋ Neuer Grund …**: Bezeichnung eintragen, die beiden Haken setzen,
+speichern. Der Grund gilt sofort für diesen Sonntag und steht danach an jedem
+weiteren zur Wahl – eine Taufversammlung, ein Gemeindetag, ein Besuch der
+Missionspräsidentschaft. Wer ihn nicht mehr braucht, nimmt ihn mit **Grund
+entfernen** aus der Auswahl; die Sonntage, an denen er steht, behalten ihre
+Bezeichnung, denn sie ist dort mitgeschrieben. Genau wie bei den Personen
+unter «Es präsidiert».
+
 **Automatisch** ist der Normalzustand und steht in der Auswahl zuoberst:
 
 - der **erste Sonntag im Monat** ist die Fast- und Zeugnisversammlung,

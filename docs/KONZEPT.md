@@ -431,6 +431,7 @@ callings/{id}          Mitglied, Position, Organisation, Status, Meilensteine
 sacramentMeetings/{yyyy-MM-dd}
                        Programm eines Sonntags
                        ├─ kind          regulär | Fast- und Zeugnisversammlung
+                       │                | eigener Grund (mit kindLabel)
                        ├─ presidingId, conductingId, visitors
                        ├─ presidingName, conductingName
                        │                Personen ohne Konto, ausgeschrieben

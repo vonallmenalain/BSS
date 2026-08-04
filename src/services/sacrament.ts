@@ -203,10 +203,17 @@ export async function saveProgramOrder(
  */
 export async function saveSundayProgram(
   date: Date,
-  program: { kind: SacramentKind | null; meets: boolean | null; plansTalks: boolean | null },
+  program: {
+    kind: SacramentKind | string | null
+    /** Bezeichnung eines selbst erfassten Grundes – bei den eingebauten `null` */
+    kindLabel?: string | null
+    meets: boolean | null
+    plansTalks: boolean | null
+  },
 ): Promise<SaveOutcome> {
   return saveSacramentMeeting(date, {
     kind: program.kind,
+    kindLabel: program.kindLabel ?? null,
     meets: program.meets,
     plansTalks: program.plansTalks,
   })
