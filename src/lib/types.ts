@@ -301,6 +301,79 @@ export interface HistoryEntry {
   createdAt: string
 }
 
+/* ------------------------------------------------------------------ */
+/* Variables Layout                                                    */
+/* ------------------------------------------------------------------ */
+
+/**
+ * Was in einem Feld des variablen Layouts steht.
+ *
+ * Der Normalfall ist `text` – ein gewöhnliches Feld, in das man schreibt,
+ * mit «@» auch Mitgliedernamen. Die übrigen Arten nehmen dem Feld die
+ * Freiheit und geben ihm dafür Bedeutung: Wer eine Spalte «Wer» auf
+ * `assignees` stellt, klickt die Zuständigen an, statt Namen zu tippen –
+ * und die App weiss danach, wer gemeint ist.
+ */
+export type LayoutFieldKind = 'text' | 'assignees' | 'members' | 'status' | 'date'
+
+export const LAYOUT_FIELD_LABELS: Record<LayoutFieldKind, string> = {
+  text: 'Freitext',
+  assignees: 'Bischofschaft',
+  members: 'Mitglieder',
+  status: 'Pendent / Erledigt',
+  date: 'Termin',
+}
+
+/** Ein Satz zu jeder Feldart – steht im Fenster «Feld anpassen». */
+export const LAYOUT_FIELD_HINTS: Record<LayoutFieldKind, string> = {
+  text: 'Schreiben, was gerade nötig ist. «@» setzt einen Mitgliedernamen ein.',
+  assignees: 'Zuständigkeit: Personen aus der Bischofschaft anklicken.',
+  members: 'Nur Namen aus dem Mitgliederverzeichnis.',
+  status: 'Ein Feld mit zwei Zuständen.',
+  date: 'Ein Datum aus dem Kalender.',
+}
+
+/**
+ * Ein Feld im Raster.
+ *
+ * `col`/`row` sind die linke obere Ecke (0-basiert), `colSpan`/`rowSpan`
+ * sagen, über wie viele Rasterzellen sich das Feld erstreckt. Damit lässt
+ * sich neben drei schmalen Zeilen ein einziges hohes Feld stellen, ohne
+ * dass das Raster selbst etwas davon wissen muss.
+ */
+export interface LayoutField {
+  id: string
+  col: number
+  row: number
+  colSpan: number
+  rowSpan: number
+  kind: LayoutFieldKind
+  /** Überschrift über dem Feld – fehlt sie, steht dort nichts */
+  label?: string
+  /** Bei `text`: der geschriebene Inhalt */
+  text?: string
+  /** Bei `assignees` die UIDs, bei `members` die Mitglieder-IDs */
+  ids?: string[]
+  /** Bei `status` */
+  done?: boolean
+  /** Bei `date` – als «2026-08-04» */
+  date?: string
+}
+
+/**
+ * Das selbst gebaute Raster eines Traktandums.
+ *
+ * Fehlt es, hat der Eintrag das gewohnte Layout: Titel und Beschreibung.
+ * Steht es da, tritt es an die Stelle der Beschreibung – beide Stände
+ * bleiben gespeichert, das Umschalten wirft also nichts weg.
+ */
+export interface ItemLayout {
+  /** 1 bis 4 */
+  columns: number
+  rows: number
+  fields: LayoutField[]
+}
+
 export interface AgendaItem extends WithId {
   title: string
   description?: string
@@ -331,6 +404,16 @@ export interface AgendaItem extends WithId {
 
   /** Termin, bis wann die Pendenz erledigt sein soll */
   dueDate: TS | null
+
+  /**
+   * Selbst gebautes Raster statt der Beschreibung.
+   *
+   * Nicht jedes Traktandum ist ein Absatz Text. Manches ist eine kleine
+   * Tabelle – Aufgabe, wer, bis wann –, und die von Hand in einen Fliesstext
+   * zu schreiben, macht sie unbrauchbar. Fehlt das Feld, bleibt alles beim
+   * Alten: Titel und Beschreibung.
+   */
+  layout?: ItemLayout | null
 
   /*
    * Eine eigene Notizliste je Traktandum gab es einmal; sie ist weggefallen.

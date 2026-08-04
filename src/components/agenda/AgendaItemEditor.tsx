@@ -1,10 +1,13 @@
-import { useState } from 'react'
+import { useRef, useState } from 'react'
 import { useAutosave } from '@/hooks/useAutosave'
 import { MentionEditable } from '@/components/ui/MentionText'
+import { ConfirmDialog } from '@/components/ui/Modal'
 import { AssigneePicker, SegmentedControl } from '@/components/ui/Pickers'
+import { LayoutGrid } from '@/components/agenda/LayoutGrid'
 import { toDateInput } from '@/lib/dates'
 import { updateAgendaItem } from '@/services/agenda'
-import { PRIORITY_LABELS, type AgendaItem, type Priority } from '@/lib/types'
+import { emptyLayout, isLayoutEmpty, normalizeLayout, serializeLayout } from '@/lib/layout'
+import { PRIORITY_LABELS, type AgendaItem, type ItemLayout, type Priority } from '@/lib/types'
 
 /**
  * Ein Traktandum bearbeiten – ohne Formular, ohne Speichern-Knopf.
@@ -40,8 +43,21 @@ export function AgendaItemEditor({
   const [assignees, setAssignees] = useState<string[]>(item.assignees ?? [])
   const [memberRefs, setMemberRefs] = useState<string[]>(item.memberRefs ?? [])
 
+  /*
+   * Das Raster wird genau einmal geradegezogen – beim Aufbauen.
+   *
+   * `normalizeLayout()` vergibt für Lücken neue IDs. Liefe es bei jedem
+   * Zeichnen, wäre der Stand nach jedem Zeichnen ein anderer, und das
+   * automatische Speichern schriebe endlos.
+   */
+  const [layout, setLayout] = useState<ItemLayout | null>(() =>
+    item.layout ? normalizeLayout(item.layout) : null,
+  )
+  const lastLayout = useRef<ItemLayout | null>(layout)
+  const [confirmOff, setConfirmOff] = useState(false)
+
   const autosave = useAutosave(
-    { title, description, priority, dueDate, assignees, memberRefs },
+    { title, description, priority, dueDate, assignees, memberRefs, layout },
     async (draft) => {
       await updateAgendaItem(item.id, {
         title: draft.title.trim(),
@@ -50,12 +66,34 @@ export function AgendaItemEditor({
         assignees: draft.assignees,
         memberRefs: draft.memberRefs,
         dueDate: draft.dueDate ? new Date(`${draft.dueDate}T12:00:00`) : null,
+        layout: draft.layout ? serializeLayout(draft.layout) : null,
       })
     },
     // Ein Eintrag ohne Titel wäre in jeder Liste eine leere Zeile. Wer den
     // Titel löscht, um ihn neu zu schreiben, behält so lange den alten.
     { savable: (draft) => draft.title.trim() !== '' },
   )
+
+  /*
+   * Der Haken schaltet um, was an der Stelle der Beschreibung steht.
+   *
+   * Ausschalten löscht das Raster beim nächsten Speichern – deshalb die
+   * Rückfrage, sobald etwas darin steht. Innerhalb der Sitzung bleibt es
+   * trotzdem in der Hand: Wer versehentlich umschaltet, holt es mit
+   * demselben Haken zurück.
+   */
+  const toggleLayout = (on: boolean) => {
+    if (on) {
+      setLayout(lastLayout.current ?? emptyLayout())
+      return
+    }
+    if (layout && !isLayoutEmpty(layout)) {
+      setConfirmOff(true)
+      return
+    }
+    lastLayout.current = layout
+    setLayout(null)
+  }
 
   /*
    * Ein mit «@» eingesetzter Name ist zugleich ein Verweis: Wer im Text steht,
@@ -74,6 +112,20 @@ export function AgendaItemEditor({
 
   return (
     <div className="space-y-3">
+      {!readOnly && (
+        <div className="flex justify-end">
+          <label className="flex cursor-pointer items-center gap-2 text-sm">
+            <input
+              type="checkbox"
+              className="size-4 rounded"
+              checked={layout !== null}
+              onChange={(event) => toggleLayout(event.target.checked)}
+            />
+            Variables Layout
+          </label>
+        </div>
+      )}
+
       <MentionEditable
         id={`item-title-${item.id}`}
         label="Titel"
@@ -92,20 +144,30 @@ export function AgendaItemEditor({
         fieldClassName="text-lg font-semibold sm:text-xl"
       />
 
-      <MentionEditable
-        id={`item-description-${item.id}`}
-        label="Beschreibung"
-        value={description}
-        onChange={setDescription}
-        onMention={(member) => linkMember(member.id)}
-        memberRefs={memberRefs}
-        multiline
-        rows={3}
-        readOnly={readOnly}
-        placeholder="Beschreibung"
-        className="min-h-16 text-sm text-slate-600 dark:text-slate-300"
-        fieldClassName="min-h-20 resize-y text-sm"
-      />
+      {layout ? (
+        <LayoutGrid
+          layout={layout}
+          onChange={setLayout}
+          onMention={(member) => linkMember(member.id)}
+          memberRefs={memberRefs}
+          readOnly={readOnly}
+        />
+      ) : (
+        <MentionEditable
+          id={`item-description-${item.id}`}
+          label="Beschreibung"
+          value={description}
+          onChange={setDescription}
+          onMention={(member) => linkMember(member.id)}
+          memberRefs={memberRefs}
+          multiline
+          rows={3}
+          readOnly={readOnly}
+          placeholder="Beschreibung"
+          className="min-h-16 text-sm text-slate-600 dark:text-slate-300"
+          fieldClassName="min-h-20 resize-y text-sm"
+        />
+      )}
 
       {!readOnly && (
         <>
@@ -148,6 +210,19 @@ export function AgendaItemEditor({
           )}
         </>
       )}
+
+      <ConfirmDialog
+        open={confirmOff}
+        onClose={() => setConfirmOff(false)}
+        onConfirm={() => {
+          lastLayout.current = layout
+          setLayout(null)
+        }}
+        title="Variables Layout abschalten?"
+        message="Das Raster und alles, was darin steht, wird entfernt. Die Beschreibung tritt wieder an seine Stelle."
+        confirmLabel="Abschalten"
+        danger
+      />
     </div>
   )
 }

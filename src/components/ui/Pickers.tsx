@@ -262,7 +262,9 @@ export function MemberPicker({
 
   return (
     <div>
-      <span className="label">{label}</span>
+      {/* Ohne Beschriftung – im variablen Layout steht sie schon über dem
+          Feld, und eine zweite darunter wäre dasselbe zweimal. */}
+      {label && <span className="label">{label}</span>}
 
       {value.length > 0 && (
         <div className="mb-2 flex flex-wrap gap-1.5">
