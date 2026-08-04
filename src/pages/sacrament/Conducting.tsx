@@ -1,5 +1,7 @@
 import { Fragment, useEffect, useMemo, useState, type ReactNode } from 'react'
 import {
+  CalendarCog,
+  CalendarOff,
   ChevronDown,
   ChevronUp,
   Maximize2,
@@ -20,6 +22,11 @@ import { HymnField } from '@/components/sacrament/HymnField'
 import { LeaderField } from '@/components/sacrament/LeaderField'
 import { MemberSearchSelect } from '@/components/sacrament/MemberSearchSelect'
 import { ConflictNotice, SectionHeader, useSacrament } from '@/components/sacrament/SacramentLayout'
+import {
+  SundayProgramBadge,
+  SundayProgramDialog,
+  sundayProgramNote,
+} from '@/components/sacrament/SundayProgram'
 import { useAutoDraft } from '@/components/sacrament/useDraft'
 import { formatDate, formatDateLong, toDate, toDateInput } from '@/lib/dates'
 import { isSeriesEntry } from '@/lib/series'
@@ -45,9 +52,10 @@ import {
   newMusicalNumber,
   removeTalkSlot,
   replaceInList,
+  plannedTalksFor,
   saveProgramOrder,
   saveSacramentMeeting,
-  talkSlotsFor,
+  sundayProgram,
   talksForDate,
   type ProgramEntry,
 } from '@/services/sacrament'
@@ -55,7 +63,6 @@ import {
   BUSINESS_TYPE_LABELS,
   HYMN_SLOT_LABELS,
   PRAYER_SLOT_LABELS,
-  SACRAMENT_KIND_LABELS,
   TALK_KIND_LABELS,
   type AnnouncementEntry,
   type BusinessEntry,
@@ -65,14 +72,20 @@ import {
   type Member,
   type MusicalNumber,
   type PrayerSlot,
-  type SacramentKind,
   type SacramentMeeting,
   type TalkKind,
 } from '@/lib/types'
 
-/** Die Felder des Sonntagsprogramms, die auf dieser Seite bearbeitet werden. */
+/**
+ * Die Felder des Sonntagsprogramms, die auf dieser Seite laufend
+ * geschrieben werden.
+ *
+ * Was an diesem Sonntag überhaupt stattfindet, steht bewusst nicht darin:
+ * Das legt der Dialog «Programm des Sonntags» fest und schreibt es sofort –
+ * dieselbe Angabe wird auch unter «Ansprachen» gesetzt, und zwei Wege in
+ * denselben Entwurf gäben ein Wettrennen.
+ */
 interface MeetingDraft {
-  kind: SacramentKind
   presidingId: string
   presidingName: string
   conductingId: string
@@ -222,6 +235,9 @@ export function Conducting() {
    */
   const [fullscreen, setFullscreen] = useState(false)
 
+  /* Der Dialog «Programm des Sonntags» – derselbe wie unter «Ansprachen». */
+  const [programOpen, setProgramOpen] = useState(false)
+
   useEffect(() => {
     if (!fullscreen) return
 
@@ -255,7 +271,6 @@ export function Conducting() {
 
   const server = useMemo<MeetingDraft>(
     () => ({
-      kind: meeting?.kind ?? 'regular',
       presidingId: meeting?.presidingId ?? '',
       presidingName: meeting?.presidingName ?? '',
       conductingId: meeting?.conductingId ?? '',
@@ -274,7 +289,6 @@ export function Conducting() {
     server,
     (value) =>
       saveSacramentMeeting(date, {
-        kind: value.kind,
         presidingId: value.presidingId || null,
         presidingName: value.presidingName || null,
         conductingId: value.conductingId || null,
@@ -324,7 +338,16 @@ export function Conducting() {
     [date, meeting, current],
   )
 
-  const planned = talkSlotsFor(meeting, settings.talksPerSunday)
+  /*
+   * Was an diesem Sonntag stattfindet – und was daraus folgt.
+   *
+   * An einer Zeugnisversammlung oder an der Darbietung der Kinder werden
+   * keine Ansprachen vergeben; dann stehen im Ablauf auch keine offenen
+   * Plätze. Bereits vergebene bleiben stehen: Sie zu verstecken hiesse,
+   * eine Zusage zu verlieren.
+   */
+  const sundayKind = useMemo(() => sundayProgram(date, meeting), [date, meeting])
+  const planned = plannedTalksFor(date, meeting, settings.talksPerSunday)
 
   const program = useMemo(
     () => buildProgram(effective, sundayTalks, (choice) => formatHymn(choice), planned),
@@ -461,22 +484,7 @@ export function Conducting() {
       title: 'Begrüssung der Besucher und Vorsitz',
       content: editing ? (
         <div className="no-print space-y-3">
-          <div className="grid gap-3 sm:grid-cols-3">
-            <Field label="Art der Versammlung" htmlFor="lead-kind">
-              <select
-                id="lead-kind"
-                className="input"
-                value={current.kind}
-                onChange={(event) => change({ kind: event.target.value as SacramentKind })}
-              >
-                {(Object.keys(SACRAMENT_KIND_LABELS) as SacramentKind[]).map((value) => (
-                  <option key={value} value={value}>
-                    {SACRAMENT_KIND_LABELS[value]}
-                  </option>
-                ))}
-              </select>
-            </Field>
-
+          <div className="grid gap-3 sm:grid-cols-2">
             <LeaderField
               label="Es präsidiert"
               id="lead-presiding"
@@ -787,12 +795,56 @@ export function Conducting() {
     }
   }
 
+  /* An einem Sonntag ohne Versammlung gibt es keinen Ablauf zu leiten. Das
+     Blatt bliebe leer und liesse offen, ob es nur noch niemand erfasst hat –
+     deshalb steht an seiner Stelle der Grund. */
+  if (!sundayKind.meets) {
+    return (
+      <>
+        <SectionHeader
+          title="Ablauf"
+          actions={
+            <button type="button" className="btn-secondary" onClick={() => setProgramOpen(true)}>
+              <CalendarCog className="size-4" aria-hidden />
+              Programm
+            </button>
+          }
+        />
+
+        <div className="card p-6 text-center">
+          <CalendarOff className="mx-auto size-8 text-slate-300 dark:text-slate-600" aria-hidden />
+          <h3 className="mt-3 text-base font-semibold">{sundayKind.label}</h3>
+          <p className="mx-auto mt-1 max-w-md text-sm text-slate-500 dark:text-slate-400">
+            An diesem Sonntag findet in der Gemeinde keine Versammlung statt – es braucht keine
+            Leitung und keine Ansprachen.
+            {sundayKind.automatic && ' Diese Angabe stammt aus dem Kalender und ist änderbar.'}
+          </p>
+          <button type="button" className="btn-secondary mt-4" onClick={() => setProgramOpen(true)}>
+            <CalendarCog className="size-4" aria-hidden />
+            Programm ändern
+          </button>
+        </div>
+
+        <SundayProgramDialog
+          open={programOpen}
+          date={date}
+          meeting={meeting}
+          onClose={() => setProgramOpen(false)}
+        />
+      </>
+    )
+  }
+
   return (
     <>
       <SectionHeader
         title="Ablauf"
         actions={
           <>
+            <button type="button" className="btn-secondary" onClick={() => setProgramOpen(true)}>
+              <CalendarCog className="size-4" aria-hidden />
+              <span className="hidden sm:inline">Programm</span>
+            </button>
             <button
               type="button"
               className={editing ? 'btn-primary' : 'btn-secondary'}
@@ -822,6 +874,17 @@ export function Conducting() {
           </>
         }
       />
+
+      {/* Ist der Sonntag keine gewöhnliche Abendmahlsversammlung, steht das
+          über dem Blatt – am Pult wie beim Planen die erste Auskunft. */}
+      {(sundayKind.kind !== 'regular' || sundayKind.adjusted) && (
+        <div className="no-print mb-3 flex flex-wrap items-center gap-x-3 gap-y-1">
+          <SundayProgramBadge program={sundayKind} />
+          <span className="text-xs text-slate-500 dark:text-slate-400">
+            {sundayProgramNote(sundayKind)}
+          </span>
+        </div>
+      )}
 
       {draft.conflict && <ConflictNotice onDiscard={draft.reset} />}
 
@@ -895,7 +958,7 @@ export function Conducting() {
                 view.heading,
               )}
             >
-              {SACRAMENT_KIND_LABELS[current.kind]}
+              {sundayKind.label}
             </h2>
             <p className="mt-1 text-slate-500 dark:text-slate-400">{formatDateLong(date)}</p>
           </header>
@@ -980,6 +1043,13 @@ export function Conducting() {
           {draft.saving ? 'Wird gespeichert …' : 'Änderungen werden automatisch gespeichert.'}
         </p>
       )}
+
+      <SundayProgramDialog
+        open={programOpen}
+        date={date}
+        meeting={meeting}
+        onClose={() => setProgramOpen(false)}
+      />
     </>
   )
 }

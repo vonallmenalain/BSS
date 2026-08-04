@@ -246,6 +246,49 @@ für alle Unterpunkte.
 | **Musik**            | Drei bis vier Lieder und Musikeinlagen                                         |
 | **Gebet**            | Anfangs- und Schlussgebet, mit «zuletzt gebetet»                               |
 
+### Was an diesem Sonntag stattfindet
+
+Nicht jeder Sonntag ist eine gewöhnliche Abendmahlsversammlung, und die
+Abweichungen haben Folgen für die Planung. Der Knopf **Programm** – unter
+**Leitung** oben rechts, unter **Ansprachen** bei jedem Sonntag – legt fest,
+was ansteht. Es ist dieselbe Angabe an beiden Orten: Wer sie unter
+«Ansprachen» setzt, hat sie auch unter «Leitung» gesetzt.
+
+| Art                                | Versammlung | Ansprachen |
+| ---------------------------------- | ----------- | ---------- |
+| **Abendmahlsversammlung**          | ja          | ja         |
+| **Fast- und Zeugnisversammlung**   | ja          | nein       |
+| **Darbietung der Kinder (DKA)**    | ja          | nein       |
+| **JAE-Sonntag**                    | ja          | nein       |
+| **Besondere Versammlung**          | ja          | ja         |
+| **Pfahlkonferenz**                 | nein        | nein       |
+| **Generalkonferenz**               | nein        | nein       |
+
+Ohne Versammlung fällt unter «Leitung» der ganze Ablauf weg und es steht
+der Grund da; ohne Ansprachen bleibt der Sonntag unter «Ansprachen» ohne
+offene Plätze, und die Übersicht meldet dort nichts als fehlend. Bereits
+vergebene Ansprachen bleiben in beiden Fällen stehen – eine Zusage
+verschwindet nicht, weil der Sonntag umgewidmet wurde.
+
+Zwei Haken decken den Einzelfall ab, für den es keine eigene Art braucht:
+**Es findet eine Versammlung statt** und **Es werden Ansprachen
+eingeplant**. Sie stehen auf dem, was die Art vorgibt, und werden nur
+festgehalten, wenn sie davon abweichen – eine Pfahlkonferenz, die
+ausnahmsweise in der Gemeinde stattfindet, oder eine besondere Versammlung
+ohne Ansprachen.
+
+**Automatisch** ist der Normalzustand und steht in der Auswahl zuoberst:
+
+- der **erste Sonntag im Monat** ist die Fast- und Zeugnisversammlung,
+- im **April und Oktober** ist an diesem Tag Generalkonferenz – dann findet
+  in der Gemeinde nichts statt,
+- alle übrigen Sonntage sind gewöhnliche Abendmahlsversammlungen.
+
+Die Pfahlkonferenz steht an wechselnden Daten und wird deshalb von Hand
+gesetzt. Und weil «Automatisch» eine eigene Wahl ist und kein geratener
+Wert, ist jedes Festlegen mit einem Griff wieder rückgängig: **Wieder
+automatisch** im selben Dialog.
+
 **Leitung** zeigt den ganzen Ablauf – und alles darin lässt sich hier ändern:
 Vorsitz und Begrüssung, Bekanntmachungen, Angelegenheiten, Lieder, Gebete,
 Ansprachen und Musikeinlagen. Bei **Es präsidiert** und **Es leitet** stehen

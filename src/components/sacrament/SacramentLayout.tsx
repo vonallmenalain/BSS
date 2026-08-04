@@ -12,8 +12,9 @@ import {
   weekdaysAround,
 } from '@/lib/dates'
 import { cn } from '@/lib/utils'
-import { sacramentDocId } from '@/services/sacrament'
-import { SACRAMENT_KIND_LABELS, type SacramentMeeting } from '@/lib/types'
+import { sacramentDocId, sundayProgram } from '@/services/sacrament'
+import { SundayProgramBadge } from '@/components/sacrament/SundayProgram'
+import { type SacramentMeeting } from '@/lib/types'
 
 /* ------------------------------------------------------------------ */
 /* Gewählter Sonntag                                                   */
@@ -114,11 +115,11 @@ export function SacramentLayout() {
             <h1 className="text-xl font-semibold tracking-tight sm:text-2xl">
               Abendmahlsversammlung
             </h1>
-            <p className="mt-0.5 text-sm text-slate-500 dark:text-slate-400">
+            {/* Was an diesem Sonntag stattfindet, steht neben dem Datum –
+                auf jeder Unterseite, weil es überall dieselbe Auskunft ist. */}
+            <p className="mt-0.5 flex flex-wrap items-center gap-2 text-sm text-slate-500 dark:text-slate-400">
               {formatDateLong(date)}
-              {meeting?.kind && meeting.kind !== 'regular'
-                ? ` · ${SACRAMENT_KIND_LABELS[meeting.kind]}`
-                : ''}
+              <SundayProgramBadge program={sundayProgram(date, meeting)} />
             </p>
           </div>
           <SundayPicker date={date} onChange={setDate} weekday={settings.sacramentWeekday} />

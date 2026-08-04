@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState, type FormEvent } from 'react'
 import { Link } from 'react-router-dom'
 import {
+  CalendarCog,
   CalendarPlus,
   Check,
   ChevronDown,
@@ -23,6 +24,11 @@ import { Modal, ConfirmDialog } from '@/components/ui/Modal'
 import { EmptyState, SkeletonList } from '@/components/ui/Feedback'
 import { SegmentedControl } from '@/components/ui/Pickers'
 import { SectionHeader, useSacrament } from '@/components/sacrament/SacramentLayout'
+import {
+  SundayProgramBadge,
+  SundayProgramDialog,
+  sundayProgramNote,
+} from '@/components/sacrament/SundayProgram'
 import { TalkStatusBadge } from '@/components/ui/Badge'
 import { Avatar } from '@/components/ui/Avatar'
 import {
@@ -44,9 +50,10 @@ import {
   type TalkSpeaker,
 } from '@/services/talks'
 import {
+  plannedTalksFor,
   sacramentDocId,
   saveSacramentMeeting,
-  talkSlotsFor,
+  sundayProgram,
   talksForDate,
 } from '@/services/sacrament'
 import {
@@ -73,6 +80,8 @@ export function Talks() {
   const [editTalk, setEditTalk] = useState<Talk | null>(null)
   /** Aus der Vorschlagsliste vorgewähltes Mitglied für den Zuteilungs-Dialog */
   const [presetMember, setPresetMember] = useState<Member | null>(null)
+  /** Sonntag, dessen Programm gerade festgelegt wird – derselbe Dialog wie unter «Leitung» */
+  const [programFor, setProgramFor] = useState<Date | null>(null)
 
   const meetingByKey = useMemo(
     () => new Map(sacramentMeetings.map((meeting) => [meeting.id, meeting])),
@@ -91,8 +100,14 @@ export function Talks() {
     return sundays.map((date) => {
       const assigned = talksForDate(talks, date)
       const meeting = meetingByKey.get(sacramentDocId(date)) ?? null
-      // Standard aus den Einstellungen, für diesen Sonntag übersteuerbar.
-      const planned = talkSlotsFor(meeting, settings.talksPerSunday)
+      const program = sundayProgram(date, meeting)
+      /*
+       * Standard aus den Einstellungen, für diesen Sonntag übersteuerbar –
+       * und null, wenn an diesem Sonntag gar keine Ansprachen vorgesehen
+       * sind. Bereits vergebene bleiben trotzdem stehen: Eine Zusage
+       * verschwindet nicht, weil der Sonntag umgewidmet wurde.
+       */
+      const planned = plannedTalksFor(date, meeting, settings.talksPerSunday)
       const highest = assigned.reduce((max, talk) => Math.max(max, talk.slot), 0)
 
       const slots = Array.from({ length: Math.max(planned, highest) }, (_, index) => ({
@@ -105,6 +120,7 @@ export function Talks() {
       return {
         date,
         meeting,
+        program,
         planned,
         slots,
         // Nur die regulären Plätze gelten als «offen»; Zusatzpunkte sind freiwillig.
@@ -220,13 +236,14 @@ export function Talks() {
               <section key={sunday.date.toISOString()} className="card p-4">
                 <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
                   <h2 className="text-sm font-semibold">{formatDateLong(sunday.date)}</h2>
-                  <div className="flex items-center gap-2">
-                    {sunday.planned !== settings.talksPerSunday && (
+                  <div className="flex flex-wrap items-center gap-2">
+                    <SundayProgramBadge program={sunday.program} />
+                    {sunday.program.plansTalks && sunday.planned !== settings.talksPerSunday && (
                       <span className="badge bg-slate-100 text-slate-600 dark:bg-slate-800 dark:text-slate-300">
                         {sunday.planned} statt {settings.talksPerSunday}
                       </span>
                     )}
-                    {sunday.openCount === 0 ? (
+                    {!sunday.program.plansTalks ? null : sunday.openCount === 0 ? (
                       <span className="badge bg-emerald-100 text-emerald-800 dark:bg-emerald-950 dark:text-emerald-200">
                         <Check className="size-3" aria-hidden />
                         Vollständig
@@ -236,8 +253,26 @@ export function Talks() {
                         {sunday.openCount} offen
                       </span>
                     )}
+                    <button
+                      type="button"
+                      className="btn-ghost btn-sm"
+                      onClick={() => setProgramFor(sunday.date)}
+                      title="Programm des Sonntags festlegen"
+                    >
+                      <CalendarCog className="size-3.5" aria-hidden />
+                      Programm
+                    </button>
                   </div>
                 </div>
+
+                {/* Steht an diesem Sonntag etwas anderes an, ist das die
+                    Antwort auf «warum sind hier keine Plätze offen?». */}
+                {!sunday.program.plansTalks && (
+                  <p className="mb-3 text-sm text-slate-500 dark:text-slate-400">
+                    {sundayProgramNote(sunday.program)}
+                    {sunday.slots.length > 0 && ' Eingetragene Ansprachen bleiben trotzdem stehen.'}
+                  </p>
+                )}
 
                 <ul className="space-y-2">
                   {sunday.slots.map(({ slot, talk, extra }) => (
@@ -268,45 +303,49 @@ export function Talks() {
                 </ul>
 
                 {/* Für einen einzelnen Sonntag lässt sich mehr vorsehen als der
-                    Standard – etwa eine zusätzliche Ansprache oder ein Zeugnis. */}
-                <div className="mt-3 flex flex-wrap items-center gap-2 border-t border-slate-100 pt-3 dark:border-slate-800">
-                  <button
-                    type="button"
-                    className="btn-secondary btn-sm"
-                    onClick={() =>
-                      setAssignFor({ date: sunday.date, slot: nextSlot, kind: 'talk' })
-                    }
-                  >
-                    <Plus className="size-3.5" aria-hidden />
-                    Ansprache
-                  </button>
-                  <button
-                    type="button"
-                    className="btn-secondary btn-sm"
-                    onClick={() =>
-                      setAssignFor({ date: sunday.date, slot: nextSlot, kind: 'testimony' })
-                    }
-                  >
-                    <Plus className="size-3.5" aria-hidden />
-                    Zeugnis
-                  </button>
-                  <button
-                    type="button"
-                    className="btn-ghost btn-sm"
-                    onClick={() => void changeSlots(sunday.date, sunday.planned + 1)}
-                  >
-                    Leeren Platz hinzufügen
-                  </button>
-                  {sunday.planned !== settings.talksPerSunday && (
+                    Standard – etwa eine zusätzliche Ansprache oder ein Zeugnis.
+                    An einem Sonntag ohne Ansprachen stünden die Knöpfe für
+                    etwas, das gar nicht vorgesehen ist. */}
+                {sunday.program.plansTalks && (
+                  <div className="mt-3 flex flex-wrap items-center gap-2 border-t border-slate-100 pt-3 dark:border-slate-800">
+                    <button
+                      type="button"
+                      className="btn-secondary btn-sm"
+                      onClick={() =>
+                        setAssignFor({ date: sunday.date, slot: nextSlot, kind: 'talk' })
+                      }
+                    >
+                      <Plus className="size-3.5" aria-hidden />
+                      Ansprache
+                    </button>
+                    <button
+                      type="button"
+                      className="btn-secondary btn-sm"
+                      onClick={() =>
+                        setAssignFor({ date: sunday.date, slot: nextSlot, kind: 'testimony' })
+                      }
+                    >
+                      <Plus className="size-3.5" aria-hidden />
+                      Zeugnis
+                    </button>
                     <button
                       type="button"
                       className="btn-ghost btn-sm"
-                      onClick={() => void changeSlots(sunday.date, settings.talksPerSunday)}
+                      onClick={() => void changeSlots(sunday.date, sunday.planned + 1)}
                     >
-                      Auf Standard zurücksetzen
+                      Leeren Platz hinzufügen
                     </button>
-                  )}
-                </div>
+                    {sunday.planned !== settings.talksPerSunday && (
+                      <button
+                        type="button"
+                        className="btn-ghost btn-sm"
+                        onClick={() => void changeSlots(sunday.date, settings.talksPerSunday)}
+                      >
+                        Auf Standard zurücksetzen
+                      </button>
+                    )}
+                  </div>
+                )}
               </section>
             )
           })}
@@ -345,6 +384,13 @@ export function Talks() {
       />
 
       <EditTalkDialog talk={editTalk} onClose={() => setEditTalk(null)} />
+
+      <SundayProgramDialog
+        open={Boolean(programFor)}
+        date={programFor ?? new Date()}
+        meeting={programFor ? (meetingByKey.get(sacramentDocId(programFor)) ?? null) : null}
+        onClose={() => setProgramFor(null)}
+      />
     </>
   )
 }

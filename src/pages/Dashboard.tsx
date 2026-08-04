@@ -31,7 +31,7 @@ import {
   upcomingWeekdays,
 } from '@/lib/dates'
 import { sortForPendenzen } from '@/services/agenda'
-import { openTalkSlots, sacramentDocId, talksForDate } from '@/services/sacrament'
+import { openTalkSlots, sacramentDocId, sundayProgram, talksForDate } from '@/services/sacrament'
 import type { AgendaItem } from '@/lib/types'
 
 export function Dashboard() {
@@ -85,11 +85,14 @@ export function Dashboard() {
     return upcomingWeekdays(settings.sacramentWeekday, 6).map((sunday) => {
       const assigned = talksForDate(talks, sunday)
       const meeting = byKey.get(sacramentDocId(sunday)) ?? null
+      const program = sundayProgram(sunday, meeting)
       return {
         date: sunday,
         assigned: assigned.length,
-        // Berücksichtigt eine für diesen Sonntag abweichende Anzahl Ansprachen.
-        open: openTalkSlots(meeting, assigned, settings.talksPerSunday),
+        program,
+        // Berücksichtigt eine abweichende Anzahl Ansprachen und Sonntage,
+        // an denen gar keine vorgesehen sind.
+        open: openTalkSlots(sunday, meeting, assigned, settings.talksPerSunday),
       }
     })
   }, [talks, sacramentMeetings, settings.sacramentWeekday, settings.talksPerSunday])
@@ -276,7 +279,13 @@ export function Dashboard() {
                   className="flex items-center justify-between px-1 py-2 text-sm"
                 >
                   <span>{formatDateShort(gap.date)}</span>
-                  {gap.open === 0 ? (
+                  {!gap.program.plansTalks ? (
+                    /* Zeugnisversammlung, Konferenz, Darbietung der Kinder:
+                       Hier fehlt nichts – hier ist nichts vorgesehen. */
+                    <span className="badge bg-slate-100 text-slate-600 dark:bg-slate-800 dark:text-slate-300">
+                      {gap.program.label}
+                    </span>
+                  ) : gap.open === 0 ? (
                     <span className="badge bg-emerald-100 text-emerald-800 dark:bg-emerald-950 dark:text-emerald-200">
                       <CheckCircle2 className="size-3" aria-hidden />
                       Vollständig

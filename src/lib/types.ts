@@ -612,13 +612,99 @@ export const DEFAULT_SETTINGS: AppSettings = {
 /* Abendmahlsversammlung                                               */
 /* ------------------------------------------------------------------ */
 
-export type SacramentKind = 'regular' | 'fast_testimony' | 'special'
+/**
+ * Was an einem Sonntag stattfindet.
+ *
+ * Nicht jeder Sonntag ist eine gewöhnliche Abendmahlsversammlung, und die
+ * Abweichungen haben Folgen für die Planung: An einer Zeugnisversammlung
+ * werden keine Ansprachen vergeben, an einer Konferenz findet in der
+ * Gemeinde überhaupt nichts statt – dann braucht es auch keine Leitung.
+ */
+export type SacramentKind =
+  | 'regular'
+  | 'fast_testimony'
+  /** Darbietung der Kinder in der Abendmahlsversammlung (DKA) */
+  | 'primary_program'
+  /** Sonntag der Jungen Alleinstehenden Erwachsenen */
+  | 'ysa'
+  | 'special'
+  | 'stake_conference'
+  | 'general_conference'
 
-export const SACRAMENT_KIND_LABELS: Record<SacramentKind, string> = {
-  regular: 'Abendmahlsversammlung',
-  fast_testimony: 'Fast- und Zeugnisversammlung',
-  special: 'Besondere Versammlung',
+export interface SacramentKindInfo {
+  value: SacramentKind
+  label: string
+  /** Findet in der Gemeinde eine Versammlung statt? */
+  meets: boolean
+  /** Werden für diesen Sonntag Ansprachen eingeplant? */
+  plansTalks: boolean
+  /** Ein Satz, der die Folgen benennt – er steht in der Auswahl darunter. */
+  hint: string
 }
+
+/**
+ * Die Arten in der Reihenfolge, in der sie zur Wahl stehen: zuerst die
+ * Sonntage mit Versammlung, danach die beiden ohne.
+ */
+export const SACRAMENT_KINDS: SacramentKindInfo[] = [
+  {
+    value: 'regular',
+    label: 'Abendmahlsversammlung',
+    meets: true,
+    plansTalks: true,
+    hint: 'Der Normalfall: Leitung und Ansprachen wie gewohnt.',
+  },
+  {
+    value: 'fast_testimony',
+    label: 'Fast- und Zeugnisversammlung',
+    meets: true,
+    plansTalks: false,
+    hint: 'Es braucht eine Leitung, aber keine Ansprachen.',
+  },
+  {
+    value: 'primary_program',
+    label: 'Darbietung der Kinder (DKA)',
+    meets: true,
+    plansTalks: false,
+    hint: 'Die Kinder gestalten die Versammlung – Leitung ja, Ansprachen nein.',
+  },
+  {
+    value: 'ysa',
+    label: 'JAE-Sonntag',
+    meets: true,
+    plansTalks: false,
+    hint: 'Es braucht eine Leitung, aber keine Ansprachen aus der Gemeinde.',
+  },
+  {
+    value: 'special',
+    label: 'Besondere Versammlung',
+    meets: true,
+    plansTalks: true,
+    hint: 'Alles Übrige – was daran anders ist, sagen die beiden Haken.',
+  },
+  {
+    value: 'stake_conference',
+    label: 'Pfahlkonferenz',
+    meets: false,
+    plansTalks: false,
+    hint: 'Keine Versammlung in der Gemeinde – keine Leitung, keine Ansprachen.',
+  },
+  {
+    value: 'general_conference',
+    label: 'Generalkonferenz',
+    meets: false,
+    plansTalks: false,
+    hint: 'Keine Versammlung in der Gemeinde – keine Leitung, keine Ansprachen.',
+  },
+]
+
+export const SACRAMENT_KIND_INFO = Object.fromEntries(
+  SACRAMENT_KINDS.map((entry) => [entry.value, entry]),
+) as Record<SacramentKind, SacramentKindInfo>
+
+export const SACRAMENT_KIND_LABELS = Object.fromEntries(
+  SACRAMENT_KINDS.map((entry) => [entry.value, entry.label]),
+) as Record<SacramentKind, string>
 
 /** Die vier festen Liedplätze einer Abendmahlsversammlung. */
 export type HymnSlot = 'opening' | 'sacrament' | 'intermediate' | 'closing'
@@ -786,7 +872,26 @@ export interface BusinessEntry {
  */
 export interface SacramentMeeting extends WithId {
   date: TS
-  kind: SacramentKind
+  /**
+   * Was an diesem Sonntag stattfindet.
+   *
+   * Fehlt die Angabe oder steht sie auf `null`, entscheidet die Regel:
+   * am ersten Sonntag im Monat die Fast- und Zeugnisversammlung, im April
+   * und im Oktober an diesem Tag die Generalkonferenz, sonst die
+   * gewöhnliche Abendmahlsversammlung (siehe `lib/sunday`). So ist ein von
+   * Hand festgelegter Sonntag jederzeit wieder auf «automatisch»
+   * zurückzustellen.
+   */
+  kind?: SacramentKind | null
+  /**
+   * Ausnahmen zur Art – `null` bzw. fehlend folgt der Art.
+   *
+   * Damit lässt sich ein Einzelfall abbilden, für den es keine eigene Art
+   * braucht: eine Pfahlkonferenz, die ausnahmsweise in der Gemeinde
+   * stattfindet, oder eine besondere Versammlung ohne Ansprachen.
+   */
+  meets?: boolean | null
+  plansTalks?: boolean | null
   /** Wer präsidiert bzw. leitet (UID aus `users`) */
   presidingId?: string | null
   conductingId?: string | null
