@@ -1,7 +1,7 @@
 import {
   ACTIVE_TALK_STATUSES,
   SACRAMENT_KIND_INFO,
-  type SacramentKind,
+  type SacramentKindInfo,
   type SacramentMeeting,
   type Talk,
 } from './types.ts'
@@ -27,7 +27,8 @@ import {
  */
 
 export interface SundayProgram {
-  kind: SacramentKind
+  /** Eine der eingebauten Arten oder die ID eines selbst erfassten Grundes */
+  kind: string
   /** Die Art stammt aus der Regel und nicht aus dem Sonntag selbst. */
   automatic: boolean
   /** Findet in der Gemeinde eine Versammlung statt? */
@@ -37,6 +38,29 @@ export interface SundayProgram {
   /** Mindestens ein Haken weicht von der Art ab. */
   adjusted: boolean
   label: string
+  /** Was die Art selbst vorgibt – ohne die Haken dieses Sonntags. */
+  defaults: { meets: boolean; plansTalks: boolean }
+}
+
+/**
+ * Was hinter einem gespeicherten `kind` steckt.
+ *
+ * Eingebaut oder selbst erfasst – für alles Weitere spielt das keine Rolle,
+ * nur die drei Angaben Bezeichnung, Versammlung und Ansprachen zählen. Ein
+ * selbst erfasster Grund, der inzwischen aus den Einstellungen genommen
+ * wurde, bleibt lesbar: Seine Bezeichnung steht am Sonntag mit (`kindLabel`),
+ * und die beiden Haken stehen dort ohnehin.
+ */
+function kindInfo(kind: string, meeting: SacramentMeeting | null): SacramentKindInfo {
+  const known = SACRAMENT_KIND_INFO[kind as keyof typeof SACRAMENT_KIND_INFO]
+  if (known) return known
+  return {
+    value: 'special',
+    label: meeting?.kindLabel || 'Besonderer Anlass',
+    meets: meeting?.meets ?? true,
+    plansTalks: meeting?.plansTalks ?? false,
+    hint: 'Ein selbst erfasster Grund – was daraus folgt, sagen die beiden Haken.',
+  }
 }
 
 /**
@@ -49,7 +73,9 @@ export interface SundayProgram {
  * Die Generalkonferenz liegt am ersten Wochenende im April und im Oktober.
  * Sie geht der Zeugnisversammlung vor: An diesem Tag ist in Burgdorf nichts.
  */
-export function automaticSacramentKind(date: Date): SacramentKind {
+export function automaticSacramentKind(
+  date: Date,
+): 'regular' | 'general_conference' | 'fast_testimony' {
   if (date.getDate() > 7) return 'regular'
   const month = date.getMonth()
   if (month === 3 || month === 9) return 'general_conference'
@@ -60,7 +86,7 @@ export function automaticSacramentKind(date: Date): SacramentKind {
 export function sundayProgram(date: Date, meeting: SacramentMeeting | null): SundayProgram {
   const stored = meeting?.kind ?? null
   const kind = stored ?? automaticSacramentKind(date)
-  const info = SACRAMENT_KIND_INFO[kind] ?? SACRAMENT_KIND_INFO.regular
+  const info = kindInfo(kind, meeting)
 
   const meets = typeof meeting?.meets === 'boolean' ? meeting.meets : info.meets
   // Ohne Versammlung gibt es auch nichts zu sprechen – der Haken kann das
@@ -75,6 +101,7 @@ export function sundayProgram(date: Date, meeting: SacramentMeeting | null): Sun
     plansTalks,
     adjusted: meets !== info.meets || plansTalks !== info.plansTalks,
     label: info.label,
+    defaults: { meets: info.meets, plansTalks: info.plansTalks },
   }
 }
 

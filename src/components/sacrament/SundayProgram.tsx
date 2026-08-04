@@ -1,15 +1,17 @@
 import { useEffect, useState } from 'react'
-import { CalendarOff, Mic, MicOff, Wand2 } from 'lucide-react'
+import { CalendarOff, Mic, MicOff, Trash2, Wand2 } from 'lucide-react'
+import { useData } from '@/contexts/DataContext'
 import { useToast } from '@/contexts/ToastContext'
 import { Modal } from '@/components/ui/Modal'
-import { cn } from '@/lib/utils'
+import { cn, uid } from '@/lib/utils'
 import { formatDateLong } from '@/lib/dates'
 import { automaticSacramentKind, sundayProgram, type SundayProgram } from '@/lib/sunday'
 import { saveSundayProgram } from '@/services/sacrament'
+import { saveSettings } from '@/services/settings'
 import {
   SACRAMENT_KINDS,
   SACRAMENT_KIND_INFO,
-  type SacramentKind,
+  type CustomSundayKind,
   type SacramentMeeting,
 } from '@/lib/types'
 
@@ -31,6 +33,11 @@ import {
  * Pfahlkonferenz, die einmal doch in der Gemeinde stattfindet, oder eine
  * besondere Versammlung ohne Ansprachen. Sie stehen auf dem, was die Art
  * vorgibt, und werden nur gespeichert, wenn sie davon abweichen.
+ *
+ * Wem die sieben eingebauten Arten nicht reichen, trägt einen **eigenen
+ * Grund** ein – eine Taufversammlung, ein Gemeindetag. Er landet in den
+ * Einstellungen und steht danach an jedem Sonntag zur Wahl, genau wie die
+ * eingebauten.
  */
 
 /* ------------------------------------------------------------------ */
@@ -52,7 +59,6 @@ export function SundayProgramBadge({
 }) {
   if (program.kind === 'regular' && !program.adjusted) return null
 
-  const info = SACRAMENT_KIND_INFO[program.kind]
   const tone = !program.meets
     ? 'bg-slate-200 text-slate-700 dark:bg-slate-700 dark:text-slate-100'
     : !program.plansTalks
@@ -62,10 +68,10 @@ export function SundayProgramBadge({
   /* Weicht ein Haken von der Art ab, sagt das Etikett es dazu – sonst
      stünde «Abendmahlsversammlung» an einem Sonntag ohne Versammlung. */
   const aside = !program.meets
-    ? info.meets
+    ? program.defaults.meets
       ? 'keine Versammlung'
       : ''
-    : !program.plansTalks && info.plansTalks
+    : !program.plansTalks && program.defaults.plansTalks
       ? 'keine Ansprachen'
       : ''
 
@@ -108,11 +114,15 @@ export function SundayProgramDialog({
   onClose: () => void
 }) {
   const toast = useToast()
+  const { settings } = useData()
+  const eigene = settings.customSundayKinds ?? []
 
   /** `null` heisst «automatisch» – die Regel entscheidet. */
-  const [kind, setKind] = useState<SacramentKind | null>(null)
+  const [kind, setKind] = useState<string | null>(null)
   const [meets, setMeets] = useState(true)
   const [plansTalks, setPlansTalks] = useState(true)
+  /** Gesetzt, solange ein neuer Grund erfasst wird – sonst `null`. */
+  const [neuerGrund, setNeuerGrund] = useState<string | null>(null)
   const [saving, setSaving] = useState(false)
 
   useEffect(() => {
@@ -121,38 +131,118 @@ export function SundayProgramDialog({
     setKind(meeting?.kind ?? null)
     setMeets(program.meets)
     setPlansTalks(program.plansTalks)
+    setNeuerGrund(null)
   }, [open, date, meeting])
 
   const effectiveKind = kind ?? automaticSacramentKind(date)
-  const info = SACRAMENT_KIND_INFO[effectiveKind]
+  const gewaehlterGrund = eigene.find((entry) => entry.id === effectiveKind) ?? null
+  const info = SACRAMENT_KIND_INFO[effectiveKind as keyof typeof SACRAMENT_KIND_INFO] ?? {
+    label: gewaehlterGrund?.label ?? meeting?.kindLabel ?? 'Besonderer Anlass',
+    meets,
+    plansTalks,
+    hint: 'Ein selbst erfasster Grund – was daraus folgt, sagen die beiden Haken.',
+  }
 
   /* Die Art umstellen setzt die Haken auf das, was sie vorgibt: Wer von
      «Pfahlkonferenz» auf «Abendmahlsversammlung» wechselt, meint den
      Normalfall und nicht die Haken von vorhin. */
-  const chooseKind = (next: SacramentKind | null) => {
+  const chooseKind = (next: string | null) => {
+    setNeuerGrund(null)
     setKind(next)
-    const target = SACRAMENT_KIND_INFO[next ?? automaticSacramentKind(date)]
-    setMeets(target.meets)
-    setPlansTalks(target.plansTalks)
+    const ziel =
+      SACRAMENT_KIND_INFO[
+        (next ?? automaticSacramentKind(date)) as keyof typeof SACRAMENT_KIND_INFO
+      ] ?? eigene.find((entry) => entry.id === next)
+    if (ziel) {
+      setMeets(ziel.meets)
+      setPlansTalks(ziel.plansTalks)
+    }
+  }
+
+  /*
+   * Ein neuer Grund entsteht erst beim Speichern – wer den Dialog abbricht,
+   * hinterlässt keinen halben Eintrag in den Einstellungen. Die beiden Haken
+   * beschreiben ihn: Sie sind bereits da und beantworten genau die zwei
+   * Fragen, die ein Grund mitbringen muss.
+   */
+  const beginNew = () => {
+    setNeuerGrund('')
+    setKind(null)
+    setMeets(true)
+    setPlansTalks(false)
   }
 
   const save = async () => {
+    const bezeichnung = neuerGrund?.trim() ?? ''
+    if (neuerGrund !== null && bezeichnung === '') {
+      toast.error('Bitte gib dem Grund eine Bezeichnung.')
+      return
+    }
+
     setSaving(true)
     try {
-      const outcome = await saveSundayProgram(date, {
-        kind,
-        // Nur festhalten, was von der Art abweicht – sonst bliebe ein Haken
-        // stehen, wenn die Art später eine andere Antwort gäbe.
-        meets: meets === info.meets ? null : meets,
-        plansTalks: plansTalks === info.plansTalks ? null : plansTalks,
-      })
-      toast.saved('Programm gespeichert.', outcome)
+      if (neuerGrund !== null) {
+        // Wer denselben Grund ein zweites Mal einträgt, meint denselben –
+        // zwei gleichnamige Einträge in der Auswahl helfen niemandem.
+        const vorhanden = eigene.find(
+          (entry) => entry.label.toLowerCase() === bezeichnung.toLowerCase(),
+        )
+        const grund: CustomSundayKind = vorhanden ?? {
+          id: uid(),
+          label: bezeichnung,
+          meets,
+          plansTalks,
+        }
+        if (!vorhanden) await saveSettings({ customSundayKinds: [...eigene, grund] })
+        // Ein eigener Grund bringt keine eingebauten Vorgaben mit; seine
+        // beiden Antworten stehen deshalb am Sonntag selbst.
+        const outcome = await saveSundayProgram(date, {
+          kind: grund.id,
+          kindLabel: grund.label,
+          meets,
+          plansTalks,
+        })
+        toast.saved(
+          vorhanden ? 'Programm gespeichert.' : `«${grund.label}» steht ab jetzt zur Wahl.`,
+          outcome,
+        )
+      } else {
+        const outcome = await saveSundayProgram(date, {
+          kind,
+          kindLabel: gewaehlterGrund?.label ?? null,
+          // Nur festhalten, was von der Art abweicht – sonst bliebe ein Haken
+          // stehen, wenn die Art später eine andere Antwort gäbe. Bei einem
+          // eigenen Grund stehen beide fest: Er hat keine Regel hinter sich.
+          meets: gewaehlterGrund ? meets : meets === info.meets ? null : meets,
+          plansTalks: gewaehlterGrund
+            ? plansTalks
+            : plansTalks === info.plansTalks
+              ? null
+              : plansTalks,
+        })
+        toast.saved('Programm gespeichert.', outcome)
+      }
       onClose()
     } catch (error) {
       console.error(error)
       toast.error('Speichern fehlgeschlagen.')
     } finally {
       setSaving(false)
+    }
+  }
+
+  /*
+   * Einen Grund aus der Wahl nehmen. Die Sonntage, an denen er steht,
+   * behalten ihre Bezeichnung – sie ist dort mitgeschrieben.
+   */
+  const removeGrund = async (grund: CustomSundayKind) => {
+    try {
+      await saveSettings({ customSundayKinds: eigene.filter((entry) => entry.id !== grund.id) })
+      toast.success(`«${grund.label}» steht nicht mehr zur Wahl.`)
+      chooseKind(null)
+    } catch (error) {
+      console.error(error)
+      toast.error('Entfernen fehlgeschlagen.')
     }
   }
 
@@ -167,7 +257,7 @@ export function SundayProgramDialog({
       description={formatDateLong(date)}
       footer={
         <>
-          {kind !== null && (
+          {(kind !== null || neuerGrund !== null) && (
             <button
               type="button"
               className="btn-ghost mr-auto"
@@ -200,12 +290,11 @@ export function SundayProgramDialog({
           <select
             id="sunday-kind"
             className="input"
-            value={kind ?? 'auto'}
-            onChange={(event) =>
-              chooseKind(
-                event.target.value === 'auto' ? null : (event.target.value as SacramentKind),
-              )
-            }
+            value={neuerGrund !== null ? 'neu' : (kind ?? 'auto')}
+            onChange={(event) => {
+              if (event.target.value === 'neu') beginNew()
+              else chooseKind(event.target.value === 'auto' ? null : event.target.value)
+            }}
           >
             <option value="auto">
               Automatisch – {SACRAMENT_KIND_INFO[automaticSacramentKind(date)].label}
@@ -224,17 +313,65 @@ export function SundayProgramDialog({
                 </option>
               ))}
             </optgroup>
+            {eigene.length > 0 && (
+              <optgroup label="Eigene Gründe">
+                {eigene.map((entry) => (
+                  <option key={entry.id} value={entry.id}>
+                    {entry.label}
+                  </option>
+                ))}
+              </optgroup>
+            )}
+            <option value="neu">＋ Neuer Grund …</option>
           </select>
-          <p className="hint">
-            {kind === null
-              ? 'Ohne eigene Angabe entscheidet die Regel: erster Sonntag im Monat Fast- und Zeugnisversammlung, im April und Oktober an diesem Tag Generalkonferenz.'
-              : info.hint}
-          </p>
+
+          {neuerGrund !== null ? (
+            <div className="mt-2">
+              <label className="label" htmlFor="sunday-kind-new">
+                Bezeichnung
+              </label>
+              <input
+                id="sunday-kind-new"
+                className="input"
+                value={neuerGrund}
+                onChange={(event) => setNeuerGrund(event.target.value)}
+                placeholder="Taufversammlung, Gemeindetag …"
+                maxLength={60}
+                autoFocus
+              />
+              <p className="hint">
+                Der Grund wird gespeichert und steht danach an jedem Sonntag zur Wahl. Was daraus
+                folgt, sagen die beiden Haken unten.
+              </p>
+            </div>
+          ) : (
+            <div className="mt-1 flex items-start justify-between gap-2">
+              <p className="hint">
+                {kind === null
+                  ? 'Ohne eigene Angabe entscheidet die Regel: erster Sonntag im Monat Fast- und Zeugnisversammlung, im April und Oktober an diesem Tag Generalkonferenz.'
+                  : info.hint}
+              </p>
+              {gewaehlterGrund && (
+                <button
+                  type="button"
+                  className="btn-ghost btn-sm shrink-0 text-rose-600 dark:text-rose-400"
+                  onClick={() => void removeGrund(gewaehlterGrund)}
+                  disabled={saving}
+                  title="Diesen Grund nicht mehr zur Wahl stellen"
+                >
+                  <Trash2 className="size-3.5" aria-hidden />
+                  Grund entfernen
+                </button>
+              )}
+            </div>
+          )}
         </div>
 
         <div className="space-y-2 rounded-lg border border-slate-200 p-3 dark:border-slate-700">
           <p className="text-xs text-slate-500 dark:text-slate-400">
-            Folgt aus der Art – für einen Einzelfall hier änderbar.
+            {neuerGrund !== null
+              ? 'Gilt für diesen Grund – überall, wo er gewählt wird.'
+              : 'Folgt aus der Art – für einen Einzelfall hier änderbar.'}
           </p>
 
           <label className="flex cursor-pointer items-start gap-2 text-sm">

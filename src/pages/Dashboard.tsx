@@ -23,6 +23,7 @@ import { PageHeader } from '@/components/ui/Pickers'
 import {
   formatDateLong,
   formatDateShort,
+  formatDayShort,
   formatTime,
   getDueInfo,
   hasBirthdaySoon,
@@ -31,7 +32,7 @@ import {
   startOfDay,
   upcomingWeekdays,
 } from '@/lib/dates'
-import { sortForPendenzen } from '@/services/agenda'
+import { sortForMeeting, sortForPendenzen } from '@/services/agenda'
 import { openTalkSlots, sacramentDocId, sundayProgram, talksForDate } from '@/services/sacrament'
 import type { AgendaItem } from '@/lib/types'
 
@@ -73,8 +74,10 @@ export function Dashboard() {
     [openItems],
   )
 
+  // Dieselbe Reihenfolge wie in der Sitzung: zuerst die neuen Traktanden,
+  // danach die Pendenzen aus früheren Sitzungen.
   const meetingItems = useMemo(
-    () => openItems.filter((item) => item.meetingId === nextMeeting?.id),
+    () => sortForMeeting(openItems.filter((item) => item.meetingId === nextMeeting?.id)),
     [openItems, nextMeeting?.id],
   )
 
@@ -317,7 +320,9 @@ export function Dashboard() {
                       {member.firstName} {member.lastName}
                     </Link>
                     <span className="shrink-0 text-xs text-slate-500 dark:text-slate-400">
-                      {formatDateShort(
+                      {/* «Do., 06.08.» – ohne Jahr, aber vollständig. Früher stand
+                          hier ein abgeschnittenes Datum mit einer Null am Ende. */}
+                      {formatDayShort(
                         (() => {
                           const date = toDate(member.birthDate)!
                           const today = startOfDay(new Date())
@@ -329,7 +334,7 @@ export function Dashboard() {
                           if (next < today) next.setFullYear(today.getFullYear() + 1)
                           return next
                         })(),
-                      ).slice(0, 9)}
+                      )}
                     </span>
                   </li>
                 ))}

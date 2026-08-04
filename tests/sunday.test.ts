@@ -112,6 +112,40 @@ test('die Haken übersteuern die Art – und werden als Abweichung erkannt', () 
 })
 
 /* ------------------------------------------------------------------ */
+/* Eigene Gründe                                                       */
+/* ------------------------------------------------------------------ */
+
+test('ein selbst erfasster Grund gilt wie eine eingebaute Art', () => {
+  const program = sundayProgram(
+    sunday('2026-02-08'),
+    meeting({ kind: 'eigen-1', kindLabel: 'Taufversammlung', meets: true, plansTalks: false }),
+  )
+  assert.equal(program.label, 'Taufversammlung')
+  assert.equal(program.meets, true)
+  assert.equal(program.plansTalks, false)
+  // Die beiden Haken sind der Grund selbst – keine Abweichung von ihm.
+  assert.equal(program.adjusted, false)
+  assert.equal(program.automatic, false)
+})
+
+test('ein entfernter Grund bleibt am Sonntag lesbar', () => {
+  // Die Bezeichnung steht am Sonntag mit; die Einstellungen werden nicht
+  // gebraucht, um ein altes Programm zu lesen.
+  const program = sundayProgram(
+    sunday('2026-02-08'),
+    meeting({ kind: 'laengst-geloescht', kindLabel: 'Gemeindetag', meets: false }),
+  )
+  assert.equal(program.label, 'Gemeindetag')
+  assert.equal(program.meets, false)
+  assert.equal(program.plansTalks, false)
+})
+
+test('ohne Bezeichnung bleibt ein unbekannter Grund benennbar', () => {
+  const program = sundayProgram(sunday('2026-02-08'), meeting({ kind: 'unbekannt' }))
+  assert.equal(program.label, 'Besonderer Anlass')
+})
+
+/* ------------------------------------------------------------------ */
 /* Was daraus folgt                                                    */
 /* ------------------------------------------------------------------ */
 

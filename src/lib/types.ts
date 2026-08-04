@@ -656,7 +656,32 @@ export interface AppSettings {
    * Name wird einmal erfasst und ist danach an jedem Sonntag wählbar.
    */
   extraLeaders: string[]
+  /**
+   * Eigene Gründe für die Wahl «Was findet statt?».
+   *
+   * Die sieben eingebauten Arten decken den Jahreslauf ab, aber nicht jeden
+   * Sonderfall: eine Taufversammlung, ein Besuch der Missionspräsidentschaft,
+   * ein Gemeindetag. Solche Anlässe kommen wieder – deshalb steht der Grund
+   * in den Einstellungen und nicht am einzelnen Sonntag; einmal erfasst, ist
+   * er an jedem Sonntag wählbar. Genau wie bei `extraLeaders`.
+   */
+  customSundayKinds: CustomSundayKind[]
   updatedAt?: TS
+}
+
+/**
+ * Ein selbst erfasster Grund, was an einem Sonntag stattfindet.
+ *
+ * Mehr als die eingebauten Arten braucht es nicht: eine Bezeichnung und die
+ * beiden Fragen, die alles Weitere entscheiden – findet eine Versammlung
+ * statt, werden Ansprachen eingeplant.
+ */
+export interface CustomSundayKind {
+  /** Steht als `kind` am Sonntag – deshalb nicht die Bezeichnung selbst */
+  id: string
+  label: string
+  meets: boolean
+  plansTalks: boolean
 }
 
 export const DEFAULT_SETTINGS: AppSettings = {
@@ -672,6 +697,7 @@ export const DEFAULT_SETTINGS: AppSettings = {
   talkMinAge: 12,
   prayerGapMonths: 6,
   extraLeaders: [],
+  customSundayKinds: [],
 }
 
 /* ------------------------------------------------------------------ */
@@ -948,7 +974,15 @@ export interface SacramentMeeting extends WithId {
    * Hand festgelegter Sonntag jederzeit wieder auf «automatisch»
    * zurückzustellen.
    */
-  kind?: SacramentKind | null
+  kind?: SacramentKind | string | null
+  /**
+   * Die Bezeichnung eines selbst erfassten Grundes, mitgeschrieben.
+   *
+   * Wie beim Liedtitel und beim Namen der leitenden Person: Ein Programm von
+   * vor zwei Jahren soll auch dann lesbar bleiben, wenn der Grund längst aus
+   * den Einstellungen genommen wurde.
+   */
+  kindLabel?: string | null
   /**
    * Ausnahmen zur Art – `null` bzw. fehlend folgt der Art.
    *
