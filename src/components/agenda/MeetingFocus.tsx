@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
+import { useCallback, useEffect, useMemo, useState } from 'react'
 import { useSearchParams } from 'react-router-dom'
 import { Check, ChevronLeft, ChevronRight, Clock, Plus, Trash2 } from 'lucide-react'
 import { cn } from '@/lib/utils'
@@ -8,10 +8,16 @@ import { useToast } from '@/contexts/ToastContext'
 import { DueBadge, KindBadge, StatusBadge } from '@/components/ui/Badge'
 import { ConfirmDialog } from '@/components/ui/Modal'
 import { EmptyState } from '@/components/ui/Feedback'
-import { AgendaItemEditor, AgendaNotes } from '@/components/agenda/AgendaItemEditor'
+import { AgendaItemEditor } from '@/components/agenda/AgendaItemEditor'
 import { DeferMenu } from '@/components/agenda/DeferMenu'
 import { deleteAgendaItem, setItemStatus } from '@/services/agenda'
-import { ITEM_KIND_LABELS, toItemKind, type AgendaItem, type ItemStatus } from '@/lib/types'
+import {
+  ITEM_KIND_LABELS,
+  ITEM_KIND_PLURAL,
+  toItemKind,
+  type AgendaItem,
+  type ItemStatus,
+} from '@/lib/types'
 
 interface Props {
   items: AgendaItem[]
@@ -29,9 +35,9 @@ export const FOCUS_PARAM = 'traktandum'
  * Daumenreichweite.
  *
  * Der Ablauf ist bewusst linear – während der Sitzung will man nicht suchen,
- * sondern der Reihe nach durchgehen: zuerst die Pendenzen aus den früheren
- * Sitzungen, danach die neuen Traktanden. Die Leiste oben zeigt trotzdem
- * jederzeit, wo man steht, und erlaubt den direkten Sprung.
+ * sondern der Reihe nach durchgehen: zuerst die neuen Traktanden, danach die
+ * Pendenzen aus früheren Sitzungen. Die Leiste oben zeigt trotzdem jederzeit,
+ * wo man steht, und erlaubt den direkten Sprung.
  *
  * Bearbeitet wird ohne Umweg: Titel und Beschreibung sind Text, in den man
  * hineingreift, Priorität, Termin und Zuständige stehen darunter. Einen
@@ -47,7 +53,6 @@ export function MeetingFocus({ items, onAdd, nextMeeting, readOnly = false }: Pr
   const toast = useToast()
   const [searchParams, setSearchParams] = useSearchParams()
   const [confirmDelete, setConfirmDelete] = useState(false)
-  const noteRef = useRef<HTMLTextAreaElement>(null)
 
   const focusId = searchParams.get(FOCUS_PARAM)
   const index = Math.max(
@@ -83,6 +88,28 @@ export function MeetingFocus({ items, onAdd, nextMeeting, readOnly = false }: Pr
 
   const doneCount = useMemo(() => items.filter((item) => item.status === 'done').length, [items])
 
+  /*
+   * Wo man innerhalb der eigenen Gruppe steht.
+   *
+   * «Punkt 7 von 12» sagt in einer Sitzung wenig; «Pendenz 2 von 8» sagt,
+   * dass die neuen Traktanden durch sind und noch sechs Altlasten warten.
+   */
+  const place = useMemo(() => {
+    const kind = current ? toItemKind(current) : 'traktandum'
+    const group = items.filter((item) => toItemKind(item) === kind)
+    return {
+      kind,
+      position: current ? group.findIndex((item) => item.id === current.id) + 1 : 0,
+      total: group.length,
+    }
+  }, [items, current])
+
+  /** Wie viele neue Traktanden vorne stehen – die Pendenzen beginnen danach. */
+  const newCount = useMemo(
+    () => items.filter((item) => toItemKind(item) === 'traktandum').length,
+    [items],
+  )
+
   /* Tastatursteuerung – am Laptop geht das Durchgehen so am schnellsten. */
   useEffect(() => {
     const onKeyDown = (event: KeyboardEvent) => {
@@ -93,10 +120,6 @@ export function MeetingFocus({ items, onAdd, nextMeeting, readOnly = false }: Pr
 
       if (event.key === 'ArrowRight' || event.key === 'j') step(1)
       else if (event.key === 'ArrowLeft' || event.key === 'k') step(-1)
-      else if (event.key === 'n') {
-        event.preventDefault()
-        noteRef.current?.focus()
-      }
     }
     window.addEventListener('keydown', onKeyDown)
     return () => window.removeEventListener('keydown', onKeyDown)
@@ -156,7 +179,7 @@ export function MeetingFocus({ items, onAdd, nextMeeting, readOnly = false }: Pr
       <div className="card p-3">
         <div className="mb-2 flex items-center justify-between text-sm">
           <span className="font-medium">
-            {ITEM_KIND_LABELS[kind]} {index + 1} von {items.length}
+            {place.position} von {place.total} {ITEM_KIND_PLURAL[place.kind]}
           </span>
           <span className="text-slate-500 dark:text-slate-400">
             {doneCount} erledigt · {items.length - doneCount} offen
@@ -170,18 +193,25 @@ export function MeetingFocus({ items, onAdd, nextMeeting, readOnly = false }: Pr
           />
         </div>
 
+        {/* Die Leiste zählt je Gruppe von vorn und lässt zwischen ihnen eine
+            Lücke – so ist auch hier zu sehen, wo das Neue aufhört. */}
         <div className="no-scrollbar -mx-1 flex gap-1 overflow-x-auto px-1">
           {items.map((item, itemIndex) => {
             const isDone = item.status === 'done'
             const isPendenz = toItemKind(item) === 'pendenz'
+            // Die Liste kommt sortiert an: erst die Traktanden, dann die
+            // Pendenzen. Daraus ergibt sich die Nummer innerhalb der Gruppe.
+            const number = isPendenz ? itemIndex + 1 - newCount : itemIndex + 1
+            const first = isPendenz && itemIndex === newCount && itemIndex > 0
             return (
               <button
                 key={item.id}
                 type="button"
                 onClick={() => goTo(item)}
-                title={`${ITEM_KIND_LABELS[isPendenz ? 'pendenz' : 'traktandum']}: ${item.title}`}
+                title={`${ITEM_KIND_LABELS[isPendenz ? 'pendenz' : 'traktandum']} ${number}: ${item.title}`}
                 className={cn(
                   'tabular grid size-8 shrink-0 place-items-center rounded-lg text-xs font-semibold transition',
+                  first && 'ml-3',
                   itemIndex === index
                     ? 'bg-brand-600 text-white'
                     : isDone
@@ -194,7 +224,7 @@ export function MeetingFocus({ items, onAdd, nextMeeting, readOnly = false }: Pr
                 {isDone && itemIndex !== index ? (
                   <Check className="size-3.5" aria-hidden />
                 ) : (
-                  itemIndex + 1
+                  number
                 )}
               </button>
             )
@@ -214,26 +244,25 @@ export function MeetingFocus({ items, onAdd, nextMeeting, readOnly = false }: Pr
 
       {/* ---- Aktueller Punkt ---- */}
       <article className="card p-5">
-        <div className="mb-3 flex flex-wrap items-center gap-1.5">
-          <KindBadge kind={kind} />
-          <StatusBadge status={current.status} />
-          {due && <DueBadge label={due.label} overdue={due.overdue} soon={due.soon} />}
-          {current.deferCount > 0 && (
-            <span className="badge bg-amber-100 text-amber-800 dark:bg-amber-950 dark:text-amber-200">
-              {current.deferCount}× verschoben
-            </span>
-          )}
-        </div>
+        {/* Angeschrieben wird nur, was vom Normalfall abweicht: «Pendent» neben
+            «Pendenz» sagte dasselbe zweimal, und ein neues Traktandum ohne
+            Termin braucht gar keine Zeile. */}
+        {(kind === 'pendenz' || current.status !== 'pending' || due || current.deferCount > 0) && (
+          <div className="mb-3 flex flex-wrap items-center gap-1.5">
+            <KindBadge kind={kind} />
+            {current.status !== 'pending' && <StatusBadge status={current.status} />}
+            {due && <DueBadge label={due.label} overdue={due.overdue} soon={due.soon} />}
+            {current.deferCount > 0 && (
+              <span className="badge bg-amber-100 text-amber-800 dark:bg-amber-950 dark:text-amber-200">
+                {current.deferCount}× verschoben
+              </span>
+            )}
+          </div>
+        )}
 
         {/* Der Stand gehört dem Eintrag, nicht der Stelle auf dem Bildschirm –
             deshalb baut sich der Editor beim Blättern neu auf. */}
         <AgendaItemEditor key={current.id} item={current} readOnly={readOnly} />
-
-        <div className="mt-5">
-          {/* Ebenfalls je Eintrag neu: Ein angefangener Notiztext darf beim
-              Weiterblättern nicht am nächsten Punkt landen. */}
-          <AgendaNotes key={current.id} item={current} readOnly={readOnly} inputRef={noteRef} />
-        </div>
       </article>
 
       {/* ---- Aktionsleiste ----
@@ -308,7 +337,7 @@ export function MeetingFocus({ items, onAdd, nextMeeting, readOnly = false }: Pr
             </div>
 
             <p className="mt-1.5 hidden text-center text-xs text-slate-400 lg:block">
-              Tastatur: ← → blättern · N springt ins Notizfeld
+              Tastatur: ← → blättern
             </p>
           </div>
         </>
@@ -321,8 +350,8 @@ export function MeetingFocus({ items, onAdd, nextMeeting, readOnly = false }: Pr
         title={`${ITEM_KIND_LABELS[kind]} löschen?`}
         message={
           <>
-            «{current.title}» wird endgültig gelöscht – samt Notizen und Verlauf. Soll der Punkt
-            bloss aus dieser Sitzung verschwinden, ist «Verschieben» der richtige Weg.
+            «{current.title}» wird endgültig gelöscht – samt Verlauf. Soll der Punkt bloss aus
+            dieser Sitzung verschwinden, ist «Verschieben» der richtige Weg.
           </>
         }
         confirmLabel="Endgültig löschen"

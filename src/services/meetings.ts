@@ -29,7 +29,6 @@ export interface MeetingInput {
   openingPrayer?: string
   closingPrayer?: string
   spiritualThought?: string
-  notes?: string
 }
 
 export async function createMeeting(
@@ -47,7 +46,6 @@ export async function createMeeting(
         openingPrayer: input.openingPrayer ?? '',
         closingPrayer: input.closingPrayer ?? '',
         spiritualThought: input.spiritualThought ?? '',
-        notes: input.notes ?? '',
       }),
       date: Timestamp.fromDate(input.date),
       status: 'planned' satisfies MeetingStatus,

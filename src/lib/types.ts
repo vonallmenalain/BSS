@@ -164,13 +164,17 @@ export interface Meeting extends WithId {
   status: MeetingStatus
   /** UIDs der anwesenden Personen */
   attendees: string[]
-  /** Wer spricht das Anfangsgebet? (UID oder Freitext) */
+  /**
+   * Wer betet, wer den geistigen Gedanken hält.
+   *
+   * Gespeichert wird der ausgeschriebene Name und kein Verweis: Ein Protokoll
+   * von vor zwei Jahren soll auch dann lesbar bleiben, wenn die Person längst
+   * kein Konto mehr hat. Aus früheren Fassungen steht hier gelegentlich ein
+   * freier Text – der bleibt stehen, wie er ist.
+   */
   openingPrayer?: string
   closingPrayer?: string
-  /** Geistiger Gedanke / Schriftstelle zum Einstieg */
   spiritualThought?: string
-  /** Allgemeine Sitzungsnotizen (Protokoll-Kopf) */
-  notes?: string
   /** Zeitpunkt, an dem die Sitzung gestartet bzw. abgeschlossen wurde */
   startedAt?: TS | null
   closedAt?: TS | null
@@ -288,14 +292,6 @@ export const PRIORITY_LABELS: Record<Priority, string> = {
   high: 'Hoch',
 }
 
-export interface ItemNote {
-  id: string
-  text: string
-  authorId: string
-  authorName: string
-  createdAt: string // ISO-String, da innerhalb eines Arrays kein serverTimestamp() möglich ist
-}
-
 export interface HistoryEntry {
   id: string
   /** z. B. «Status auf Erledigt gesetzt» */
@@ -336,7 +332,13 @@ export interface AgendaItem extends WithId {
   /** Termin, bis wann die Pendenz erledigt sein soll */
   dueDate: TS | null
 
-  notes: ItemNote[]
+  /*
+   * Eine eigene Notizliste je Traktandum gab es einmal; sie ist weggefallen.
+   * Was besprochen wurde, gehört in die Beschreibung – zwei Textfelder
+   * nebeneinander beantworten dieselbe Frage zweimal, und in der Sitzung
+   * schreibt niemand zweimal. Alte Einträge bleiben in Firestore stehen,
+   * gelesen wird das Feld nicht mehr.
+   */
   history: HistoryEntry[]
 
   /** Wie oft wurde dieses Traktandum schon vertagt? Macht Dauerbrenner sichtbar. */

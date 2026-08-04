@@ -245,6 +245,13 @@ Dieselben Tests laufen in der CI, bevor Regeln ausgerollt werden.
 **Sitzungen** in der Seitenleiste. Eine Sitzung wird geplant, gestartet,
 durchgeführt und abgeschlossen; danach lässt sich das Protokoll drucken.
 
+**Zuoberst stehen die vier Angaben, die zu Beginn festgehalten werden**:
+Anwesenheit, Anfangsgebet, Schlussgebet und geistiger Gedanke – je eine Zeile
+mit den Konten der Bischofschaft und der Sekretäre als Knöpfe. Ein Griff je
+Person, gespeichert wird sofort; ein Fenster dafür gibt es nicht. Bei der
+Anwesenheit sind mehrere möglich, bei den übrigen dreien genau eine, und ein
+zweiter Griff nimmt die Wahl wieder zurück.
+
 ### Traktandum oder Pendenz
 
 Beides ist derselbe Datensatz, aber nicht dasselbe Wort:
@@ -256,9 +263,11 @@ Beides ist derselbe Datensatz, aber nicht dasselbe Wort:
 Der Weg führt nur in eine Richtung. Wird eine Sitzung abgeschlossen, wandert
 alles Unerledigte in den Sammelkorb und ist von da an eine Pendenz; wer sie in
 die nächste Sitzung übernimmt, findet sie dort unter **Pendenzen** und nicht
-unter den neuen Traktanden. In der Liste stehen die beiden Gruppen unter
-eigenen Überschriften, die Pendenzen zuoberst – in dieser Reihenfolge geht
-eine Sitzung durch.
+unter den neuen Traktanden. Die beiden Gruppen stehen unter eigenen
+Überschriften, **zuerst die neuen Traktanden, danach die Pendenzen** – in
+dieser Reihenfolge geht eine Sitzung durch, und der erste Teil ist nicht eine
+Wiederholung der letzten. Angeschrieben wird nur die Pendenz: dass sie pendent
+ist, sagt schon das Wort.
 
 ### Drei Status
 
@@ -276,21 +285,25 @@ sich heute als «Pendent» bzw. «Erledigt».
 
 ### Sitzungsmodus: schreiben, während gesprochen wird
 
-Ein Punkt gross im Bild, darüber die Sprungleiste, darunter Notizfeld und
-Statusknöpfe. **Es gibt keinen Bearbeiten-Stift und kein Bearbeiten-Fenster
-mehr** – der Eintrag selbst ist das Formular:
+Ein Punkt gross im Bild, darüber die Sprungleiste, darunter die Statusknöpfe.
+**Es gibt keinen Bearbeiten-Stift und kein Bearbeiten-Fenster mehr** – der
+Eintrag selbst ist das Formular:
 
 - **Titel und Beschreibung** sind Text, in den man hineingreift. Gespeichert
-  wird kurz nach dem letzten Tastendruck und noch einmal beim Weiterblättern;
-  darunter steht, wie weit das Speichern ist.
+  wird kurz nach dem letzten Tastendruck und noch einmal beim Weiterblättern.
+  Gemeldet wird nur, was zu tun ist – ein fehlender Titel oder ein Schreiben,
+  das nicht durchkam.
 - **Priorität** (Standard _Normal_), **Erledigen bis** (Standard leer) und
   **Zuständig** (niemand vorausgewählt) stehen unmittelbar darunter. Zur Wahl
   stehen der Bischof, beide Ratgeber und die Sekretäre – ein Klick genügt.
-- Sonst nichts. Bereich, betroffene Mitglieder und das Kennzeichen
-  «vertraulich» sind weggefallen, in der Sitzung wie überall sonst.
+- Sonst nichts. Bereich, betroffene Mitglieder, das Kennzeichen «vertraulich»
+  und die eigene Notizliste je Traktandum sind weggefallen: Was besprochen
+  wurde, gehört in die Beschreibung.
 
-Nach «Erledigt» rückt die App von selbst zum nächsten Punkt. Am Laptop
-blättern die Pfeiltasten, `N` springt ins Notizfeld.
+Oben steht, wo man innerhalb der eigenen Gruppe ist – «2 von 5 Traktanden»,
+später «1 von 8 Pendenzen». Auch die Sprungleiste zählt je Gruppe von vorn und
+lässt zwischen ihnen eine Lücke. Nach «Erledigt» rückt die App von selbst zum
+nächsten Punkt; am Laptop blättern die Pfeiltasten.
 
 ### Liste: Reihenfolge festlegen
 
@@ -301,7 +314,8 @@ ganze Inhalt da – und lässt sich gleich dort ändern.
 Umsortiert wird innerhalb einer Gruppe, auf zwei Wegen: mit den **Pfeilen** an
 jeder Zeile (auch am Handy) oder durch **Ziehen und Ablegen** am Zeigergerät.
 Die Reihenfolge gilt für alle und bestimmt auch, in welcher Folge der
-Sitzungsmodus durchgeht.
+Sitzungsmodus durchgeht. Zwischen den Gruppen wird nicht verschoben – eine
+Pendenz zu den neuen Traktanden zu ziehen hiesse, sie zurückzudatieren.
 
 ### Namen im Text
 

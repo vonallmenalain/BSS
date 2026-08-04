@@ -1,4 +1,4 @@
-import { CalendarClock, Check, MessageSquare, Repeat } from 'lucide-react'
+import { CalendarClock, Check, Repeat } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { getDueInfo, formatDate } from '@/lib/dates'
 import { useAuth } from '@/contexts/AuthContext'
@@ -110,12 +110,6 @@ export function AgendaItemCard({ item, onOpen, meetingLabel, compact = false }: 
               >
                 <Repeat className="size-3" aria-hidden />
                 {item.deferCount}×
-              </span>
-            )}
-            {item.notes?.length > 0 && (
-              <span className="badge bg-slate-100 text-slate-500 dark:bg-slate-800 dark:text-slate-400">
-                <MessageSquare className="size-3" aria-hidden />
-                {item.notes.length}
               </span>
             )}
             {meetingLabel && (

@@ -135,7 +135,6 @@ function itemDocument(
     memberRefs: [],
     dueDate: null,
     deferCount: 0,
-    notes: [],
     history: [historyEntry(options.actor, options.at)],
     importedFrom: MINUTES_SOURCE,
     /*
@@ -203,7 +202,6 @@ export async function importMinutes(
         openingPrayer: '',
         closingPrayer: '',
         spiritualThought: '',
-        notes: '',
         startedAt: past ? stamp : null,
         closedAt: past ? stamp : null,
         importedFrom: MINUTES_SOURCE,

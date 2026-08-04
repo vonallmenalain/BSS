@@ -95,13 +95,18 @@ Sitzungszuordnung landen sie im Sammelkorb.
 Einstellungen kennen den üblichen Wochentag und schlagen den Termin vor. Ein
 Klick übernimmt alle offenen Pendenzen in die neue Sitzung.
 
+**Beginnen.** Anwesenheit, Anfangs- und Schlussgebet, geistiger Gedanke stehen
+zuoberst auf der Seite, je eine Zeile mit den fünf Konten als Knöpfe.
+Gespeichert wird beim Antippen. Das war einmal ein Fenster – für vier Angaben,
+die in einer halben Minute festgehalten sind, ein Umweg.
+
 **Durchführen (Sitzungsmodus).** Fortschrittsbalken, Sprungleiste über alle
-Punkte – zuerst die Pendenzen, dann die neuen Traktanden –, dann das aktuelle
+Punkte – zuerst die neuen Traktanden, dann die Pendenzen –, dann das aktuelle
 Thema in voller Breite und unmittelbar bearbeitbar: Titel, Beschreibung,
-Priorität, Termin, Zuständige, Notizen. Darunter die Aktionsleiste –
-_Erledigt_, _Verschieben_, _Löschen_ – und Vor/Zurück. Nach «Erledigt» rückt
-die App von selbst zum nächsten Punkt. Am Laptop geht das Blättern auch mit
-den Pfeiltasten, `N` springt ins Notizfeld.
+Priorität, Termin, Zuständige. Darunter die Aktionsleiste – _Erledigt_,
+_Verschieben_, _Löschen_ – und Vor/Zurück. Nach «Erledigt» rückt die App von
+selbst zum nächsten Punkt. Am Laptop geht das Blättern auch mit den
+Pfeiltasten.
 
 **Status.** Drei, mehr nicht: _Neu_ vor dem Start der Sitzung, _Pendent_,
 solange nicht abgehakt ist, _Erledigt_ danach. Der Start der Sitzung macht
@@ -110,6 +115,10 @@ aus allem Neuen Pendentes – ab da ist jeder Punkt schlicht offen.
 **Reihenfolge.** In der Listenansicht mit Pfeilen oder durch Ziehen und
 Ablegen, innerhalb der beiden Gruppen. Eine Zeile ist zugeklappt schmal und
 zeigt den Titel; ein Klick klappt sie auf, und dann steht alles da.
+
+Eine eigene Notizliste je Traktandum gab es einmal; sie ist weggefallen. Zwei
+Textfelder nebeneinander beantworten dieselbe Frage zweimal, und in der
+Sitzung schreibt niemand zweimal.
 
 **Verschieben.** Vier Fälle, die im Alltag vorkommen, als je ein Klick:
 auf die nächste Sitzung, um eine Woche, um einen Monat, um drei Monate –
@@ -404,7 +413,8 @@ für einen Sekundenbruchteil – und schiebt die halbe Seite mit.
 
 ```
 users/{uid}            Rolle, Name, aktiv/inaktiv
-meetings/{id}          Datum, Titel, Ort, Status, Anwesende, Gebete, Notizen
+meetings/{id}          Datum, Titel, Ort, Status, Anwesende, Gebete,
+                       geistiger Gedanke
 agendaItems/{id}       Traktandum bzw. Pendenz
                        ├─ meetingId  (null = Sammelkorb)
                        ├─ kind       Traktandum | Pendenz
@@ -412,7 +422,7 @@ agendaItems/{id}       Traktandum bzw. Pendenz
                        ├─ assignees  UIDs der Zuständigen
                        ├─ memberRefs mit «@» erwähnte Mitglieder
                        ├─ dueDate, priority, order, deferCount
-                       └─ notes[], history[]
+                       └─ history[]
 members/{id}           Stammdaten, Status, Notiz, lastTalkDate, talkCount
 talks/{id}             Mitglied (leer = Name von Hand), Datum,
                        Programmplatz, Art (Ansprache | Zeugnis), Thema,
@@ -488,8 +498,10 @@ immer dasselbe: Termin verstrichen.
 - Anmeldung, Registrierung, Passwort zurücksetzen, Freigabe-Sperre
 - Rollen und Benutzerverwaltung
 - Sitzungen planen, starten, durchführen, abschliessen, Protokoll drucken
-- Sitzungsmodus mit unmittelbarer Bearbeitung, Notizen, Statuswechsel,
-  Verschieben, Tastatursteuerung
+- Sitzungsmodus mit unmittelbarer Bearbeitung, Statuswechsel, Verschieben,
+  Tastatursteuerung
+- Anwesenheit, Gebete und geistiger Gedanke als Knopfleiste zuoberst in der
+  Sitzung
 - Trennung von Pendenzen früherer Sitzungen und neuen Traktanden, mit eigener
   Reihenfolge je Gruppe (Pfeile oder Ziehen und Ablegen)
 - Mit «@» erwähnte Mitglieder bleiben im Text anklickbar und führen zur Person
