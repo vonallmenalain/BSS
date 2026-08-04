@@ -14,7 +14,7 @@ import { uid } from '@/lib/utils'
 import { readDocxXml, parseDocxBlocks } from '@/lib/docx'
 import { parseMinutes, type ParsedMinutes, type ParsedMinutesItem } from '@/lib/minutes'
 import type { Actor } from '@/services/agenda'
-import type { ItemStatus, MeetingStatus } from '@/lib/types'
+import type { ItemKind, ItemStatus, MeetingStatus } from '@/lib/types'
 
 /*
  * Das Lesen liegt firestore-frei in `lib/docx` und `lib/minutes` – von hier
@@ -115,6 +115,7 @@ function itemDocument(
   options: {
     meetingId: string | null
     order: number
+    kind: ItemKind
     status: ItemStatus
     at: Date
     actor: Actor
@@ -127,13 +128,12 @@ function itemDocument(
     meetingId: options.meetingId,
     firstMeetingId: options.meetingId,
     order: options.order,
+    kind: options.kind,
     status: options.status,
     priority: 'normal',
-    category: 'general',
     assignees: [],
     memberRefs: [],
     dueDate: null,
-    confidential: false,
     deferCount: 0,
     notes: [],
     history: [historyEntry(options.actor, options.at)],
@@ -221,9 +221,10 @@ export async function importMinutes(
           itemDocument(item, {
             meetingId: meetingRef.id,
             order: (index + 1) * 100,
+            kind: 'traktandum',
             // Was besprochen wurde, ist erledigt – offen bleibt allein, was
             // in der Tabelle «Offene Pendenzen» steht.
-            status: past ? 'done' : 'open',
+            status: past ? 'done' : 'new',
             at,
             actor: options.actor,
           }),
@@ -241,7 +242,10 @@ export async function importMinutes(
         itemDocument(item, {
           meetingId: null,
           order: (index + 1) * 100,
-          status: 'open',
+          // Die Tabelle «Offene Pendenzen» heisst so, weil genau das
+          // darinsteht: Punkte, die frühere Sitzungen überdauert haben.
+          kind: 'pendenz',
+          status: 'pending',
           at: now,
           actor: options.actor,
         }),

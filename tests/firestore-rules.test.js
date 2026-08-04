@@ -29,8 +29,8 @@ import {
   where,
 } from 'firebase/firestore'
 
-/** Statusse, die als «noch offen» gelten – wie in src/lib/types.ts. */
-const OPEN = ['open', 'in_progress', 'deferred']
+/** Status, die als «noch offen» gelten – wie in src/lib/types.ts. */
+const OPEN = ['new', 'pending']
 
 const BISHOP = 'uid-bischof'
 const COUNSELOR1 = 'uid-ratgeber-1'
@@ -69,10 +69,10 @@ async function seed() {
 
     const baseItem = {
       meetingId: null,
-      status: 'open',
+      kind: 'traktandum',
+      status: 'pending',
       order: 100,
       priority: 'normal',
-      category: 'general',
       assignees: [],
       memberRefs: [],
       dueDate: null,
@@ -84,12 +84,11 @@ async function seed() {
     await setDoc(doc(db, 'agendaItems', 'offen'), {
       ...baseItem,
       title: 'Jugendlager Budget',
-      confidential: false,
     })
-    await setDoc(doc(db, 'agendaItems', 'vertraulich'), {
+    await setDoc(doc(db, 'agendaItems', 'seelsorge'), {
       ...baseItem,
+      kind: 'pendenz',
       title: 'Seelsorgerisches Anliegen',
-      confidential: true,
     })
 
     await setDoc(doc(db, 'members', 'mitglied-1'), {
@@ -213,9 +212,9 @@ describe('Grundlegender Zugang', () => {
 })
 
 describe('Alle Rollen sehen denselben Bestand', () => {
-  it('lässt auch Sekretäre vertrauliche Traktanden lesen', async () => {
-    await assertSucceeds(getDoc(doc(asSecretary(), 'agendaItems', 'vertraulich')))
-    await assertSucceeds(getDoc(doc(asCounselor2(), 'agendaItems', 'vertraulich')))
+  it('lässt auch Sekretäre seelsorgerische Traktanden lesen', async () => {
+    await assertSucceeds(getDoc(doc(asSecretary(), 'agendaItems', 'seelsorge')))
+    await assertSucceeds(getDoc(doc(asCounselor2(), 'agendaItems', 'seelsorge')))
   })
 
   it('lässt ungefilterte Abfragen für jede Rolle zu', async () => {
@@ -229,12 +228,12 @@ describe('Alle Rollen sehen denselben Bestand', () => {
     }
   })
 
-  it('lässt Sekretäre vertrauliche Traktanden anlegen und bearbeiten', async () => {
+  it('lässt Sekretäre Traktanden anlegen und bearbeiten', async () => {
     await assertSucceeds(
       setDoc(doc(asSecretary(), 'agendaItems', 'neu'), {
         title: 'Neuer Eintrag',
-        confidential: true,
-        status: 'open',
+        kind: 'traktandum',
+        status: 'new',
         meetingId: null,
         order: 1,
       }),

@@ -20,12 +20,12 @@ import { commit, type SaveOutcome } from '@/lib/sync'
 import type {
   AgendaItem,
   HistoryEntry,
-  ItemCategory,
+  ItemKind,
   ItemNote,
   ItemStatus,
   Priority,
 } from '@/lib/types'
-import { ITEM_STATUS_LABELS } from '@/lib/types'
+import { ITEM_STATUS_LABELS, OPEN_STATUS_QUERY, toItemKind } from '@/lib/types'
 
 const itemsRef = collection(db, COLLECTIONS.agendaItems)
 
@@ -40,11 +40,9 @@ export interface AgendaItemInput {
   meetingId?: string | null
   status?: ItemStatus
   priority?: Priority
-  category?: ItemCategory
   assignees?: string[]
   memberRefs?: string[]
   dueDate?: Date | null
-  confidential?: boolean
   order?: number
 }
 
@@ -68,13 +66,14 @@ export async function createAgendaItem(input: AgendaItemInput, actor: Actor): Pr
       meetingId: input.meetingId ?? null,
       firstMeetingId: input.meetingId ?? null,
       order: input.order ?? Date.now(),
-      status: input.status ?? 'open',
+      // Was neu erfasst wird, ist ein Traktandum. Zur Pendenz wird es erst,
+      // wenn es eine Sitzung überlebt (siehe `closeMeeting`).
+      kind: 'traktandum' satisfies ItemKind,
+      status: input.status ?? 'new',
       priority: input.priority ?? 'normal',
-      category: input.category ?? 'general',
       assignees: input.assignees ?? [],
       memberRefs: input.memberRefs ?? [],
       dueDate: input.dueDate ? Timestamp.fromDate(input.dueDate) : null,
-      confidential: input.confidential ?? false,
       deferCount: 0,
       notes: [],
       history: [historyEntry('Traktandum erstellt', actor)],
@@ -207,7 +206,10 @@ export async function deferItem(
 
   return commit(
     updateDoc(ref, {
-      status: 'deferred' satisfies ItemStatus,
+      // Wer verschoben wird, ist nicht erledigt – und damit von jetzt an eine
+      // Pendenz, auch wenn er in dieser Sitzung neu aufgetaucht ist.
+      kind: 'pendenz' satisfies ItemKind,
+      status: 'pending' satisfies ItemStatus,
       meetingId,
       dueDate: newDueDate ? Timestamp.fromDate(newDueDate) : null,
       deferCount: (current.deferCount ?? 0) + 1,
@@ -232,10 +234,16 @@ export async function assignToMeeting(
     ),
   }
   if (order !== undefined) patch.order = order
-  // Ein zurückgestelltes Traktandum wird durch die Neuplanung wieder offen.
+
   const snapshot = await getDoc(doc(db, COLLECTIONS.agendaItems, id))
-  if (meetingId && snapshot.exists() && snapshot.data().status === 'deferred') {
-    patch.status = 'open'
+  if (meetingId && snapshot.exists()) {
+    const data = snapshot.data() as AgendaItem
+    // Steht die Art noch nicht am Datensatz, wird sie hier festgehalten –
+    // danach entscheidet nicht mehr die Vorgeschichte, sondern das Feld.
+    patch.kind = toItemKind(data)
+    // Die erste Sitzung, in der ein Eintrag stand, macht ihn später zur
+    // Pendenz. Wer aus dem Sammelkorb kommt, hat sie noch nicht.
+    if (!data.firstMeetingId) patch.firstMeetingId = meetingId
   }
   return commit(updateDoc(doc(db, COLLECTIONS.agendaItems, id), patch))
 }
@@ -250,16 +258,16 @@ export async function reorderItems(orderedIds: string[]): Promise<SaveOutcome> {
 }
 
 /**
- * Übernimmt alle offenen Traktanden ohne Sitzung in die angegebene Sitzung.
+ * Übernimmt alle offenen Einträge ohne Sitzung in die angegebene Sitzung.
  * Das ist der Schritt «Pendenzen aus der letzten Sitzung mitnehmen».
+ *
+ * Die Art wird dabei nicht angetastet: Wer als Pendenz im Sammelkorb lag,
+ * erscheint in der neuen Sitzung als Pendenz, und was noch nie traktandiert
+ * war, bleibt ein Traktandum.
  */
 export async function carryOverOpenItems(meetingId: string, actor: Actor): Promise<number> {
   const snapshot = await getDocs(
-    query(
-      itemsRef,
-      where('meetingId', '==', null),
-      where('status', 'in', ['open', 'in_progress', 'deferred']),
-    ),
+    query(itemsRef, where('meetingId', '==', null), where('status', 'in', OPEN_STATUS_QUERY)),
   )
   if (snapshot.empty) return 0
 
@@ -268,7 +276,8 @@ export async function carryOverOpenItems(meetingId: string, actor: Actor): Promi
     const data = item.data() as AgendaItem
     batch.update(item.ref, {
       meetingId,
-      status: data.status === 'deferred' ? 'open' : data.status,
+      kind: toItemKind(data),
+      firstMeetingId: data.firstMeetingId ?? meetingId,
       order: (index + 1) * 100,
       history: arrayUnion(historyEntry('In die Sitzung übernommen', actor)),
       updatedAt: serverTimestamp(),
@@ -282,10 +291,27 @@ export async function deleteAgendaItem(id: string): Promise<SaveOutcome> {
   return commit(deleteDoc(doc(db, COLLECTIONS.agendaItems, id)))
 }
 
-/** Sortierung für die Sitzungsansicht: erledigte ans Ende, sonst nach `order`. */
+/**
+ * Sortierung für die Sitzungsansicht: zuerst die Pendenzen, dann die neuen
+ * Traktanden – innerhalb der beiden Gruppen nach `order`.
+ *
+ * Erledigtes bleibt bewusst stehen, wo es steht. Früher rutschte es ans Ende;
+ * seit sich die Reihenfolge von Hand festlegen lässt, wäre das ein Ärgernis:
+ * Ein Haken verschöbe die halbe Liste, und der eben mühsam einsortierte Punkt
+ * wäre woanders.
+ */
 export function sortForMeeting(items: AgendaItem[]): AgendaItem[] {
-  const rank = (item: AgendaItem) => (item.status === 'done' || item.status === 'cancelled' ? 1 : 0)
+  const rank = (item: AgendaItem) => (toItemKind(item) === 'pendenz' ? 0 : 1)
   return [...items].sort((a, b) => rank(a) - rank(b) || (a.order ?? 0) - (b.order ?? 0))
+}
+
+/** Dieselbe Liste, aufgeteilt in Pendenzen und neue Traktanden. */
+export function groupByKind(items: AgendaItem[]): Record<ItemKind, AgendaItem[]> {
+  const sorted = sortForMeeting(items)
+  return {
+    pendenz: sorted.filter((item) => toItemKind(item) === 'pendenz'),
+    traktandum: sorted.filter((item) => toItemKind(item) === 'traktandum'),
+  }
 }
 
 /** Sortierung für die Pendenzenliste: überfällig zuerst, dann nach Priorität. */

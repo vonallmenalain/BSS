@@ -1,5 +1,5 @@
-import { useMemo, useState } from 'react'
-import { Link, useNavigate, useParams } from 'react-router-dom'
+import { useMemo, useState, type DragEvent } from 'react'
+import { Link, useNavigate, useParams, useSearchParams } from 'react-router-dom'
 import {
   ArrowLeft,
   CheckCircle2,
@@ -18,10 +18,12 @@ import {
 import { useAuth } from '@/contexts/AuthContext'
 import { useData } from '@/contexts/DataContext'
 import { useToast } from '@/contexts/ToastContext'
+import { useLocalStorage } from '@/hooks/useLocalStorage'
 import { useMeeting, useMeetingItems, useMeetings, useUnassignedItems } from '@/hooks/useFirestore'
 import { AgendaItemCard } from '@/components/agenda/AgendaItemCard'
 import { AgendaItemForm } from '@/components/agenda/AgendaItemForm'
-import { MeetingFocus } from '@/components/agenda/MeetingFocus'
+import { AgendaItemRow } from '@/components/agenda/AgendaItemRow'
+import { FOCUS_PARAM, MeetingFocus } from '@/components/agenda/MeetingFocus'
 import { MeetingStatusBadge } from '@/components/ui/Badge'
 import { ConfirmDialog, Modal } from '@/components/ui/Modal'
 import { EmptyState, LoadingScreen } from '@/components/ui/Feedback'
@@ -29,7 +31,13 @@ import { AssigneePicker, SegmentedControl } from '@/components/ui/Pickers'
 import { AssigneeAvatars } from '@/components/ui/Avatar'
 import { MeetingForm } from '@/pages/Meetings'
 import { formatDateLong, formatTime, toDate } from '@/lib/dates'
-import { assignToMeeting, carryOverOpenItems, sortForMeeting } from '@/services/agenda'
+import {
+  assignToMeeting,
+  carryOverOpenItems,
+  groupByKind,
+  reorderItems,
+  sortForMeeting,
+} from '@/services/agenda'
 import {
   closeMeeting,
   deleteMeeting,
@@ -38,7 +46,7 @@ import {
   suggestNextMeetingDate,
   updateMeeting,
 } from '@/services/meetings'
-import type { AgendaItem } from '@/lib/types'
+import { ITEM_KIND_PLURAL, type AgendaItem, type ItemKind } from '@/lib/types'
 
 type ViewMode = 'focus' | 'list'
 
@@ -54,9 +62,12 @@ export function MeetingDetail() {
   const { data: poolItems } = useUnassignedItems()
   const { data: meetings } = useMeetings(50)
 
-  const [view, setView] = useState<ViewMode>('focus')
+  // Die gewählte Ansicht überlebt den Ausflug auf eine Mitgliederseite –
+  // sonst käme man aus dem «Zurück» in einer anderen Ansicht heraus, als man
+  // sie verlassen hat.
+  const [view, setView] = useLocalStorage<ViewMode>('bss:sitzung:ansicht', 'focus')
+  const [searchParams, setSearchParams] = useSearchParams()
   const [formOpen, setFormOpen] = useState(false)
-  const [editItem, setEditItem] = useState<AgendaItem | null>(null)
   const [poolOpen, setPoolOpen] = useState(false)
   const [detailsOpen, setDetailsOpen] = useState(false)
   const [confirmClose, setConfirmClose] = useState(false)
@@ -64,7 +75,21 @@ export function MeetingDetail() {
   const [followUpOpen, setFollowUpOpen] = useState(false)
 
   const sortedItems = useMemo(() => sortForMeeting(items), [items])
+  const groups = useMemo(() => groupByKind(items), [items])
   const actor = profile ? { id: profile.id, name: profile.displayName } : null
+
+  /** Der aufgeklappte Eintrag – dieselbe Angabe wie im Sitzungsmodus. */
+  const openId = searchParams.get(FOCUS_PARAM)
+  const toggleOpen = (id: string) =>
+    setSearchParams(
+      (params) => {
+        const next = new URLSearchParams(params)
+        if (next.get(FOCUS_PARAM) === id) next.delete(FOCUS_PARAM)
+        else next.set(FOCUS_PARAM, id)
+        return next
+      },
+      { replace: true },
+    )
 
   /** Die nächste geplante Sitzung nach dieser – Ziel beim Verschieben. */
   const nextMeetingRef = useMemo(() => {
@@ -79,6 +104,22 @@ export function MeetingDetail() {
       .sort((a, b) => a.date.getTime() - b.date.getTime())[0]
     return next ? { id: next.meeting.id, date: next.date } : null
   }, [meetings, meetingId, meeting?.date])
+
+  /*
+   * Umsortiert wird innerhalb einer Gruppe; geschrieben wird die ganze
+   * Sitzung. Die Pendenzen behalten dabei ihren Platz vor den neuen
+   * Traktanden – das ist die Reihenfolge, in der eine Sitzung durchgeht.
+   */
+  const saveOrder = async (kind: ItemKind, ordered: AgendaItem[]) => {
+    const all =
+      kind === 'pendenz' ? [...ordered, ...groups.traktandum] : [...groups.pendenz, ...ordered]
+    try {
+      await reorderItems(all.map((item) => item.id))
+    } catch (error) {
+      console.error(error)
+      toast.error('Reihenfolge konnte nicht gespeichert werden.')
+    }
+  }
 
   if (loading) return <LoadingScreen label="Sitzung wird geladen …" />
 
@@ -99,7 +140,8 @@ export function MeetingDetail() {
   }
 
   const isClosed = meeting.status === 'closed'
-  const doneCount = items.filter((i) => i.status === 'done' || i.status === 'cancelled').length
+  const doneCount = items.filter((item) => item.status === 'done').length
+  const openCount = items.length - doneCount
 
   const handleCarryOver = async () => {
     if (!actor) return
@@ -122,7 +164,7 @@ export function MeetingDetail() {
       const carried = await closeMeeting(meetingId)
       toast.success(
         carried > 0
-          ? `Sitzung abgeschlossen. ${carried} offene Traktanden bleiben als Pendenzen.`
+          ? `Sitzung abgeschlossen. ${carried} Punkt${carried === 1 ? '' : 'e'} bleiben als Pendenzen.`
           : 'Sitzung abgeschlossen – alles erledigt.',
       )
       // Direkt zur Folgeplanung anbieten, solange die Sitzung präsent ist.
@@ -241,7 +283,6 @@ export function MeetingDetail() {
       {view === 'focus' ? (
         <MeetingFocus
           items={sortedItems}
-          onEdit={setEditItem}
           onAdd={() => setFormOpen(true)}
           nextMeeting={nextMeetingRef}
           readOnly={isClosed}
@@ -274,16 +315,28 @@ export function MeetingDetail() {
           />
         </div>
       ) : (
-        <div className="space-y-2">
-          {sortedItems.map((item) => (
-            <AgendaItemCard
-              key={item.id}
-              item={item}
-              onEdit={setEditItem}
-              nextMeeting={nextMeetingRef}
-            />
-          ))}
-          <p className="pt-2 text-center text-xs text-slate-400">
+        <div className="space-y-5">
+          <ItemGroup
+            kind="pendenz"
+            hint="Aus früheren Sitzungen übernommen"
+            items={groups.pendenz}
+            openId={openId}
+            onToggle={toggleOpen}
+            onReorder={(ordered) => void saveOrder('pendenz', ordered)}
+            readOnly={isClosed}
+            nextMeeting={nextMeetingRef}
+          />
+          <ItemGroup
+            kind="traktandum"
+            hint="Für diese Sitzung neu erfasst"
+            items={groups.traktandum}
+            openId={openId}
+            onToggle={toggleOpen}
+            onReorder={(ordered) => void saveOrder('traktandum', ordered)}
+            readOnly={isClosed}
+            nextMeeting={nextMeetingRef}
+          />
+          <p className="text-center text-xs text-slate-400">
             {doneCount} von {items.length} erledigt
           </p>
         </div>
@@ -312,13 +365,11 @@ export function MeetingDetail() {
       )}
 
       {/* ---------- Dialoge ---------- */}
-      <AgendaItemForm open={formOpen} onClose={() => setFormOpen(false)} meetingId={meetingId} />
-
       <AgendaItemForm
-        open={Boolean(editItem)}
-        onClose={() => setEditItem(null)}
-        item={editItem}
+        open={formOpen}
+        onClose={() => setFormOpen(false)}
         meetingId={meetingId}
+        defaultStatus={meeting.status === 'planned' ? 'new' : 'pending'}
       />
 
       <PoolDialog
@@ -343,12 +394,11 @@ export function MeetingDetail() {
         title="Sitzung abschliessen?"
         message={
           <>
-            {items.length - doneCount > 0 ? (
+            {openCount > 0 ? (
               <>
-                {items.length - doneCount} Traktand
-                {items.length - doneCount === 1 ? 'um bleibt' : 'en bleiben'} offen und erscheint
-                {items.length - doneCount === 1 ? '' : 'en'} automatisch als Pendenz in der nächsten
-                Sitzung.
+                {openCount} Punkt{openCount === 1 ? '' : 'e'} {openCount === 1 ? 'ist' : 'sind'}{' '}
+                nicht erledigt. {openCount === 1 ? 'Er wird' : 'Sie werden'} zur Pendenz und
+                erscheint{openCount === 1 ? '' : 'en'} in der nächsten Sitzung wieder.
               </>
             ) : (
               <>Alle Traktanden sind erledigt.</>
@@ -383,12 +433,121 @@ export function MeetingDetail() {
       />
 
       {/* Nur für den Ausdruck: kompaktes Protokoll */}
-      <PrintProtocol meeting={meeting} items={sortedItems} userName={userName} />
+      <PrintProtocol meeting={meeting} groups={groups} userName={userName} />
     </>
   )
 }
 
 /* ------------------------------------------------------------------ */
+
+/**
+ * Eine der beiden Gruppen der Sitzungsliste.
+ *
+ * Umsortiert wird nur innerhalb der Gruppe: Eine Pendenz zwischen die neuen
+ * Traktanden zu ziehen hiesse, sie zurückzudatieren – und genau die
+ * Unterscheidung soll die Liste ja zeigen.
+ */
+function ItemGroup({
+  kind,
+  hint,
+  items,
+  openId,
+  onToggle,
+  onReorder,
+  readOnly,
+  nextMeeting,
+}: {
+  kind: ItemKind
+  hint: string
+  items: AgendaItem[]
+  openId: string | null
+  onToggle: (id: string) => void
+  onReorder: (ordered: AgendaItem[]) => void
+  readOnly: boolean
+  nextMeeting: { id: string; date: Date } | null
+}) {
+  const [dragId, setDragId] = useState<string | null>(null)
+  const [overId, setOverId] = useState<string | null>(null)
+
+  if (items.length === 0) return null
+
+  const move = (from: number, to: number) => {
+    if (from === to || to < 0 || to >= items.length) return
+    const next = [...items]
+    const [moved] = next.splice(from, 1)
+    next.splice(to, 0, moved)
+    onReorder(next)
+  }
+
+  const drop = (targetId: string) => {
+    setOverId(null)
+    if (!dragId || dragId === targetId) return
+    move(
+      items.findIndex((item) => item.id === dragId),
+      items.findIndex((item) => item.id === targetId),
+    )
+    setDragId(null)
+  }
+
+  return (
+    <section>
+      <div className="mb-2 flex flex-wrap items-baseline gap-x-2">
+        <h2 className="text-sm font-semibold">{ITEM_KIND_PLURAL[kind]}</h2>
+        <span className="tabular text-xs text-slate-400">{items.length}</span>
+        <span className="text-xs text-slate-500 dark:text-slate-400">· {hint}</span>
+      </div>
+
+      <ul className="space-y-2">
+        {items.map((item, index) => (
+          <AgendaItemRow
+            key={item.id}
+            item={item}
+            position={index + 1}
+            expanded={openId === item.id}
+            onToggle={() => onToggle(item.id)}
+            onMove={readOnly ? undefined : (delta) => move(index, index + delta)}
+            first={index === 0}
+            last={index === items.length - 1}
+            readOnly={readOnly}
+            nextMeeting={nextMeeting}
+            onDragStart={
+              readOnly
+                ? undefined
+                : (event: DragEvent<HTMLElement>) => {
+                    setDragId(item.id)
+                    event.dataTransfer.effectAllowed = 'move'
+                  }
+            }
+            onDragOver={
+              readOnly
+                ? undefined
+                : (event: DragEvent<HTMLElement>) => {
+                    if (!dragId) return
+                    event.preventDefault()
+                    event.dataTransfer.dropEffect = 'move'
+                    setOverId(item.id)
+                  }
+            }
+            onDrop={
+              readOnly
+                ? undefined
+                : (event: DragEvent<HTMLElement>) => {
+                    event.preventDefault()
+                    drop(item.id)
+                  }
+            }
+            onDragEnd={() => {
+              setDragId(null)
+              setOverId(null)
+            }}
+            dragging={dragId === item.id}
+            dropTarget={overId === item.id && dragId !== item.id}
+          />
+        ))}
+      </ul>
+    </section>
+  )
+}
 
 function MeetingMenu({
   onDetails,
@@ -494,7 +653,7 @@ function PoolDialog({
       open={open}
       onClose={onClose}
       title="Offene Pendenzen"
-      description="Diese Traktanden sind keiner Sitzung zugeordnet."
+      description="Diese Einträge sind keiner Sitzung zugeordnet."
       size="lg"
       footer={
         <>
@@ -661,7 +820,7 @@ function MeetingDetailsDialog({
 /** Reine Druckansicht – am Bildschirm ausgeblendet. */
 function PrintProtocol({
   meeting,
-  items,
+  groups,
   userName,
 }: {
   meeting: {
@@ -672,7 +831,7 @@ function PrintProtocol({
     openingPrayer?: string
     closingPrayer?: string
   }
-  items: AgendaItem[]
+  groups: Record<ItemKind, AgendaItem[]>
   userName: (id: string) => string
 }) {
   return (
@@ -693,25 +852,32 @@ function PrintProtocol({
         </p>
       )}
 
-      <ol className="mt-4 space-y-3">
-        {items.map((item, index) => (
-          <li key={item.id}>
-            <p className="font-semibold">
-              {index + 1}. {item.title}
-              {item.status === 'done' && ' ✓'}
-            </p>
-            {item.description && <p className="text-sm">{item.description}</p>}
-            {item.assignees?.length > 0 && (
-              <p className="text-sm">Zuständig: {item.assignees.map(userName).join(', ')}</p>
-            )}
-            {item.notes?.map((note) => (
-              <p key={note.id} className="mt-1 text-sm">
-                – {note.text} <em>({note.authorName})</em>
-              </p>
-            ))}
-          </li>
-        ))}
-      </ol>
+      {(['pendenz', 'traktandum'] as ItemKind[]).map((kind) =>
+        groups[kind].length === 0 ? null : (
+          <section key={kind} className="mt-4">
+            <h2 className="text-sm font-bold uppercase">{ITEM_KIND_PLURAL[kind]}</h2>
+            <ol className="mt-1 space-y-3">
+              {groups[kind].map((item, index) => (
+                <li key={item.id}>
+                  <p className="font-semibold">
+                    {index + 1}. {item.title}
+                    {item.status === 'done' && ' ✓'}
+                  </p>
+                  {item.description && <p className="text-sm">{item.description}</p>}
+                  {item.assignees?.length > 0 && (
+                    <p className="text-sm">Zuständig: {item.assignees.map(userName).join(', ')}</p>
+                  )}
+                  {item.notes?.map((note) => (
+                    <p key={note.id} className="mt-1 text-sm">
+                      – {note.text} <em>({note.authorName})</em>
+                    </p>
+                  ))}
+                </li>
+              ))}
+            </ol>
+          </section>
+        ),
+      )}
     </div>
   )
 }

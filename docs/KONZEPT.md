@@ -35,27 +35,33 @@ gepflegte **Mitgliederliste**.
 
 Vier Entscheidungen prägen den ganzen Entwurf:
 
-**Traktandum und Pendenz sind dasselbe Objekt.**
+**Traktandum und Pendenz sind derselbe Datensatz – aber nicht dasselbe Wort.**
 Der übliche Fehler wäre, zwei Listen zu führen und Einträge hin- und
-herzuschieben. Stattdessen gibt es einen Eintrag mit einem Status. Ist er in
-einer Sitzung traktandiert, heisst er Traktandum; bleibt er offen, heisst er
-Pendenz. Beim Abschluss der Sitzung lösen sich offene Einträge automatisch von
-ihr und warten auf die nächste. Nichts geht verloren, nichts muss umgetragen
-werden.
+herzuschieben. Stattdessen gibt es einen Eintrag, der weiss, was er ist: Was
+neu auf die Liste kommt, ist ein **Traktandum**; übersteht es eine Sitzung,
+ohne erledigt zu werden, wird es zur **Pendenz** und bleibt es. Beim Abschluss
+der Sitzung lösen sich offene Einträge automatisch von ihr und warten auf die
+nächste, wo sie unter den Pendenzen stehen und nicht unter den neuen
+Traktanden. Nichts geht verloren, nichts muss umgetragen werden – und man
+sieht auf einen Blick, was schon einmal liegengeblieben ist.
 
 **Die Sitzung führt, nicht die Liste.**
 Während der Sitzung zählt nur eine Frage: Was ist gerade dran? Deshalb steht
-der Sitzungsmodus im Mittelpunkt – ein Traktandum gross im Bild, Notizfeld und
-Statusknöpfe darunter, weiter zum nächsten. Die Listenansicht bleibt für die
-Vorbereitung.
+der Sitzungsmodus im Mittelpunkt – ein Punkt gross im Bild, Notizfeld und
+Statusknöpfe darunter, weiter zum nächsten. Und er ist zugleich das Formular:
+Titel und Beschreibung sind Text, in den man hineingreift, Priorität, Termin
+und Zuständige stehen darunter, gespeichert wird von selbst. Ein Fenster, das
+sich zum Ändern eines Wortes über die Sitzung legt, wäre ein Handgriff zu
+viel. Die Listenansicht bleibt für die Vorbereitung – dort wird die
+Reihenfolge festgelegt.
 
 **Die Bischofschaft ist eine Einheit.**
 Eine Abstufung innerhalb der Bischofschaft würde mehr Reibung erzeugen als
 Schutz: Wer im Sitzungszimmer sitzt, muss ohnehin alles wissen. Deshalb gibt
 es nur eine Grenze, und die liegt aussen – ein neu registriertes Konto sieht
-nichts, bis es freigeschaltet wird. Das Kennzeichen «vertraulich» an einem
-Traktandum bleibt als Hinweis erhalten: Es markiert seelsorgerische Anliegen,
-die nicht nach aussen getragen werden.
+nichts, bis es freigeschaltet wird. Ein Kennzeichen «vertraulich» am einzelnen
+Traktandum gibt es folgerichtig nicht mehr: Es wurde gepflegt, ohne je etwas
+zu bewirken.
 
 **Jeder Wert wird an einer Stelle erfasst.**
 Das Programm des Sonntags entsteht in sechs Bereichen und läuft unter
@@ -81,19 +87,29 @@ Sammelkorb  ──►  Sitzung  ──►  erledigt
 ```
 
 **Vorbereiten.** Traktanden lassen sich jederzeit erfassen – mit Titel,
-Beschreibung, Bereich, Priorität, Zuständigen, betroffenen Mitgliedern und
-einem Termin. Ohne Sitzungszuordnung landen sie im Sammelkorb.
+Beschreibung, Priorität, Zuständigen und einem Termin. Mehr wird nicht
+gefragt; alles Weitere lässt sich in der Sitzung nachtragen. Ohne
+Sitzungszuordnung landen sie im Sammelkorb.
 
 **Nächste Sitzung festlegen.** Datum, Zeit, Ort und Anwesende. Die
 Einstellungen kennen den üblichen Wochentag und schlagen den Termin vor. Ein
 Klick übernimmt alle offenen Pendenzen in die neue Sitzung.
 
 **Durchführen (Sitzungsmodus).** Fortschrittsbalken, Sprungleiste über alle
-Traktanden, dann das aktuelle Thema in voller Breite: Beschreibung,
-Zuständige, betroffene Mitglieder, Notizen. Darunter die Aktionsleiste –
-_Erledigt_, _In Arbeit_, _Verschieben_, _Verwerfen_ – und Vor/Zurück.
-Nach «Erledigt» rückt die App von selbst zum nächsten Punkt. Am Laptop geht
-das Blättern auch mit den Pfeiltasten, `N` springt ins Notizfeld.
+Punkte – zuerst die Pendenzen, dann die neuen Traktanden –, dann das aktuelle
+Thema in voller Breite und unmittelbar bearbeitbar: Titel, Beschreibung,
+Priorität, Termin, Zuständige, Notizen. Darunter die Aktionsleiste –
+_Erledigt_, _Verschieben_, _Löschen_ – und Vor/Zurück. Nach «Erledigt» rückt
+die App von selbst zum nächsten Punkt. Am Laptop geht das Blättern auch mit
+den Pfeiltasten, `N` springt ins Notizfeld.
+
+**Status.** Drei, mehr nicht: _Neu_ vor dem Start der Sitzung, _Pendent_,
+solange nicht abgehakt ist, _Erledigt_ danach. Der Start der Sitzung macht
+aus allem Neuen Pendentes – ab da ist jeder Punkt schlicht offen.
+
+**Reihenfolge.** In der Listenansicht mit Pfeilen oder durch Ziehen und
+Ablegen, innerhalb der beiden Gruppen. Eine Zeile ist zugeklappt schmal und
+zeigt den Titel; ein Klick klappt sie auf, und dann steht alles da.
 
 **Verschieben.** Vier Fälle, die im Alltag vorkommen, als je ein Klick:
 auf die nächste Sitzung, um eine Woche, um einen Monat, um drei Monate –
@@ -389,14 +405,13 @@ für einen Sekundenbruchteil – und schiebt die halbe Seite mit.
 ```
 users/{uid}            Rolle, Name, aktiv/inaktiv
 meetings/{id}          Datum, Titel, Ort, Status, Anwesende, Gebete, Notizen
-agendaItems/{id}       Traktandum = Pendenz
+agendaItems/{id}       Traktandum bzw. Pendenz
                        ├─ meetingId  (null = Sammelkorb)
-                       ├─ status     offen | in Arbeit | erledigt |
-                       │             zurückgestellt | verworfen
+                       ├─ kind       Traktandum | Pendenz
+                       ├─ status     neu | pendent | erledigt
                        ├─ assignees  UIDs der Zuständigen
-                       ├─ memberRefs betroffene Mitglieder
-                       ├─ dueDate, priority, category, deferCount
-                       ├─ confidential
+                       ├─ memberRefs mit «@» erwähnte Mitglieder
+                       ├─ dueDate, priority, order, deferCount
                        └─ notes[], history[]
 members/{id}           Stammdaten, Status, Notiz, lastTalkDate, talkCount
 talks/{id}             Mitglied (leer = Name von Hand), Datum,
@@ -473,7 +488,12 @@ immer dasselbe: Termin verstrichen.
 - Anmeldung, Registrierung, Passwort zurücksetzen, Freigabe-Sperre
 - Rollen und Benutzerverwaltung
 - Sitzungen planen, starten, durchführen, abschliessen, Protokoll drucken
-- Sitzungsmodus mit Notizen, Statuswechsel, Verschieben, Tastatursteuerung
+- Sitzungsmodus mit unmittelbarer Bearbeitung, Notizen, Statuswechsel,
+  Verschieben, Tastatursteuerung
+- Trennung von Pendenzen früherer Sitzungen und neuen Traktanden, mit eigener
+  Reihenfolge je Gruppe (Pfeile oder Ziehen und Ablegen)
+- Mit «@» erwähnte Mitglieder bleiben im Text anklickbar und führen zur Person
+  und wieder zurück
 - Pendenzenübersicht mit Filtern (alle / meine / überfällig / ohne Sitzung)
 - Notizen für alle: Titel und Text, Suche, Liste oder Kacheln, eigene
   Reihenfolge, laufendes Speichern
@@ -499,8 +519,6 @@ immer dasselbe: Termin verstrichen.
 
 **Bewusst zurückgestellt:**
 
-- Ziehen und Ablegen zum Umsortieren der Traktanden (die Reihenfolge ist
-  gespeichert, nur die Geste fehlt)
 - E-Mail-Erinnerungen für fällige Pendenzen (bräuchte Cloud Functions)
 - Kalender-Export der Sitzungstermine (`.ics`)
 - Auswertungen über längere Zeiträume

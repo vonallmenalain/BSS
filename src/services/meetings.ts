@@ -16,7 +16,8 @@ import { db, COLLECTIONS } from '@/lib/firebase'
 import { nextWeekday } from '@/lib/dates'
 import { stripUndefined } from '@/lib/utils'
 import { commit, type SaveOutcome } from '@/lib/sync'
-import type { AppSettings, Meeting, MeetingStatus } from '@/lib/types'
+import { NEW_STATUS_QUERY, OPEN_STATUS_QUERY } from '@/lib/types'
+import type { AppSettings, ItemKind, ItemStatus, Meeting, MeetingStatus } from '@/lib/types'
 
 const meetingsRef = collection(db, COLLECTIONS.meetings)
 
@@ -70,27 +71,53 @@ export async function updateMeeting(id: string, patch: Partial<Meeting>): Promis
   )
 }
 
+/**
+ * Startet die Sitzung – und macht aus allem, was bis dahin «Neu» war,
+ * «Pendent».
+ *
+ * «Neu» beschreibt den Zustand vor der Sitzung: eingetragen, aber noch nicht
+ * angeschaut. Sobald die Sitzung läuft, ist jeder Punkt schlicht offen, bis
+ * ihn jemand abhakt.
+ */
 export async function startMeeting(id: string): Promise<SaveOutcome> {
-  return commit(
-    updateDoc(doc(db, COLLECTIONS.meetings, id), {
-      status: 'running' satisfies MeetingStatus,
-      startedAt: serverTimestamp(),
-      updatedAt: serverTimestamp(),
-    }),
+  const fresh = await getDocs(
+    query(
+      collection(db, COLLECTIONS.agendaItems),
+      where('meetingId', '==', id),
+      where('status', 'in', NEW_STATUS_QUERY),
+    ),
   )
+
+  const batch = writeBatch(db)
+  fresh.docs.forEach((item) => {
+    batch.update(item.ref, {
+      status: 'pending' satisfies ItemStatus,
+      updatedAt: serverTimestamp(),
+    })
+  })
+  batch.update(doc(db, COLLECTIONS.meetings, id), {
+    status: 'running' satisfies MeetingStatus,
+    startedAt: serverTimestamp(),
+    updatedAt: serverTimestamp(),
+  })
+  return commit(batch.commit())
 }
 
 /**
- * Schliesst eine Sitzung ab. Traktanden, die weder erledigt noch verworfen
- * sind, werden aus der Sitzung gelöst und landen wieder im Pool – von dort
- * holt sie die Planung der nächsten Sitzung automatisch zurück.
+ * Schliesst eine Sitzung ab. Was nicht erledigt ist, wird aus der Sitzung
+ * gelöst und landet wieder im Sammelkorb – von dort holt es die Planung der
+ * nächsten Sitzung zurück.
+ *
+ * Genau hier wird aus einem Traktandum eine Pendenz: Es hat eine Sitzung
+ * überstanden, ohne erledigt zu werden, und erscheint in der nächsten deshalb
+ * unter den Pendenzen statt unter den neuen Traktanden.
  */
 export async function closeMeeting(id: string): Promise<number> {
   const openItems = await getDocs(
     query(
       collection(db, COLLECTIONS.agendaItems),
       where('meetingId', '==', id),
-      where('status', 'in', ['open', 'in_progress', 'deferred']),
+      where('status', 'in', OPEN_STATUS_QUERY),
     ),
   )
 
@@ -98,6 +125,8 @@ export async function closeMeeting(id: string): Promise<number> {
   openItems.docs.forEach((item) => {
     batch.update(item.ref, {
       meetingId: null,
+      kind: 'pendenz' satisfies ItemKind,
+      status: 'pending' satisfies ItemStatus,
       updatedAt: serverTimestamp(),
     })
   })

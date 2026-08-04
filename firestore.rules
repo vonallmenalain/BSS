@@ -135,9 +135,10 @@ service cloud.firestore {
     /* ---------------- Traktanden und Pendenzen ---------------- */
 
     match /agendaItems/{itemId} {
-      // `confidential` bleibt als Kennzeichnung im Datenmodell erhalten und
-      // wird in der Oberfläche angezeigt, schränkt den Zugriff aber nicht
-      // mehr ein: Die ganze Bischofschaft arbeitet am selben Bestand.
+      // Ohne Abstufung, auch bei seelsorgerischen Anliegen: Die ganze
+      // Bischofschaft arbeitet am selben Bestand. Das frühere Kennzeichen
+      // «vertraulich» ist deshalb ganz weggefallen – es wurde gepflegt, ohne
+      // je etwas zu bewirken.
       allow read, write: if approved();
     }
 
