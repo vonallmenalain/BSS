@@ -5,6 +5,7 @@ import {
   Brush,
   Building2,
   CalendarCog,
+  CalendarDays,
   Check,
   ChevronRight,
   ClipboardList,
@@ -16,6 +17,7 @@ import {
   Trash2,
   Upload,
   UserCog,
+  UserPlus,
 } from 'lucide-react'
 import { useAuth } from '@/contexts/AuthContext'
 import { useData } from '@/contexts/DataContext'
@@ -26,7 +28,18 @@ import { Avatar } from '@/components/ui/Avatar'
 import { WEEKDAYS } from '@/lib/dates'
 import { saveSettings } from '@/services/settings'
 import { deleteUserProfile, setUserActive, setUserRole, updateUserProfile } from '@/services/users'
-import { ASSIGNABLE_ROLES, ROLE_LABELS, type AppSettings, type Role } from '@/lib/types'
+import { formatRelative } from '@/lib/dates'
+import { cn } from '@/lib/utils'
+import {
+  ACCESS_LEVELS,
+  AP_ONLY_ROLES,
+  ASSIGNABLE_ROLES,
+  ROLE_LABELS,
+  type AccessLevel,
+  type AppSettings,
+  type AppUser,
+  type Role,
+} from '@/lib/types'
 
 /**
  * Alles, was sich von aussen übernehmen lässt – der einzige Weg dorthin.
@@ -59,6 +72,12 @@ const IMPORTS = [
     label: 'Putzplan',
     description: 'Die Excel-Tabelle der Gemeinde als Wochenplan',
     icon: Brush,
+  },
+  {
+    to: '/import/aktivitaeten',
+    label: 'Aktivitäten AP',
+    description: 'Der bisherige Jahresplan der Priestertumskollegien als Kalender',
+    icon: CalendarDays,
   },
   {
     to: '/import/verlauf',
@@ -402,22 +421,19 @@ export function Settings() {
           <p className="hint mb-4">
             Bischof, 1. und 2. Ratgeber sowie die Sekretäre haben dieselben Berechtigungen und sehen
             alles. Die Rolle hält fest, wer welche Aufgabe hat – etwa wer die Abendmahlsversammlung
-            leitet. Nur <strong>«Wartet auf Freigabe»</strong> hat keinen Zugriff.
+            leitet. Daneben gibt es zwei Zugänge, die <strong>ausschliesslich</strong> «Aktivitäten
+            AP’s» zeigen – einen mit und einen ohne Schreibrecht. Wer{' '}
+            <strong>«Wartet auf Freigabe»</strong> ist, sieht nichts.
           </p>
 
-          {pendingUsers.length > 0 && (
-            <div className="mb-4 rounded-lg border border-amber-200 bg-amber-50 p-3 text-sm dark:border-amber-800 dark:bg-amber-950">
-              <p className="font-medium text-amber-900 dark:text-amber-100">
-                {pendingUsers.length} Konto{pendingUsers.length === 1 ? '' : 'en'} wartet
-                {pendingUsers.length === 1 ? '' : 'n'} auf Freigabe
-              </p>
-            </div>
-          )}
+          <PendingUsers users={pendingUsers} />
 
           <ul className="divide-list">
-            {users.map((user) => (
-              <UserRow key={user.id} user={user} isSelf={user.id === profile?.id} />
-            ))}
+            {users
+              .filter((user) => user.role !== 'pending')
+              .map((user) => (
+                <UserRow key={user.id} user={user} isSelf={user.id === profile?.id} />
+              ))}
           </ul>
         </section>
 
@@ -459,6 +475,171 @@ export function Settings() {
 }
 
 /* ------------------------------------------------------------------ */
+/* Neue Registrierungen                                                */
+/* ------------------------------------------------------------------ */
+
+/**
+ * Wer sich registriert hat und noch auf die Freigabe wartet.
+ *
+ * Bewusst als eigener Kasten über der Liste und nicht als weiterer Eintrag
+ * darin: Ein wartendes Konto ist kein Zustand, den man verwaltet, sondern
+ * eine offene Frage – und die Antwort ist ein Klick. Zur Wahl steht
+ * deshalb nicht die Rolle, sondern der Zugriff; welche Aufgabe jemand in
+ * der Bischofschaft hat, lässt sich danach jederzeit umstellen.
+ */
+function PendingUsers({ users }: { users: AppUser[] }) {
+  if (users.length === 0) return null
+
+  return (
+    <div className="mb-5 rounded-xl border border-amber-200 bg-amber-50/60 p-4 dark:border-amber-800 dark:bg-amber-950/40">
+      <h3 className="flex items-center gap-2 text-sm font-semibold text-amber-900 dark:text-amber-100">
+        <UserPlus className="size-4" aria-hidden />
+        {users.length} neue {users.length === 1 ? 'Registrierung' : 'Registrierungen'}
+      </h3>
+      <p className="mt-1 text-xs text-amber-800 dark:text-amber-200">
+        Diese Konten haben sich angemeldet und sehen noch nichts. Wähle, worauf sie Zugriff
+        bekommen.
+      </p>
+
+      <ul className="mt-3 space-y-3">
+        {users.map((user) => (
+          <PendingUserCard key={user.id} user={user} />
+        ))}
+      </ul>
+    </div>
+  )
+}
+
+function PendingUserCard({ user }: { user: AppUser }) {
+  const toast = useToast()
+  const [level, setLevel] = useState<AccessLevel>('full')
+  const [role, setRole] = useState<Role>('secretary')
+  const [busy, setBusy] = useState(false)
+  const [confirmReject, setConfirmReject] = useState(false)
+
+  const approve = async () => {
+    const target =
+      level === 'full'
+        ? role
+        : (ACCESS_LEVELS.find((option) => option.value === level)?.role ?? 'ap_viewer')
+    setBusy(true)
+    try {
+      const outcome = await setUserRole(user.id, target)
+      toast.saved(`${user.displayName} freigeschaltet: ${ROLE_LABELS[target]}`, outcome)
+    } catch (error) {
+      console.error(error)
+      toast.error('Freigabe fehlgeschlagen.')
+    } finally {
+      setBusy(false)
+    }
+  }
+
+  return (
+    <li className="card p-3">
+      <div className="flex items-center gap-3">
+        <Avatar name={user.displayName} id={user.id} size="md" />
+        <div className="min-w-0 flex-1">
+          <p className="truncate text-sm font-medium">{user.displayName}</p>
+          <p className="truncate text-xs text-slate-500 dark:text-slate-400">
+            {user.email}
+            {user.createdAt && ` · registriert ${formatRelative(user.createdAt)}`}
+          </p>
+        </div>
+      </div>
+
+      <fieldset className="mt-3 space-y-1.5">
+        <legend className="sr-only">Zugriff für {user.displayName}</legend>
+        {ACCESS_LEVELS.map((option) => (
+          <label
+            key={option.value}
+            className={cn(
+              'flex cursor-pointer items-start gap-2.5 rounded-lg border p-2.5 transition',
+              level === option.value
+                ? 'border-brand-500 bg-brand-50 dark:border-brand-500 dark:bg-brand-950'
+                : 'border-slate-200 hover:bg-slate-50 dark:border-slate-700 dark:hover:bg-slate-800/60',
+            )}
+          >
+            <input
+              type="radio"
+              name={`access-${user.id}`}
+              className="mt-0.5 size-4"
+              checked={level === option.value}
+              onChange={() => setLevel(option.value)}
+            />
+            <span className="min-w-0 flex-1">
+              <span className="block text-sm font-medium">{option.label}</span>
+              <span className="hint block">{option.hint}</span>
+            </span>
+          </label>
+        ))}
+      </fieldset>
+
+      {level === 'full' && (
+        <div className="mt-3">
+          <label className="label" htmlFor={`role-${user.id}`}>
+            Aufgabe in der Bischofschaft
+          </label>
+          <select
+            id={`role-${user.id}`}
+            className="input"
+            value={role}
+            onChange={(event) => setRole(event.target.value as Role)}
+          >
+            {ASSIGNABLE_ROLES.map((value) => (
+              <option key={value} value={value}>
+                {ROLE_LABELS[value]}
+              </option>
+            ))}
+          </select>
+        </div>
+      )}
+
+      <div className="mt-3 flex flex-wrap justify-end gap-2">
+        <button
+          type="button"
+          className="btn-ghost text-rose-600 dark:text-rose-400"
+          onClick={() => setConfirmReject(true)}
+          disabled={busy}
+        >
+          Ablehnen
+        </button>
+        <button
+          type="button"
+          className="btn-primary"
+          onClick={() => void approve()}
+          disabled={busy}
+        >
+          <Check className="size-4" aria-hidden />
+          Freischalten
+        </button>
+      </div>
+
+      <ConfirmDialog
+        open={confirmReject}
+        onClose={() => setConfirmReject(false)}
+        onConfirm={() => {
+          void deleteUserProfile(user.id).then((outcome) =>
+            toast.saved('Registrierung abgelehnt.', outcome),
+          )
+        }}
+        title="Registrierung ablehnen?"
+        message={
+          <>
+            Das Profil von {user.displayName} wird gelöscht. Das Anmeldekonto selbst bleibt in
+            Firebase Authentication bestehen – meldet sich die Person erneut an, erscheint sie
+            wieder als neue Registrierung.
+          </>
+        }
+        confirmLabel="Ablehnen"
+        danger
+      />
+    </li>
+  )
+}
+
+/* ------------------------------------------------------------------ */
+/* Bestehende Konten                                                   */
+/* ------------------------------------------------------------------ */
 
 function UserRow({
   user,
@@ -480,6 +661,8 @@ function UserRow({
     }
   }
 
+  const apOnly = AP_ONLY_ROLES.includes(user.role)
+
   return (
     <li className="flex flex-wrap items-center gap-3 py-3">
       <Avatar name={user.displayName} id={user.id} size="md" />
@@ -489,25 +672,46 @@ function UserRow({
           {user.displayName}
           {isSelf && <span className="ml-1.5 text-xs text-slate-400">(du)</span>}
         </p>
-        <p className="truncate text-xs text-slate-500 dark:text-slate-400">{user.email}</p>
+        <p className="truncate text-xs text-slate-500 dark:text-slate-400">
+          {user.email}
+          {apOnly && ' · sieht nur den AP-Kalender'}
+        </p>
       </div>
 
+      {/* Eine einzige Auswahl für Aufgabe und Zugriff: Bei Vollzugriff sind
+          das dieselbe Frage, und die beiden AP-Zugänge kennen keine Aufgabe. */}
       <select
         className="input w-auto py-1.5 text-sm"
         value={user.role}
         onChange={(event) => void changeRole(event.target.value as Role)}
-        aria-label={`Rolle von ${user.displayName}`}
+        aria-label={`Zugriff von ${user.displayName}`}
       >
-        {/* Die alte Sammelrolle nur zeigen, solange sie noch gesetzt ist. */}
-        {user.role === 'counselor' && <option value="counselor">{ROLE_LABELS.counselor}</option>}
-        {ASSIGNABLE_ROLES.map((role) => (
-          <option key={role} value={role}>
-            {ROLE_LABELS[role]}
-          </option>
-        ))}
-        {/* Sich selbst den Zugang zu entziehen wäre eine Sackgasse – deshalb
-            steht «Wartet auf Freigabe» nur für andere Konten zur Wahl. */}
-        {!isSelf && <option value="pending">{ROLE_LABELS.pending}</option>}
+        <optgroup label="Vollzugriff">
+          {/* Die alte Sammelrolle nur zeigen, solange sie noch gesetzt ist. */}
+          {user.role === 'counselor' && <option value="counselor">{ROLE_LABELS.counselor}</option>}
+          {ASSIGNABLE_ROLES.map((role) => (
+            <option key={role} value={role}>
+              {ROLE_LABELS[role]}
+            </option>
+          ))}
+        </optgroup>
+        {/* Sich selbst auf den AP-Kalender zu beschränken oder den Zugang ganz
+            zu entziehen wäre eine Sackgasse – beides steht nur für andere
+            Konten zur Wahl. */}
+        {!isSelf && (
+          <optgroup label="Nur Aktivitäten AP’s">
+            {AP_ONLY_ROLES.map((role) => (
+              <option key={role} value={role}>
+                {ROLE_LABELS[role]}
+              </option>
+            ))}
+          </optgroup>
+        )}
+        {!isSelf && (
+          <optgroup label="Kein Zugriff">
+            <option value="pending">{ROLE_LABELS.pending}</option>
+          </optgroup>
+        )}
       </select>
 
       {!isSelf && (

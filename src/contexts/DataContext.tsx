@@ -45,7 +45,7 @@ interface DataContextValue {
 const DataContext = createContext<DataContextValue | undefined>(undefined)
 
 export function DataProvider({ children }: { children: ReactNode }) {
-  const { isApproved } = useAuth()
+  const { isApproved, canViewAp } = useAuth()
 
   const [users, setUsers] = useState<AppUser[]>([])
   const [members, setMembers] = useState<Member[]>([])
@@ -115,8 +115,10 @@ export function DataProvider({ children }: { children: ReactNode }) {
   }, [isApproved])
 
   /* Einstellungen ---------------------------------------------------- */
+  // Auch für Konten, die nur den AP-Kalender sehen: Der Name der Gemeinde
+  // steht in der Kopfzeile, und ohne ihn stünde dort «Gemeinde».
   useEffect(() => {
-    if (!isApproved) return
+    if (!canViewAp) return
     return onSnapshot(
       doc(db, COLLECTIONS.settings, 'app'),
       (snapshot) => {
@@ -126,7 +128,7 @@ export function DataProvider({ children }: { children: ReactNode }) {
       },
       (error) => console.error('[data] Einstellungen konnten nicht geladen werden:', error),
     )
-  }, [isApproved])
+  }, [canViewAp])
 
   const value = useMemo<DataContextValue>(() => {
     const usersById = new Map(users.map((u) => [u.id, u]))

@@ -19,6 +19,7 @@ import {
   Sun,
   MonitorSmartphone,
   ChevronDown,
+  Tent,
 } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { toDate } from '@/lib/dates'
@@ -60,6 +61,7 @@ const SACRAMENT_CHILDREN = [
 
 export function Layout() {
   const { settings } = useData()
+  const { isApproved } = useAuth()
   const { data: openItems } = useOpenItems()
   const online = useOnlineStatus()
   const unsent = usePendingWrites()
@@ -80,37 +82,57 @@ export function Layout() {
     [openItems, now],
   )
 
-  const navItems: NavItem[] = [
-    { to: '/', label: 'Übersicht', shortLabel: 'Start', icon: LayoutDashboard, primary: true },
-    {
-      to: '/sitzungen',
-      label: 'Sitzungen',
-      shortLabel: 'Sitzung',
-      icon: CalendarDays,
-      primary: true,
-    },
-    {
-      to: '/pendenzen',
-      label: 'Pendenzen',
-      shortLabel: 'Pendenz',
-      icon: ListTodo,
-      primary: true,
-      badge: overdueCount || undefined,
-    },
-    { to: '/notizen', label: 'Notizen', shortLabel: 'Notiz', icon: NotebookPen },
-    { to: '/putzplan', label: 'Putzplan', shortLabel: 'Putzen', icon: Brush },
-    {
-      to: '/abendmahl/leitung',
-      label: 'Abendmahlsversammlung',
-      shortLabel: 'Sonntag',
-      icon: Church,
-      primary: true,
-      children: SACRAMENT_CHILDREN,
-    },
-    { to: '/mitglieder', label: 'Mitglieder', shortLabel: 'Mitglieder', icon: Users },
-    { to: '/berufungen', label: 'Berufungen', shortLabel: 'Berufung', icon: Award },
-    { to: '/einstellungen', label: 'Einstellungen', shortLabel: 'Mehr', icon: Settings },
-  ]
+  /**
+   * Der AP-Kalender steht in beiden Listen.
+   *
+   * Wer nur ihn sehen darf, bekommt eine Navigation aus einem einzigen
+   * Punkt – das wirkt zunächst überflüssig, hält aber Kopfzeile,
+   * Benutzermenü und Aussehen der App gleich, statt für diese Konten eine
+   * zweite Oberfläche zu bauen.
+   */
+  const apItem: NavItem = {
+    to: '/ap',
+    label: 'Aktivitäten AP’s',
+    shortLabel: 'AP',
+    icon: Tent,
+  }
+
+  const navItems: NavItem[] = isApproved
+    ? [
+        { to: '/', label: 'Übersicht', shortLabel: 'Start', icon: LayoutDashboard, primary: true },
+        {
+          to: '/sitzungen',
+          label: 'Sitzungen',
+          shortLabel: 'Sitzung',
+          icon: CalendarDays,
+          primary: true,
+        },
+        {
+          to: '/pendenzen',
+          label: 'Pendenzen',
+          shortLabel: 'Pendenz',
+          icon: ListTodo,
+          primary: true,
+          badge: overdueCount || undefined,
+        },
+        { to: '/notizen', label: 'Notizen', shortLabel: 'Notiz', icon: NotebookPen },
+        { to: '/putzplan', label: 'Putzplan', shortLabel: 'Putzen', icon: Brush },
+        {
+          to: '/abendmahl/leitung',
+          label: 'Abendmahlsversammlung',
+          shortLabel: 'Sonntag',
+          icon: Church,
+          primary: true,
+          children: SACRAMENT_CHILDREN,
+        },
+        apItem,
+        { to: '/mitglieder', label: 'Mitglieder', shortLabel: 'Mitglieder', icon: Users },
+        { to: '/berufungen', label: 'Berufungen', shortLabel: 'Berufung', icon: Award },
+        { to: '/einstellungen', label: 'Einstellungen', shortLabel: 'Mehr', icon: Settings },
+      ]
+    : // Ohne Vollzugriff ist der Kalender der ganze Inhalt – dann gehört er
+      // auch in die untere Leiste.
+      [{ ...apItem, primary: true }]
 
   const ThemeIcon = theme === 'dark' ? Moon : theme === 'light' ? Sun : MonitorSmartphone
 
@@ -119,15 +141,17 @@ export function Layout() {
       {/* ---------- Kopfzeile ---------- */}
       <header className="no-print sticky top-0 z-40 border-b border-slate-200 bg-white/85 backdrop-blur-md dark:border-slate-800 dark:bg-slate-900/85">
         <div className="mx-auto flex h-14 max-w-7xl items-center gap-3 px-4 pt-safe">
-          <button
-            type="button"
-            className="btn-ghost -ml-2 p-2 lg:hidden"
-            onClick={() => setMenuOpen((v) => !v)}
-            aria-label={menuOpen ? 'Menü schliessen' : 'Menü öffnen'}
-            aria-expanded={menuOpen}
-          >
-            {menuOpen ? <Menu className="size-5" /> : <Menu className="size-5" />}
-          </button>
+          {navItems.length > 1 && (
+            <button
+              type="button"
+              className="btn-ghost -ml-2 p-2 lg:hidden"
+              onClick={() => setMenuOpen((v) => !v)}
+              aria-label={menuOpen ? 'Menü schliessen' : 'Menü öffnen'}
+              aria-expanded={menuOpen}
+            >
+              <Menu className="size-5" />
+            </button>
+          )}
 
           <NavLink to="/" className="flex min-w-0 items-center gap-2.5">
             <span className="bg-brand-600 grid size-8 shrink-0 place-items-center rounded-lg text-sm font-bold text-white">
@@ -235,14 +259,18 @@ export function Layout() {
             .map((item) => (
               <BottomLink key={item.to} item={item} />
             ))}
-          <button
-            type="button"
-            onClick={() => setMenuOpen(true)}
-            className="flex flex-1 flex-col items-center gap-0.5 py-2 text-slate-500 transition dark:text-slate-400"
-          >
-            <ChevronDown className="size-5 rotate-180" aria-hidden />
-            <span className="text-[10px] font-medium">Mehr</span>
-          </button>
+          {/* «Mehr» nur, wenn es tatsächlich mehr gibt – wer allein den
+              AP-Kalender sieht, findet dahinter nichts. */}
+          {navItems.some((item) => !item.primary) && (
+            <button
+              type="button"
+              onClick={() => setMenuOpen(true)}
+              className="flex flex-1 flex-col items-center gap-0.5 py-2 text-slate-500 transition dark:text-slate-400"
+            >
+              <ChevronDown className="size-5 rotate-180" aria-hidden />
+              <span className="text-[10px] font-medium">Mehr</span>
+            </button>
+          )}
         </div>
       </nav>
 
@@ -257,13 +285,27 @@ function SidebarLink({ item }: { item: NavItem }) {
 
   /**
    * Ein Bereich mit Unterpunkten klappt auf, sobald man darin arbeitet, und
-   * lässt sich zusätzlich von Hand öffnen. So bleibt die Liste kurz, ohne
-   * dass man sich zu den Unterseiten durchklicken muss.
+   * lässt sich danach von Hand zu- und wieder aufklappen.
+   *
+   * Der offene Zustand ist deshalb **eigener** Zustand und keine Ableitung
+   * aus dem Pfad: Solange `inSection || manuallyOpen` galt, war der Pfeil
+   * im Bereich selbst wirkungslos – zugeklappt wurde sofort wieder
+   * aufgeklappt, weil man ja darin stand. Jetzt öffnet der Wechsel in den
+   * Bereich den Zweig einmal, und danach entscheidet der Pfeil.
    */
   const section = item.children ? item.to.split('/')[1] : ''
   const inSection = Boolean(section) && location.pathname.startsWith(`/${section}`)
-  const [manuallyOpen, setManuallyOpen] = useState(false)
-  const expanded = inSection || manuallyOpen
+
+  const [expanded, setExpanded] = useState(inSection)
+  const [wasInSection, setWasInSection] = useState(inSection)
+
+  // Beim Betreten des Bereichs einmal aufklappen. Während des Renderns
+  // statt in einem Effekt: Das ist ein Wechsel, kein Nebeneffekt, und die
+  // Navigation soll nicht erst zugeklappt erscheinen und dann aufspringen.
+  if (wasInSection !== inSection) {
+    setWasInSection(inSection)
+    if (inSection) setExpanded(true)
+  }
 
   return (
     <div>
@@ -292,7 +334,7 @@ function SidebarLink({ item }: { item: NavItem }) {
         {item.children && (
           <button
             type="button"
-            onClick={() => setManuallyOpen((v) => !v)}
+            onClick={() => setExpanded((v) => !v)}
             className="btn-ghost shrink-0 p-1.5"
             aria-expanded={expanded}
             aria-label={`${item.label} ${expanded ? 'zuklappen' : 'aufklappen'}`}
@@ -365,7 +407,7 @@ function BottomLink({ item }: { item: NavItem }) {
 }
 
 function UserMenu() {
-  const { profile, signOut } = useAuth()
+  const { profile, signOut, isApproved } = useAuth()
   const [open, setOpen] = useState(false)
 
   if (!profile) return null
@@ -393,14 +435,16 @@ function UserMenu() {
                 {ROLE_LABELS[profile.role]}
               </p>
             </div>
-            <NavLink
-              to="/einstellungen"
-              onClick={() => setOpen(false)}
-              className="flex items-center gap-2 rounded-lg px-3 py-2 text-sm transition hover:bg-slate-100 dark:hover:bg-slate-700"
-            >
-              <Settings className="size-4" aria-hidden />
-              Einstellungen
-            </NavLink>
+            {isApproved && (
+              <NavLink
+                to="/einstellungen"
+                onClick={() => setOpen(false)}
+                className="flex items-center gap-2 rounded-lg px-3 py-2 text-sm transition hover:bg-slate-100 dark:hover:bg-slate-700"
+              >
+                <Settings className="size-4" aria-hidden />
+                Einstellungen
+              </NavLink>
+            )}
             <button
               type="button"
               onClick={() => void signOut()}

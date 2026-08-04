@@ -37,6 +37,8 @@ const COUNSELOR1 = 'uid-ratgeber-1'
 const COUNSELOR2 = 'uid-ratgeber-2'
 const LEGACY_COUNSELOR = 'uid-ratgeber-alt'
 const SECRETARY = 'uid-sekretaer'
+const AP_EDITOR = 'uid-ap-schreibend'
+const AP_VIEWER = 'uid-ap-lesend'
 const PENDING = 'uid-wartend'
 
 let testEnv
@@ -52,6 +54,8 @@ async function seed() {
       [COUNSELOR2, 'counselor2', '2. Ratgeber'],
       [LEGACY_COUNSELOR, 'counselor', 'Ratgeber (alte Rolle)'],
       [SECRETARY, 'secretary', 'Sekretär'],
+      [AP_EDITOR, 'ap_editor', 'Berater (schreibend)'],
+      [AP_VIEWER, 'ap_viewer', 'Berater (lesend)'],
       [PENDING, 'pending', 'Wartend'],
     ]
     for (const [uid, role, displayName] of users) {
@@ -131,6 +135,24 @@ async function seed() {
       team: 'Muster Hans & Anna',
       note: '',
     })
+
+    await setDoc(doc(db, 'apActivities', 'aktivitaet-1'), {
+      date: '2026-01-07',
+      endDate: null,
+      kind: 'activity',
+      title: 'Bouldern',
+      location: 'Gemeindehaus',
+      leader: 'Carden',
+      bishopric: '',
+      advisor: '',
+      note: '',
+    })
+    await setDoc(doc(db, 'apMonths', '2026-01'), {
+      month: '2026-01',
+      leadership: 'Leitung Lehrer',
+    })
+
+    await setDoc(doc(db, 'settings', 'app'), { wardName: 'Burgdorf' })
   })
 }
 
@@ -156,6 +178,8 @@ const asCounselor1 = () => testEnv.authenticatedContext(COUNSELOR1).firestore()
 const asCounselor2 = () => testEnv.authenticatedContext(COUNSELOR2).firestore()
 const asLegacyCounselor = () => testEnv.authenticatedContext(LEGACY_COUNSELOR).firestore()
 const asSecretary = () => testEnv.authenticatedContext(SECRETARY).firestore()
+const asApEditor = () => testEnv.authenticatedContext(AP_EDITOR).firestore()
+const asApViewer = () => testEnv.authenticatedContext(AP_VIEWER).firestore()
 const asPending = () => testEnv.authenticatedContext(PENDING).firestore()
 const asAnonymous = () => testEnv.unauthenticatedContext().firestore()
 
@@ -357,5 +381,107 @@ describe('Rollen und Rechteausweitung', () => {
         active: true,
       }),
     )
+  })
+})
+
+/* ------------------------------------------------------------------ */
+
+/*
+ * Der AP-Kalender ist der einzige Bereich, der über die Bischofschaft
+ * hinaus geteilt wird. Die Regeln müssen deshalb zwei Dinge zugleich
+ * leisten: den Kalender öffnen und alles andere zuhalten. Genau das prüfen
+ * die folgenden Tests – und zwar in beide Richtungen, denn ein Zugang, der
+ * versehentlich die Mitgliederliste mitbringt, wäre der teuerste Fehler in
+ * dieser Datenbank.
+ */
+describe('Aktivitäten AP', () => {
+  it('lässt beide AP-Rollen den Kalender lesen', async () => {
+    for (const as of [asApEditor, asApViewer]) {
+      await assertSucceeds(getDocs(collection(as(), 'apActivities')))
+      await assertSucceeds(getDoc(doc(as(), 'apActivities', 'aktivitaet-1')))
+      await assertSucceeds(getDocs(collection(as(), 'apMonths')))
+    }
+  })
+
+  it('lässt die schreibende AP-Rolle Termine anlegen und ändern', async () => {
+    await assertSucceeds(
+      setDoc(doc(asApEditor(), 'apActivities', 'aktivitaet-2'), {
+        date: '2026-01-14',
+        endDate: null,
+        kind: 'activity',
+        title: 'Gamenight',
+      }),
+    )
+    await assertSucceeds(
+      updateDoc(doc(asApEditor(), 'apActivities', 'aktivitaet-1'), { title: 'Klettern' }),
+    )
+    await assertSucceeds(
+      setDoc(
+        doc(asApEditor(), 'apMonths', '2026-02'),
+        { month: '2026-02', leadership: 'Leitung Priester' },
+        { merge: true },
+      ),
+    )
+    await assertSucceeds(deleteDoc(doc(asApEditor(), 'apActivities', 'aktivitaet-2')))
+  })
+
+  it('verwehrt der lesenden AP-Rolle jedes Schreiben', async () => {
+    await assertFails(
+      updateDoc(doc(asApViewer(), 'apActivities', 'aktivitaet-1'), { title: 'Umbenannt' }),
+    )
+    await assertFails(
+      setDoc(doc(asApViewer(), 'apActivities', 'neu'), { date: '2026-03-04', kind: 'activity' }),
+    )
+    await assertFails(deleteDoc(doc(asApViewer(), 'apActivities', 'aktivitaet-1')))
+    await assertFails(
+      setDoc(doc(asApViewer(), 'apMonths', '2026-03'), { month: '2026-03', leadership: 'Versuch' }),
+    )
+  })
+
+  it('hält beide AP-Rollen von allem Übrigen fern', async () => {
+    for (const as of [asApEditor, asApViewer]) {
+      await assertFails(getDocs(collection(as(), 'members')))
+      await assertFails(getDoc(doc(as(), 'members', 'mitglied-1')))
+      await assertFails(getDoc(doc(as(), 'agendaItems', 'offen')))
+      await assertFails(getDocs(collection(as(), 'talks')))
+      await assertFails(getDoc(doc(as(), 'sacramentMeetings', '2026-08-09')))
+      await assertFails(getDocs(collection(as(), 'prayers')))
+      await assertFails(getDocs(collection(as(), 'callings')))
+      await assertFails(getDocs(collection(as(), 'notes')))
+      await assertFails(getDocs(collection(as(), 'cleaningWeeks')))
+      await assertFails(getDocs(collection(as(), 'meetings')))
+      // Die Benutzerliste bleibt zu – das eigene Profil bleibt lesbar.
+      await assertFails(getDocs(collection(as(), 'users')))
+      await assertFails(getDoc(doc(as(), 'users', BISHOP)))
+    }
+    await assertSucceeds(getDoc(doc(asApEditor(), 'users', AP_EDITOR)))
+  })
+
+  it('lässt die AP-Rollen die Einstellungen lesen, aber nicht ändern', async () => {
+    // Der Name der Gemeinde steht in der Kopfzeile der App.
+    await assertSucceeds(getDoc(doc(asApViewer(), 'settings', 'app')))
+    await assertFails(setDoc(doc(asApEditor(), 'settings', 'app'), { wardName: 'Anders' }))
+  })
+
+  it('gibt einem wartenden Konto auch den AP-Kalender nicht', async () => {
+    await assertFails(getDocs(collection(asPending(), 'apActivities')))
+    await assertFails(
+      setDoc(doc(asPending(), 'apActivities', 'versuch'), { date: '2026-01-07', kind: 'activity' }),
+    )
+    await assertFails(getDocs(collection(asAnonymous(), 'apActivities')))
+  })
+
+  it('lässt den Vollzugriff den Kalender ebenfalls führen', async () => {
+    await assertSucceeds(getDocs(collection(asBishop(), 'apActivities')))
+    await assertSucceeds(
+      updateDoc(doc(asSecretary(), 'apActivities', 'aktivitaet-1'), { title: 'Bouldern' }),
+    )
+  })
+
+  it('hindert eine AP-Rolle daran, sich selbst mehr Rechte zu geben', async () => {
+    await assertFails(updateDoc(doc(asApEditor(), 'users', AP_EDITOR), { role: 'bishop' }))
+    await assertFails(updateDoc(doc(asApViewer(), 'users', AP_VIEWER), { role: 'ap_editor' }))
+    // Auch nicht bei jemand anderem.
+    await assertFails(updateDoc(doc(asApEditor(), 'users', PENDING), { role: 'secretary' }))
   })
 })

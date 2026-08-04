@@ -66,6 +66,18 @@ export function formatDateLong(value: Parameters<typeof toDate>[0]): string {
   return date ? format(date, 'EEEE, d. MMMM yyyy', opts) : '–'
 }
 
+/** «Fr, 14.08.» – für Zeiträume, in denen das Jahr nur einmal genannt wird */
+export function formatDayShort(value: Parameters<typeof toDate>[0]): string {
+  const date = toDate(value)
+  return date ? format(date, 'EE, dd.MM.', opts) : '–'
+}
+
+/** «August 2026» */
+export function formatMonth(value: Parameters<typeof toDate>[0]): string {
+  const date = toDate(value)
+  return date ? format(date, 'MMMM yyyy', opts) : '–'
+}
+
 /** «Fr, 14.08.2026, 19:30» */
 export function formatDateTime(value: Parameters<typeof toDate>[0]): string {
   const date = toDate(value)

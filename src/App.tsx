@@ -1,5 +1,5 @@
 import { lazy, Suspense, type ReactNode } from 'react'
-import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom'
+import { BrowserRouter, Routes, Route, Navigate, Outlet } from 'react-router-dom'
 import { AuthProvider, useAuth } from '@/contexts/AuthContext'
 import { DataProvider } from '@/contexts/DataContext'
 import { ToastProvider } from '@/contexts/ToastContext'
@@ -41,6 +41,14 @@ const ImportHymns = lazy(() =>
 const ImportCleaning = lazy(() =>
   import('@/pages/ImportCleaning').then((m) => ({ default: m.ImportCleaning })),
 )
+const ImportApActivities = lazy(() =>
+  import('@/pages/ImportApActivities').then((m) => ({ default: m.ImportApActivities })),
+)
+
+/* Aktivitäten AP – der einzige Bereich, den auch Konten ohne Vollzugriff sehen. */
+const ApActivities = lazy(() =>
+  import('@/pages/ApActivities').then((m) => ({ default: m.ApActivities })),
+)
 
 /* Abendmahlsversammlung – der Rahmen hält den gewählten Sonntag,
    die Unterseiten werden bei Bedarf nachgeladen. */
@@ -61,15 +69,34 @@ const Prayers = lazy(() =>
   import('@/pages/sacrament/Prayers').then((m) => ({ default: m.Prayers })),
 )
 
-/** Lässt nur angemeldete und freigeschaltete Personen durch. */
+/**
+ * Lässt nur angemeldete und freigeschaltete Personen durch.
+ *
+ * «Freigeschaltet» heisst hier nicht mehr zwingend «Vollzugriff»: Wer nur
+ * den AP-Kalender sehen darf, kommt ebenfalls in die App – aber nur bis
+ * dorthin, dafür sorgt `RequireFullAccess`.
+ */
 function RequireAuth({ children }: { children: ReactNode }) {
-  const { firebaseUser, loading, isApproved } = useAuth()
+  const { firebaseUser, loading, isApproved, canViewAp } = useAuth()
 
   if (loading) return <LoadingScreen label="Anmeldung wird geprüft …" />
   if (!firebaseUser) return <Navigate to="/anmelden" replace />
-  if (!isApproved) return <PendingApproval />
+  if (!isApproved && !canViewAp) return <PendingApproval />
 
   return <>{children}</>
+}
+
+/**
+ * Alles ausser dem AP-Kalender.
+ *
+ * Die Sicherheitsregeln lehnen für diese Konten ohnehin jede Abfrage ab –
+ * das hier erspart ihnen leere Seiten und Fehlermeldungen und führt sie
+ * dorthin, wofür sie freigeschaltet wurden.
+ */
+function RequireFullAccess() {
+  const { isApproved } = useAuth()
+  if (!isApproved) return <Navigate to="/ap" replace />
+  return <Outlet />
 }
 
 function LoginRoute() {
@@ -95,173 +122,196 @@ export default function App() {
                   </RequireAuth>
                 }
               >
-                <Route index element={<Dashboard />} />
-                <Route path="sitzungen" element={<Meetings />} />
-                <Route path="sitzungen/:meetingId" element={<MeetingDetail />} />
-                <Route path="pendenzen" element={<Pendenzen />} />
+                {/* ---------- Aktivitäten AP ----------
+                    Steht ausserhalb von `RequireFullAccess`: Berater und
+                    Jugendführung erreichen genau diesen Bereich – und sonst
+                    nichts. */}
                 <Route
-                  path="notizen"
+                  path="ap"
                   element={
                     <Suspense fallback={<LoadingScreen />}>
-                      <Notes />
-                    </Suspense>
-                  }
-                />
-                <Route
-                  path="putzplan"
-                  element={
-                    <Suspense fallback={<LoadingScreen />}>
-                      <Cleaning />
+                      <ApActivities />
                     </Suspense>
                   }
                 />
 
-                <Route
-                  path="mitglieder"
-                  element={
-                    <Suspense fallback={<LoadingScreen />}>
-                      <Members />
-                    </Suspense>
-                  }
-                />
-                <Route
-                  path="mitglieder/:memberId"
-                  element={
-                    <Suspense fallback={<LoadingScreen />}>
-                      <MemberDetail />
-                    </Suspense>
-                  }
-                />
-                {/* ---------- Abendmahlsversammlung ---------- */}
-                <Route
-                  path="abendmahl"
-                  element={
-                    <Suspense fallback={<LoadingScreen />}>
-                      <SacramentLayout />
-                    </Suspense>
-                  }
-                >
-                  <Route index element={<Navigate to="leitung" replace />} />
+                <Route element={<RequireFullAccess />}>
+                  <Route index element={<Dashboard />} />
+                  <Route path="sitzungen" element={<Meetings />} />
+                  <Route path="sitzungen/:meetingId" element={<MeetingDetail />} />
+                  <Route path="pendenzen" element={<Pendenzen />} />
                   <Route
-                    path="leitung"
+                    path="notizen"
                     element={
                       <Suspense fallback={<LoadingScreen />}>
-                        <Conducting />
+                        <Notes />
                       </Suspense>
                     }
                   />
                   <Route
-                    path="bekanntmachungen"
+                    path="putzplan"
                     element={
                       <Suspense fallback={<LoadingScreen />}>
-                        <Announcements />
+                        <Cleaning />
+                      </Suspense>
+                    }
+                  />
+
+                  <Route
+                    path="mitglieder"
+                    element={
+                      <Suspense fallback={<LoadingScreen />}>
+                        <Members />
                       </Suspense>
                     }
                   />
                   <Route
-                    path="angelegenheiten"
+                    path="mitglieder/:memberId"
                     element={
                       <Suspense fallback={<LoadingScreen />}>
-                        <WardBusiness />
+                        <MemberDetail />
                       </Suspense>
                     }
                   />
+                  {/* ---------- Abendmahlsversammlung ---------- */}
+                  <Route
+                    path="abendmahl"
+                    element={
+                      <Suspense fallback={<LoadingScreen />}>
+                        <SacramentLayout />
+                      </Suspense>
+                    }
+                  >
+                    <Route index element={<Navigate to="leitung" replace />} />
+                    <Route
+                      path="leitung"
+                      element={
+                        <Suspense fallback={<LoadingScreen />}>
+                          <Conducting />
+                        </Suspense>
+                      }
+                    />
+                    <Route
+                      path="bekanntmachungen"
+                      element={
+                        <Suspense fallback={<LoadingScreen />}>
+                          <Announcements />
+                        </Suspense>
+                      }
+                    />
+                    <Route
+                      path="angelegenheiten"
+                      element={
+                        <Suspense fallback={<LoadingScreen />}>
+                          <WardBusiness />
+                        </Suspense>
+                      }
+                    />
+                    <Route
+                      path="ansprachen"
+                      element={
+                        <Suspense fallback={<LoadingScreen />}>
+                          <Talks />
+                        </Suspense>
+                      }
+                    />
+                    <Route
+                      path="musik"
+                      element={
+                        <Suspense fallback={<LoadingScreen />}>
+                          <Music />
+                        </Suspense>
+                      }
+                    />
+                    <Route
+                      path="gebet"
+                      element={
+                        <Suspense fallback={<LoadingScreen />}>
+                          <Prayers />
+                        </Suspense>
+                      }
+                    />
+                  </Route>
+
+                  {/* Alte Adresse aus früheren Versionen – Lesezeichen sollen weiter funktionieren. */}
                   <Route
                     path="ansprachen"
+                    element={<Navigate to="/abendmahl/ansprachen" replace />}
+                  />
+
+                  <Route
+                    path="berufungen"
                     element={
                       <Suspense fallback={<LoadingScreen />}>
-                        <Talks />
+                        <Callings />
                       </Suspense>
                     }
                   />
                   <Route
-                    path="musik"
+                    path="einstellungen"
                     element={
                       <Suspense fallback={<LoadingScreen />}>
-                        <Music />
+                        <Settings />
                       </Suspense>
                     }
                   />
                   <Route
-                    path="gebet"
+                    path="import"
                     element={
                       <Suspense fallback={<LoadingScreen />}>
-                        <Prayers />
+                        <ImportMembers />
+                      </Suspense>
+                    }
+                  />
+                  <Route
+                    path="import/berufungen"
+                    element={
+                      <Suspense fallback={<LoadingScreen />}>
+                        <ImportCallings />
+                      </Suspense>
+                    }
+                  />
+                  <Route
+                    path="import/betreuung"
+                    element={
+                      <Suspense fallback={<LoadingScreen />}>
+                        <ImportMinistering />
+                      </Suspense>
+                    }
+                  />
+                  <Route
+                    path="import/putzplan"
+                    element={
+                      <Suspense fallback={<LoadingScreen />}>
+                        <ImportCleaning />
+                      </Suspense>
+                    }
+                  />
+                  <Route
+                    path="import/aktivitaeten"
+                    element={
+                      <Suspense fallback={<LoadingScreen />}>
+                        <ImportApActivities />
+                      </Suspense>
+                    }
+                  />
+                  <Route
+                    path="import/verlauf"
+                    element={
+                      <Suspense fallback={<LoadingScreen />}>
+                        <ImportHistory />
+                      </Suspense>
+                    }
+                  />
+                  <Route
+                    path="import/lieder"
+                    element={
+                      <Suspense fallback={<LoadingScreen />}>
+                        <ImportHymns />
                       </Suspense>
                     }
                   />
                 </Route>
-
-                {/* Alte Adresse aus früheren Versionen – Lesezeichen sollen weiter funktionieren. */}
-                <Route
-                  path="ansprachen"
-                  element={<Navigate to="/abendmahl/ansprachen" replace />}
-                />
-
-                <Route
-                  path="berufungen"
-                  element={
-                    <Suspense fallback={<LoadingScreen />}>
-                      <Callings />
-                    </Suspense>
-                  }
-                />
-                <Route
-                  path="einstellungen"
-                  element={
-                    <Suspense fallback={<LoadingScreen />}>
-                      <Settings />
-                    </Suspense>
-                  }
-                />
-                <Route
-                  path="import"
-                  element={
-                    <Suspense fallback={<LoadingScreen />}>
-                      <ImportMembers />
-                    </Suspense>
-                  }
-                />
-                <Route
-                  path="import/berufungen"
-                  element={
-                    <Suspense fallback={<LoadingScreen />}>
-                      <ImportCallings />
-                    </Suspense>
-                  }
-                />
-                <Route
-                  path="import/betreuung"
-                  element={
-                    <Suspense fallback={<LoadingScreen />}>
-                      <ImportMinistering />
-                    </Suspense>
-                  }
-                />
-                <Route
-                  path="import/putzplan"
-                  element={
-                    <Suspense fallback={<LoadingScreen />}>
-                      <ImportCleaning />
-                    </Suspense>
-                  }
-                />
-                <Route
-                  path="import/verlauf"
-                  element={
-                    <Suspense fallback={<LoadingScreen />}>
-                      <ImportHistory />
-                    </Suspense>
-                  }
-                />
-                <Route
-                  path="import/lieder"
-                  element={
-                    <Suspense fallback={<LoadingScreen />}>
-                      <ImportHymns />
-                    </Suspense>
-                  }
-                />
 
                 <Route path="*" element={<Navigate to="/" replace />} />
               </Route>

@@ -1,5 +1,13 @@
 import { NavLink } from 'react-router-dom'
-import { ClipboardList, Award, Brush, HeartHandshake, History, Music } from 'lucide-react'
+import {
+  ClipboardList,
+  Award,
+  Brush,
+  CalendarDays,
+  HeartHandshake,
+  History,
+  Music,
+} from 'lucide-react'
 import { cn } from '@/lib/utils'
 
 /**
@@ -20,6 +28,7 @@ const TABS = [
   { to: '/import/berufungen', label: 'Berufungen', icon: Award },
   { to: '/import/betreuung', label: 'Betreuung', icon: HeartHandshake },
   { to: '/import/putzplan', label: 'Putzplan', icon: Brush },
+  { to: '/import/aktivitaeten', label: 'Aktivitäten AP', icon: CalendarDays },
   { to: '/import/verlauf', label: 'Verlauf', icon: History },
   { to: '/import/lieder', label: 'Lieder', icon: Music },
 ]
