@@ -27,6 +27,10 @@ import {
   SundayProgramDialog,
   sundayProgramNote,
 } from '@/components/sacrament/SundayProgram'
+import {
+  ResponsibleButton,
+  SundayResponsibleDialog,
+} from '@/components/sacrament/SundayResponsible'
 import { useAutoDraft } from '@/components/sacrament/useDraft'
 import { formatDate, formatDateLong, toDate, toDateInput } from '@/lib/dates'
 import { isSeriesEntry } from '@/lib/series'
@@ -237,6 +241,7 @@ export function Conducting() {
 
   /* Der Dialog «Programm des Sonntags» – derselbe wie unter «Ansprachen». */
   const [programOpen, setProgramOpen] = useState(false)
+  const [responsibleOpen, setResponsibleOpen] = useState(false)
 
   useEffect(() => {
     if (!fullscreen) return
@@ -804,10 +809,13 @@ export function Conducting() {
         <SectionHeader
           title="Ablauf"
           actions={
-            <button type="button" className="btn-secondary" onClick={() => setProgramOpen(true)}>
-              <CalendarCog className="size-4" aria-hidden />
-              Programm
-            </button>
+            <>
+              <ResponsibleButton meeting={meeting} onClick={() => setResponsibleOpen(true)} />
+              <button type="button" className="btn-secondary" onClick={() => setProgramOpen(true)}>
+                <CalendarCog className="size-4" aria-hidden />
+                Programm
+              </button>
+            </>
           }
         />
 
@@ -831,6 +839,12 @@ export function Conducting() {
           meeting={meeting}
           onClose={() => setProgramOpen(false)}
         />
+        <SundayResponsibleDialog
+          open={responsibleOpen}
+          date={date}
+          meeting={meeting}
+          onClose={() => setResponsibleOpen(false)}
+        />
       </>
     )
   }
@@ -841,6 +855,7 @@ export function Conducting() {
         title="Ablauf"
         actions={
           <>
+            <ResponsibleButton meeting={meeting} onClick={() => setResponsibleOpen(true)} />
             <button type="button" className="btn-secondary" onClick={() => setProgramOpen(true)}>
               <CalendarCog className="size-4" aria-hidden />
               <span className="hidden sm:inline">Programm</span>
@@ -1049,6 +1064,12 @@ export function Conducting() {
         date={date}
         meeting={meeting}
         onClose={() => setProgramOpen(false)}
+      />
+      <SundayResponsibleDialog
+        open={responsibleOpen}
+        date={date}
+        meeting={meeting}
+        onClose={() => setResponsibleOpen(false)}
       />
     </>
   )

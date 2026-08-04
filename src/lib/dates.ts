@@ -179,6 +179,27 @@ export function upcomingWeekdays(weekday: number, weeks: number, from = new Date
   return result
 }
 
+/**
+ * Alle Termine dieses Wochentags im Monat des angegebenen Datums.
+ *
+ * Für Angaben, die einem ganzen Monat gelten – wer im August für die
+ * Abendmahlsversammlung zuständig ist. Der Monat ergibt sich aus dem
+ * Datum, nicht aus einer eigenen Angabe: Man legt ihn dort fest, wo man
+ * gerade steht.
+ */
+export function weekdaysInMonth(weekday: number, inMonth: Date): Date[] {
+  const cursor = new Date(inMonth.getFullYear(), inMonth.getMonth(), 1, 12, 0, 0, 0)
+  while (cursor.getDay() !== weekday) cursor.setDate(cursor.getDate() + 1)
+
+  const result: Date[] = []
+  const month = cursor.getMonth()
+  while (cursor.getMonth() === month) {
+    result.push(new Date(cursor))
+    cursor.setDate(cursor.getDate() + 7)
+  }
+  return result
+}
+
 /** Der aktuelle bzw. zuletzt vergangene Termin dieses Wochentags. */
 export function currentOrPreviousWeekday(weekday: number, from = new Date()): Date {
   const cursor = startOfDay(from)

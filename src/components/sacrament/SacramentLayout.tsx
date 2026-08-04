@@ -1,6 +1,6 @@
 import { createContext, useCallback, useContext, useMemo, type ReactNode } from 'react'
 import { NavLink, Outlet, useSearchParams } from 'react-router-dom'
-import { ChevronLeft, ChevronRight, TriangleAlert } from 'lucide-react'
+import { ChevronLeft, ChevronRight, TriangleAlert, UserCog } from 'lucide-react'
 import { useData } from '@/contexts/DataContext'
 import { useSacramentMeeting } from '@/hooks/useFirestore'
 import { useLocalStorage } from '@/hooks/useLocalStorage'
@@ -60,7 +60,7 @@ const SUBPAGES = [
  * teilen lässt, und wird zusätzlich gemerkt, damit er einen Neustart übersteht.
  */
 export function SacramentLayout() {
-  const { settings } = useData()
+  const { settings, userName } = useData()
   const [searchParams, setSearchParams] = useSearchParams()
   const [remembered, setRemembered] = useLocalStorage<string>('bss:abendmahl:sonntag', '')
 
@@ -120,6 +120,14 @@ export function SacramentLayout() {
             <p className="mt-0.5 flex flex-wrap items-center gap-2 text-sm text-slate-500 dark:text-slate-400">
               {formatDateLong(date)}
               <SundayProgramBadge program={sundayProgram(date, meeting)} />
+              {/* Wer sich um diesen Sonntag kümmert – festgelegt wird das
+                  unter «Leitung» und unter «Ansprachen». */}
+              {meeting?.responsibleId && (
+                <span className="badge bg-slate-100 text-slate-600 dark:bg-slate-800 dark:text-slate-300">
+                  <UserCog className="size-3" aria-hidden />
+                  {userName(meeting.responsibleId)}
+                </span>
+              )}
             </p>
           </div>
           <SundayPicker date={date} onChange={setDate} weekday={settings.sacramentWeekday} />

@@ -1,6 +1,6 @@
 import { deleteField, doc, serverTimestamp, setDoc, Timestamp } from 'firebase/firestore'
 import { db, COLLECTIONS } from '@/lib/firebase'
-import { toDate, toDateInput } from '@/lib/dates'
+import { toDate, toDateInput, weekdaysInMonth } from '@/lib/dates'
 import { stripUndefined, uid } from '@/lib/utils'
 import { commit, type SaveOutcome } from '@/lib/sync'
 import { planProgramOrder } from '@/lib/program'
@@ -217,6 +217,32 @@ export async function saveSundayProgram(
     meets: program.meets,
     plansTalks: program.plansTalks,
   })
+}
+
+/**
+ * Festlegen, wer aus der Bischofschaft für einen Sonntag zuständig ist.
+ *
+ * Aufgeteilt wird üblicherweise monatsweise – einer kümmert sich um den
+ * August, der nächste um den September. Deshalb schreibt `wholeMonth` die
+ * Angabe gleich auf alle Sonntage des Monats, statt sie viermal von Hand
+ * zu setzen. Ein einzelner Sonntag lässt sich danach jederzeit abweichend
+ * festlegen; die Angabe steht an ihm und nicht am Monat.
+ */
+export async function saveResponsible(
+  date: Date,
+  responsibleId: string | null,
+  options: { wholeMonth?: boolean; weekday?: number } = {},
+): Promise<SaveOutcome> {
+  const dates =
+    options.wholeMonth && typeof options.weekday === 'number'
+      ? weekdaysInMonth(options.weekday, date)
+      : [date]
+
+  const outcomes = await Promise.all(
+    dates.map((sunday) => saveSacramentMeeting(sunday, { responsibleId })),
+  )
+  // Ein einziges «zwischengespeichert» genügt, um die Warteschlange zu melden.
+  return outcomes.includes('queued') ? 'queued' : 'synced'
 }
 
 /**

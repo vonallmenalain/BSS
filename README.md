@@ -342,6 +342,24 @@ für alle Unterpunkte.
 | **Musik**            | Drei bis vier Lieder und Musikeinlagen                                         |
 | **Gebet**            | Anfangs- und Schlussgebet, mit «zuletzt gebetet»                               |
 
+### Wer sich um diesen Sonntag kümmert
+
+Neben **Programm** steht **Zuständig** – unter «Leitung» oben rechts, unter
+«Ansprachen» bei jedem Sonntag. Zur Wahl stehen der Bischof und seine beiden
+Ratgeber. Gemeint ist die Vorbereitung: Ansprachen anfragen, Gebete verteilen,
+den Ablauf beisammenhalten. Wer am Pult präsidiert und wer leitet, steht
+weiterhin im Ablauf selbst – das ist eine andere Frage und oft eine andere
+Person.
+
+Aufgeteilt wird das üblicherweise monatsweise, und genau so fragt der Dialog:
+**Für den ganzen August** steht mit Haken da und schreibt die Angabe auf jeden
+Sonntag des Monats. Ohne Haken gilt sie nur für diesen einen – für den
+Sonntag, an dem jemand in den Ferien ist. Ein zweiter Griff auf denselben
+Namen nimmt die Zuständigkeit wieder weg.
+
+Sobald jemand eingetragen ist, steht der Name im Kopf jeder Unterseite der
+Abendmahlsversammlung, gleich neben dem Datum.
+
 ### Was an diesem Sonntag stattfindet
 
 Nicht jeder Sonntag ist eine gewöhnliche Abendmahlsversammlung, und die

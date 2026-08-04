@@ -432,6 +432,7 @@ sacramentMeetings/{yyyy-MM-dd}
                        Programm eines Sonntags
                        ├─ kind          regulär | Fast- und Zeugnisversammlung
                        │                | eigener Grund (mit kindLabel)
+                       ├─ responsibleId  wer den Sonntag vorbereitet
                        ├─ presidingId, conductingId, visitors
                        ├─ presidingName, conductingName
                        │                Personen ohne Konto, ausgeschrieben
@@ -521,6 +522,7 @@ immer dasselbe: Termin verstrichen.
   Einträgen von Hand für alle, die nicht in der Mitgliederliste stehen
 - Abendmahlsversammlung: Leitung, Bekanntmachungen, Angelegenheiten, Musik,
   Gebet – mit dem ganzen Ablauf fürs Pult
+- Zuständigkeit für einen Sonntag oder gleich für den ganzen Monat
 - Liederlisten aus dem Musikarchiv oder aus Excel bzw. CSV – Gesangbuch,
   PV-Liederbuch und «Für zuhause und für die Kirche» getrennt, Liedtitel aus
   der Nummer

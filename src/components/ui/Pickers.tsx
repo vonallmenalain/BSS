@@ -192,7 +192,7 @@ export function PeopleChoice({
 }
 
 /** Ein Name als Knopf – nur der Vorname, der Rest steht im Tooltip. */
-function PersonButton({
+export function PersonButton({
   id,
   name,
   selected,
