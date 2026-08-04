@@ -1,6 +1,7 @@
 import { useEffect, useState, type FormEvent } from 'react'
 import { Lock } from 'lucide-react'
 import { Modal } from '@/components/ui/Modal'
+import { MentionField } from '@/components/ui/MentionField'
 import { AssigneePicker, MemberPicker } from '@/components/ui/Pickers'
 import { useAuth } from '@/contexts/AuthContext'
 import { useToast } from '@/contexts/ToastContext'
@@ -73,6 +74,18 @@ export function AgendaItemForm({ open, onClose, item, meetingId = null, onSaved 
 
   const update = <K extends keyof FormState>(key: K, value: FormState[K]) =>
     setForm((current) => ({ ...current, [key]: value }))
+
+  /*
+   * Ein mit «@» eingesetzter Name ist zugleich eine Verknüpfung: Wer im
+   * Text steht, steht auch unter «Betrifft Mitglieder» – sonst fände die
+   * App den Zusammenhang später nicht wieder.
+   */
+  const linkMember = (memberId: string) =>
+    setForm((current) =>
+      current.memberRefs.includes(memberId)
+        ? current
+        : { ...current, memberRefs: [...current.memberRefs, memberId] },
+    )
 
   const handleSubmit = async (event: FormEvent) => {
     event.preventDefault()
@@ -155,12 +168,12 @@ export function AgendaItemForm({ open, onClose, item, meetingId = null, onSaved 
           <label className="label" htmlFor="item-title">
             Titel
           </label>
-          <input
+          <MentionField
             id="item-title"
-            className="input"
             value={form.title}
-            onChange={(event) => update('title', event.target.value)}
-            placeholder="Worum geht es?"
+            onChange={(next) => update('title', next)}
+            onMention={(member) => linkMember(member.id)}
+            placeholder="Worum geht es? «@» wählt ein Mitglied"
             required
             maxLength={200}
           />
@@ -170,14 +183,20 @@ export function AgendaItemForm({ open, onClose, item, meetingId = null, onSaved 
           <label className="label" htmlFor="item-description">
             Beschreibung
           </label>
-          <textarea
+          <MentionField
             id="item-description"
-            className="input min-h-24 resize-y"
+            multiline
+            className="min-h-24 resize-y"
             value={form.description}
-            onChange={(event) => update('description', event.target.value)}
+            onChange={(next) => update('description', next)}
+            onMention={(member) => linkMember(member.id)}
             placeholder="Hintergrund, Vorgeschichte, konkrete Frage an die Sitzung …"
             rows={3}
           />
+          <p className="hint">
+            Mit <strong>@</strong> lässt sich mitten im Text ein Mitglied wählen – der Name wird
+            eingesetzt und unten verknüpft.
+          </p>
         </div>
 
         <div className="grid gap-4 sm:grid-cols-3">

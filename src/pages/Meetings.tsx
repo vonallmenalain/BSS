@@ -29,7 +29,9 @@ export function Meetings() {
   const { settings } = useData()
   const navigate = useNavigate()
   const [searchParams, setSearchParams] = useSearchParams()
-  const { data: meetings, loading } = useMeetings(100)
+  // Reichlich bemessen: Mit den übernommenen Protokollen stehen hier über
+  // hundert vergangene Sitzungen, und das Archiv soll vollständig bleiben.
+  const { data: meetings, loading } = useMeetings(400)
   const { data: openItems } = useOpenItems()
   const now = useNow()
   const [filter, setFilter] = useState<Filter>('upcoming')

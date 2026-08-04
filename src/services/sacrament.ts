@@ -6,18 +6,19 @@ import { commit, type SaveOutcome } from '@/lib/sync'
 import { planProgramOrder } from '@/lib/program'
 import { updateTalk } from '@/services/talks'
 import {
-  ACTIVE_TALK_STATUSES,
   HYMN_SLOTS,
   type AnnouncementEntry,
   type BusinessEntry,
   type MusicalNumber,
+  type SacramentKind,
   type SacramentMeeting,
   type Talk,
 } from '@/lib/types'
 
 /*
- * Das Ordnen des Programmteils liegt firestore-frei in `lib/program` – von
- * hier mitverteilt, damit die Oberfläche nur einen Ort kennen muss.
+ * Das Ordnen des Programmteils liegt firestore-frei in `lib/program`, die
+ * Frage «was findet an diesem Sonntag statt?» in `lib/sunday` – von hier
+ * mitverteilt, damit die Oberfläche nur einen Ort kennen muss.
  */
 export {
   buildProgram,
@@ -28,6 +29,14 @@ export {
   type ProgramEntry,
   type ProgramEntryKind,
 } from '@/lib/program'
+
+export {
+  automaticSacramentKind,
+  openTalkSlots,
+  plannedTalksFor,
+  sundayProgram,
+  type SundayProgram,
+} from '@/lib/sunday'
 
 /* ------------------------------------------------------------------ */
 /* Dokumente pro Sonntag                                               */
@@ -49,7 +58,11 @@ export function emptySacramentMeeting(date: Date): SacramentMeeting {
   return {
     id: sacramentDocId(date),
     date: Timestamp.fromDate(date),
-    kind: 'regular',
+    // `null` heisst «automatisch»: Was an diesem Sonntag stattfindet,
+    // ergibt sich aus dem Kalender, solange es niemand festgelegt hat.
+    kind: null,
+    meets: null,
+    plansTalks: null,
     presidingId: null,
     conductingId: null,
     presidingName: null,
@@ -181,13 +194,22 @@ export async function saveProgramOrder(
 }
 
 /**
- * Anzahl vorgesehener Ansprachen für einen Sonntag (Standard oder Ausnahme).
- * `0` ist eine gültige Ausnahme – an einer Zeugnisversammlung wird keine
- * Ansprache vergeben.
+ * Das Programm eines Sonntags festlegen – oder wieder der Regel überlassen.
+ *
+ * Beide Seiten schreiben hierher, «Leitung» wie «Ansprachen»: Es ist
+ * dasselbe Dokument, und ein an einem Ort festgelegter Sonntag ist am
+ * anderen sofort derselbe. `kind: null` heisst «automatisch», die beiden
+ * Haken stehen auf `null`, solange sie der Art folgen.
  */
-export function talkSlotsFor(meeting: SacramentMeeting | null, defaultCount: number): number {
-  const override = meeting?.talkSlots
-  return typeof override === 'number' && override >= 0 ? override : defaultCount
+export async function saveSundayProgram(
+  date: Date,
+  program: { kind: SacramentKind | null; meets: boolean | null; plansTalks: boolean | null },
+): Promise<SaveOutcome> {
+  return saveSacramentMeeting(date, {
+    kind: program.kind,
+    meets: program.meets,
+    plansTalks: program.plansTalks,
+  })
 }
 
 /**
@@ -220,21 +242,4 @@ export async function removeTalkSlot(
   )
   const next = Math.max(0, planned - 1)
   return saveSacramentMeeting(date, { talkSlots: next === defaultCount ? null : next })
-}
-
-/** Wie viele Programmplätze sind an diesem Sonntag noch offen? */
-export function openTalkSlots(
-  meeting: SacramentMeeting | null,
-  talks: Talk[],
-  defaultCount: number,
-): number {
-  const planned = talkSlotsFor(meeting, defaultCount)
-  const taken = new Set(
-    talks
-      .filter((talk) => ACTIVE_TALK_STATUSES.concat('held').includes(talk.status))
-      .map((t) => t.slot),
-  )
-  let open = 0
-  for (let slot = 1; slot <= planned; slot++) if (!taken.has(slot)) open++
-  return open
 }

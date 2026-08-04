@@ -25,6 +25,13 @@ Abendmahlsversammlung, Berufungsverwaltung und Mitgliederdaten.
 Traktandum und Pendenz sind derselbe Datensatz: Was in einer Sitzung offen
 bleibt, erscheint automatisch wieder – ohne Umtragen.
 
+**Ein `@` im Traktandum öffnet die Mitgliederliste.** In Titel und
+Beschreibung genügt das Zeichen und der Anfang eines Namens; die Auswahl
+setzt den vollen Namen in den Text und verknüpft die Person zugleich unter
+«Betrifft Mitglieder». Es geht fast immer um jemanden, und der Name ist beim
+Schreiben schon im Kopf – der Umweg über das Feld weiter unten entfällt.
+Passt niemand aus der Liste, bleibt schlicht stehen, was getippt wurde.
+
 **Importe stehen gesammelt unter «Einstellungen → Importe»** und nirgends
 sonst. Ein Import ersetzt ganze Bereiche; ein Knopf dafür neben der Arbeit am
 einzelnen Eintrag lädt zu Unfällen ein.
@@ -245,6 +252,49 @@ für alle Unterpunkte.
 | **Ansprachen**       | Programmplätze vergeben, Vorschlagsliste, Verlauf                              |
 | **Musik**            | Drei bis vier Lieder und Musikeinlagen                                         |
 | **Gebet**            | Anfangs- und Schlussgebet, mit «zuletzt gebetet»                               |
+
+### Was an diesem Sonntag stattfindet
+
+Nicht jeder Sonntag ist eine gewöhnliche Abendmahlsversammlung, und die
+Abweichungen haben Folgen für die Planung. Der Knopf **Programm** – unter
+**Leitung** oben rechts, unter **Ansprachen** bei jedem Sonntag – legt fest,
+was ansteht. Es ist dieselbe Angabe an beiden Orten: Wer sie unter
+«Ansprachen» setzt, hat sie auch unter «Leitung» gesetzt.
+
+| Art                                | Versammlung | Ansprachen |
+| ---------------------------------- | ----------- | ---------- |
+| **Abendmahlsversammlung**          | ja          | ja         |
+| **Fast- und Zeugnisversammlung**   | ja          | nein       |
+| **Darbietung der Kinder (DKA)**    | ja          | nein       |
+| **JAE-Sonntag**                    | ja          | nein       |
+| **Besondere Versammlung**          | ja          | ja         |
+| **Pfahlkonferenz**                 | nein        | nein       |
+| **Generalkonferenz**               | nein        | nein       |
+
+Ohne Versammlung fällt unter «Leitung» der ganze Ablauf weg und es steht
+der Grund da; ohne Ansprachen bleibt der Sonntag unter «Ansprachen» ohne
+offene Plätze, und die Übersicht meldet dort nichts als fehlend. Bereits
+vergebene Ansprachen bleiben in beiden Fällen stehen – eine Zusage
+verschwindet nicht, weil der Sonntag umgewidmet wurde.
+
+Zwei Haken decken den Einzelfall ab, für den es keine eigene Art braucht:
+**Es findet eine Versammlung statt** und **Es werden Ansprachen
+eingeplant**. Sie stehen auf dem, was die Art vorgibt, und werden nur
+festgehalten, wenn sie davon abweichen – eine Pfahlkonferenz, die
+ausnahmsweise in der Gemeinde stattfindet, oder eine besondere Versammlung
+ohne Ansprachen.
+
+**Automatisch** ist der Normalzustand und steht in der Auswahl zuoberst:
+
+- der **erste Sonntag im Monat** ist die Fast- und Zeugnisversammlung,
+- im **April und Oktober** ist an diesem Tag Generalkonferenz – dann findet
+  in der Gemeinde nichts statt,
+- alle übrigen Sonntage sind gewöhnliche Abendmahlsversammlungen.
+
+Die Pfahlkonferenz steht an wechselnden Daten und wird deshalb von Hand
+gesetzt. Und weil «Automatisch» eine eigene Wahl ist und kein geratener
+Wert, ist jedes Festlegen mit einem Griff wieder rückgängig: **Wieder
+automatisch** im selben Dialog.
 
 **Leitung** zeigt den ganzen Ablauf – und alles darin lässt sich hier ändern:
 Vorsitz und Begrüssung, Bekanntmachungen, Angelegenheiten, Lieder, Gebete,
@@ -760,6 +810,54 @@ sich «Früher» aufklappen, mit Zeitraum je Eintrag.
 
 ---
 
+## Bisherige Protokolle übernehmen
+
+**Einstellungen → Importe → Sitzungen**, einmalig beim Umstieg.
+
+Vier Jahre Bischofschaftssitzungen stehen in einem einzigen Word-Dokument:
+je Sitzung eine Tabelle, die neuste zuoberst, in der ersten Zeile das Datum
+(«Traktanden, 31.07.2025» oder «Protokoll, 05.01.2023»), darunter je Zeile
+ein Traktandum und daneben «Wer» und «Bis». Genau so wird es gelesen.
+
+| In der Datei                | In der App                                         |
+| --------------------------- | -------------------------------------------------- |
+| eine Tabelle                | eine Sitzung mit dem Datum aus der Kopfzeile        |
+| eine Zeile                  | ein Traktandum                                      |
+| erste Zeile der Zelle       | der Titel                                           |
+| alles Weitere in der Zelle  | die Beschreibung                                    |
+| «Wer» und «Bis»             | eine Zeile in der Beschreibung                      |
+| Tabelle **Offene Pendenzen**| Pendenzen im Sammelkorb, offen                      |
+
+Vergangene Sitzungen gelten als abgeschlossen und ihre Traktanden als
+erledigt. Das ist keine Behauptung über die Sache, sondern über den Ort:
+Vierhundert Punkte aus vier Jahren als «offen» stünden in der Pendenzenliste
+und verdeckten, woran gerade wirklich gearbeitet wird. Offen bleibt, was in
+der Tabelle «Offene Pendenzen» steht – die Bischofschaft trägt dort ohnehin
+laufend nach, was sie weiterhin beschäftigt.
+
+Drei Eigenheiten der gewachsenen Datei rechnet der Import mit ein:
+
+- **Fehlt das Jahr** in der Kopfzeile («Traktanden 08.06.»), ergibt es sich
+  aus der Sitzung darüber – das Dokument ist von der neusten abwärts
+  geschrieben.
+- **Dasselbe Datum zweimal** – eine Sitzung, einmal als Zwischenstand und
+  einmal fertig – wird zu einer Sitzung; gleiche Titel gelten als derselbe
+  Punkt, und es bleibt die ausführlichere Fassung.
+- **Kein lesbares Datum** («Traktanden, bis Ende November 2025») heisst: Die
+  Tabelle wird nicht übernommen. Die Vorschau nennt sie samt Zeilenzahl, und
+  diese wenigen Punkte werden von Hand erfasst.
+
+Alles Übernommene ist als Import gekennzeichnet. Deshalb lässt sich der
+Vorgang gefahrlos wiederholen: **Einen früheren Import vorher entfernen**
+räumt genau das weg, was der Import selbst angelegt hat – von Hand erfasste
+Sitzungen und Pendenzen bleiben stehen.
+
+Gelesen wird die `.docx` ohne Zusatzpaket: Eine Word-Datei ist ein
+ZIP-Archiv, und der Browser bringt sowohl das Entpacken mit als auch alles,
+was zum Lesen des XML nötig ist (`lib/docx.ts`).
+
+---
+
 ## Verlauf aus der bisherigen Excel-Tabelle
 
 **Einstellungen → Importe → Verlauf**, einmalig.
@@ -977,12 +1075,13 @@ src/
 │   ├── agenda/          Traktanden: Karte, Formular, Sitzungsmodus, Verschieben
 │   ├── ap/              Aktivitäten AP: Zeile, Formular, Termine erzeugen
 │   ├── sacrament/       Abendmahlsversammlung: Rahmen mit Sonntagswahl, Lied- und Personenfelder
-│   ├── ui/              Bausteine: Modal, Badges, Avatare, Auswahlfelder
+│   ├── ui/              Bausteine: Modal, Badges, Avatare, Auswahlfelder, «@»-Feld
 │   ├── Layout.tsx       Navigation (Seitenleiste bzw. untere Leiste)
 │   └── UpdatePrompt.tsx Hinweis auf neue Version
 ├── contexts/            Anmeldung, Stammdaten, Meldungen
 ├── hooks/               Firestore-Abfragen, Bekanntmachungen eines Sonntags, lokale Einstellungen
-├── lib/                 Firebase-Anbindung, Typen, Datums-, Serien-, Programm- und Hilfsfunktionen
+├── lib/                 Firebase-Anbindung, Typen, Datums-, Serien-, Programm-, Sonntags-,
+│                        Word- und Hilfsfunktionen
 ├── pages/
 │   ├── sacrament/       Leitung, Bekanntmachungen, Angelegenheiten, Musik, Gebet
 │   └── …                Eine Datei pro übriger Ansicht

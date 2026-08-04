@@ -13,6 +13,7 @@ import {
   History,
   Mic,
   Music,
+  NotebookPen,
   ShieldCheck,
   Trash2,
   Upload,
@@ -78,6 +79,12 @@ const IMPORTS = [
     label: 'Aktivitäten AP',
     description: 'Der bisherige Jahresplan der Priestertumskollegien als Kalender',
     icon: CalendarDays,
+  },
+  {
+    to: '/import/sitzungen',
+    label: 'Sitzungen',
+    description: 'Die bisherigen Protokolle als Sitzungsgeschichte und offene Pendenzen',
+    icon: NotebookPen,
   },
   {
     to: '/import/verlauf',
