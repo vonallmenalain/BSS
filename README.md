@@ -639,6 +639,15 @@ zwei Zustände, und sie sind sauber getrennt:
   Ausgangspunkt. Er zeigt den Plan zum Lesen: keine Knöpfe zum Anlegen,
   keine anklickbaren Zeilen, nichts, was sich versehentlich verstellen
   lässt. Bemerkungen stehen hier ganz da, weil kein Klick weiterführt.
+
+  Jeder Termin bekommt dabei so viel Platz, wie er braucht: oben das Datum
+  und der **ganze Titel** – er wird nie abgeschnitten und bricht lieber um –,
+  darunter **Startzeit, Treffpunkt, Leitung AP, Teilnahme BSS, Teilnahme
+  Berater** und die Bemerkung, jede Angabe mit ihrer Beschriftung und nur,
+  wenn sie ausgefüllt ist. Wer die Aktivität leitet, steht nur bei der
+  AP-Klasse: Bei den übrigen Terminen führt ohnehin das Kollegium des
+  Monats, und das steht über der Gruppe.
+
 - Der **Bearbeitungsmodus** kommt auf Knopfdruck – **Bearbeitungsmodus**
   oben rechts. Erst dort erscheinen **+ Termin** und **Termine erzeugen**,
   erst dort öffnet ein Klick auf eine Zeile den Termin, und erst dort lässt
@@ -1170,9 +1179,11 @@ prüft das in beide Richtungen.
 ### Ein neues Konto freischalten
 
 Wer sich registriert, landet mit der Rolle «Wartet auf Freigabe» in der
-Datenbank und sieht nichts. In der App der Bischofschaft erscheint das Konto
-unter **Einstellungen → Benutzer und Rollen** in einem Kasten
-**«Neue Registrierungen»**. Zur Wahl stehen dort drei Zugriffsstufen –
+Datenbank und sieht nichts. In der App der Bischofschaft steht das dann
+**zuoberst auf der Übersicht** – ein Klick darauf führt geradewegs zu
+**Einstellungen → Benutzer und Rollen**, wo das Konto in einem Kasten
+**«Neue Registrierungen»** steht. Ohne diesen Hinweis merkte es nur die
+wartende Person selbst. Zur Wahl stehen dort drei Zugriffsstufen –
 Vollzugriff, nur AP-Kalender mit Schreibrecht, nur AP-Kalender zum Ansehen –
 und bei Vollzugriff zusätzlich die Aufgabe in der Bischofschaft. Ein Klick
 auf **Freischalten** wirkt sofort; **Ablehnen** entfernt das Profil wieder.

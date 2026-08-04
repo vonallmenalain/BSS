@@ -10,6 +10,7 @@ import {
   Play,
   Cake,
   CheckCircle2,
+  UserPlus,
 } from 'lucide-react'
 import { useAuth } from '@/contexts/AuthContext'
 import { useData } from '@/contexts/DataContext'
@@ -38,7 +39,7 @@ import type { AgendaItem } from '@/lib/types'
 
 export function Dashboard() {
   const { profile } = useAuth()
-  const { settings, members } = useData()
+  const { settings, members, users } = useData()
   const navigate = useNavigate()
   const { data: meetings, loading: meetingsLoading } = useMeetings(20)
   const { data: openItems, loading: itemsLoading } = useOpenItems()
@@ -123,6 +124,14 @@ export function Dashboard() {
     [members],
   )
 
+  /*
+   * Wer sich registriert hat, sieht bis zur Freigabe nichts – und merkt es
+   * nur selbst. Deshalb steht die offene Registrierung hier, wo die
+   * Bischofschaft ohnehin hinschaut, statt in einer Einstellungsseite, die
+   * man aufsuchen müsste.
+   */
+  const pendingUsers = useMemo(() => users.filter((user) => user.role === 'pending'), [users])
+
   const greeting = (() => {
     const hour = new Date().getHours()
     if (hour < 11) return 'Guten Morgen'
@@ -152,6 +161,29 @@ export function Dashboard() {
           </button>
         }
       />
+
+      {pendingUsers.length > 0 && (
+        <Link
+          to="/einstellungen#benutzer"
+          className="card card-hover mb-4 flex items-center gap-3 border-amber-200 bg-amber-50/70 p-4 dark:border-amber-800 dark:bg-amber-950/40"
+        >
+          <span className="grid size-9 shrink-0 place-items-center rounded-full bg-amber-100 text-amber-700 dark:bg-amber-900 dark:text-amber-200">
+            <UserPlus className="size-4" aria-hidden />
+          </span>
+          <span className="min-w-0 flex-1">
+            <span className="block text-sm font-semibold text-amber-900 dark:text-amber-100">
+              {pendingUsers.length === 1
+                ? 'Eine neue Registrierung wartet auf Freigabe'
+                : `${pendingUsers.length} neue Registrierungen warten auf Freigabe`}
+            </span>
+            <span className="block truncate text-xs text-amber-800 dark:text-amber-200">
+              {pendingUsers.map((user) => user.displayName || user.email).join(', ')} – sieht noch
+              nichts, bis jemand den Zugriff festlegt.
+            </span>
+          </span>
+          <ArrowRight className="size-4 shrink-0 text-amber-700 dark:text-amber-300" aria-hidden />
+        </Link>
+      )}
 
       <div className="grid gap-4 lg:grid-cols-3">
         {/* ---------- Nächste Sitzung ---------- */}

@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react'
-import { Link } from 'react-router-dom'
+import { Link, useLocation } from 'react-router-dom'
 import {
   Award,
   Brush,
@@ -159,6 +159,16 @@ export function Settings() {
   }
 
   const pendingUsers = users.filter((user) => user.role === 'pending')
+
+  /*
+   * Mit «#benutzer» in der Adresse gleich zu den Registrierungen scrollen.
+   * Der Router lässt den Anker links liegen – er kennt nur Pfade.
+   */
+  const { hash } = useLocation()
+  useEffect(() => {
+    if (!hash) return
+    document.getElementById(hash.slice(1))?.scrollIntoView({ block: 'start' })
+  }, [hash])
 
   return (
     <>
@@ -419,8 +429,10 @@ export function Settings() {
           </button>
         </div>
 
-        {/* ---------- Benutzer ---------- */}
-        <section className="card p-5">
+        {/* ---------- Benutzer ----------
+            Das Sprungziel der Übersicht: Wer dort auf «neue Registrierung»
+            tippt, landet hier – und nicht am Anfang einer langen Seite. */}
+        <section id="benutzer" className="card scroll-mt-20 p-5">
           <h2 className="mb-1 flex items-center gap-2 text-sm font-semibold">
             <ShieldCheck className="size-4 text-slate-400" aria-hidden />
             Benutzer und Rollen
