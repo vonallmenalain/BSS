@@ -18,8 +18,7 @@
   --color-brand-950: oklch(0.19 0.04 250);
 
   --font-sans:
-    ui-sans-serif, system-ui, -apple-system, 'Segoe UI', Roboto, 'Helvetica Neue', Arial,
-    sans-serif;
+    ui-sans-serif, system-ui, -apple-system, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
 
   --animate-slide-up: slide-up 0.22s cubic-bezier(0.32, 0.72, 0, 1);
   --animate-fade-in: fade-in 0.15s ease-out;
@@ -216,6 +215,34 @@
   }
   .no-scrollbar::-webkit-scrollbar {
     display: none;
+  }
+}
+
+/* --- Variables Layout -----------------------------------------------
+   Das selbst gebaute Raster eines Traktandums.
+
+   Wo ein Feld steht, sagen Variablen am Feld selbst statt einer Klasse pro
+   Fall – vier Spalten mal vier Positionen mal beliebige Spannweiten wären
+   als Klassen nicht aufzuzählen. Der Nebeneffekt ist der eigentliche
+   Gewinn: Auf einem schmalen Bildschirm lässt sich die ganze Anordnung mit
+   einer einzigen Regel wieder auflösen. Vier Spalten nebeneinander sind am
+   Handy unlesbar; dort wird aus dem Raster eine Liste, und weil die Felder
+   von links oben nach rechts unten im Dokument stehen, stimmt die
+   Reihenfolge von selbst. */
+.layout-grid {
+  display: grid;
+  gap: 0.5rem;
+  grid-template-columns: minmax(0, 1fr);
+}
+
+@media (min-width: 640px) {
+  .layout-grid {
+    grid-template-columns: repeat(var(--layout-columns, 1), minmax(0, 1fr));
+  }
+
+  .layout-grid > .layout-field {
+    grid-column: var(--layout-col) / span var(--layout-col-span);
+    grid-row: var(--layout-row) / span var(--layout-row-span);
   }
 }
 

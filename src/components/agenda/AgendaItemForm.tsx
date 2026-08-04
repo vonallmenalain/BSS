@@ -1,11 +1,13 @@
-import { useEffect, useState, type FormEvent } from 'react'
+import { useEffect, useRef, useState, type FormEvent } from 'react'
 import { Modal } from '@/components/ui/Modal'
 import { MentionField } from '@/components/ui/MentionField'
 import { AssigneePicker, SegmentedControl } from '@/components/ui/Pickers'
+import { LayoutGrid } from '@/components/agenda/LayoutGrid'
 import { useAuth } from '@/contexts/AuthContext'
 import { useToast } from '@/contexts/ToastContext'
 import { createAgendaItem, type AgendaItemInput } from '@/services/agenda'
-import { PRIORITY_LABELS, type ItemStatus, type Priority } from '@/lib/types'
+import { emptyLayout, serializeLayout } from '@/lib/layout'
+import { PRIORITY_LABELS, type ItemLayout, type ItemStatus, type Priority } from '@/lib/types'
 
 interface Props {
   open: boolean
@@ -28,6 +30,8 @@ interface FormState {
   assignees: string[]
   memberRefs: string[]
   dueDate: string
+  /** Gesetzt heisst: variables Layout statt Beschreibung */
+  layout: ItemLayout | null
 }
 
 const EMPTY: FormState = {
@@ -37,6 +41,7 @@ const EMPTY: FormState = {
   assignees: [],
   memberRefs: [],
   dueDate: '',
+  layout: null,
 }
 
 /**
@@ -62,13 +67,28 @@ export function AgendaItemForm({
   const [form, setForm] = useState<FormState>(EMPTY)
   const [saving, setSaving] = useState(false)
 
+  /*
+   * Das zuletzt gebaute Raster überlebt den Haken.
+   *
+   * Wer «Variables Layout» ausschaltet, um kurz die Beschreibung zu lesen,
+   * und wieder einschaltet, hätte sonst seine Tabelle noch einmal zu bauen.
+   */
+  const lastLayout = useRef<ItemLayout | null>(null)
+
   // Beim Öffnen zurücksetzen, damit nichts vom letzten Mal stehen bleibt.
   useEffect(() => {
-    if (open) setForm(EMPTY)
+    if (!open) return
+    setForm(EMPTY)
+    lastLayout.current = null
   }, [open])
 
   const update = <K extends keyof FormState>(key: K, value: FormState[K]) =>
     setForm((current) => ({ ...current, [key]: value }))
+
+  const toggleLayout = (on: boolean) => {
+    if (!on) lastLayout.current = form.layout
+    update('layout', on ? (lastLayout.current ?? emptyLayout()) : null)
+  }
 
   /*
    * Ein mit «@» eingesetzter Name ist zugleich ein Verweis: Wer im Text steht,
@@ -102,6 +122,7 @@ export function AgendaItemForm({
         dueDate: form.dueDate ? new Date(`${form.dueDate}T12:00:00`) : null,
         status: defaultStatus,
         meetingId,
+        layout: form.layout ? serializeLayout(form.layout) : null,
       }
       const id = await createAgendaItem(payload, { id: profile.id, name: profile.displayName })
       toast.success(meetingId ? 'Traktandum zur Sitzung hinzugefügt.' : 'Traktandum erfasst.')
@@ -138,6 +159,20 @@ export function AgendaItemForm({
       }
     >
       <form id="agenda-form" onSubmit={handleSubmit} className="space-y-4">
+        {/* Der Haken steht oben rechts, weil er über die Gestalt des ganzen
+            Fensters entscheidet und nicht über ein einzelnes Feld. */}
+        <div className="flex justify-end">
+          <label className="flex cursor-pointer items-center gap-2 text-sm">
+            <input
+              type="checkbox"
+              className="size-4 rounded"
+              checked={form.layout !== null}
+              onChange={(event) => toggleLayout(event.target.checked)}
+            />
+            Variables Layout
+          </label>
+        </div>
+
         <div>
           <label className="label" htmlFor="item-title">
             Titel
@@ -147,31 +182,40 @@ export function AgendaItemForm({
             value={form.title}
             onChange={(next) => update('title', next)}
             onMention={(member) => linkMember(member.id)}
-            placeholder="Worum geht es? «@» wählt ein Mitglied"
             required
             maxLength={200}
           />
         </div>
 
-        <div>
-          <label className="label" htmlFor="item-description">
-            Beschreibung
-          </label>
-          <MentionField
-            id="item-description"
-            multiline
-            className="min-h-24 resize-y"
-            value={form.description}
-            onChange={(next) => update('description', next)}
-            onMention={(member) => linkMember(member.id)}
-            placeholder="Hintergrund, Vorgeschichte, konkrete Frage an die Sitzung …"
-            rows={3}
-          />
-          <p className="hint">
-            Mit <strong>@</strong> lässt sich mitten im Text ein Mitglied wählen – der Name wird
-            eingesetzt und bleibt anklickbar.
-          </p>
-        </div>
+        {/* Entweder – oder: Ein Raster ist die Beschreibung, nur eben
+            gegliedert. Beide nebeneinander liessen offen, wo etwas
+            hingehört. Gespeichert bleiben ohnehin beide Stände. */}
+        {form.layout ? (
+          <div>
+            <span className="label">Layout</span>
+            <LayoutGrid
+              layout={form.layout}
+              onChange={(next) => update('layout', next)}
+              onMention={(member) => linkMember(member.id)}
+              memberRefs={form.memberRefs}
+            />
+          </div>
+        ) : (
+          <div>
+            <label className="label" htmlFor="item-description">
+              Beschreibung
+            </label>
+            <MentionField
+              id="item-description"
+              multiline
+              className="min-h-24 resize-y"
+              value={form.description}
+              onChange={(next) => update('description', next)}
+              onMention={(member) => linkMember(member.id)}
+              rows={3}
+            />
+          </div>
+        )}
 
         <div className="grid gap-4 sm:grid-cols-2">
           <div>

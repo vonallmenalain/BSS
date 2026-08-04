@@ -29,6 +29,7 @@ export function MentionField({
   multiline = false,
   autoFocus = false,
   className,
+  wrapperClassName,
   ...rest
 }: {
   id: string
@@ -42,6 +43,12 @@ export function MentionField({
   /** Beim Erscheinen den Cursor ans Ende setzen (Wechsel vom Lesen zum Schreiben) */
   autoFocus?: boolean
   className?: string
+  /**
+   * Klassen für den Rahmen um Feld und Trefferliste. Nötig, wo das Feld eine
+   * vorgegebene Höhe füllen soll – im variablen Layout etwa muss es die
+   * Rasterzelle ausfüllen, und dazu muss der Rahmen mitwachsen.
+   */
+  wrapperClassName?: string
   placeholder?: string
   rows?: number
   required?: boolean
@@ -152,7 +159,7 @@ export function MentionField({
   }
 
   return (
-    <div className="relative">
+    <div className={cn('relative', wrapperClassName)}>
       {multiline ? <textarea {...shared} /> : <input {...shared} />}
 
       {trigger && results.length > 0 && (

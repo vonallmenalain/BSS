@@ -11,6 +11,7 @@ import { EmptyState, SkeletonList } from '@/components/ui/Feedback'
 import { PageHeader, SegmentedControl } from '@/components/ui/Pickers'
 import { useLocalStorage } from '@/hooks/useLocalStorage'
 import { formatDateShort, getDueInfo, toDate } from '@/lib/dates'
+import { layoutToText } from '@/lib/layout'
 import { matchesSearch } from '@/lib/utils'
 import { sortForPendenzen } from '@/services/agenda'
 import { toItemKind } from '@/lib/types'
@@ -22,7 +23,7 @@ const OPEN_PARAM = 'pendenz'
 
 export function Pendenzen() {
   const { profile } = useAuth()
-  const { userName } = useData()
+  const { userName, memberName } = useData()
   const { data: items, loading } = useOpenItems()
   const { data: meetings } = useMeetings(30)
 
@@ -83,7 +84,19 @@ export function Pendenzen() {
     if (search.trim()) {
       result = result.filter((item) =>
         matchesSearch(
-          [item.title, item.description, ...(item.assignees ?? []).map(userName)]
+          [
+            item.title,
+            item.description,
+            // Wer statt einer Beschreibung ein Raster gebaut hat, soll es
+            // trotzdem wiederfinden – gesucht wird im ganzen Eintrag.
+            item.layout
+              ? layoutToText(item.layout, (id) => {
+                  const user = userName(id)
+                  return user === 'Unbekannt' ? memberName(id) : user
+                })
+              : '',
+            ...(item.assignees ?? []).map(userName),
+          ]
             .filter(Boolean)
             .join(' '),
           search,
@@ -92,13 +105,12 @@ export function Pendenzen() {
     }
 
     return sortForPendenzen(result)
-  }, [items, scope, search, profile?.id, userName])
+  }, [items, scope, search, profile?.id, userName, memberName])
 
   return (
     <>
       <PageHeader
         title="Pendenzen"
-        subtitle="Alles, was noch offen ist – über alle Sitzungen hinweg"
         actions={
           <button type="button" className="btn-primary" onClick={() => setFormOpen(true)}>
             <Plus className="size-4" aria-hidden />

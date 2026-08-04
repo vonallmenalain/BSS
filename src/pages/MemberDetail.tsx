@@ -619,7 +619,6 @@ export function MemberForm({
               className="input"
               value={form.mobile}
               onChange={(event) => update('mobile', event.target.value)}
-              placeholder="079 123 45 67"
             />
           </div>
           <div>
@@ -697,7 +696,6 @@ export function MemberForm({
               className="input"
               value={form.tags}
               onChange={(event) => update('tags', event.target.value)}
-              placeholder="Neubekehrt, Rückkehrer"
             />
             <p className="hint">Mit Komma trennen.</p>
           </div>
@@ -726,7 +724,6 @@ export function MemberForm({
             className="input min-h-24 resize-y"
             value={form.notes}
             onChange={(event) => update('notes', event.target.value)}
-            placeholder="Betreuungshinweise, Besonderheiten, Absprachen …"
           />
         </div>
 

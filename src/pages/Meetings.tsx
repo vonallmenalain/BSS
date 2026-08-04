@@ -325,7 +325,6 @@ export function MeetingForm({
             className="input"
             value={title}
             onChange={(event) => setTitle(event.target.value)}
-            placeholder="Bischofschaftssitzung"
           />
         </div>
 
@@ -338,7 +337,6 @@ export function MeetingForm({
             className="input"
             value={location}
             onChange={(event) => setLocation(event.target.value)}
-            placeholder="Bischofsbüro"
           />
         </div>
 

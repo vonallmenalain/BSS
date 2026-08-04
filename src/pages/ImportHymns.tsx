@@ -55,12 +55,6 @@ import { HYMN_BOOK_LABELS, type HymnBook } from '@/lib/types'
 type Step = 'source' | 'preview' | 'done'
 type Source = 'text' | 'file'
 
-const PASTE_EXAMPLE: Record<HymnBook, string> = {
-  hymns: `1. Der Morgen naht\n2. Der Geist aus den Höhen\n3. O Fülle des Heiles`,
-  children: `2. Ich bin ein Kind von Gott\n4. Kinder in aller Welt\n6. Gebet eines Kindes`,
-  home_church: `1001. Komm, du Quelle jedes Segens\n1002. Wenn der Heiland wiederkehrt\n1003. Meine Seel findet Ruhe im Herrn`,
-}
-
 /** Wie die Sammlung im Musikarchiv heisst. */
 const COLLECTION_LABEL: Record<HymnBook, string> = {
   hymns: 'Gesangbuch',
@@ -242,7 +236,7 @@ export function ImportHymns() {
               dürfen mitkommen – gelesen wird nur, was wie «Nummer. Titel» aussieht.
             </>
           }
-          placeholder={`Hier einfügen. Erwartet wird die Liste:\n\n${PASTE_EXAMPLE[book]}`}
+          placeholder="Hier einfügen."
           value={pasted}
           onChange={setPasted}
           onSubmit={takePaste}

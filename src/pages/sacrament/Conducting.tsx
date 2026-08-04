@@ -511,7 +511,6 @@ export function Conducting() {
               className="input"
               value={current.visitors}
               onChange={(event) => change({ visitors: event.target.value })}
-              placeholder="z. B. «Bruder Keller, Hoher Rat»"
             />
           </Field>
         </div>
@@ -1043,7 +1042,6 @@ export function Conducting() {
                 className={cn('input no-print min-h-20 resize-y', view.body)}
                 value={current.notes}
                 onChange={(event) => change({ notes: event.target.value })}
-                placeholder="Hinweise für die Person am Pult …"
                 aria-label="Notizen zur Versammlung"
               />
             ) : (
@@ -1053,9 +1051,9 @@ export function Conducting() {
         )}
       </article>
 
-      {(draft.dirty || draft.saving) && (
+      {draft.saving && (
         <p className="no-print mt-3 text-center text-xs text-slate-500 dark:text-slate-400">
-          {draft.saving ? 'Wird gespeichert …' : 'Änderungen werden automatisch gespeichert.'}
+          Wird gespeichert …
         </p>
       )}
 
@@ -1263,7 +1261,7 @@ function AnnouncementEditor({
               onChange={(event) =>
                 onChange(replaceInList(entries, { ...entry, text: event.target.value }))
               }
-              placeholder="Worum geht es? z. B. «Gemeindeausflug am 30. August»"
+              placeholder="Bekanntmachung"
               aria-label={`Bekanntmachung ${index + 1}`}
             />
             <input
@@ -1272,7 +1270,7 @@ function AnnouncementEditor({
               onChange={(event) =>
                 onChange(replaceInList(entries, { ...entry, details: event.target.value }))
               }
-              placeholder="Einzelheiten: Zeit, Ort, wer angesprochen ist …"
+              placeholder="Einzelheiten"
               aria-label={`Einzelheiten zu Bekanntmachung ${index + 1}`}
             />
           </div>
@@ -1348,7 +1346,7 @@ function BusinessEditor({
                 onChange={(event) =>
                   onChange(replaceInList(entries, { ...entry, text: event.target.value }))
                 }
-                placeholder="Name und Aufgabe, z. B. «Peter Meier – Lehrer Sonntagsschule»"
+                placeholder="Name und Aufgabe"
                 aria-label={`Text des Eintrags ${index + 1}`}
               />
             </div>
@@ -1418,7 +1416,7 @@ function MusicalNumberEditor({
         className="input text-sm"
         value={entry.performers ?? ''}
         onChange={(event) => onChange({ ...entry, performers: event.target.value })}
-        placeholder="Ergänzung: Gäste, Chor, Begleitung am Klavier …"
+        placeholder="Weitere Mitwirkende"
         aria-label="Weitere Mitwirkende der Musikeinlage"
       />
     </div>

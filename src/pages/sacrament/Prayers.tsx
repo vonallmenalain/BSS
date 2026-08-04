@@ -1,6 +1,6 @@
 import { useMemo, useState } from 'react'
 import { Link } from 'react-router-dom'
-import { HandHeart, History, Sparkles } from 'lucide-react'
+import { HandHeart, History } from 'lucide-react'
 import { useData } from '@/contexts/DataContext'
 import { useToast } from '@/contexts/ToastContext'
 import { usePrayers } from '@/hooks/useFirestore'
@@ -75,10 +75,7 @@ export function Prayers() {
 
   return (
     <>
-      <SectionHeader
-        title="Gebet"
-        description="Zwei Personen pro Sonntag – Anfangs- und Schlussgebet."
-      />
+      <SectionHeader title="Gebet" />
 
       <SegmentedControl<Tab>
         className="mb-4"
@@ -106,13 +103,6 @@ export function Prayers() {
                 meta={describe}
                 placeholder="Name eingeben oder aus den Vorschlägen wählen"
               />
-
-              {!assigned.get(slot) && (
-                <p className="hint flex items-center gap-1.5">
-                  <Sparkles className="size-3.5" aria-hidden />
-                  Vorgeschlagen wird, wer am längsten nicht mehr gebetet hat.
-                </p>
-              )}
             </section>
           ))}
         </div>

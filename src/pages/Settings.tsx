@@ -7,6 +7,7 @@ import {
   CalendarCog,
   CalendarDays,
   Check,
+  ChevronDown,
   ChevronRight,
   ClipboardList,
   HeartHandshake,
@@ -456,40 +457,73 @@ export function Settings() {
           </ul>
         </section>
 
-        {/* ---------- Import ---------- */}
-        <section className="card p-5">
-          <h2 className="mb-1 flex items-center gap-2 text-sm font-semibold">
-            <Upload className="size-4 text-slate-400" aria-hidden />
-            Importe
-          </h2>
-          <p className="hint mb-4">
-            Hier laufen alle Importe zusammen – und nur hier. In der übrigen App gibt es keine
-            Import-Knöpfe: Ein Import ersetzt ganze Bereiche und gehört deshalb nicht neben die
-            Arbeit am einzelnen Eintrag.
-          </p>
-
-          <ul className="divide-list">
-            {IMPORTS.map((entry) => (
-              <li key={entry.to}>
-                <Link
-                  to={entry.to}
-                  className="-mx-2 flex items-center gap-3 rounded-lg px-2 py-3 transition hover:bg-slate-50 dark:hover:bg-slate-800/60"
-                >
-                  <entry.icon className="size-4 shrink-0 text-slate-400" aria-hidden />
-                  <span className="min-w-0 flex-1">
-                    <span className="block text-sm font-medium">{entry.label}</span>
-                    <span className="block text-xs text-slate-500 dark:text-slate-400">
-                      {entry.description}
-                    </span>
-                  </span>
-                  <ChevronRight className="size-4 shrink-0 text-slate-300" aria-hidden />
-                </Link>
-              </li>
-            ))}
-          </ul>
-        </section>
+        {/* ---------- Import ----------
+            Zugeklappt, weil Importe zum Einrichten gehören und nicht zum
+            Alltag: Wer die Einstellungen öffnet, sucht in aller Regel etwas
+            anderes. Die ganze Liste erscheint erst auf Wunsch. */}
+        <ImportSection />
       </div>
     </>
+  )
+}
+
+/* ------------------------------------------------------------------ */
+/* Importe                                                             */
+/* ------------------------------------------------------------------ */
+
+/**
+ * Die Liste der Importe – zugeklappt, bis jemand sie braucht.
+ *
+ * Ein Import ist der seltenste Handgriff der App: einmal beim Einrichten,
+ * danach höchstens zweimal im Jahr. Acht Einträge dafür dauerhaft offen zu
+ * lassen, macht die Einstellungen länger, als sie sein müssen.
+ */
+function ImportSection() {
+  const [open, setOpen] = useState(false)
+
+  return (
+    <section className="card p-5">
+      <h2 className="text-sm font-semibold">
+        <button
+          type="button"
+          onClick={() => setOpen((value) => !value)}
+          aria-expanded={open}
+          className="-m-1 flex w-full items-center gap-2 rounded-lg p-1 text-left"
+        >
+          <Upload className="size-4 shrink-0 text-slate-400" aria-hidden />
+          <span className="flex-1">Importe</span>
+          <ChevronDown
+            className={cn(
+              'size-4 shrink-0 text-slate-400 transition-transform',
+              open && 'rotate-180',
+            )}
+            aria-hidden
+          />
+        </button>
+      </h2>
+
+      {open && (
+        <ul className="divide-list mt-2">
+          {IMPORTS.map((entry) => (
+            <li key={entry.to}>
+              <Link
+                to={entry.to}
+                className="-mx-2 flex items-center gap-3 rounded-lg px-2 py-3 transition hover:bg-slate-50 dark:hover:bg-slate-800/60"
+              >
+                <entry.icon className="size-4 shrink-0 text-slate-400" aria-hidden />
+                <span className="min-w-0 flex-1">
+                  <span className="block text-sm font-medium">{entry.label}</span>
+                  <span className="block text-xs text-slate-500 dark:text-slate-400">
+                    {entry.description}
+                  </span>
+                </span>
+                <ChevronRight className="size-4 shrink-0 text-slate-300" aria-hidden />
+              </Link>
+            </li>
+          ))}
+        </ul>
+      )}
+    </section>
   )
 }
 

@@ -124,10 +124,10 @@ export function Announcements() {
         title="Bekanntmachungen"
         description={
           count === 0
-            ? 'Was am Sonntag von der Kanzel gesagt wird.'
+            ? undefined
             : `${count} Eintrag${count === 1 ? '' : 'e'}${
                 generated.length > 0 ? ` · davon ${generated.length} wiederkehrend` : ''
-              } · laut Handbuch auf ein Minimum beschränken`
+              }`
         }
         actions={
           <>
@@ -192,7 +192,7 @@ export function Announcements() {
                     onChange={(event) =>
                       change(replaceInList(entries, { ...entry, text: event.target.value }))
                     }
-                    placeholder="Worum geht es? z. B. «Gemeindeausflug am 30. August»"
+                    placeholder="Bekanntmachung"
                     aria-label={`Bekanntmachung ${index + 1}`}
                   />
                   <textarea
@@ -201,7 +201,7 @@ export function Announcements() {
                     onChange={(event) =>
                       change(replaceInList(entries, { ...entry, details: event.target.value }))
                     }
-                    placeholder="Einzelheiten für die Person am Pult: Zeit, Ort, wer angesprochen ist …"
+                    placeholder="Einzelheiten für die Person am Pult"
                     aria-label={`Einzelheiten zu Bekanntmachung ${index + 1}`}
                   />
                 </div>
@@ -307,9 +307,11 @@ export function Announcements() {
         onNew={() => setFormOpen(true)}
       />
 
-      <p className="mt-3 text-center text-xs text-slate-500 dark:text-slate-400">
-        {draft.saving ? 'Wird gespeichert …' : 'Änderungen werden automatisch gespeichert.'}
-      </p>
+      {draft.saving && (
+        <p className="mt-3 text-center text-xs text-slate-500 dark:text-slate-400">
+          Wird gespeichert …
+        </p>
+      )}
 
       <SeriesForm
         open={formOpen || Boolean(editSeries)}
@@ -700,7 +702,6 @@ function SeriesForm({
               className="input min-h-20 resize-y"
               value={form.text}
               onChange={(event) => update('text', event.target.value)}
-              placeholder="z. B. «Am kommenden Samstag ist Tempeltag der Gemeinde.»"
               required
             />
             {form.source === 'cleaning' && (
@@ -735,7 +736,6 @@ function SeriesForm({
               className="input min-h-16 resize-y text-sm"
               value={form.details}
               onChange={(event) => update('details', event.target.value)}
-              placeholder="Zeit, Ort, wer angesprochen ist …"
             />
           </div>
 

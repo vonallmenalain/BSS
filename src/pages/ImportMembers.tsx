@@ -40,11 +40,6 @@ const STEPS: { key: Step; label: string }[] = [
   { key: 'done', label: 'Fertig' },
 ]
 
-const PASTE_EXAMPLE = `Muster, Hans Peter\tM\t42\t13 Apr 1984
-Musterweg 4
-3400 Burgdorf
-079 123 45 67\thans.muster@example.ch`
-
 /**
  * Import-Assistent für die Mitgliederliste.
  *
@@ -258,7 +253,7 @@ export function ImportMembers() {
             }}
             spellCheck={false}
             rows={14}
-            placeholder={`Hier einfügen. Erwartet wird der Aufbau des Verzeichnisses:\n\n${PASTE_EXAMPLE}`}
+            placeholder="Hier einfügen."
             className="input mt-4 resize-y font-mono text-xs leading-relaxed whitespace-pre"
           />
 

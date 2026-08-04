@@ -99,7 +99,6 @@ export function Login() {
                   className="input"
                   value={displayName}
                   onChange={(event) => setDisplayName(event.target.value)}
-                  placeholder="Vor- und Nachname"
                   autoComplete="name"
                   required
                 />
@@ -116,7 +115,6 @@ export function Login() {
                 className="input"
                 value={email}
                 onChange={(event) => setEmail(event.target.value)}
-                placeholder="name@example.ch"
                 autoComplete="email"
                 required
               />

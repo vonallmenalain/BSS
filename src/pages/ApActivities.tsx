@@ -451,7 +451,6 @@ function MonthHeader({
             className="input w-48 py-1 text-sm"
             value={value}
             autoFocus
-            placeholder="z. B. «Leitung Lehrer»"
             onChange={(event) => setValue(event.target.value)}
             onKeyDown={(event) => {
               if (event.key === 'Enter') void save()

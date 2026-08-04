@@ -1,6 +1,5 @@
 import { useState } from 'react'
 import { Music2, Plus, Trash2 } from 'lucide-react'
-import { useData } from '@/contexts/DataContext'
 import { useToast } from '@/contexts/ToastContext'
 import { MemberPicker } from '@/components/ui/Pickers'
 import { HymnField } from '@/components/sacrament/HymnField'
@@ -24,7 +23,6 @@ interface MusicDraft {
  */
 export function Music() {
   const { date, meeting } = useSacrament()
-  const { hymns } = useData()
   const toast = useToast()
 
   const draft = useDraft<MusicDraft>({
@@ -70,11 +68,6 @@ export function Music() {
     <>
       <SectionHeader
         title="Musik"
-        description={
-          hymns.length > 0
-            ? `${hymns.length} Lieder in der Liederliste – Nummer eingeben genügt.`
-            : 'Liednummern eintragen; Titel erscheinen automatisch, sobald die Liederliste hochgeladen ist.'
-        }
         actions={
           <button
             type="button"
@@ -173,7 +166,7 @@ export function Music() {
                       replaceInList(current.numbers, { ...entry, performers: event.target.value }),
                     )
                   }
-                  placeholder="Ergänzung: Gäste, Chor, Begleitung am Klavier …"
+                  placeholder="Weitere Mitwirkende"
                   aria-label={`Weitere Mitwirkende der Musikeinlage ${index + 1}`}
                 />
               </li>

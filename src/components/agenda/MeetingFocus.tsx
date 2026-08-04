@@ -335,10 +335,6 @@ export function MeetingFocus({ items, onAdd, nextMeeting, readOnly = false }: Pr
                 <ChevronRight className="size-4" aria-hidden />
               </button>
             </div>
-
-            <p className="mt-1.5 hidden text-center text-xs text-slate-400 lg:block">
-              Tastatur: ← → blättern
-            </p>
           </div>
         </>
       )}

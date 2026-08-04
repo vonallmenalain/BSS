@@ -17,7 +17,14 @@ import { db, COLLECTIONS } from '@/lib/firebase'
 import { addMonths, startOfDay, toDate } from '@/lib/dates'
 import { stripUndefined, uid } from '@/lib/utils'
 import { commit, type SaveOutcome } from '@/lib/sync'
-import type { AgendaItem, HistoryEntry, ItemKind, ItemStatus, Priority } from '@/lib/types'
+import type {
+  AgendaItem,
+  HistoryEntry,
+  ItemKind,
+  ItemLayout,
+  ItemStatus,
+  Priority,
+} from '@/lib/types'
 import { ITEM_STATUS_LABELS, OPEN_STATUS_QUERY, toItemKind } from '@/lib/types'
 
 const itemsRef = collection(db, COLLECTIONS.agendaItems)
@@ -37,6 +44,8 @@ export interface AgendaItemInput {
   memberRefs?: string[]
   dueDate?: Date | null
   order?: number
+  /** Selbst gebautes Raster statt der Beschreibung – siehe `lib/layout` */
+  layout?: ItemLayout | null
 }
 
 function historyEntry(action: string, actor: Actor): HistoryEntry {
@@ -67,6 +76,7 @@ export async function createAgendaItem(input: AgendaItemInput, actor: Actor): Pr
       assignees: input.assignees ?? [],
       memberRefs: input.memberRefs ?? [],
       dueDate: input.dueDate ? Timestamp.fromDate(input.dueDate) : null,
+      layout: input.layout ?? null,
       deferCount: 0,
       history: [historyEntry('Traktandum erstellt', actor)],
       createdAt: serverTimestamp(),

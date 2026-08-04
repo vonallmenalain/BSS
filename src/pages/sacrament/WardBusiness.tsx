@@ -71,7 +71,6 @@ export function WardBusiness() {
     <>
       <SectionHeader
         title="Angelegenheiten der Gemeinde"
-        description="Bestätigungen, Entlassungen, Ordinierungen, Segnungen und Begrüssungen."
         actions={
           <>
             <button
@@ -183,7 +182,7 @@ export function WardBusiness() {
                       onChange={(event) =>
                         change(replaceInList(entries, { ...entry, text: event.target.value }))
                       }
-                      placeholder="Name und Aufgabe, z. B. «Peter Meier – Lehrer Sonntagsschule»"
+                      placeholder="Name und Aufgabe"
                       aria-label={`Text des Eintrags ${index + 1}`}
                     />
                   </div>

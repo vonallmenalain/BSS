@@ -163,7 +163,6 @@ export function LeaderField({
             event.preventDefault()
             void add()
           }}
-          placeholder="z. B. «Präsident Keller, Pfahlpräsidentschaft»"
         />
 
         {people.length > 0 && (
