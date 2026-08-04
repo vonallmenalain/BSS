@@ -7,6 +7,7 @@ import {
   HeartHandshake,
   History,
   Music,
+  NotebookPen,
 } from 'lucide-react'
 import { cn } from '@/lib/utils'
 
@@ -29,6 +30,7 @@ const TABS = [
   { to: '/import/betreuung', label: 'Betreuung', icon: HeartHandshake },
   { to: '/import/putzplan', label: 'Putzplan', icon: Brush },
   { to: '/import/aktivitaeten', label: 'Aktivitäten AP', icon: CalendarDays },
+  { to: '/import/sitzungen', label: 'Sitzungen', icon: NotebookPen },
   { to: '/import/verlauf', label: 'Verlauf', icon: History },
   { to: '/import/lieder', label: 'Lieder', icon: Music },
 ]

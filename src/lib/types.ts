@@ -174,6 +174,15 @@ export interface Meeting extends WithId {
   /** Zeitpunkt, an dem die Sitzung gestartet bzw. abgeschlossen wurde */
   startedAt?: TS | null
   closedAt?: TS | null
+  /**
+   * Woher der Eintrag stammt, wenn er nicht in der App entstanden ist.
+   *
+   * Gesetzt wird das nur beim einmaligen Übernehmen der bisherigen
+   * Protokolle (`minutes`). Es macht den Import wiederholbar: Ein zweiter
+   * Anlauf nach einer Korrektur räumt genau das weg, was er selbst
+   * angelegt hat, und lässt alles Erfasste stehen.
+   */
+  importedFrom?: string | null
   createdAt?: TS
   updatedAt?: TS
   createdBy?: string
@@ -282,6 +291,9 @@ export interface AgendaItem extends WithId {
   deferCount: number
   /** Sitzung, in der es ursprünglich zum ersten Mal traktandiert war */
   firstMeetingId?: string | null
+
+  /** Aus einem einmaligen Import übernommen – siehe `Meeting.importedFrom` */
+  importedFrom?: string | null
 
   createdAt?: TS
   updatedAt?: TS

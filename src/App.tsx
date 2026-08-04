@@ -44,6 +44,9 @@ const ImportCleaning = lazy(() =>
 const ImportApActivities = lazy(() =>
   import('@/pages/ImportApActivities').then((m) => ({ default: m.ImportApActivities })),
 )
+const ImportMinutes = lazy(() =>
+  import('@/pages/ImportMinutes').then((m) => ({ default: m.ImportMinutes })),
+)
 
 /* Aktivitäten AP – der einzige Bereich, den auch Konten ohne Vollzugriff sehen. */
 const ApActivities = lazy(() =>
@@ -292,6 +295,14 @@ export default function App() {
                     element={
                       <Suspense fallback={<LoadingScreen />}>
                         <ImportApActivities />
+                      </Suspense>
+                    }
+                  />
+                  <Route
+                    path="import/sitzungen"
+                    element={
+                      <Suspense fallback={<LoadingScreen />}>
+                        <ImportMinutes />
                       </Suspense>
                     }
                   />
