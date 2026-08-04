@@ -16,6 +16,7 @@ import { useData } from '@/contexts/DataContext'
 import { useMeetings, useOpenItems, useSacramentMeetings, useTalks } from '@/hooks/useFirestore'
 import { AgendaItemCard } from '@/components/agenda/AgendaItemCard'
 import { AgendaItemForm } from '@/components/agenda/AgendaItemForm'
+import { FOCUS_PARAM } from '@/components/agenda/MeetingFocus'
 import { MeetingStatusBadge } from '@/components/ui/Badge'
 import { EmptyState, SkeletonList } from '@/components/ui/Feedback'
 import { PageHeader } from '@/components/ui/Pickers'
@@ -126,9 +127,14 @@ export function Dashboard() {
     return 'Guten Abend'
   })()
 
+  /*
+   * Ein Eintrag wird dort geöffnet, wo er zu Hause ist – und gleich
+   * aufgeklappt: In der Sitzung ist das der Punkt im Sitzungsmodus, sonst die
+   * Zeile in der Pendenzenliste.
+   */
   const handleOpenItem = (item: AgendaItem) => {
-    if (item.meetingId) navigate(`/sitzungen/${item.meetingId}`)
-    else navigate('/pendenzen')
+    if (item.meetingId) navigate(`/sitzungen/${item.meetingId}?${FOCUS_PARAM}=${item.id}`)
+    else navigate(`/pendenzen?pendenz=${item.id}`)
   }
 
   return (
@@ -216,13 +222,7 @@ export function Dashboard() {
                 ) : (
                   <div className="space-y-2">
                     {meetingItems.slice(0, 4).map((item) => (
-                      <AgendaItemCard
-                        key={item.id}
-                        item={item}
-                        compact
-                        onOpen={handleOpenItem}
-                        nextMeeting={nextMeetingRef}
-                      />
+                      <AgendaItemCard key={item.id} item={item} compact onOpen={handleOpenItem} />
                     ))}
                     {meetingItems.length > 4 && (
                       <Link
@@ -367,13 +367,7 @@ export function Dashboard() {
           ) : (
             <div className="space-y-2">
               {myItems.slice(0, 5).map((item) => (
-                <AgendaItemCard
-                  key={item.id}
-                  item={item}
-                  compact
-                  onOpen={handleOpenItem}
-                  nextMeeting={nextMeetingRef}
-                />
+                <AgendaItemCard key={item.id} item={item} compact onOpen={handleOpenItem} />
               ))}
             </div>
           )}
@@ -387,13 +381,7 @@ export function Dashboard() {
             </h2>
             <div className="space-y-2">
               {overdueItems.slice(0, 5).map((item) => (
-                <AgendaItemCard
-                  key={item.id}
-                  item={item}
-                  compact
-                  onOpen={handleOpenItem}
-                  nextMeeting={nextMeetingRef}
-                />
+                <AgendaItemCard key={item.id} item={item} compact onOpen={handleOpenItem} />
               ))}
             </div>
           </section>
@@ -404,6 +392,7 @@ export function Dashboard() {
         open={formOpen}
         onClose={() => setFormOpen(false)}
         meetingId={nextMeeting?.id ?? null}
+        defaultStatus={nextMeeting?.status === 'running' ? 'pending' : 'new'}
       />
     </>
   )

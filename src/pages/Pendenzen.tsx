@@ -1,34 +1,47 @@
 import { useMemo, useState } from 'react'
-import { useNavigate } from 'react-router-dom'
-import { CheckCircle2, Plus, Search, SlidersHorizontal } from 'lucide-react'
+import { useSearchParams } from 'react-router-dom'
+import { CheckCircle2, Plus, Search } from 'lucide-react'
 import { useAuth } from '@/contexts/AuthContext'
 import { useData } from '@/contexts/DataContext'
 import { useMeetings, useOpenItems } from '@/hooks/useFirestore'
-import { AgendaItemCard } from '@/components/agenda/AgendaItemCard'
 import { AgendaItemForm } from '@/components/agenda/AgendaItemForm'
+import { AgendaItemRow } from '@/components/agenda/AgendaItemRow'
+import { FOCUS_PARAM } from '@/components/agenda/MeetingFocus'
 import { EmptyState, SkeletonList } from '@/components/ui/Feedback'
 import { PageHeader, SegmentedControl } from '@/components/ui/Pickers'
 import { useLocalStorage } from '@/hooks/useLocalStorage'
 import { formatDateShort, getDueInfo, toDate } from '@/lib/dates'
 import { matchesSearch } from '@/lib/utils'
 import { sortForPendenzen } from '@/services/agenda'
-import { CATEGORY_LABELS, type AgendaItem, type ItemCategory } from '@/lib/types'
+import { toItemKind } from '@/lib/types'
 
 type Scope = 'all' | 'mine' | 'overdue' | 'unassigned'
+
+/** Der aufgeklappte Eintrag steht in der Adresse – so führt «Zurück» hierher. */
+const OPEN_PARAM = 'pendenz'
 
 export function Pendenzen() {
   const { profile } = useAuth()
   const { userName } = useData()
-  const navigate = useNavigate()
   const { data: items, loading } = useOpenItems()
   const { data: meetings } = useMeetings(30)
 
   const [scope, setScope] = useLocalStorage<Scope>('bss:pendenzen:scope', 'all')
-  const [category, setCategory] = useState<ItemCategory | 'all'>('all')
   const [search, setSearch] = useState('')
-  const [showFilters, setShowFilters] = useState(false)
   const [formOpen, setFormOpen] = useState(false)
-  const [editItem, setEditItem] = useState<AgendaItem | null>(null)
+  const [searchParams, setSearchParams] = useSearchParams()
+
+  const openId = searchParams.get(OPEN_PARAM)
+  const toggleOpen = (id: string) =>
+    setSearchParams(
+      (params) => {
+        const next = new URLSearchParams(params)
+        if (next.get(OPEN_PARAM) === id) next.delete(OPEN_PARAM)
+        else next.set(OPEN_PARAM, id)
+        return next
+      },
+      { replace: true },
+    )
 
   /** Nächste offene Sitzung – Ziel für «auf nächste Sitzung verschieben». */
   const nextMeetingRef = useMemo(() => {
@@ -67,8 +80,6 @@ export function Pendenzen() {
       result = result.filter((item) => !item.meetingId)
     }
 
-    if (category !== 'all') result = result.filter((item) => item.category === category)
-
     if (search.trim()) {
       result = result.filter((item) =>
         matchesSearch(
@@ -81,12 +92,7 @@ export function Pendenzen() {
     }
 
     return sortForPendenzen(result)
-  }, [items, scope, category, search, profile?.id, userName])
-
-  const handleOpen = (item: AgendaItem) => {
-    if (item.meetingId) navigate(`/sitzungen/${item.meetingId}`)
-    else setEditItem(item)
-  }
+  }, [items, scope, search, profile?.id, userName])
 
   return (
     <>
@@ -102,69 +108,31 @@ export function Pendenzen() {
       />
 
       <div className="mb-4 space-y-3">
-        <div className="flex flex-wrap items-center gap-2">
-          <SegmentedControl<Scope>
-            value={scope}
-            onChange={setScope}
-            options={[
-              { value: 'all', label: 'Alle', count: counts.all },
-              { value: 'mine', label: 'Meine', count: counts.mine },
-              { value: 'overdue', label: 'Überfällig', count: counts.overdue },
-              { value: 'unassigned', label: 'Ohne Sitzung', count: counts.unassigned },
-            ]}
-          />
-          <button
-            type="button"
-            className="btn-secondary btn-sm"
-            onClick={() => setShowFilters((v) => !v)}
-            aria-expanded={showFilters}
-          >
-            <SlidersHorizontal className="size-4" aria-hidden />
-            Filter
-          </button>
-        </div>
+        <SegmentedControl<Scope>
+          value={scope}
+          onChange={setScope}
+          options={[
+            { value: 'all', label: 'Alle', count: counts.all },
+            { value: 'mine', label: 'Meine', count: counts.mine },
+            { value: 'overdue', label: 'Überfällig', count: counts.overdue },
+            { value: 'unassigned', label: 'Ohne Sitzung', count: counts.unassigned },
+          ]}
+        />
 
-        {showFilters && (
-          <div className="card animate-slide-up flex flex-wrap items-end gap-3 p-3">
-            <div className="min-w-48 flex-1">
-              <label className="label" htmlFor="pendenz-search">
-                Suchen
-              </label>
-              <div className="relative">
-                <Search
-                  className="pointer-events-none absolute top-1/2 left-3 size-4 -translate-y-1/2 text-slate-400"
-                  aria-hidden
-                />
-                <input
-                  id="pendenz-search"
-                  type="search"
-                  className="input pl-9"
-                  placeholder="Titel, Beschreibung, Zuständige …"
-                  value={search}
-                  onChange={(event) => setSearch(event.target.value)}
-                />
-              </div>
-            </div>
-            <div className="min-w-40">
-              <label className="label" htmlFor="pendenz-category">
-                Bereich
-              </label>
-              <select
-                id="pendenz-category"
-                className="input"
-                value={category}
-                onChange={(event) => setCategory(event.target.value as ItemCategory | 'all')}
-              >
-                <option value="all">Alle Bereiche</option>
-                {Object.entries(CATEGORY_LABELS).map(([value, label]) => (
-                  <option key={value} value={value}>
-                    {label}
-                  </option>
-                ))}
-              </select>
-            </div>
-          </div>
-        )}
+        <div className="relative">
+          <Search
+            className="pointer-events-none absolute top-1/2 left-3 size-4 -translate-y-1/2 text-slate-400"
+            aria-hidden
+          />
+          <input
+            type="search"
+            className="input pl-9"
+            aria-label="Pendenzen durchsuchen"
+            placeholder="Titel, Beschreibung, Zuständige …"
+            value={search}
+            onChange={(event) => setSearch(event.target.value)}
+          />
+        </div>
       </div>
 
       {loading ? (
@@ -177,7 +145,7 @@ export function Pendenzen() {
             description={
               items.length === 0
                 ? 'Alles erledigt – sehr gut.'
-                : 'Kein Eintrag passt zu den gewählten Filtern.'
+                : 'Kein Eintrag passt zur Suche oder zum gewählten Ausschnitt.'
             }
             action={
               items.length === 0 && (
@@ -190,28 +158,29 @@ export function Pendenzen() {
           />
         </div>
       ) : (
-        <div className="space-y-2">
+        /* Aufgeklappt steht alles da und lässt sich unmittelbar ändern –
+           für Titel und Beschreibung genügt ein Griff in den Text. */
+        <ul className="space-y-2">
           {visible.map((item) => (
-            <AgendaItemCard
+            <AgendaItemRow
               key={item.id}
               item={item}
-              onOpen={handleOpen}
-              onEdit={setEditItem}
+              expanded={openId === item.id}
+              onToggle={() => toggleOpen(item.id)}
               nextMeeting={nextMeetingRef}
+              showKind={toItemKind(item) === 'pendenz'}
               meetingLabel={item.meetingId ? meetingLabels.get(item.meetingId) : undefined}
+              meetingHref={
+                item.meetingId
+                  ? `/sitzungen/${item.meetingId}?${FOCUS_PARAM}=${item.id}`
+                  : undefined
+              }
             />
           ))}
-        </div>
+        </ul>
       )}
 
       <AgendaItemForm open={formOpen} onClose={() => setFormOpen(false)} meetingId={null} />
-
-      <AgendaItemForm
-        open={Boolean(editItem)}
-        onClose={() => setEditItem(null)}
-        item={editItem}
-        meetingId={editItem?.meetingId ?? null}
-      />
     </>
   )
 }

@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState, type FormEvent } from 'react'
-import { Link, useNavigate, useParams } from 'react-router-dom'
+import { Link, useLocation, useNavigate, useParams } from 'react-router-dom'
 import {
   ArrowLeft,
   Award,
@@ -43,8 +43,20 @@ export function MemberDetail() {
   const { isApproved } = useAuth()
   const toast = useToast()
   const navigate = useNavigate()
+  const location = useLocation()
   const { data: talks } = useTalks(300)
   const { data: callings } = useMemberCallings(memberId)
+
+  /*
+   * Zurück dorthin, woher der Aufruf kam.
+   *
+   * Wer im Traktandum auf einen erwähnten Namen tippt, will danach dorthin
+   * zurück – und nicht in der Mitgliederliste stehen, in der er gar nie war.
+   * Woher der Weg kam, bringt der Verweis selbst mit (siehe
+   * `components/ui/MentionText`); ohne Angabe bleibt es bei der Liste.
+   */
+  const origin = location.state as { from?: string; fromLabel?: string } | null
+  const back = { to: origin?.from ?? '/mitglieder', label: origin?.fromLabel ?? 'Mitglieder' }
 
   const [editOpen, setEditOpen] = useState(false)
   const [confirmDelete, setConfirmDelete] = useState(false)
@@ -102,11 +114,11 @@ export function MemberDetail() {
   return (
     <>
       <Link
-        to="/mitglieder"
+        to={back.to}
         className="mb-3 inline-flex items-center gap-1 text-sm text-slate-500 hover:underline dark:text-slate-400"
       >
         <ArrowLeft className="size-4" aria-hidden />
-        Mitglieder
+        {back.label}
       </Link>
 
       {/* ---------- Kopf ---------- */}

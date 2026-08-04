@@ -193,22 +193,92 @@ export interface Meeting extends WithId {
 /* ------------------------------------------------------------------ */
 
 /**
- * Traktandum und Pendenz sind bewusst **dasselbe** Objekt.
- * Ein Traktandum, das in der Sitzung nicht abgeschlossen wird, bleibt offen
- * und erscheint automatisch wieder – dann nennen wir es Pendenz.
+ * Traktandum und Pendenz sind derselbe Datensatz – aber nicht dasselbe Wort.
+ *
+ * Was neu auf die Liste kommt, ist ein **Traktandum**. Übersteht es eine
+ * Sitzung, ohne erledigt zu werden, wird es zur **Pendenz** und bleibt es
+ * auch: In der nächsten Sitzung steht es unter den Pendenzen und nicht unter
+ * den neuen Traktanden. Der Weg führt nur in diese eine Richtung – ein
+ * Traktandum, das einmal liegengeblieben ist, wird nicht wieder neu.
  */
-export type ItemStatus = 'open' | 'in_progress' | 'done' | 'deferred' | 'cancelled'
+export type ItemKind = 'traktandum' | 'pendenz'
+
+export const ITEM_KIND_LABELS: Record<ItemKind, string> = {
+  traktandum: 'Traktandum',
+  pendenz: 'Pendenz',
+}
+
+/** Mehrzahl – für Überschriften und Zählungen. */
+export const ITEM_KIND_PLURAL: Record<ItemKind, string> = {
+  traktandum: 'Traktanden',
+  pendenz: 'Pendenzen',
+}
+
+/**
+ * Drei Zustände, mehr nicht.
+ *
+ * `new` ist alles, was vor dem Start der Sitzung erfasst wurde; mit dem Start
+ * wird daraus `pending`. `pending` heisst schlicht «noch nicht abgehakt» –
+ * gleich, ob es sich um ein Traktandum oder eine Pendenz handelt. `done` ist
+ * das Ende.
+ *
+ * Frühere Fassungen kannten zusätzlich «Offen», «In Arbeit»,
+ * «Zurückgestellt» und «Verworfen». Vier Abstufungen für dieselbe Aussage
+ * halfen niemandem: Am Sitzungstisch zählt einzig, ob ein Punkt erledigt ist.
+ * Alte Werte lesen sich deshalb als `pending` bzw. `done` (siehe
+ * `toItemStatus`).
+ */
+export type ItemStatus = 'new' | 'pending' | 'done'
 
 export const ITEM_STATUS_LABELS: Record<ItemStatus, string> = {
-  open: 'Offen',
-  in_progress: 'In Arbeit',
+  new: 'Neu',
+  pending: 'Pendent',
   done: 'Erledigt',
-  deferred: 'Zurückgestellt',
-  cancelled: 'Verworfen',
 }
 
 /** Status, die als «noch zu tun» gelten und in der nächsten Sitzung auftauchen. */
-export const OPEN_STATUSES: ItemStatus[] = ['open', 'in_progress', 'deferred']
+export const OPEN_STATUSES: ItemStatus[] = ['new', 'pending']
+
+/**
+ * Dasselbe für Firestore-Abfragen – einschliesslich der Werte früherer
+ * Fassungen.
+ *
+ * Eine `in`-Abfrage vergleicht, was in der Datenbank steht, und dort stehen
+ * noch Jahre an «open», «in_progress» und «deferred». Ohne sie verschwänden
+ * genau die Pendenzen aus der Liste, um die es geht. Zurückgeführt wird erst
+ * beim Lesen, nicht durch eine Wanderung über den ganzen Bestand.
+ */
+export const OPEN_STATUS_QUERY: string[] = [...OPEN_STATUSES, 'open', 'in_progress', 'deferred']
+
+/** Was beim Start der Sitzung von «Neu» auf «Pendent» wechselt. */
+export const NEW_STATUS_QUERY: string[] = ['new', 'open', 'in_progress', 'deferred']
+
+/** Was in Firestore steht, auf die drei Zustände zurückführen. */
+export function toItemStatus(value: unknown): ItemStatus {
+  if (value === 'new') return 'new'
+  // «Verworfen» kannte nur, wer den Punkt nicht mehr sehen wollte – er ist
+  // vom Tisch, und das heisst hier erledigt.
+  if (value === 'done' || value === 'cancelled') return 'done'
+  return 'pending'
+}
+
+/**
+ * Traktandum oder Pendenz.
+ *
+ * Steht das Feld noch nicht am Datensatz (alles, was vor dieser Unterscheidung
+ * erfasst wurde), wird es aus der Vorgeschichte abgeleitet: Wer schon einmal
+ * in einer anderen Sitzung stand, ist eine Pendenz.
+ */
+export function toItemKind(item: {
+  kind?: unknown
+  meetingId?: string | null
+  firstMeetingId?: string | null
+}): ItemKind {
+  if (item.kind === 'pendenz') return 'pendenz'
+  if (item.kind === 'traktandum') return 'traktandum'
+  const first = item.firstMeetingId ?? null
+  return first !== null && first !== (item.meetingId ?? null) ? 'pendenz' : 'traktandum'
+}
 
 export type Priority = 'low' | 'normal' | 'high'
 
@@ -216,31 +286,6 @@ export const PRIORITY_LABELS: Record<Priority, string> = {
   low: 'Tief',
   normal: 'Normal',
   high: 'Hoch',
-}
-
-export type ItemCategory =
-  | 'general'
-  | 'member_care'
-  | 'calling'
-  | 'talk'
-  | 'youth'
-  | 'welfare'
-  | 'temple'
-  | 'finance'
-  | 'admin'
-  | 'events'
-
-export const CATEGORY_LABELS: Record<ItemCategory, string> = {
-  general: 'Allgemein',
-  member_care: 'Mitgliederbetreuung',
-  calling: 'Berufungen',
-  talk: 'Ansprachen',
-  youth: 'Jugend',
-  welfare: 'Wohlfahrt',
-  temple: 'Tempel & Familienforschung',
-  finance: 'Finanzen',
-  admin: 'Administration',
-  events: 'Anlässe',
 }
 
 export interface ItemNote {
@@ -269,13 +314,23 @@ export interface AgendaItem extends WithId {
   /** Position innerhalb der Sitzung – bestimmt die Reihenfolge im Sitzungsmodus */
   order: number
 
+  /**
+   * Traktandum oder Pendenz. Fehlt das Feld (Altbestand), leitet
+   * `toItemKind()` es aus `firstMeetingId` ab.
+   */
+  kind: ItemKind
   status: ItemStatus
   priority: Priority
-  category: ItemCategory
 
   /** UIDs der zuständigen Personen (Mehrfachzuweisung möglich) */
   assignees: string[]
-  /** betroffene Gemeindemitglieder (memberIds) */
+  /**
+   * Mitglieder, die im Text mit «@» eingesetzt wurden.
+   *
+   * Kein Feld im Formular mehr, sondern die Spur der Erwähnung: Sie hält
+   * fest, wer gemeint ist, und macht den Namen im Text anklickbar. Ohne sie
+   * stünde dort blosser Text, und der Weg zur Person wäre wieder die Suche.
+   */
   memberRefs: string[]
 
   /** Termin, bis wann die Pendenz erledigt sein soll */
@@ -283,9 +338,6 @@ export interface AgendaItem extends WithId {
 
   notes: ItemNote[]
   history: HistoryEntry[]
-
-  /** Nur für Bischof und Ratgeber sichtbar (seelsorgerische Themen) */
-  confidential: boolean
 
   /** Wie oft wurde dieses Traktandum schon vertagt? Macht Dauerbrenner sichtbar. */
   deferCount: number

@@ -1,84 +1,78 @@
 import { useEffect, useState, type FormEvent } from 'react'
-import { Lock } from 'lucide-react'
 import { Modal } from '@/components/ui/Modal'
 import { MentionField } from '@/components/ui/MentionField'
-import { AssigneePicker, MemberPicker } from '@/components/ui/Pickers'
+import { AssigneePicker, SegmentedControl } from '@/components/ui/Pickers'
 import { useAuth } from '@/contexts/AuthContext'
 import { useToast } from '@/contexts/ToastContext'
-import { toDate, toDateInput } from '@/lib/dates'
-import { createAgendaItem, updateAgendaItem, type AgendaItemInput } from '@/services/agenda'
-import {
-  CATEGORY_LABELS,
-  PRIORITY_LABELS,
-  type AgendaItem,
-  type ItemCategory,
-  type Priority,
-} from '@/lib/types'
+import { createAgendaItem, type AgendaItemInput } from '@/services/agenda'
+import { PRIORITY_LABELS, type ItemStatus, type Priority } from '@/lib/types'
 
 interface Props {
   open: boolean
   onClose: () => void
-  /** Vorhandenes Traktandum bearbeiten – leer lassen zum Anlegen */
-  item?: AgendaItem | null
-  /** Beim Anlegen direkt einer Sitzung zuordnen */
+  /** Direkt einer Sitzung zuordnen – ohne Angabe landet es im Sammelkorb */
   meetingId?: string | null
+  /**
+   * «Neu» vor dem Start der Sitzung, «Pendent», sobald sie läuft. Ein Punkt,
+   * der mitten in der Sitzung dazukommt, war nie «neu» – er wird sofort
+   * besprochen.
+   */
+  defaultStatus?: ItemStatus
   onSaved?: (id: string) => void
 }
 
 interface FormState {
   title: string
   description: string
-  category: ItemCategory
   priority: Priority
   assignees: string[]
   memberRefs: string[]
   dueDate: string
-  confidential: boolean
 }
 
 const EMPTY: FormState = {
   title: '',
   description: '',
-  category: 'general',
   priority: 'normal',
   assignees: [],
   memberRefs: [],
   dueDate: '',
-  confidential: false,
 }
 
-export function AgendaItemForm({ open, onClose, item, meetingId = null, onSaved }: Props) {
+/**
+ * Ein neues Traktandum erfassen.
+ *
+ * Nur zum Anlegen: Geändert wird ein Eintrag dort, wo er steht – in der
+ * Sitzung oder in der Pendenzenliste, unmittelbar im Text. Ein Fenster, das
+ * sich über die Sitzung legt, um ein Wort zu ändern, gibt es nicht mehr.
+ *
+ * Gefragt wird nur nach dem, was am Sitzungstisch zählt: Titel, Beschreibung,
+ * Priorität, Termin, Zuständige. Alles Weitere lässt sich nachtragen, und
+ * Bereich, betroffene Mitglieder und «vertraulich» sind ganz weggefallen.
+ */
+export function AgendaItemForm({
+  open,
+  onClose,
+  meetingId = null,
+  defaultStatus = 'new',
+  onSaved,
+}: Props) {
   const { profile } = useAuth()
   const toast = useToast()
   const [form, setForm] = useState<FormState>(EMPTY)
   const [saving, setSaving] = useState(false)
 
-  // Beim Öffnen den Zustand aus dem Traktandum übernehmen bzw. zurücksetzen.
+  // Beim Öffnen zurücksetzen, damit nichts vom letzten Mal stehen bleibt.
   useEffect(() => {
-    if (!open) return
-    setForm(
-      item
-        ? {
-            title: item.title,
-            description: item.description ?? '',
-            category: item.category,
-            priority: item.priority,
-            assignees: item.assignees ?? [],
-            memberRefs: item.memberRefs ?? [],
-            dueDate: toDateInput(item.dueDate),
-            confidential: item.confidential ?? false,
-          }
-        : EMPTY,
-    )
-  }, [open, item])
+    if (open) setForm(EMPTY)
+  }, [open])
 
   const update = <K extends keyof FormState>(key: K, value: FormState[K]) =>
     setForm((current) => ({ ...current, [key]: value }))
 
   /*
-   * Ein mit «@» eingesetzter Name ist zugleich eine Verknüpfung: Wer im
-   * Text steht, steht auch unter «Betrifft Mitglieder» – sonst fände die
-   * App den Zusammenhang später nicht wieder.
+   * Ein mit «@» eingesetzter Name ist zugleich ein Verweis: Wer im Text steht,
+   * wird daneben vermerkt – sonst führte der Name später nirgendwohin.
    */
   const linkMember = (memberId: string) =>
     setForm((current) =>
@@ -99,37 +93,19 @@ export function AgendaItemForm({ open, onClose, item, meetingId = null, onSaved 
 
     setSaving(true)
     try {
-      const actor = { id: profile.id, name: profile.displayName }
       const payload: AgendaItemInput = {
         title,
         description: form.description,
-        category: form.category,
         priority: form.priority,
         assignees: form.assignees,
         memberRefs: form.memberRefs,
         dueDate: form.dueDate ? new Date(`${form.dueDate}T12:00:00`) : null,
-        confidential: form.confidential,
+        status: defaultStatus,
         meetingId,
       }
-
-      if (item) {
-        const outcome = await updateAgendaItem(item.id, {
-          title: payload.title,
-          description: payload.description,
-          category: payload.category,
-          priority: payload.priority,
-          assignees: payload.assignees,
-          memberRefs: payload.memberRefs,
-          dueDate: payload.dueDate,
-          confidential: payload.confidential,
-        })
-        toast.saved('Traktandum aktualisiert.', outcome)
-        onSaved?.(item.id)
-      } else {
-        const id = await createAgendaItem(payload, actor)
-        toast.success(meetingId ? 'Traktandum zur Sitzung hinzugefügt.' : 'Traktandum erfasst.')
-        onSaved?.(id)
-      }
+      const id = await createAgendaItem(payload, { id: profile.id, name: profile.displayName })
+      toast.success(meetingId ? 'Traktandum zur Sitzung hinzugefügt.' : 'Traktandum erfasst.')
+      onSaved?.(id)
       onClose()
     } catch (error) {
       console.error(error)
@@ -143,13 +119,11 @@ export function AgendaItemForm({ open, onClose, item, meetingId = null, onSaved 
     <Modal
       open={open}
       onClose={onClose}
-      title={item ? 'Traktandum bearbeiten' : 'Neues Traktandum'}
+      title="Neues Traktandum"
       description={
-        item
-          ? undefined
-          : meetingId
-            ? 'Wird direkt in die gewählte Sitzung aufgenommen.'
-            : 'Landet im Sammelkorb und kann später einer Sitzung zugeordnet werden.'
+        meetingId
+          ? 'Wird direkt in die gewählte Sitzung aufgenommen.'
+          : 'Landet im Sammelkorb und kann später einer Sitzung zugeordnet werden.'
       }
       size="lg"
       footer={
@@ -158,7 +132,7 @@ export function AgendaItemForm({ open, onClose, item, meetingId = null, onSaved 
             Abbrechen
           </button>
           <button type="submit" form="agenda-form" className="btn-primary" disabled={saving}>
-            {saving ? 'Wird gespeichert …' : item ? 'Speichern' : 'Erfassen'}
+            {saving ? 'Wird gespeichert …' : 'Erfassen'}
           </button>
         </>
       }
@@ -195,45 +169,22 @@ export function AgendaItemForm({ open, onClose, item, meetingId = null, onSaved 
           />
           <p className="hint">
             Mit <strong>@</strong> lässt sich mitten im Text ein Mitglied wählen – der Name wird
-            eingesetzt und unten verknüpft.
+            eingesetzt und bleibt anklickbar.
           </p>
         </div>
 
-        <div className="grid gap-4 sm:grid-cols-3">
+        <div className="grid gap-4 sm:grid-cols-2">
           <div>
-            <label className="label" htmlFor="item-category">
-              Bereich
-            </label>
-            <select
-              id="item-category"
-              className="input"
-              value={form.category}
-              onChange={(event) => update('category', event.target.value as ItemCategory)}
-            >
-              {Object.entries(CATEGORY_LABELS).map(([value, label]) => (
-                <option key={value} value={value}>
-                  {label}
-                </option>
-              ))}
-            </select>
-          </div>
-
-          <div>
-            <label className="label" htmlFor="item-priority">
-              Priorität
-            </label>
-            <select
-              id="item-priority"
-              className="input"
+            <span className="label">Priorität</span>
+            <SegmentedControl<Priority>
               value={form.priority}
-              onChange={(event) => update('priority', event.target.value as Priority)}
-            >
-              {Object.entries(PRIORITY_LABELS).map(([value, label]) => (
-                <option key={value} value={value}>
-                  {label}
-                </option>
-              ))}
-            </select>
+              onChange={(next) => update('priority', next)}
+              size="sm"
+              options={(['low', 'normal', 'high'] as Priority[]).map((value) => ({
+                value,
+                label: PRIORITY_LABELS[value],
+              }))}
+            />
           </div>
 
           <div>
@@ -251,38 +202,6 @@ export function AgendaItemForm({ open, onClose, item, meetingId = null, onSaved 
         </div>
 
         <AssigneePicker value={form.assignees} onChange={(next) => update('assignees', next)} />
-
-        <MemberPicker
-          value={form.memberRefs}
-          onChange={(next) => update('memberRefs', next)}
-          label="Betrifft Mitglieder (optional)"
-        />
-
-        <label className="flex cursor-pointer items-start gap-3 rounded-lg border border-slate-200 p-3 dark:border-slate-700">
-          <input
-            type="checkbox"
-            className="mt-0.5 size-4 rounded"
-            checked={form.confidential}
-            onChange={(event) => update('confidential', event.target.checked)}
-          />
-          <span className="min-w-0 flex-1">
-            <span className="flex items-center gap-1.5 text-sm font-medium">
-              <Lock className="size-3.5" aria-hidden />
-              Vertraulich
-            </span>
-            <span className="hint mt-0.5 block">
-              Kennzeichnet seelsorgerische Anliegen, die nicht nach aussen getragen werden.
-              Innerhalb der Bischofschaft bleibt der Eintrag für alle sichtbar.
-            </span>
-          </span>
-        </label>
-
-        {item && (
-          <p className="hint">
-            Erstellt {toDate(item.createdAt) ? toDateInput(item.createdAt) : '–'}
-            {item.deferCount > 0 && ` · bereits ${item.deferCount}× verschoben`}
-          </p>
-        )}
       </form>
     </Modal>
   )

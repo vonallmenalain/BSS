@@ -1,4 +1,4 @@
-import { useId, useMemo, useRef, useState, type KeyboardEvent } from 'react'
+import { useEffect, useId, useMemo, useRef, useState, type KeyboardEvent } from 'react'
 import { useData } from '@/contexts/DataContext'
 import { Avatar } from '@/components/ui/Avatar'
 import { cn, matchesSearch } from '@/lib/utils'
@@ -25,7 +25,9 @@ export function MentionField({
   value,
   onChange,
   onMention,
+  onBlur,
   multiline = false,
+  autoFocus = false,
   className,
   ...rest
 }: {
@@ -34,18 +36,33 @@ export function MentionField({
   onChange: (next: string) => void
   /** Ein gewähltes Mitglied – wird zusätzlich zum Text gemeldet */
   onMention?: (member: Member) => void
+  /** Läuft nach dem Verlassen des Feldes – nie beim Klick in die Trefferliste */
+  onBlur?: () => void
   multiline?: boolean
+  /** Beim Erscheinen den Cursor ans Ende setzen (Wechsel vom Lesen zum Schreiben) */
+  autoFocus?: boolean
   className?: string
   placeholder?: string
   rows?: number
   required?: boolean
   maxLength?: number
+  'aria-label'?: string
 }) {
   const { members } = useData()
   const listId = useId()
   const fieldRef = useRef<HTMLInputElement | HTMLTextAreaElement>(null)
   const [trigger, setTrigger] = useState<MentionTrigger | null>(null)
   const [active, setActive] = useState(0)
+
+  // Wer aus dem Lesen ins Schreiben wechselt, will weiterschreiben und nicht
+  // vorne beginnen – der Cursor gehört ans Ende.
+  useEffect(() => {
+    if (!autoFocus) return
+    const field = fieldRef.current
+    if (!field) return
+    field.focus()
+    field.setSelectionRange(field.value.length, field.value.length)
+  }, [autoFocus])
 
   const results = useMemo(() => {
     if (!trigger) return []
@@ -119,8 +136,16 @@ export function MentionField({
     onChange: (event: { target: { value: string; selectionStart: number | null } }) =>
       handleChange(event.target.value, event.target.selectionStart ?? event.target.value.length),
     onKeyDown: handleKeyDown,
-    // Ein Klick auf einen Treffer muss vor dem Schliessen ankommen.
-    onBlur: () => window.setTimeout(close, 150),
+    /*
+     * Ein Klick auf einen Treffer muss vor dem Schliessen ankommen. Er nimmt
+     * den Fokus gar nicht erst weg (`onMouseDown` verhindert das), deshalb
+     * darf `onBlur` hier ohne Umschweife auch nach aussen melden: Wer das Feld
+     * verlässt, hat zu Ende geschrieben.
+     */
+    onBlur: () => {
+      window.setTimeout(close, 150)
+      onBlur?.()
+    },
     'aria-autocomplete': 'list' as const,
     'aria-controls': trigger ? listId : undefined,
     ...rest,

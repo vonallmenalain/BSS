@@ -13,7 +13,7 @@ Abendmahlsversammlung, Berufungsverwaltung und Mitgliederdaten.
 
 | Bereich                   | Was die App leistet                                                                                 |
 | ------------------------- | --------------------------------------------------------------------------------------------------- |
-| **Sitzungen**             | Termin festlegen, Traktanden sammeln, Sitzungsmodus zum Durchgehen, Protokoll drucken               |
+| **Sitzungen**             | Termin festlegen, Traktanden und Pendenzen sammeln, Sitzungsmodus zum Durchgehen, Protokoll drucken |
 | **Pendenzen**             | Offenes über alle Sitzungen hinweg, gefiltert nach «meine», «überfällig», «ohne Sitzung»            |
 | **Notizen**               | Was nicht an eine Sitzung gehört – für alle sichtbar, speichert von selbst                          |
 | **Putzplan**              | Die Halbjahrestabelle der Gemeinde als Wochenplan – Grundlage für die Ansage am Sonntag             |
@@ -23,14 +23,15 @@ Abendmahlsversammlung, Berufungsverwaltung und Mitgliederdaten.
 | **Mitglieder**            | Stammdaten, Notizen, Suche und Sortierung                                                           |
 
 Traktandum und Pendenz sind derselbe Datensatz: Was in einer Sitzung offen
-bleibt, erscheint automatisch wieder – ohne Umtragen.
+bleibt, erscheint automatisch wieder – ohne Umtragen, und in der nächsten
+Sitzung unter den **Pendenzen** statt unter den neuen **Traktanden**.
 
 **Ein `@` im Traktandum öffnet die Mitgliederliste.** In Titel und
 Beschreibung genügt das Zeichen und der Anfang eines Namens; die Auswahl
-setzt den vollen Namen in den Text und verknüpft die Person zugleich unter
-«Betrifft Mitglieder». Es geht fast immer um jemanden, und der Name ist beim
-Schreiben schon im Kopf – der Umweg über das Feld weiter unten entfällt.
-Passt niemand aus der Liste, bleibt schlicht stehen, was getippt wurde.
+setzt den vollen Namen in den Text. Das `@` verschwindet, der Name bleibt
+farbig und anklickbar und führt zur Person – und «Zurück» wieder genau zu
+dem Punkt, den man gerade gelesen hat. Passt niemand aus der Liste, bleibt
+schlicht stehen, was getippt wurde.
 
 **Importe stehen gesammelt unter «Einstellungen → Importe»** und nirgends
 sonst. Ein Import ersetzt ganze Bereiche; ein Knopf dafür neben der Arbeit am
@@ -239,6 +240,80 @@ Dieselben Tests laufen in der CI, bevor Regeln ausgerollt werden.
 
 ---
 
+## Sitzungen, Traktanden und Pendenzen
+
+**Sitzungen** in der Seitenleiste. Eine Sitzung wird geplant, gestartet,
+durchgeführt und abgeschlossen; danach lässt sich das Protokoll drucken.
+
+### Traktandum oder Pendenz
+
+Beides ist derselbe Datensatz, aber nicht dasselbe Wort:
+
+- **Traktandum** – neu auf die Liste gesetzt, in dieser Sitzung zum ersten Mal
+  dran.
+- **Pendenz** – hat eine frühere Sitzung überstanden, ohne erledigt zu werden.
+
+Der Weg führt nur in eine Richtung. Wird eine Sitzung abgeschlossen, wandert
+alles Unerledigte in den Sammelkorb und ist von da an eine Pendenz; wer sie in
+die nächste Sitzung übernimmt, findet sie dort unter **Pendenzen** und nicht
+unter den neuen Traktanden. In der Liste stehen die beiden Gruppen unter
+eigenen Überschriften, die Pendenzen zuoberst – in dieser Reihenfolge geht
+eine Sitzung durch.
+
+### Drei Status
+
+| Status       | Wann                                                 |
+| ------------ | ---------------------------------------------------- |
+| **Neu**      | eingetragen, bevor die Sitzung gestartet wurde       |
+| **Pendent**  | die Sitzung läuft, der Punkt ist noch nicht abgehakt |
+| **Erledigt** | als erledigt markiert                                |
+
+Der Start der Sitzung macht aus allem, was «Neu» ist, «Pendent». Mehr
+Abstufungen gibt es nicht: Am Sitzungstisch zählt einzig, ob ein Punkt
+erledigt ist. Frühere Fassungen kannten «Offen», «In Arbeit»,
+«Zurückgestellt» und «Verworfen» – was in der Datenbank noch so dasteht, liest
+sich heute als «Pendent» bzw. «Erledigt».
+
+### Sitzungsmodus: schreiben, während gesprochen wird
+
+Ein Punkt gross im Bild, darüber die Sprungleiste, darunter Notizfeld und
+Statusknöpfe. **Es gibt keinen Bearbeiten-Stift und kein Bearbeiten-Fenster
+mehr** – der Eintrag selbst ist das Formular:
+
+- **Titel und Beschreibung** sind Text, in den man hineingreift. Gespeichert
+  wird kurz nach dem letzten Tastendruck und noch einmal beim Weiterblättern;
+  darunter steht, wie weit das Speichern ist.
+- **Priorität** (Standard _Normal_), **Erledigen bis** (Standard leer) und
+  **Zuständig** (niemand vorausgewählt) stehen unmittelbar darunter. Zur Wahl
+  stehen der Bischof, beide Ratgeber und die Sekretäre – ein Klick genügt.
+- Sonst nichts. Bereich, betroffene Mitglieder und das Kennzeichen
+  «vertraulich» sind weggefallen, in der Sitzung wie überall sonst.
+
+Nach «Erledigt» rückt die App von selbst zum nächsten Punkt. Am Laptop
+blättern die Pfeiltasten, `N` springt ins Notizfeld.
+
+### Liste: Reihenfolge festlegen
+
+Die Listenansicht ist zum Vorbereiten da. Jede Zeile ist zugeklappt schmal und
+zeigt Titel und das Nötigste; ein Klick klappt sie auf, und dann steht der
+ganze Inhalt da – und lässt sich gleich dort ändern.
+
+Umsortiert wird innerhalb einer Gruppe, auf zwei Wegen: mit den **Pfeilen** an
+jeder Zeile (auch am Handy) oder durch **Ziehen und Ablegen** am Zeigergerät.
+Die Reihenfolge gilt für alle und bestimmt auch, in welcher Folge der
+Sitzungsmodus durchgeht.
+
+### Namen im Text
+
+Ein `@` mitten im Satz öffnet die Mitgliederliste. Nach der Auswahl steht der
+volle Name im Text, das `@` verschwindet – der Name bleibt aber **farbig
+unterlegt und anklickbar** und führt zur Person in der Mitgliederliste. Der
+Weg zurück führt nicht in die Liste, sondern genau zu dem Punkt, den man
+gerade gelesen hat; die Adresse merkt sich dafür den offenen Eintrag
+(`…/sitzungen/<id>?traktandum=<id>`).
+
+---
+
 ## Abendmahlsversammlung
 
 Ein Bereich, sechs Unterpunkte – oben wird der Sonntag gewählt, und er gilt
@@ -261,15 +336,15 @@ Abweichungen haben Folgen für die Planung. Der Knopf **Programm** – unter
 was ansteht. Es ist dieselbe Angabe an beiden Orten: Wer sie unter
 «Ansprachen» setzt, hat sie auch unter «Leitung» gesetzt.
 
-| Art                                | Versammlung | Ansprachen |
-| ---------------------------------- | ----------- | ---------- |
-| **Abendmahlsversammlung**          | ja          | ja         |
-| **Fast- und Zeugnisversammlung**   | ja          | nein       |
-| **Darbietung der Kinder (DKA)**    | ja          | nein       |
-| **JAE-Sonntag**                    | ja          | nein       |
-| **Besondere Versammlung**          | ja          | ja         |
-| **Pfahlkonferenz**                 | nein        | nein       |
-| **Generalkonferenz**               | nein        | nein       |
+| Art                              | Versammlung | Ansprachen |
+| -------------------------------- | ----------- | ---------- |
+| **Abendmahlsversammlung**        | ja          | ja         |
+| **Fast- und Zeugnisversammlung** | ja          | nein       |
+| **Darbietung der Kinder (DKA)**  | ja          | nein       |
+| **JAE-Sonntag**                  | ja          | nein       |
+| **Besondere Versammlung**        | ja          | ja         |
+| **Pfahlkonferenz**               | nein        | nein       |
+| **Generalkonferenz**             | nein        | nein       |
 
 Ohne Versammlung fällt unter «Leitung» der ganze Ablauf weg und es steht
 der Grund da; ohne Ansprachen bleibt der Sonntag unter «Ansprachen» ohne
@@ -386,20 +461,18 @@ Aufruf dazugerechnet. Das hat zwei Folgen, und beide sind gewollt: Wer den
 Wortlaut ändert, ändert ihn für jeden künftigen Sonntag; und die Serie steht
 auch dort, wo sonst noch nichts erfasst ist.
 
-**Wie oft.** Entweder jeden Sonntag oder bestimmte Sonntage im Monat – 1. bis
-5. und «letzter», auch mehrere zugleich. Gezählt wird im Kalender: Der
-3. Sonntag ist der dritte Sonntag dieses Monats, ganz gleich, auf welchen
+**Wie oft.** Entweder jeden Sonntag oder bestimmte Sonntage im Monat – 1. bis 5. und «letzter», auch mehrere zugleich. Gezählt wird im Kalender: Der 3. Sonntag ist der dritte Sonntag dieses Monats, ganz gleich, auf welchen
 Wochentag der Monatsanfang fällt. Dazu ein **Ab**-Datum und wahlweise ein
 **Bis**.
 
 **Löschen – die Wahl.** Der Papierkorb an einer wiederkehrenden Bekanntmachung
 fragt:
 
-| Wahl                            | Was geschieht                                                                          |
-| ------------------------------- | -------------------------------------------------------------------------------------- |
-| **Nur diesen Sonntag**          | Der Sonntag wird gestrichen, die Serie läuft weiter                                     |
-| **Diesen und alle künftigen**   | Die Serie endet am Vortag; vergangene Sonntage behalten die Bekanntmachung              |
-| **Ganz löschen** (im Fenster)   | Die Bekanntmachung verschwindet auch aus vergangenen Sonntagen                          |
+| Wahl                          | Was geschieht                                                              |
+| ----------------------------- | -------------------------------------------------------------------------- |
+| **Nur diesen Sonntag**        | Der Sonntag wird gestrichen, die Serie läuft weiter                        |
+| **Diesen und alle künftigen** | Die Serie endet am Vortag; vergangene Sonntage behalten die Bekanntmachung |
+| **Ganz löschen** (im Fenster) | Die Bekanntmachung verschwindet auch aus vergangenen Sonntagen             |
 
 Vergangene Sonntage werden in den ersten beiden Fällen nie angetastet: Was
 einmal von der Kanzel gesagt wurde, lässt sich nicht nachträglich streichen.
@@ -819,14 +892,14 @@ je Sitzung eine Tabelle, die neuste zuoberst, in der ersten Zeile das Datum
 («Traktanden, 31.07.2025» oder «Protokoll, 05.01.2023»), darunter je Zeile
 ein Traktandum und daneben «Wer» und «Bis». Genau so wird es gelesen.
 
-| In der Datei                | In der App                                         |
-| --------------------------- | -------------------------------------------------- |
-| eine Tabelle                | eine Sitzung mit dem Datum aus der Kopfzeile        |
-| eine Zeile                  | ein Traktandum                                      |
-| erste Zeile der Zelle       | der Titel                                           |
-| alles Weitere in der Zelle  | die Beschreibung                                    |
-| «Wer» und «Bis»             | eine Zeile in der Beschreibung                      |
-| Tabelle **Offene Pendenzen**| Pendenzen im Sammelkorb, offen                      |
+| In der Datei                 | In der App                                   |
+| ---------------------------- | -------------------------------------------- |
+| eine Tabelle                 | eine Sitzung mit dem Datum aus der Kopfzeile |
+| eine Zeile                   | ein Traktandum                               |
+| erste Zeile der Zelle        | der Titel                                    |
+| alles Weitere in der Zelle   | die Beschreibung                             |
+| «Wer» und «Bis»              | eine Zeile in der Beschreibung               |
+| Tabelle **Offene Pendenzen** | Pendenzen im Sammelkorb, offen               |
 
 Vergangene Sitzungen gelten als abgeschlossen und ihre Traktanden als
 erledigt. Das ist keine Behauptung über die Sache, sondern über den Ort:
@@ -934,8 +1007,7 @@ Spalten stehen, bestimmt die Kopfzeile; fehlt sie, gilt die gewohnte
 Reihenfolge – die Vorschau sagt, welcher Fall eingetreten ist.
 
 Zwei Dinge sind an dieser Tabelle heikel, und beide stecken in der
-Datumsspalte. Excel liefert ein echtes Datum als **Zahl** (46029 ist der
-7. Januar 2026), und Mehrtägiges wird von Hand hineingeschrieben:
+Datumsspalte. Excel liefert ein echtes Datum als **Zahl** (46029 ist der 7. Januar 2026), und Mehrtägiges wird von Hand hineingeschrieben:
 «03. April – 06. April 2026», «Freitag + Samstag, 30.01 -31.01.2026»,
 «30. Oktober – 1. November 2026». Die Zelle wird deshalb nicht nach einem
 Muster gelesen, sondern durchsucht: Alles, was wie ein Tagesdatum aussieht,
@@ -1020,16 +1092,16 @@ Sie sind für die Berater und die Jugendführung gedacht: Der Aktivitätenplan
 wird mit ihnen geteilt, eine Aufgabe, die Einblick in Personendaten
 rechtfertigt, haben sie aber nicht.
 
-| Rolle                            | Zugriff                                     |
-| -------------------------------- | ------------------------------------------- |
-| **Bischof**                      | alles                                       |
-| **1. Ratgeber**                  | alles                                       |
-| **2. Ratgeber**                  | alles                                       |
-| **Exekutivsekretär**             | alles                                       |
-| **Sekretär**                     | alles                                       |
-| **AP-Kalender · bearbeiten**     | nur «Aktivitäten AP's», mit Schreibrecht    |
-| **AP-Kalender · nur ansehen**    | nur «Aktivitäten AP's», ohne Schreibrecht   |
-| _Wartet auf Freigabe_            | nichts                                      |
+| Rolle                         | Zugriff                                   |
+| ----------------------------- | ----------------------------------------- |
+| **Bischof**                   | alles                                     |
+| **1. Ratgeber**               | alles                                     |
+| **2. Ratgeber**               | alles                                     |
+| **Exekutivsekretär**          | alles                                     |
+| **Sekretär**                  | alles                                     |
+| **AP-Kalender · bearbeiten**  | nur «Aktivitäten AP's», mit Schreibrecht  |
+| **AP-Kalender · nur ansehen** | nur «Aktivitäten AP's», ohne Schreibrecht |
+| _Wartet auf Freigabe_         | nichts                                    |
 
 Wozu dann überhaupt Rollen mit Vollzugriff? Sie halten fest, wer welche
 Aufgabe hat – etwa wer die Abendmahlsversammlung leitet oder präsidiert – und
@@ -1061,9 +1133,9 @@ sich also selbst als 1. Ratgeber ein. Nur den eigenen Zugang entziehen kann
 man sich nicht – «Wartet auf Freigabe» steht für das eigene Konto nicht zur
 Wahl.
 
-Das Kennzeichen «vertraulich» an einem Traktandum bleibt bestehen: Es markiert
-seelsorgerische Anliegen, die nicht nach aussen getragen werden, schränkt den
-Zugriff innerhalb der Bischofschaft aber nicht ein.
+Ein Kennzeichen «vertraulich» am einzelnen Traktandum gibt es nicht mehr. Es
+schränkte den Zugriff innerhalb der Bischofschaft ohnehin nie ein, und was
+niemand sonst sehen soll, gehört nicht in diese Datenbank.
 
 ---
 
@@ -1072,10 +1144,12 @@ Zugriff innerhalb der Bischofschaft aber nicht ein.
 ```
 src/
 ├── components/
-│   ├── agenda/          Traktanden: Karte, Formular, Sitzungsmodus, Verschieben
+│   ├── agenda/          Traktanden und Pendenzen: Zeile, Karte, Editor,
+│   │                    Sitzungsmodus, Erfassen, Verschieben
 │   ├── ap/              Aktivitäten AP: Zeile, Formular, Termine erzeugen
 │   ├── sacrament/       Abendmahlsversammlung: Rahmen mit Sonntagswahl, Lied- und Personenfelder
-│   ├── ui/              Bausteine: Modal, Badges, Avatare, Auswahlfelder, «@»-Feld
+│   ├── ui/              Bausteine: Modal, Badges, Avatare, Auswahlfelder,
+│   │                    «@»-Feld und «@»-Text
 │   ├── Layout.tsx       Navigation (Seitenleiste bzw. untere Leiste)
 │   └── UpdatePrompt.tsx Hinweis auf neue Version
 ├── contexts/            Anmeldung, Stammdaten, Meldungen

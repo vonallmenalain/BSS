@@ -12,7 +12,9 @@ import {
 import { db, COLLECTIONS } from '@/lib/firebase'
 import { useAuth } from '@/contexts/AuthContext'
 import {
-  OPEN_STATUSES,
+  OPEN_STATUS_QUERY,
+  toItemKind,
+  toItemStatus,
   type AgendaItem,
   type AnnouncementSeries,
   type ApActivity,
@@ -115,41 +117,61 @@ export function useMeeting(meetingId: string | undefined) {
 }
 
 /* ------------------------------------------------------------------ */
-/* Traktanden                                                          */
+/* Traktanden und Pendenzen                                            */
 /* ------------------------------------------------------------------ */
 
-/** Alle Traktanden einer bestimmten Sitzung. */
+/**
+ * Wie eine Sammlung von Traktanden gelesen wird.
+ *
+ * Status und Art werden dabei einmal zurechtgerückt: In der Datenbank stehen
+ * noch Jahre an «Offen», «In Arbeit» und «Zurückgestellt», und die Art
+ * («Traktandum» oder «Pendenz») fehlt an allem, was vor dieser Unterscheidung
+ * erfasst wurde. Hier zu übersetzen erspart es jeder Ansicht, die Frage
+ * erneut zu stellen – und dem Bestand eine Wanderung über alle Dokumente.
+ */
+function useAgendaItems(constraints: QueryConstraint[], enabled: boolean) {
+  const state = useCollection<AgendaItem>(COLLECTIONS.agendaItems, constraints, enabled)
+  return useMemo(
+    () => ({
+      ...state,
+      data: state.data.map((item) => ({
+        ...item,
+        status: toItemStatus(item.status),
+        kind: toItemKind(item),
+      })),
+    }),
+    [state],
+  )
+}
+
+/** Alle Traktanden und Pendenzen einer bestimmten Sitzung. */
 export function useMeetingItems(meetingId: string | undefined) {
   const { isApproved } = useAuth()
   const constraints = useMemo(
     () => (meetingId ? [where('meetingId', '==', meetingId), orderBy('order')] : []),
     [meetingId],
   )
-  return useCollection<AgendaItem>(
-    COLLECTIONS.agendaItems,
-    constraints,
-    isApproved && Boolean(meetingId),
-  )
+  return useAgendaItems(constraints, isApproved && Boolean(meetingId))
 }
 
 /**
- * Traktanden ohne Sitzungszuordnung, die noch offen sind – der «Pool».
- * Genau diese Einträge werden beim Planen der nächsten Sitzung angeboten.
+ * Einträge ohne Sitzungszuordnung, die noch offen sind – der «Sammelkorb».
+ * Genau diese werden beim Planen der nächsten Sitzung angeboten.
  */
 export function useUnassignedItems() {
   const { isApproved } = useAuth()
   const constraints = useMemo(
-    () => [where('meetingId', '==', null), where('status', 'in', OPEN_STATUSES)],
+    () => [where('meetingId', '==', null), where('status', 'in', OPEN_STATUS_QUERY)],
     [],
   )
-  return useCollection<AgendaItem>(COLLECTIONS.agendaItems, constraints, isApproved)
+  return useAgendaItems(constraints, isApproved)
 }
 
-/** Sämtliche offenen Traktanden – unabhängig von der Sitzungszuordnung. */
+/** Sämtliche offenen Einträge – unabhängig von der Sitzungszuordnung. */
 export function useOpenItems() {
   const { isApproved } = useAuth()
-  const constraints = useMemo(() => [where('status', 'in', OPEN_STATUSES)], [])
-  return useCollection<AgendaItem>(COLLECTIONS.agendaItems, constraints, isApproved)
+  const constraints = useMemo(() => [where('status', 'in', OPEN_STATUS_QUERY)], [])
+  return useAgendaItems(constraints, isApproved)
 }
 
 /** Traktanden für die Archiv-/Suchansicht. */
@@ -159,7 +181,7 @@ export function useAllItems(limitCount = 500) {
     () => [orderBy('updatedAt', 'desc'), fbLimit(limitCount)],
     [limitCount],
   )
-  return useCollection<AgendaItem>(COLLECTIONS.agendaItems, constraints, isApproved)
+  return useAgendaItems(constraints, isApproved)
 }
 
 /* ------------------------------------------------------------------ */
