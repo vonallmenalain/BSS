@@ -7,7 +7,8 @@ import { useAuth } from '@/contexts/AuthContext'
 import { useToast } from '@/contexts/ToastContext'
 import { createAgendaItem, type AgendaItemInput } from '@/services/agenda'
 import { emptyLayout, serializeLayout } from '@/lib/layout'
-import type { ItemLayout, ItemStatus } from '@/lib/types'
+import { cn } from '@/lib/utils'
+import { ITEM_KIND_LABELS, type ItemKind, type ItemLayout, type ItemStatus } from '@/lib/types'
 
 interface Props {
   open: boolean
@@ -20,6 +21,14 @@ interface Props {
    * besprochen.
    */
   defaultStatus?: ItemStatus
+  /**
+   * Zur Wahl stellen, ob ein Traktandum oder eine Pendenz entsteht.
+   *
+   * Nur dort gesetzt, wo beides gemeint sein kann – unter «Pendenzen». In
+   * einer Sitzung erfasst man Traktanden; die Frage stellte sich dort nicht.
+   */
+  kindChoice?: boolean
+  defaultKind?: ItemKind
   onSaved?: (id: string) => void
 }
 
@@ -55,17 +64,25 @@ const EMPTY: FormState = {
  * Punkt ein Absatz Text ist oder eine kleine Tabelle, entscheidet sich beim
  * Erfassen. Später stünde der Haken über zwanzig Traktanden, die ihn nie
  * brauchen.
+ *
+ * Unter «Pendenzen» steht zuoberst zusätzlich die Wahl zwischen **Traktandum**
+ * und **Pendenz**. Beides gehört in dieselbe nächste Sitzung – nur eben unter
+ * verschiedene Überschriften: das eine ein Thema, über das gesprochen wird,
+ * das andere eine Aufgabe, die jemand mitnimmt.
  */
 export function AgendaItemForm({
   open,
   onClose,
   meetingId = null,
   defaultStatus = 'new',
+  kindChoice = false,
+  defaultKind = 'traktandum',
   onSaved,
 }: Props) {
   const { profile } = useAuth()
   const toast = useToast()
   const [form, setForm] = useState<FormState>(EMPTY)
+  const [kind, setKind] = useState<ItemKind>(defaultKind)
   const [saving, setSaving] = useState(false)
 
   /*
@@ -80,8 +97,9 @@ export function AgendaItemForm({
   useEffect(() => {
     if (!open) return
     setForm(EMPTY)
+    setKind(defaultKind)
     lastLayout.current = null
-  }, [open])
+  }, [open, defaultKind])
 
   const update = <K extends keyof FormState>(key: K, value: FormState[K]) =>
     setForm((current) => ({ ...current, [key]: value }))
@@ -119,12 +137,19 @@ export function AgendaItemForm({
         description: form.description,
         assignees: form.assignees,
         memberRefs: form.memberRefs,
-        status: defaultStatus,
+        // Eine Pendenz ist von Anfang an pendent – «Neu» meint das Traktandum,
+        // das vor dem Start der Sitzung erfasst wurde.
+        status: kind === 'pendenz' ? 'pending' : defaultStatus,
+        kind,
         meetingId,
         layout: form.layout ? serializeLayout(form.layout) : null,
       }
       const id = await createAgendaItem(payload, { id: profile.id, name: profile.displayName })
-      toast.success(meetingId ? 'Traktandum zur Sitzung hinzugefügt.' : 'Traktandum erfasst.')
+      toast.success(
+        meetingId
+          ? `${ITEM_KIND_LABELS[kind]} zur nächsten Sitzung hinzugefügt.`
+          : `${ITEM_KIND_LABELS[kind]} erfasst.`,
+      )
       onSaved?.(id)
       onClose()
     } catch (error) {
@@ -139,10 +164,12 @@ export function AgendaItemForm({
     <Modal
       open={open}
       onClose={onClose}
-      title="Neues Traktandum"
+      title={kind === 'pendenz' ? 'Neue Pendenz' : 'Neues Traktandum'}
       description={
         meetingId
-          ? 'Wird direkt in die gewählte Sitzung aufgenommen.'
+          ? kind === 'pendenz'
+            ? 'Steht in der nächsten Sitzung unter den Pendenzen.'
+            : 'Steht in der nächsten Sitzung unter den Traktanden.'
           : 'Landet im Sammelkorb und kann später einer Sitzung zugeordnet werden.'
       }
       size="lg"
@@ -158,6 +185,38 @@ export function AgendaItemForm({
       }
     >
       <form id="agenda-form" onSubmit={handleSubmit} className="space-y-4">
+        {/* Was entsteht hier? Die Frage steht zuoberst, weil sie über die
+            Überschrift entscheidet, unter der der Eintrag später steht. */}
+        {kindChoice && (
+          <div>
+            <span className="label">Was soll entstehen?</span>
+            <div className="grid gap-2 sm:grid-cols-2">
+              {(
+                [
+                  ['traktandum', 'Ein Thema, über das in der nächsten Sitzung gesprochen wird.'],
+                  ['pendenz', 'Eine Aufgabe, die offen ist und in der Sitzung mitläuft.'],
+                ] as [ItemKind, string][]
+              ).map(([value, hint]) => (
+                <button
+                  key={value}
+                  type="button"
+                  onClick={() => setKind(value)}
+                  aria-pressed={kind === value}
+                  className={cn(
+                    'rounded-lg border p-3 text-left transition',
+                    kind === value
+                      ? 'border-brand-500 bg-brand-50 dark:bg-brand-950'
+                      : 'border-slate-300 hover:border-slate-400 dark:border-slate-700',
+                  )}
+                >
+                  <span className="block text-sm font-medium">{ITEM_KIND_LABELS[value]}</span>
+                  <span className="hint mt-0.5 block">{hint}</span>
+                </button>
+              ))}
+            </div>
+          </div>
+        )}
+
         {/* Der Haken steht oben rechts, weil er über die Gestalt des ganzen
             Fensters entscheidet und nicht über ein einzelnes Feld. */}
         <div className="flex justify-end">

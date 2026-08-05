@@ -1,10 +1,9 @@
-import { useState } from 'react'
 import { Music2, Plus, Trash2 } from 'lucide-react'
 import { useToast } from '@/contexts/ToastContext'
 import { MemberPicker } from '@/components/ui/Pickers'
 import { HymnField } from '@/components/sacrament/HymnField'
 import { ConflictNotice, SectionHeader, useSacrament } from '@/components/sacrament/SacramentLayout'
-import { useDraft } from '@/components/sacrament/useDraft'
+import { useAutoDraft } from '@/components/sacrament/useDraft'
 import { newMusicalNumber, replaceInList, saveSacramentMeeting } from '@/services/sacrament'
 import { HYMN_SLOT_LABELS, type HymnChoice, type HymnSlot, type MusicalNumber } from '@/lib/types'
 
@@ -20,16 +19,27 @@ interface MusicDraft {
  * Zwischenlied ist freiwillig. Zusätzlich lassen sich Musikeinlagen erfassen –
  * mit den Mitgliedern, die vortragen. Die Reihenfolge von Zwischenlied und
  * Musikeinlagen zwischen den Ansprachen wird unter «Leitung» festgelegt.
+ *
+ * Gespeichert wird laufend, wie überall in diesem Bereich: kurz nach der
+ * letzten Eingabe und spätestens beim Verlassen der Seite.
  */
 export function Music() {
   const { date, meeting } = useSacrament()
   const toast = useToast()
 
-  const draft = useDraft<MusicDraft>({
-    hymns: meeting?.hymns ?? {},
-    numbers: meeting?.musicalNumbers ?? [],
-  })
-  const [saving, setSaving] = useState(false)
+  /*
+   * Geschrieben wird, was dasteht – auch die eben angelegte, noch leere
+   * Musikeinlage. Sie beim Speichern wegzulassen hiesse, sie eine Sekunde
+   * nach dem Anlegen wieder verschwinden zu lassen.
+   */
+  const draft = useAutoDraft<MusicDraft>(
+    {
+      hymns: meeting?.hymns ?? {},
+      numbers: meeting?.musicalNumbers ?? [],
+    },
+    (value) => saveSacramentMeeting(date, { hymns: value.hymns, musicalNumbers: value.numbers }),
+    { onError: () => toast.error('Speichern fehlgeschlagen.') },
+  )
 
   const current = draft.value
 
@@ -44,41 +54,9 @@ export function Music() {
 
   const changeNumbers = (next: MusicalNumber[]) => draft.set({ ...current, numbers: next })
 
-  const save = async () => {
-    setSaving(true)
-    try {
-      const cleanedNumbers = current.numbers.filter(
-        (entry) => entry.title.trim() || entry.memberIds.length > 0 || entry.performers?.trim(),
-      )
-      const outcome = await saveSacramentMeeting(date, {
-        hymns: current.hymns,
-        musicalNumbers: cleanedNumbers,
-      })
-      draft.reset()
-      toast.saved('Musik gespeichert.', outcome)
-    } catch (error) {
-      console.error(error)
-      toast.error('Speichern fehlgeschlagen.')
-    } finally {
-      setSaving(false)
-    }
-  }
-
   return (
     <>
-      <SectionHeader
-        title="Musik"
-        actions={
-          <button
-            type="button"
-            className="btn-primary"
-            onClick={() => void save()}
-            disabled={!draft.dirty || saving}
-          >
-            {saving ? 'Wird gespeichert …' : draft.conflict ? 'Trotzdem speichern' : 'Speichern'}
-          </button>
-        }
-      />
+      <SectionHeader title="Musik" />
 
       {draft.conflict && <ConflictNotice onDiscard={draft.reset} />}
 
@@ -175,9 +153,9 @@ export function Music() {
         )}
       </section>
 
-      {draft.dirty && (
-        <p className="mt-3 text-center text-xs text-amber-700 dark:text-amber-400">
-          Ungespeicherte Änderungen
+      {draft.saving && (
+        <p className="mt-3 text-center text-xs text-slate-500 dark:text-slate-400">
+          Wird gespeichert …
         </p>
       )}
     </>

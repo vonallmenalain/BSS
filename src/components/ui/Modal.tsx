@@ -18,6 +18,14 @@ interface ModalProps {
   children: ReactNode
   footer?: ReactNode
   size?: keyof typeof WIDTHS
+  /**
+   * Knöpfe im Kopf, links neben dem Kreuz.
+   *
+   * Für das eine, was den ganzen Dialog umstellt – etwa der Stift, der aus
+   * dem Lesen einer Notiz das Schreiben macht. Alles Übrige gehört in die
+   * Fusszeile.
+   */
+  headerActions?: ReactNode
 }
 
 /**
@@ -33,6 +41,7 @@ export function Modal({
   children,
   footer,
   size = 'md',
+  headerActions,
 }: ModalProps) {
   const panelRef = useRef<HTMLDivElement>(null)
   const previouslyFocused = useRef<HTMLElement | null>(null)
@@ -132,6 +141,7 @@ export function Modal({
               <p className="mt-0.5 text-sm text-slate-500 dark:text-slate-400">{description}</p>
             )}
           </div>
+          {headerActions}
           <button
             type="button"
             onClick={onClose}

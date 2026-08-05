@@ -15,6 +15,15 @@ interface Props {
   /** Zeigt an, zu welcher Sitzung der Eintrag gehört */
   meetingLabel?: string
   compact?: boolean
+  /**
+   * Den Haken zum Abschliessen mitzeigen.
+   *
+   * Auf der Übersicht steht er nicht: Dort wird gelesen, was ansteht, und ein
+   * Haken ganz vorne wird beim Blättern gestreift – der Punkt wäre erledigt,
+   * ohne dass jemand es wollte. Abgeschlossen wird dort, wo der Eintrag
+   * ausgeschrieben steht: in der Sitzung oder im aufgeklappten Eintrag.
+   */
+  showDoneToggle?: boolean
 }
 
 /**
@@ -22,11 +31,16 @@ interface Props {
  * Bearbeiten.
  *
  * Für Übersichten, die nur zeigen, was ansteht: die Startseite, der
- * Sammelkorb beim Planen einer Sitzung. Der einzige Griff, der hier
- * hingehört, ist der Haken – alles Weitere geschieht dort, wo der Eintrag
- * ausgeschrieben steht.
+ * Sammelkorb beim Planen einer Sitzung. Mehr als ein Griff gehört hier nicht
+ * hin – alles Weitere geschieht dort, wo der Eintrag ausgeschrieben steht.
  */
-export function AgendaItemCard({ item, onOpen, meetingLabel, compact = false }: Props) {
+export function AgendaItemCard({
+  item,
+  onOpen,
+  meetingLabel,
+  compact = false,
+  showDoneToggle = true,
+}: Props) {
   const { profile } = useAuth()
   const toast = useToast()
 
@@ -56,20 +70,22 @@ export function AgendaItemCard({ item, onOpen, meetingLabel, compact = false }: 
     >
       <div className="flex items-start gap-3">
         {/* Erledigt-Schalter: die häufigste Aktion, deshalb ganz vorne */}
-        <button
-          type="button"
-          onClick={() => void toggleDone()}
-          className={cn(
-            'mt-0.5 grid size-5 shrink-0 place-items-center rounded-md border-2 transition',
-            isDone
-              ? 'border-emerald-600 bg-emerald-600 text-white'
-              : 'border-slate-300 hover:border-emerald-500 dark:border-slate-600',
-          )}
-          aria-label={isDone ? 'Als offen markieren' : 'Als erledigt markieren'}
-          aria-pressed={isDone}
-        >
-          {isDone && <Check className="size-3.5" strokeWidth={3} aria-hidden />}
-        </button>
+        {showDoneToggle && (
+          <button
+            type="button"
+            onClick={() => void toggleDone()}
+            className={cn(
+              'mt-0.5 grid size-5 shrink-0 place-items-center rounded-md border-2 transition',
+              isDone
+                ? 'border-emerald-600 bg-emerald-600 text-white'
+                : 'border-slate-300 hover:border-emerald-500 dark:border-slate-600',
+            )}
+            aria-label={isDone ? 'Als offen markieren' : 'Als erledigt markieren'}
+            aria-pressed={isDone}
+          >
+            {isDone && <Check className="size-3.5" strokeWidth={3} aria-hidden />}
+          </button>
+        )}
 
         <div className="min-w-0 flex-1">
           <button
@@ -120,7 +136,7 @@ export function AgendaItemCard({ item, onOpen, meetingLabel, compact = false }: 
       </div>
 
       {isDone && item.completedAt && (
-        <p className="mt-2 pl-8 text-xs text-slate-400">
+        <p className={cn('mt-2 text-xs text-slate-400', showDoneToggle && 'pl-8')}>
           Erledigt am {formatDate(item.completedAt)}
         </p>
       )}

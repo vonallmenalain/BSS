@@ -165,6 +165,167 @@ export const AP_SCOPE_LABELS: Record<ApView['scope'], string> = {
   all: 'Ganzer Plan',
 }
 
+/* ------------------------------------------------------------------ */
+/* Übersichtsseite                                                     */
+/* ------------------------------------------------------------------ */
+
+/**
+ * Die Kacheln der Übersicht.
+ *
+ * Was jemanden am Morgen zuerst interessiert, ist von Person zu Person
+ * verschieden: Der Sekretär schaut auf die Traktanden der nächsten Sitzung,
+ * der Ratgeber auf die Aktivitäten der Jungen Männer. Deshalb lässt sich jede
+ * Kachel ein- und ausblenden, verschieben und – wo es etwas zu zählen gibt –
+ * in ihrer Länge einstellen.
+ */
+export type DashboardTileId = 'meeting' | 'stats' | 'talks' | 'ap' | 'birthdays' | 'pendenzen'
+
+export const DASHBOARD_TILE_LABELS: Record<DashboardTileId, string> = {
+  meeting: 'Nächste Sitzung',
+  stats: 'Zahlen',
+  talks: 'Ansprachen',
+  ap: 'Aktivitäten AP’s',
+  birthdays: 'Geburtstage',
+  pendenzen: 'Meine Pendenzen',
+}
+
+/**
+ * Wo eine Kachel steht.
+ *
+ * Drei Plätze, mehr braucht es nicht: die breite Hauptspalte, die schmale
+ * Spalte daneben und die ganze Breite darunter. Ein frei bewegliches Raster
+ * wäre auf dem Telefon ohnehin wieder eine einzige Spalte.
+ */
+export type DashboardArea = 'main' | 'side' | 'full'
+
+export const DASHBOARD_AREA_LABELS: Record<DashboardArea, string> = {
+  main: 'Haupt',
+  side: 'Seite',
+  full: 'Breit',
+}
+
+export interface DashboardTile {
+  id: DashboardTileId
+  area: DashboardArea
+  visible: boolean
+}
+
+export interface DashboardView {
+  /** Alle Kacheln in der gewählten Reihenfolge */
+  tiles: DashboardTile[]
+  /** Wie viele Traktanden und Pendenzen die Sitzungskachel zeigt */
+  meetingItems: number
+  /** Wie viele eigene Pendenzen */
+  myItems: number
+  /** Wie viele Sonntage die Ansprachenkachel zeigt */
+  talkSundays: number
+  /** Wie viele AP-Termine – einer bis vier */
+  apActivities: number
+}
+
+export const DEFAULT_DASHBOARD_VIEW: DashboardView = {
+  tiles: [
+    { id: 'meeting', area: 'main', visible: true },
+    { id: 'stats', area: 'side', visible: true },
+    { id: 'talks', area: 'side', visible: true },
+    { id: 'ap', area: 'side', visible: true },
+    { id: 'birthdays', area: 'side', visible: true },
+    { id: 'pendenzen', area: 'full', visible: true },
+  ],
+  meetingItems: 4,
+  myItems: 5,
+  talkSundays: 4,
+  apActivities: 2,
+}
+
+/**
+ * Gemerkte Einstellung und Vorgabe zusammenführen.
+ *
+ * Im Browser steht, was zuletzt gewählt wurde – womöglich aus einer Fassung,
+ * die eine Kachel noch nicht kannte. Fehlende kommen deshalb hinten dazu,
+ * Unbekanntes fällt weg; die selbst gewählte Reihenfolge bleibt erhalten.
+ */
+export function normalizeDashboardView(stored: DashboardView): DashboardView {
+  const known = new Set(Object.keys(DASHBOARD_TILE_LABELS) as DashboardTileId[])
+  const seen = new Set<DashboardTileId>()
+  const tiles: DashboardTile[] = []
+
+  for (const tile of stored?.tiles ?? []) {
+    if (!known.has(tile?.id) || seen.has(tile.id)) continue
+    seen.add(tile.id)
+    tiles.push({
+      id: tile.id,
+      area: tile.area in DASHBOARD_AREA_LABELS ? tile.area : 'main',
+      visible: tile.visible !== false,
+    })
+  }
+  for (const tile of DEFAULT_DASHBOARD_VIEW.tiles) {
+    if (!seen.has(tile.id)) tiles.push({ ...tile })
+  }
+
+  const count = (value: unknown, fallback: number) =>
+    typeof value === 'number' && Number.isFinite(value) ? value : fallback
+
+  return {
+    tiles,
+    meetingItems: count(stored?.meetingItems, DEFAULT_DASHBOARD_VIEW.meetingItems),
+    myItems: count(stored?.myItems, DEFAULT_DASHBOARD_VIEW.myItems),
+    talkSundays: count(stored?.talkSundays, DEFAULT_DASHBOARD_VIEW.talkSundays),
+    apActivities: count(stored?.apActivities, DEFAULT_DASHBOARD_VIEW.apActivities),
+  }
+}
+
+/* ------------------------------------------------------------------ */
+/* Sitzungsliste                                                       */
+/* ------------------------------------------------------------------ */
+
+/**
+ * Wie die Liste der Sitzungen aussieht.
+ *
+ * «Nur Sitzung» ist die Terminliste: Titel, Datum, Ort – ein Klick führt
+ * hinein. «Kompakt» stellt darunter gleich, worum es geht, und erspart das
+ * Öffnen: die Traktanden und, wenn gewünscht, die Pendenzen. Je Gruppe lässt
+ * sich sagen, ob die Titel genügen oder der ganze Eintrag zu lesen sein soll.
+ */
+export type MeetingListMode = 'plain' | 'compact'
+
+export const MEETING_LIST_MODE_LABELS: Record<MeetingListMode, string> = {
+  plain: 'Nur Sitzung',
+  compact: 'Kompakt',
+}
+
+export type MeetingDetailLevel = 'titles' | 'full'
+
+export const MEETING_DETAIL_LABELS: Record<MeetingDetailLevel, string> = {
+  titles: 'Nur Titel',
+  full: 'Komplett',
+}
+
+export type MeetingScope = 'upcoming' | 'past' | 'all'
+
+export const MEETING_SCOPE_LABELS: Record<MeetingScope, string> = {
+  upcoming: 'Anstehend',
+  past: 'Vergangen',
+  all: 'Alle',
+}
+
+export interface MeetingsView {
+  scope: MeetingScope
+  mode: MeetingListMode
+  /** Pendenzen mitzeigen – nur in der kompakten Ansicht von Belang */
+  showPendenzen: boolean
+  agendaDetail: MeetingDetailLevel
+  pendenzenDetail: MeetingDetailLevel
+}
+
+export const DEFAULT_MEETINGS_VIEW: MeetingsView = {
+  scope: 'upcoming',
+  mode: 'plain',
+  showPendenzen: true,
+  agendaDetail: 'titles',
+  pendenzenDetail: 'titles',
+}
+
 export interface AppUser extends WithId {
   /** entspricht der Firebase-Auth-UID */
   email: string

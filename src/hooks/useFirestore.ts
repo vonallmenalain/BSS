@@ -201,14 +201,20 @@ export function useDoneItems(enabled = true) {
   return useAgendaItems(constraints, isApproved && enabled)
 }
 
-/** Traktanden für die Archiv-/Suchansicht. */
-export function useAllItems(limitCount = 500) {
+/**
+ * Traktanden für die Archiv-/Suchansicht.
+ *
+ * `enabled` steht dort, wo sie nur in einer bestimmten Ansicht gebraucht
+ * werden – etwa in der kompakten Sitzungsliste, die den Inhalt jeder Sitzung
+ * mitzeigt. Solange die gewöhnliche Terminliste steht, wird nichts gelesen.
+ */
+export function useAllItems(limitCount = 500, enabled = true) {
   const { isApproved } = useAuth()
   const constraints = useMemo(
     () => [orderBy('updatedAt', 'desc'), fbLimit(limitCount)],
     [limitCount],
   )
-  return useAgendaItems(constraints, isApproved)
+  return useAgendaItems(constraints, isApproved && enabled)
 }
 
 /* ------------------------------------------------------------------ */

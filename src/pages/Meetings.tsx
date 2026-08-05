@@ -3,13 +3,16 @@ import { Link, useSearchParams, useNavigate } from 'react-router-dom'
 import { CalendarDays, Plus, MapPin, Clock } from 'lucide-react'
 import { useAuth } from '@/contexts/AuthContext'
 import { useData } from '@/contexts/DataContext'
-import { useMeetings, useOpenItems } from '@/hooks/useFirestore'
+import { useAllItems, useMeetings, useOpenItems } from '@/hooks/useFirestore'
+import { useLocalStorage } from '@/hooks/useLocalStorage'
 import { useNow } from '@/hooks/useNow'
 import { useToast } from '@/contexts/ToastContext'
 import { Modal } from '@/components/ui/Modal'
 import { MeetingStatusBadge } from '@/components/ui/Badge'
 import { EmptyState, SkeletonList } from '@/components/ui/Feedback'
-import { AssigneePicker, PageHeader, SegmentedControl } from '@/components/ui/Pickers'
+import { AssigneePicker, PageHeader } from '@/components/ui/Pickers'
+import { AddButton, MenuChoice, MenuToggle, ViewMenu } from '@/components/ui/ViewMenu'
+import { AgendaItemPreview } from '@/components/agenda/AgendaItemPreview'
 import {
   formatDateLong,
   formatTime,
@@ -17,13 +20,37 @@ import {
   toDateInput,
   toTimeInput,
   fromDateTimeInput,
-  WEEKDAYS,
 } from '@/lib/dates'
+import { groupByKind } from '@/services/agenda'
 import { createMeeting, suggestNextMeetingDate } from '@/services/meetings'
-import type { Meeting } from '@/lib/types'
+import {
+  DEFAULT_MEETINGS_VIEW,
+  ITEM_KIND_PLURAL,
+  MEETING_DETAIL_LABELS,
+  MEETING_LIST_MODE_LABELS,
+  MEETING_SCOPE_LABELS,
+  type AgendaItem,
+  type Meeting,
+  type MeetingDetailLevel,
+  type MeetingListMode,
+  type MeetingScope,
+  type MeetingsView,
+} from '@/lib/types'
 
-type Filter = 'upcoming' | 'past' | 'all'
-
+/**
+ * Die Sitzungen – als Terminliste oder mit ihrem Inhalt.
+ *
+ * Welcher Zeitraum gezeigt wird und wie viel von jeder Sitzung dasteht, sagt
+ * der Knopf «Ansicht» oben rechts. Früher stand der Zeitraum als breite
+ * Knopfleiste über der Liste; er hat sie nicht verdient: Fast immer bleibt es
+ * bei «Anstehend», und eine Leiste, die man selten anfasst, nimmt der Liste
+ * die oberste Zeile weg.
+ *
+ * «Kompakt» stellt unter jeden Termin, worum es geht – die Traktanden und, auf
+ * Wunsch, die Pendenzen. Je Gruppe lässt sich sagen, ob die Titel genügen oder
+ * der ganze Eintrag zu lesen sein soll. Damit wird die Liste zum Programm
+ * mehrerer Sitzungen, ohne dass man eine nach der anderen öffnen muss.
+ */
 export function Meetings() {
   const { profile } = useAuth()
   const { settings } = useData()
@@ -34,8 +61,30 @@ export function Meetings() {
   const { data: meetings, loading } = useMeetings(400)
   const { data: openItems } = useOpenItems()
   const now = useNow()
-  const [filter, setFilter] = useState<Filter>('upcoming')
   const [formOpen, setFormOpen] = useState(false)
+
+  const [view, setView] = useLocalStorage<MeetingsView>(
+    'bss:sitzungen:ansicht',
+    DEFAULT_MEETINGS_VIEW,
+  )
+  const filter = view.scope
+  const compact = view.mode === 'compact'
+  const patch = (changes: Partial<MeetingsView>) => setView({ ...view, ...changes })
+
+  /* Die Traktanden aller Sitzungen – nur für die kompakte Ansicht gelesen.
+     In der Terminliste wären es Hunderte Datensätze für nichts. */
+  const { data: allItems } = useAllItems(800, compact)
+
+  const itemsByMeeting = useMemo(() => {
+    const map = new Map<string, AgendaItem[]>()
+    for (const item of allItems) {
+      if (!item.meetingId) continue
+      const list = map.get(item.meetingId)
+      if (list) list.push(item)
+      else map.set(item.meetingId, [item])
+    }
+    return map
+  }, [allItems])
 
   /* Über den PWA-Schnellzugriff direkt in die nächste Sitzung springen. */
   useEffect(() => {
@@ -74,16 +123,41 @@ export function Meetings() {
     filter === 'upcoming' ? upcoming : filter === 'past' ? past : [...upcoming, ...past]
   const unassignedCount = openItems.filter((item) => !item.meetingId).length
 
+  /*
+   * In der kompakten Ansicht wird nur ein Ausschnitt gezeichnet.
+   *
+   * Eine Terminzeile ist billig; das ganze Programm einer Sitzung ist es
+   * nicht. «Alle» zählt mit den übernommenen Protokollen über hundert
+   * Sitzungen – vollständig gezeichnet stünde der Browser still. Der Rest
+   * kommt auf Knopfdruck nach.
+   *
+   * Zurückgesetzt wird beim Zeichnen und nicht in einem Effekt: Sonst stünde
+   * für einen Durchgang der alte Ausschnitt an der neuen Liste.
+   */
+  const pageSize = compact ? 20 : visible.length
+  const listKey = `${filter}|${view.mode}`
+  const [shown, setShown] = useState(pageSize)
+  const [shownFor, setShownFor] = useState(listKey)
+  if (shownFor !== listKey) {
+    setShownFor(listKey)
+    setShown(pageSize)
+  }
+  const page = compact ? visible.slice(0, shown) : visible
+  const rest = visible.length - page.length
+
   return (
     <>
       <PageHeader
         title="Sitzungen"
-        subtitle={`Regulär ${WEEKDAYS[settings.meetingWeekday]}s um ${settings.meetingTime} Uhr`}
         actions={
-          <button type="button" className="btn-primary" onClick={() => setFormOpen(true)}>
-            <Plus className="size-4" aria-hidden />
-            Sitzung planen
-          </button>
+          <>
+            <MeetingsMenu
+              view={view}
+              onChange={patch}
+              counts={{ upcoming: upcoming.length, past: past.length, all: meetings.length }}
+            />
+            <AddButton label="Sitzung planen" onClick={() => setFormOpen(true)} />
+          </>
         }
       />
 
@@ -94,17 +168,6 @@ export function Meetings() {
           übernehmen.
         </div>
       )}
-
-      <SegmentedControl<Filter>
-        className="mb-4"
-        value={filter}
-        onChange={setFilter}
-        options={[
-          { value: 'upcoming', label: 'Anstehend', count: upcoming.length },
-          { value: 'past', label: 'Vergangen', count: past.length },
-          { value: 'all', label: 'Alle' },
-        ]}
-      />
 
       {loading ? (
         <SkeletonList rows={3} />
@@ -129,15 +192,29 @@ export function Meetings() {
           />
         </div>
       ) : (
-        <ul className="space-y-2">
-          {visible.map((meeting) => (
-            <MeetingRow
-              key={meeting.id}
-              meeting={meeting}
-              openCount={itemCounts.get(meeting.id) ?? 0}
-            />
-          ))}
-        </ul>
+        <>
+          <ul className="space-y-2">
+            {page.map((meeting) => (
+              <MeetingRow
+                key={meeting.id}
+                meeting={meeting}
+                openCount={itemCounts.get(meeting.id) ?? 0}
+                items={compact ? (itemsByMeeting.get(meeting.id) ?? []) : undefined}
+                view={view}
+              />
+            ))}
+          </ul>
+
+          {rest > 0 && (
+            <button
+              type="button"
+              className="btn-secondary mt-3 w-full"
+              onClick={() => setShown((current) => current + pageSize)}
+            >
+              Weitere anzeigen · noch {rest}
+            </button>
+          )}
+        </>
       )}
 
       <MeetingForm
@@ -152,13 +229,33 @@ export function Meetings() {
   )
 }
 
-function MeetingRow({ meeting, openCount }: { meeting: Meeting; openCount: number }) {
+function MeetingRow({
+  meeting,
+  openCount,
+  items,
+  view,
+}: {
+  meeting: Meeting
+  openCount: number
+  /** Gesetzt heisst: kompakte Ansicht – der Inhalt der Sitzung steht darunter */
+  items?: AgendaItem[]
+  view: MeetingsView
+}) {
   const date = toDate(meeting.date)
   const isToday = date?.toDateString() === new Date().toDateString()
 
+  const groups = useMemo(() => (items ? groupByKind(items) : null), [items])
+
   return (
-    <li>
-      <Link to={`/sitzungen/${meeting.id}`} className="card card-hover flex items-center gap-4 p-4">
+    <li className={groups ? 'card overflow-hidden' : undefined}>
+      <Link
+        to={`/sitzungen/${meeting.id}`}
+        className={
+          groups
+            ? 'flex items-center gap-4 p-4 transition hover:bg-slate-50 dark:hover:bg-slate-800/60'
+            : 'card card-hover flex items-center gap-4 p-4'
+        }
+      >
         <div
           className={`grid size-12 shrink-0 place-items-center rounded-xl ${
             isToday || meeting.status === 'running'
@@ -197,7 +294,165 @@ function MeetingRow({ meeting, openCount }: { meeting: Meeting; openCount: numbe
           </span>
         )}
       </Link>
+
+      {groups && (
+        <div className="space-y-4 border-t border-slate-200 px-4 py-3 dark:border-slate-800">
+          <ItemGroup
+            title={ITEM_KIND_PLURAL.traktandum}
+            items={groups.traktandum}
+            detail={view.agendaDetail}
+            empty="Noch nichts traktandiert."
+          />
+          {view.showPendenzen && (
+            <ItemGroup
+              title={ITEM_KIND_PLURAL.pendenz}
+              items={groups.pendenz}
+              detail={view.pendenzenDetail}
+              empty="Keine Pendenzen."
+            />
+          )}
+        </div>
+      )}
     </li>
+  )
+}
+
+/**
+ * Eine Gruppe unter einer Sitzung – Traktanden oder Pendenzen.
+ *
+ * «Nur Titel» ist eine nummerierte Liste, wie sie auf einer Einladung stünde.
+ * «Komplett» stellt jeden Eintrag ganz hin, samt Beschreibung, Raster und
+ * Zuständigen – dann ist die Sitzungsliste das Programm selbst.
+ */
+function ItemGroup({
+  title,
+  items,
+  detail,
+  empty,
+}: {
+  title: string
+  items: AgendaItem[]
+  detail: MeetingDetailLevel
+  empty: string
+}) {
+  return (
+    <section>
+      <h4 className="mb-1.5 flex items-baseline gap-2 text-xs font-semibold tracking-wide text-slate-500 uppercase dark:text-slate-400">
+        {title}
+        <span className="tabular text-[11px] font-normal text-slate-400">{items.length}</span>
+      </h4>
+
+      {items.length === 0 ? (
+        <p className="text-sm text-slate-400">{empty}</p>
+      ) : detail === 'titles' ? (
+        <ol className="space-y-1">
+          {items.map((item, index) => (
+            <li key={item.id} className="flex items-baseline gap-2 text-sm">
+              <span className="tabular shrink-0 text-xs text-slate-400">{index + 1}.</span>
+              <span
+                className={
+                  item.status === 'done'
+                    ? 'min-w-0 text-slate-500 line-through dark:text-slate-500'
+                    : 'min-w-0'
+                }
+              >
+                {item.title || <span className="text-slate-400">Ohne Titel</span>}
+              </span>
+            </li>
+          ))}
+        </ol>
+      ) : (
+        <ul className="divide-list">
+          {items.map((item, index) => (
+            <li key={item.id} className="py-2 first:pt-0 last:pb-0">
+              <AgendaItemPreview item={item} position={index + 1} />
+            </li>
+          ))}
+        </ul>
+      )}
+    </section>
+  )
+}
+
+/* ------------------------------------------------------------------ */
+/* Ansicht anpassen                                                    */
+/* ------------------------------------------------------------------ */
+
+/**
+ * Zeitraum und Darstellung der Sitzungsliste – ein Menü, keine Leiste.
+ *
+ * Die Angaben zum Umfang stehen nur dort, wo sie etwas bewirken: In der
+ * gewöhnlichen Terminliste ist die Frage «nur Titel oder komplett?» ohne
+ * Bedeutung, und der Pendenzen-Schalter ebenso.
+ */
+function MeetingsMenu({
+  view,
+  onChange,
+  counts,
+}: {
+  view: MeetingsView
+  onChange: (patch: Partial<MeetingsView>) => void
+  counts: Record<MeetingScope, number>
+}) {
+  return (
+    <ViewMenu width="w-80">
+      <MenuChoice<MeetingScope>
+        label="Zeitraum"
+        value={view.scope}
+        onChange={(scope) => onChange({ scope })}
+        options={(Object.keys(MEETING_SCOPE_LABELS) as MeetingScope[]).map((value) => ({
+          value,
+          label: MEETING_SCOPE_LABELS[value],
+          count: counts[value],
+        }))}
+      />
+
+      <MenuChoice<MeetingListMode>
+        label="Sitzungsansicht"
+        value={view.mode}
+        onChange={(mode) => onChange({ mode })}
+        options={(Object.keys(MEETING_LIST_MODE_LABELS) as MeetingListMode[]).map((value) => ({
+          value,
+          label: MEETING_LIST_MODE_LABELS[value],
+        }))}
+        hint={
+          view.mode === 'compact'
+            ? undefined
+            : 'Titel, Datum und Ort – der Inhalt steht in der Sitzung selbst.'
+        }
+      />
+
+      {view.mode === 'compact' && (
+        <>
+          <MenuChoice<MeetingDetailLevel>
+            label="Traktanden"
+            value={view.agendaDetail}
+            onChange={(agendaDetail) => onChange({ agendaDetail })}
+            options={(Object.keys(MEETING_DETAIL_LABELS) as MeetingDetailLevel[]).map((value) => ({
+              value,
+              label: MEETING_DETAIL_LABELS[value],
+            }))}
+          />
+
+          <MenuToggle
+            label="Pendenzen anzeigen"
+            checked={view.showPendenzen}
+            onChange={(showPendenzen) => onChange({ showPendenzen })}
+          />
+
+          {view.showPendenzen && (
+            <MenuChoice<MeetingDetailLevel>
+              label="Pendenzen"
+              value={view.pendenzenDetail}
+              onChange={(pendenzenDetail) => onChange({ pendenzenDetail })}
+              options={(Object.keys(MEETING_DETAIL_LABELS) as MeetingDetailLevel[]).map(
+                (value) => ({ value, label: MEETING_DETAIL_LABELS[value] }),
+              )}
+            />
+          )}
+        </>
+      )}
+    </ViewMenu>
   )
 }
 

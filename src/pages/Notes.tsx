@@ -1,5 +1,5 @@
 import { useLayoutEffect, useMemo, useRef, useState, type ReactNode } from 'react'
-import { ChevronDown, ChevronUp, NotebookPen, Plus, Search, SlidersHorizontal } from 'lucide-react'
+import { ChevronDown, ChevronUp, NotebookPen, Pencil, Plus, Search } from 'lucide-react'
 import { useAuth } from '@/contexts/AuthContext'
 import { useData } from '@/contexts/DataContext'
 import { useToast } from '@/contexts/ToastContext'
@@ -9,6 +9,7 @@ import { useLocalStorage } from '@/hooks/useLocalStorage'
 import { EmptyState, SkeletonList } from '@/components/ui/Feedback'
 import { ConfirmDialog, Modal } from '@/components/ui/Modal'
 import { PageHeader, SegmentedControl } from '@/components/ui/Pickers'
+import { AddButton, MenuChoice, ViewMenu } from '@/components/ui/ViewMenu'
 import { formatDateTime, toDate } from '@/lib/dates'
 import { splitLinks } from '@/lib/links'
 import { cn, matchesSearch } from '@/lib/utils'
@@ -98,7 +99,6 @@ export function Notes() {
     'bss:notizen:sortierung',
     'zuletzt',
   )
-  const [showView, setShowView] = useState(false)
   /** Die offene Notiz – oder `neu` für eine, die es noch nicht gibt. */
   const [open, setOpen] = useState<Note | 'neu' | null>(null)
 
@@ -160,10 +160,44 @@ export function Notes() {
       <PageHeader
         title="Notizen"
         actions={
-          <button type="button" className="btn-primary" onClick={() => setOpen('neu')}>
-            <Plus className="size-4" aria-hidden />
-            <span className="hidden sm:inline">Neu</span>
-          </button>
+          <>
+            <ViewMenu width="w-72">
+              <MenuChoice<Ansicht>
+                label="Darstellung"
+                value={ansicht}
+                onChange={setAnsicht}
+                options={[
+                  { value: 'liste', label: 'Liste' },
+                  { value: 'kacheln', label: 'Kacheln' },
+                ]}
+              />
+              <MenuChoice<Groesse>
+                label="Anzeigegrösse"
+                value={groesse}
+                onChange={setGroesse}
+                options={[
+                  { value: 'klein', label: 'Klein' },
+                  { value: 'komprimiert', label: 'Komprimiert' },
+                  { value: 'alles', label: 'Alles' },
+                ]}
+              />
+              <MenuChoice<Sortierung>
+                label="Reihenfolge"
+                value={sortierung}
+                onChange={setSortierung}
+                options={[
+                  { value: 'zuletzt', label: 'Zuletzt' },
+                  { value: 'eigene', label: 'Eigene' },
+                ]}
+                hint={
+                  sortierung === 'eigene'
+                    ? 'Mit den Pfeilen an jeder Notiz umsortieren. Die Reihenfolge gilt für alle.'
+                    : undefined
+                }
+              />
+            </ViewMenu>
+            <AddButton label="Notiz" onClick={() => setOpen('neu')} />
+          </>
         }
       />
 
@@ -182,68 +216,6 @@ export function Notes() {
             onChange={(event) => setSearch(event.target.value)}
           />
         </div>
-
-        <div className="flex flex-wrap items-center gap-2">
-          <button
-            type="button"
-            className="btn-secondary btn-sm"
-            onClick={() => setShowView((value) => !value)}
-            aria-expanded={showView}
-          >
-            <SlidersHorizontal className="size-4" aria-hidden />
-            Ansicht
-          </button>
-          <span className="text-xs text-slate-500 dark:text-slate-400">
-            {notes.length === 1 ? '1 Notiz' : `${notes.length} Notizen`}
-          </span>
-        </div>
-
-        {showView && (
-          <div className="card animate-slide-up flex flex-wrap items-end gap-4 p-3">
-            <div>
-              <span className="label">Darstellung</span>
-              <SegmentedControl<Ansicht>
-                value={ansicht}
-                onChange={setAnsicht}
-                size="sm"
-                options={[
-                  { value: 'liste', label: 'Liste' },
-                  { value: 'kacheln', label: 'Kacheln' },
-                ]}
-              />
-            </div>
-            <div>
-              <span className="label">Anzeigegrösse</span>
-              <SegmentedControl<Groesse>
-                value={groesse}
-                onChange={setGroesse}
-                size="sm"
-                options={[
-                  { value: 'klein', label: 'Klein' },
-                  { value: 'komprimiert', label: 'Komprimiert' },
-                  { value: 'alles', label: 'Alles' },
-                ]}
-              />
-            </div>
-            <div>
-              <span className="label">Reihenfolge</span>
-              <SegmentedControl<Sortierung>
-                value={sortierung}
-                onChange={setSortierung}
-                size="sm"
-                options={[
-                  { value: 'zuletzt', label: 'Zuletzt bearbeitet' },
-                  { value: 'eigene', label: 'Eigene' },
-                ]}
-              />
-            </div>
-            {sortierung === 'eigene' && (
-              <p className="hint w-full">
-                Mit den Pfeilen an jeder Notiz umsortieren. Die Reihenfolge gilt für alle.
-              </p>
-            )}
-          </div>
-        )}
 
         {sortierung === 'eigene' && search.trim() && (
           <p className="hint">Zum Umsortieren die Suche leeren – sie zeigt nur einen Ausschnitt.</p>
@@ -439,6 +411,15 @@ function LinkedText({ text }: { text: string }): ReactNode {
 /**
  * Der Notizeditor – ein Fenster über der Liste, kein eigener Bildschirm.
  *
+ * Eine bestehende Notiz öffnet sich zum **Lesen**: Der Text steht da, wie er
+ * geschrieben wurde, Verweise sind anklickbar, und nichts verrutscht unter dem
+ * Finger. Erst der Stift oben rechts macht daraus das Schreiben. Das ist der
+ * häufigere Fall – Notizen werden öfter nachgeschlagen als geändert –, und ein
+ * versehentlicher Griff in den Text kostet so nichts.
+ *
+ * Eine neue oder noch leere Notiz beginnt gleich im Schreibmodus: Dort gibt es
+ * nichts zu lesen.
+ *
  * Gespeichert wird von selbst: kurz nach dem letzten Tastendruck und noch
  * einmal beim Schliessen. Ein Speichern-Knopf hätte hier nichts gewonnen – er
  * wäre die einzige Möglichkeit, Geschriebenes zu verlieren.
@@ -457,7 +438,10 @@ function NoteEditor({ note, onClose }: { note: Note | null; onClose: () => void 
    * Tippen. Aus dem laufenden Text abgeleitet, kippte der Wert mit dem ersten
    * Zeichen und schob den Cursor ans Ende.
    */
-  const [startInEditing] = useState(() => !note || (note.body ?? '') === '')
+  const [startInEditing] = useState(
+    () => !note || ((note.body ?? '') === '' && (note.title ?? '') === ''),
+  )
+  const [bearbeitet, setBearbeitet] = useState(startInEditing)
   /** Sobald eine neue Notiz einmal gespeichert ist, lässt sie sich löschen. */
   const [savedId, setSavedId] = useState<string | null>(note?.id ?? null)
   const [confirmDelete, setConfirmDelete] = useState(false)
@@ -507,8 +491,25 @@ function NoteEditor({ note, onClose }: { note: Note | null; onClose: () => void 
         open
         onClose={onClose}
         title={note ? 'Notiz' : 'Neue Notiz'}
-        description={saveStateLabel(autosave.state, leer ? 'Titel oder Text ausfüllen' : undefined)}
+        description={
+          bearbeitet
+            ? saveStateLabel(autosave.state, leer ? 'Titel oder Text ausfüllen' : undefined)
+            : 'Zum Bearbeiten auf den Stift'
+        }
         size={breite}
+        headerActions={
+          !bearbeitet && (
+            <button
+              type="button"
+              onClick={() => setBearbeitet(true)}
+              className="-m-1.5 rounded-lg p-1.5 text-slate-400 transition hover:bg-slate-100 hover:text-slate-600 dark:hover:bg-slate-800 dark:hover:text-slate-200"
+              aria-label="Notiz bearbeiten"
+              title="Bearbeiten"
+            >
+              <Pencil className="size-5" aria-hidden />
+            </button>
+          )
+        }
         footer={
           <>
             <div className="mr-auto hidden sm:block">
@@ -523,7 +524,7 @@ function NoteEditor({ note, onClose }: { note: Note | null; onClose: () => void 
                 ]}
               />
             </div>
-            {savedId && (
+            {savedId && bearbeitet && (
               <button type="button" className="btn-danger" onClick={() => setConfirmDelete(true)}>
                 Löschen
               </button>
@@ -534,15 +535,28 @@ function NoteEditor({ note, onClose }: { note: Note | null; onClose: () => void 
           </>
         }
       >
-        <input
-          value={title}
-          onChange={(event) => setTitle(event.target.value)}
-          placeholder="Titel"
-          aria-label="Titel"
-          className="w-full bg-transparent text-lg font-semibold outline-none"
-        />
+        {bearbeitet ? (
+          <input
+            value={title}
+            onChange={(event) => setTitle(event.target.value)}
+            placeholder="Titel"
+            aria-label="Titel"
+            className="w-full bg-transparent text-lg font-semibold outline-none"
+          />
+        ) : (
+          <h3 className="text-lg font-semibold">
+            {title || <span className="text-slate-400">Ohne Titel</span>}
+          </h3>
+        )}
 
-        <NoteText value={body} onChange={setBody} startInEditing={startInEditing} />
+        <NoteText
+          value={body}
+          onChange={setBody}
+          bearbeitet={bearbeitet}
+          // Wer eben erst auf den Stift gedrückt hat, will weiterschreiben und
+          // nicht am Anfang beginnen.
+          moveCursorToEnd={!startInEditing}
+        />
       </Modal>
 
       <ConfirmDialog
@@ -563,42 +577,31 @@ function NoteEditor({ note, onClose }: { note: Note | null; onClose: () => void 
  * ein Textfeld.
  *
  * In einem Textfeld ist ein Verweis nur Text; anklickbar wird er erst, wenn er
- * als Verweis gezeichnet ist. Deshalb zeigt die geöffnete Notiz zunächst den
- * gelesenen Text, und ein Griff hinein macht daraus das Eingabefeld – ausser
- * auf einem Verweis, der führt dorthin, wohin er führt. Beim Verlassen des
- * Feldes steht wieder der lesbare Text da.
+ * als Verweis gezeichnet ist. Deshalb steht im Ansichtsmodus der gelesene Text
+ * – und erst der Stift im Kopf des Fensters macht daraus das Eingabefeld.
  *
- * Eine frische oder leere Notiz beginnt gleich im Schreibmodus: Dort gibt es
- * nichts zu lesen und nichts anzutippen.
+ * Früher genügte ein Griff in den Text. Das war ein Griff zu wenig: Wer eine
+ * Notiz bloss nachschlagen wollte, landete beim ersten Antippen im
+ * Schreibmodus und verschob mit dem Daumen, was er lesen wollte.
  */
 function NoteText({
   value,
   onChange,
-  startInEditing,
+  bearbeitet,
+  moveCursorToEnd,
 }: {
   value: string
   onChange: (value: string) => void
-  startInEditing: boolean
+  bearbeitet: boolean
+  moveCursorToEnd?: boolean
 }) {
-  const [schreibt, setSchreibt] = useState(startInEditing)
-
-  if (schreibt) {
-    return (
-      <GrowingTextarea
-        value={value}
-        onChange={onChange}
-        moveCursorToEnd={!startInEditing}
-        onBlur={() => setSchreibt(false)}
-      />
-    )
+  if (bearbeitet) {
+    return <GrowingTextarea value={value} onChange={onChange} moveCursorToEnd={moveCursorToEnd} />
   }
 
   return (
-    <div
-      onClick={() => setSchreibt(true)}
-      className="mt-3 min-h-40 w-full cursor-text break-words whitespace-pre-wrap"
-    >
-      {value ? <LinkedText text={value} /> : <span className="text-slate-400">Text …</span>}
+    <div className="mt-3 min-h-40 w-full break-words whitespace-pre-wrap">
+      {value ? <LinkedText text={value} /> : <span className="text-slate-400">Ohne Text</span>}
     </div>
   )
 }
@@ -615,12 +618,10 @@ function GrowingTextarea({
   value,
   onChange,
   moveCursorToEnd,
-  onBlur,
 }: {
   value: string
   onChange: (value: string) => void
   moveCursorToEnd?: boolean
-  onBlur?: () => void
 }) {
   const field = useRef<HTMLTextAreaElement>(null)
 
@@ -648,7 +649,6 @@ function GrowingTextarea({
       ref={field}
       value={value}
       onChange={(event) => onChange(event.target.value)}
-      onBlur={onBlur}
       placeholder="Text …"
       aria-label="Text"
       // Eine Mindesthöhe, damit auch die leere Notiz eine Fläche hat, die man
