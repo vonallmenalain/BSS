@@ -1,26 +1,38 @@
 import { useMemo, useState } from 'react'
 import { useSearchParams } from 'react-router-dom'
-import { CheckCircle2, Plus, Search } from 'lucide-react'
+import { CheckCircle2, Search } from 'lucide-react'
 import { useAuth } from '@/contexts/AuthContext'
 import { useData } from '@/contexts/DataContext'
 import { useMeetings, useOpenItems } from '@/hooks/useFirestore'
-import { AgendaItemForm } from '@/components/agenda/AgendaItemForm'
 import { AgendaItemRow } from '@/components/agenda/AgendaItemRow'
 import { FOCUS_PARAM } from '@/components/agenda/MeetingFocus'
 import { EmptyState, SkeletonList } from '@/components/ui/Feedback'
 import { PageHeader, SegmentedControl } from '@/components/ui/Pickers'
 import { useLocalStorage } from '@/hooks/useLocalStorage'
-import { formatDateShort, getDueInfo, toDate } from '@/lib/dates'
+import { formatDateShort, toDate } from '@/lib/dates'
 import { layoutToText } from '@/lib/layout'
 import { matchesSearch } from '@/lib/utils'
 import { sortForPendenzen } from '@/services/agenda'
 import { toItemKind } from '@/lib/types'
 
-type Scope = 'all' | 'mine' | 'overdue' | 'unassigned'
+type Scope = 'all' | 'mine'
 
 /** Der aufgeklappte Eintrag steht in der Adresse – so führt «Zurück» hierher. */
 const OPEN_PARAM = 'pendenz'
 
+/**
+ * Offene Pendenzen über alle Sitzungen hinweg.
+ *
+ * Eine Übersicht, kein Eingabeort: Erfasst wird in der Sitzung, denn dort
+ * gehört ein Punkt hin. Hier steht nur, was eine Sitzung überstanden hat,
+ * ohne erledigt zu werden – ein neu erfasstes Traktandum erscheint erst,
+ * wenn seine Sitzung abgeschlossen ist und der Haken fehlt.
+ *
+ * Fast alles trägt dabei den Namen seiner Sitzung. Ohne Sitzung steht nur,
+ * was zwischen zwei Terminen liegt: Die letzte Sitzung ist abgeschlossen,
+ * die nächste noch nicht geplant. Sobald eine geplant ist, lässt sich das
+ * mit einem Griff nachholen («Pendenzen übernehmen» in der Sitzung).
+ */
 export function Pendenzen() {
   const { profile } = useAuth()
   const { userName, memberName } = useData()
@@ -29,7 +41,6 @@ export function Pendenzen() {
 
   const [scope, setScope] = useLocalStorage<Scope>('bss:pendenzen:scope', 'all')
   const [search, setSearch] = useState('')
-  const [formOpen, setFormOpen] = useState(false)
   const [searchParams, setSearchParams] = useSearchParams()
 
   const openId = searchParams.get(OPEN_PARAM)
@@ -60,25 +71,30 @@ export function Pendenzen() {
     return map
   }, [meetings])
 
+  /*
+   * Nur Pendenzen – neue Traktanden bleiben in ihrer Sitzung.
+   *
+   * Ein Punkt, der eben für die kommende Sitzung erfasst wurde, ist nichts
+   * Liegengebliebenes. Stünde er hier, wäre diese Liste eine zweite Ansicht
+   * derselben Sitzung, und die Frage «was ist offen geblieben?» beantwortete
+   * sie nicht mehr. Zur Pendenz wird ein Traktandum genau dann, wenn seine
+   * Sitzung abgeschlossen wird und der Haken fehlt (siehe `closeMeeting`).
+   */
+  const pendenzen = useMemo(() => items.filter((item) => toItemKind(item) === 'pendenz'), [items])
+
   const counts = useMemo(
     () => ({
-      all: items.length,
-      mine: items.filter((item) => item.assignees?.includes(profile?.id ?? '')).length,
-      overdue: items.filter((item) => getDueInfo(item.dueDate)?.overdue).length,
-      unassigned: items.filter((item) => !item.meetingId).length,
+      all: pendenzen.length,
+      mine: pendenzen.filter((item) => item.assignees?.includes(profile?.id ?? '')).length,
     }),
-    [items, profile?.id],
+    [pendenzen, profile?.id],
   )
 
   const visible = useMemo(() => {
-    let result = items
+    let result = pendenzen
 
     if (scope === 'mine') {
       result = result.filter((item) => item.assignees?.includes(profile?.id ?? ''))
-    } else if (scope === 'overdue') {
-      result = result.filter((item) => getDueInfo(item.dueDate)?.overdue)
-    } else if (scope === 'unassigned') {
-      result = result.filter((item) => !item.meetingId)
     }
 
     if (search.trim()) {
@@ -105,18 +121,13 @@ export function Pendenzen() {
     }
 
     return sortForPendenzen(result)
-  }, [items, scope, search, profile?.id, userName, memberName])
+  }, [pendenzen, scope, search, profile?.id, userName, memberName])
 
   return (
     <>
       <PageHeader
         title="Pendenzen"
-        actions={
-          <button type="button" className="btn-primary" onClick={() => setFormOpen(true)}>
-            <Plus className="size-4" aria-hidden />
-            <span className="hidden sm:inline">Neu</span>
-          </button>
-        }
+        subtitle="Was eine Sitzung überstanden hat, ohne erledigt zu werden"
       />
 
       <div className="mb-4 space-y-3">
@@ -126,8 +137,6 @@ export function Pendenzen() {
           options={[
             { value: 'all', label: 'Alle', count: counts.all },
             { value: 'mine', label: 'Meine', count: counts.mine },
-            { value: 'overdue', label: 'Überfällig', count: counts.overdue },
-            { value: 'unassigned', label: 'Ohne Sitzung', count: counts.unassigned },
           ]}
         />
 
@@ -153,19 +162,11 @@ export function Pendenzen() {
         <div className="card">
           <EmptyState
             icon={CheckCircle2}
-            title={items.length === 0 ? 'Keine offenen Pendenzen' : 'Nichts gefunden'}
+            title={pendenzen.length === 0 ? 'Keine offenen Pendenzen' : 'Nichts gefunden'}
             description={
-              items.length === 0
-                ? 'Alles erledigt – sehr gut.'
+              pendenzen.length === 0
+                ? 'Alles erledigt – sehr gut. Neue Punkte werden in der Sitzung erfasst.'
                 : 'Kein Eintrag passt zur Suche oder zum gewählten Ausschnitt.'
-            }
-            action={
-              items.length === 0 && (
-                <button type="button" className="btn-primary" onClick={() => setFormOpen(true)}>
-                  <Plus className="size-4" aria-hidden />
-                  Traktandum erfassen
-                </button>
-              )
             }
           />
         </div>
@@ -180,7 +181,6 @@ export function Pendenzen() {
               expanded={openId === item.id}
               onToggle={() => toggleOpen(item.id)}
               nextMeeting={nextMeetingRef}
-              showKind={toItemKind(item) === 'pendenz'}
               meetingLabel={item.meetingId ? meetingLabels.get(item.meetingId) : undefined}
               meetingHref={
                 item.meetingId
@@ -191,8 +191,6 @@ export function Pendenzen() {
           ))}
         </ul>
       )}
-
-      <AgendaItemForm open={formOpen} onClose={() => setFormOpen(false)} meetingId={null} />
     </>
   )
 }

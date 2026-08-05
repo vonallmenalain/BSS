@@ -1,13 +1,13 @@
 import { useEffect, useRef, useState, type FormEvent } from 'react'
 import { Modal } from '@/components/ui/Modal'
 import { MentionField } from '@/components/ui/MentionField'
-import { AssigneePicker, SegmentedControl } from '@/components/ui/Pickers'
+import { AssigneePicker } from '@/components/ui/Pickers'
 import { LayoutGrid } from '@/components/agenda/LayoutGrid'
 import { useAuth } from '@/contexts/AuthContext'
 import { useToast } from '@/contexts/ToastContext'
 import { createAgendaItem, type AgendaItemInput } from '@/services/agenda'
 import { emptyLayout, serializeLayout } from '@/lib/layout'
-import { PRIORITY_LABELS, type ItemLayout, type ItemStatus, type Priority } from '@/lib/types'
+import type { ItemLayout, ItemStatus } from '@/lib/types'
 
 interface Props {
   open: boolean
@@ -26,10 +26,8 @@ interface Props {
 interface FormState {
   title: string
   description: string
-  priority: Priority
   assignees: string[]
   memberRefs: string[]
-  dueDate: string
   /** Gesetzt heisst: variables Layout statt Beschreibung */
   layout: ItemLayout | null
 }
@@ -37,10 +35,8 @@ interface FormState {
 const EMPTY: FormState = {
   title: '',
   description: '',
-  priority: 'normal',
   assignees: [],
   memberRefs: [],
-  dueDate: '',
   layout: null,
 }
 
@@ -52,8 +48,13 @@ const EMPTY: FormState = {
  * sich über die Sitzung legt, um ein Wort zu ändern, gibt es nicht mehr.
  *
  * Gefragt wird nur nach dem, was am Sitzungstisch zählt: Titel, Beschreibung,
- * Priorität, Termin, Zuständige. Alles Weitere lässt sich nachtragen, und
- * Bereich, betroffene Mitglieder und «vertraulich» sind ganz weggefallen.
+ * Zuständige. Alles Weitere lässt sich nachtragen, und Bereich, betroffene
+ * Mitglieder, Priorität, Termin und «vertraulich» sind ganz weggefallen.
+ *
+ * Hier – und nur hier – steht auch der Haken für das variable Layout: Ob ein
+ * Punkt ein Absatz Text ist oder eine kleine Tabelle, entscheidet sich beim
+ * Erfassen. Später stünde der Haken über zwanzig Traktanden, die ihn nie
+ * brauchen.
  */
 export function AgendaItemForm({
   open,
@@ -116,10 +117,8 @@ export function AgendaItemForm({
       const payload: AgendaItemInput = {
         title,
         description: form.description,
-        priority: form.priority,
         assignees: form.assignees,
         memberRefs: form.memberRefs,
-        dueDate: form.dueDate ? new Date(`${form.dueDate}T12:00:00`) : null,
         status: defaultStatus,
         meetingId,
         layout: form.layout ? serializeLayout(form.layout) : null,
@@ -216,34 +215,6 @@ export function AgendaItemForm({
             />
           </div>
         )}
-
-        <div className="grid gap-4 sm:grid-cols-2">
-          <div>
-            <span className="label">Priorität</span>
-            <SegmentedControl<Priority>
-              value={form.priority}
-              onChange={(next) => update('priority', next)}
-              size="sm"
-              options={(['low', 'normal', 'high'] as Priority[]).map((value) => ({
-                value,
-                label: PRIORITY_LABELS[value],
-              }))}
-            />
-          </div>
-
-          <div>
-            <label className="label" htmlFor="item-due">
-              Erledigen bis
-            </label>
-            <input
-              id="item-due"
-              type="date"
-              className="input"
-              value={form.dueDate}
-              onChange={(event) => update('dueDate', event.target.value)}
-            />
-          </div>
-        </div>
 
         <AssigneePicker value={form.assignees} onChange={(next) => update('assignees', next)} />
       </form>

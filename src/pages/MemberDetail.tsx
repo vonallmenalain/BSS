@@ -24,7 +24,7 @@ import { CallingStatusBadge, TalkStatusBadge } from '@/components/ui/Badge'
 import { MemberPicker } from '@/components/ui/Pickers'
 import { formatDate, getAge, monthsSince, toDateInput } from '@/lib/dates'
 import { cn, formatPhone, telHref } from '@/lib/utils'
-import { createMember, deleteMember, updateMember } from '@/services/members'
+import { deleteMember, updateMember } from '@/services/members'
 import { callingPeriod, callingsForMember } from '@/services/callings'
 import {
   ACTIVE_CALLING_STATUSES,
@@ -410,6 +410,16 @@ const EMPTY: FormState = {
   tags: '',
 }
 
+/**
+ * Ein Mitglied bearbeiten.
+ *
+ * Nur bearbeiten – anlegen lässt sich hier niemand. Das Verzeichnis kommt
+ * aus dem LCR und wird dort gepflegt; ein von Hand erfasstes Mitglied wäre
+ * beim nächsten Import entweder doppelt oder ein Datensatz, den niemand
+ * wiederfindet. Was die App darüber hinaus führt – Notiz, Schlagworte,
+ * «kann angefragt werden», Betreuung –, steht im LCR nicht und wird deshalb
+ * weiterhin hier gepflegt.
+ */
 export function MemberForm({
   open,
   onClose,
@@ -417,7 +427,7 @@ export function MemberForm({
 }: {
   open: boolean
   onClose: () => void
-  member?: Member
+  member: Member
 }) {
   const toast = useToast()
   const [form, setForm] = useState<FormState>(EMPTY)
@@ -425,29 +435,25 @@ export function MemberForm({
 
   useEffect(() => {
     if (!open) return
-    setForm(
-      member
-        ? {
-            firstName: member.firstName,
-            lastName: member.lastName,
-            gender: member.gender,
-            birthDate: toDateInput(member.birthDate),
-            email: member.email ?? '',
-            phone: member.phone ?? '',
-            mobile: member.mobile ?? '',
-            street: member.street ?? '',
-            zip: member.zip ?? '',
-            city: member.city ?? '',
-            status: member.status,
-            availableForTalks: member.availableForTalks ?? true,
-            notes: member.notes ?? '',
-            ministeringPartnerIds: member.ministeringPartnerIds ?? [],
-            ministeringAssignedIds: member.ministeringAssignedIds ?? [],
-            lastTalkDate: toDateInput(member.lastTalkDate),
-            tags: (member.tags ?? []).join(', '),
-          }
-        : EMPTY,
-    )
+    setForm({
+      firstName: member.firstName,
+      lastName: member.lastName,
+      gender: member.gender,
+      birthDate: toDateInput(member.birthDate),
+      email: member.email ?? '',
+      phone: member.phone ?? '',
+      mobile: member.mobile ?? '',
+      street: member.street ?? '',
+      zip: member.zip ?? '',
+      city: member.city ?? '',
+      status: member.status,
+      availableForTalks: member.availableForTalks ?? true,
+      notes: member.notes ?? '',
+      ministeringPartnerIds: member.ministeringPartnerIds ?? [],
+      ministeringAssignedIds: member.ministeringAssignedIds ?? [],
+      lastTalkDate: toDateInput(member.lastTalkDate),
+      tags: (member.tags ?? []).join(', '),
+    })
   }, [open, member])
 
   const update = <K extends keyof FormState>(key: K, value: FormState[K]) =>
@@ -485,13 +491,8 @@ export function MemberForm({
           .filter(Boolean),
       }
 
-      if (member) {
-        const outcome = await updateMember(member.id, payload)
-        toast.saved('Mitglied aktualisiert.', outcome)
-      } else {
-        const { outcome } = await createMember(payload)
-        toast.saved('Mitglied erfasst.', outcome)
-      }
+      const outcome = await updateMember(member.id, payload)
+      toast.saved('Mitglied aktualisiert.', outcome)
       onClose()
     } catch (error) {
       console.error(error)
@@ -505,7 +506,7 @@ export function MemberForm({
     <Modal
       open={open}
       onClose={onClose}
-      title={member ? 'Mitglied bearbeiten' : 'Neues Mitglied'}
+      title="Mitglied bearbeiten"
       size="lg"
       footer={
         <>

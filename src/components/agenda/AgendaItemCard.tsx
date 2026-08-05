@@ -1,10 +1,10 @@
 import { CalendarClock, Check, Repeat } from 'lucide-react'
 import { cn } from '@/lib/utils'
-import { getDueInfo, formatDate } from '@/lib/dates'
+import { formatDate } from '@/lib/dates'
 import { useAuth } from '@/contexts/AuthContext'
 import { useToast } from '@/contexts/ToastContext'
 import { AssigneeAvatars } from '@/components/ui/Avatar'
-import { DueBadge, KindBadge, PriorityBadge, StatusBadge } from '@/components/ui/Badge'
+import { KindBadge, StatusBadge } from '@/components/ui/Badge'
 import { setItemStatus } from '@/services/agenda'
 import { toItemKind, type AgendaItem } from '@/lib/types'
 
@@ -30,7 +30,6 @@ export function AgendaItemCard({ item, onOpen, meetingLabel, compact = false }: 
   const { profile } = useAuth()
   const toast = useToast()
 
-  const due = getDueInfo(item.dueDate)
   const isDone = item.status === 'done'
 
   const toggleDone = async () => {
@@ -53,8 +52,6 @@ export function AgendaItemCard({ item, onOpen, meetingLabel, compact = false }: 
         'card card-hover group relative',
         compact ? 'p-3' : 'p-4',
         isDone && 'opacity-65',
-        due?.overdue && !isDone && 'border-l-4 border-l-rose-500',
-        item.priority === 'high' && !isDone && !due?.overdue && 'border-l-4 border-l-amber-500',
       )}
     >
       <div className="flex items-start gap-3">
@@ -101,8 +98,6 @@ export function AgendaItemCard({ item, onOpen, meetingLabel, compact = false }: 
           <div className="mt-2 flex flex-wrap items-center gap-1.5">
             <KindBadge kind={toItemKind(item)} />
             {item.status !== 'pending' && <StatusBadge status={item.status} />}
-            <PriorityBadge priority={item.priority} />
-            {due && !isDone && <DueBadge label={due.label} overdue={due.overdue} soon={due.soon} />}
             {item.deferCount > 0 && !isDone && (
               <span
                 className="badge bg-slate-100 text-slate-500 dark:bg-slate-800 dark:text-slate-400"

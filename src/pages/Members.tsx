@@ -1,12 +1,11 @@
 import { useMemo, useState } from 'react'
 import { Link } from 'react-router-dom'
-import { ArrowDownUp, Mail, Phone, Plus, Search, Users } from 'lucide-react'
+import { ArrowDownUp, Mail, Phone, Search, Users } from 'lucide-react'
 import { useData } from '@/contexts/DataContext'
 import { EmptyState, SkeletonList } from '@/components/ui/Feedback'
 import { PageHeader, SegmentedControl } from '@/components/ui/Pickers'
 import { MemberStatusBadge } from '@/components/ui/Badge'
 import { Avatar } from '@/components/ui/Avatar'
-import { MemberForm } from '@/pages/MemberDetail'
 import { useLocalStorage } from '@/hooks/useLocalStorage'
 import { formatDate, getAge, monthsSince } from '@/lib/dates'
 import { formatPhone, telHref } from '@/lib/utils'
@@ -33,7 +32,6 @@ export function Members() {
   const [status, setStatus] = useState<MemberStatus | 'all'>('active')
   const [sortKey, setSortKey] = useLocalStorage<MemberSortKey>('bss:members:sort', 'name')
   const [direction, setDirection] = useLocalStorage<'asc' | 'desc'>('bss:members:dir', 'asc')
-  const [formOpen, setFormOpen] = useState(false)
 
   const counts = useMemo(
     () => ({
@@ -51,20 +49,12 @@ export function Members() {
 
   return (
     <>
-      <PageHeader
-        title="Mitglieder"
-        subtitle={`${counts.all} Personen erfasst`}
-        actions={
-          /* Import und Export stehen gesammelt unter «Einstellungen ›
-             Importe». Auf dieser Seite geht es um die Personen selbst –
-             ein Knopf, der die halbe Liste ersetzen kann, gehört nicht
-             neben «Neu». */
-          <button type="button" className="btn-primary" onClick={() => setFormOpen(true)}>
-            <Plus className="size-4" aria-hidden />
-            <span className="hidden sm:inline">Neu</span>
-          </button>
-        }
-      />
+      {/* Kein «Neu»: Das Verzeichnis kommt aus dem LCR und wird dort
+          gepflegt – ein von Hand erfasstes Mitglied wäre beim nächsten
+          Import entweder doppelt oder ein Datensatz, den niemand
+          wiederfindet. Erfasst wird unter «Einstellungen › Importe ›
+          Mitglieder». */}
+      <PageHeader title="Mitglieder" subtitle={`${counts.all} Personen erfasst`} />
 
       <div className="mb-4 space-y-3">
         <div className="relative">
@@ -128,16 +118,8 @@ export function Members() {
             title={members.length === 0 ? 'Noch keine Mitglieder' : 'Nichts gefunden'}
             description={
               members.length === 0
-                ? 'Erfasse Personen einzeln – oder übernimm die ganze Liste unter «Einstellungen › Importe».'
+                ? 'Die Mitgliederliste kommt aus dem LCR: «Einstellungen › Importe › Mitglieder».'
                 : 'Passe Suche oder Filter an.'
-            }
-            action={
-              members.length === 0 && (
-                <button type="button" className="btn-primary" onClick={() => setFormOpen(true)}>
-                  <Plus className="size-4" aria-hidden />
-                  Person erfassen
-                </button>
-              )
             }
           />
         </div>
@@ -213,8 +195,6 @@ export function Members() {
           </ul>
         </>
       )}
-
-      <MemberForm open={formOpen} onClose={() => setFormOpen(false)} />
     </>
   )
 }

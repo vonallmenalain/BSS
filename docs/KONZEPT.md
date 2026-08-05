@@ -49,8 +49,8 @@ sieht auf einen Blick, was schon einmal liegengeblieben ist.
 Während der Sitzung zählt nur eine Frage: Was ist gerade dran? Deshalb steht
 der Sitzungsmodus im Mittelpunkt – ein Punkt gross im Bild, Notizfeld und
 Statusknöpfe darunter, weiter zum nächsten. Und er ist zugleich das Formular:
-Titel und Beschreibung sind Text, in den man hineingreift, Priorität, Termin
-und Zuständige stehen darunter, gespeichert wird von selbst. Ein Fenster, das
+Titel und Beschreibung sind Text, in den man hineingreift, die Zuständigen
+stehen darunter, gespeichert wird von selbst. Ein Fenster, das
 sich zum Ändern eines Wortes über die Sitzung legt, wäre ein Handgriff zu
 viel. Die Listenansicht bleibt für die Vorbereitung – dort wird die
 Reihenfolge festgelegt.
@@ -86,10 +86,19 @@ Sammelkorb  ──►  Sitzung  ──►  erledigt
       offen geblieben
 ```
 
-**Vorbereiten.** Traktanden lassen sich jederzeit erfassen – mit Titel,
-Beschreibung, Priorität, Zuständigen und einem Termin. Mehr wird nicht
-gefragt; alles Weitere lässt sich in der Sitzung nachtragen. Ohne
-Sitzungszuordnung landen sie im Sammelkorb.
+**Vorbereiten.** Traktanden werden in einer Sitzung erfasst – mit Titel,
+Beschreibung und Zuständigen. Mehr wird nicht gefragt; alles Weitere lässt
+sich in der Sitzung nachtragen. Weder Priorität noch Fälligkeitsdatum: Was
+zuerst drankommt, sagt die Reihenfolge der Liste, und wann etwas dran ist,
+sagt die Sitzung. Zwei Angaben für dieselbe Frage widersprachen sich
+regelmässig.
+
+**Bekanntmachung und Angelegenheit aus der Sitzung heraus.** Neben
+_+ Traktandum_ stehen _+ Bekanntmachung_ und _+ Angelegenheit_. Beides fällt
+in der Sitzung laufend an; dafür die Sitzung zu verlassen, den Sonntag zu
+suchen und zurückzufinden, sind drei Handgriffe für einen Satz. Ein Fenster
+über der Sitzung fragt nach dem Sonntag – vorgeschlagen ist der nächste – und
+hängt den Eintrag dort an, ohne den Rest des Programms anzurühren.
 
 **Nächste Sitzung festlegen.** Datum, Zeit, Ort und Anwesende. Die
 Einstellungen kennen den üblichen Wochentag und schlagen den Termin vor. Ein
@@ -103,8 +112,8 @@ die in einer halben Minute festgehalten sind, ein Umweg.
 **Durchführen (Sitzungsmodus).** Fortschrittsbalken, Sprungleiste über alle
 Punkte – zuerst die neuen Traktanden, dann die Pendenzen –, dann das aktuelle
 Thema in voller Breite und unmittelbar bearbeitbar: Titel, Beschreibung,
-Priorität, Termin, Zuständige. Darunter die Aktionsleiste – _Erledigt_,
-_Verschieben_, _Löschen_ – und Vor/Zurück. Nach «Erledigt» rückt die App von
+Zuständige. Darunter die Aktionsleiste – _Erledigt_, _Auf nächste Sitzung_,
+_Löschen_ – und Vor/Zurück. Nach «Erledigt» rückt die App von
 selbst zum nächsten Punkt. Am Laptop geht das Blättern auch mit den
 Pfeiltasten.
 
@@ -120,14 +129,22 @@ Eine eigene Notizliste je Traktandum gab es einmal; sie ist weggefallen. Zwei
 Textfelder nebeneinander beantworten dieselbe Frage zweimal, und in der
 Sitzung schreibt niemand zweimal.
 
-**Verschieben.** Vier Fälle, die im Alltag vorkommen, als je ein Klick:
-auf die nächste Sitzung, um eine Woche, um einen Monat, um drei Monate –
-plus freies Datum. Jede Verschiebung zählt mit: Ein Traktandum mit
-«3× verschoben» fällt in der Liste auf, und genau das soll es auch.
+**Verschieben.** Ein Ziel, ein Klick: auf die nächste Sitzung. Früher waren es
+fünf – eine Woche, ein Monat, drei Monate, freies Datum –, und vier davon
+setzten bloss ein Fälligkeitsdatum, an dem nichts geschah. Jede Verschiebung
+zählt mit: Ein Traktandum mit «3× verschoben» fällt in der Liste auf, und
+genau das soll es auch.
 
-**Abschliessen.** Alles Offene wird zur Pendenz, die Sitzung wandert ins
-Archiv, und die App bietet gleich die Folgeplanung an. Ein Protokoll lässt
-sich drucken.
+**Abschliessen.** Alles Offene wird zur Pendenz und wandert auf die nächste
+geplante Sitzung; die abgeschlossene wandert ins Archiv, und die App bietet
+gleich die Folgeplanung an. Eine Pendenz ohne Sitzung wartet auf einen Termin,
+den niemand kennt – deshalb geht sie nur dann in den Sammelkorb, wenn noch
+keine nächste Sitzung feststeht. Ein Protokoll lässt sich drucken.
+
+**Variables Layout.** Nicht jedes Traktandum ist ein Absatz Text; manches ist
+eine kleine Tabelle. Der Haken steht im Fenster _Neues Traktandum_ und nur
+dort: Ob ein Punkt Text ist oder Raster, entscheidet sich einmal. Ein
+gebautes Raster lässt sich überall weiter ausfüllen.
 
 ### 3.2 Abendmahlsversammlung
 
@@ -166,9 +183,13 @@ selbst steht er ausgeschrieben, damit ein altes Programm auch dann lesbar
 bleibt, wenn die Person später aus der Auswahl genommen wird.
 
 **Bekanntmachungen und Angelegenheiten.** Je eine Liste pro Sonntag, in der
-Reihenfolge des Vorlesens. Angelegenheiten kennen ihre Art (Bestätigung,
-Entlassung, Ordinierung, Konfirmierung, Namensgebung, Begrüssung) und lassen
-sich aus den Berufungen übernehmen, statt den Namen ein zweites Mal zu tippen.
+Reihenfolge des Vorlesens. Eine Angelegenheit hat drei Spalten: die Art
+(Bestätigung, Entlassung, Ordinierung, Konfirmierung, Namensgebung,
+Begrüssung), das Mitglied aus dem Verzeichnis und die Aufgabe als Freitext.
+Vorgelesen wird «Name – Aufgabe»; der Name wird mitgeschrieben, damit ein
+altes Programm lesbar bleibt. An der Berufung selbst ändert der Eintrag
+nichts – sie kommt aus dem LCR. Die frühere Übernahme aus dem Bereich
+«Berufungen», samt Verknüpfung, ist deshalb weggefallen.
 
 **Musik.** Anfangs-, Abendmahls- und Schlusslied, dazu das freiwillige
 Zwischenlied und beliebig viele Musikeinlagen mit den vortragenden
@@ -322,6 +343,13 @@ nächsten Bearbeitung wieder woanders.
 ## 4. Mitgliederverwaltung
 
 Die gemeinsame Datenbasis für alles andere.
+
+**Gelesen, nicht angelegt.** In der App entsteht kein Mitglied von Hand – es
+gibt keinen «Neu»-Knopf. Das Verzeichnis kommt aus dem LCR und wird dort
+gepflegt; ein von Hand erfasster Datensatz wäre beim nächsten Import entweder
+doppelt oder einer, den niemand wiederfindet. Was die App darüber hinaus führt
+und das LCR gar nicht kennt – Notiz, Schlagworte, «kann für Ansprachen
+angefragt werden», Betreuung –, wird weiterhin am einzelnen Mitglied gepflegt.
 
 **Felder.** Vor- und Nachname, Geschlecht, Geburtsdatum, E-Mail, Telefon und
 Mobile, Adresse, Status (aktiv / weniger aktiv / inaktiv / weggezogen),
@@ -501,7 +529,7 @@ in der Hand. Untere Navigationsleiste, grosse Tippflächen, Dialoge fahren als
 Blatt von unten ein. Am Desktop wird daraus eine Seitennavigation.
 
 **Wenig Farbe, klare Signale.** Gedecktes Blau als Grundton; Rot und Bernstein
-sind für Überfälliges und Warnungen reserviert. Ein rot markierter Rand heisst
+sind für Warnungen reserviert. Ein rot markierter Rand heisst
 immer dasselbe: Termin verstrichen.
 
 **Dunkelmodus** folgt dem System oder wird manuell gesetzt.
@@ -515,7 +543,8 @@ immer dasselbe: Termin verstrichen.
 - Anmeldung, Registrierung, Passwort zurücksetzen, Freigabe-Sperre
 - Rollen und Benutzerverwaltung
 - Sitzungen planen, starten, durchführen, abschliessen, Protokoll drucken
-- Sitzungsmodus mit unmittelbarer Bearbeitung, Statuswechsel, Verschieben,
+- Sitzungsmodus mit unmittelbarer Bearbeitung, Statuswechsel, Verschieben
+  auf die nächste Sitzung,
   Tastatursteuerung
 - Anwesenheit, Gebete und geistiger Gedanke als Knopfleiste zuoberst in der
   Sitzung
@@ -523,7 +552,7 @@ immer dasselbe: Termin verstrichen.
   Reihenfolge je Gruppe (Pfeile oder Ziehen und Ablegen)
 - Mit «@» erwähnte Mitglieder bleiben im Text anklickbar und führen zur Person
   und wieder zurück
-- Pendenzenübersicht mit Filtern (alle / meine / überfällig / ohne Sitzung)
+- Pendenzenübersicht über alle Sitzungen hinweg (alle / meine)
 - Notizen für alle: Titel und Text, Suche, Liste oder Kacheln, eigene
   Reihenfolge, laufendes Speichern
 - Mitgliederliste mit Suche, Sortierung, Detailansicht, Notizen

@@ -72,10 +72,8 @@ async function seed() {
       kind: 'traktandum',
       status: 'pending',
       order: 100,
-      priority: 'normal',
       assignees: [],
       memberRefs: [],
-      dueDate: null,
       deferCount: 0,
       history: [],
     }
@@ -281,9 +279,7 @@ describe('Alle Rollen sehen denselben Bestand', () => {
       updateDoc(doc(asBishop(), 'cleaningWeeks', '2026-06-29'), { note: 'Generalkonf.' }),
     )
     await assertFails(getDocs(collection(asPending(), 'cleaningWeeks')))
-    await assertFails(
-      setDoc(doc(asPending(), 'cleaningWeeks', '2026-07-06'), { team: 'Versuch' }),
-    )
+    await assertFails(setDoc(doc(asPending(), 'cleaningWeeks', '2026-07-06'), { team: 'Versuch' }))
     await assertFails(getDocs(collection(asAnonymous(), 'cleaningWeeks')))
   })
 
@@ -326,11 +322,15 @@ describe('Abendmahlsversammlung', () => {
 describe('Rollen und Rechteausweitung', () => {
   it('hindert ein wartendes Konto daran, sich selbst freizuschalten', async () => {
     await assertFails(updateDoc(doc(asPending(), 'users', PENDING), { role: 'bishop' }))
-    await assertFails(updateDoc(doc(asPending(), 'users', PENDING), { active: true, role: 'secretary' }))
+    await assertFails(
+      updateDoc(doc(asPending(), 'users', PENDING), { active: true, role: 'secretary' }),
+    )
   })
 
   it('lässt ein wartendes Konto den eigenen Namen ändern', async () => {
-    await assertSucceeds(updateDoc(doc(asPending(), 'users', PENDING), { displayName: 'Wartend B' }))
+    await assertSucceeds(
+      updateDoc(doc(asPending(), 'users', PENDING), { displayName: 'Wartend B' }),
+    )
   })
 
   it('erlaubt jeder freigeschalteten Person, ihre eigene Rolle zu setzen', async () => {

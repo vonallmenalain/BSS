@@ -224,21 +224,6 @@ export function useCallings(limitCount = 300) {
 }
 
 /**
- * Berufungen in Vorbereitung – genehmigt oder ausgesprochen, aber noch
- * nicht bestätigt.
- *
- * Eine eigene Abfrage statt eines Ausschnitts der zuletzt geänderten: Es
- * sind stets wenige, und sie sollen auch dann vollständig erscheinen, wenn
- * die Sammlung durch die übernommene Berufungshistorie auf Hunderte
- * angewachsen ist.
- */
-export function useCallingsInPreparation() {
-  const { isApproved } = useAuth()
-  const constraints = useMemo(() => [where('status', 'in', ['approved', 'extended'])], [])
-  return useCollection<Calling>(COLLECTIONS.callings, constraints, isApproved)
-}
-
-/**
  * Sämtliche Berufungen einer Person – ohne Obergrenze.
  *
  * Eine eigene Abfrage, seit die Berufungshistorie mitkommt: Die Sammlung

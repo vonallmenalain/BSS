@@ -284,13 +284,13 @@ export function toItemKind(item: {
   return first !== null && first !== (item.meetingId ?? null) ? 'pendenz' : 'traktandum'
 }
 
-export type Priority = 'low' | 'normal' | 'high'
-
-export const PRIORITY_LABELS: Record<Priority, string> = {
-  low: 'Tief',
-  normal: 'Normal',
-  high: 'Hoch',
-}
+/*
+ * Eine Priorität gab es einmal – tief, normal, hoch. Sie ist weggefallen:
+ * Am Sitzungstisch entscheidet die Reihenfolge der Liste, was zuerst
+ * drankommt, und die lässt sich von Hand festlegen. Zwei Angaben für
+ * dieselbe Frage widersprachen sich regelmässig. Alte Werte bleiben in
+ * Firestore stehen, gelesen werden sie nicht mehr.
+ */
 
 export interface HistoryEntry {
   id: string
@@ -389,7 +389,6 @@ export interface AgendaItem extends WithId {
    */
   kind: ItemKind
   status: ItemStatus
-  priority: Priority
 
   /** UIDs der zuständigen Personen (Mehrfachzuweisung möglich) */
   assignees: string[]
@@ -402,8 +401,13 @@ export interface AgendaItem extends WithId {
    */
   memberRefs: string[]
 
-  /** Termin, bis wann die Pendenz erledigt sein soll */
-  dueDate: TS | null
+  /*
+   * Ein Fälligkeitsdatum («Erledigen bis») gab es einmal. Es ist
+   * weggefallen: Eine Pendenz gehört in eine Sitzung, und die Sitzung hat
+   * bereits ein Datum. Ein zweites daneben wurde gesetzt, lief ab und
+   * färbte danach die halbe Liste rot, ohne dass sich daraus etwas ergab.
+   * Alte Werte bleiben in Firestore stehen, gelesen werden sie nicht mehr.
+   */
 
   /**
    * Selbst gebautes Raster statt der Beschreibung.
@@ -1065,13 +1069,36 @@ export const BUSINESS_TYPE_LABELS: Record<BusinessType, string> = {
   other: 'Übriges',
 }
 
+/**
+ * Eine Angelegenheit: Art, Person, Aufgabe – drei Angaben, mehr nicht.
+ *
+ * Die Person kommt aus dem Mitgliederverzeichnis; ihr Name wird
+ * mitgeschrieben, damit ein Programm von vor zwei Jahren auch dann lesbar
+ * bleibt, wenn der Datensatz später nicht mehr da ist. Wie beim Liedtitel
+ * und beim Namen der leitenden Person.
+ *
+ * Die Aufgabe ist Freitext und **ändert an keiner Berufung etwas**. Wer
+ * welche Berufung hat, sagt allein das LCR; hier steht nur, was am Sonntag
+ * vorgelesen wird.
+ */
 export interface BusinessEntry {
   id: string
   type: BusinessType
-  /** z. B. «Peter Meier – Lehrer in der Sonntagsschule» */
-  text: string
-  memberIds: string[]
-  /** Verknüpfte Berufung, falls aus dem Bereich «Berufungen» übernommen */
+  /** Das betroffene Mitglied – `null` bei Einträgen früherer Fassungen */
+  memberId?: string | null
+  /** Denormalisiert, damit die Zeile ohne Verzeichnis lesbar bleibt */
+  memberName?: string
+  /** Funktion bzw. Berufung: «Lehrer in der Sonntagsschule» */
+  position?: string
+  /**
+   * Freitext früherer Fassungen: «Peter Meier – Lehrer in der
+   * Sonntagsschule». Wird nicht mehr geschrieben, aber weiterhin angezeigt –
+   * sonst verschwänden vergangene Sonntage aus dem Programm.
+   */
+  text?: string
+  /** Mehrfachauswahl früherer Fassungen */
+  memberIds?: string[]
+  /** Verweis auf eine Berufung aus früheren Fassungen */
   callingId?: string | null
 }
 

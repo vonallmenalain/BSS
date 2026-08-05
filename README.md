@@ -14,7 +14,7 @@ Abendmahlsversammlung, Berufungsverwaltung und Mitgliederdaten.
 | Bereich                   | Was die App leistet                                                                                 |
 | ------------------------- | --------------------------------------------------------------------------------------------------- |
 | **Sitzungen**             | Termin festlegen, Traktanden und Pendenzen sammeln, Sitzungsmodus zum Durchgehen, Protokoll drucken |
-| **Pendenzen**             | Offenes über alle Sitzungen hinweg, gefiltert nach «meine», «überfällig», «ohne Sitzung»            |
+| **Pendenzen**             | Was eine Sitzung überstanden hat, ohne erledigt zu werden – alles oder nur das eigene               |
 | **Notizen**               | Was nicht an eine Sitzung gehört – für alle sichtbar, speichert von selbst                          |
 | **Putzplan**              | Die Halbjahrestabelle der Gemeinde als Wochenplan – Grundlage für die Ansage am Sonntag             |
 | **Abendmahlsversammlung** | Ganzer Ablauf pro Sonntag: Leitung, Bekanntmachungen, Angelegenheiten, Ansprachen, Musik, Gebet     |
@@ -261,9 +261,11 @@ Beides ist derselbe Datensatz, aber nicht dasselbe Wort:
 - **Pendenz** – hat eine frühere Sitzung überstanden, ohne erledigt zu werden.
 
 Der Weg führt nur in eine Richtung. Wird eine Sitzung abgeschlossen, wandert
-alles Unerledigte in den Sammelkorb und ist von da an eine Pendenz; wer sie in
-die nächste Sitzung übernimmt, findet sie dort unter **Pendenzen** und nicht
-unter den neuen Traktanden. Die beiden Gruppen stehen unter eigenen
+alles Unerledigte **auf die nächste geplante Sitzung** und ist von da an eine
+Pendenz; dort steht es unter **Pendenzen** und nicht unter den neuen
+Traktanden. Steht noch keine nächste Sitzung fest, bleibt es im Sammelkorb und
+erscheint so lange unter «Pendenzen»; die nächste Sitzung holt es mit einem
+Griff zurück («_n_ Pendenzen» in der Werkzeugleiste). Die beiden Gruppen stehen unter eigenen
 Überschriften, **zuerst die neuen Traktanden, danach die Pendenzen** – in
 dieser Reihenfolge geht eine Sitzung durch, und der erste Teil ist nicht eine
 Wiederholung der letzten. Angeschrieben wird nur die Pendenz: dass sie pendent
@@ -293,17 +295,36 @@ Eintrag selbst ist das Formular:
   wird kurz nach dem letzten Tastendruck und noch einmal beim Weiterblättern.
   Gemeldet wird nur, was zu tun ist – ein fehlender Titel oder ein Schreiben,
   das nicht durchkam.
-- **Priorität** (Standard _Normal_), **Erledigen bis** (Standard leer) und
-  **Zuständig** (niemand vorausgewählt) stehen unmittelbar darunter. Zur Wahl
+- **Zuständig** (niemand vorausgewählt) steht unmittelbar darunter. Zur Wahl
   stehen der Bischof, beide Ratgeber und die Sekretäre – ein Klick genügt.
-- Sonst nichts. Bereich, betroffene Mitglieder, das Kennzeichen «vertraulich»
-  und die eigene Notizliste je Traktandum sind weggefallen: Was besprochen
-  wurde, gehört in die Beschreibung.
+- Sonst nichts. Bereich, betroffene Mitglieder, **Priorität**, **Erledigen
+  bis**, das Kennzeichen «vertraulich» und die eigene Notizliste je Traktandum
+  sind weggefallen: Was besprochen wurde, gehört in die Beschreibung.
+
+**Kein Fälligkeitsdatum und keine Priorität.** Beide sagten dasselbe noch
+einmal und meist anders: Eine Pendenz gehört in eine Sitzung, und die hat
+bereits ein Datum; was zuerst drankommt, sagt die Reihenfolge der Liste, und
+die lässt sich von Hand festlegen. Aus «Verschieben» ist deshalb ein einziger
+Knopf geworden – **auf die nächste Sitzung**. Die früheren Ziele «um eine
+Woche», «um einen Monat», «eigenes Datum» setzten bloss einen Termin, an dem
+nichts geschah.
 
 Oben steht, wo man innerhalb der eigenen Gruppe ist – «2 von 5 Traktanden»,
 später «1 von 8 Pendenzen». Auch die Sprungleiste zählt je Gruppe von vorn und
 lässt zwischen ihnen eine Lücke. Nach «Erledigt» rückt die App von selbst zum
 nächsten Punkt; am Laptop blättern die Pfeiltasten.
+
+### Variables Layout
+
+Nicht jedes Traktandum ist ein Absatz Text. Manches ist eine kleine Tabelle –
+Aufgabe, wer, bis wann. Der Haken **Variables Layout** stellt beim Erfassen an
+die Stelle der Beschreibung ein Raster, das sich selbst zusammenstellen lässt.
+
+Der Haken steht **nur im Fenster «Neues Traktandum»**. Ob ein Punkt Text ist
+oder Tabelle, entscheidet sich einmal; über zwanzig Pendenzen hinweg stand er
+sonst überall, wo ihn niemand brauchte. Ein Raster, das einmal gebaut ist,
+lässt sich weiterhin überall ausfüllen und ändern – es tritt schlicht an die
+Stelle der Beschreibung.
 
 ### Liste: Reihenfolge festlegen
 
@@ -316,6 +337,20 @@ jeder Zeile (auch am Handy) oder durch **Ziehen und Ablegen** am Zeigergerät.
 Die Reihenfolge gilt für alle und bestimmt auch, in welcher Folge der
 Sitzungsmodus durchgeht. Zwischen den Gruppen wird nicht verschoben – eine
 Pendenz zu den neuen Traktanden zu ziehen hiesse, sie zurückzudatieren.
+
+### Bekanntmachung und Angelegenheit aus der Sitzung heraus
+
+Neben **+ Traktandum** stehen **+ Bekanntmachung** und **+ Angelegenheit**.
+Beides fällt in der Sitzung laufend an – «das sagen wir am Sonntag an», «den
+bestätigen wir» –, und bis anhin hiess das: die Sitzung verlassen, den Sonntag
+suchen, zurückfinden. Drei Handgriffe für einen Satz.
+
+Ein Klick öffnet stattdessen ein Fenster über der Sitzung. Gefragt wird zuerst
+nach dem **Sonntag** – vorgeschlagen ist der nächste, zur Wahl stehen die
+nächsten acht –, danach folgen die Felder. Der Eintrag wird beim gewählten
+Sonntag **angehängt**; alles, was dort schon steht, bleibt unberührt, auch
+wenn jemand anders gleichzeitig daran arbeitet. Wer mehr als den einen Satz
+braucht, findet unten den Weg zum ganzen Sonntag.
 
 ### Namen im Text
 
@@ -498,6 +533,32 @@ einem Neuimport gleich bleibt.
 **Gebet.** Beim Zuteilen steht bei jedem Vorschlag, wann die Person zuletzt
 gebetet hat; zuoberst steht, wer noch nie an der Reihe war – dieselbe Logik
 wie bei den Ansprachen.
+
+### Angelegenheiten: Art, Person, Aufgabe
+
+Ein Eintrag hat drei Spalten, mehr braucht er nicht:
+
+| Spalte       | Was darin steht                                                    |
+| ------------ | ------------------------------------------------------------------ |
+| **Art**      | Bestätigung, Entlassung, Ordinierung, Konfirmierung, Segnung, …    |
+| **Mitglied** | Aus dem Verzeichnis – tippen genügt, gewählt wird aus den Treffern |
+| **Aufgabe**  | Funktion bzw. Berufung: «Lehrer in der Sonntagsschule»             |
+
+Vorgelesen wird daraus «_Name_ – _Aufgabe_»; genauso steht es unter
+«Leitung» im Ablauf. Der Name wird beim Eintrag mitgeschrieben, damit ein
+Programm von vor zwei Jahren auch dann lesbar bleibt, wenn der Datensatz
+später nicht mehr da ist – wie beim Liedtitel und beim Namen der leitenden
+Person.
+
+**An der Berufung ändert das nichts.** Wer welche Berufung hat, sagt allein
+das LCR und der Import von dort; diese Liste ist der Wortlaut für den Sonntag
+und sonst nichts. Früher liessen sich Einträge aus dem Bereich «Berufungen»
+übernehmen und blieben mit ihnen verknüpft – das ist weggefallen, zusammen
+mit dem Feld «Betroffene Mitglieder».
+
+Einträge aus früheren Fassungen tragen statt Person und Aufgabe einen
+Freitext. Er bleibt lesbar stehen und wird darunter angezeigt, bis jemand die
+beiden Felder ausfüllt – überschrieben wird nichts von selbst.
 
 ---
 
@@ -780,6 +841,14 @@ und Organisation zu, in der Ansicht «Ohne Berufung» auf den Namen.
 ## Mitgliederliste importieren
 
 **Einstellungen → Importe → Mitglieder**.
+
+**Der einzige Weg ins Verzeichnis.** In der App lässt sich kein Mitglied von
+Hand anlegen – es gibt keinen «Neu»-Knopf. Das Verzeichnis kommt aus dem LCR
+und wird dort gepflegt; ein von Hand erfasster Datensatz wäre beim nächsten
+Import entweder doppelt oder einer, den niemand wiederfindet. Was die App
+darüber hinaus führt und das LCR gar nicht kennt – Notiz, Schlagworte, «kann
+für Ansprachen angefragt werden», Betreuung –, wird weiterhin am einzelnen
+Mitglied gepflegt (**Bearbeiten** im Profil).
 
 Der Assistent führt durch vier Schritte: Quelle wählen, Spalten zuordnen
 (wird geraten), Vorschau prüfen, importieren. Als Quelle dienen wahlweise

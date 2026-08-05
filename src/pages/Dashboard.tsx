@@ -4,7 +4,6 @@ import {
   CalendarDays,
   Plus,
   ArrowRight,
-  AlertTriangle,
   Mic,
   ListTodo,
   Play,
@@ -26,7 +25,6 @@ import {
   formatDateShort,
   formatDayShort,
   formatTime,
-  getDueInfo,
   hasBirthdaySoon,
   toDate,
   differenceInCalendarDays,
@@ -35,7 +33,7 @@ import {
 } from '@/lib/dates'
 import { sortForMeeting, sortForPendenzen } from '@/services/agenda'
 import { openTalkSlots, sacramentDocId, sundayProgram, talksForDate } from '@/services/sacrament'
-import type { AgendaItem } from '@/lib/types'
+import { toItemKind, type AgendaItem } from '@/lib/types'
 
 export function Dashboard() {
   const { profile } = useAuth()
@@ -64,15 +62,22 @@ export function Dashboard() {
     ? differenceInCalendarDays(startOfDay(nextMeetingRef.date), startOfDay(new Date()))
     : null
 
-  /* Pendenzen ------------------------------------------------------- */
-  const myItems = useMemo(
-    () => sortForPendenzen(openItems.filter((item) => item.assignees?.includes(profile?.id ?? ''))),
-    [openItems, profile?.id],
+  /*
+   * Pendenzen: was liegengeblieben ist.
+   *
+   * Neue Traktanden zählen nicht mit – sie stehen in ihrer Sitzung und
+   * werden erst zur Pendenz, wenn diese abgeschlossen wird, ohne dass der
+   * Haken gesetzt ist. Sonst zeigte «Meine Pendenzen» bloss, was für die
+   * nächste Sitzung schon vorbereitet ist.
+   */
+  const pendenzen = useMemo(
+    () => openItems.filter((item) => toItemKind(item) === 'pendenz'),
+    [openItems],
   )
 
-  const overdueItems = useMemo(
-    () => sortForPendenzen(openItems.filter((item) => getDueInfo(item.dueDate)?.overdue)),
-    [openItems],
+  const myItems = useMemo(
+    () => sortForPendenzen(pendenzen.filter((item) => item.assignees?.includes(profile?.id ?? ''))),
+    [pendenzen, profile?.id],
   )
 
   // Dieselbe Reihenfolge wie in der Sitzung: zuerst die neuen Traktanden,
@@ -82,7 +87,7 @@ export function Dashboard() {
     [openItems, nextMeeting?.id],
   )
 
-  const unassignedCount = openItems.filter((item) => !item.meetingId).length
+  const unassignedCount = pendenzen.filter((item) => !item.meetingId).length
 
   /* Ansprachen: die nächsten Sonntage und ihre Lücken ---------------- */
   const talkGaps = useMemo(() => {
@@ -291,7 +296,7 @@ export function Dashboard() {
 
         {/* ---------- Rechte Spalte ---------- */}
         <div className="space-y-4">
-          <StatRow overdue={overdueItems.length} mine={myItems.length} openTalks={openTalkCount} />
+          <StatRow pendenzen={pendenzen.length} mine={myItems.length} openTalks={openTalkCount} />
 
           {/* Ansprachen */}
           <section className="card p-4">
@@ -376,8 +381,10 @@ export function Dashboard() {
         </div>
       </div>
 
-      {/* ---------- Pendenzen ---------- */}
-      <div className="mt-6 grid gap-4 lg:grid-cols-2">
+      {/* ---------- Pendenzen ----------
+           Eine Spalte, seit die zweite weggefallen ist: Dort stand
+           «Überfällig», und ein Fälligkeitsdatum gibt es nicht mehr. */}
+      <div className="mt-6">
         <section>
           <div className="mb-3 flex items-center justify-between">
             <h2 className="flex items-center gap-2 text-sm font-semibold">
@@ -409,20 +416,6 @@ export function Dashboard() {
             </div>
           )}
         </section>
-
-        {overdueItems.length > 0 && (
-          <section>
-            <h2 className="mb-3 flex items-center gap-2 text-sm font-semibold text-rose-600 dark:text-rose-400">
-              <AlertTriangle className="size-4" aria-hidden />
-              Überfällig ({overdueItems.length})
-            </h2>
-            <div className="space-y-2">
-              {overdueItems.slice(0, 5).map((item) => (
-                <AgendaItemCard key={item.id} item={item} compact onOpen={handleOpenItem} />
-              ))}
-            </div>
-          </section>
-        )}
       </div>
 
       <AgendaItemForm
@@ -436,16 +429,16 @@ export function Dashboard() {
 }
 
 function StatRow({
-  overdue,
+  pendenzen,
   mine,
   openTalks,
 }: {
-  overdue: number
+  pendenzen: number
   mine: number
   openTalks: number
 }) {
   const stats = [
-    { label: 'Überfällig', value: overdue, to: '/pendenzen', danger: overdue > 0 },
+    { label: 'Pendenzen', value: pendenzen, to: '/pendenzen', danger: false },
     { label: 'Meine', value: mine, to: '/pendenzen' },
     { label: 'Reden offen', value: openTalks, to: '/abendmahl/ansprachen' },
   ]

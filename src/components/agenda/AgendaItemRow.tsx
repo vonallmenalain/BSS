@@ -6,17 +6,15 @@ import {
   Check,
   ChevronDown,
   ChevronUp,
-  Clock,
   GripVertical,
   Repeat,
   Trash2,
 } from 'lucide-react'
 import { cn } from '@/lib/utils'
-import { getDueInfo } from '@/lib/dates'
 import { useAuth } from '@/contexts/AuthContext'
 import { useToast } from '@/contexts/ToastContext'
 import { AssigneeAvatars } from '@/components/ui/Avatar'
-import { DueBadge, KindBadge, PriorityBadge, StatusBadge } from '@/components/ui/Badge'
+import { StatusBadge } from '@/components/ui/Badge'
 import { ConfirmDialog } from '@/components/ui/Modal'
 import { AgendaItemEditor } from '@/components/agenda/AgendaItemEditor'
 import { DeferMenu } from '@/components/agenda/DeferMenu'
@@ -39,11 +37,6 @@ interface Props {
   last?: boolean
   readOnly?: boolean
   nextMeeting?: { id: string; date: Date } | null
-  /**
-   * Ob «Pendenz» angeschrieben wird. In der Sitzung stehen die beiden Gruppen
-   * unter ihren eigenen Überschriften und brauchen es nicht; ausserhalb schon.
-   */
-  showKind?: boolean
   /** Zu welcher Sitzung der Eintrag gehört – ausserhalb der Sitzung nützlich */
   meetingLabel?: string
   meetingHref?: string
@@ -62,8 +55,8 @@ interface Props {
  * Die Liste ist zum Vorbereiten da: Man will auf einen Blick sehen, was
  * ansteht, und die Reihenfolge festlegen. Deshalb zeigt die Zeile nur den
  * Titel und das Nötigste daneben. Ein Klick klappt sie auf, und dann steht
- * alles da – Beschreibung, Priorität, Termin, Zuständige – und lässt sich
- * unmittelbar ändern; ein Fenster dazwischen gibt es nicht mehr.
+ * alles da – Beschreibung und Zuständige – und lässt sich unmittelbar
+ * ändern; ein Fenster dazwischen gibt es nicht mehr.
  *
  * Umsortiert wird auf zwei Wegen: mit den Pfeilen (auch am Handy) und durch
  * Ziehen und Ablegen (am Zeigergerät). Beides schreibt dieselbe Reihenfolge.
@@ -78,7 +71,6 @@ export function AgendaItemRow({
   last = false,
   readOnly = false,
   nextMeeting,
-  showKind = false,
   meetingLabel,
   meetingHref,
   onDragStart,
@@ -92,7 +84,6 @@ export function AgendaItemRow({
   const toast = useToast()
   const [confirmDelete, setConfirmDelete] = useState(false)
 
-  const due = getDueInfo(item.dueDate)
   const isDone = item.status === 'done'
   const kind = toItemKind(item)
 
@@ -132,7 +123,6 @@ export function AgendaItemRow({
         'card transition',
         dragging && 'opacity-40',
         dropTarget && 'border-brand-500 border-dashed',
-        due?.overdue && !isDone && 'border-l-4 border-l-rose-500',
       )}
     >
       <div className="flex items-start gap-2 p-2.5">
@@ -209,12 +199,7 @@ export function AgendaItemRow({
                 position !== undefined && 'pl-6',
               )}
             >
-              {showKind && <KindBadge kind={kind} />}
               {item.status === 'new' && <StatusBadge status="new" />}
-              <PriorityBadge priority={item.priority} />
-              {due && !isDone && (
-                <DueBadge label={due.label} overdue={due.overdue} soon={due.soon} />
-              )}
               {item.deferCount > 0 && !isDone && (
                 <span
                   className="badge bg-slate-100 text-slate-500 dark:bg-slate-800 dark:text-slate-400"
@@ -301,17 +286,7 @@ export function AgendaItemRow({
                 {isDone ? 'Wieder offen' : 'Erledigt'}
               </button>
 
-              <DeferMenu
-                itemId={item.id}
-                nextMeeting={nextMeeting}
-                triggerClassName="shrink-0"
-                trigger={
-                  <span className="btn-secondary btn-sm">
-                    <Clock className="size-4" aria-hidden />
-                    Verschieben
-                  </span>
-                }
-              />
+              <DeferMenu itemId={item.id} nextMeeting={nextMeeting} className="btn-sm" />
 
               <button
                 type="button"

@@ -1,4 +1,11 @@
-import { deleteField, doc, serverTimestamp, setDoc, Timestamp } from 'firebase/firestore'
+import {
+  arrayUnion,
+  deleteField,
+  doc,
+  serverTimestamp,
+  setDoc,
+  Timestamp,
+} from 'firebase/firestore'
 import { db, COLLECTIONS } from '@/lib/firebase'
 import { toDate, toDateInput, weekdaysInMonth } from '@/lib/dates'
 import { stripUndefined, uid } from '@/lib/utils'
@@ -118,6 +125,44 @@ export async function saveSacramentMeeting(
   )
 }
 
+/**
+ * Einen einzelnen Eintrag anhängen, ohne den übrigen Sonntag zu kennen.
+ *
+ * Für den Weg aus der Sitzung heraus: Dort ist der Sonntag nicht geöffnet,
+ * und was sonst noch auf dem Programm steht, liegt gar nicht vor. Würde die
+ * Liste als Ganzes geschrieben, ginge alles verloren, was inzwischen
+ * dazugekommen ist. `arrayUnion` hängt deshalb an, was schon dasteht – zwei
+ * Personen können nebeneinander erfassen, ohne sich zu überschreiben.
+ */
+export async function appendAnnouncement(
+  date: Date,
+  entry: AnnouncementEntry,
+): Promise<SaveOutcome> {
+  return appendToSunday(date, 'announcements', entry)
+}
+
+export async function appendBusinessEntry(date: Date, entry: BusinessEntry): Promise<SaveOutcome> {
+  return appendToSunday(date, 'business', entry)
+}
+
+function appendToSunday(
+  date: Date,
+  field: 'announcements' | 'business',
+  entry: AnnouncementEntry | BusinessEntry,
+): Promise<SaveOutcome> {
+  return commit(
+    setDoc(
+      doc(db, COLLECTIONS.sacramentMeetings, sacramentDocId(date)),
+      {
+        [field]: arrayUnion(stripUndefined(entry as unknown as Record<string, unknown>)),
+        date: Timestamp.fromDate(date),
+        updatedAt: serverTimestamp(),
+      },
+      { merge: true },
+    ),
+  )
+}
+
 /* ------------------------------------------------------------------ */
 /* Listen (Bekanntmachungen, Angelegenheiten, Musikeinlagen)           */
 /* ------------------------------------------------------------------ */
@@ -130,10 +175,29 @@ export function newBusinessEntry(partial: Partial<BusinessEntry> = {}): Business
   return {
     id: uid(),
     type: partial.type ?? 'sustaining',
-    text: partial.text ?? '',
-    memberIds: partial.memberIds ?? [],
-    callingId: partial.callingId ?? null,
+    memberId: partial.memberId ?? null,
+    memberName: partial.memberName ?? '',
+    position: partial.position ?? '',
   }
+}
+
+/**
+ * Was am Pult vorgelesen wird: «Peter Meier – Lehrer in der Sonntagsschule».
+ *
+ * Einträge aus früheren Fassungen tragen statt Person und Aufgabe einen
+ * Freitext. Er gewinnt, wo nichts anderes dasteht – ein Programm von vor
+ * zwei Jahren soll lesbar bleiben, auch wenn es die Spalten noch nicht gab.
+ */
+export function businessLabel(entry: BusinessEntry): string {
+  const name = entry.memberName?.trim() ?? ''
+  const position = entry.position?.trim() ?? ''
+  if (!name && !position) return entry.text?.trim() ?? ''
+  return [name, position].filter(Boolean).join(' – ')
+}
+
+/** Ein Eintrag, an dem nichts steht – er wird beim Speichern weggelassen. */
+export function isBusinessEmpty(entry: BusinessEntry): boolean {
+  return businessLabel(entry) === '' && !entry.memberId
 }
 
 export function newMusicalNumber(partial: Partial<MusicalNumber> = {}): MusicalNumber {
