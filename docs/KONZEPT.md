@@ -246,11 +246,23 @@ _Vorgeschlagen → Genehmigt → Berufung ausgesprochen → Bestätigt → Einge
 Die Ansicht gruppiert nach Organisation (Ältestenkollegium, FHV, JD, JM, PV,
 Sonntagsschule …) und behält innerhalb jeder Organisation die Reihenfolge des
 LCR: zuoberst der Präsident, dann die Ratgeber, dann die übrigen. Alphabetisch
-sortiert stünde der Bischof unter «B» zwischen den Lehrern. Von Hand erfasste
-Berufungen tragen keine Nummer und kommen ans Ende. Die Ansicht kennt die
-üblichen Positionen als Eingabehilfe. Ein
-Knopf «Mit heutigem Datum» schiebt eine Berufung einen Schritt weiter, ohne
-dass jemand ein Datum tippen muss.
+sortiert stünde der Bischof unter «B» zwischen den Lehrern. Berufungen aus
+einem älteren Import tragen keine Nummer und kommen ans Ende.
+
+**Gelesen, nicht geschrieben.** Die Ansicht legt keine Berufung an, ändert
+keine und löscht keine – der ganze Bestand kommt aus dem LCR. Zwei Stände
+nebeneinander wären einer zu viel, und der von Hand gepflegte wäre über kurz
+oder lang der falsche; was in der App entstünde, wäre beim nächsten Import
+ohnehin wieder weg. Ein Griff auf eine Zeile führt deshalb nicht in ein
+Formular, sondern zur Person: Was seit wann, wie oft und was davor war, steht
+im Profil.
+
+**Wer keine hat.** Neben _Aktuell_, _Entlassen_ und _Alle_ steht die Ansicht
+_Ohne Berufung_ – die Frage, die vor jeder neuen Berufung kommt. Sie zählt die
+ganze Gemeinde, Kinder eingeschlossen; deshalb steht das Alter dabei, deshalb
+die frühere Berufung mit Zeitraum, und deshalb lässt sich mit einem
+Umschalter auf die aktiven Mitglieder eingrenzen. Der Umschalter gilt für alle
+vier Ansichten.
 
 **Zwei Sparten.** Berufungen der Gemeinde und Berufungen ausserhalb der
 Einheit – Pfahl, Seminar, Institut, Mission – stehen getrennt. Der
@@ -529,7 +541,8 @@ immer dasselbe: Termin verstrichen.
 - Liederlisten aus dem Musikarchiv oder aus Excel bzw. CSV – Gesangbuch,
   PV-Liederbuch und «Für zuhause und für die Kirche» getrennt, Liedtitel aus
   der Nummer
-- Berufungsverwaltung mit Prozessschritten
+- Berufungen als Organisationsplan, Stand aus dem LCR – mit der Ansicht «ohne
+  Berufung» und dem Weg von jeder Zeile zur Person
 - Einstellungen für Gemeinde, Sitzungsrhythmus und Abendmahlsversammlung
 - PWA: installierbar, offline speichern mit Warteschlange und Konflikthinweis,
   Update-Hinweis

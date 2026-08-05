@@ -19,7 +19,7 @@ Abendmahlsversammlung, Berufungsverwaltung und Mitgliederdaten.
 | **Putzplan**              | Die Halbjahrestabelle der Gemeinde als Wochenplan – Grundlage für die Ansage am Sonntag             |
 | **Abendmahlsversammlung** | Ganzer Ablauf pro Sonntag: Leitung, Bekanntmachungen, Angelegenheiten, Ansprachen, Musik, Gebet     |
 | **Aktivitäten AP's**      | Aktivitätenplan der Priestertumskollegien – teilbar mit Beratern, ohne Einblick in Personendaten    |
-| **Berufungen**            | Vom Vorschlag bis zur Einsetzung, gruppiert nach Organisation; Verlauf aus der bisherigen Liste     |
+| **Berufungen**            | Wer welche Aufgabe hat, gruppiert nach Organisation – und wer keine hat; Stand aus dem LCR          |
 | **Mitglieder**            | Stammdaten, Notizen, Suche und Sortierung                                                           |
 
 Traktandum und Pendenz sind derselbe Datensatz: Was in einer Sitzung offen
@@ -729,6 +729,51 @@ alle, nicht nur für das eigene Gerät. Eine neue Notiz ist noch nicht
 einsortiert und steht zuoberst, bis sie verschoben wird. Während einer Suche
 fehlen die Pfeile – sie zeigt nur einen Ausschnitt, und danach liesse sich
 keine Reihenfolge festhalten.
+
+---
+
+## Berufungen
+
+**Berufungen** in der Seitenleiste. Die Seite zeigt den Organisationsplan der
+Gemeinde: je Organisation, wer welche Aufgabe hat – in der Reihenfolge des
+LCR, also Präsident, Ratgeber, dann die übrigen. Was ausserhalb der Einheit
+liegt (Pfahl, Seminar, Institut, Mission), steht in einer eigenen Sparte am
+Ende.
+
+**Gelesen, nicht geschrieben.** Es gibt keinen Knopf für eine neue Berufung,
+kein Bearbeiten und kein Löschen. Der ganze Bestand kommt aus dem LCR und wird
+dort gepflegt; erfasst wird er unter **Einstellungen → Importe → Berufungen**,
+eingefügt aus der Zwischenablage. Von Hand nachzuführen hiesse, zwei Stände
+nebeneinander zu führen – und der eine wäre über kurz oder lang der falsche.
+Was in der App entstünde, wäre beim nächsten Import ohnehin wieder weg:
+überschrieben oder als «fehlt in der Quelle» entlassen.
+
+**Vier Ansichten**, oben umschaltbar:
+
+| Ansicht           | Was darin steht                                                     |
+| ----------------- | ------------------------------------------------------------------- |
+| **Aktuell**       | Alles, was gerade gilt – bestätigt und eingesetzt                   |
+| **Ohne Berufung** | Mitglieder, zu denen keine laufende Berufung erfasst ist            |
+| **Entlassen**     | Abgegebene Berufungen, mit Zeitraum                                 |
+| **Alle**          | Beides zusammen, einschliesslich der übernommenen Berufungshistorie |
+
+Daneben steht der Umschalter **Alle Mitglieder / Nur Aktive**. Er gilt für
+alle vier Ansichten: Wer inaktiv ist, verschwindet damit samt seinen
+Berufungen aus der Liste. Wer im Mitgliederverzeichnis gar nicht (mehr) steht,
+bleibt sichtbar – über seinen Status lässt sich nichts sagen, und eine
+Berufung stillschweigend verschwinden zu lassen wäre das Schlechtere.
+
+**Ohne Berufung** beantwortet die Frage, die vor jeder neuen Berufung steht.
+Sie beantwortet sie ehrlich: In der Liste steht die ganze Gemeinde, Kinder
+eingeschlossen – deshalb steht das Alter dabei, und deshalb gibt es den
+Umschalter. Eine Berufung ausserhalb der Einheit zählt mit; auch sie ist eine
+Aufgabe. Wo eine frühere Berufung erfasst ist, steht sie mit Zeitraum daneben:
+War da schon einmal etwas, und wie lange ist es her?
+
+**Ein Griff auf eine Zeile führt zur Person.** Was die Seite sonst noch
+beantworten könnte – seit wann, wie oft, was davor –, steht im Profil, und
+«Zurück» führt von dort wieder hierher. Die Suche greift auf Name, Position
+und Organisation zu, in der Ansicht «Ohne Berufung» auf den Namen.
 
 ---
 
