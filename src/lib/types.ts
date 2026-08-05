@@ -297,6 +297,12 @@ export const OPEN_STATUS_QUERY: string[] = [...OPEN_STATUSES, 'open', 'in_progre
 /** Was beim Start der Sitzung von «Neu» auf «Pendent» wechselt. */
 export const NEW_STATUS_QUERY: string[] = ['new', 'open', 'in_progress', 'deferred']
 
+/**
+ * Das Gegenstück für die Abfrage des Erledigten – einschliesslich
+ * «Verworfen» aus früheren Fassungen, das beim Lesen als erledigt gilt.
+ */
+export const DONE_STATUS_QUERY: string[] = ['done', 'cancelled']
+
 /** Was in Firestore steht, auf die drei Zustände zurückführen. */
 export function toItemStatus(value: unknown): ItemStatus {
   if (value === 'new') return 'new'

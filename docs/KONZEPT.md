@@ -146,6 +146,23 @@ eine kleine Tabelle. Der Haken steht im Fenster _Neues Traktandum_ und nur
 dort: Ob ein Punkt Text ist oder Raster, entscheidet sich einmal. Ein
 gebautes Raster lässt sich überall weiter ausfüllen.
 
+**Pendenzenübersicht.** Drei Ausschnitte: _Pendent_, _Meine_, _Erledigt_.
+Sortiert wird nach Erfassungs- oder Bearbeitungsdatum, auf- oder absteigend;
+die Liste bekommt dabei Zwischentitel – «Sonntag, 2. August 2026» und darunter,
+was an diesem Tag erfasst bzw. bearbeitet wurde. Ein Datum ist die einzige
+Ordnung, die der Datensatz ohne Zutun hergibt, und als Überschrift beantwortet
+es zugleich die Frage «seit wann liegt das hier?». Dazu die Wahl zwischen _Nur
+Titel_ und _Alles anzeigen_ – Letzteres klappt jeden Eintrag auf, für den
+Durchgang durch die offenen Punkte.
+
+_Erledigt_ ist das Archiv und vor allem der Weg zurück: Wer versehentlich
+abhakt, findet den Punkt dort zuoberst – die Voreinstellung ist «zuletzt
+bearbeitet». Aus demselben Grund fehlt in dieser Liste der Haken, mit dem sich
+ein Punkt sofort abhaken lässt. In der Sitzung ist er die häufigste Handlung;
+in einer Übersicht, durch die man blättert, ist er ein Versehen, das darauf
+wartet zu geschehen. Abgeschlossen wird hier allein mit dem Knopf _Erledigt_
+im aufgeklappten Eintrag.
+
 ### 3.2 Abendmahlsversammlung
 
 Ein Bereich mit sechs Unterpunkten. Der Sonntag wird einmal oben gewählt und
@@ -557,7 +574,9 @@ immer dasselbe: Termin verstrichen.
   Reihenfolge je Gruppe (Pfeile oder Ziehen und Ablegen)
 - Mit «@» erwähnte Mitglieder bleiben im Text anklickbar und führen zur Person
   und wieder zurück
-- Pendenzenübersicht über alle Sitzungen hinweg (alle / meine)
+- Pendenzenübersicht über alle Sitzungen hinweg (pendent / meine / erledigt),
+  mit Sortierung nach Erfassungs- oder Bearbeitungsdatum, Tagesüberschriften
+  und der Wahl zwischen «Nur Titel» und «Alles anzeigen»
 - Notizen für alle: Titel und Text, Suche, Liste oder Kacheln, eigene
   Reihenfolge, laufendes Speichern
 - Mitgliederliste mit Suche, Sortierung, Detailansicht, Notizen
