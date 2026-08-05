@@ -14,6 +14,7 @@ import {
   arrayUnion,
 } from 'firebase/firestore'
 import { db, COLLECTIONS } from '@/lib/firebase'
+import { forgetDoc } from '@/lib/collectionStore'
 import { stripUndefined, uid } from '@/lib/utils'
 import { commit, type SaveOutcome } from '@/lib/sync'
 import type { AgendaItem, HistoryEntry, ItemKind, ItemLayout, ItemStatus } from '@/lib/types'
@@ -83,6 +84,7 @@ export async function createAgendaItem(input: AgendaItemInput, actor: Actor): Pr
       history: [historyEntry(`${ITEM_KIND_LABELS[kind]} erstellt`, actor)],
       createdAt: serverTimestamp(),
       updatedAt: serverTimestamp(),
+      editedAt: serverTimestamp(),
       createdBy: actor.id,
       completedAt: null,
       completedBy: null,
@@ -98,9 +100,26 @@ export async function updateAgendaItem(
   return commit(
     updateDoc(doc(db, COLLECTIONS.agendaItems, id), {
       ...stripUndefined(patch as Record<string, unknown>),
-      updatedAt: serverTimestamp(),
+      ...touch(),
     }),
   )
+}
+
+/**
+ * Die beiden Zeitstempel, die jede inhaltliche Änderung setzt.
+ *
+ * `updatedAt` ist der **Stand des Datensatzes** – daran erkennt der Abgleich
+ * beim Start, was seit dem letzten Mal neu ist (siehe `lib/collectionStore`).
+ * Es muss deshalb jede Änderung mitbekommen, auch das blosse Umsortieren.
+ *
+ * `editedAt` ist, was jemanden interessiert: wann zuletzt am Eintrag
+ * **gearbeitet** wurde. Ein Punkt, der beim Vorbereiten einer Sitzung
+ * dreimal an eine andere Stelle gezogen wurde, ist deswegen nicht bearbeitet
+ * worden – stünde nur `updatedAt` da, sprängen beim Sortieren nach
+ * «Bearbeitungsdatum» lauter unveränderte Punkte nach oben.
+ */
+function touch(): Record<string, unknown> {
+  return { updatedAt: serverTimestamp(), editedAt: serverTimestamp() }
 }
 
 /** Status ändern und den Wechsel im Verlauf festhalten. */
@@ -116,7 +135,7 @@ export async function setItemStatus(
       completedAt: isDone ? serverTimestamp() : null,
       completedBy: isDone ? actor.id : null,
       history: arrayUnion(historyEntry(`Status: ${ITEM_STATUS_LABELS[status]}`, actor)),
-      updatedAt: serverTimestamp(),
+      ...touch(),
     }),
   )
 }
@@ -153,7 +172,7 @@ export async function deferToNextMeeting(
           actor,
         ),
       ),
-      updatedAt: serverTimestamp(),
+      ...touch(),
     }),
   )
 }
@@ -167,7 +186,7 @@ export async function assignToMeeting(
 ): Promise<SaveOutcome> {
   const patch: Record<string, unknown> = {
     meetingId,
-    updatedAt: serverTimestamp(),
+    ...touch(),
     history: arrayUnion(
       historyEntry(meetingId ? 'Einer Sitzung zugeordnet' : 'Aus der Sitzung entfernt', actor),
     ),
@@ -191,7 +210,11 @@ export async function assignToMeeting(
 export async function reorderItems(orderedIds: string[]): Promise<SaveOutcome> {
   const batch = writeBatch(db)
   orderedIds.forEach((id, index) => {
-    batch.update(doc(db, COLLECTIONS.agendaItems, id), { order: (index + 1) * 100 })
+    // Nur `updatedAt`: Umsortieren ist kein Bearbeiten (siehe `touch()`).
+    batch.update(doc(db, COLLECTIONS.agendaItems, id), {
+      order: (index + 1) * 100,
+      updatedAt: serverTimestamp(),
+    })
   })
   return commit(batch.commit())
 }
@@ -219,7 +242,7 @@ export async function carryOverOpenItems(meetingId: string, actor: Actor): Promi
       firstMeetingId: data.firstMeetingId ?? meetingId,
       order: (index + 1) * 100,
       history: arrayUnion(historyEntry('In die Sitzung übernommen', actor)),
-      updatedAt: serverTimestamp(),
+      ...touch(),
     })
   })
   await commit(batch.commit())
@@ -227,7 +250,9 @@ export async function carryOverOpenItems(meetingId: string, actor: Actor): Promi
 }
 
 export async function deleteAgendaItem(id: string): Promise<SaveOutcome> {
-  return commit(deleteDoc(doc(db, COLLECTIONS.agendaItems, id)))
+  const outcome = await commit(deleteDoc(doc(db, COLLECTIONS.agendaItems, id)))
+  forgetDoc(COLLECTIONS.agendaItems, id)
+  return outcome
 }
 
 /**

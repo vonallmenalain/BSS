@@ -20,6 +20,7 @@ import { doc, getDoc, onSnapshot, serverTimestamp, setDoc } from 'firebase/fires
 import { auth, db, COLLECTIONS, isFirebaseConfigured } from '@/lib/firebase'
 import { getInitials } from '@/lib/utils'
 import { commit } from '@/lib/sync'
+import { stopCollectionStores } from '@/lib/collectionStore'
 import {
   AP_ACCESS_ROLES,
   AP_WRITE_ROLES,
@@ -214,6 +215,16 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   const signOut = useCallback(async () => {
     setError(null)
+    /*
+     * Zuerst die Sammlungen abmelden.
+     *
+     * Sie bleiben seit `lib/collectionStore` über den ganzen Aufenthalt in der
+     * App abonniert – auch wenn gerade keine Ansicht sie braucht. Ohne diesen
+     * Schritt liefen die Abfragen des abgemeldeten Kontos weiter und schlügen
+     * mit «keine Berechtigung» fehl; ausserdem stünden die Daten der einen
+     * Person noch da, wenn sich die nächste anmeldet.
+     */
+    stopCollectionStores()
     await fbSignOut(auth)
     setProfile(null)
   }, [])

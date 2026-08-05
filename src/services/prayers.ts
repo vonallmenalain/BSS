@@ -1,5 +1,6 @@
-import { deleteDoc, doc, serverTimestamp, setDoc, Timestamp } from 'firebase/firestore'
+import { deleteDoc, doc, serverTimestamp, setDoc, Timestamp, updateDoc } from 'firebase/firestore'
 import { db, COLLECTIONS } from '@/lib/firebase'
+import { forgetDoc } from '@/lib/collectionStore'
 import { differenceInMonths, toDate, toDateInput } from '@/lib/dates'
 import { commit, type SaveOutcome } from '@/lib/sync'
 import type { Member, Prayer, PrayerSlot } from '@/lib/types'
@@ -22,7 +23,11 @@ export async function setPrayer(
 ): Promise<SaveOutcome> {
   const ref = doc(db, COLLECTIONS.prayers, prayerDocId(date, slot))
 
-  if (!member) return commit(deleteDoc(ref))
+  if (!member) {
+    const outcome = await commit(deleteDoc(ref))
+    forgetDoc(COLLECTIONS.prayers, ref.id)
+    return outcome
+  }
 
   return commit(
     setDoc(
@@ -87,6 +92,48 @@ export function plannedPrayerMemberIds(prayers: Prayer[], from = new Date()): Se
   return ids
 }
 
+/* ------------------------------------------------------------------ */
+/* Vorerst überspringen                                                */
+/* ------------------------------------------------------------------ */
+
+/**
+ * Wie lange «Heute nicht» gilt.
+ *
+ * Vier Wochen und ein bisschen: Wer diesen Sonntag nicht gefragt werden soll,
+ * ist meist auch am nächsten und übernächsten kein Thema – und nach einem
+ * Monat hat sich die Lage in aller Regel geändert. Länger wäre eine
+ * Entscheidung, die niemand getroffen hat.
+ */
+export const PRAYER_HOLD_DAYS = 30
+
+/** Ist dieses Mitglied gerade zurückgestellt? */
+export function isPrayerHeld(member: Member, now = new Date()): boolean {
+  const until = toDate(member.prayerHoldUntil)
+  return until !== null && until > now
+}
+
+/**
+ * Ein Mitglied für die nächsten Wochen aus den Vorschlägen nehmen –
+ * oder es sofort wieder aufnehmen (`days = 0`).
+ *
+ * Der Zustand steht am Mitglied und damit in Firestore: Wer zuteilt, wechselt
+ * sich in einer Bischofschaft ab, und ein Vermerk, den nur ein Gerät kennt,
+ * hilft dem nächsten nicht.
+ */
+export async function setPrayerHold(
+  memberId: string,
+  days: number = PRAYER_HOLD_DAYS,
+): Promise<SaveOutcome> {
+  const until = new Date()
+  until.setDate(until.getDate() + days)
+  return commit(
+    updateDoc(doc(db, COLLECTIONS.members, memberId), {
+      prayerHoldUntil: days > 0 ? Timestamp.fromDate(until) : null,
+      updatedAt: serverTimestamp(),
+    }),
+  )
+}
+
 export interface PrayerCandidate {
   member: Member
   /** Monate seit dem letzten Gebet; `null` = noch nie gebetet */
@@ -107,27 +154,32 @@ export interface PrayerCandidate {
 export function rankPrayerCandidates(
   members: Member[],
   prayers: Prayer[],
-  options: { gapMonths?: number; onlyActive?: boolean } = {},
+  options: { gapMonths?: number; onlyActive?: boolean; includeHeld?: boolean } = {},
 ): PrayerCandidate[] {
-  const { gapMonths = 6, onlyActive = true } = options
+  const { gapMonths = 6, onlyActive = true, includeHeld = false } = options
   const lastByMember = lastPrayerByMember(prayers)
   const planned = plannedPrayerMemberIds(prayers)
   const now = new Date()
 
-  return members
-    .filter((member) => (onlyActive ? member.status === 'active' : true))
-    .map((member) => {
-      const lastDate = lastByMember.get(member.id) ?? null
-      const monthsSince = lastDate ? differenceInMonths(now, lastDate) : null
-      const alreadyPlanned = planned.has(member.id)
+  return (
+    members
+      .filter((member) => (onlyActive ? member.status === 'active' : true))
+      // «Heute nicht» nimmt jemanden für ein paar Wochen heraus. Mit
+      // `includeHeld` lässt sich nachsehen, wen das gerade betrifft.
+      .filter((member) => includeHeld || !isPrayerHeld(member, now))
+      .map((member) => {
+        const lastDate = lastByMember.get(member.id) ?? null
+        const monthsSince = lastDate ? differenceInMonths(now, lastDate) : null
+        const alreadyPlanned = planned.has(member.id)
 
-      // «Noch nie gebetet» wiegt schwerer als ein langer Abstand.
-      let score = monthsSince === null ? gapMonths * 2 + 24 : monthsSince
-      if (alreadyPlanned) score -= 1000
+        // «Noch nie gebetet» wiegt schwerer als ein langer Abstand.
+        let score = monthsSince === null ? gapMonths * 2 + 24 : monthsSince
+        if (alreadyPlanned) score -= 1000
 
-      return { member, monthsSince, lastDate, alreadyPlanned, score }
-    })
-    .sort((a, b) => b.score - a.score)
+        return { member, monthsSince, lastDate, alreadyPlanned, score }
+      })
+      .sort((a, b) => b.score - a.score)
+  )
 }
 
 /** Gehaltene bzw. geplante Gebete, nach Datum absteigend – für den Verlauf. */

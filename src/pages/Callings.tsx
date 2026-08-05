@@ -1,7 +1,9 @@
-import { useMemo, useState } from 'react'
-import { Link, useLocation } from 'react-router-dom'
+import { useMemo } from 'react'
+
 import { Award, ChevronRight, Search, Users } from 'lucide-react'
 import { useData } from '@/contexts/DataContext'
+import { useUrlState } from '@/hooks/useUrlState'
+import { MemberLink } from '@/components/ui/MemberLink'
 import { useCallings } from '@/hooks/useFirestore'
 import { EmptyState, SkeletonList } from '@/components/ui/Feedback'
 import { PageHeader, SegmentedControl } from '@/components/ui/Pickers'
@@ -42,13 +44,18 @@ export function Callings() {
    */
   const { data: callings, loading: callingsLoading } = useCallings(2000)
   const { members, membersById, loading: membersLoading } = useData()
-  const location = useLocation()
-  const [scope, setScope] = useState<Scope>('active')
-  const [audience, setAudience] = useState<Audience>('all')
-  const [search, setSearch] = useState('')
+  /* Ausschnitt, Kreis und Suche stehen in der Adresse – damit «Zurück» aus
+     einem Profil dieselbe Liste wiederfindet (siehe `hooks/useUrlState`). */
+  const [scope, setScope] = useUrlState<Scope>('ausschnitt', 'active', [
+    'active',
+    'without',
+    'released',
+    'all',
+  ])
+  const [audience, setAudience] = useUrlState<Audience>('kreis', 'all', ['all', 'active'])
+  const [search, setSearch] = useUrlState<string>('suche', '')
 
   const loading = callingsLoading || membersLoading
-  const from = `${location.pathname}${location.search}`
 
   /*
    * Der Bestand, auf den die Wahl «alle / nur Aktive» schon angewandt ist.
@@ -185,7 +192,6 @@ export function Callings() {
         <WithoutCallingSection
           entries={visibleMembers}
           callings={callings}
-          from={from}
           searching={Boolean(search.trim())}
           hasMembers={members.length > 0}
         />
@@ -208,7 +214,6 @@ export function Callings() {
               key={organization}
               title={ORGANIZATION_LABELS[organization]}
               entries={entries.sort(compareByImportOrder)}
-              from={from}
             />
           ))}
 
@@ -218,7 +223,6 @@ export function Callings() {
                 title="Ausserhalb der Einheit"
                 hint="Pfahl, Seminar, Institut und Mission – nicht Teil des Organisationsplans der Gemeinde."
                 entries={outsideUnit}
-                from={from}
               />
             </div>
           )}
@@ -259,12 +263,10 @@ function CallingSection({
   title,
   hint,
   entries,
-  from,
 }: {
   title: string
   hint?: string
   entries: Calling[]
-  from: string
 }) {
   return (
     <section>
@@ -278,9 +280,9 @@ function CallingSection({
             {/* Der Griff auf eine Zeile führt zur Person: Was die App hier
                 beantworten kann, ist «wer ist das?» – und das steht im
                 Profil, mitsamt allem, was diese Person sonst noch tut. */}
-            <Link
-              to={`/mitglieder/${calling.memberId}`}
-              state={{ from, fromLabel: FROM_LABEL }}
+            <MemberLink
+              memberId={calling.memberId}
+              label={FROM_LABEL}
               className="group flex w-full items-center gap-3 px-4 py-3 text-left transition hover:bg-slate-50 dark:hover:bg-slate-800/60"
             >
               <Avatar name={calling.memberName} id={calling.memberId} size="md" />
@@ -293,7 +295,7 @@ function CallingSection({
               </div>
               <CallingStatusBadge status={calling.status} />
               <ChevronRight className="size-4 shrink-0 text-slate-300" aria-hidden />
-            </Link>
+            </MemberLink>
           </li>
         ))}
       </ul>
@@ -314,13 +316,11 @@ function CallingSection({
 function WithoutCallingSection({
   entries,
   callings,
-  from,
   searching,
   hasMembers,
 }: {
   entries: Member[]
   callings: Calling[]
-  from: string
   searching: boolean
   /** Ob überhaupt Mitglieder erfasst sind – sonst hiesse «alle haben eine». */
   hasMembers: boolean
@@ -372,9 +372,9 @@ function WithoutCallingSection({
 
           return (
             <li key={member.id}>
-              <Link
-                to={`/mitglieder/${member.id}`}
-                state={{ from, fromLabel: FROM_LABEL }}
+              <MemberLink
+                memberId={member.id}
+                label={FROM_LABEL}
                 className="group flex w-full items-center gap-3 px-4 py-3 text-left transition hover:bg-slate-50 dark:hover:bg-slate-800/60"
               >
                 <Avatar name={`${member.firstName} ${member.lastName}`} id={member.id} size="md" />
@@ -388,7 +388,7 @@ function WithoutCallingSection({
                 </div>
                 {member.status !== 'active' && <MemberStatusBadge status={member.status} />}
                 <ChevronRight className="size-4 shrink-0 text-slate-300" aria-hidden />
-              </Link>
+              </MemberLink>
             </li>
           )
         })}

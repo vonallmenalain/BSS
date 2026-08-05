@@ -13,6 +13,7 @@ import { EmptyState, SkeletonList } from '@/components/ui/Feedback'
 import { AssigneePicker, PageHeader } from '@/components/ui/Pickers'
 import { AddButton, MenuChoice, MenuToggle, ViewMenu } from '@/components/ui/ViewMenu'
 import { AgendaItemPreview } from '@/components/agenda/AgendaItemPreview'
+import { AgendaItemDialog } from '@/components/agenda/AgendaItemDialog'
 import {
   formatDateLong,
   formatTime,
@@ -21,6 +22,7 @@ import {
   toTimeInput,
   fromDateTimeInput,
 } from '@/lib/dates'
+import { cn } from '@/lib/utils'
 import { groupByKind } from '@/services/agenda'
 import { createMeeting, suggestNextMeetingDate } from '@/services/meetings'
 import {
@@ -62,6 +64,8 @@ export function Meetings() {
   const { data: openItems } = useOpenItems()
   const now = useNow()
   const [formOpen, setFormOpen] = useState(false)
+  /** Der Eintrag, der gerade im Fenster bearbeitet wird. */
+  const [openItem, setOpenItem] = useState<AgendaItem | null>(null)
 
   const [view, setView] = useLocalStorage<MeetingsView>(
     'bss:sitzungen:ansicht',
@@ -74,6 +78,13 @@ export function Meetings() {
   /* Die Traktanden aller Sitzungen – nur für die kompakte Ansicht gelesen.
      In der Terminliste wären es Hunderte Datensätze für nichts. */
   const { data: allItems } = useAllItems(800, compact)
+
+  /*
+   * Der Eintrag im Fenster wird aus dem Bestand nachgeschlagen, nicht
+   * festgehalten: Was das Formular speichert, kommt über den Bestand zurück,
+   * und ein eingefrorener Stand zeigte danach wieder das Alte.
+   */
+  const dialogItem = openItem ? (allItems.find((i) => i.id === openItem.id) ?? openItem) : null
 
   const itemsByMeeting = useMemo(() => {
     const map = new Map<string, AgendaItem[]>()
@@ -118,6 +129,16 @@ export function Meetings() {
       ),
     }
   }, [meetings, now])
+
+  /* Ziel für «Verschieben» aus dem Fenster heraus – die nächste offene Sitzung. */
+  const nextMeetingRef = useMemo(() => {
+    const next = meetings
+      .filter((m) => m.status !== 'closed')
+      .map((m) => ({ id: m.id, date: toDate(m.date) }))
+      .filter((entry): entry is { id: string; date: Date } => entry.date !== null)
+      .sort((a, b) => a.date.getTime() - b.date.getTime())[0]
+    return next ?? null
+  }, [meetings])
 
   const visible =
     filter === 'upcoming' ? upcoming : filter === 'past' ? past : [...upcoming, ...past]
@@ -201,6 +222,7 @@ export function Meetings() {
                 openCount={itemCounts.get(meeting.id) ?? 0}
                 items={compact ? (itemsByMeeting.get(meeting.id) ?? []) : undefined}
                 view={view}
+                onOpenItem={setOpenItem}
               />
             ))}
           </ul>
@@ -216,6 +238,14 @@ export function Meetings() {
           )}
         </>
       )}
+
+      {/* Ein Griff auf ein Traktandum oder eine Pendenz öffnet es hier –
+          ohne dass die Liste verlassen werden muss. */}
+      <AgendaItemDialog
+        item={dialogItem}
+        onClose={() => setOpenItem(null)}
+        nextMeeting={nextMeetingRef}
+      />
 
       <MeetingForm
         open={formOpen}
@@ -234,12 +264,14 @@ function MeetingRow({
   openCount,
   items,
   view,
+  onOpenItem,
 }: {
   meeting: Meeting
   openCount: number
   /** Gesetzt heisst: kompakte Ansicht – der Inhalt der Sitzung steht darunter */
   items?: AgendaItem[]
   view: MeetingsView
+  onOpenItem: (item: AgendaItem) => void
 }) {
   const date = toDate(meeting.date)
   const isToday = date?.toDateString() === new Date().toDateString()
@@ -302,6 +334,7 @@ function MeetingRow({
             items={groups.traktandum}
             detail={view.agendaDetail}
             empty="Noch nichts traktandiert."
+            onOpen={onOpenItem}
           />
           {view.showPendenzen && (
             <ItemGroup
@@ -309,6 +342,7 @@ function MeetingRow({
               items={groups.pendenz}
               detail={view.pendenzenDetail}
               empty="Keine Pendenzen."
+              onOpen={onOpenItem}
             />
           )}
         </div>
@@ -329,11 +363,14 @@ function ItemGroup({
   items,
   detail,
   empty,
+  onOpen,
 }: {
   title: string
   items: AgendaItem[]
   detail: MeetingDetailLevel
   empty: string
+  /** Ein Griff auf den Eintrag öffnet ihn zum Bearbeiten */
+  onOpen: (item: AgendaItem) => void
 }) {
   return (
     <section>
@@ -349,23 +386,46 @@ function ItemGroup({
           {items.map((item, index) => (
             <li key={item.id} className="flex items-baseline gap-2 text-sm">
               <span className="tabular shrink-0 text-xs text-slate-400">{index + 1}.</span>
-              <span
-                className={
-                  item.status === 'done'
-                    ? 'min-w-0 text-slate-500 line-through dark:text-slate-500'
-                    : 'min-w-0'
-                }
+              <button
+                type="button"
+                onClick={() => onOpen(item)}
+                className={cn(
+                  'min-w-0 rounded text-left transition hover:underline',
+                  item.status === 'done' && 'text-slate-500 line-through dark:text-slate-500',
+                )}
               >
                 {item.title || <span className="text-slate-400">Ohne Titel</span>}
-              </span>
+              </button>
             </li>
           ))}
         </ol>
       ) : (
         <ul className="divide-list">
           {items.map((item, index) => (
-            <li key={item.id} className="py-2 first:pt-0 last:pb-0">
-              <AgendaItemPreview item={item} position={index + 1} />
+            <li key={item.id} className="first:pt-0 last:pb-0">
+              {/*
+                Der ganze Eintrag ist die Fläche – nicht bloss sein Titel.
+                Wer die Sitzungsliste als Programm liest und dabei etwas
+                ändern will, soll hineingreifen können, wo er gerade liest.
+
+                Bewusst kein `<button>`: Im Eintrag stehen Verweise – die mit
+                «@» eingesetzten Namen führen zur Person –, und ein Verweis
+                gehört nicht in einen Knopf. Sie fangen ihren Klick selbst ab
+                und führen weiterhin zum Mitglied.
+              */}
+              <div
+                role="button"
+                tabIndex={0}
+                onClick={() => onOpen(item)}
+                onKeyDown={(event) => {
+                  if (event.key !== 'Enter' && event.key !== ' ') return
+                  event.preventDefault()
+                  onOpen(item)
+                }}
+                className="-mx-2 cursor-pointer rounded-lg px-2 py-2 transition hover:bg-slate-50 dark:hover:bg-slate-800/60"
+              >
+                <AgendaItemPreview item={item} position={index + 1} />
+              </div>
             </li>
           ))}
         </ul>

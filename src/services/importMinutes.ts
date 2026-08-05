@@ -9,6 +9,7 @@ import {
   type WriteBatch,
 } from 'firebase/firestore'
 import { db, COLLECTIONS } from '@/lib/firebase'
+import { resyncCollections } from '@/lib/collectionStore'
 import { requireOnline } from '@/lib/sync'
 import { uid } from '@/lib/utils'
 import { readDocxXml, parseDocxBlocks } from '@/lib/docx'
@@ -251,6 +252,10 @@ export async function importMinutes(
   }
 
   await writer.flush(true)
+
+  // Gelöschtes und rückdatierte Zeitstempel sieht der schrittweise Abgleich
+  // nicht – nach einem Import wird der Bestand einmal frisch gelesen.
+  resyncCollections([COLLECTIONS.meetings, COLLECTIONS.agendaItems])
 
   return { meetings: meetings.length, items, pending: parsed.pending.length, removed }
 }

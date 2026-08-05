@@ -14,7 +14,7 @@ import { formatDateTime, toDate } from '@/lib/dates'
 import { splitLinks } from '@/lib/links'
 import { cn, matchesSearch } from '@/lib/utils'
 import { createNote, deleteNote, saveNoteOrder, updateNote } from '@/services/notes'
-import type { Note } from '@/lib/types'
+import { lastEditedAt, type Note } from '@/lib/types'
 
 /* ------------------------------------------------------------------ */
 /* Ansicht                                                             */
@@ -112,7 +112,7 @@ export function Notes() {
      * den Zeitstempel des Servers; sie gilt hier als die jüngste und bleibt
      * damit oben, statt für einen Moment ans Ende zu rutschen.
      */
-    const zeit = (note: Note) => toDate(note.updatedAt)?.getTime() ?? Number.POSITIVE_INFINITY
+    const zeit = (note: Note) => toDate(lastEditedAt(note))?.getTime() ?? Number.POSITIVE_INFINITY
     if (sortierung === 'zuletzt') return [...gefunden].sort((a, b) => zeit(b) - zeit(a))
 
     /*
@@ -335,7 +335,7 @@ function NoteCard({
             ansicht === 'liste' ? 'whitespace-nowrap' : 'max-w-28',
           )}
         >
-          {formatDateTime(note.updatedAt)}
+          {formatDateTime(lastEditedAt(note))}
           {author && <span className="block">{author}</span>}
         </span>
 

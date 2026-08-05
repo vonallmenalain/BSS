@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react'
+import { useEffect, useState } from 'react'
 import { NavLink, Outlet, useLocation } from 'react-router-dom'
 import {
   LayoutDashboard,
@@ -24,11 +24,11 @@ import {
 import { cn } from '@/lib/utils'
 import { useAuth } from '@/contexts/AuthContext'
 import { useData } from '@/contexts/DataContext'
+import { useTrackLocation } from '@/hooks/useBack'
 import { useOnlineStatus, useTheme } from '@/hooks/useLocalStorage'
-import { useOpenItems } from '@/hooks/useFirestore'
 import { usePendingWrites } from '@/hooks/useSync'
 import { Avatar } from '@/components/ui/Avatar'
-import { ROLE_LABELS, toItemKind } from '@/lib/types'
+import { ROLE_LABELS } from '@/lib/types'
 import { UpdatePrompt } from '@/components/UpdatePrompt'
 
 interface NavItem {
@@ -38,7 +38,13 @@ interface NavItem {
   icon: typeof LayoutDashboard
   /** Auf dem Handy in der unteren Leiste sichtbar */
   primary?: boolean
-  badge?: number
+  /*
+   * Eine Zahl neben «Pendenzen» stand hier einmal – wie viele offen sind.
+   * Sie ist weggefallen: Ein rotes Abzeichen behauptet, es sei etwas
+   * versäumt worden, und tut das dauerhaft. Offene Pendenzen sind aber der
+   * Normalzustand einer Bischofschaft; die Zahl mahnte jeden Tag, ohne je
+   * etwas anderes zu sagen. Wie viele es sind, steht auf der Seite selbst.
+   */
   /** Unterpunkte eines ausklappbaren Bereichs */
   children?: { to: string; label: string }[]
 }
@@ -60,28 +66,22 @@ const SACRAMENT_CHILDREN = [
 export function Layout() {
   const { settings } = useData()
   const { isApproved } = useAuth()
-  const { data: openItems } = useOpenItems()
   const online = useOnlineStatus()
   const unsent = usePendingWrites()
   const [theme, setTheme] = useTheme()
   const [menuOpen, setMenuOpen] = useState(false)
   const location = useLocation()
 
+  /*
+   * Wo man gerade ist, für den Weg zurück festhalten.
+   *
+   * Damit weiss der Zurück-Knopf einer Detailseite, wohin er führt – und
+   * kann es auch anschreiben (siehe `hooks/useBack`).
+   */
+  useTrackLocation(location)
+
   // Beim Seitenwechsel das mobile Menü schliessen.
   useEffect(() => setMenuOpen(false), [location.pathname])
-
-  /*
-   * Die Zahl neben «Pendenzen»: was liegengeblieben ist.
-   *
-   * Neue Traktanden zählen nicht mit – sie stehen in ihrer Sitzung und
-   * werden erst zur Pendenz, wenn diese abgeschlossen wird, ohne dass der
-   * Haken gesetzt ist. Sonst zeigte die Zahl bloss, wie gut die nächste
-   * Sitzung vorbereitet ist.
-   */
-  const pendenzCount = useMemo(
-    () => openItems.filter((item) => toItemKind(item) === 'pendenz').length,
-    [openItems],
-  )
 
   /**
    * Der AP-Kalender steht in beiden Listen.
@@ -114,7 +114,6 @@ export function Layout() {
           shortLabel: 'Pendenz',
           icon: ListTodo,
           primary: true,
-          badge: pendenzCount || undefined,
         },
         { to: '/notizen', label: 'Notizen', shortLabel: 'Notiz', icon: NotebookPen },
         { to: '/putzplan', label: 'Putzplan', shortLabel: 'Putzen', icon: Brush },
@@ -325,11 +324,6 @@ function SidebarLink({ item }: { item: NavItem }) {
         >
           <Icon className="size-5 shrink-0" aria-hidden />
           <span className="flex-1 truncate">{item.label}</span>
-          {item.badge ? (
-            <span className="tabular rounded-full bg-rose-100 px-1.5 py-0.5 text-[11px] font-semibold text-rose-700 dark:bg-rose-950 dark:text-rose-200">
-              {item.badge}
-            </span>
-          ) : null}
         </NavLink>
 
         {item.children && (
@@ -394,14 +388,7 @@ function BottomLink({ item }: { item: NavItem }) {
         )
       }
     >
-      <span className="relative">
-        <Icon className="size-5" aria-hidden />
-        {item.badge ? (
-          <span className="tabular absolute -top-1.5 -right-2 rounded-full bg-rose-600 px-1 text-[10px] leading-4 font-semibold text-white">
-            {item.badge > 9 ? '9+' : item.badge}
-          </span>
-        ) : null}
-      </span>
+      <Icon className="size-5" aria-hidden />
       <span className="text-[10px] font-medium">{item.shortLabel}</span>
     </NavLink>
   )

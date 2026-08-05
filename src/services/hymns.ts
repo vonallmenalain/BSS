@@ -1,5 +1,6 @@
 import { collection, doc, getDocs, serverTimestamp, setDoc, writeBatch } from 'firebase/firestore'
 import { db, COLLECTIONS } from '@/lib/firebase'
+import { resyncCollections } from '@/lib/collectionStore'
 import { normalize } from '@/lib/utils'
 import { commit, requireOnline, type SaveOutcome } from '@/lib/sync'
 import {
@@ -173,6 +174,8 @@ export async function clearHymns(book: HymnBook = 'hymns'): Promise<number> {
     ids.slice(offset, offset + 400).forEach((id) => batch.delete(doc(db, COLLECTIONS.hymns, id)))
     await batch.commit()
   }
+  // Gelöschtes sieht der schrittweise Abgleich nicht – siehe `resyncCollections`.
+  if (ids.length > 0) resyncCollections([COLLECTIONS.hymns])
   return ids.length
 }
 

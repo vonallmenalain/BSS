@@ -15,6 +15,7 @@ import {
   Mic,
   Music,
   NotebookPen,
+  RefreshCw,
   ShieldCheck,
   Trash2,
   Upload,
@@ -29,6 +30,7 @@ import { PageHeader } from '@/components/ui/Pickers'
 import { ConfirmDialog } from '@/components/ui/Modal'
 import { Avatar } from '@/components/ui/Avatar'
 import { WEEKDAYS } from '@/lib/dates'
+import { resyncCollectionStores } from '@/lib/collectionStore'
 import { saveSettings } from '@/services/settings'
 import { deleteUserProfile, setUserActive, setUserRole, updateUserProfile } from '@/services/users'
 import { formatRelative } from '@/lib/dates'
@@ -461,8 +463,52 @@ export function Settings() {
             Alltag: Wer die Einstellungen öffnet, sucht in aller Regel etwas
             anderes. Die ganze Liste erscheint erst auf Wunsch. */}
         <ImportSection />
+
+        <SyncSection />
       </div>
     </>
+  )
+}
+
+/* ------------------------------------------------------------------ */
+/* Daten neu laden                                                     */
+/* ------------------------------------------------------------------ */
+
+/**
+ * Der Notausgang für den Datenabgleich.
+ *
+ * Die App liest jede Sammlung einmal vollständig und danach nur noch, was
+ * dazugekommen ist (siehe `lib/collectionStore`). Das ist der Grund, weshalb
+ * sie sofort dasteht und kaum Leseoperationen verbraucht – und der Grund,
+ * weshalb es diesen Knopf braucht: Sollte einmal etwas fehlen, das ein
+ * anderes Gerät geschrieben hat, holt er alles frisch. Im Alltag wird er
+ * nicht gebraucht.
+ */
+function SyncSection() {
+  const toast = useToast()
+
+  return (
+    <section className="card p-5">
+      <h2 className="mb-1 flex items-center gap-2 text-sm font-semibold">
+        <RefreshCw className="size-4 text-slate-400" aria-hidden />
+        Daten neu laden
+      </h2>
+      <p className="hint mb-4">
+        Die App hält die Daten von selbst aktuell und lädt nur nach, was sich geändert hat. Falls
+        doch einmal etwas fehlt, holt dieser Knopf den ganzen Bestand neu vom Server.
+      </p>
+      <button
+        type="button"
+        className="btn-secondary"
+        onClick={() => {
+          resyncCollectionStores()
+          toast.success('Der Bestand wird neu gelesen.')
+        }}
+      >
+        <RefreshCw className="size-4" aria-hidden />
+        Alles neu laden
+      </button>
+    </section>
   )
 }
 

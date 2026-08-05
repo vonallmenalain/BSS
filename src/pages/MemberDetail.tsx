@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState, type FormEvent } from 'react'
-import { Link, useLocation, useParams } from 'react-router-dom'
+import { Link, useParams } from 'react-router-dom'
 import {
   ArrowLeft,
   Award,
@@ -14,6 +14,7 @@ import {
 } from 'lucide-react'
 import { useData } from '@/contexts/DataContext'
 import { useToast } from '@/contexts/ToastContext'
+import { useBack } from '@/hooks/useBack'
 import { useMemberCallings, useTalks } from '@/hooks/useFirestore'
 import { Modal } from '@/components/ui/Modal'
 import { EmptyState } from '@/components/ui/Feedback'
@@ -38,20 +39,19 @@ import {
 export function MemberDetail() {
   const { memberId } = useParams<{ memberId: string }>()
   const { membersById, loading } = useData()
-  const location = useLocation()
   const { data: talks } = useTalks(300)
   const { data: callings } = useMemberCallings(memberId)
 
   /*
-   * Zurück dorthin, woher der Aufruf kam.
+   * Zurück dorthin, woher der Aufruf kam – und zwar wirklich dorthin.
    *
-   * Wer im Traktandum auf einen erwähnten Namen tippt, will danach dorthin
-   * zurück – und nicht in der Mitgliederliste stehen, in der er gar nie war.
-   * Woher der Weg kam, bringt der Verweis selbst mit (siehe
-   * `components/ui/MentionText`); ohne Angabe bleibt es bei der Liste.
+   * Wer in der Vorschlagsliste unter «Ansprachen» ein Mitglied öffnet, will
+   * danach wieder bei den Vorschlägen stehen und nicht in der
+   * Mitgliederliste, in der er nie war. `useBack()` geht deshalb einen
+   * Schritt im Browserverlauf zurück; die vorige Ansicht steht damit so da,
+   * wie man sie verlassen hat.
    */
-  const origin = location.state as { from?: string; fromLabel?: string } | null
-  const back = { to: origin?.from ?? '/mitglieder', label: origin?.fromLabel ?? 'Mitglieder' }
+  const back = useBack({ to: '/mitglieder', label: 'Mitglieder' })
 
   const [editOpen, setEditOpen] = useState(false)
 
@@ -109,6 +109,13 @@ export function MemberDetail() {
     <>
       <Link
         to={back.to}
+        onClick={(event) => {
+          // Mittelklick und «in neuem Tab öffnen» sollen weiterhin die
+          // Adresse benutzen – abgefangen wird nur der gewöhnliche Klick.
+          if (event.metaKey || event.ctrlKey || event.shiftKey || event.button !== 0) return
+          event.preventDefault()
+          back.go()
+        }}
         className="mb-3 inline-flex items-center gap-1 text-sm text-slate-500 hover:underline dark:text-slate-400"
       >
         <ArrowLeft className="size-4" aria-hidden />

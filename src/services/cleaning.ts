@@ -1,5 +1,6 @@
 import { deleteDoc, doc, serverTimestamp, setDoc, writeBatch } from 'firebase/firestore'
 import { db, COLLECTIONS } from '@/lib/firebase'
+import { forgetDoc } from '@/lib/collectionStore'
 import { commit, requireOnline, type SaveOutcome } from '@/lib/sync'
 import type { ParsedCleaningWeek } from '@/services/importCleaning'
 import type { CleaningWeek } from '@/lib/types'
@@ -65,5 +66,7 @@ export async function saveCleaningWeek(week: Omit<CleaningWeek, 'id'>): Promise<
 }
 
 export async function deleteCleaningWeek(id: string): Promise<SaveOutcome> {
-  return commit(deleteDoc(doc(db, COLLECTIONS.cleaningWeeks, id)))
+  const outcome = await commit(deleteDoc(doc(db, COLLECTIONS.cleaningWeeks, id)))
+  forgetDoc(COLLECTIONS.cleaningWeeks, id)
+  return outcome
 }

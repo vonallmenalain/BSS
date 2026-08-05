@@ -1,5 +1,6 @@
 import { doc, serverTimestamp, updateDoc, deleteDoc } from 'firebase/firestore'
 import { db, COLLECTIONS } from '@/lib/firebase'
+import { forgetDoc } from '@/lib/collectionStore'
 import { getInitials } from '@/lib/utils'
 import { commit, type SaveOutcome } from '@/lib/sync'
 import type { ApView, AppUser, Role } from '@/lib/types'
@@ -69,5 +70,7 @@ export async function saveApView(userId: string, view: ApView): Promise<SaveOutc
  * dafür braucht es die Firebase-Konsole oder das Admin-SDK.
  */
 export async function deleteUserProfile(userId: string): Promise<SaveOutcome> {
-  return commit(deleteDoc(doc(db, COLLECTIONS.users, userId)))
+  const outcome = await commit(deleteDoc(doc(db, COLLECTIONS.users, userId)))
+  forgetDoc(COLLECTIONS.users, userId)
+  return outcome
 }

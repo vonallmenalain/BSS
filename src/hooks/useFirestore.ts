@@ -1,20 +1,16 @@
-import { useEffect, useMemo, useState } from 'react'
-import {
-  collection,
-  doc,
-  onSnapshot,
-  orderBy,
-  query,
-  where,
-  limit as fbLimit,
-  type QueryConstraint,
-} from 'firebase/firestore'
-import { db, COLLECTIONS } from '@/lib/firebase'
+import { useCallback, useMemo, useSyncExternalStore } from 'react'
+import { COLLECTIONS } from '@/lib/firebase'
 import { useAuth } from '@/contexts/AuthContext'
 import {
-  DONE_STATUS_QUERY,
+  collectionSnapshot,
+  subscribeToCollection,
+  IDLE_STATE,
+  type StoreState,
+} from '@/lib/collectionStore'
+import { toDate } from '@/lib/dates'
+import {
   isWithdrawnTalk,
-  OPEN_STATUS_QUERY,
+  OPEN_STATUSES,
   toItemKind,
   toItemStatus,
   toTalkStatus,
@@ -31,101 +27,76 @@ import {
   type Talk,
 } from '@/lib/types'
 
-interface CollectionState<T> {
-  data: T[]
-  loading: boolean
-  error: Error | null
+/**
+ * Zugriff auf eine Sammlung.
+ *
+ * Gelesen wird aus `lib/collectionStore`: Jede Sammlung wird genau einmal
+ * abonniert und danach nur noch nachgeführt. Die Hooks hier filtern und
+ * sortieren im Client – was früher eine eigene Firestore-Abfrage je Ansicht
+ * war (und je Ansichtswechsel neue Lesevorgänge kostete), ist jetzt ein
+ * `filter()` über bereits vorhandene Daten.
+ */
+function useCollection<T>(name: string, enabled = true): StoreState<T> {
+  const subscribe = useCallback(
+    (listener: () => void) => (enabled ? subscribeToCollection(name, listener) : () => {}),
+    [name, enabled],
+  )
+  const snapshot = useCallback(
+    () => (enabled ? collectionSnapshot<T>(name) : (IDLE_STATE as StoreState<T>)),
+    [name, enabled],
+  )
+  return useSyncExternalStore(subscribe, snapshot, snapshot)
+}
+
+/** Nach einem Zeitfeld sortieren – Datensätze ohne Datum ans Ende. */
+function byDate<T>(items: T[], field: keyof T, dir: 'asc' | 'desc' = 'desc'): T[] {
+  return [...items].sort((a, b) => {
+    const at = toDate(a[field] as never)?.getTime()
+    const bt = toDate(b[field] as never)?.getTime()
+    if (at === undefined) return bt === undefined ? 0 : 1
+    if (bt === undefined) return -1
+    return dir === 'asc' ? at - bt : bt - at
+  })
 }
 
 /**
- * Abonniert eine Firestore-Sammlung und hält die Daten aktuell.
- * `constraints` muss stabil referenziert sein (z. B. via `useMemo`),
- * sonst wird bei jedem Render neu abonniert.
+ * Die Obergrenzen der Hooks bleiben bestehen – jetzt aber im Client.
+ *
+ * Sie kosten nichts mehr (die Sammlung liegt ohnehin vollständig vor) und
+ * halten die Listen so kurz wie bisher: Was in der Ansicht nie sichtbar wird,
+ * muss auch nicht gezeichnet werden.
  */
-function useCollection<T>(
-  collectionName: string,
-  constraints: QueryConstraint[],
-  enabled = true,
-): CollectionState<T> {
-  const [state, setState] = useState<CollectionState<T>>({
-    data: [],
-    loading: enabled,
-    error: null,
-  })
-
-  useEffect(() => {
-    if (!enabled) {
-      setState({ data: [], loading: false, error: null })
-      return
-    }
-
-    // Bewusst kein `loading: true` beim Wechsel der Abfrage: Firestore
-    // beantwortet die neue Abfrage dank lokalem Cache meist sofort. Die alten
-    // Daten kurz stehen zu lassen wirkt ruhiger als ein aufblitzender Skeleton.
-    //
-    // Steht dagegen noch gar nichts da – eine Abfrage, die eben erst
-    // eingeschaltet wurde –, wird geladen. Sonst meldete der Hook für einen
-    // Durchgang «fertig, nichts gefunden», und die Ansicht zeigte kurz ihren
-    // leeren Zustand, bevor der erste Schnappschuss eintraf.
-    setState((current) =>
-      current.data.length === 0 && !current.loading ? { ...current, loading: true } : current,
-    )
-
-    return onSnapshot(
-      query(collection(db, collectionName), ...constraints),
-      (snapshot) => {
-        setState({
-          data: snapshot.docs.map((d) => ({ id: d.id, ...d.data() }) as T),
-          loading: false,
-          error: null,
-        })
-      },
-      (error) => {
-        console.error(`[firestore] ${collectionName}:`, error)
-        setState({ data: [], loading: false, error })
-      },
-    )
-  }, [collectionName, constraints, enabled])
-
-  return state
+function capped<T>(items: T[], limitCount: number): T[] {
+  return items.length > limitCount ? items.slice(0, limitCount) : items
 }
 
 /* ------------------------------------------------------------------ */
 /* Sitzungen                                                           */
 /* ------------------------------------------------------------------ */
 
-export function useMeetings(limitCount = 100) {
+function useMeetingsStore() {
   const { isApproved } = useAuth()
-  const constraints = useMemo(() => [orderBy('date', 'desc'), fbLimit(limitCount)], [limitCount])
-  return useCollection<Meeting>(COLLECTIONS.meetings, constraints, isApproved)
+  return useCollection<Meeting>(COLLECTIONS.meetings, isApproved)
 }
 
-/** Einzelne Sitzung live beobachten. */
+export function useMeetings(limitCount = 100) {
+  const state = useMeetingsStore()
+  return useMemo(
+    () => ({ ...state, data: capped(byDate(state.data, 'date'), limitCount) }),
+    [state, limitCount],
+  )
+}
+
+/** Einzelne Sitzung – aus demselben Bestand wie die Liste. */
 export function useMeeting(meetingId: string | undefined) {
-  const [meeting, setMeeting] = useState<Meeting | null>(null)
-  const [loading, setLoading] = useState(Boolean(meetingId))
-  const { isApproved } = useAuth()
-
-  useEffect(() => {
-    if (!meetingId || !isApproved) {
-      setMeeting(null)
-      setLoading(false)
-      return
-    }
-    return onSnapshot(
-      doc(db, COLLECTIONS.meetings, meetingId),
-      (snapshot) => {
-        setMeeting(snapshot.exists() ? ({ id: snapshot.id, ...snapshot.data() } as Meeting) : null)
-        setLoading(false)
-      },
-      (error) => {
-        console.error('[firestore] Sitzung:', error)
-        setLoading(false)
-      },
-    )
-  }, [meetingId, isApproved])
-
-  return { meeting, loading }
+  const state = useMeetingsStore()
+  return useMemo(
+    () => ({
+      meeting: meetingId ? (state.data.find((m) => m.id === meetingId) ?? null) : null,
+      loading: state.loading,
+    }),
+    [state, meetingId],
+  )
 }
 
 /* ------------------------------------------------------------------ */
@@ -133,7 +104,7 @@ export function useMeeting(meetingId: string | undefined) {
 /* ------------------------------------------------------------------ */
 
 /**
- * Wie eine Sammlung von Traktanden gelesen wird.
+ * Alle Traktanden und Pendenzen.
  *
  * Status und Art werden dabei einmal zurechtgerückt: In der Datenbank stehen
  * noch Jahre an «Offen», «In Arbeit» und «Zurückgestellt», und die Art
@@ -141,8 +112,9 @@ export function useMeeting(meetingId: string | undefined) {
  * erfasst wurde. Hier zu übersetzen erspart es jeder Ansicht, die Frage
  * erneut zu stellen – und dem Bestand eine Wanderung über alle Dokumente.
  */
-function useAgendaItems(constraints: QueryConstraint[], enabled: boolean) {
-  const state = useCollection<AgendaItem>(COLLECTIONS.agendaItems, constraints, enabled)
+function useAgendaStore() {
+  const { isApproved } = useAuth()
+  const state = useCollection<AgendaItem>(COLLECTIONS.agendaItems, isApproved)
   return useMemo(
     () => ({
       ...state,
@@ -158,12 +130,18 @@ function useAgendaItems(constraints: QueryConstraint[], enabled: boolean) {
 
 /** Alle Traktanden und Pendenzen einer bestimmten Sitzung. */
 export function useMeetingItems(meetingId: string | undefined) {
-  const { isApproved } = useAuth()
-  const constraints = useMemo(
-    () => (meetingId ? [where('meetingId', '==', meetingId), orderBy('order')] : []),
-    [meetingId],
+  const state = useAgendaStore()
+  return useMemo(
+    () => ({
+      ...state,
+      data: meetingId
+        ? state.data
+            .filter((item) => item.meetingId === meetingId)
+            .sort((a, b) => (a.order ?? 0) - (b.order ?? 0))
+        : [],
+    }),
+    [state, meetingId],
   )
-  return useAgendaItems(constraints, isApproved && Boolean(meetingId))
 }
 
 /**
@@ -171,50 +149,50 @@ export function useMeetingItems(meetingId: string | undefined) {
  * Genau diese werden beim Planen der nächsten Sitzung angeboten.
  */
 export function useUnassignedItems() {
-  const { isApproved } = useAuth()
-  const constraints = useMemo(
-    () => [where('meetingId', '==', null), where('status', 'in', OPEN_STATUS_QUERY)],
-    [],
+  const state = useAgendaStore()
+  return useMemo(
+    () => ({
+      ...state,
+      data: state.data.filter((item) => !item.meetingId && OPEN_STATUSES.includes(item.status)),
+    }),
+    [state],
   )
-  return useAgendaItems(constraints, isApproved)
 }
 
 /** Sämtliche offenen Einträge – unabhängig von der Sitzungszuordnung. */
 export function useOpenItems() {
-  const { isApproved } = useAuth()
-  const constraints = useMemo(() => [where('status', 'in', OPEN_STATUS_QUERY)], [])
-  return useAgendaItems(constraints, isApproved)
-}
-
-/**
- * Sämtliche erledigten Einträge – das Archiv unter «Pendenzen».
- *
- * Gelesen wird erst, wenn jemand hinsieht (`enabled`): Was offen ist, bleibt
- * eine kurze Liste, das Erledigte wächst dagegen mit jeder Sitzung weiter.
- * Sortiert und durchsucht wird im Client – damit kommt die Abfrage ohne
- * zusammengesetzten Index aus, und die Reihenfolge lässt sich umstellen, ohne
- * dass neu geladen werden muss.
- */
-export function useDoneItems(enabled = true) {
-  const { isApproved } = useAuth()
-  const constraints = useMemo(() => [where('status', 'in', DONE_STATUS_QUERY)], [])
-  return useAgendaItems(constraints, isApproved && enabled)
-}
-
-/**
- * Traktanden für die Archiv-/Suchansicht.
- *
- * `enabled` steht dort, wo sie nur in einer bestimmten Ansicht gebraucht
- * werden – etwa in der kompakten Sitzungsliste, die den Inhalt jeder Sitzung
- * mitzeigt. Solange die gewöhnliche Terminliste steht, wird nichts gelesen.
- */
-export function useAllItems(limitCount = 500, enabled = true) {
-  const { isApproved } = useAuth()
-  const constraints = useMemo(
-    () => [orderBy('updatedAt', 'desc'), fbLimit(limitCount)],
-    [limitCount],
+  const state = useAgendaStore()
+  return useMemo(
+    () => ({
+      ...state,
+      data: state.data.filter((item) => OPEN_STATUSES.includes(item.status)),
+    }),
+    [state],
   )
-  return useAgendaItems(constraints, isApproved && enabled)
+}
+
+/** Sämtliche erledigten Einträge – das Archiv unter «Pendenzen». */
+export function useDoneItems(enabled = true) {
+  const state = useAgendaStore()
+  return useMemo(
+    () => ({
+      ...state,
+      data: enabled ? state.data.filter((item) => item.status === 'done') : [],
+    }),
+    [state, enabled],
+  )
+}
+
+/** Traktanden für die Archiv-/Suchansicht, zuletzt geändertes zuerst. */
+export function useAllItems(limitCount = 500, enabled = true) {
+  const state = useAgendaStore()
+  return useMemo(
+    () => ({
+      ...state,
+      data: enabled ? capped(byDate(state.data, 'updatedAt'), limitCount) : [],
+    }),
+    [state, limitCount, enabled],
+  )
 }
 
 /* ------------------------------------------------------------------ */
@@ -232,90 +210,88 @@ export function useAllItems(limitCount = 500, enabled = true) {
  */
 export function useTalks(limitCount = 300) {
   const { isApproved } = useAuth()
-  const constraints = useMemo(() => [orderBy('date', 'desc'), fbLimit(limitCount)], [limitCount])
-  const state = useCollection<Talk>(COLLECTIONS.talks, constraints, isApproved)
+  const state = useCollection<Talk>(COLLECTIONS.talks, isApproved)
   return useMemo(
     () => ({
       ...state,
-      data: state.data
-        .filter((talk) => !isWithdrawnTalk(talk.status))
-        .map((talk) => ({ ...talk, status: toTalkStatus(talk.status) })),
+      data: capped(
+        byDate(
+          state.data
+            .filter((talk) => !isWithdrawnTalk(talk.status))
+            .map((talk) => ({ ...talk, status: toTalkStatus(talk.status) })),
+          'date',
+        ),
+        limitCount,
+      ),
     }),
-    [state],
+    [state, limitCount],
   )
 }
 
-export function useCallings(limitCount = 300) {
+function useCallingsStore() {
   const { isApproved } = useAuth()
-  const constraints = useMemo(
-    () => [orderBy('updatedAt', 'desc'), fbLimit(limitCount)],
-    [limitCount],
+  return useCollection<Calling>(COLLECTIONS.callings, isApproved)
+}
+
+export function useCallings(limitCount = 300) {
+  const state = useCallingsStore()
+  return useMemo(
+    () => ({ ...state, data: capped(byDate(state.data, 'updatedAt'), limitCount) }),
+    [state, limitCount],
   )
-  return useCollection<Calling>(COLLECTIONS.callings, constraints, isApproved)
 }
 
 /**
  * Sämtliche Berufungen einer Person – ohne Obergrenze.
  *
- * Eine eigene Abfrage, seit die Berufungshistorie mitkommt: Die Sammlung
- * zählt dann Hunderte von Einträgen, und ein Ausschnitt der zuletzt
- * geänderten träfe ausgerechnet den Verlauf nicht, um den es hier geht.
- * Auf eine Person gerechnet bleibt es dagegen eine kurze Liste.
+ * Auf eine Person gerechnet bleibt es eine kurze Liste, und weil der ganze
+ * Bestand ohnehin vorliegt, ist es ein Filter statt einer eigenen Abfrage.
  */
 export function useMemberCallings(memberId: string | undefined) {
-  const { isApproved } = useAuth()
-  const constraints = useMemo(
-    () => (memberId ? [where('memberId', '==', memberId)] : []),
-    [memberId],
+  const state = useCallingsStore()
+  return useMemo(
+    () => ({
+      ...state,
+      data: memberId ? state.data.filter((calling) => calling.memberId === memberId) : [],
+    }),
+    [state, memberId],
   )
-  return useCollection<Calling>(COLLECTIONS.callings, constraints, isApproved && Boolean(memberId))
 }
 
 /* ------------------------------------------------------------------ */
 /* Abendmahlsversammlung                                               */
 /* ------------------------------------------------------------------ */
 
+function useSacramentStore() {
+  const { isApproved } = useAuth()
+  return useCollection<SacramentMeeting>(COLLECTIONS.sacramentMeetings, isApproved)
+}
+
 /**
- * Programm eines einzelnen Sonntags live beobachten.
+ * Programm eines einzelnen Sonntags.
  *
  * `dateKey` ist das Datum als «yyyy-MM-dd» und zugleich die Dokument-ID.
  * Existiert noch kein Dokument, liefert der Hook `null` – die Seiten zeigen
  * dann den leeren Zustand und legen beim ersten Speichern an.
  */
 export function useSacramentMeeting(dateKey: string | undefined) {
-  const { isApproved } = useAuth()
-  const [meeting, setMeeting] = useState<SacramentMeeting | null>(null)
-  const [loading, setLoading] = useState(Boolean(dateKey))
-
-  useEffect(() => {
-    if (!dateKey || !isApproved) {
-      setMeeting(null)
-      setLoading(false)
-      return
-    }
-    return onSnapshot(
-      doc(db, COLLECTIONS.sacramentMeetings, dateKey),
-      (snapshot) => {
-        setMeeting(
-          snapshot.exists() ? ({ id: snapshot.id, ...snapshot.data() } as SacramentMeeting) : null,
-        )
-        setLoading(false)
-      },
-      (error) => {
-        console.error('[firestore] Abendmahlsversammlung:', error)
-        setLoading(false)
-      },
-    )
-  }, [dateKey, isApproved])
-
-  return { meeting, loading }
+  const state = useSacramentStore()
+  return useMemo(
+    () => ({
+      meeting: dateKey ? (state.data.find((m) => m.id === dateKey) ?? null) : null,
+      loading: state.loading,
+    }),
+    [state, dateKey],
+  )
 }
 
 /** Die zuletzt bearbeiteten Programme – für Übersichten über mehrere Sonntage. */
 export function useSacramentMeetings(limitCount = 30) {
-  const { isApproved } = useAuth()
-  const constraints = useMemo(() => [orderBy('date', 'desc'), fbLimit(limitCount)], [limitCount])
-  return useCollection<SacramentMeeting>(COLLECTIONS.sacramentMeetings, constraints, isApproved)
+  const state = useSacramentStore()
+  return useMemo(
+    () => ({ ...state, data: capped(byDate(state.data, 'date'), limitCount) }),
+    [state, limitCount],
+  )
 }
 
 /**
@@ -326,34 +302,37 @@ export function useSacramentMeetings(limitCount = 30) {
  */
 export function usePrayers(limitCount = 400) {
   const { isApproved } = useAuth()
-  const constraints = useMemo(() => [orderBy('date', 'desc'), fbLimit(limitCount)], [limitCount])
-  return useCollection<Prayer>(COLLECTIONS.prayers, constraints, isApproved)
+  const state = useCollection<Prayer>(COLLECTIONS.prayers, isApproved)
+  return useMemo(
+    () => ({ ...state, data: capped(byDate(state.data, 'date'), limitCount) }),
+    [state, limitCount],
+  )
 }
 
-/**
- * Wiederkehrende Bekanntmachungen.
- *
- * Ohne Obergrenze und ohne Filter: Es sind wenige, jede einzelne kann
- * jeden Sonntag betreffen, und ob sie es tut, entscheidet sich erst beim
- * Rechnen – nach Datum liesse sich das nicht abfragen.
- */
+/** Wiederkehrende Bekanntmachungen – wenige, dafür jede für viele Sonntage. */
 export function useAnnouncementSeries() {
   const { isApproved } = useAuth()
-  const constraints = useMemo(() => [orderBy('createdAt')], [])
-  return useCollection<AnnouncementSeries>(COLLECTIONS.announcementSeries, constraints, isApproved)
+  const state = useCollection<AnnouncementSeries>(COLLECTIONS.announcementSeries, isApproved)
+  return useMemo(() => ({ ...state, data: byDate(state.data, 'createdAt', 'asc') }), [state])
 }
 
 /**
- * Der Putzplan.
- *
- * Ein halbes Jahr umfasst rund 26 Wochen; die Voreinstellung deckt damit
- * mehrere Jahre ab. Sortiert wird nach dem ersten Tag der Woche – der
- * zugleich die Dokument-ID ist.
+ * Der Putzplan – sortiert nach dem ersten Tag der Woche, der zugleich die
+ * Dokument-ID ist.
  */
 export function useCleaningWeeks(limitCount = 400) {
   const { isApproved } = useAuth()
-  const constraints = useMemo(() => [orderBy('startDate'), fbLimit(limitCount)], [limitCount])
-  return useCollection<CleaningWeek>(COLLECTIONS.cleaningWeeks, constraints, isApproved)
+  const state = useCollection<CleaningWeek>(COLLECTIONS.cleaningWeeks, isApproved)
+  return useMemo(
+    () => ({
+      ...state,
+      data: capped(
+        [...state.data].sort((a, b) => String(a.startDate).localeCompare(String(b.startDate))),
+        limitCount,
+      ),
+    }),
+    [state, limitCount],
+  )
 }
 
 /* ------------------------------------------------------------------ */
@@ -363,24 +342,29 @@ export function useCleaningWeeks(limitCount = 400) {
 /**
  * Der Aktivitätenplan der Priestertumskollegien.
  *
- * Ohne Filter und über den ganzen Zeitraum: Ein Jahresplan zählt gut
- * hundert Termine, und die Ansicht zeigt Vergangenes und Kommendes im
- * selben Atemzug. Die Obergrenze deckt damit mehrere Jahre ab.
- *
- * Freigegeben ist er auch für Konten, die sonst nichts sehen – deshalb
- * hängt er an `canViewAp` und nicht an `isApproved`.
+ * Freigegeben ist er auch für Konten, die sonst nichts sehen – deshalb hängt
+ * er an `canViewAp` und nicht an `isApproved`.
  */
 export function useApActivities(limitCount = 600) {
   const { canViewAp } = useAuth()
-  const constraints = useMemo(() => [orderBy('date'), fbLimit(limitCount)], [limitCount])
-  return useCollection<ApActivity>(COLLECTIONS.apActivities, constraints, canViewAp)
+  const state = useCollection<ApActivity>(COLLECTIONS.apActivities, canViewAp)
+  return useMemo(
+    () => ({ ...state, data: capped(byDate(state.data, 'date', 'asc'), limitCount) }),
+    [state, limitCount],
+  )
 }
 
 /** Welches Kollegium welchen Monat führt. */
 export function useApMonths() {
   const { canViewAp } = useAuth()
-  const constraints = useMemo(() => [orderBy('month')], [])
-  return useCollection<ApMonth>(COLLECTIONS.apMonths, constraints, canViewAp)
+  const state = useCollection<ApMonth>(COLLECTIONS.apMonths, canViewAp)
+  return useMemo(
+    () => ({
+      ...state,
+      data: [...state.data].sort((a, b) => String(a.month).localeCompare(String(b.month))),
+    }),
+    [state],
+  )
 }
 
 /* ------------------------------------------------------------------ */
@@ -390,9 +374,9 @@ export function useApMonths() {
 /** Notizen, zuletzt bearbeitete zuoberst. */
 export function useNotes(limitCount = 300) {
   const { isApproved } = useAuth()
-  const constraints = useMemo(
-    () => [orderBy('updatedAt', 'desc'), fbLimit(limitCount)],
-    [limitCount],
+  const state = useCollection<Note>(COLLECTIONS.notes, isApproved)
+  return useMemo(
+    () => ({ ...state, data: capped(byDate(state.data, 'updatedAt'), limitCount) }),
+    [state, limitCount],
   )
-  return useCollection<Note>(COLLECTIONS.notes, constraints, isApproved)
 }

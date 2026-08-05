@@ -24,6 +24,7 @@ import {
   useTalks,
 } from '@/hooks/useFirestore'
 import { useLocalStorage } from '@/hooks/useLocalStorage'
+import { MemberLink } from '@/components/ui/MemberLink'
 import { AgendaItemCard } from '@/components/agenda/AgendaItemCard'
 import { AgendaItemForm } from '@/components/agenda/AgendaItemForm'
 import { FOCUS_PARAM } from '@/components/agenda/MeetingFocus'
@@ -409,9 +410,13 @@ export function Dashboard() {
           <ul className="space-y-2 text-sm">
             {birthdays.map((member) => (
               <li key={member.id} className="flex items-center justify-between gap-2">
-                <Link to={`/mitglieder/${member.id}`} className="min-w-0 truncate hover:underline">
+                <MemberLink
+                  memberId={member.id}
+                  label="Übersicht"
+                  className="min-w-0 truncate hover:underline"
+                >
                   {member.firstName} {member.lastName}
-                </Link>
+                </MemberLink>
                 <span className="shrink-0 text-xs text-slate-500 dark:text-slate-400">
                   {/* «Do., 06.08.» – ohne Jahr, aber vollständig. Früher stand
                       hier ein abgeschnittenes Datum mit einer Null am Ende. */}

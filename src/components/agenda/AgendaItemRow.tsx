@@ -19,7 +19,8 @@ import { ConfirmDialog } from '@/components/ui/Modal'
 import { AgendaItemEditor } from '@/components/agenda/AgendaItemEditor'
 import { DeferMenu } from '@/components/agenda/DeferMenu'
 import { deleteAgendaItem, setItemStatus } from '@/services/agenda'
-import { ITEM_KIND_LABELS, toItemKind, type AgendaItem } from '@/lib/types'
+import { formatDate } from '@/lib/dates'
+import { ITEM_KIND_LABELS, lastEditedAt, toItemKind, type AgendaItem } from '@/lib/types'
 
 interface Props {
   item: AgendaItem
@@ -40,6 +41,13 @@ interface Props {
   /** Zu welcher Sitzung der Eintrag gehört – ausserhalb der Sitzung nützlich */
   meetingLabel?: string
   meetingHref?: string
+  /**
+   * Datum einer Sitzung als Text – für die Angaben im aufgeklappten Eintrag.
+   *
+   * Der Eintrag selbst kennt nur die IDs seiner Sitzungen; welche Termine
+   * dazugehören, weiss die Liste, die ihn zeichnet.
+   */
+  meetingDate?: (meetingId: string) => string | undefined
   /** Ziehen und Ablegen – am Zeigergerät der schnellere Weg */
   onDragStart?: (event: DragEvent<HTMLElement>) => void
   onDragOver?: (event: DragEvent<HTMLElement>) => void
@@ -79,6 +87,7 @@ export function AgendaItemRow({
   nextMeeting,
   meetingLabel,
   meetingHref,
+  meetingDate,
   onDragStart,
   onDragOver,
   onDrop,
@@ -131,7 +140,14 @@ export function AgendaItemRow({
         dropTarget && 'border-brand-500 border-dashed',
       )}
     >
-      <div className="flex items-start gap-2 p-2.5">
+      {/*
+        Die ganze Kopfzeile klappt auf und zu – nicht nur der Titel.
+        Zugeklappt ist das die Zeile, aufgeklappt der Bereich bis zur
+        Trennlinie. Vorher lagen dazwischen tote Flächen (rechts neben dem
+        Titel, unter den Kennzeichnungen), und ein Griff dorthin tat nichts.
+        Die Knöpfe darin halten ihren Klick bei sich (`stopPropagation`).
+      */}
+      <div className="flex cursor-pointer items-start gap-2 p-2.5" onClick={onToggle}>
         {onDragStart && (
           <span
             className="mt-1 hidden cursor-grab text-slate-300 active:cursor-grabbing sm:block dark:text-slate-600"
@@ -143,7 +159,10 @@ export function AgendaItemRow({
 
         <button
           type="button"
-          onClick={onToggle}
+          onClick={(event) => {
+            event.stopPropagation()
+            onToggle()
+          }}
           aria-expanded={expanded}
           className="min-w-0 flex-1 text-left"
         >
@@ -219,7 +238,10 @@ export function AgendaItemRow({
               <button
                 type="button"
                 className="btn-ghost p-1"
-                onClick={() => onMove(-1)}
+                onClick={(event) => {
+                  event.stopPropagation()
+                  onMove(-1)
+                }}
                 disabled={first}
                 aria-label={`«${item.title}» nach oben`}
               >
@@ -228,7 +250,10 @@ export function AgendaItemRow({
               <button
                 type="button"
                 className="btn-ghost p-1"
-                onClick={() => onMove(1)}
+                onClick={(event) => {
+                  event.stopPropagation()
+                  onMove(1)
+                }}
                 disabled={last}
                 aria-label={`«${item.title}» nach unten`}
               >
@@ -240,7 +265,10 @@ export function AgendaItemRow({
           <button
             type="button"
             className="btn-ghost p-1.5"
-            onClick={onToggle}
+            onClick={(event) => {
+              event.stopPropagation()
+              onToggle()
+            }}
             aria-label={expanded ? 'Zuklappen' : 'Aufklappen'}
           >
             <ChevronDown
@@ -256,6 +284,8 @@ export function AgendaItemRow({
           {/* Der Stand gehört dem Eintrag – deshalb baut sich der Editor je
               Eintrag neu auf. */}
           <AgendaItemEditor key={item.id} item={item} readOnly={readOnly} />
+
+          <ItemDates item={item} meetingDate={meetingDate} />
 
           {meetingHref && (
             <Link
@@ -308,5 +338,58 @@ export function AgendaItemRow({
         danger
       />
     </li>
+  )
+}
+
+/* ------------------------------------------------------------------ */
+/* Die Daten eines Eintrags                                            */
+/* ------------------------------------------------------------------ */
+
+/**
+ * Wann behandelt, wann erfasst, wann zum ersten Mal traktandiert, wann
+ * zuletzt bearbeitet.
+ *
+ * Zugeklappt steht neben dem Titel nur das eine Datum, das die Zeile
+ * einordnet. Aufgeklappt geht es um den Eintrag selbst, und dann zählt seine
+ * Geschichte: Eine Pendenz, die seit einem halben Jahr mitläuft, sieht anders
+ * aus als eine von gestern – auch wenn beide auf derselben Sitzung stehen.
+ *
+ * Was fehlt, steht nicht da. Ein «–» hinter einer Beschriftung sagt nichts,
+ * das die leere Stelle nicht auch sagt.
+ */
+function ItemDates({
+  item,
+  meetingDate,
+}: {
+  item: AgendaItem
+  meetingDate?: (meetingId: string) => string | undefined
+}) {
+  const next = item.meetingId ? meetingDate?.(item.meetingId) : undefined
+  // Die Sitzung, in der der Punkt zum ersten Mal stand. Ist es dieselbe wie
+  // die kommende, steht sie nur einmal da – zweimal dasselbe Datum
+  // nebeneinander liest sich wie ein Fehler.
+  const first =
+    item.firstMeetingId && item.firstMeetingId !== item.meetingId
+      ? meetingDate?.(item.firstMeetingId)
+      : undefined
+
+  const entries: [string, string][] = []
+  if (next) entries.push(['Nächste Sitzung', next])
+  if (item.createdAt) entries.push(['Erfasst', formatDate(item.createdAt)])
+  if (first) entries.push(['Ursprünglich', first])
+  const edited = lastEditedAt(item)
+  if (edited) entries.push(['Zuletzt bearbeitet', formatDate(edited)])
+
+  if (entries.length === 0) return null
+
+  return (
+    <dl className="mt-3 flex flex-wrap gap-x-4 gap-y-1 text-xs text-slate-500 dark:text-slate-400">
+      {entries.map(([label, value]) => (
+        <div key={label} className="flex items-baseline gap-1.5">
+          <dt>{label}</dt>
+          <dd className="tabular font-medium text-slate-600 dark:text-slate-300">{value}</dd>
+        </div>
+      ))}
+    </dl>
   )
 }
