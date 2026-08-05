@@ -5,10 +5,12 @@ import {
   callingChangesConcern,
   callingChangesToText,
   callingRowsAbout,
+  callingRowText,
   emptyCallingChanges,
   isCallingChangesEmpty,
   isOwnItem,
   MAX_CALLING_ROWS,
+  moveCallingRow,
   newCallingMemberRow,
   newCallingOpenRow,
   normalizeCallingChanges,
@@ -147,6 +149,90 @@ test('als Text: Überschriften, leere Zeilen bleiben weg, Namen werden aufgelös
 test('als Text: ohne Inhalt bleibt nichts übrig', () => {
   assert.equal(callingChangesToText(emptyCallingChanges()), '')
   assert.equal(callingChangesToText(null), '')
+})
+
+/* ---------------- Suche in der Runde ---------------- */
+
+test('eine Zeile als Text: alle Spalten, Personen mit Namen', () => {
+  const row = {
+    ...newCallingMemberRow(),
+    memberIds: ['m1'],
+    calling: 'PV-Lehrerin',
+    ideas: 'Sonntagsschule',
+    assignees: ['u1'],
+  }
+  const text = callingRowText(row, (id) => (id === 'm1' ? 'Alain von Allmen' : 'Bischof'))
+  assert.ok(text.includes('Alain von Allmen'))
+  assert.ok(text.includes('PV-Lehrerin'))
+  assert.ok(text.includes('Sonntagsschule'))
+  assert.ok(text.includes('Bischof'))
+})
+
+test('eine Zeile als Text: die andere Tabelle hat andere Spalten', () => {
+  const row = {
+    ...newCallingOpenRow(),
+    calling: 'Sekretär',
+    candidates: 'Alain von Allmen',
+    next: 'Anfrage bis Ende Monat',
+  }
+  const text = callingRowText(row)
+  assert.ok(text.includes('Sekretär'))
+  assert.ok(text.includes('Alain von Allmen'))
+  assert.ok(text.includes('Anfrage bis Ende Monat'))
+})
+
+test('eine leere Zeile hat keinen Text – und ohne Auflösung bleiben IDs weg', () => {
+  assert.equal(callingRowText(newCallingMemberRow()), '')
+  // Eine ID ist kein Wort, das jemand tippt: Ohne Namen steht sie nicht da.
+  const row = { ...newCallingMemberRow(), memberIds: ['m1'] }
+  assert.equal(callingRowText(row), '')
+})
+
+/* ---------------- Reihenfolge ---------------- */
+
+test('umsortieren: eine Zeile nach oben, die andere rückt nach', () => {
+  const rows = [{ id: 'a' }, { id: 'b' }, { id: 'c' }]
+  assert.deepEqual(
+    moveCallingRow(rows, 'c', 1).map((row) => row.id),
+    ['a', 'c', 'b'],
+  )
+  assert.deepEqual(
+    moveCallingRow(rows, 'a', 2).map((row) => row.id),
+    ['b', 'c', 'a'],
+  )
+})
+
+test('umsortieren: über den Rand hinaus bleibt am Rand', () => {
+  const rows = [{ id: 'a' }, { id: 'b' }]
+  // Der Pfeil an der obersten Zeile soll nichts tun – und nicht die Liste
+  // verdrehen.
+  assert.deepEqual(
+    moveCallingRow(rows, 'a', -1).map((row) => row.id),
+    ['a', 'b'],
+  )
+  assert.deepEqual(
+    moveCallingRow(rows, 'b', 5).map((row) => row.id),
+    ['a', 'b'],
+  )
+})
+
+test('umsortieren: ohne Bewegung bleibt es dieselbe Liste', () => {
+  const rows = [{ id: 'a' }, { id: 'b' }]
+  assert.equal(moveCallingRow(rows, 'a', 0), rows)
+  // Eine Zeile, die es nicht gibt, ändert nichts.
+  assert.equal(moveCallingRow(rows, 'x', 1), rows)
+})
+
+test('umsortieren: die Zeilen selbst bleiben, wie sie sind', () => {
+  const rows = [
+    { ...newCallingMemberRow(), calling: 'PV-Lehrerin' },
+    { ...newCallingMemberRow(), calling: 'Sonntagsschule' },
+  ]
+  const moved = moveCallingRow(rows, rows[1].id, 0)
+  assert.equal(moved[0].calling, 'Sonntagsschule')
+  assert.equal(moved[0], rows[1])
+  // Die Vorlage bleibt unangetastet.
+  assert.equal(rows[0].calling, 'PV-Lehrerin')
 })
 
 /* ---------------- Wen geht das an? ---------------- */

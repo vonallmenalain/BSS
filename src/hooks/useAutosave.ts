@@ -11,12 +11,18 @@ export interface Autosave {
 }
 
 /**
- * Speichert von selbst: kurz nach der letzten Änderung und noch einmal beim
+ * Speichert von selbst: nach einer Pause, beim Weglegen des Geräts und beim
  * Schliessen.
  *
  * Ein Speichern-Knopf ist die einzige Stelle, an der sich Geschriebenes
  * verlieren lässt – und auf dem Handy die wahrscheinlichste, weil ein Anruf
  * oder ein Wisch die Ansicht wegnimmt, bevor man ihn trifft.
+ *
+ * `delayMs` sagt, wie lange nach dem letzten Tastendruck gewartet wird. Kurz
+ * ist gut, wo eine Änderung sofort feststehen soll; lang ist besser, wo
+ * jemand längere Texte schreibt und der Rückweg aus Firestore die Ansicht
+ * neu zeichnet – dort ruft der Aufrufer `flush()`, sobald das Feld verlassen
+ * wird (siehe `components/agenda/AgendaItemEditor`).
  *
  * Zwei Dinge zählen dabei:
  *
@@ -108,6 +114,22 @@ export function useAutosave<T>(
 
   // Beim Schliessen – auch über die Zurück-Geste – das Angefangene sichern.
   useEffect(() => () => void run(), [run])
+
+  /*
+   * Und beim Weglegen des Geräts.
+   *
+   * Wer am Telefon die App wechselt, kommt womöglich nie mehr zurück: Der
+   * Browser räumt den Tab weg, und die Aufräumarbeit oben läuft dann nicht
+   * mehr. `visibilitychange` ist der einzige Zeitpunkt, auf den dabei Verlass
+   * ist – und er stört niemanden, denn zu sehen ist die Seite gerade nicht.
+   */
+  useEffect(() => {
+    const onHide = () => {
+      if (document.visibilityState === 'hidden') void run()
+    }
+    document.addEventListener('visibilitychange', onHide)
+    return () => document.removeEventListener('visibilitychange', onHide)
+  }, [run])
 
   return {
     state,

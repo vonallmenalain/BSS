@@ -1,5 +1,14 @@
-import { useState, type ReactNode } from 'react'
-import { Plus, Trash2, X } from 'lucide-react'
+import { useEffect, useState, type DragEvent, type ReactNode } from 'react'
+import {
+  ArrowUpDown,
+  ChevronDown,
+  ChevronUp,
+  GripVertical,
+  Plus,
+  Search,
+  Trash2,
+  X,
+} from 'lucide-react'
 import { useData } from '@/contexts/DataContext'
 import { Avatar } from '@/components/ui/Avatar'
 import { MemberLink } from '@/components/ui/MemberLink'
@@ -7,17 +16,20 @@ import { MentionEditable, MentionText } from '@/components/ui/MentionText'
 import { MemberPicker, PersonButton } from '@/components/ui/Pickers'
 import {
   CALLING_TABLE_TITLES,
+  callingRowText,
   isCallingMemberRowEmpty,
   isCallingOpenRowEmpty,
+  moveCallingRow,
   newCallingMemberRow,
   newCallingOpenRow,
   type CallingRowMatch,
 } from '@/lib/callingChanges'
-import { cn } from '@/lib/utils'
+import { cn, matchesSearch } from '@/lib/utils'
 import {
   CALLING_URGENCY_LABELS,
   CALLING_URGENCY_ORDER,
   FULL_ACCESS_ROLES,
+  type AppUser,
   type CallingChanges,
   type CallingMemberRow,
   type CallingOpenRow,
@@ -36,16 +48,25 @@ import {
  * Es ist eine Ideenliste. Nichts davon ändert eine Berufung oder einen
  * Mitgliederdatensatz – das tut allein das LCR und der Import von dort.
  *
- * Drei Dinge tragen die Ansicht:
+ * Vier Dinge tragen die Ansicht:
  *
- *  - **Farbe und Zuständigkeit stehen unten rechts in der Zeile.** Beides
- *    gehört der Zeile: Rot, Orange, Grün sagen, wie dringend es ist – oben
- *    rechts blenden dieselben drei Kreise aus, was gerade nicht
- *    interessiert –, und wer eine Zeile trägt, hat den ganzen Eintrag unter
- *    «Pendenzen → Meine». Eine Runde geht zwanzig Namen durch, und die
- *    verteilt man untereinander. Beides steht in **einer** Zeile am Fuss
- *    und so knapp wie möglich: Gelesen wird der Text darüber, nicht die
- *    Bedienung darunter.
+ *  - **Die Reihenfolge ist die der Zeilen.** Neue Zeilen kommen unten dazu,
+ *    und so bleibt es, bis jemand sie umstellt: «Reihenfolge» oben rechts
+ *    stellt Pfeile an jede Zeile und einen Griff zum Ziehen daneben. Die
+ *    neue Anordnung steht im Eintrag selbst und gilt damit für alle, die ihn
+ *    öffnen – ein eigenes Feld je Zeile braucht es dafür nicht.
+ *
+ *  - **Farbe, Zuständigkeit und Papierkorb stehen in einer vierten, schmalen
+ *    Spalte** – hinter einem Knopf, der zugleich anschreibt, was gesetzt ist
+ *    (Farbpunkt und die Kreise der Zuständigen). Beides gehört der Zeile:
+ *    Rot, Orange, Grün sagen, wie dringend es ist – oben rechts blenden
+ *    dieselben drei Kreise aus, was gerade nicht interessiert –, und wer
+ *    eine Zeile trägt, hat den ganzen Eintrag unter «Pendenzen → Meine».
+ *    Ausgeschrieben brauchte das je Zeile eine eigene Zeile; bei zwanzig
+ *    Einträgen war das die halbe Ansicht für etwas, das man ein-, zweimal
+ *    anfasst.
+ *  - **Oben steht ein Suchfeld.** Wer «PV» tippt, sieht die Zeilen, in denen
+ *    «PV» vorkommt – in welcher Spalte auch immer.
  *  - **Ein Name je Zeile.** In der Spalte «Name» steht genau eine Person;
  *    geht es um zwei, sind es zwei Zeilen. Mehrere Namen in einer Zeile
  *    machten aus der Tabelle eine Liste von Listen, und dann sagt keine
@@ -72,6 +93,15 @@ export function CallingChangesTables({
   readOnly?: boolean
 }) {
   const editable = Boolean(onChange) && !readOnly
+  const { membersById, userName } = useData()
+
+  /** Namen zu einer ID – Mitglied oder Konto, für die Suche in der Zeile. */
+  const nameOf = (id: string) => {
+    const member = membersById.get(id)
+    if (member) return `${member.firstName} ${member.lastName}`
+    const user = userName(id)
+    return user === 'Unbekannt' ? '' : user
+  }
 
   /*
    * Welche Farben gerade zu sehen sind.
@@ -82,19 +112,65 @@ export function CallingChangesTables({
    * Firestore – und sie beginnt jedes Mal bei «alle».
    */
   const [shown, setShown] = useState<CallingUrgency[]>(CALLING_URGENCY_ORDER)
-  const filtering = shown.length < CALLING_URGENCY_ORDER.length
 
   /*
-   * Alle drei an heisst: kein Filter – dann stehen auch die Zeilen da, die
-   * noch keine Farbe haben. Sobald eine Farbe weggeklickt ist, gilt die
-   * Auswahl streng: Zu sehen ist genau, was gewählt wurde. Was dabei
-   * wegfällt, steht als Zahl unter der Tabelle; still verschwinden soll
-   * nichts.
+   * Die Suche in der Runde.
+   *
+   * Eine Runde zählt zwanzig Zeilen, und die Frage am Tisch heisst oft «was
+   * haben wir zur PV?». Gesucht wird deshalb in der ganzen Zeile – Name,
+   * Berufung, Vorschläge, Zuständige – und übrig bleibt, was passt. Wie der
+   * Farbfilter gehört auch das dem Bildschirm und nicht den Daten: Es ändert
+   * nichts und beginnt bei jedem Öffnen wieder leer.
    */
-  const visible = (row: CallingRowBase) =>
-    !filtering || (row.urgency !== undefined && shown.includes(row.urgency))
+  const [search, setSearch] = useState('')
 
-  const showAll = () => setShown(CALLING_URGENCY_ORDER)
+  /*
+   * «Reihenfolge anpassen» – die Griffe und die Pfeile.
+   *
+   * Sie sind zu Beginn ausgeschaltet: Die Runde wird gelesen und
+   * ausgefüllt, umgestellt wird sie selten – und wo an jeder Zeile zwei
+   * Pfeile stehen, greift man beim Schreiben daneben. Ausgeschaltet
+   * verschwinden bloss die Griffe; die gelegte Reihenfolge bleibt, sie ist
+   * die Reihenfolge der Zeilen selbst.
+   *
+   * Ein Zustand des Bildschirms und keiner der Daten: Er sagt, was man
+   * **gerade** tut.
+   */
+  const [ordering, setOrdering] = useState(false)
+  const reordering = editable && ordering
+
+  /*
+   * Umgestellt wird an der **ganzen** Tabelle: Ein Ausschnitt sagt nichts
+   * darüber, wo das Ausgeblendete steht. Solange umsortiert wird, gelten
+   * Farbfilter und Suche deshalb nicht – und stehen auch nicht da.
+   */
+  const filtering = !reordering && shown.length < CALLING_URGENCY_ORDER.length
+  const query = reordering ? '' : search.trim()
+
+  /*
+   * Alle drei Farben an heisst: kein Filter – dann stehen auch die Zeilen da,
+   * die noch keine Farbe haben. Sobald eine Farbe weggeklickt ist, gilt die
+   * Auswahl streng: Zu sehen ist genau, was gewählt wurde. Die Suche kommt
+   * als zweite Bedingung dazu; was dabei wegfällt, steht als Zahl unter der
+   * Tabelle – still verschwinden soll nichts.
+   */
+  const visible = (row: CallingRowBase) => {
+    if (filtering && (row.urgency === undefined || !shown.includes(row.urgency))) return false
+    if (!query) return true
+    return matchesSearch(callingRowText(row as CallingMemberRow | CallingOpenRow, nameOf), query)
+  }
+
+  /**
+   * Alles zeigen – Farben wie Suche.
+   *
+   * Nötig, wo eine neue Zeile entsteht: Sie ist leer und passt damit weder
+   * zu einem Farbfilter noch zu einem Suchwort. Ohne das legte man eine
+   * Zeile an, die man nicht sieht.
+   */
+  const showAll = () => {
+    setShown(CALLING_URGENCY_ORDER)
+    setSearch('')
+  }
 
   const patch = (next: Partial<CallingChanges>) => onChange?.({ ...value, ...next })
 
@@ -104,11 +180,115 @@ export function CallingChangesTables({
   const changeOpen = (id: string, fields: Partial<CallingOpenRow>) =>
     patch({ open: value.open.map((row) => (row.id === id ? { ...row, ...fields } : row)) })
 
+  /*
+   * Was gerade gezogen wird – und worüber es schwebt.
+   *
+   * Die Tabelle gehört dazu: Eine Zeile aus «Neue Berufungen» in die
+   * «Offenen Berufungen» zu ziehen hiesse, aus einer Person eine Aufgabe zu
+   * machen. Gezogen wird deshalb nur innerhalb einer Tabelle.
+   */
+  const [dragged, setDragged] = useState<{ table: CallingTableKey; id: string } | null>(null)
+  const [over, setOver] = useState<string | null>(null)
+
+  const move = (table: CallingTableKey, id: string, to: number) =>
+    patch(
+      table === 'members'
+        ? { members: moveCallingRow(value.members, id, to) }
+        : { open: moveCallingRow(value.open, id, to) },
+    )
+
+  const dropDone = () => {
+    setDragged(null)
+    setOver(null)
+  }
+
+  /**
+   * Was eine Zeile zum Umsortieren braucht – für beide Tabellen dasselbe.
+   *
+   * Ohne eingeschaltetes Umsortieren bleibt alles weg: keine Pfeile, kein
+   * Griff, kein Ziehen.
+   */
+  const handles = (table: CallingTableKey, id: string, index: number, count: number) => {
+    if (!reordering) return {}
+    // Was gezogen wird, sofern es aus dieser Tabelle stammt.
+    const carried = dragged?.table === table ? dragged : null
+    return {
+      onMove: (delta: number) => move(table, id, index + delta),
+      first: index === 0,
+      last: index === count - 1,
+      dragging: carried?.id === id,
+      dropTarget: carried !== null && carried.id !== id && over === id,
+      onDragStart: () => setDragged({ table, id }),
+      onDragOver: (event: DragEvent) => {
+        if (!carried) return
+        event.preventDefault()
+        event.dataTransfer.dropEffect = 'move'
+        setOver(id)
+      },
+      onDrop: (event: DragEvent) => {
+        event.preventDefault()
+        if (carried && carried.id !== id) move(table, carried.id, index)
+        dropDone()
+      },
+      onDragEnd: dropDone,
+    }
+  }
+
   return (
     <div className="space-y-4">
-      <div className="flex items-center justify-end">
-        <UrgencyFilter value={shown} onChange={setShown} />
+      <div className="flex flex-wrap items-center gap-x-3 gap-y-2">
+        {/* Die Suche steht vorn und nimmt den Platz, der übrig bleibt: Sie
+            wird am Sitzungstisch gebraucht, die beiden Knöpfe daneben selten. */}
+        {!reordering && (
+          <div className="relative min-w-40 flex-1 sm:max-w-64">
+            <Search
+              className="pointer-events-none absolute top-1/2 left-2.5 size-3.5 -translate-y-1/2 text-slate-400"
+              aria-hidden
+            />
+            <input
+              type="search"
+              className="input py-1 pl-8 text-sm"
+              aria-label="In der Berufungsrunde suchen"
+              placeholder="Suchen …"
+              value={search}
+              onChange={(event) => setSearch(event.target.value)}
+            />
+          </div>
+        )}
+
+        <div className="ms-auto flex flex-wrap items-center gap-x-3 gap-y-1">
+          {editable && (
+            <button
+              type="button"
+              aria-pressed={ordering}
+              onClick={() => {
+                // Umgestellt wird an der ganzen Tabelle – also erst einmal
+                // alles zeigen.
+                if (!ordering) showAll()
+                setOrdering(!ordering)
+              }}
+              className={cn(
+                'btn-ghost btn-sm',
+                ordering && 'text-brand-700 dark:text-brand-300 font-medium',
+              )}
+            >
+              <ArrowUpDown className="size-3.5" aria-hidden />
+              Reihenfolge
+            </button>
+          )}
+
+          {/* Beim Umsortieren steht die Wahl der Farben nicht zur Verfügung:
+              Ein Ausschnitt sagt nichts darüber, wo das Ausgeblendete steht. */}
+          {!reordering && <UrgencyFilter value={shown} onChange={setShown} />}
+        </div>
       </div>
+
+      {reordering && (
+        <p className="hint">
+          Zeilen mit den Pfeilen verschieben – am Zeigergerät auch, indem man sie am Griff zieht.
+          Die Reihenfolge gehört zum Eintrag und gilt damit für alle.
+        </p>
+      )}
 
       <CallingTable
         title={CALLING_TABLE_TITLES.members}
@@ -133,6 +313,7 @@ export function CallingChangesTables({
                 ? () => patch({ members: withoutRow(value.members, row.id, newCallingMemberRow) })
                 : undefined
             }
+            {...handles('members', row.id, index, value.members.length)}
           >
             <Cell label="Name">
               {/*
@@ -218,6 +399,7 @@ export function CallingChangesTables({
                 ? () => patch({ open: withoutRow(value.open, row.id, newCallingOpenRow) })
                 : undefined
             }
+            {...handles('open', row.id, index, value.open.length)}
           >
             <Cell label="Berufung">
               <TextCell
@@ -262,6 +444,9 @@ export function CallingChangesTables({
   )
 }
 
+/** Welche der beiden Tabellen gemeint ist – ihre Schlüssel in `CallingChanges`. */
+type CallingTableKey = keyof CallingChanges
+
 /**
  * Die `id` eines Feldes – aus der Zeile und nicht aus der Stelle im Baum.
  *
@@ -292,6 +477,16 @@ function withoutRow<T extends CallingRowBase>(rows: T[], id: string, fresh: () =
 /* Eine Tabelle                                                        */
 /* ------------------------------------------------------------------ */
 
+/**
+ * Die vier Spalten einer Zeile: drei Felder und, schmal rechts daneben, die
+ * Bedienung.
+ *
+ * Als eigene Spalte statt als Fusszeile – das spart je Zeile eine ganze
+ * Zeile Höhe, und eine Runde mit zwanzig Einträgen passt damit auf einen
+ * Bildschirm statt auf zwei.
+ */
+const ROW_COLUMNS = 'sm:grid-cols-[minmax(0,1fr)_minmax(0,1fr)_minmax(0,1fr)_5.5rem] sm:items-start'
+
 function CallingTable({
   title,
   columns,
@@ -303,7 +498,7 @@ function CallingTable({
   title: string
   columns: [string, string, string]
   editable: boolean
-  /** Wie viele Zeilen der Farbfilter gerade wegnimmt */
+  /** Wie viele Zeilen Farbfilter und Suche gerade wegnehmen */
   hidden: number
   onAdd: () => void
   children: ReactNode
@@ -313,19 +508,21 @@ function CallingTable({
       {/* Nur der Titel – ein Satz darunter, der ihn mit anderen Worten
           wiederholt, kostet in jeder Runde zwei Zeilen und sagt beim zweiten
           Mal nichts mehr. */}
-      <h4 className="mb-1.5 text-sm font-semibold">{title}</h4>
+      <h4 className="mb-1 text-sm font-semibold">{title}</h4>
 
       {/* Ab Tabletbreite stehen die Überschriften einmal über der Tabelle;
-          darunter trägt jedes Feld seine eigene (siehe `Cell`). */}
-      <div className="hidden gap-2 px-3 pb-1 sm:grid sm:grid-cols-3">
+          darunter trägt jedes Feld seine eigene (siehe `Cell`). Die vierte
+          Spalte bleibt leer: Was darin steht, erklärt sich am Knopf. */}
+      <div className={cn('hidden gap-1.5 px-2 pb-1 sm:grid', ROW_COLUMNS)}>
         {columns.map((column) => (
           <span key={column} className="text-xs font-medium text-slate-500 dark:text-slate-400">
             {column}
           </span>
         ))}
+        <span aria-hidden />
       </div>
 
-      <ul className="space-y-2">{children}</ul>
+      <ul className="space-y-1.5">{children}</ul>
 
       {hidden > 0 && (
         <p className="hint">
@@ -390,6 +587,15 @@ function RowFrame({
   onUrgency,
   onAssignees,
   onRemove,
+  onMove,
+  first = false,
+  last = false,
+  onDragStart,
+  onDragOver,
+  onDrop,
+  onDragEnd,
+  dragging = false,
+  dropTarget = false,
   children,
 }: {
   row: CallingRowBase
@@ -399,9 +605,30 @@ function RowFrame({
   onAssignees: (next: string[]) => void
   /** Fehlt er, ist es die letzte und noch leere Zeile der Tabelle. */
   onRemove?: () => void
+  /** Um eine Stelle nach oben (-1) oder unten (+1) – nur beim Umsortieren */
+  onMove?: (delta: number) => void
+  first?: boolean
+  last?: boolean
+  onDragStart?: () => void
+  onDragOver?: (event: DragEvent) => void
+  onDrop?: (event: DragEvent) => void
+  onDragEnd?: () => void
+  dragging?: boolean
+  dropTarget?: boolean
   children: ReactNode
 }) {
   const { users } = useData()
+
+  /*
+   * Gezogen wird nur am Griff.
+   *
+   * In der Zeile stehen drei Textfelder; wäre sie durchgehend zum Ziehen
+   * freigegeben, liesse sich darin kein Wort mehr markieren. `draggable`
+   * gilt deshalb erst ab dem Griff der Maus auf den Griff – und danach
+   * wieder nicht.
+   */
+  const [grabbed, setGrabbed] = useState(false)
+  const release = () => setGrabbed(false)
 
   // Nur Konten mit Vollzugriff: Wer allein den AP-Kalender sieht, bekommt
   // eine Berufungsrunde gar nicht zu Gesicht.
@@ -409,75 +636,231 @@ function RowFrame({
 
   return (
     <li
+      draggable={grabbed}
+      onDragStart={onDragStart}
+      onDragOver={onDragOver}
+      onDrop={onDrop}
+      onDragEnd={() => {
+        release()
+        onDragEnd?.()
+      }}
+      onMouseUp={release}
       className={cn(
-        'rounded-lg border border-l-4 border-slate-200 p-2 dark:border-slate-800',
+        'rounded-lg border border-l-4 border-slate-200 p-1.5 transition dark:border-slate-800',
         row.urgency ? URGENCY_ROW[row.urgency] : 'border-l-slate-200 dark:border-l-slate-700',
+        dragging && 'opacity-40',
+        dropTarget && 'border-brand-500 border-dashed',
       )}
     >
-      <div className="grid gap-2 sm:grid-cols-3">{children}</div>
-
-      {editable ? (
-        <div className="mt-2 flex flex-wrap items-center justify-end gap-x-2 gap-y-1">
-          {/* Ganz links und damit so weit wie möglich weg von den Knöpfen, die
-              man dauernd trifft. */}
-          {onRemove && (
+      <div className="flex gap-1.5">
+        {/* Der Griff und die beiden Pfeile – nur, solange umsortiert wird.
+            Sie stehen als schmale Spalte links neben der Zeile: Dort sind sie
+            beisammen und liegen nicht zwischen den Feldern. */}
+        {onMove && (
+          <div className="flex shrink-0 flex-col items-center">
+            <span
+              className="hidden cursor-grab py-0.5 text-slate-300 active:cursor-grabbing sm:block dark:text-slate-600"
+              onMouseDown={() => setGrabbed(true)}
+              aria-hidden
+            >
+              <GripVertical className="size-4" />
+            </span>
             <button
               type="button"
-              className="btn-ghost mr-auto p-1 text-slate-400 hover:text-rose-600 dark:hover:text-rose-400"
-              onClick={onRemove}
-              aria-label={`Zeile ${position} entfernen`}
+              className="btn-ghost p-0.5"
+              onClick={() => onMove(-1)}
+              disabled={first}
+              aria-label={`Zeile ${position} nach oben`}
             >
-              <Trash2 className="size-3.5" aria-hidden />
+              <ChevronUp className="size-4" aria-hidden />
             </button>
-          )}
+            <button
+              type="button"
+              className="btn-ghost p-0.5"
+              onClick={() => onMove(1)}
+              disabled={last}
+              aria-label={`Zeile ${position} nach unten`}
+            >
+              <ChevronDown className="size-4" aria-hidden />
+            </button>
+          </div>
+        )}
 
-          <UrgencyPicker
-            value={row.urgency}
-            onChange={onUrgency}
-            label={`Dringlichkeit, Zeile ${position}`}
-          />
+        <div className={cn('grid min-w-0 flex-1 gap-1.5', ROW_COLUMNS)}>
+          {children}
 
-          {/* Ohne Beschriftung: «Zuständig» stand vor fünf Namen und sagte
-              nichts, was die Namen nicht selbst sagen. Für Bildschirmleser
-              steht es an der Gruppe. */}
-          <div
-            className="flex min-w-0 flex-wrap items-center justify-end gap-1"
-            role="group"
-            aria-label={`Zuständig, Zeile ${position}`}
-          >
-            {bishopric.map((user) => (
-              <PersonButton
-                key={user.id}
-                id={user.id}
-                name={user.displayName}
-                compact
-                selected={row.assignees.includes(user.id)}
-                onClick={() =>
-                  onAssignees(
-                    row.assignees.includes(user.id)
-                      ? row.assignees.filter((id) => id !== user.id)
-                      : [...row.assignees, user.id],
-                  )
-                }
+          {/* Die vierte Spalte: Farbe, Zuständigkeit und der Papierkorb –
+              alles hinter einem Knopf, der schon anschreibt, was gesetzt
+              ist. Am Telefon steht er rechts unter den Feldern. */}
+          <div className="flex justify-end sm:justify-start">
+            {editable ? (
+              <RowMenu
+                row={row}
+                position={position}
+                bishopric={bishopric}
+                onUrgency={onUrgency}
+                onAssignees={onAssignees}
+                onRemove={onRemove}
               />
-            ))}
+            ) : (
+              (row.urgency || row.assignees.length > 0) && (
+                <div className="flex flex-wrap items-center justify-end gap-1">
+                  {row.urgency && (
+                    <span className={cn('badge', URGENCY_BADGE[row.urgency])}>
+                      {CALLING_URGENCY_LABELS[row.urgency]}
+                    </span>
+                  )}
+                  {row.assignees.map((id) => (
+                    <AssigneeChip key={id} id={id} />
+                  ))}
+                </div>
+              )
+            )}
           </div>
         </div>
-      ) : (
-        (row.urgency || row.assignees.length > 0) && (
-          <div className="mt-1.5 flex flex-wrap items-center justify-end gap-1.5">
-            {row.urgency && (
-              <span className={cn('badge', URGENCY_BADGE[row.urgency])}>
-                {CALLING_URGENCY_LABELS[row.urgency]}
-              </span>
-            )}
-            {row.assignees.map((id) => (
-              <AssigneeChip key={id} id={id} />
-            ))}
-          </div>
-        )
-      )}
+      </div>
     </li>
+  )
+}
+
+/* ------------------------------------------------------------------ */
+/* Farbe, Zuständigkeit, Papierkorb – hinter einem Knopf                */
+/* ------------------------------------------------------------------ */
+
+/**
+ * Die drei Griffe einer Zeile, zusammengefasst in ein kleines Menü.
+ *
+ * Nebeneinander ausgeschrieben brauchten sie eine eigene Zeile unter jedem
+ * Eintrag – drei Kreise, fünf Namen, ein Papierkorb. Bei zwanzig Zeilen ist
+ * das die halbe Ansicht für etwas, das man je Zeile ein-, zweimal anfasst.
+ *
+ * Der Knopf selbst bleibt trotzdem eine Auskunft: Er trägt den Farbpunkt der
+ * Zeile und die Kreise der Zuständigen. Man sieht also weiterhin auf einen
+ * Blick, was gesetzt ist – nur die Wahl selbst liegt einen Griff tiefer.
+ */
+function RowMenu({
+  row,
+  position,
+  bishopric,
+  onUrgency,
+  onAssignees,
+  onRemove,
+}: {
+  row: CallingRowBase
+  position: number
+  bishopric: AppUser[]
+  onUrgency: (next: CallingUrgency | undefined) => void
+  onAssignees: (next: string[]) => void
+  onRemove?: () => void
+}) {
+  const { userName } = useData()
+  const [open, setOpen] = useState(false)
+
+  /* Die Escape-Taste schliesst, egal wo der Fokus gerade steht. */
+  useEffect(() => {
+    if (!open) return
+    const onKeyDown = (event: KeyboardEvent) => {
+      if (event.key === 'Escape') setOpen(false)
+    }
+    document.addEventListener('keydown', onKeyDown)
+    return () => document.removeEventListener('keydown', onKeyDown)
+  }, [open])
+
+  const label = row.urgency ? CALLING_URGENCY_LABELS[row.urgency] : 'ohne Farbe'
+  const assignees = row.assignees.map(userName).join(', ')
+
+  return (
+    <div className="relative">
+      <button
+        type="button"
+        onClick={() => setOpen((value) => !value)}
+        aria-haspopup="menu"
+        aria-expanded={open}
+        title={assignees ? `${label} · ${assignees}` : label}
+        aria-label={`Zeile ${position}: Farbe und Zuständigkeit – ${label}${
+          assignees ? `, ${assignees}` : ', niemand zuständig'
+        }`}
+        className="btn-ghost flex items-center gap-1 px-1.5 py-1"
+      >
+        <span
+          className={cn(
+            'size-2.5 shrink-0 rounded-full',
+            row.urgency ? URGENCY_DOT[row.urgency] : 'bg-slate-300 dark:bg-slate-600',
+          )}
+          aria-hidden
+        />
+        {row.assignees.slice(0, 2).map((id) => (
+          <span key={id} aria-hidden>
+            <Avatar name={userName(id)} id={id} size="xs" />
+          </span>
+        ))}
+        <ChevronDown
+          className={cn('size-3 shrink-0 transition', open && 'rotate-180')}
+          aria-hidden
+        />
+      </button>
+
+      {open && (
+        <>
+          {/* Fängt den Klick daneben ab – so schliesst das Menü wie überall
+              in der App, ohne dass man den Knopf wieder treffen muss. */}
+          <div className="fixed inset-0 z-40" onClick={() => setOpen(false)} aria-hidden />
+          <div
+            role="menu"
+            className="animate-scale-in absolute right-0 z-50 mt-1 w-56 origin-top-right space-y-2 rounded-xl border border-slate-200 bg-white p-2 shadow-lg dark:border-slate-700 dark:bg-slate-800"
+          >
+            <div>
+              <span className="mb-1 block text-xs font-medium text-slate-500 dark:text-slate-400">
+                Dringlichkeit
+              </span>
+              <UrgencyPicker
+                value={row.urgency}
+                onChange={onUrgency}
+                label={`Dringlichkeit, Zeile ${position}`}
+              />
+            </div>
+
+            <div>
+              <span className="mb-1 block text-xs font-medium text-slate-500 dark:text-slate-400">
+                Zuständig
+              </span>
+              <div className="flex flex-wrap gap-1">
+                {bishopric.map((user) => (
+                  <PersonButton
+                    key={user.id}
+                    id={user.id}
+                    name={user.displayName}
+                    compact
+                    selected={row.assignees.includes(user.id)}
+                    onClick={() =>
+                      onAssignees(
+                        row.assignees.includes(user.id)
+                          ? row.assignees.filter((id) => id !== user.id)
+                          : [...row.assignees, user.id],
+                      )
+                    }
+                  />
+                ))}
+              </div>
+            </div>
+
+            {onRemove && (
+              <button
+                type="button"
+                onClick={() => {
+                  setOpen(false)
+                  onRemove()
+                }}
+                className="flex w-full items-center gap-2 rounded-lg px-2 py-1.5 text-left text-sm text-rose-600 transition hover:bg-rose-50 dark:text-rose-400 dark:hover:bg-rose-950/40"
+              >
+                <Trash2 className="size-3.5" aria-hidden />
+                Zeile löschen
+              </button>
+            )}
+          </div>
+        </>
+      )}
+    </div>
   )
 }
 
@@ -620,11 +1003,14 @@ function TextCell({
       onMention={onMention}
       memberRefs={memberRefs}
       multiline
-      rows={2}
+      /* Eine Zeile hoch – und von da an so hoch wie ihr Text.
+         Zwei Zeilen als Grundmass hiessen: Die halbe Runde steht leer da,
+         weil in den meisten Zeilen ein Halbsatz steht. */
+      rows={1}
       readOnly={readOnly}
       placeholder={readOnly ? undefined : placeholder}
-      className="min-h-10 rounded-lg text-sm"
-      fieldClassName="min-h-10 resize-y text-sm"
+      className="rounded-lg text-sm"
+      fieldClassName="resize-y text-sm"
     />
   )
 }
@@ -653,10 +1039,10 @@ function MemberNames({ ids, onRemove }: { ids: string[]; onRemove?: (id: string)
             className={cn(
               'flex items-center gap-2',
               onRemove &&
-                'rounded-lg border border-slate-200 bg-white px-2 py-1.5 dark:border-slate-700 dark:bg-slate-900',
+                'rounded-lg border border-slate-200 bg-white px-2 py-1 dark:border-slate-700 dark:bg-slate-900',
             )}
           >
-            <Avatar name={name} id={id} size="sm" />
+            <Avatar name={name} id={id} size="xs" />
             {member ? (
               <MemberLink
                 memberId={id}
