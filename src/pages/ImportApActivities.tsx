@@ -139,7 +139,7 @@ export function ImportApActivities() {
           <h2 className="text-base font-semibold">Datei hierher ziehen</h2>
           <p className="mt-1 max-w-md text-sm text-slate-500 dark:text-slate-400">
             Unterstützt werden <strong>.xlsx</strong> und <strong>.csv</strong> im gewohnten Aufbau:
-            eine Kopfzeile mit «Datum», «Aktivität / Klasse», «Treffpunkt», «Leitung / Org», den
+            eine Kopfzeile mit «Datum», «Aktivität / Klasse», «Treffpunkt», «Zuständig AP», den
             beiden Teilnahmespalten und «Bemerkung». Gelesen wird das erste Arbeitsblatt.
           </p>
 
@@ -275,7 +275,7 @@ export function ImportApActivities() {
               'Art',
               'Aktivität / Klasse',
               'Treffpunkt',
-              'Leitung',
+              'Zuständig AP',
               'BSS',
               'Berater',
             ]}

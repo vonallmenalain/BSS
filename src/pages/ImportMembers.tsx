@@ -25,10 +25,12 @@ import {
   runImport,
   type ImportOptions,
   type ImportPreview,
+  type ImportResult,
   type MemberField,
   type ParsedSheet,
 } from '@/services/import'
 import { parsePastedDirectory, type PastedPerson } from '@/services/importPaste'
+import type { Member } from '@/lib/types'
 
 type Step = 'upload' | 'mapping' | 'preview' | 'done'
 type Source = 'text' | 'file'
@@ -67,11 +69,7 @@ export function ImportMembers() {
   const [options, setOptions] = useState<ImportOptions>(DEFAULT_IMPORT_OPTIONS)
   const [busy, setBusy] = useState(false)
   const [progress, setProgress] = useState<{ done: number; total: number } | null>(null)
-  const [result, setResult] = useState<{
-    created: number
-    updated: number
-    skipped: number
-  } | null>(null)
+  const [result, setResult] = useState<ImportResult | null>(null)
   const [dragging, setDragging] = useState(false)
 
   const handleFile = useCallback(
@@ -129,7 +127,10 @@ export function ImportMembers() {
       )
       setResult(outcome)
       setStep('done')
-      toast.success(`${outcome.created} neu, ${outcome.updated} aktualisiert.`)
+      toast.success(
+        `${outcome.created} neu, ${outcome.updated} aktualisiert` +
+          (outcome.removed > 0 ? `, ${outcome.removed} entfernt.` : '.'),
+      )
     } catch (error) {
       console.error(error)
       toast.error(
@@ -444,7 +445,7 @@ export function ImportMembers() {
       {/* ---------- Schritt 3: Vorschau ---------- */}
       {step === 'preview' && preview && (
         <>
-          <div className="mb-4 grid grid-cols-3 gap-2">
+          <div className="mb-4 grid grid-cols-2 gap-2 sm:grid-cols-4">
             <SummaryTile
               value={preview.createCount}
               label="Neu anlegen"
@@ -454,6 +455,11 @@ export function ImportMembers() {
               value={preview.updateCount}
               label="Aktualisieren"
               className="text-sky-600 dark:text-sky-400"
+            />
+            <SummaryTile
+              value={options.removeMissing ? preview.removals.length : 0}
+              label="Entfernen"
+              className="text-rose-600 dark:text-rose-400"
             />
             <SummaryTile
               value={preview.skipCount}
@@ -499,6 +505,12 @@ export function ImportMembers() {
               </label>
             ))}
           </div>
+
+          <MissingMembers
+            removals={preview.removals}
+            enabled={options.removeMissing}
+            onToggle={(next) => setOptions((current) => ({ ...current, removeMissing: next }))}
+          />
 
           <div className="card overflow-x-auto">
             <table className="w-full text-sm">
@@ -584,10 +596,19 @@ export function ImportMembers() {
               type="button"
               className="btn-primary"
               onClick={() => void start()}
-              disabled={busy || preview.createCount + preview.updateCount === 0}
+              disabled={
+                busy ||
+                preview.createCount +
+                  preview.updateCount +
+                  (options.removeMissing ? preview.removals.length : 0) ===
+                  0
+              }
             >
               {busy && <Loader2 className="size-4 animate-spin" aria-hidden />}
               {preview.createCount + preview.updateCount} Datensätze importieren
+              {options.removeMissing &&
+                preview.removals.length > 0 &&
+                `, ${preview.removals.length} entfernen`}
             </button>
           </div>
         </>
@@ -602,6 +623,7 @@ export function ImportMembers() {
           <h2 className="text-lg font-semibold">Import abgeschlossen</h2>
           <p className="mt-2 text-sm text-slate-600 dark:text-slate-300">
             {result.created} neu angelegt · {result.updated} aktualisiert
+            {result.removed > 0 && ` · ${result.removed} entfernt`}
             {result.skipped > 0 && ` · ${result.skipped} übersprungen`}
           </p>
           <div className="mt-5 flex flex-wrap justify-center gap-2">
@@ -652,5 +674,71 @@ function PasteStatus({ people, hasText }: { people: PastedPerson[]; hasText: boo
         {first.fullName} … {last.fullName}
       </span>
     </p>
+  )
+}
+
+/* ------------------------------------------------------------------ */
+
+/**
+ * Wer in der Quelle fehlt – namentlich, bevor etwas geschrieben wird.
+ *
+ * Die kopierte LCR-Seite ist die vollständige Wahrheit über den Bestand:
+ * Wer dort nicht mehr steht, gehört nicht mehr zur Gemeinde. Weil sich in
+ * der App niemand von Hand löschen lässt, ist der Import der einzige Ort,
+ * an dem das nachvollzogen wird.
+ *
+ * Genau deshalb steht hier eine Namensliste und keine blosse Zahl: Ein
+ * versehentlich nur halb kopiertes Verzeichnis fällt an den Namen sofort
+ * auf, an einer Zahl erst hinterher. Wer bewusst einen Ausschnitt einliest,
+ * schaltet das Entfernen hier ab.
+ */
+function MissingMembers({
+  removals,
+  enabled,
+  onToggle,
+}: {
+  removals: Member[]
+  enabled: boolean
+  onToggle: (next: boolean) => void
+}) {
+  if (removals.length === 0) return null
+
+  const names = removals
+    .map((member) => `${member.lastName}, ${member.firstName}`)
+    .sort((a, b) => a.localeCompare(b, 'de-CH'))
+
+  return (
+    <div
+      className={cn('card mb-4 space-y-3 p-4', enabled && 'border-rose-300 dark:border-rose-900')}
+    >
+      <label className="flex cursor-pointer items-start gap-3">
+        <input
+          type="checkbox"
+          className="mt-0.5 size-4 rounded"
+          checked={enabled}
+          onChange={(event) => onToggle(event.target.checked)}
+        />
+        <span>
+          <span className="flex items-center gap-2 text-sm font-medium">
+            <AlertTriangle className="size-4 text-rose-500" aria-hidden />
+            {removals.length} erfasste {removals.length === 1 ? 'Person' : 'Personen'} fehlen in der
+            Quelle – entfernen
+          </span>
+          <span className="hint mt-0.5 block">
+            Die eingefügte Seite gilt als der ganze Bestand. Wer bewusst nur einen Ausschnitt
+            einliest, schaltet das hier ab. Erfasste Ansprachen und Berufungen bleiben bestehen,
+            verlieren aber ihren Bezug.
+          </span>
+        </span>
+      </label>
+
+      <ul className="max-h-40 overflow-y-auto text-sm text-slate-600 dark:text-slate-300">
+        {names.map((name) => (
+          <li key={name} className={cn('py-0.5', enabled && 'line-through')}>
+            {name}
+          </li>
+        ))}
+      </ul>
+    </div>
   )
 }

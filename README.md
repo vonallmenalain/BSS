@@ -662,12 +662,38 @@ Dank an niemanden wäre schlimmer als gar keiner.
 Der Jahresplan der Priestertumskollegien – bisher eine Excel-Tabelle, die
 herumgereicht wurde. Die Seite beantwortet zuerst die Frage, die sich jede
 Woche neu stellt: **Was kommt als Nächstes?** Deshalb steht die Antwort ganz
-oben und gross, über die ganze Breite, mit Treffpunkt, Leitung und den
+oben und gross, über die ganze Breite, mit Treffpunkt, Zuständigkeit und den
 Teilnehmenden aus der Bischofschaft. Darunter der ganze Plan, nach Monaten
-gruppiert wie in der Tabelle – **eine Zeile je Termin**, und untereinander
-steht überall dasselbe: Datum, Aktivität, Treffpunkt, Leitung, Teilnahme.
-Auf schmalen Geräten rücken die Angaben unter die Aktivität, statt sich in
-Spalten zu quetschen.
+gruppiert wie in der Tabelle – und untereinander steht überall dasselbe:
+Datum, Aktivität, Treffpunkt, Zuständig AP, Teilnahme. Auf schmalen Geräten
+rücken die Angaben unter die Aktivität, statt sich in Spalten zu quetschen.
+
+### Ansicht: Liste oder Kacheln
+
+Oben rechts steht ein Knopf, hinter dem alles zur Darstellung zusammenkommt.
+Er zeigt den gewählten Zeitraum an; ein Klick öffnet die drei Einstellungen:
+
+| Einstellung     | Wahl                              | Was sie ändert                                                                  |
+| --------------- | --------------------------------- | ------------------------------------------------------------------------------- |
+| **Zeitraum**    | Kommend · Vergangen · Ganzer Plan | Welcher Ausschnitt gezeigt wird; Vergangenes steht rückwärts, das Letzte zuerst |
+| **Darstellung** | Liste · Kacheln                   | Ein Fahrplan von oben nach unten – oder ein Feld aus Kacheln, je Termin eine    |
+| **Abstand**     | Kompakt · Normal · Weit           | Polster, Abstände und Schriftgrad zugleich                                      |
+
+Die **Liste** ist der Fahrplan: eine Zeile je Termin, ein Blick von oben nach
+unten sagt, was der Monat bringt. Die **Kacheln** stellen jeden Termin für
+sich hin – mit Datum, Art als angeschriebenem Etikett, Titel, allen Angaben
+und der Bemerkung. Auf einem breiten Bildschirm stehen mehrere nebeneinander,
+und man überblickt mehr Wochen auf einmal. Es fehlt in keiner der beiden
+Ansichten etwas.
+
+**Der Zeitraum stand früher als breite Knopfleiste über dem Plan.** Er hat
+sie nicht verdient: Fast immer bleibt es bei «Kommend», und eine Leiste, die
+man einmal im Jahr anfasst, nimmt dem Plan die oberste Zeile weg.
+
+Die getroffene Wahl bleibt – **im Browser und am eigenen Konto**. Im Browser,
+damit sie sofort und auch ohne Netz stimmt; am Konto, damit sie auf jedem
+Gerät gilt. Wer den Plan am Laptop auf Kacheln gestellt hat, findet ihn am
+Telefon genauso vor.
 
 ### Der Takt
 
@@ -703,11 +729,11 @@ zwei Zustände, und sie sind sauber getrennt:
 
   Jeder Termin bekommt dabei so viel Platz, wie er braucht: oben das Datum
   und der **ganze Titel** – er wird nie abgeschnitten und bricht lieber um –,
-  darunter **Startzeit, Treffpunkt, Leitung AP, Teilnahme BSS, Teilnahme
+  darunter **Startzeit, Treffpunkt, Zuständig AP, Teilnahme BSS, Teilnahme
   Berater** und die Bemerkung, jede Angabe mit ihrer Beschriftung und nur,
-  wenn sie ausgefüllt ist. Wer die Aktivität leitet, steht nur bei der
-  AP-Klasse: Bei den übrigen Terminen führt ohnehin das Kollegium des
-  Monats, und das steht über der Gruppe.
+  wenn sie ausgefüllt ist. **Zuständig AP** steht bei jeder Art von Termin –
+  wer eine Aktivität organisiert, ist die Auskunft, die im Plan gesucht wird.
+  Wer das Kollegium des Monats führt, steht daneben über der Gruppe.
 
 - Der **Bearbeitungsmodus** kommt auf Knopfdruck – **Bearbeitungsmodus**
   oben rechts. Erst dort erscheinen **+ Termin** und **Termine erzeugen**,
@@ -730,7 +756,7 @@ zweites Mal drücken und füllt dann nur die Lücken.
 
 Im Bearbeitungsmodus öffnet jede Zeile alle Felder der bisherigen Tabelle:
 Datum (auf Wunsch mehrtägig), Uhrzeit, Art, Aktivität bzw. Klasse,
-Treffpunkt, Leitung, Teilnahme Bischofschaft, Teilnahme Berater und die
+Treffpunkt, Zuständig AP, Teilnahme Bischofschaft, Teilnahme Berater und die
 Bemerkung. Die Personenfelder sind Freitext wie in der Tabelle – die
 Vorschlagsliste kommt aus dem, was schon im Plan steht, und hält die
 Schreibweise einheitlich.
@@ -842,13 +868,15 @@ und Organisation zu, in der Ansicht «Ohne Berufung» auf den Namen.
 
 **Einstellungen → Importe → Mitglieder**.
 
-**Der einzige Weg ins Verzeichnis.** In der App lässt sich kein Mitglied von
-Hand anlegen – es gibt keinen «Neu»-Knopf. Das Verzeichnis kommt aus dem LCR
-und wird dort gepflegt; ein von Hand erfasster Datensatz wäre beim nächsten
-Import entweder doppelt oder einer, den niemand wiederfindet. Was die App
-darüber hinaus führt und das LCR gar nicht kennt – Notiz, Schlagworte, «kann
-für Ansprachen angefragt werden», Betreuung –, wird weiterhin am einzelnen
-Mitglied gepflegt (**Bearbeiten** im Profil).
+**Der einzige Weg ins Verzeichnis – und wieder heraus.** In der App lässt
+sich kein Mitglied von Hand anlegen und keines von Hand löschen; es gibt
+weder einen «Neu»- noch einen «Löschen»-Knopf. Das Verzeichnis kommt aus dem
+LCR und wird dort gepflegt: Ein von Hand erfasster Datensatz wäre beim
+nächsten Import entweder doppelt oder einer, den niemand wiederfindet, und
+ein von Hand gelöschter wäre beim übernächsten wieder da, weil er im LCR nie
+verschwand. Was die App darüber hinaus führt und das LCR gar nicht kennt –
+Notiz, Schlagworte, «kann für Ansprachen angefragt werden», Betreuung –, wird
+weiterhin am einzelnen Mitglied gepflegt (**Bearbeiten** im Profil).
 
 Der Assistent führt durch vier Schritte: Quelle wählen, Spalten zuordnen
 (wird geraten), Vorschau prüfen, importieren. Als Quelle dienen wahlweise
@@ -878,6 +906,23 @@ allein (dann mit Warnung). Drei Schalter schützen gepflegte Daten:
 
 Damit der Abgleich beim nächsten Mal sicher greift, lohnt es sich, eine Spalte
 mit der Mitglieds-Nummer mitzuliefern und als «Mitglieds-Nr.» zuzuordnen.
+
+### Wer in der Quelle fehlt
+
+Die eingefügte LCR-Seite gilt als der **ganze Bestand**: Wer dort nicht mehr
+steht, gehört nicht mehr zur Gemeinde und wird beim Import entfernt. Weil
+sich in der App niemand von Hand löschen lässt, ist das der einzige Ort, an
+dem der Wegzug nachvollzogen wird.
+
+Die Vorschau nennt die Betroffenen deshalb **namentlich** und nicht bloss als
+Zahl – ein versehentlich nur halb kopiertes Verzeichnis fällt an den Namen
+sofort auf, an einer Zahl erst hinterher. Wer bewusst nur einen Ausschnitt
+einliest, schaltet das Entfernen im selben Kasten ab.
+
+Gelöscht wird erst, wenn alles Übrige geschrieben ist: Bricht der Import in
+der Mitte ab, ist zu wenig geschrieben – aber nichts zu viel entfernt.
+Erfasste Ansprachen und Berufungen bleiben bestehen; sie tragen den Namen
+mitgeschrieben und bleiben lesbar, verlieren aber ihren Bezug zur Person.
 
 ---
 
@@ -1178,7 +1223,7 @@ sie sich nach dem Import auf der Seite **Putzplan** einzeln richtigstellen.
 
 Den bisherigen Jahresplan als `.xlsx` oder `.csv` einlesen, per Auswahl oder
 Drag-and-drop. Gelesen wird das erste Arbeitsblatt: eine Kopfzeile mit
-«Datum», «Aktivität / Klasse», «Treffpunkt», «Leitung / Org», den beiden
+«Datum», «Aktivität / Klasse», «Treffpunkt», «Zuständig AP», den beiden
 Teilnahmespalten und «Bemerkung», darunter je Zeile ein Termin. Wo die
 Spalten stehen, bestimmt die Kopfzeile; fehlt sie, gilt die gewohnte
 Reihenfolge – die Vorschau sagt, welcher Fall eingetreten ist.

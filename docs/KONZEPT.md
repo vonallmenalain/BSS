@@ -344,12 +344,17 @@ nächsten Bearbeitung wieder woanders.
 
 Die gemeinsame Datenbasis für alles andere.
 
-**Gelesen, nicht angelegt.** In der App entsteht kein Mitglied von Hand – es
-gibt keinen «Neu»-Knopf. Das Verzeichnis kommt aus dem LCR und wird dort
-gepflegt; ein von Hand erfasster Datensatz wäre beim nächsten Import entweder
-doppelt oder einer, den niemand wiederfindet. Was die App darüber hinaus führt
-und das LCR gar nicht kennt – Notiz, Schlagworte, «kann für Ansprachen
-angefragt werden», Betreuung –, wird weiterhin am einzelnen Mitglied gepflegt.
+**Gelesen, nicht angelegt und nicht gelöscht.** In der App entsteht kein
+Mitglied von Hand, und keines verschwindet von Hand – es gibt weder einen
+«Neu»- noch einen «Löschen»-Knopf. Das Verzeichnis kommt aus dem LCR und wird
+dort gepflegt; ein von Hand erfasster Datensatz wäre beim nächsten Import
+entweder doppelt oder einer, den niemand wiederfindet, und ein von Hand
+gelöschter wäre beim übernächsten wieder da, weil er im LCR nie verschwand.
+Wer nicht mehr dazugehört, fehlt in der eingefügten Seite – und **der Import
+entfernt ihn**, mit Namensliste in der Vorschau, bevor etwas geschrieben wird.
+Was die App darüber hinaus führt und das LCR gar nicht kennt – Notiz,
+Schlagworte, «kann für Ansprachen angefragt werden», Betreuung –, wird
+weiterhin am einzelnen Mitglied gepflegt.
 
 **Felder.** Vor- und Nachname, Geschlecht, Geburtsdatum, E-Mail, Telefon und
 Mobile, Adresse, Status (aktiv / weniger aktiv / inaktiv / weggezogen),

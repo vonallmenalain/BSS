@@ -3,7 +3,15 @@ import { CalendarOff, ChevronRight, GraduationCap, Sparkles, Users } from 'lucid
 import { cn } from '@/lib/utils'
 import { formatDateLong, formatDayShort, formatDateShort } from '@/lib/dates'
 import { fromIsoDate } from '@/services/importHistory'
-import { AP_ACTIVITY_KIND_LABELS, type ApActivity, type ApActivityKind } from '@/lib/types'
+import {
+  AP_ACTIVITY_KIND_LABELS,
+  type ApActivity,
+  type ApActivityKind,
+  type ApView,
+} from '@/lib/types'
+
+/** Die drei Abstufungen von «wie viel Luft» – siehe `AP_SPACING`. */
+export type ApDensity = ApView['density']
 
 /**
  * Die Darstellung eines Termins – einmal als Zeile im Plan, einmal gross
@@ -59,6 +67,61 @@ export const AP_KIND_STYLES: Record<ApActivityKind, KindStyle> = {
     bar: 'bg-slate-300 dark:bg-slate-700',
     block: 'bg-slate-100 text-slate-400 dark:bg-slate-800 dark:text-slate-500',
     text: 'text-slate-400 dark:text-slate-500',
+  },
+}
+
+/* ------------------------------------------------------------------ */
+/* Abstand                                                             */
+/* ------------------------------------------------------------------ */
+
+/**
+ * Wie viel Luft der Plan bekommt.
+ *
+ * Derselbe Plan wird sehr verschieden gelesen: am Telefon unterwegs, wo
+ * jede Zeile zählt, und am Küchentisch, wo man ihn überfliegt. Deshalb
+ * nicht ein Kompromiss für beide, sondern drei Stufen – sie ändern Polster,
+ * Abstände und Schriftgrad zugleich, denn einzeln ergäbe keine davon ein
+ * stimmiges Bild.
+ */
+export interface ApSpacing {
+  /** Polster einer Listenzeile */
+  row: string
+  /** Polster einer Kachel */
+  card: string
+  /** Schriftgrad des Titels */
+  title: string
+  /** Schriftgrad der Angaben darunter */
+  details: string
+  /** Abstand zwischen den Monatsgruppen */
+  sections: string
+  /** Raster der Kachelansicht, samt Abstand */
+  grid: string
+}
+
+export const AP_SPACING: Record<ApDensity, ApSpacing> = {
+  compact: {
+    row: 'py-2 pr-3 pl-3.5',
+    card: 'p-3',
+    title: 'text-sm',
+    details: 'mt-0.5 text-[11px]',
+    sections: 'space-y-4',
+    grid: 'grid gap-2 sm:grid-cols-2 xl:grid-cols-3',
+  },
+  normal: {
+    row: 'py-3.5 pr-3 pl-4',
+    card: 'p-4',
+    title: 'text-sm',
+    details: 'mt-1 text-xs',
+    sections: 'space-y-6',
+    grid: 'grid gap-3 sm:grid-cols-2 xl:grid-cols-3',
+  },
+  wide: {
+    row: 'py-5 pr-4 pl-5',
+    card: 'p-5',
+    title: 'text-base',
+    details: 'mt-2 text-sm',
+    sections: 'space-y-9',
+    grid: 'grid gap-4 sm:grid-cols-2',
   },
 }
 
@@ -122,29 +185,37 @@ function Angabe({ label, value }: { label: string; value?: string | null }) {
 }
 
 /**
- * Treffpunkt, Leitung und wer dabei ist.
+ * Treffpunkt, Zuständigkeit und wer dabei ist.
  *
- * Wer die Aktivität leitet, steht nur bei der AP-Klasse: Dort wechselt es
- * von Sonntag zu Sonntag und ist die eigentliche Auskunft. Bei den übrigen
- * Terminen führt ohnehin das Kollegium des Monats – das steht über der
- * Gruppe und muss nicht an jedem Termin wiederholt werden.
+ * «Zuständig AP» steht bei jeder Art von Termin. Früher nur bei der Klasse:
+ * Bei den übrigen führe ohnehin das Kollegium des Monats, hiess es. Das
+ * stimmt für die Führung, nicht für die Zuständigkeit – wer eine Aktivität
+ * organisiert, steht im Plan, und wer ihn liest, sucht genau diesen Namen.
  */
-export function ApDetails({ activity, className }: { activity: ApActivity; className?: string }) {
-  const leader = activity.kind === 'class' ? (activity.leader ?? '') : ''
+export function ApDetails({
+  activity,
+  className,
+  columns = true,
+}: {
+  activity: ApActivity
+  className?: string
+  /** Zwei Spalten, sobald Platz ist – in einer schmalen Kachel eine */
+  columns?: boolean
+}) {
   const hasAny = [
     activity.time,
     activity.location,
-    leader,
+    activity.leader,
     activity.bishopric,
     activity.advisor,
   ].some((value) => (value ?? '').trim())
   if (!hasAny) return null
 
   return (
-    <div className={cn('grid gap-x-6 gap-y-1 sm:grid-cols-2', className)}>
+    <div className={cn('grid gap-x-6 gap-y-1', columns && 'sm:grid-cols-2', className)}>
       <Angabe label="Startzeit" value={activity.time} />
       <Angabe label="Treffpunkt" value={activity.location} />
-      <Angabe label="Leitung AP" value={leader} />
+      <Angabe label="Zuständig AP" value={activity.leader} />
       <Angabe label="Teilnahme BSS" value={activity.bishopric} />
       <Angabe label="Teilnahme Berater" value={activity.advisor} />
     </div>
@@ -160,6 +231,7 @@ export function ApActivityRow({
   onOpen,
   highlight = false,
   past = false,
+  density = 'normal',
 }: {
   activity: ApActivity
   /** Nur im Bearbeitungsmodus gesetzt – ohne bleibt die Zeile reine Anzeige. */
@@ -167,7 +239,9 @@ export function ApActivityRow({
   /** Der nächste Termin – bekommt in der Liste einen ruhigen Farbton */
   highlight?: boolean
   past?: boolean
+  density?: ApDensity
 }) {
+  const spacing = AP_SPACING[density]
   const style = AP_KIND_STYLES[activity.kind]
   const Icon = style.icon
   const start = fromIsoDate(activity.date)
@@ -207,7 +281,8 @@ export function ApActivityRow({
               Punkten sagt nichts mehr. Er bricht lieber um. */}
           <span
             className={cn(
-              'block text-sm font-semibold break-words',
+              'block font-semibold break-words',
+              spacing.title,
               cancelled && 'text-slate-500 line-through dark:text-slate-400',
               !activity.title.trim() && !cancelled && 'font-normal text-slate-400 italic',
             )}
@@ -217,11 +292,11 @@ export function ApActivityRow({
 
           <ApDetails
             activity={activity}
-            className="mt-1 text-xs text-slate-600 dark:text-slate-300"
+            className={cn(spacing.details, 'text-slate-600 dark:text-slate-300')}
           />
 
           {note && (
-            <span className="mt-1 block text-xs text-slate-600 dark:text-slate-300">
+            <span className={cn('block text-slate-600 dark:text-slate-300', spacing.details)}>
               <span className="text-slate-400 dark:text-slate-500">Bemerkung: </span>
               <span className="break-words whitespace-pre-line">{note}</span>
             </span>
@@ -232,9 +307,11 @@ export function ApActivityRow({
   )
 
   const shell = cn(
-    // Lieber genug Luft als alles hineingequetscht: Ein Termin trägt bis zu
-    // sechs Angaben, und die Liste wird zu Hause am Küchentisch gelesen.
-    '@container relative flex w-full items-start gap-2 py-3.5 pr-3 pl-4 text-left',
+    // Wie viel Luft, entscheidet die gewählte Stufe: Ein Termin trägt bis zu
+    // sechs Angaben, und der Plan wird ebenso am Telefon gelesen wie zu
+    // Hause am Küchentisch.
+    '@container relative flex w-full items-start gap-2 text-left',
+    spacing.row,
     highlight && 'bg-brand-50/70 dark:bg-brand-950/40',
     past && 'opacity-60',
   )
@@ -253,6 +330,99 @@ export function ApActivityRow({
         className="mt-0.5 size-4 shrink-0 text-slate-300 transition group-hover:translate-x-0.5"
         aria-hidden
       />
+    </button>
+  )
+}
+
+/* ------------------------------------------------------------------ */
+/* Kachel                                                              */
+/* ------------------------------------------------------------------ */
+
+/**
+ * Derselbe Termin als Kachel.
+ *
+ * Die Liste ist ein Fahrplan – ein Blick von oben nach unten sagt, was der
+ * Monat bringt. Die Kachel ist das Gegenstück: Sie stellt jeden Termin für
+ * sich hin, mit Datum, Art und allen Angaben untereinander. Auf einem
+ * breiten Bildschirm stehen mehrere nebeneinander, und man sieht mehr
+ * Wochen auf einmal, als eine Liste zeigen könnte.
+ *
+ * Es fehlt nichts, was die Zeile hat: Datum samt Enddatum, Art, Titel, die
+ * fünf Angaben und die Bemerkung. Was in der Liste nur ein farbiger
+ * Streifen ist, wird hier zum angeschriebenen Etikett – ohne die
+ * Nachbarzeilen daneben liesse sich eine Farbe allein nicht deuten.
+ */
+export function ApActivityCard({
+  activity,
+  onOpen,
+  highlight = false,
+  past = false,
+  density = 'normal',
+}: {
+  activity: ApActivity
+  onOpen?: () => void
+  highlight?: boolean
+  past?: boolean
+  density?: ApDensity
+}) {
+  const spacing = AP_SPACING[density]
+  const style = AP_KIND_STYLES[activity.kind]
+  const Icon = style.icon
+  const cancelled = activity.kind === 'cancelled'
+  const note = activity.note?.trim() ?? ''
+
+  const content = (
+    <>
+      <span className={cn('absolute inset-x-0 top-0 h-1', style.bar)} aria-hidden />
+
+      <span className="flex flex-wrap items-center gap-2">
+        <span className={cn('badge', style.chip)}>
+          <Icon className="size-3" aria-hidden />
+          {AP_ACTIVITY_KIND_LABELS[activity.kind]}
+        </span>
+        <span className="tabular ml-auto text-xs font-medium text-slate-500 dark:text-slate-400">
+          {apDateLabel(activity)}
+        </span>
+      </span>
+
+      <span
+        className={cn(
+          'mt-2 block font-semibold break-words',
+          spacing.title,
+          cancelled && 'text-slate-500 line-through dark:text-slate-400',
+          !activity.title.trim() && !cancelled && 'font-normal text-slate-400 italic',
+        )}
+      >
+        {apTitle(activity)}
+      </span>
+
+      <ApDetails
+        activity={activity}
+        columns={false}
+        className={cn(spacing.details, 'text-slate-600 dark:text-slate-300')}
+      />
+
+      {note && (
+        <span className={cn('block text-slate-600 dark:text-slate-300', spacing.details)}>
+          <span className="text-slate-400 dark:text-slate-500">Bemerkung: </span>
+          <span className="break-words whitespace-pre-line">{note}</span>
+        </span>
+      )}
+    </>
+  )
+
+  const shell = cn(
+    'card relative flex w-full flex-col overflow-hidden text-left',
+    spacing.card,
+    highlight && 'border-brand-300 dark:border-brand-800',
+    past && 'opacity-60',
+  )
+
+  if (!onOpen) return <div className={shell}>{content}</div>
+
+  return (
+    <button type="button" onClick={onOpen} className={cn(shell, 'card-hover group')}>
+      {content}
     </button>
   )
 }

@@ -74,7 +74,7 @@ type Field = 'date' | 'title' | 'location' | 'leader' | 'bishopric' | 'advisor' 
 /**
  * Woran eine Spaltenüberschrift erkannt wird.
  *
- * Die beiden «Teilnahme»-Spalten stehen vor «Leitung / Org», weil beide
+ * Die beiden «Teilnahme»-Spalten stehen vor «Zuständig AP», weil beide
  * Male eine Person gemeint ist und nur das erste Wort sie unterscheidet.
  */
 const COLUMNS: [Field, RegExp][] = [

@@ -127,6 +127,44 @@ export const ACCESS_LEVELS: { value: AccessLevel; role: Role; label: string; hin
   },
 ]
 
+/**
+ * Wie der Aktivitätenplan dargestellt wird.
+ *
+ * Eine Ansichtseinstellung und keine Sache der Daten – aber eine, die am
+ * Konto hängt und nicht am Gerät: Wer den Plan als Kacheln mag, mag ihn am
+ * Telefon genauso wie am Laptop. Zusätzlich liegt sie im Browser, damit sie
+ * ohne Netz und vor dem ersten Schnappschuss schon stimmt.
+ */
+export interface ApView {
+  mode: 'list' | 'cards'
+  density: 'compact' | 'normal' | 'wide'
+  /** Welcher Zeitraum – kommend, vergangen oder der ganze Plan */
+  scope: 'upcoming' | 'past' | 'all'
+}
+
+export const DEFAULT_AP_VIEW: ApView = {
+  mode: 'list',
+  density: 'normal',
+  scope: 'upcoming',
+}
+
+export const AP_VIEW_MODE_LABELS: Record<ApView['mode'], string> = {
+  list: 'Liste',
+  cards: 'Kacheln',
+}
+
+export const AP_DENSITY_LABELS: Record<ApView['density'], string> = {
+  compact: 'Kompakt',
+  normal: 'Normal',
+  wide: 'Weit',
+}
+
+export const AP_SCOPE_LABELS: Record<ApView['scope'], string> = {
+  upcoming: 'Kommend',
+  past: 'Vergangen',
+  all: 'Ganzer Plan',
+}
+
 export interface AppUser extends WithId {
   /** entspricht der Firebase-Auth-UID */
   email: string
@@ -136,6 +174,8 @@ export interface AppUser extends WithId {
   initials?: string
   /** optionale Verknüpfung zum Mitgliederdatensatz */
   memberId?: string | null
+  /** Gemerkte Darstellung des Aktivitätenplans – gilt auf jedem Gerät */
+  apView?: ApView
   /** Farbe für Zuweisungs-Chips (Tailwind-Token-Name, siehe constants.ts) */
   color?: string
   active: boolean
@@ -1388,7 +1428,7 @@ export interface ApActivity extends WithId {
   title: string
   /** Treffpunkt, «Gemeindehaus» */
   location?: string
-  /** Leitung / Organisation, «Carden» oder «JM» */
+  /** Zuständig AP – wer die Aktivität organisiert, «Carden» oder «JM» */
   leader?: string
   /** Teilnahme Bischofschaft */
   bishopric?: string

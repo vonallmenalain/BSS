@@ -1,11 +1,9 @@
 import {
   collection,
-  deleteDoc,
   doc,
   getDocs,
   query,
   serverTimestamp,
-  setDoc,
   updateDoc,
   where,
   writeBatch,
@@ -19,66 +17,19 @@ import type { Gender, Member, MemberStatus } from '@/lib/types'
 
 const membersRef = collection(db, COLLECTIONS.members)
 
-export interface MemberInput {
-  lastName: string
-  firstName: string
-  gender?: Gender
-  birthDate?: Date | null
-  email?: string
-  phone?: string
-  mobile?: string
-  street?: string
-  zip?: string
-  city?: string
-  status?: MemberStatus
-  availableForTalks?: boolean
-  notes?: string
-  ministeringPartnerIds?: string[]
-  ministeringAssignedIds?: string[]
-  lastTalkDate?: Date | null
-  tags?: string[]
-  externalId?: string | null
-}
+/*
+ * Angelegt und entfernt wird nur beim Import.
+ *
+ * Das Mitgliederverzeichnis kommt aus dem LCR und wird dort gepflegt. Ein
+ * von Hand erfasster Datensatz wäre beim nächsten Import entweder doppelt
+ * oder einer, den niemand wiederfindet; ein von Hand gelöschter wäre beim
+ * übernächsten wieder da, weil er im LCR nie verschwand. Deshalb gibt es
+ * hier weder `createMember` noch `deleteMember` – siehe `services/import`.
+ */
 
 /** Sucht sich über Vor-/Nachname zusammen, was Suche und Sortierung brauchen. */
 export function buildSearchName(firstName: string, lastName: string): string {
   return normalize(`${lastName} ${firstName}`)
-}
-
-export async function createMember(
-  input: MemberInput,
-): Promise<{ id: string; outcome: SaveOutcome }> {
-  // Die ID entsteht im Client, damit sie auch ohne Netz sofort feststeht.
-  const docRef = doc(membersRef)
-  const outcome = await commit(
-    setDoc(docRef, {
-      ...stripUndefined({
-        email: input.email?.trim(),
-        phone: input.phone?.trim(),
-        mobile: input.mobile?.trim(),
-        street: input.street?.trim(),
-        zip: input.zip?.trim(),
-        city: input.city?.trim(),
-        notes: input.notes?.trim(),
-        externalId: input.externalId ?? null,
-      }),
-      lastName: input.lastName.trim(),
-      firstName: input.firstName.trim(),
-      searchName: buildSearchName(input.firstName, input.lastName),
-      gender: input.gender ?? 'unknown',
-      birthDate: input.birthDate ? Timestamp.fromDate(input.birthDate) : null,
-      status: input.status ?? 'active',
-      availableForTalks: input.availableForTalks ?? true,
-      ministeringPartnerIds: input.ministeringPartnerIds ?? [],
-      ministeringAssignedIds: input.ministeringAssignedIds ?? [],
-      lastTalkDate: input.lastTalkDate ? Timestamp.fromDate(input.lastTalkDate) : null,
-      talkCount: 0,
-      tags: input.tags ?? [],
-      createdAt: serverTimestamp(),
-      updatedAt: serverTimestamp(),
-    }),
-  )
-  return { id: docRef.id, outcome }
 }
 
 export async function updateMember(
@@ -102,10 +53,6 @@ export async function updateMember(
   return commit(
     updateDoc(doc(db, COLLECTIONS.members, id), { ...data, updatedAt: serverTimestamp() }),
   )
-}
-
-export async function deleteMember(id: string): Promise<SaveOutcome> {
-  return commit(deleteDoc(doc(db, COLLECTIONS.members, id)))
 }
 
 /** Setzt bei vielen Mitgliedern auf einmal denselben Status (z. B. nach Import). */
