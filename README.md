@@ -436,14 +436,14 @@ Zwei Dinge zusammen machen das aus (siehe
 Ein Bereich, sechs Unterpunkte – oben wird der Sonntag gewählt, und er gilt
 für alle Unterpunkte.
 
-| Unterpunkt           | Wofür                                                                          |
-| -------------------- | ------------------------------------------------------------------------------ |
-| **Leitung**          | Der ganze Ablauf auf einer Seite – zum Leiten am Pult, auf Knopfdruck änderbar |
-| **Bekanntmachungen** | Liste pro Sonntag und wiederkehrende Serien; speichert von selbst              |
-| **Angelegenheiten**  | Bestätigungen, Entlassungen, Segnungen, Konfirmierungen                        |
-| **Ansprachen**       | Programmplätze vergeben, Vorschlagsliste, Verlauf                              |
-| **Musik**            | Drei bis vier Lieder und Musikeinlagen                                         |
-| **Gebet**            | Anfangs- und Schlussgebet, mit «zuletzt gebetet»                               |
+| Unterpunkt           | Wofür                                                                                               |
+| -------------------- | --------------------------------------------------------------------------------------------------- |
+| **Leitung**          | Der ganze Ablauf auf einer Seite – zum Leiten am Pult, auf Knopfdruck änderbar                      |
+| **Bekanntmachungen** | Liste pro Sonntag und wiederkehrende Serien; ein mehrzeiliges Feld je Eintrag, speichert von selbst |
+| **Angelegenheiten**  | Bestätigungen, Entlassungen, Segnungen, Konfirmierungen                                             |
+| **Ansprachen**       | Programmplätze vergeben, Vorschlagsliste, Verlauf                                                   |
+| **Musik**            | Drei bis vier Lieder und Musikeinlagen                                                              |
+| **Gebet**            | Anfangs- und Schlussgebet, mit «zuletzt gebetet»                                                    |
 
 ### Wer sich um diesen Sonntag kümmert
 
@@ -709,6 +709,12 @@ Aufruf dazugerechnet. Das hat zwei Folgen, und beide sind gewollt: Wer den
 Wortlaut ändert, ändert ihn für jeden künftigen Sonntag; und die Serie steht
 auch dort, wo sonst noch nichts erfasst ist.
 
+**Ein Feld, nicht zwei.** Der **Wortlaut** ist alles, was erfasst wird – so
+lang und so mehrzeilig, wie er sein muss. Daneben stand einmal ein Zusatz
+«Einzelheiten für die Person am Pult»; er verlangte eine Einteilung, die
+niemand vornehmen wollte, und ist weggefallen. Wo er noch ausgefüllt ist,
+wird er weiterhin angezeigt.
+
 **Wie oft.** Entweder jeden Sonntag oder bestimmte Sonntage im Monat – 1. bis 5. und «letzter», auch mehrere zugleich. Gezählt wird im Kalender: Der 3. Sonntag ist der dritte Sonntag dieses Monats, ganz gleich, auf welchen
 Wochentag der Monatsanfang fällt. Dazu ein **Ab**-Datum und wahlweise ein
 **Bis**.
@@ -798,7 +804,7 @@ Woche neu stellt: **Was kommt als Nächstes?** Deshalb steht die Antwort ganz
 oben und gross, über die ganze Breite, mit Treffpunkt, Zuständigkeit und den
 Teilnehmenden aus der Bischofschaft. Darunter der ganze Plan, nach Monaten
 gruppiert wie in der Tabelle – und untereinander steht überall dasselbe:
-Datum, Aktivität, Treffpunkt, Zuständig AP, Teilnahme. Auf schmalen Geräten
+Datum, Aktivität, Treffpunkt, Zuständig, Teilnahme. Auf schmalen Geräten
 rücken die Angaben unter die Aktivität, statt sich in Spalten zu quetschen.
 
 ### Ansicht: Liste oder Kacheln
@@ -810,14 +816,18 @@ Er zeigt den gewählten Zeitraum an; ein Klick öffnet die drei Einstellungen:
 | --------------- | --------------------------------- | ------------------------------------------------------------------------------- |
 | **Zeitraum**    | Kommend · Vergangen · Ganzer Plan | Welcher Ausschnitt gezeigt wird; Vergangenes steht rückwärts, das Letzte zuerst |
 | **Darstellung** | Liste · Kacheln                   | Ein Fahrplan von oben nach unten – oder ein Feld aus Kacheln, je Termin eine    |
-| **Abstand**     | Kompakt · Normal · Weit           | Polster, Abstände und Schriftgrad zugleich                                      |
+| **Abstand**     | Kompakt · Normal · Weit           | Polster, Abstände, Schriftgrad – und wie viele Kacheln nebeneinander stehen     |
 
 Die **Liste** ist der Fahrplan: eine Zeile je Termin, ein Blick von oben nach
 unten sagt, was der Monat bringt. Die **Kacheln** stellen jeden Termin für
 sich hin – mit Datum, Art als angeschriebenem Etikett, Titel, allen Angaben
-und der Bemerkung. Auf einem breiten Bildschirm stehen mehrere nebeneinander,
-und man überblickt mehr Wochen auf einmal. Es fehlt in keiner der beiden
-Ansichten etwas.
+und der Bemerkung. Es fehlt in keiner der beiden Ansichten etwas.
+
+**Wie viele Kacheln nebeneinander stehen, sagt der Abstand** – und zwar
+umgekehrt zum Namen: **Kompakt** stellt auf einem breiten Bildschirm bis zu
+drei nebeneinander und lässt viele Wochen auf einmal überblicken, **Normal**
+höchstens zwei, **Weit** genau eine über die ganze Breite. Zwei Stufen, die
+gleich viele Spalten zeigten, wären zweimal dieselbe Ansicht.
 
 **Der Zeitraum stand früher als breite Knopfleiste über dem Plan.** Er hat
 sie nicht verdient: Fast immer bleibt es bei «Kommend», und eine Leiste, die
@@ -862,9 +872,9 @@ zwei Zustände, und sie sind sauber getrennt:
 
   Jeder Termin bekommt dabei so viel Platz, wie er braucht: oben das Datum
   und der **ganze Titel** – er wird nie abgeschnitten und bricht lieber um –,
-  darunter **Startzeit, Treffpunkt, Zuständig AP, Teilnahme BSS, Teilnahme
+  darunter **Startzeit, Treffpunkt, Zuständig, Teilnahme BSS, Teilnahme
   Berater** und die Bemerkung, jede Angabe mit ihrer Beschriftung und nur,
-  wenn sie ausgefüllt ist. **Zuständig AP** steht bei jeder Art von Termin –
+  wenn sie ausgefüllt ist. **Zuständig** steht bei jeder Art von Termin –
   wer eine Aktivität organisiert, ist die Auskunft, die im Plan gesucht wird.
   Wer das Kollegium des Monats führt, steht daneben über der Gruppe.
 
@@ -889,7 +899,7 @@ zweites Mal drücken und füllt dann nur die Lücken.
 
 Im Bearbeitungsmodus öffnet jede Zeile alle Felder der bisherigen Tabelle:
 Datum (auf Wunsch mehrtägig), Uhrzeit, Art, Aktivität bzw. Klasse,
-Treffpunkt, Zuständig AP, Teilnahme Bischofschaft, Teilnahme Berater und die
+Treffpunkt, Zuständig, Teilnahme Bischofschaft, Teilnahme Berater und die
 Bemerkung. Die Personenfelder sind Freitext wie in der Tabelle – die
 Vorschlagsliste kommt aus dem, was schon im Plan steht, und hält die
 Schreibweise einheitlich.

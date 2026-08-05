@@ -168,7 +168,7 @@ function appendToSunday(
 /* ------------------------------------------------------------------ */
 
 export function newAnnouncement(text = ''): AnnouncementEntry {
-  return { id: uid(), text, details: '' }
+  return { id: uid(), text }
 }
 
 export function newBusinessEntry(partial: Partial<BusinessEntry> = {}): BusinessEntry {

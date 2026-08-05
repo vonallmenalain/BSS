@@ -165,23 +165,20 @@ export function Announcements() {
                       Aus einer Serie übernommen – gilt nur für diesen Sonntag.
                     </p>
                   )}
-                  <input
-                    className="input"
+                  {/* Ein Feld, nicht zwei. Was am Pult gesagt wird, steht
+                      hier vollständig – mehrzeilig, wenn es mehrzeilig ist.
+                      Der frühere Zusatz «Einzelheiten für die Person am
+                      Pult» daneben verlangte eine Entscheidung, die niemand
+                      treffen wollte: Gehört das Datum noch in den Wortlaut
+                      oder schon darunter? */}
+                  <textarea
+                    className="input min-h-20 resize-y"
                     value={entry.text}
                     onChange={(event) =>
                       change(replaceInList(entries, { ...entry, text: event.target.value }))
                     }
                     placeholder="Bekanntmachung"
                     aria-label={`Bekanntmachung ${index + 1}`}
-                  />
-                  <textarea
-                    className="input min-h-16 resize-y text-sm"
-                    value={entry.details ?? ''}
-                    onChange={(event) =>
-                      change(replaceInList(entries, { ...entry, details: event.target.value }))
-                    }
-                    placeholder="Einzelheiten für die Person am Pult"
-                    aria-label={`Einzelheiten zu Bekanntmachung ${index + 1}`}
                   />
                 </div>
 
@@ -235,9 +232,9 @@ export function Announcements() {
                       Wiederkehrend
                       {source && ` · ${rhythmLabel(source)}`}
                     </p>
-                    <p className="mt-1 text-sm font-medium">{entry.text}</p>
+                    <p className="mt-1 text-sm font-medium whitespace-pre-line">{entry.text}</p>
                     {entry.details?.trim() && (
-                      <p className="mt-0.5 text-sm text-slate-500 dark:text-slate-400">
+                      <p className="mt-0.5 text-sm whitespace-pre-line text-slate-500 dark:text-slate-400">
                         {entry.details}
                       </p>
                     )}
@@ -704,18 +701,6 @@ function SeriesForm({
                 </p>
               </div>
             )}
-          </div>
-
-          <div>
-            <label className="label" htmlFor="series-details">
-              Einzelheiten für die Person am Pult
-            </label>
-            <textarea
-              id="series-details"
-              className="input min-h-16 resize-y text-sm"
-              value={form.details}
-              onChange={(event) => update('details', event.target.value)}
-            />
           </div>
 
           <div>

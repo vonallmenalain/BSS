@@ -94,7 +94,15 @@ export interface ApSpacing {
   details: string
   /** Abstand zwischen den Monatsgruppen */
   sections: string
-  /** Raster der Kachelansicht, samt Abstand */
+  /**
+   * Raster der Kachelansicht, samt Abstand.
+   *
+   * Wie viele Kacheln nebeneinander stehen, hängt an derselben Stufe wie
+   * Polster und Schriftgrad – und zwar umgekehrt: «Kompakt» will viel auf
+   * einen Blick und stellt bis zu drei nebeneinander, «Weit» will eine
+   * Kachel lesen und stellt sie über die ganze Breite. Zwei Stufen, die
+   * beide drei Spalten zeigen, wären zweimal dieselbe Ansicht.
+   */
   grid: string
 }
 
@@ -113,7 +121,7 @@ export const AP_SPACING: Record<ApDensity, ApSpacing> = {
     title: 'text-sm',
     details: 'mt-1 text-xs',
     sections: 'space-y-6',
-    grid: 'grid gap-3 sm:grid-cols-2 xl:grid-cols-3',
+    grid: 'grid gap-3 sm:grid-cols-2',
   },
   wide: {
     row: 'py-5 pr-4 pl-5',
@@ -121,7 +129,7 @@ export const AP_SPACING: Record<ApDensity, ApSpacing> = {
     title: 'text-base',
     details: 'mt-2 text-sm',
     sections: 'space-y-9',
-    grid: 'grid gap-4 sm:grid-cols-2',
+    grid: 'grid gap-4',
   },
 }
 
@@ -187,7 +195,7 @@ function Angabe({ label, value }: { label: string; value?: string | null }) {
 /**
  * Treffpunkt, Zuständigkeit und wer dabei ist.
  *
- * «Zuständig AP» steht bei jeder Art von Termin. Früher nur bei der Klasse:
+ * «Zuständig» steht bei jeder Art von Termin. Früher nur bei der Klasse:
  * Bei den übrigen führe ohnehin das Kollegium des Monats, hiess es. Das
  * stimmt für die Führung, nicht für die Zuständigkeit – wer eine Aktivität
  * organisiert, steht im Plan, und wer ihn liest, sucht genau diesen Namen.
@@ -215,7 +223,7 @@ export function ApDetails({
     <div className={cn('grid gap-x-6 gap-y-1', columns && 'sm:grid-cols-2', className)}>
       <Angabe label="Startzeit" value={activity.time} />
       <Angabe label="Treffpunkt" value={activity.location} />
-      <Angabe label="Zuständig AP" value={activity.leader} />
+      <Angabe label="Zuständig" value={activity.leader} />
       <Angabe label="Teilnahme BSS" value={activity.bishopric} />
       <Angabe label="Teilnahme Berater" value={activity.advisor} />
     </div>

@@ -1366,7 +1366,14 @@ export interface MusicalNumber {
 export interface AnnouncementEntry {
   id: string
   text: string
-  /** Zusatz für die Person am Pult: Wortlaut, Datum, Ort … */
+  /**
+   * Altbestand: der frühere Zusatz «Einzelheiten für die Person am Pult».
+   *
+   * Es gibt ihn nicht mehr zu erfassen – der Wortlaut steht seither in
+   * einem einzigen mehrzeiligen Feld, und zwei Felder verlangten eine
+   * Einteilung, die niemand vornehmen wollte. Angezeigt wird er weiter,
+   * damit an bestehenden Sonntagen nichts stillschweigend verschwindet.
+   */
   details?: string
   /**
    * Die Serie, aus der dieser Eintrag stammt.
@@ -1432,6 +1439,7 @@ export type SeriesSource = 'manual' | 'cleaning'
  */
 export interface AnnouncementSeries extends WithId {
   text: string
+  /** Altbestand – siehe `AnnouncementEntry.details`. */
   details?: string
   rhythm: SeriesRhythm
   /** Bei `monthly`: welche Sonntage im Monat (1–5, `-1` = letzter) */

@@ -543,9 +543,9 @@ export function Conducting() {
         <ol className={view.rows}>
           {announced.map((entry) => (
             <li key={entry.id}>
-              <span className="font-medium">{entry.text}</span>
+              <span className="font-medium whitespace-pre-line">{entry.text}</span>
               {entry.details?.trim() && (
-                <span className="block text-[0.85em] text-slate-500 dark:text-slate-400">
+                <span className="block text-[0.85em] whitespace-pre-line text-slate-500 dark:text-slate-400">
                   {entry.details}
                 </span>
               )}
@@ -1259,24 +1259,16 @@ function AnnouncementEditor({
     <div className="no-print space-y-2">
       {entries.map((entry, index) => (
         <div key={entry.id} className="flex items-start gap-2">
-          <div className="min-w-0 flex-1 space-y-1.5">
-            <input
-              className="input"
+          <div className="min-w-0 flex-1">
+            {/* Ein Feld, mehrzeilig – wie unter «Bekanntmachungen». */}
+            <textarea
+              className="input min-h-16 resize-y"
               value={entry.text}
               onChange={(event) =>
                 onChange(replaceInList(entries, { ...entry, text: event.target.value }))
               }
               placeholder="Bekanntmachung"
               aria-label={`Bekanntmachung ${index + 1}`}
-            />
-            <input
-              className="input text-sm"
-              value={entry.details ?? ''}
-              onChange={(event) =>
-                onChange(replaceInList(entries, { ...entry, details: event.target.value }))
-              }
-              placeholder="Einzelheiten"
-              aria-label={`Einzelheiten zu Bekanntmachung ${index + 1}`}
             />
           </div>
           <ListButtons
@@ -1297,9 +1289,11 @@ function AnnouncementEditor({
             <Repeat className="size-3.5" aria-hidden />
             Wiederkehrend – zu ändern unter «Bekanntmachungen»
           </p>
-          <p className="mt-0.5">{entry.text}</p>
+          <p className="mt-0.5 whitespace-pre-line">{entry.text}</p>
           {entry.details?.trim() && (
-            <p className="text-xs text-slate-500 dark:text-slate-400">{entry.details}</p>
+            <p className="text-xs whitespace-pre-line text-slate-500 dark:text-slate-400">
+              {entry.details}
+            </p>
           )}
         </div>
       ))}
