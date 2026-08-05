@@ -34,6 +34,7 @@ import { ConfirmDialog, Modal } from '@/components/ui/Modal'
 import { EmptyState, LoadingScreen } from '@/components/ui/Feedback'
 import { PeopleChoice, PersonChoice, SegmentedControl } from '@/components/ui/Pickers'
 import { MeetingForm } from '@/pages/Meetings'
+import { callingChangesToText } from '@/lib/callingChanges'
 import { formatDateLong, formatDateShort, formatTime, toDate } from '@/lib/dates'
 import {
   assignToMeeting,
@@ -58,7 +59,7 @@ type ViewMode = 'focus' | 'list'
 export function MeetingDetail() {
   const { meetingId } = useParams<{ meetingId: string }>()
   const { profile } = useAuth()
-  const { settings, userName } = useData()
+  const { settings, userName, memberName } = useData()
   const toast = useToast()
   const navigate = useNavigate()
 
@@ -445,7 +446,12 @@ export function MeetingDetail() {
       />
 
       {/* Nur für den Ausdruck: kompaktes Protokoll */}
-      <PrintProtocol meeting={meeting} groups={groups} userName={userName} />
+      <PrintProtocol
+        meeting={meeting}
+        groups={groups}
+        userName={userName}
+        memberName={memberName}
+      />
     </>
   )
 }
@@ -765,6 +771,7 @@ function PrintProtocol({
   meeting,
   groups,
   userName,
+  memberName,
 }: {
   meeting: {
     title: string
@@ -777,7 +784,15 @@ function PrintProtocol({
   }
   groups: Record<ItemKind, AgendaItem[]>
   userName: (id: string) => string
+  memberName: (id: string) => string
 }) {
+  // Konten und Mitglieder stehen in denselben Feldern einer Berufungsrunde;
+  // gedruckt wird der Name, gleich woher er kommt.
+  const anyName = (id: string) => {
+    const user = userName(id)
+    return user === 'Unbekannt' ? memberName(id) : user
+  }
+
   return (
     <div className="hidden print:block">
       <h1 className="text-xl font-bold">{meeting.title}</h1>
@@ -812,6 +827,13 @@ function PrintProtocol({
                     {item.status === 'done' && ' ✓'}
                   </p>
                   {item.description && <p className="text-sm">{item.description}</p>}
+                  {/* Eine Berufungsrunde hat keine Beschreibung – ohne das
+                      stünde im Protokoll nur ihr Titel. */}
+                  {item.callingChanges && (
+                    <p className="text-sm whitespace-pre-wrap">
+                      {callingChangesToText(item.callingChanges, anyName)}
+                    </p>
+                  )}
                   {item.assignees?.length > 0 && (
                     <p className="text-sm">Zuständig: {item.assignees.map(userName).join(', ')}</p>
                   )}

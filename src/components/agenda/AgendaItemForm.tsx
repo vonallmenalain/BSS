@@ -3,12 +3,20 @@ import { Modal } from '@/components/ui/Modal'
 import { MentionField } from '@/components/ui/MentionField'
 import { AssigneePicker } from '@/components/ui/Pickers'
 import { LayoutGrid } from '@/components/agenda/LayoutGrid'
+import { CallingChangesTables } from '@/components/agenda/CallingChanges'
 import { useAuth } from '@/contexts/AuthContext'
 import { useToast } from '@/contexts/ToastContext'
 import { createAgendaItem, type AgendaItemInput } from '@/services/agenda'
 import { emptyLayout, serializeLayout } from '@/lib/layout'
+import { emptyCallingChanges, serializeCallingChanges } from '@/lib/callingChanges'
 import { cn } from '@/lib/utils'
-import { ITEM_KIND_LABELS, type ItemKind, type ItemLayout, type ItemStatus } from '@/lib/types'
+import {
+  ITEM_KIND_LABELS,
+  type CallingChanges,
+  type ItemKind,
+  type ItemLayout,
+  type ItemStatus,
+} from '@/lib/types'
 
 interface Props {
   open: boolean
@@ -39,6 +47,8 @@ interface FormState {
   memberRefs: string[]
   /** Gesetzt heisst: variables Layout statt Beschreibung */
   layout: ItemLayout | null
+  /** Gesetzt heisst: die beiden Berufungstabellen statt Beschreibung */
+  callingChanges: CallingChanges | null
 }
 
 const EMPTY: FormState = {
@@ -47,7 +57,17 @@ const EMPTY: FormState = {
   assignees: [],
   memberRefs: [],
   layout: null,
+  callingChanges: null,
 }
+
+/**
+ * Welche Gestalt der Eintrag hat – Text, Raster oder Berufungsrunde.
+ *
+ * Genau eine davon: Alle drei füllen dieselbe Stelle unter dem Titel, und
+ * zwei nebeneinander liessen offen, wo etwas hingehört. Gespeichert bleibt
+ * trotzdem, was schon geschrieben wurde – ein Wechsel wirft nichts weg.
+ */
+type ItemShape = 'text' | 'layout' | 'callings'
 
 /**
  * Ein neues Traktandum erfassen.
@@ -60,10 +80,12 @@ const EMPTY: FormState = {
  * Zuständige. Alles Weitere lässt sich nachtragen, und Bereich, betroffene
  * Mitglieder, Priorität, Termin und «vertraulich» sind ganz weggefallen.
  *
- * Hier – und nur hier – steht auch der Haken für das variable Layout: Ob ein
- * Punkt ein Absatz Text ist oder eine kleine Tabelle, entscheidet sich beim
- * Erfassen. Später stünde der Haken über zwanzig Traktanden, die ihn nie
- * brauchen.
+ * Hier – und nur hier – stehen auch die beiden Haken für die Gestalt des
+ * Eintrags: **Variables Layout** für ein selbst gestelltes Raster,
+ * **Berufungsänderung** für die beiden Tabellen der Berufungsrunde. Ob ein
+ * Punkt ein Absatz Text ist, eine kleine Tabelle oder eine Runde, entscheidet
+ * sich beim Erfassen. Später stünden die Haken über zwanzig Traktanden, die
+ * sie nie brauchen.
  *
  * Unter «Pendenzen» steht zuoberst zusätzlich die Wahl zwischen **Traktandum**
  * und **Pendenz**. Beides gehört in dieselbe nächste Sitzung – nur eben unter
@@ -86,12 +108,13 @@ export function AgendaItemForm({
   const [saving, setSaving] = useState(false)
 
   /*
-   * Das zuletzt gebaute Raster überlebt den Haken.
+   * Das zuletzt Gebaute überlebt den Haken.
    *
    * Wer «Variables Layout» ausschaltet, um kurz die Beschreibung zu lesen,
    * und wieder einschaltet, hätte sonst seine Tabelle noch einmal zu bauen.
    */
   const lastLayout = useRef<ItemLayout | null>(null)
+  const lastCallingChanges = useRef<CallingChanges | null>(null)
 
   // Beim Öffnen zurücksetzen, damit nichts vom letzten Mal stehen bleibt.
   useEffect(() => {
@@ -99,15 +122,25 @@ export function AgendaItemForm({
     setForm(EMPTY)
     setKind(defaultKind)
     lastLayout.current = null
+    lastCallingChanges.current = null
   }, [open, defaultKind])
 
   const update = <K extends keyof FormState>(key: K, value: FormState[K]) =>
     setForm((current) => ({ ...current, [key]: value }))
 
-  const toggleLayout = (on: boolean) => {
-    if (!on) lastLayout.current = form.layout
-    update('layout', on ? (lastLayout.current ?? emptyLayout()) : null)
-  }
+  const shape: ItemShape = form.callingChanges ? 'callings' : form.layout ? 'layout' : 'text'
+
+  const setShape = (next: ItemShape) =>
+    setForm((current) => {
+      if (current.layout) lastLayout.current = current.layout
+      if (current.callingChanges) lastCallingChanges.current = current.callingChanges
+      return {
+        ...current,
+        layout: next === 'layout' ? (lastLayout.current ?? emptyLayout()) : null,
+        callingChanges:
+          next === 'callings' ? (lastCallingChanges.current ?? emptyCallingChanges()) : null,
+      }
+    })
 
   /*
    * Ein mit «@» eingesetzter Name ist zugleich ein Verweis: Wer im Text steht,
@@ -143,6 +176,7 @@ export function AgendaItemForm({
         kind,
         meetingId,
         layout: form.layout ? serializeLayout(form.layout) : null,
+        callingChanges: form.callingChanges ? serializeCallingChanges(form.callingChanges) : null,
       }
       const id = await createAgendaItem(payload, { id: profile.id, name: profile.displayName })
       toast.success(
@@ -217,17 +251,28 @@ export function AgendaItemForm({
           </div>
         )}
 
-        {/* Der Haken steht oben rechts, weil er über die Gestalt des ganzen
-            Fensters entscheidet und nicht über ein einzelnes Feld. */}
-        <div className="flex justify-end">
+        {/* Die Haken stehen oben rechts, weil sie über die Gestalt des ganzen
+            Fensters entscheiden und nicht über ein einzelnes Feld. Sie
+            schliessen einander aus: Beide füllen die Stelle, an der sonst die
+            Beschreibung steht. */}
+        <div className="flex flex-wrap justify-end gap-x-4 gap-y-2">
           <label className="flex cursor-pointer items-center gap-2 text-sm">
             <input
               type="checkbox"
               className="size-4 rounded"
-              checked={form.layout !== null}
-              onChange={(event) => toggleLayout(event.target.checked)}
+              checked={shape === 'layout'}
+              onChange={(event) => setShape(event.target.checked ? 'layout' : 'text')}
             />
             Variables Layout
+          </label>
+          <label className="flex cursor-pointer items-center gap-2 text-sm">
+            <input
+              type="checkbox"
+              className="size-4 rounded"
+              checked={shape === 'callings'}
+              onChange={(event) => setShape(event.target.checked ? 'callings' : 'text')}
+            />
+            Berufungsänderung
           </label>
         </div>
 
@@ -248,7 +293,21 @@ export function AgendaItemForm({
         {/* Entweder – oder: Ein Raster ist die Beschreibung, nur eben
             gegliedert. Beide nebeneinander liessen offen, wo etwas
             hingehört. Gespeichert bleiben ohnehin beide Stände. */}
-        {form.layout ? (
+        {form.callingChanges ? (
+          <div>
+            <span className="label">Berufungsänderung</span>
+            <p className="hint mb-3">
+              Eine Ideenliste für die Runde – sie ändert keine Berufung und keinen
+              Mitgliederdatensatz. Wer welche Berufung hat, sagt weiterhin allein das LCR.
+            </p>
+            <CallingChangesTables
+              value={form.callingChanges}
+              onChange={(next) => update('callingChanges', next)}
+              onMention={(member) => linkMember(member.id)}
+              memberRefs={form.memberRefs}
+            />
+          </div>
+        ) : form.layout ? (
           <div>
             <span className="label">Layout</span>
             <LayoutGrid

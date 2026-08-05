@@ -3,9 +3,11 @@ import { useAutosave } from '@/hooks/useAutosave'
 import { MentionEditable } from '@/components/ui/MentionText'
 import { AssigneePicker } from '@/components/ui/Pickers'
 import { LayoutGrid } from '@/components/agenda/LayoutGrid'
+import { CallingChangesTables } from '@/components/agenda/CallingChanges'
 import { updateAgendaItem } from '@/services/agenda'
 import { normalizeLayout, serializeLayout } from '@/lib/layout'
-import type { AgendaItem, ItemLayout } from '@/lib/types'
+import { normalizeCallingChanges, serializeCallingChanges } from '@/lib/callingChanges'
+import type { AgendaItem, CallingChanges, ItemLayout } from '@/lib/types'
 
 /**
  * Ein Traktandum bearbeiten – ohne Formular, ohne Speichern-Knopf.
@@ -23,10 +25,11 @@ import type { AgendaItem, ItemLayout } from '@/lib/types'
  * wurden gepflegt, aber nie gelesen. Was besprochen wurde, gehört in die
  * Beschreibung.
  *
- * Auch der Haken «Variables Layout» steht nicht hier, sondern nur beim
- * Erfassen: Ob ein Punkt ein Absatz Text ist oder eine kleine Tabelle,
- * entscheidet sich einmal. Ein Raster, das bereits gebaut wurde, lässt sich
- * hier weiterhin ausfüllen – es tritt an die Stelle der Beschreibung.
+ * Auch die Haken «Variables Layout» und «Berufungsänderung» stehen nicht
+ * hier, sondern nur beim Erfassen: Ob ein Punkt ein Absatz Text ist, eine
+ * kleine Tabelle oder eine Berufungsrunde, entscheidet sich einmal. Was
+ * bereits gebaut wurde, lässt sich hier weiterhin ausfüllen – es tritt an die
+ * Stelle der Beschreibung.
  *
  * Der Aufrufer muss die Komponente je Eintrag frisch aufbauen
  * (`key={item.id}`): Der Stand im Feld gehört dem Eintrag, nicht der Stelle
@@ -55,8 +58,13 @@ export function AgendaItemEditor({
     item.layout ? normalizeLayout(item.layout) : null,
   )
 
+  // Aus demselben Grund einmalig geradegezogen wie das Raster darüber.
+  const [callingChanges, setCallingChanges] = useState<CallingChanges | null>(() =>
+    item.callingChanges ? normalizeCallingChanges(item.callingChanges) : null,
+  )
+
   const autosave = useAutosave(
-    { title, description, assignees, memberRefs, layout },
+    { title, description, assignees, memberRefs, layout, callingChanges },
     async (draft) => {
       await updateAgendaItem(item.id, {
         title: draft.title.trim(),
@@ -64,6 +72,7 @@ export function AgendaItemEditor({
         assignees: draft.assignees,
         memberRefs: draft.memberRefs,
         layout: draft.layout ? serializeLayout(draft.layout) : null,
+        callingChanges: draft.callingChanges ? serializeCallingChanges(draft.callingChanges) : null,
       })
     },
     // Ein Eintrag ohne Titel wäre in jeder Liste eine leere Zeile. Wer den
@@ -106,7 +115,15 @@ export function AgendaItemEditor({
         fieldClassName="text-lg font-semibold sm:text-xl"
       />
 
-      {layout ? (
+      {callingChanges ? (
+        <CallingChangesTables
+          value={callingChanges}
+          onChange={setCallingChanges}
+          onMention={(member) => linkMember(member.id)}
+          memberRefs={memberRefs}
+          readOnly={readOnly}
+        />
+      ) : layout ? (
         <LayoutGrid
           layout={layout}
           onChange={setLayout}

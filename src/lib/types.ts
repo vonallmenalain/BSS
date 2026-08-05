@@ -593,6 +593,80 @@ export interface ItemLayout {
   fields: LayoutField[]
 }
 
+/* ------------------------------------------------------------------ */
+/* Berufungsänderungen                                                 */
+/* ------------------------------------------------------------------ */
+
+/**
+ * Wie dringend eine Zeile ist.
+ *
+ * Drei Stufen, mehr braucht eine Ideenliste nicht: Was jetzt ansteht, was
+ * demnächst kommt und was liegen darf. Gezeigt wird das als Farbe der Zeile
+ * – und weil eine Farbe für sich genommen nichts sagt, steht der Name
+ * überall daneben, wo sie gesetzt oder gefiltert wird.
+ */
+export type CallingUrgency = 'high' | 'medium' | 'low'
+
+/** Von dringend nach gelassen – die Reihenfolge der Kreise. */
+export const CALLING_URGENCY_ORDER: CallingUrgency[] = ['high', 'medium', 'low']
+
+export const CALLING_URGENCY_LABELS: Record<CallingUrgency, string> = {
+  high: 'Dringend',
+  medium: 'Mitteldringend',
+  low: 'Nicht so dringend',
+}
+
+/** Was beide Tabellen an jeder Zeile führen. */
+export interface CallingRowBase {
+  id: string
+  /** Farbe der Zeile. Fehlt sie, ist noch nichts eingeschätzt. */
+  urgency?: CallingUrgency
+  /**
+   * Wer sich um diese Zeile kümmert – UIDs aus der Bischofschaft.
+   *
+   * Der Grund, weshalb eine einzelne Zeile eine Zuständigkeit trägt und
+   * nicht bloss das Traktandum: Eine Berufungsrunde geht zwanzig Namen
+   * durch, und die verteilt man untereinander.
+   */
+  assignees: string[]
+}
+
+/** «Mitglieder ohne Berufungen»: Wer eine neue Aufgabe braucht. */
+export interface CallingMemberRow extends CallingRowBase {
+  /** Um wen es geht – mehrere, wenn ein Ehepaar zusammen besprochen wird */
+  memberIds: string[]
+  /** Heutige Berufung und was daran ansteht – Freitext, mehrzeilig */
+  calling: string
+  /** Was in Frage käme – Freitext, mehrzeilig */
+  ideas: string
+}
+
+/** «Offene Berufungen»: Welche Aufgabe niemanden hat. */
+export interface CallingOpenRow extends CallingRowBase {
+  /** Welche Berufung offen ist – Freitext */
+  calling: string
+  /** Wer in Frage käme – Freitext, «@» setzt Namen ein */
+  candidates: string
+  /** Weiteres Vorgehen – Freitext, mehrzeilig */
+  next: string
+}
+
+/**
+ * Die beiden Tabellen hinter dem Haken «Berufungsänderung».
+ *
+ * Eine Ideenliste und sonst nichts: Was hier steht, ändert an keiner
+ * Berufung und an keinem Mitgliederdatensatz etwas. Wer welche Berufung
+ * hat, sagt allein das LCR und der Import von dort – diese Tabellen sind
+ * das Blatt, auf dem die Bischofschaft vorher denkt.
+ *
+ * Sie treten wie das variable Layout an die Stelle der Beschreibung;
+ * beides zugleich gibt es nicht.
+ */
+export interface CallingChanges {
+  members: CallingMemberRow[]
+  open: CallingOpenRow[]
+}
+
 export interface AgendaItem extends WithId {
   title: string
   description?: string
@@ -650,6 +724,17 @@ export interface AgendaItem extends WithId {
    * Alten: Titel und Beschreibung.
    */
   layout?: ItemLayout | null
+
+  /**
+   * Zwei Tabellen statt der Beschreibung: «Berufungsänderung».
+   *
+   * Die eine Runde, die jede Bischofschaft regelmässig dreht – wer eine
+   * Aufgabe braucht, welche Aufgabe jemanden braucht –, hat eine feste
+   * Gestalt und wäre als selbst gebautes Raster jedes Mal neu zu stellen.
+   * Sie steht deshalb als eigene Form da (siehe `lib/callingChanges`).
+   * Fehlt das Feld, bleibt alles beim Alten.
+   */
+  callingChanges?: CallingChanges | null
 
   /*
    * Eine eigene Notizliste je Traktandum gab es einmal; sie ist weggefallen.

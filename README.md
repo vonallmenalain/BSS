@@ -363,6 +363,69 @@ sonst überall, wo ihn niemand brauchte. Ein Raster, das einmal gebaut ist,
 lässt sich weiterhin überall ausfüllen und ändern – es tritt schlicht an die
 Stelle der Beschreibung.
 
+### Berufungsänderung
+
+Daneben steht ein zweiter Haken: **Berufungsänderung**. Er stellt an dieselbe
+Stelle nicht ein leeres Raster, sondern die eine Runde, die jede
+Bischofschaft regelmässig dreht – zwei Tabellen untereinander:
+
+| Tabelle                        | Spalten                                          | Wofür                         |
+| ------------------------------ | ------------------------------------------------ | ----------------------------- |
+| **Mitglieder ohne Berufungen** | Name · Berufung · Vorschläge                     | Wer eine neue Aufgabe braucht |
+| **Offene Berufungen**          | Berufung · Name (Vorschläge) · Weiteres Vorgehen | Welche Aufgabe niemanden hat  |
+
+Die beiden Haken schliessen einander aus – beide füllen die Stelle, an der
+sonst die Beschreibung steht.
+
+In der Spalte **Name** wird aus dem Verzeichnis gewählt; jeder Name steht auf
+einer eigenen Zeile über die ganze Breite, und **Weitere lassen sich
+hinzufügen** – das Ehepaar gehört auf eine Zeile, nicht auf zwei. Alle übrigen
+Felder sind Freitext und dürfen mehrere Zeilen tragen: «PV-Lehrerin, möchte
+entlassen werden», «Braucht eine Berufung», oder gar nichts. In jedem davon
+öffnet ein `@` die Mitgliederliste, und der eingesetzte Name bleibt anklickbar.
+
+**Es ändert nichts.** Was hier steht, ist eine Ideenliste – kein Eintrag wirkt
+auf eine Berufung, ein Mitglied oder die Liste unter «Berufungen». Wer welche
+Berufung hat, sagt weiterhin allein das LCR und der Import von dort.
+
+**Drei Farben je Zeile.** Rot heisst dringend, Orange mitteldringend, Grün
+nicht so dringend; ein zweiter Griff auf dieselbe Farbe nimmt sie wieder weg.
+Gefärbt wird der linke Rand kräftig und der Hintergrund nur schwach – so
+lassen sich die Stufen nebeneinander auseinanderhalten, ohne dass der Text an
+Kontrast verliert. Der Name der Stufe steht an jedem Knopf, im Ausdruck und in
+der gelesenen Ansicht: Eine Farbe allein sagt nichts, wenn man sie nicht
+unterscheiden kann.
+
+**Oben rechts stehen dieselben drei Kreise als Filter.** Alle drei an heisst:
+kein Filter – dann stehen auch die Zeilen da, die noch keine Farbe haben. Wer
+Grün und Orange wegklickt, sieht genau die roten. Was dabei wegfällt, steht
+als Zahl unter der Tabelle («_n_ Zeilen sind ausgeblendet»); still
+verschwinden soll nichts. Die Wahl gehört dem Gerät und nicht den Daten: Sie
+beginnt bei jedem Öffnen wieder bei «alle», und wer eine Zeile hinzufügt,
+sieht sie – der Filter geht dabei auf.
+
+**Zuständig, Zeile für Zeile.** Unter jeder Zeile steht die Bischofschaft als
+Knopfleiste; ein Klick genügt. Der Grund dafür ist die Runde selbst: Sie geht
+zwanzig Namen durch, und die verteilt man untereinander – eine Zuständigkeit
+für das ganze Traktandum sagte nichts.
+
+### Wann ein Eintrag «meiner» ist
+
+Unter **Pendenzen → Meine** und in der Kachel «Meine Pendenzen» steht bisher,
+was dem eigenen Konto zugewiesen ist. Bei einer Berufungsrunde kommen zwei
+Wege dazu, und alle drei zählen gleich:
+
+1. Das eigene Konto steht am **Traktandum** unter «Zuständig».
+2. Das eigene Konto steht an **einer Zeile** unter «Zuständig».
+3. Eine Zeile **nennt das Mitglied**, das mit dem eigenen Konto verknüpft ist –
+   als Name in der Spalte «Name» oder als «@»-Erwähnung in einem der
+   Freitextfelder.
+
+Der dritte Weg setzt voraus, dass unter **Einstellungen → Benutzer und Rollen**
+festgehalten ist, welches Mitglied zum Konto gehört. Ohne diese Verknüpfung
+ist ein Name im Text bloss ein Name, und die App hat keinen Anhaltspunkt, wer
+gemeint ist.
+
 ### Liste: Reihenfolge festlegen
 
 Die Listenansicht ist zum Vorbereiten da. Jede Zeile ist zugeklappt schmal und
@@ -1632,6 +1695,32 @@ Wahl.
 Ein Kennzeichen «vertraulich» am einzelnen Traktandum gibt es nicht mehr. Es
 schränkte den Zugriff innerhalb der Bischofschaft ohnehin nie ein, und was
 niemand sonst sehen soll, gehört nicht in diese Datenbank.
+
+### Konto und Mitglied verknüpfen
+
+Ein **Konto** meldet sich an; ein **Mitglied** steht im Verzeichnis der
+Gemeinde und stammt aus dem LCR. Meistens ist das dieselbe Person – nur weiss
+die App das nicht, solange es niemand festhält. Deshalb steht unter
+**Einstellungen → Benutzer und Rollen** neben der Rolle ein zweites Feld:
+**wer im Mitgliederverzeichnis zu diesem Konto gehört**. Tippen genügt,
+gewählt wird aus den Treffern, und das Kreuz hebt die Verknüpfung wieder auf.
+Gespeichert wird sofort, ohne Speichern-Knopf.
+
+Jedes Konto mit Vollzugriff setzt sie für alle, auch für sich selbst – die
+eigene Zeile steht mit «(du)» in derselben Liste. Bei den beiden AP-Zugängen
+fehlt das Feld: Sie erreichen das Mitgliederverzeichnis gar nicht, es gäbe
+dort nichts zu wählen.
+
+**Ein Mitglied, ein Konto.** Ein bereits verknüpfter Mitgliedersatz lässt sich
+kein zweites Mal vergeben; die App sagt stattdessen, bei wem er schon steht.
+Sonst zeigte ein Name auf zwei Konten, und «meine Pendenz» wäre die Pendenz
+von zweien. Steht umgekehrt ein Verweis da, zu dem kein Mitglied mehr gehört,
+erscheint **«Unbekanntes Mitglied»** – ein leeres Suchfeld sähe aus wie «nicht
+verknüpft», während in der Datenbank etwas anderes steht.
+
+Am Zugriff ändert die Verknüpfung nichts, und die Rolle bleibt davon
+unberührt. Sie hält vorerst nur fest, wer wer ist: Ausgewertet wird sie noch
+nirgends.
 
 ---
 
