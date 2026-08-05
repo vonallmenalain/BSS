@@ -1,9 +1,12 @@
-import { useMemo, useState } from 'react'
+import { useMemo, useState, type ReactNode } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
 import {
   CalendarDays,
   Plus,
   ArrowRight,
+  ChevronDown,
+  ChevronUp,
+  LayoutDashboard,
   Mic,
   ListTodo,
   Play,
@@ -13,13 +16,22 @@ import {
 } from 'lucide-react'
 import { useAuth } from '@/contexts/AuthContext'
 import { useData } from '@/contexts/DataContext'
-import { useMeetings, useOpenItems, useSacramentMeetings, useTalks } from '@/hooks/useFirestore'
+import {
+  useApActivities,
+  useMeetings,
+  useOpenItems,
+  useSacramentMeetings,
+  useTalks,
+} from '@/hooks/useFirestore'
+import { useLocalStorage } from '@/hooks/useLocalStorage'
 import { AgendaItemCard } from '@/components/agenda/AgendaItemCard'
 import { AgendaItemForm } from '@/components/agenda/AgendaItemForm'
 import { FOCUS_PARAM } from '@/components/agenda/MeetingFocus'
+import { AP_KIND_STYLES, apDateLabel, apTitle } from '@/components/ap/ApActivityRow'
 import { MeetingStatusBadge } from '@/components/ui/Badge'
 import { EmptyState, SkeletonList } from '@/components/ui/Feedback'
 import { PageHeader } from '@/components/ui/Pickers'
+import { AddButton, MenuCounter, MenuSection, ViewMenu } from '@/components/ui/ViewMenu'
 import {
   formatDateLong,
   formatDateShort,
@@ -27,14 +39,41 @@ import {
   formatTime,
   hasBirthdaySoon,
   toDate,
+  toDateInput,
   differenceInCalendarDays,
   startOfDay,
   upcomingWeekdays,
 } from '@/lib/dates'
+import { cn } from '@/lib/utils'
 import { sortForMeeting, sortForPendenzen } from '@/services/agenda'
+import { apActivityEnd } from '@/services/apActivities'
 import { openTalkSlots, sacramentDocId, sundayProgram, talksForDate } from '@/services/sacrament'
-import { toItemKind, type AgendaItem } from '@/lib/types'
+import {
+  AP_ACTIVITY_KIND_LABELS,
+  DASHBOARD_AREA_LABELS,
+  DASHBOARD_TILE_LABELS,
+  DEFAULT_DASHBOARD_VIEW,
+  normalizeDashboardView,
+  toItemKind,
+  type AgendaItem,
+  type DashboardArea,
+  type DashboardTileId,
+  type DashboardView,
+} from '@/lib/types'
 
+/**
+ * Die Übersicht – und was jede und jeder darauf sehen will.
+ *
+ * Die Seite besteht aus Kacheln, und welche davon erscheinen, sagt der Knopf
+ * «Ansicht» oben rechts: Jede lässt sich ausblenden, verschieben und
+ * zwischen der breiten Hauptspalte, der schmalen Spalte daneben und der
+ * ganzen Breite darunter umhängen. Wo etwas gezählt wird – Traktanden der
+ * nächsten Sitzung, eigene Pendenzen, Sonntage, AP-Termine –, steht dort
+ * auch, wie viele es sein sollen.
+ *
+ * Die Wahl liegt im Browser: Sie gehört zum Gerät, an dem man sitzt, und ist
+ * schon da, bevor der erste Schnappschuss aus Firestore eintrifft.
+ */
 export function Dashboard() {
   const { profile } = useAuth()
   const { settings, members, users } = useData()
@@ -43,7 +82,14 @@ export function Dashboard() {
   const { data: openItems, loading: itemsLoading } = useOpenItems()
   const { data: talks } = useTalks(100)
   const { data: sacramentMeetings } = useSacramentMeetings(20)
+  const { data: apActivities } = useApActivities()
   const [formOpen, setFormOpen] = useState(false)
+
+  const [storedView, setView] = useLocalStorage<DashboardView>(
+    'bss:uebersicht:ansicht',
+    DEFAULT_DASHBOARD_VIEW,
+  )
+  const view = useMemo(() => normalizeDashboardView(storedView), [storedView])
 
   /* Nächste Sitzung: die zeitlich nächste, die noch nicht abgeschlossen ist. */
   const nextMeeting = useMemo(() => {
@@ -109,6 +155,15 @@ export function Dashboard() {
 
   const openTalkCount = talkGaps.reduce((sum, gap) => sum + gap.open, 0)
 
+  /* Aktivitätenplan: die nächsten Termine, ohne die abgesagten Abende. */
+  const nextApActivities = useMemo(() => {
+    const today = toDateInput(new Date())
+    return apActivities
+      .filter((activity) => apActivityEnd(activity) >= today && activity.kind !== 'cancelled')
+      .sort((a, b) => a.date.localeCompare(b.date))
+      .slice(0, view.apActivities)
+  }, [apActivities, view.apActivities])
+
   /* Geburtstage ------------------------------------------------------ */
   const birthdays = useMemo(
     () =>
@@ -154,16 +209,291 @@ export function Dashboard() {
     else navigate(`/pendenzen?pendenz=${item.id}`)
   }
 
+  /* ---------- Die Kacheln ---------- */
+
+  const tiles: Record<DashboardTileId, ReactNode> = {
+    meeting: meetingsLoading ? (
+      <SkeletonList rows={1} />
+    ) : nextMeeting && nextMeetingRef ? (
+      <div className="card overflow-hidden">
+        <div className="from-brand-600 to-brand-700 bg-gradient-to-br p-5 text-white">
+          <div className="flex items-start justify-between gap-3">
+            <div className="min-w-0">
+              <p className="text-brand-100 text-xs font-medium tracking-wide uppercase">
+                {nextMeeting.status === 'running'
+                  ? 'Sitzung läuft'
+                  : daysToMeeting === 0
+                    ? 'Heute'
+                    : daysToMeeting === 1
+                      ? 'Morgen'
+                      : daysToMeeting != null && daysToMeeting > 0
+                        ? `In ${daysToMeeting} Tagen`
+                        : 'Überfällig'}
+              </p>
+              <h2 className="mt-1 truncate text-lg font-semibold">{nextMeeting.title}</h2>
+              <p className="text-brand-100 mt-0.5 text-sm">
+                {formatDateLong(nextMeeting.date)} · {formatTime(nextMeeting.date)}
+                {nextMeeting.location && ` · ${nextMeeting.location}`}
+              </p>
+            </div>
+            <MeetingStatusBadge status={nextMeeting.status} />
+          </div>
+
+          <div className="mt-4 flex flex-wrap gap-2">
+            <Link
+              to={`/sitzungen/${nextMeeting.id}`}
+              className="btn text-brand-800 bg-white hover:bg-brand-50"
+            >
+              {nextMeeting.status === 'running' ? (
+                <>
+                  <Play className="size-4" aria-hidden />
+                  Weiterführen
+                </>
+              ) : (
+                <>
+                  <CalendarDays className="size-4" aria-hidden />
+                  Sitzung öffnen
+                </>
+              )}
+            </Link>
+            {unassignedCount > 0 && (
+              <Link
+                to={`/sitzungen/${nextMeeting.id}`}
+                className="btn border border-white/30 text-white hover:bg-white/10"
+              >
+                {unassignedCount} Pendenz{unassignedCount === 1 ? '' : 'en'} übernehmen
+              </Link>
+            )}
+          </div>
+        </div>
+
+        <div className="p-4">
+          <div className="mb-3 flex items-center justify-between">
+            <h3 className="text-sm font-medium">Traktanden dieser Sitzung</h3>
+            <span className="text-xs text-slate-500 dark:text-slate-400">
+              {meetingItems.length} offen
+            </span>
+          </div>
+          {meetingItems.length === 0 ? (
+            <p className="py-3 text-center text-sm text-slate-500 dark:text-slate-400">
+              Noch nichts traktandiert.
+            </p>
+          ) : (
+            <div className="space-y-2">
+              {meetingItems.slice(0, view.meetingItems).map((item) => (
+                <AgendaItemCard
+                  key={item.id}
+                  item={item}
+                  compact
+                  showDoneToggle={false}
+                  onOpen={handleOpenItem}
+                />
+              ))}
+              {meetingItems.length > view.meetingItems && (
+                <Link
+                  to={`/sitzungen/${nextMeeting.id}`}
+                  className="text-brand-600 dark:text-brand-300 flex items-center justify-center gap-1 py-2 text-sm hover:underline"
+                >
+                  Alle {meetingItems.length} anzeigen
+                  <ArrowRight className="size-3.5" aria-hidden />
+                </Link>
+              )}
+            </div>
+          )}
+        </div>
+      </div>
+    ) : (
+      <div className="card">
+        <EmptyState
+          icon={CalendarDays}
+          title="Keine Sitzung geplant"
+          description="Lege den nächsten Termin fest, damit Traktanden zugeordnet werden können."
+          action={
+            <Link to="/sitzungen" className="btn-primary">
+              <Plus className="size-4" aria-hidden />
+              Sitzung planen
+            </Link>
+          }
+        />
+      </div>
+    ),
+
+    stats: <StatRow pendenzen={pendenzen.length} mine={myItems.length} openTalks={openTalkCount} />,
+
+    talks: (
+      <section className="card p-4">
+        <div className="mb-3 flex items-center justify-between">
+          <h3 className="flex items-center gap-2 text-sm font-medium">
+            <Mic className="size-4 text-slate-400" aria-hidden />
+            Ansprachen
+          </h3>
+          <Link
+            to="/abendmahl/ansprachen"
+            className="text-brand-600 dark:text-brand-300 text-xs hover:underline"
+          >
+            Planen
+          </Link>
+        </div>
+        <ul className="divide-list -mx-1">
+          {talkGaps.slice(0, view.talkSundays).map((gap) => (
+            <li
+              key={gap.date.toISOString()}
+              className="flex items-center justify-between px-1 py-2 text-sm"
+            >
+              <span>{formatDateShort(gap.date)}</span>
+              {!gap.program.plansTalks ? (
+                /* Zeugnisversammlung, Konferenz, Darbietung der Kinder:
+                   Hier fehlt nichts – hier ist nichts vorgesehen. */
+                <span className="badge bg-slate-100 text-slate-600 dark:bg-slate-800 dark:text-slate-300">
+                  {gap.program.label}
+                </span>
+              ) : gap.open === 0 ? (
+                <span className="badge bg-emerald-100 text-emerald-800 dark:bg-emerald-950 dark:text-emerald-200">
+                  <CheckCircle2 className="size-3" aria-hidden />
+                  Vollständig
+                </span>
+              ) : (
+                <span className="badge bg-amber-100 text-amber-800 dark:bg-amber-950 dark:text-amber-200">
+                  {gap.open} offen
+                </span>
+              )}
+            </li>
+          ))}
+        </ul>
+      </section>
+    ),
+
+    ap: (
+      <section className="card p-4">
+        <div className="mb-3 flex items-center justify-between">
+          <h3 className="flex items-center gap-2 text-sm font-medium">
+            <CalendarDays className="size-4 text-slate-400" aria-hidden />
+            Aktivitäten AP’s
+          </h3>
+          <Link to="/ap" className="text-brand-600 dark:text-brand-300 text-xs hover:underline">
+            Zum Plan
+          </Link>
+        </div>
+        {nextApActivities.length === 0 ? (
+          <p className="py-2 text-sm text-slate-500 dark:text-slate-400">Nichts geplant.</p>
+        ) : (
+          <ul className="divide-list -mx-1">
+            {nextApActivities.map((activity) => {
+              const style = AP_KIND_STYLES[activity.kind]
+              const Icon = style.icon
+              return (
+                <li key={activity.id} className="px-1 py-2">
+                  <p className="flex items-center gap-2 text-xs text-slate-500 dark:text-slate-400">
+                    <span className={cn('badge', style.chip)}>
+                      <Icon className="size-3" aria-hidden />
+                      {AP_ACTIVITY_KIND_LABELS[activity.kind]}
+                    </span>
+                    <span className="truncate">{apDateLabel(activity)}</span>
+                  </p>
+                  <p className="mt-0.5 truncate text-sm font-medium">{apTitle(activity)}</p>
+                </li>
+              )
+            })}
+          </ul>
+        )}
+      </section>
+    ),
+
+    birthdays:
+      birthdays.length === 0 ? null : (
+        <section className="card p-4">
+          <h3 className="mb-3 flex items-center gap-2 text-sm font-medium">
+            <Cake className="size-4 text-slate-400" aria-hidden />
+            Geburtstage
+          </h3>
+          <ul className="space-y-2 text-sm">
+            {birthdays.map((member) => (
+              <li key={member.id} className="flex items-center justify-between gap-2">
+                <Link to={`/mitglieder/${member.id}`} className="min-w-0 truncate hover:underline">
+                  {member.firstName} {member.lastName}
+                </Link>
+                <span className="shrink-0 text-xs text-slate-500 dark:text-slate-400">
+                  {/* «Do., 06.08.» – ohne Jahr, aber vollständig. Früher stand
+                      hier ein abgeschnittenes Datum mit einer Null am Ende. */}
+                  {formatDayShort(
+                    (() => {
+                      const date = toDate(member.birthDate)!
+                      const today = startOfDay(new Date())
+                      const next = new Date(today.getFullYear(), date.getMonth(), date.getDate())
+                      if (next < today) next.setFullYear(today.getFullYear() + 1)
+                      return next
+                    })(),
+                  )}
+                </span>
+              </li>
+            ))}
+          </ul>
+        </section>
+      ),
+
+    /* Eine Spalte, seit die zweite weggefallen ist: Dort stand «Überfällig»,
+       und ein Fälligkeitsdatum gibt es nicht mehr. */
+    pendenzen: (
+      <section>
+        <div className="mb-3 flex items-center justify-between">
+          <h2 className="flex items-center gap-2 text-sm font-semibold">
+            <ListTodo className="size-4 text-slate-400" aria-hidden />
+            Meine Pendenzen
+          </h2>
+          <Link
+            to="/pendenzen"
+            className="text-brand-600 dark:text-brand-300 text-xs hover:underline"
+          >
+            Alle anzeigen
+          </Link>
+        </div>
+        {itemsLoading ? (
+          <SkeletonList rows={2} />
+        ) : myItems.length === 0 ? (
+          <div className="card">
+            <EmptyState
+              icon={CheckCircle2}
+              title="Nichts offen"
+              description="Dir ist aktuell keine Pendenz zugewiesen."
+            />
+          </div>
+        ) : (
+          <div className="space-y-2">
+            {myItems.slice(0, view.myItems).map((item) => (
+              <AgendaItemCard
+                key={item.id}
+                item={item}
+                compact
+                showDoneToggle={false}
+                onOpen={handleOpenItem}
+              />
+            ))}
+          </div>
+        )}
+      </section>
+    ),
+  }
+
+  const areas = useMemo(() => {
+    const result: Record<DashboardArea, DashboardTileId[]> = { main: [], side: [], full: [] }
+    view.tiles.filter((tile) => tile.visible).forEach((tile) => result[tile.area].push(tile.id))
+    return result
+  }, [view.tiles])
+
+  const hasMain = areas.main.length > 0
+  const hasSide = areas.side.length > 0
+  const nothingVisible = !hasMain && !hasSide && areas.full.length === 0
+
   return (
     <>
       <PageHeader
         title={`${greeting}, ${profile?.displayName.split(' ')[0] ?? ''}`}
         subtitle={settings.wardName}
         actions={
-          <button type="button" className="btn-primary" onClick={() => setFormOpen(true)}>
-            <Plus className="size-4" aria-hidden />
-            <span className="hidden sm:inline">Traktandum</span>
-          </button>
+          <>
+            <DashboardMenu view={view} onChange={setView} />
+            <AddButton label="Traktandum" onClick={() => setFormOpen(true)} />
+          </>
         }
       />
 
@@ -190,233 +520,40 @@ export function Dashboard() {
         </Link>
       )}
 
-      <div className="grid gap-4 lg:grid-cols-3">
-        {/* ---------- Nächste Sitzung ---------- */}
-        <section className="lg:col-span-2">
-          {meetingsLoading ? (
-            <SkeletonList rows={1} />
-          ) : nextMeeting && nextMeetingRef ? (
-            <div className="card overflow-hidden">
-              <div className="from-brand-600 to-brand-700 bg-gradient-to-br p-5 text-white">
-                <div className="flex items-start justify-between gap-3">
-                  <div className="min-w-0">
-                    <p className="text-brand-100 text-xs font-medium tracking-wide uppercase">
-                      {nextMeeting.status === 'running'
-                        ? 'Sitzung läuft'
-                        : daysToMeeting === 0
-                          ? 'Heute'
-                          : daysToMeeting === 1
-                            ? 'Morgen'
-                            : daysToMeeting != null && daysToMeeting > 0
-                              ? `In ${daysToMeeting} Tagen`
-                              : 'Überfällig'}
-                    </p>
-                    <h2 className="mt-1 truncate text-lg font-semibold">{nextMeeting.title}</h2>
-                    <p className="text-brand-100 mt-0.5 text-sm">
-                      {formatDateLong(nextMeeting.date)} · {formatTime(nextMeeting.date)}
-                      {nextMeeting.location && ` · ${nextMeeting.location}`}
-                    </p>
-                  </div>
-                  <MeetingStatusBadge status={nextMeeting.status} />
-                </div>
-
-                <div className="mt-4 flex flex-wrap gap-2">
-                  <Link
-                    to={`/sitzungen/${nextMeeting.id}`}
-                    className="btn text-brand-800 bg-white hover:bg-brand-50"
-                  >
-                    {nextMeeting.status === 'running' ? (
-                      <>
-                        <Play className="size-4" aria-hidden />
-                        Weiterführen
-                      </>
-                    ) : (
-                      <>
-                        <CalendarDays className="size-4" aria-hidden />
-                        Sitzung öffnen
-                      </>
-                    )}
-                  </Link>
-                  {unassignedCount > 0 && (
-                    <Link
-                      to={`/sitzungen/${nextMeeting.id}`}
-                      className="btn border border-white/30 text-white hover:bg-white/10"
-                    >
-                      {unassignedCount} Pendenz{unassignedCount === 1 ? '' : 'en'} übernehmen
-                    </Link>
-                  )}
-                </div>
-              </div>
-
-              <div className="p-4">
-                <div className="mb-3 flex items-center justify-between">
-                  <h3 className="text-sm font-medium">Traktanden dieser Sitzung</h3>
-                  <span className="text-xs text-slate-500 dark:text-slate-400">
-                    {meetingItems.length} offen
-                  </span>
-                </div>
-                {meetingItems.length === 0 ? (
-                  <p className="py-3 text-center text-sm text-slate-500 dark:text-slate-400">
-                    Noch nichts traktandiert.
-                  </p>
-                ) : (
-                  <div className="space-y-2">
-                    {meetingItems.slice(0, 4).map((item) => (
-                      <AgendaItemCard key={item.id} item={item} compact onOpen={handleOpenItem} />
-                    ))}
-                    {meetingItems.length > 4 && (
-                      <Link
-                        to={`/sitzungen/${nextMeeting.id}`}
-                        className="text-brand-600 dark:text-brand-300 flex items-center justify-center gap-1 py-2 text-sm hover:underline"
-                      >
-                        Alle {meetingItems.length} anzeigen
-                        <ArrowRight className="size-3.5" aria-hidden />
-                      </Link>
-                    )}
-                  </div>
-                )}
-              </div>
-            </div>
-          ) : (
-            <div className="card">
-              <EmptyState
-                icon={CalendarDays}
-                title="Keine Sitzung geplant"
-                description="Lege den nächsten Termin fest, damit Traktanden zugeordnet werden können."
-                action={
-                  <Link to="/sitzungen" className="btn-primary">
-                    <Plus className="size-4" aria-hidden />
-                    Sitzung planen
-                  </Link>
-                }
-              />
+      {nothingVisible ? (
+        <div className="card">
+          <EmptyState
+            icon={LayoutDashboard}
+            title="Alle Kacheln ausgeblendet"
+            description="Unter «Ansicht» oben rechts lässt sich wieder einblenden, was hier stehen soll."
+          />
+        </div>
+      ) : (
+        <div className={cn('grid gap-4', hasMain && hasSide && 'lg:grid-cols-3')}>
+          {hasMain && (
+            <div className={cn('space-y-4', hasSide && 'lg:col-span-2')}>
+              {areas.main.map((id) => (
+                <div key={id}>{tiles[id]}</div>
+              ))}
             </div>
           )}
-        </section>
-
-        {/* ---------- Rechte Spalte ---------- */}
-        <div className="space-y-4">
-          <StatRow pendenzen={pendenzen.length} mine={myItems.length} openTalks={openTalkCount} />
-
-          {/* Ansprachen */}
-          <section className="card p-4">
-            <div className="mb-3 flex items-center justify-between">
-              <h3 className="flex items-center gap-2 text-sm font-medium">
-                <Mic className="size-4 text-slate-400" aria-hidden />
-                Ansprachen
-              </h3>
-              <Link
-                to="/abendmahl/ansprachen"
-                className="text-brand-600 dark:text-brand-300 text-xs hover:underline"
-              >
-                Planen
-              </Link>
-            </div>
-            <ul className="divide-list -mx-1">
-              {talkGaps.slice(0, 4).map((gap) => (
-                <li
-                  key={gap.date.toISOString()}
-                  className="flex items-center justify-between px-1 py-2 text-sm"
-                >
-                  <span>{formatDateShort(gap.date)}</span>
-                  {!gap.program.plansTalks ? (
-                    /* Zeugnisversammlung, Konferenz, Darbietung der Kinder:
-                       Hier fehlt nichts – hier ist nichts vorgesehen. */
-                    <span className="badge bg-slate-100 text-slate-600 dark:bg-slate-800 dark:text-slate-300">
-                      {gap.program.label}
-                    </span>
-                  ) : gap.open === 0 ? (
-                    <span className="badge bg-emerald-100 text-emerald-800 dark:bg-emerald-950 dark:text-emerald-200">
-                      <CheckCircle2 className="size-3" aria-hidden />
-                      Vollständig
-                    </span>
-                  ) : (
-                    <span className="badge bg-amber-100 text-amber-800 dark:bg-amber-950 dark:text-amber-200">
-                      {gap.open} offen
-                    </span>
-                  )}
-                </li>
+          {hasSide && (
+            <div className="space-y-4">
+              {areas.side.map((id) => (
+                <div key={id}>{tiles[id]}</div>
               ))}
-            </ul>
-          </section>
-
-          {/* Geburtstage */}
-          {birthdays.length > 0 && (
-            <section className="card p-4">
-              <h3 className="mb-3 flex items-center gap-2 text-sm font-medium">
-                <Cake className="size-4 text-slate-400" aria-hidden />
-                Geburtstage
-              </h3>
-              <ul className="space-y-2 text-sm">
-                {birthdays.map((member) => (
-                  <li key={member.id} className="flex items-center justify-between gap-2">
-                    <Link
-                      to={`/mitglieder/${member.id}`}
-                      className="min-w-0 truncate hover:underline"
-                    >
-                      {member.firstName} {member.lastName}
-                    </Link>
-                    <span className="shrink-0 text-xs text-slate-500 dark:text-slate-400">
-                      {/* «Do., 06.08.» – ohne Jahr, aber vollständig. Früher stand
-                          hier ein abgeschnittenes Datum mit einer Null am Ende. */}
-                      {formatDayShort(
-                        (() => {
-                          const date = toDate(member.birthDate)!
-                          const today = startOfDay(new Date())
-                          const next = new Date(
-                            today.getFullYear(),
-                            date.getMonth(),
-                            date.getDate(),
-                          )
-                          if (next < today) next.setFullYear(today.getFullYear() + 1)
-                          return next
-                        })(),
-                      )}
-                    </span>
-                  </li>
-                ))}
-              </ul>
-            </section>
+            </div>
           )}
         </div>
-      </div>
+      )}
 
-      {/* ---------- Pendenzen ----------
-           Eine Spalte, seit die zweite weggefallen ist: Dort stand
-           «Überfällig», und ein Fälligkeitsdatum gibt es nicht mehr. */}
-      <div className="mt-6">
-        <section>
-          <div className="mb-3 flex items-center justify-between">
-            <h2 className="flex items-center gap-2 text-sm font-semibold">
-              <ListTodo className="size-4 text-slate-400" aria-hidden />
-              Meine Pendenzen
-            </h2>
-            <Link
-              to="/pendenzen"
-              className="text-brand-600 dark:text-brand-300 text-xs hover:underline"
-            >
-              Alle anzeigen
-            </Link>
-          </div>
-          {itemsLoading ? (
-            <SkeletonList rows={2} />
-          ) : myItems.length === 0 ? (
-            <div className="card">
-              <EmptyState
-                icon={CheckCircle2}
-                title="Nichts offen"
-                description="Dir ist aktuell keine Pendenz zugewiesen."
-              />
-            </div>
-          ) : (
-            <div className="space-y-2">
-              {myItems.slice(0, 5).map((item) => (
-                <AgendaItemCard key={item.id} item={item} compact onOpen={handleOpenItem} />
-              ))}
-            </div>
-          )}
-        </section>
-      </div>
+      {areas.full.length > 0 && (
+        <div className="mt-6 space-y-6">
+          {areas.full.map((id) => (
+            <div key={id}>{tiles[id]}</div>
+          ))}
+        </div>
+      )}
 
       <AgendaItemForm
         open={formOpen}
@@ -425,6 +562,150 @@ export function Dashboard() {
         defaultStatus={nextMeeting?.status === 'running' ? 'pending' : 'new'}
       />
     </>
+  )
+}
+
+/* ------------------------------------------------------------------ */
+/* Ansicht anpassen                                                    */
+/* ------------------------------------------------------------------ */
+
+/**
+ * Das Ansichtsmenü der Übersicht.
+ *
+ * Oben die Kacheln, je eine Zeile: verschieben, an einen anderen Platz
+ * hängen, ein- und ausblenden. Darunter die Zahlen, die sich einstellen
+ * lassen – und zwar nur die, deren Kachel überhaupt sichtbar ist. Eine
+ * Einstellung für etwas Ausgeblendetes ist eine Frage ohne Wirkung.
+ */
+function DashboardMenu({
+  view,
+  onChange,
+}: {
+  view: DashboardView
+  onChange: (next: DashboardView) => void
+}) {
+  const patch = (changes: Partial<DashboardView>) => onChange({ ...view, ...changes })
+
+  const move = (index: number, delta: number) => {
+    const target = index + delta
+    if (target < 0 || target >= view.tiles.length) return
+    const tiles = [...view.tiles]
+    const [tile] = tiles.splice(index, 1)
+    tiles.splice(target, 0, tile)
+    patch({ tiles })
+  }
+
+  const update = (index: number, changes: Partial<DashboardView['tiles'][number]>) =>
+    patch({ tiles: view.tiles.map((tile, i) => (i === index ? { ...tile, ...changes } : tile)) })
+
+  const shown = (id: DashboardTileId) => view.tiles.some((tile) => tile.id === id && tile.visible)
+
+  return (
+    <ViewMenu width="w-[24rem]">
+      <MenuSection
+        label="Kacheln"
+        hint="Haken blendet ein, die Pfeile ordnen, «Haupt / Seite / Breit» bestimmt den Platz."
+      >
+        <ul className="space-y-1">
+          {view.tiles.map((tile, index) => (
+            <li key={tile.id} className="flex items-center gap-1.5">
+              <span className="-my-1 flex shrink-0 flex-col">
+                <button
+                  type="button"
+                  className="btn-ghost p-0.5"
+                  onClick={() => move(index, -1)}
+                  disabled={index === 0}
+                  aria-label={`${DASHBOARD_TILE_LABELS[tile.id]} nach oben`}
+                >
+                  <ChevronUp className="size-3.5" aria-hidden />
+                </button>
+                <button
+                  type="button"
+                  className="btn-ghost p-0.5"
+                  onClick={() => move(index, 1)}
+                  disabled={index === view.tiles.length - 1}
+                  aria-label={`${DASHBOARD_TILE_LABELS[tile.id]} nach unten`}
+                >
+                  <ChevronDown className="size-3.5" aria-hidden />
+                </button>
+              </span>
+
+              <input
+                type="checkbox"
+                className="size-4 shrink-0 rounded"
+                checked={tile.visible}
+                onChange={(event) => update(index, { visible: event.target.checked })}
+                aria-label={`${DASHBOARD_TILE_LABELS[tile.id]} anzeigen`}
+              />
+
+              <span
+                className={cn(
+                  'min-w-0 flex-1 truncate text-sm',
+                  !tile.visible && 'text-slate-400 dark:text-slate-500',
+                )}
+              >
+                {DASHBOARD_TILE_LABELS[tile.id]}
+              </span>
+
+              <select
+                className="input w-auto shrink-0 px-2 py-1 text-xs"
+                value={tile.area}
+                onChange={(event) => update(index, { area: event.target.value as DashboardArea })}
+                aria-label={`${DASHBOARD_TILE_LABELS[tile.id]}: Platz`}
+                disabled={!tile.visible}
+              >
+                {(Object.keys(DASHBOARD_AREA_LABELS) as DashboardArea[]).map((area) => (
+                  <option key={area} value={area}>
+                    {DASHBOARD_AREA_LABELS[area]}
+                  </option>
+                ))}
+              </select>
+            </li>
+          ))}
+        </ul>
+      </MenuSection>
+
+      <MenuSection label="Wie viel je Kachel">
+        <div className="space-y-1.5">
+          {shown('meeting') && (
+            <MenuCounter
+              label="Traktanden der nächsten Sitzung"
+              value={view.meetingItems}
+              onChange={(meetingItems) => patch({ meetingItems })}
+              min={1}
+              max={20}
+            />
+          )}
+          {shown('pendenzen') && (
+            <MenuCounter
+              label="Eigene Pendenzen"
+              value={view.myItems}
+              onChange={(myItems) => patch({ myItems })}
+              min={1}
+              max={20}
+            />
+          )}
+          {shown('talks') && (
+            <MenuCounter
+              label="Sonntage bei den Ansprachen"
+              value={view.talkSundays}
+              onChange={(talkSundays) => patch({ talkSundays })}
+              min={1}
+              max={6}
+            />
+          )}
+          {shown('ap') && (
+            <MenuCounter
+              label="AP-Termine"
+              value={view.apActivities}
+              onChange={(apActivities) => patch({ apActivities })}
+              min={1}
+              max={4}
+            />
+          )}
+        </div>
+      </MenuSection>
+    </ViewMenu>
   )
 }
 

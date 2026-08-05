@@ -1,12 +1,10 @@
-import { useState } from 'react'
 import { ChevronDown, ChevronUp, ClipboardList, Plus, Trash2 } from 'lucide-react'
 import { useToast } from '@/contexts/ToastContext'
 import { EmptyState } from '@/components/ui/Feedback'
 import { BusinessFields } from '@/components/sacrament/BusinessFields'
 import { ConflictNotice, SectionHeader, useSacrament } from '@/components/sacrament/SacramentLayout'
-import { useDraft } from '@/components/sacrament/useDraft'
+import { useAutoDraft } from '@/components/sacrament/useDraft'
 import {
-  isBusinessEmpty,
   moveInList,
   newBusinessEntry,
   replaceInList,
@@ -22,6 +20,11 @@ import type { BusinessEntry } from '@/lib/types'
  * Aufgabe** gemeint ist. Die Person kommt aus dem Mitgliederverzeichnis –
  * getippt wird der Anfang des Namens, gewählt wird aus den Treffern.
  *
+ * Gespeichert wird laufend: kurz nach der letzten Eingabe und spätestens beim
+ * Verlassen der Seite. Einen Speichern-Knopf gibt es nicht – er war die
+ * einzige Stelle, an der sich Eingetragenes verlieren liess, und am Telefon
+ * die wahrscheinlichste.
+ *
  * Was hier steht, **ändert an keiner Berufung etwas**. Wer welche Berufung
  * hat, sagt allein das LCR und der Import von dort; diese Liste ist der
  * Wortlaut für den Sonntag und sonst nichts. Früher liessen sich Einträge
@@ -32,50 +35,35 @@ export function WardBusiness() {
   const { date, meeting } = useSacrament()
   const toast = useToast()
 
-  const draft = useDraft<BusinessEntry[]>(meeting?.business ?? [])
-  const [saving, setSaving] = useState(false)
+  /*
+   * Geschrieben wird die Liste, wie sie dasteht – auch die eben angelegte,
+   * noch leere Zeile. Sie beim Speichern wegzulassen hiesse, sie eine Sekunde
+   * nach dem Anlegen unter den Fingern verschwinden zu lassen. Gelesen wird
+   * ohnehin gefiltert (siehe «Leitung»), und weg ist eine Zeile mit einem
+   * Griff auf den Papierkorb.
+   */
+  const draft = useAutoDraft<BusinessEntry[]>(
+    meeting?.business ?? [],
+    (value) => saveSacramentMeeting(date, { business: value }),
+    { onError: () => toast.error('Speichern fehlgeschlagen.') },
+  )
 
   const entries = draft.value
   const change = draft.set
-
-  const save = async () => {
-    setSaving(true)
-    try {
-      const cleaned = entries.filter((entry) => !isBusinessEmpty(entry))
-      const outcome = await saveSacramentMeeting(date, { business: cleaned })
-      draft.reset()
-      toast.saved('Angelegenheiten gespeichert.', outcome)
-    } catch (error) {
-      console.error(error)
-      toast.error('Speichern fehlgeschlagen.')
-    } finally {
-      setSaving(false)
-    }
-  }
 
   return (
     <>
       <SectionHeader
         title="Angelegenheiten der Gemeinde"
         actions={
-          <>
-            <button
-              type="button"
-              className="btn-secondary"
-              onClick={() => change([...entries, newBusinessEntry()])}
-            >
-              <Plus className="size-4" aria-hidden />
-              Eintrag
-            </button>
-            <button
-              type="button"
-              className="btn-primary"
-              onClick={() => void save()}
-              disabled={!draft.dirty || saving}
-            >
-              {saving ? 'Wird gespeichert …' : draft.conflict ? 'Trotzdem speichern' : 'Speichern'}
-            </button>
-          </>
+          <button
+            type="button"
+            className="btn-secondary"
+            onClick={() => change([...entries, newBusinessEntry()])}
+          >
+            <Plus className="size-4" aria-hidden />
+            Eintrag
+          </button>
         }
       />
 
@@ -144,9 +132,9 @@ export function WardBusiness() {
         </ul>
       )}
 
-      {draft.dirty && (
-        <p className="mt-3 text-center text-xs text-amber-700 dark:text-amber-400">
-          Ungespeicherte Änderungen
+      {draft.saving && (
+        <p className="mt-3 text-center text-xs text-slate-500 dark:text-slate-400">
+          Wird gespeichert …
         </p>
       )}
     </>

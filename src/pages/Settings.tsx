@@ -24,6 +24,7 @@ import {
 import { useAuth } from '@/contexts/AuthContext'
 import { useData } from '@/contexts/DataContext'
 import { useToast } from '@/contexts/ToastContext'
+import { useAutosave, saveStateLabel } from '@/hooks/useAutosave'
 import { PageHeader } from '@/components/ui/Pickers'
 import { ConfirmDialog } from '@/components/ui/Modal'
 import { Avatar } from '@/components/ui/Avatar'
@@ -107,7 +108,6 @@ export function Settings() {
   const toast = useToast()
 
   const [form, setForm] = useState<AppSettings>(settings)
-  const [saving, setSaving] = useState(false)
   const [displayName, setDisplayName] = useState(profile?.displayName ?? '')
 
   // Einstellungen aus Firestore übernehmen, sobald sie geladen sind.
@@ -117,18 +117,25 @@ export function Settings() {
   const update = <K extends keyof AppSettings>(key: K, value: AppSettings[K]) =>
     setForm((current) => ({ ...current, [key]: value }))
 
-  const save = async () => {
-    setSaving(true)
-    try {
-      const outcome = await saveSettings(form)
-      toast.saved('Einstellungen gespeichert.', outcome)
-    } catch (error) {
-      console.error(error)
-      toast.error('Speichern fehlgeschlagen.')
-    } finally {
-      setSaving(false)
-    }
-  }
+  /*
+   * Auch hier gilt: kein Speichern-Knopf.
+   *
+   * Eine Einstellung wird angetippt und die Seite verlassen – wer dazwischen
+   * noch einen Knopf treffen muss, hat irgendwann eine Zahl geändert, die
+   * nirgends ankam. Geschrieben wird deshalb kurz nach der letzten Änderung
+   * und spätestens beim Verlassen der Seite.
+   *
+   * `savable` vergleicht mit dem Stand aus Firestore: Sonst schriebe schon
+   * das erste Eintreffen der Einstellungen sie unverändert wieder zurück –
+   * der Zustand hier folgt ja dem Schnappschuss.
+   */
+  const autosave = useAutosave(
+    form,
+    async (value) => {
+      await saveSettings(value)
+    },
+    { savable: (value) => JSON.stringify(value) !== JSON.stringify(settings) },
+  )
 
   const saveProfile = async () => {
     if (!profile || !displayName.trim()) return
@@ -418,17 +425,9 @@ export function Settings() {
           </div>
         </section>
 
-        <div className="flex justify-end">
-          <button
-            type="button"
-            className="btn-primary"
-            onClick={() => void save()}
-            disabled={saving}
-          >
-            <Check className="size-4" aria-hidden />
-            {saving ? 'Wird gespeichert …' : 'Einstellungen speichern'}
-          </button>
-        </div>
+        <p className="text-right text-xs text-slate-500 dark:text-slate-400" aria-live="polite">
+          {saveStateLabel(autosave.state)}
+        </p>
 
         {/* ---------- Benutzer ----------
             Das Sprungziel der Übersicht: Wer dort auf «neue Registrierung»

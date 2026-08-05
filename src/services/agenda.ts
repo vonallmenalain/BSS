@@ -17,7 +17,7 @@ import { db, COLLECTIONS } from '@/lib/firebase'
 import { stripUndefined, uid } from '@/lib/utils'
 import { commit, type SaveOutcome } from '@/lib/sync'
 import type { AgendaItem, HistoryEntry, ItemKind, ItemLayout, ItemStatus } from '@/lib/types'
-import { ITEM_STATUS_LABELS, OPEN_STATUS_QUERY, toItemKind } from '@/lib/types'
+import { ITEM_KIND_LABELS, ITEM_STATUS_LABELS, OPEN_STATUS_QUERY, toItemKind } from '@/lib/types'
 
 const itemsRef = collection(db, COLLECTIONS.agendaItems)
 
@@ -34,6 +34,16 @@ export interface AgendaItemInput {
   assignees?: string[]
   memberRefs?: string[]
   order?: number
+  /**
+   * Traktandum oder Pendenz.
+   *
+   * Normalerweise entsteht ein Eintrag als **Traktandum** und wird erst zur
+   * Pendenz, wenn er eine Sitzung übersteht. Wer unter «Pendenzen» etwas
+   * erfasst, meint dagegen von Anfang an eine Pendenz: eine Aufgabe, die
+   * jemand mitnimmt, und kein Thema, über das gesprochen wird. Beides landet
+   * in derselben Sitzung, aber unter der richtigen Überschrift.
+   */
+  kind?: ItemKind
   /** Selbst gebautes Raster statt der Beschreibung – siehe `lib/layout` */
   layout?: ItemLayout | null
 }
@@ -51,6 +61,10 @@ function historyEntry(action: string, actor: Actor): HistoryEntry {
 export async function createAgendaItem(input: AgendaItemInput, actor: Actor): Promise<string> {
   // Die ID entsteht im Client, damit sie auch ohne Netz sofort feststeht.
   const docRef = doc(itemsRef)
+  // Was neu erfasst wird, ist normalerweise ein Traktandum. Zur Pendenz wird
+  // es erst, wenn es eine Sitzung überlebt (siehe `closeMeeting`) – es sei
+  // denn, es wurde ausdrücklich als solche erfasst.
+  const kind: ItemKind = input.kind ?? 'traktandum'
   await commit(
     setDoc(docRef, {
       title: input.title.trim(),
@@ -58,15 +72,15 @@ export async function createAgendaItem(input: AgendaItemInput, actor: Actor): Pr
       meetingId: input.meetingId ?? null,
       firstMeetingId: input.meetingId ?? null,
       order: input.order ?? Date.now(),
-      // Was neu erfasst wird, ist ein Traktandum. Zur Pendenz wird es erst,
-      // wenn es eine Sitzung überlebt (siehe `closeMeeting`).
-      kind: 'traktandum' satisfies ItemKind,
-      status: input.status ?? 'new',
+      kind,
+      // Eine Pendenz ist nie «neu»: Sie steht von Anfang an auf der Liste
+      // dessen, was noch zu tun ist.
+      status: input.status ?? (kind === 'pendenz' ? 'pending' : 'new'),
       assignees: input.assignees ?? [],
       memberRefs: input.memberRefs ?? [],
       layout: input.layout ?? null,
       deferCount: 0,
-      history: [historyEntry('Traktandum erstellt', actor)],
+      history: [historyEntry(`${ITEM_KIND_LABELS[kind]} erstellt`, actor)],
       createdAt: serverTimestamp(),
       updatedAt: serverTimestamp(),
       createdBy: actor.id,

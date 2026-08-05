@@ -4,12 +4,10 @@ import {
   CalendarDays,
   CalendarPlus,
   Check,
-  ChevronDown,
   Eye,
   Info,
   Pencil,
   Plus,
-  Settings2,
   Sparkles,
 } from 'lucide-react'
 import { useAuth } from '@/contexts/AuthContext'
@@ -30,7 +28,8 @@ import {
 import { ApActivityForm } from '@/components/ap/ApActivityForm'
 import { ApScheduleDialog } from '@/components/ap/ApScheduleDialog'
 import { EmptyState, SkeletonList } from '@/components/ui/Feedback'
-import { PageHeader, SegmentedControl } from '@/components/ui/Pickers'
+import { PageHeader } from '@/components/ui/Pickers'
+import { MenuChoice, ViewMenu } from '@/components/ui/ViewMenu'
 import { cn } from '@/lib/utils'
 import { differenceInCalendarDays, formatMonth, startOfDay, toDateInput } from '@/lib/dates'
 import { apActivityEnd, saveApMonth } from '@/services/apActivities'
@@ -183,7 +182,7 @@ export function ApActivities() {
         }
         actions={
           <>
-            <ViewMenu view={view} onChange={setView} counts={counts} />
+            <ApViewMenu view={view} onChange={setView} counts={counts} />
 
             {canEditAp &&
               (editMode ? (
@@ -336,10 +335,16 @@ export function ApActivities() {
  * drei beantworten dieselbe Frage, nämlich wie man den Plan gerade ansehen
  * will.
  *
+ * Der Knopf heisst «Ansicht» wie auf jeder anderen Seite und nicht mehr nach
+ * dem gewählten Zeitraum: Was dahintersteckt, ist überall dasselbe, und ein
+ * Knopf, dessen Beschriftung wechselt, ist zweimal derselbe Knopf mit zwei
+ * Namen. Das Menü ist zugleich breit genug, dass «Ganzer Plan» ganz
+ * hineinpasst – vorher stand es halb abgeschnitten am Rand.
+ *
  * Die getroffene Wahl bleibt: im Browser und am Konto (siehe
  * `hooks/useApView`).
  */
-function ViewMenu({
+function ApViewMenu({
   view,
   onChange,
   counts,
@@ -348,84 +353,37 @@ function ViewMenu({
   onChange: (patch: Partial<ApView>) => void
   counts: Record<ApView['scope'], number>
 }) {
-  const [open, setOpen] = useState(false)
-
   return (
-    <div className="relative">
-      <button
-        type="button"
-        className="btn-secondary"
-        onClick={() => setOpen((value) => !value)}
-        aria-expanded={open}
-        aria-label="Ansicht einstellen"
-      >
-        <Settings2 className="size-4" aria-hidden />
-        <span className="hidden sm:inline">{AP_SCOPE_LABELS[view.scope]}</span>
-        <ChevronDown className="size-3" aria-hidden />
-      </button>
-
-      {open && (
-        <>
-          <div className="fixed inset-0 z-10" onClick={() => setOpen(false)} aria-hidden />
-          <div className="animate-scale-in absolute right-0 z-20 mt-1 w-72 origin-top-right space-y-3 rounded-xl border border-slate-200 bg-white p-3 shadow-lg dark:border-slate-700 dark:bg-slate-800">
-            <Choice
-              label="Zeitraum"
-              value={view.scope}
-              onChange={(scope) => onChange({ scope })}
-              options={(Object.keys(AP_SCOPE_LABELS) as ApView['scope'][]).map((value) => ({
-                value,
-                label: AP_SCOPE_LABELS[value],
-                count: counts[value],
-              }))}
-            />
-            <Choice
-              label="Darstellung"
-              value={view.mode}
-              onChange={(mode) => onChange({ mode })}
-              options={(Object.keys(AP_VIEW_MODE_LABELS) as ApView['mode'][]).map((value) => ({
-                value,
-                label: AP_VIEW_MODE_LABELS[value],
-              }))}
-            />
-            <Choice
-              label="Abstand"
-              value={view.density}
-              onChange={(density) => onChange({ density })}
-              options={(Object.keys(AP_DENSITY_LABELS) as ApView['density'][]).map((value) => ({
-                value,
-                label: AP_DENSITY_LABELS[value],
-              }))}
-            />
-          </div>
-        </>
-      )}
-    </div>
-  )
-}
-
-/** Eine beschriftete Umschaltgruppe im Ansichtsmenü. */
-function Choice<T extends string>({
-  label,
-  value,
-  onChange,
-  options,
-}: {
-  label: string
-  value: T
-  onChange: (next: T) => void
-  options: { value: T; label: string; count?: number }[]
-}) {
-  return (
-    <div>
-      <span className="label">{label}</span>
-      <SegmentedControl<T>
-        value={value}
-        onChange={onChange}
-        size="sm"
-        options={options}
-        className="w-full"
+    <ViewMenu width="w-[22rem]">
+      <MenuChoice<ApView['scope']>
+        label="Zeitraum"
+        value={view.scope}
+        onChange={(scope) => onChange({ scope })}
+        options={(Object.keys(AP_SCOPE_LABELS) as ApView['scope'][]).map((value) => ({
+          value,
+          label: AP_SCOPE_LABELS[value],
+          count: counts[value],
+        }))}
       />
-    </div>
+      <MenuChoice<ApView['mode']>
+        label="Darstellung"
+        value={view.mode}
+        onChange={(mode) => onChange({ mode })}
+        options={(Object.keys(AP_VIEW_MODE_LABELS) as ApView['mode'][]).map((value) => ({
+          value,
+          label: AP_VIEW_MODE_LABELS[value],
+        }))}
+      />
+      <MenuChoice<ApView['density']>
+        label="Abstand"
+        value={view.density}
+        onChange={(density) => onChange({ density })}
+        options={(Object.keys(AP_DENSITY_LABELS) as ApView['density'][]).map((value) => ({
+          value,
+          label: AP_DENSITY_LABELS[value],
+        }))}
+      />
+    </ViewMenu>
   )
 }
 

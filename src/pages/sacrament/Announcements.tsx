@@ -80,24 +80,6 @@ export function Announcements() {
   const [editSeries, setEditSeries] = useState<AnnouncementSeries | null>(null)
   const [removeSeries, setRemoveSeries] = useState<AnnouncementSeries | null>(null)
 
-  /*
-   * Speichern und stehen bleiben. Früher führte der Knopf zurück, wo man
-   * hergekommen war – wer vorher bei den Ansprachen gewesen war, landete nach
-   * dem Speichern dort und damit mitten aus der Arbeit gerissen.
-   */
-  const save = async () => {
-    // Leere Einträge fallen zum Schluss weg – so bleibt die Liste sauber.
-    const cleaned = entries.filter((entry) => entry.text.trim())
-    try {
-      const outcome = await saveSacramentMeeting(date, { announcements: cleaned })
-      draft.reset()
-      toast.saved('Bekanntmachungen gespeichert.', outcome)
-    } catch (error) {
-      console.error(error)
-      toast.error('Speichern fehlgeschlagen.')
-    }
-  }
-
   /**
    * Eine Serie an diesem Sonntag von Hand übernehmen.
    *
@@ -142,9 +124,6 @@ export function Announcements() {
             >
               <Plus className="size-4" aria-hidden />
               Bekanntmachung
-            </button>
-            <button type="button" className="btn-primary" onClick={() => void save()}>
-              Speichern
             </button>
           </>
         }

@@ -66,22 +66,11 @@ export function Cleaning() {
 
   return (
     <>
-      <PageHeader
-        title="Putzplan"
-        actions={
-          <button
-            type="button"
-            className="btn-primary"
-            onClick={() => {
-              setEditWeek(null)
-              setFormOpen(true)
-            }}
-          >
-            <Plus className="size-4" aria-hidden />
-            <span className="hidden sm:inline">Woche</span>
-          </button>
-        }
-      />
+      {/* Oben rechts steht nichts: Der Plan kommt zweimal im Jahr als Tabelle
+          und wird eingelesen, nicht Woche für Woche erfasst. Wer eine einzelne
+          korrigieren muss, tut das am Stift in der Zeile – und ganz ohne Plan
+          führt der leere Zustand zum Formular. */}
+      <PageHeader title="Putzplan" />
 
       <NextSunday weeks={weeks} />
 

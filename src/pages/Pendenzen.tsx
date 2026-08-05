@@ -1,18 +1,20 @@
 import { useCallback, useMemo, useState } from 'react'
 import { useSearchParams } from 'react-router-dom'
-import { Check, CheckCircle2, ChevronDown, Search, SlidersHorizontal } from 'lucide-react'
+import { Check, CheckCircle2, Plus, Search } from 'lucide-react'
 import { useAuth } from '@/contexts/AuthContext'
 import { useData } from '@/contexts/DataContext'
 import { useDoneItems, useMeetings, useOpenItems } from '@/hooks/useFirestore'
+import { AgendaItemForm } from '@/components/agenda/AgendaItemForm'
 import { AgendaItemRow } from '@/components/agenda/AgendaItemRow'
 import { FOCUS_PARAM } from '@/components/agenda/MeetingFocus'
 import { EmptyState, SkeletonList } from '@/components/ui/Feedback'
 import { PageHeader, SegmentedControl } from '@/components/ui/Pickers'
+import { AddButton, MenuSection, ViewMenu } from '@/components/ui/ViewMenu'
 import { useLocalStorage } from '@/hooks/useLocalStorage'
 import { formatDateLong, formatDateShort, toDate, toDateInput } from '@/lib/dates'
 import { layoutToText } from '@/lib/layout'
 import { cn, matchesSearch } from '@/lib/utils'
-import { toItemKind, type AgendaItem } from '@/lib/types'
+import { toItemKind, type AgendaItem, type MeetingStatus } from '@/lib/types'
 
 /** Welcher Ausschnitt gezeigt wird. */
 type Scope = 'open' | 'mine' | 'done'
@@ -112,10 +114,14 @@ function groupByDay(items: AgendaItem[], field: SortField): DayGroup[] {
 /**
  * Offene Pendenzen über alle Sitzungen hinweg – und das Erledigte daneben.
  *
- * Eine Übersicht, kein Eingabeort: Erfasst wird in der Sitzung, denn dort
- * gehört ein Punkt hin. Unter «Pendent» steht nur, was eine Sitzung
- * überstanden hat, ohne erledigt zu werden – ein neu erfasstes Traktandum
- * erscheint erst, wenn seine Sitzung abgeschlossen ist und der Haken fehlt.
+ * Unter «Pendent» steht, was eine Sitzung überstanden hat, ohne erledigt zu
+ * werden – ein in der Sitzung erfasstes Traktandum erscheint erst, wenn seine
+ * Sitzung abgeschlossen ist und der Haken fehlt.
+ *
+ * Erfasst wird auch hier: Der Knopf oben rechts fragt zuerst, ob ein
+ * **Traktandum** oder eine **Pendenz** entstehen soll. Beides landet in der
+ * nächsten Sitzung – das eine als Thema, über das gesprochen wird, das andere
+ * als Aufgabe, die dort unter den Pendenzen mitläuft.
  *
  * Fast alles trägt dabei den Namen seiner Sitzung. Ohne Sitzung steht nur,
  * was zwischen zwei Terminen liegt: Die letzte Sitzung ist abgeschlossen,
@@ -158,6 +164,7 @@ export function Pendenzen() {
 
   const [detail, setDetail] = useLocalStorage<Detail>('bss:pendenzen:umfang', 'titles')
   const [search, setSearch] = useState('')
+  const [formOpen, setFormOpen] = useState(false)
   const [searchParams, setSearchParams] = useSearchParams()
 
   /*
@@ -195,15 +202,28 @@ export function Pendenzen() {
     setDetail(next)
   }
 
-  /** Nächste offene Sitzung – Ziel für «auf nächste Sitzung verschieben». */
-  const nextMeetingRef = useMemo(() => {
+  /**
+   * Nächste offene Sitzung.
+   *
+   * Zwei Aufgaben: Ziel für «auf nächste Sitzung verschieben» – und für alles,
+   * was hier neu erfasst wird. Ist keine geplant, landet der Eintrag im
+   * Sammelkorb und wird beim Planen der nächsten Sitzung übernommen.
+   */
+  const nextMeeting = useMemo(() => {
     const next = meetings
       .filter((m) => m.status !== 'closed')
-      .map((m) => ({ id: m.id, date: toDate(m.date) }))
-      .filter((entry): entry is { id: string; date: Date } => entry.date !== null)
+      .map((m) => ({ id: m.id, date: toDate(m.date), status: m.status }))
+      .filter(
+        (entry): entry is { id: string; date: Date; status: MeetingStatus } => entry.date !== null,
+      )
       .sort((a, b) => a.date.getTime() - b.date.getTime())[0]
     return next ?? null
   }, [meetings])
+
+  const nextMeetingRef = useMemo(
+    () => (nextMeeting ? { id: nextMeeting.id, date: nextMeeting.date } : null),
+    [nextMeeting],
+  )
 
   const meetingLabels = useMemo(() => {
     const map = new Map<string, string>()
@@ -309,15 +329,18 @@ export function Pendenzen() {
         subtitle={
           scope === 'done'
             ? 'Abgeschlossene Traktanden und Pendenzen aus früheren Sitzungen'
-            : 'Was eine Sitzung überstanden hat, ohne erledigt zu werden'
+            : undefined
         }
         actions={
-          <ViewMenu
-            sort={sort}
-            onSortChange={setSort}
-            detail={detail}
-            onDetailChange={changeDetail}
-          />
+          <>
+            <PendenzenMenu
+              sort={sort}
+              onSortChange={setSort}
+              detail={detail}
+              onDetailChange={changeDetail}
+            />
+            <AddButton label="Pendenz" onClick={() => setFormOpen(true)} />
+          </>
         }
       />
 
@@ -368,7 +391,16 @@ export function Pendenzen() {
                 ? 'Kein Eintrag passt zur Suche.'
                 : scope === 'done'
                   ? 'Hier steht, was abgeschlossen wurde – auch das versehentlich Abgehakte.'
-                  : 'Alles erledigt – sehr gut. Neue Punkte werden in der Sitzung erfasst.'
+                  : 'Alles erledigt – sehr gut.'
+            }
+            action={
+              !searching &&
+              scope !== 'done' && (
+                <button type="button" className="btn-primary" onClick={() => setFormOpen(true)}>
+                  <Plus className="size-4" aria-hidden />
+                  Pendenz erfassen
+                </button>
+              )
             }
           />
         </div>
@@ -416,6 +448,18 @@ export function Pendenzen() {
           )}
         </div>
       )}
+
+      {/* Erfasst wird für die nächste Sitzung. Ist keine geplant, landet der
+          Eintrag im Sammelkorb und wird beim Planen mit einem Griff
+          übernommen. */}
+      <AgendaItemForm
+        open={formOpen}
+        onClose={() => setFormOpen(false)}
+        meetingId={nextMeeting?.id ?? null}
+        defaultStatus={nextMeeting?.status === 'running' ? 'pending' : 'new'}
+        kindChoice
+        defaultKind="pendenz"
+      />
     </>
   )
 }
@@ -432,7 +476,7 @@ export function Pendenzen() {
  * Liste und nähmen ihr den Platz; hier stehen sie beisammen und bleiben
  * offen, solange jemand daran dreht.
  */
-function ViewMenu({
+function PendenzenMenu({
   sort,
   onSortChange,
   detail,
@@ -443,74 +487,51 @@ function ViewMenu({
   detail: Detail
   onDetailChange: (next: Detail) => void
 }) {
-  const [open, setOpen] = useState(false)
-
   return (
-    <div className="relative" onKeyDown={(event) => event.key === 'Escape' && setOpen(false)}>
-      <button
-        type="button"
-        className="btn-secondary"
-        onClick={() => setOpen((value) => !value)}
-        aria-haspopup="menu"
-        aria-expanded={open}
-      >
-        <SlidersHorizontal className="size-4" aria-hidden />
-        Ansicht
-        <ChevronDown className={cn('size-3 transition', open && 'rotate-180')} aria-hidden />
-      </button>
+    <ViewMenu width="w-64">
+      <MenuSection label="Sortieren nach">
+        <div className="-mx-1">
+          {(Object.keys(SORT_FIELD_LABELS) as SortField[]).map((field) => (
+            <MenuRadio
+              key={field}
+              label={SORT_FIELD_LABELS[field]}
+              selected={sort.field === field}
+              onClick={() => onSortChange({ ...sort, field })}
+            />
+          ))}
+        </div>
+      </MenuSection>
 
-      {open && (
-        <>
-          <div className="fixed inset-0 z-10" onClick={() => setOpen(false)} aria-hidden />
-          <div
-            role="menu"
-            className="animate-scale-in absolute right-0 z-20 mt-1 w-60 origin-top-right rounded-xl border border-slate-200 bg-white p-1 shadow-lg dark:border-slate-700 dark:bg-slate-800"
-          >
-            <MenuLabel>Sortieren nach</MenuLabel>
-            {(Object.keys(SORT_FIELD_LABELS) as SortField[]).map((field) => (
-              <MenuChoice
-                key={field}
-                label={SORT_FIELD_LABELS[field]}
-                selected={sort.field === field}
-                onClick={() => onSortChange({ ...sort, field })}
-              />
-            ))}
+      <MenuSection label="Reihenfolge">
+        <div className="-mx-1">
+          {(Object.keys(SORT_DIR_LABELS) as SortDir[]).map((dir) => (
+            <MenuRadio
+              key={dir}
+              label={SORT_DIR_LABELS[dir]}
+              selected={sort.dir === dir}
+              onClick={() => onSortChange({ ...sort, dir })}
+            />
+          ))}
+        </div>
+      </MenuSection>
 
-            <MenuLabel>Reihenfolge</MenuLabel>
-            {(Object.keys(SORT_DIR_LABELS) as SortDir[]).map((dir) => (
-              <MenuChoice
-                key={dir}
-                label={SORT_DIR_LABELS[dir]}
-                selected={sort.dir === dir}
-                onClick={() => onSortChange({ ...sort, dir })}
-              />
-            ))}
-
-            <MenuLabel>Einträge</MenuLabel>
-            {(Object.keys(DETAIL_LABELS) as Detail[]).map((value) => (
-              <MenuChoice
-                key={value}
-                label={DETAIL_LABELS[value]}
-                selected={detail === value}
-                onClick={() => onDetailChange(value)}
-              />
-            ))}
-          </div>
-        </>
-      )}
-    </div>
+      <MenuSection label="Einträge">
+        <div className="-mx-1">
+          {(Object.keys(DETAIL_LABELS) as Detail[]).map((value) => (
+            <MenuRadio
+              key={value}
+              label={DETAIL_LABELS[value]}
+              selected={detail === value}
+              onClick={() => onDetailChange(value)}
+            />
+          ))}
+        </div>
+      </MenuSection>
+    </ViewMenu>
   )
 }
 
-function MenuLabel({ children }: { children: React.ReactNode }) {
-  return (
-    <p className="px-3 pt-2 pb-1 text-xs font-semibold text-slate-400 dark:text-slate-500">
-      {children}
-    </p>
-  )
-}
-
-function MenuChoice({
+function MenuRadio({
   label,
   selected,
   onClick,
@@ -526,7 +547,7 @@ function MenuChoice({
       aria-checked={selected}
       onClick={onClick}
       className={cn(
-        'flex w-full items-center gap-2 rounded-lg px-3 py-2 text-left text-sm transition hover:bg-slate-100 dark:hover:bg-slate-700',
+        'flex w-full items-center gap-2 rounded-lg px-3 py-1.5 text-left text-sm transition hover:bg-slate-100 dark:hover:bg-slate-700',
         selected && 'font-medium',
       )}
     >
