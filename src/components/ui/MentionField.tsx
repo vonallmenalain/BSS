@@ -1,6 +1,5 @@
 import {
   useCallback,
-  useEffect,
   useId,
   useLayoutEffect,
   useMemo,
@@ -35,6 +34,8 @@ export function MentionField({
   onChange,
   onMention,
   onBlur,
+  onCaret,
+  caret,
   multiline = false,
   autoFocus = false,
   autoGrow = false,
@@ -50,8 +51,22 @@ export function MentionField({
   onMention?: (member: Member) => void
   /** Läuft nach dem Verlassen des Feldes – nie beim Klick in die Trefferliste */
   onBlur?: () => void
+  /**
+   * Wo der Cursor steht – nach jedem Zeichen und jeder Bewegung.
+   *
+   * Der Aufrufer merkt sich damit die Stelle, an der geschrieben wird, und
+   * findet sie wieder, wenn das Feld zwischendurch neu aufgebaut wird (siehe
+   * `lib/writing`).
+   */
+  onCaret?: (start: number, end: number) => void
+  /**
+   * Wohin der Cursor beim Erscheinen gehört. Ohne Angabe ans Ende – wer vom
+   * Lesen ins Schreiben wechselt, will weiterschreiben und nicht vorne
+   * beginnen.
+   */
+  caret?: { start: number; end: number } | null
   multiline?: boolean
-  /** Beim Erscheinen den Cursor ans Ende setzen (Wechsel vom Lesen zum Schreiben) */
+  /** Beim Erscheinen den Cursor setzen und das Feld anwählen */
   autoFocus?: boolean
   /**
    * Das Feld wächst mit dem Text – nur mehrzeilig sinnvoll.
@@ -82,14 +97,27 @@ export function MentionField({
   const [trigger, setTrigger] = useState<MentionTrigger | null>(null)
   const [active, setActive] = useState(0)
 
-  // Wer aus dem Lesen ins Schreiben wechselt, will weiterschreiben und nicht
-  // vorne beginnen – der Cursor gehört ans Ende.
-  useEffect(() => {
+  /*
+   * Anwählen und den Cursor setzen – noch bevor gezeichnet wird.
+   *
+   * Wer aus dem Lesen ins Schreiben wechselt, will weiterschreiben und nicht
+   * vorne beginnen; der Cursor gehört deshalb ans Ende. Wird das Feld
+   * mittendrin neu aufgebaut, weil sich die Liste umgeordnet hat, sagt
+   * `caret`, wo er stand – dann geht es dort weiter, wo aufgehört wurde.
+   *
+   * Es zählt der Stand beim Erscheinen: Danach gehört der Cursor dem Feld,
+   * und ihn später noch einmal zu setzen risse ihn mitten im Satz weg.
+   */
+  const start = useRef(caret)
+  useLayoutEffect(() => {
     if (!autoFocus) return
     const field = fieldRef.current
     if (!field) return
+    const last = field.value.length
+    const from = Math.min(start.current?.start ?? last, last)
+    const to = Math.min(start.current?.end ?? last, last)
     field.focus()
-    field.setSelectionRange(field.value.length, field.value.length)
+    field.setSelectionRange(from, to)
   }, [autoFocus])
 
   const results = useMemo(() => {
@@ -119,11 +147,19 @@ export function MentionField({
 
   const close = () => setTrigger(null)
 
-  const handleChange = (next: string, caret: number) => {
+  const handleChange = (next: string, at: number) => {
     onChange(next)
-    setTrigger(findMentionTrigger(next, caret))
+    onCaret?.(at, at)
+    setTrigger(findMentionTrigger(next, at))
     // Nach jedem Zeichen steht wieder der erste Treffer zur Wahl.
     setActive(0)
+  }
+
+  /** Wo der Cursor jetzt steht – für den Merkzettel des Aufrufers. */
+  const reportCaret = () => {
+    const field = fieldRef.current
+    if (!field || !onCaret) return
+    onCaret(field.selectionStart ?? field.value.length, field.selectionEnd ?? field.value.length)
   }
 
   /** Den angefangenen `@Namen` durch den vollen Namen ersetzen. */
@@ -151,6 +187,7 @@ export function MentionField({
     }
 
     onChange(next)
+    onCaret?.(caret, caret)
     onMention?.(member)
     close()
   }
@@ -181,14 +218,26 @@ export function MentionField({
     onChange: (event: { target: { value: string; selectionStart: number | null } }) =>
       handleChange(event.target.value, event.target.selectionStart ?? event.target.value.length),
     onKeyDown: handleKeyDown,
+    // Cursor und Auswahl melden – React meldet `select` auch dann, wenn bloss
+    // der Cursor mit Pfeiltasten oder Klick weiterwandert.
+    onSelect: reportCaret,
     /*
      * Ein Klick auf einen Treffer muss vor dem Schliessen ankommen. Er nimmt
      * den Fokus gar nicht erst weg (`onMouseDown` verhindert das), deshalb
-     * darf `onBlur` hier ohne Umschweife auch nach aussen melden: Wer das Feld
-     * verlässt, hat zu Ende geschrieben.
+     * darf `onBlur` hier auch nach aussen melden: Wer das Feld verlässt, hat
+     * zu Ende geschrieben.
+     *
+     * Eine Ausnahme: Ein Feld, das gerade **abgebaut** wird, hat niemand
+     * verlassen. Ordnet sich die Liste um, nimmt React das Element aus dem
+     * Dokument und setzt es andernorts wieder ein; der Browser meldet dabei
+     * den Fokusverlust. Wer das als «fertig geschrieben» läse, fiele
+     * ausgerechnet dann ins Lesen zurück, wenn jemand mitten im Satz ist –
+     * deshalb zählt nur der Fokusverlust eines Feldes, das noch im Dokument
+     * steht.
      */
-    onBlur: () => {
+    onBlur: (event: { currentTarget: HTMLInputElement | HTMLTextAreaElement }) => {
       window.setTimeout(close, 150)
+      if (!event.currentTarget.isConnected) return
       onBlur?.()
     },
     'aria-autocomplete': 'list' as const,

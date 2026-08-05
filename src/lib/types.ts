@@ -631,7 +631,7 @@ export interface CallingRowBase {
   assignees: string[]
 }
 
-/** «Mitglieder ohne Berufungen»: Wer eine neue Aufgabe braucht. */
+/** «Neue Berufungen»: Wer eine neue Aufgabe bekommen soll. */
 export interface CallingMemberRow extends CallingRowBase {
   /** Um wen es geht – mehrere, wenn ein Ehepaar zusammen besprochen wird */
   memberIds: string[]

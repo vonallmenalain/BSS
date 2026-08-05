@@ -5,6 +5,7 @@ import type {
   CallingChanges,
   CallingMemberRow,
   CallingOpenRow,
+  CallingRowBase,
   CallingUrgency,
 } from './types.ts'
 
@@ -187,7 +188,7 @@ export function serializeCallingChanges(changes: CallingChanges): CallingChanges
 /* ------------------------------------------------------------------ */
 
 export const CALLING_TABLE_TITLES = {
-  members: 'Mitglieder ohne Berufungen',
+  members: 'Neue Berufungen',
   open: 'Offene Berufungen',
 } as const
 
@@ -256,18 +257,66 @@ export function callingChangesToText(
 /* ------------------------------------------------------------------ */
 
 /**
+ * Eine Zeile, in der eine bestimmte Person vorkommt – samt Herkunft.
+ *
+ * Aus welcher der beiden Tabellen sie stammt, entscheidet, was die Zeile
+ * über die Person sagt: In «Neue Berufungen» geht es um sie, in
+ * «Offene Berufungen» ist sie als Vorschlag genannt.
+ */
+export type CallingRowMatch =
+  { table: 'members'; row: CallingMemberRow } | { table: 'open'; row: CallingOpenRow }
+
+/**
+ * Alle Zeilen, in denen ein bestimmtes Mitglied vorkommt.
+ *
+ * Zwei Wege führen dahin, und beide zählen gleich:
+ *
+ *  - Die Zeile **nennt** das Mitglied in der Spalte «Name».
+ *  - Die Zeile **erwähnt** es mit «@» in einem der Freitextfelder – wer
+ *    «@Alain» als Vorschlag schreibt, meint Alain.
+ *
+ * Ohne Mitglied gibt es nichts zu finden: Ein Name im Text ist dann bloss ein
+ * Name, und die App hat keinen Anhaltspunkt, wer gemeint ist.
+ */
+export function callingRowsAbout(
+  changes: CallingChanges | null | undefined,
+  member: Mention | null,
+): CallingRowMatch[] {
+  if (!changes || member === null) return []
+
+  const named = (value: string) =>
+    splitMentions(value, [member]).some((part) => part.memberId !== undefined)
+
+  const matches: CallingRowMatch[] = []
+
+  changes.members.forEach((row) => {
+    if (row.memberIds.includes(member.id) || named(row.calling) || named(row.ideas)) {
+      matches.push({ table: 'members', row })
+    }
+  })
+
+  changes.open.forEach((row) => {
+    if (named(row.calling) || named(row.candidates) || named(row.next)) {
+      matches.push({ table: 'open', row })
+    }
+  })
+
+  return matches
+}
+
+/**
  * Betrifft eine dieser Zeilen die angemeldete Person?
  *
  * Zwei Wege führen dahin, und beide zählen gleich:
  *
  *  - Die Zeile trägt das **Konto** unter «Zuständig» – der ausdrückliche Weg.
- *  - Die Zeile nennt das **Mitglied**, das mit dem Konto verknüpft ist
- *    (siehe «Einstellungen → Benutzer und Rollen»). Wer «@Alain» in eine
- *    Zeile schreibt, meint Alain, und Alain soll die Zeile unter «Meine»
- *    wiederfinden, ohne dass ihn jemand zusätzlich anklickt.
+ *  - Die Zeile nennt oder erwähnt das **Mitglied**, das mit dem Konto
+ *    verknüpft ist (siehe «Einstellungen → Benutzer und Rollen»). Wer
+ *    «@Alain» in eine Zeile schreibt, meint Alain, und Alain soll die Zeile
+ *    unter «Meine» wiederfinden, ohne dass ihn jemand zusätzlich anklickt.
  *
  * Ohne Verknüpfung bleibt der zweite Weg wirkungslos: Ein Name im Text ist
- * dann bloss ein Name, und die App hat keinen Anhaltspunkt, wer gemeint ist.
+ * dann bloss ein Name.
  */
 export function callingChangesConcern(
   changes: CallingChanges | null | undefined,
@@ -276,24 +325,12 @@ export function callingChangesConcern(
 ): boolean {
   if (!changes) return false
 
-  const named = (value: string) =>
-    member !== null && splitMentions(value, [member]).some((part) => part.memberId !== undefined)
+  if (userId) {
+    const assigned = (rows: CallingRowBase[]) => rows.some((row) => row.assignees.includes(userId))
+    if (assigned(changes.members) || assigned(changes.open)) return true
+  }
 
-  const assigned = (assignees: string[]) => Boolean(userId) && assignees.includes(userId!)
-
-  const inMembers = changes.members.some(
-    (row) =>
-      assigned(row.assignees) ||
-      (member !== null && row.memberIds.includes(member.id)) ||
-      named(row.calling) ||
-      named(row.ideas),
-  )
-  if (inMembers) return true
-
-  return changes.open.some(
-    (row) =>
-      assigned(row.assignees) || named(row.calling) || named(row.candidates) || named(row.next),
-  )
+  return callingRowsAbout(changes, member).length > 0
 }
 
 /**
