@@ -12,6 +12,7 @@ import {
 import { db, COLLECTIONS } from '@/lib/firebase'
 import { useAuth } from '@/contexts/AuthContext'
 import {
+  DONE_STATUS_QUERY,
   isWithdrawnTalk,
   OPEN_STATUS_QUERY,
   toItemKind,
@@ -61,6 +62,15 @@ function useCollection<T>(
     // Bewusst kein `loading: true` beim Wechsel der Abfrage: Firestore
     // beantwortet die neue Abfrage dank lokalem Cache meist sofort. Die alten
     // Daten kurz stehen zu lassen wirkt ruhiger als ein aufblitzender Skeleton.
+    //
+    // Steht dagegen noch gar nichts da – eine Abfrage, die eben erst
+    // eingeschaltet wurde –, wird geladen. Sonst meldete der Hook für einen
+    // Durchgang «fertig, nichts gefunden», und die Ansicht zeigte kurz ihren
+    // leeren Zustand, bevor der erste Schnappschuss eintraf.
+    setState((current) =>
+      current.data.length === 0 && !current.loading ? { ...current, loading: true } : current,
+    )
+
     return onSnapshot(
       query(collection(db, collectionName), ...constraints),
       (snapshot) => {
@@ -174,6 +184,21 @@ export function useOpenItems() {
   const { isApproved } = useAuth()
   const constraints = useMemo(() => [where('status', 'in', OPEN_STATUS_QUERY)], [])
   return useAgendaItems(constraints, isApproved)
+}
+
+/**
+ * Sämtliche erledigten Einträge – das Archiv unter «Pendenzen».
+ *
+ * Gelesen wird erst, wenn jemand hinsieht (`enabled`): Was offen ist, bleibt
+ * eine kurze Liste, das Erledigte wächst dagegen mit jeder Sitzung weiter.
+ * Sortiert und durchsucht wird im Client – damit kommt die Abfrage ohne
+ * zusammengesetzten Index aus, und die Reihenfolge lässt sich umstellen, ohne
+ * dass neu geladen werden muss.
+ */
+export function useDoneItems(enabled = true) {
+  const { isApproved } = useAuth()
+  const constraints = useMemo(() => [where('status', 'in', DONE_STATUS_QUERY)], [])
+  return useAgendaItems(constraints, isApproved && enabled)
 }
 
 /** Traktanden für die Archiv-/Suchansicht. */
