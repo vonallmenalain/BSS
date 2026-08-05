@@ -323,8 +323,26 @@ function apply(store: Store, snapshot: QuerySnapshot): void {
 
   snapshot.docChanges().forEach((change) => {
     if (change.type === 'removed') {
-      // Bei der Teilabfrage kann ein Datensatz die Menge nur verlassen, indem
-      // er gelöscht wird – ein `updatedAt` wächst nie rückwärts.
+      /*
+       * Ein eigener, noch nicht bestätigter Schreibvorgang ist kein Löschen.
+       *
+       * Die Teilabfrage lautet «alles, was neuer ist als …». `serverTimestamp()`
+       * steht im Moment des Schreibens aber noch nicht fest: Bis der Server
+       * bestätigt, trägt der Datensatz lokal **kein** `updatedAt` – und was
+       * keines hat, erfüllt die Bedingung nicht. Firestore meldet ihn deshalb
+       * als «entfernt», und zwei Zehntelsekunden später, mit der Bestätigung,
+       * wieder als «neu».
+       *
+       * Für die Oberfläche hiess das: Wer ein Traktandum bearbeitet, sah es
+       * beim Speichern kurz aus der Liste fallen – der aufgeklappte Eintrag
+       * verschwand und baute sich neu auf, mitsamt Animation und verlorenem
+       * Cursor. Genau das ist das «dauernde Neuladen».
+       *
+       * Ein wirklich gelöschter Datensatz kommt nie mit `hasPendingWrites`
+       * herein: Das eigene Löschen meldet `forgetDoc()` sofort, das fremde
+       * kommt bestätigt vom Server.
+       */
+      if (change.doc.metadata.hasPendingWrites) return
       if (store.docs.delete(change.doc.id)) changed = true
       return
     }

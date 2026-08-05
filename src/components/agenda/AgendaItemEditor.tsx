@@ -75,9 +75,25 @@ export function AgendaItemEditor({
         callingChanges: draft.callingChanges ? serializeCallingChanges(draft.callingChanges) : null,
       })
     },
-    // Ein Eintrag ohne Titel wäre in jeder Liste eine leere Zeile. Wer den
-    // Titel löscht, um ihn neu zu schreiben, behält so lange den alten.
-    { savable: (draft) => draft.title.trim() !== '' },
+    {
+      // Ein Eintrag ohne Titel wäre in jeder Liste eine leere Zeile. Wer den
+      // Titel löscht, um ihn neu zu schreiben, behält so lange den alten.
+      savable: (draft) => draft.title.trim() !== '',
+      /*
+       * Nicht mitten im Schreiben speichern.
+       *
+       * Jeder Schreibvorgang kommt als Änderung zurück und zeichnet die Seite
+       * neu. Beim Ausfüllen einer Berufungsrunde geschah das nach jedem Wort:
+       * Die Kachel baute sich auf, die Liste sprang, der Cursor war weg.
+       *
+       * Gespeichert wird deshalb, wenn der Eintrag **verlassen** wird –
+       * beim Wechsel in ein anderes Traktandum, beim Zuklappen, beim
+       * Seitenwechsel, beim Weglegen des Geräts (siehe `useAutosave`). Der
+       * Zeitgeber ist nur noch das Netz darunter: Wer eine halbe Minute
+       * innehält, hat den Stand ebenfalls sicher.
+       */
+      delayMs: 30_000,
+    },
   )
 
   /*
@@ -96,7 +112,22 @@ export function AgendaItemEditor({
         : null
 
   return (
-    <div className="space-y-3">
+    <div
+      className="space-y-3"
+      /*
+       * Verlassen heisst speichern.
+       *
+       * Der Fokus wandert innerhalb des Eintrags von Feld zu Feld – das ist
+       * kein Verlassen und schreibt nichts. Erst wenn er den Eintrag ganz
+       * verlässt (ein anderes Traktandum, ein Knopf daneben, eine andere
+       * Seite), geht der Stand zu Firestore. So kommt der Rückweg aus der
+       * Datenbank nie mitten im Satz an.
+       */
+      onBlur={(event) => {
+        if (event.currentTarget.contains(event.relatedTarget)) return
+        autosave.flush()
+      }}
+    >
       <MentionEditable
         id={`item-title-${item.id}`}
         label="Titel"

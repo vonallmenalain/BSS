@@ -338,13 +338,25 @@ Eintrag selbst ist das Formular:
   bis**, das Kennzeichen «vertraulich» und die eigene Notizliste je Traktandum
   sind weggefallen: Was besprochen wurde, gehört in die Beschreibung.
 
-**Der Cursor bleibt, wo er war.** Gespeichert wird während des Schreibens, und
-was gespeichert ist, meldet Firestore im selben Atemzug als Änderung zurück –
-die Liste ordnet sich um, ein Eintrag wechselt den Abschnitt, und die App baut
-ihn an der neuen Stelle neu auf. Für den Browser war das ein anderes Feld: Der
-Cursor war weg, und wer weiterschreiben wollte, musste erst wieder
-hineinklicken – mitten im Satz. Drei Dinge halten jetzt dagegen:
+**Der Cursor bleibt, wo er war.** Früher ging jede Änderung kurz nach dem
+letzten Tastendruck zu Firestore – und kam im selben Atemzug als Änderung
+zurück: Die Liste ordnete sich um, ein Eintrag fiel für einen Augenblick ganz
+aus ihr heraus, und die App baute ihn neu auf. Für den Browser war das ein
+anderes Feld: Der Cursor war weg, und wer weiterschreiben wollte, musste erst
+wieder hineinklicken – mitten im Satz. Fünf Dinge halten jetzt dagegen:
 
+- **Gespeichert wird beim Verlassen des Eintrags, nicht beim Tippen.** Der
+  Fokus darf zwischen den Feldern eines Traktandums wandern, ohne dass etwas
+  geschrieben wird; erst wenn er den Eintrag verlässt – ein anderes Traktandum,
+  ein Knopf daneben, eine andere Seite, das Weglegen des Geräts – geht der
+  Stand zu Firestore. Ein Zeitgeber von einer halben Minute liegt als Netz
+  darunter.
+- **Ein eigener, noch nicht bestätigter Schreibvorgang wirft den Eintrag nicht
+  mehr aus der Liste.** Die Sammlung wird als «alles, was neuer ist als …»
+  nachgeführt; ein `serverTimestamp()` steht im Moment des Schreibens aber noch
+  nicht fest, und der Eintrag fiel deshalb für zwei Zehntelsekunden aus dieser
+  Menge – der aufgeklappte Punkt verschwand und baute sich neu auf. Genau das
+  war das «dauernde Neuladen».
 - Die **Pendenzenliste ordnet sich nicht um**, solange in ihr geschrieben wird
   (siehe unten).
 - Ein Zeitstempel, der noch beim Server liegt, wird mit der **lokalen Uhr
@@ -427,17 +439,36 @@ verschwinden soll nichts. Die Wahl gehört dem Gerät und nicht den Daten: Sie
 beginnt bei jedem Öffnen wieder bei «alle», und wer eine Zeile hinzufügt,
 sieht sie – der Filter geht dabei auf.
 
-**Farbe und Zuständigkeit stehen unten rechts in der Zeile** – beisammen, in
-einer schmalen Reihe: die drei Kreise, daneben die Bischofschaft als
-Knopfleiste, ein Klick je Person. Sie sind die Bedienung und nicht der Inhalt;
-links unter den Feldern standen sie mitten im Lesefluss, und die Beschriftung
-«Zuständig» sagte nichts, was die Namen daneben nicht schon sagen. Der
-Papierkorb steht als einziges am anderen Ende der Reihe, weit weg von den
-Knöpfen, die man dauernd trifft.
+**Farbe, Zuständigkeit und Papierkorb stehen in einer vierten, schmalen
+Spalte** – hinter einem Knopf, der zugleich anschreibt, was gesetzt ist: der
+Farbpunkt der Zeile und die Kreise der Zuständigen. Ein Griff darauf öffnet ein
+kleines Menü mit den drei Kreisen, der Bischofschaft als Knopfleiste und
+«Zeile löschen». Ausgeschrieben brauchte das je Zeile eine eigene Zeile unter
+den Feldern; bei zwanzig Einträgen war das die halbe Ansicht für etwas, das man
+ein-, zweimal anfasst.
 
 Dass die Zuständigkeit an der **Zeile** hängt und nicht am Traktandum, liegt an
 der Runde selbst: Sie geht zwanzig Namen durch, und die verteilt man
 untereinander.
+
+**Die Zeilen sind so flach wie ihr Inhalt.** Ein Feld beginnt einzeilig und
+wächst mit dem Text – vorher stand jede Zeile zwei Zeilen hoch da, auch wenn
+in ihr ein Halbsatz stand.
+
+**Oben steht ein Suchfeld.** Wer «PV» eintippt, sieht genau die Zeilen, in
+denen «PV» vorkommt – gleich in welcher Spalte, im Namen so gut wie im
+Freitext. Was dabei wegfällt, steht als Zahl unter der Tabelle. Die Suche
+gehört wie der Farbfilter dem Gerät und nicht den Daten: Sie ändert nichts und
+beginnt bei jedem Öffnen wieder leer. Eine neu angelegte Zeile ist leer und
+passte zu keiner Suche – deshalb räumt «+ Zeile» Suche und Farbfilter weg.
+
+**Die Reihenfolge lässt sich von Hand legen.** Neue Zeilen kommen unten dazu,
+und so bleibt es, bis jemand sie umstellt: **Reihenfolge** oben rechts stellt
+an jede Zeile zwei Pfeile und links davon einen Griff zum Ziehen. Verschoben
+wird nur innerhalb einer Tabelle – eine Person ist keine offene Aufgabe.
+Solange umsortiert wird, stehen Suche und Farbfilter nicht zur Verfügung: Ein
+Ausschnitt sagt nichts darüber, wo das Ausgeblendete steht. Die neue Anordnung
+gehört zum Eintrag und gilt damit für alle, die ihn öffnen.
 
 ### Potentielle Berufungsänderungen im Profil
 

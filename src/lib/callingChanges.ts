@@ -184,6 +184,36 @@ export function serializeCallingChanges(changes: CallingChanges): CallingChanges
 }
 
 /* ------------------------------------------------------------------ */
+/* Reihenfolge                                                         */
+/* ------------------------------------------------------------------ */
+
+/**
+ * Eine Zeile an eine andere Stelle setzen – die übrigen rücken nach.
+ *
+ * Die Reihenfolge einer Runde ist die Reihenfolge des Arrays und sonst
+ * nichts: Sie steht damit im Eintrag selbst, wird mit ihm gespeichert und
+ * gilt für alle, die ihn öffnen. Ein eigenes Feld je Zeile bräuchte es nur,
+ * wenn zwei Ansichten dieselben Zeilen verschieden ordnen sollten – hier
+ * ordnet sie eine einzige.
+ *
+ * Ein Ziel ausserhalb der Liste wird an ihr Ende bzw. ihren Anfang gerückt:
+ * Der Pfeil an der obersten Zeile soll nichts tun und nicht die Liste
+ * verdrehen.
+ */
+export function moveCallingRow<T extends { id: string }>(rows: T[], id: string, to: number): T[] {
+  const from = rows.findIndex((row) => row.id === id)
+  if (from === -1) return rows
+
+  const target = Math.max(0, Math.min(to, rows.length - 1))
+  if (from === target) return rows
+
+  const next = [...rows]
+  const [moved] = next.splice(from, 1)
+  next.splice(target, 0, moved)
+  return next
+}
+
+/* ------------------------------------------------------------------ */
 /* Als Text                                                            */
 /* ------------------------------------------------------------------ */
 
@@ -197,6 +227,29 @@ function line(parts: (string | undefined)[]): string {
     .map((part) => part?.replace(/\s+/g, ' ').trim())
     .filter((part): part is string => Boolean(part))
     .join(' · ')
+}
+
+/**
+ * Alles, was in **einer** Zeile steht – als ein Stück Text.
+ *
+ * Damit sucht die Runde in sich selbst: Wer «PV» eintippt, sieht die Zeilen,
+ * in denen «PV» vorkommt – gleich in welcher Spalte, im Namen so gut wie im
+ * Freitext. Personen zählen mit ihrem Namen mit, sofern der Aufrufer sie
+ * auflösen kann; sonst stünde in der Zeile eine ID, die niemand tippt.
+ */
+export function callingRowText(
+  row: CallingMemberRow | CallingOpenRow,
+  resolve?: (id: string) => string | undefined,
+): string {
+  const name = (id: string) => resolve?.(id) ?? ''
+  const fields =
+    'memberIds' in row
+      ? [row.memberIds.map(name).join(' '), row.calling, row.ideas]
+      : [row.calling, row.candidates, row.next]
+  return [...fields, row.assignees.map(name).join(' ')]
+    .map((part) => part.trim())
+    .filter(Boolean)
+    .join(' ')
 }
 
 /**
