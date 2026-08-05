@@ -384,6 +384,41 @@ Die Reihenfolge gilt für alle und bestimmt auch, in welcher Folge der
 Sitzungsmodus durchgeht. Zwischen den Gruppen wird nicht verschoben – eine
 Pendenz zu den neuen Traktanden zu ziehen hiesse, sie zurückzudatieren.
 
+### Pendenzenliste: Ausschnitt, Sortierung, Reihenfolge
+
+**Pendenzen** in der Seitenleiste sammelt, was über alle Sitzungen hinweg
+offen ist – in drei Ausschnitten: _Pendent_, _Meine_, _Erledigt_. Wonach die
+Liste geordnet ist, steht unter **Ansicht** oben rechts:
+
+| Sortieren nach          | Was die Liste tut                                                     |
+| ----------------------- | --------------------------------------------------------------------- |
+| **Erfassungsdatum**     | Tag für Tag, das Datum als Zwischentitel – neuste oder älteste zuerst |
+| **Bearbeitungsdatum**   | dasselbe, nach dem Tag, an dem zuletzt am Eintrag gearbeitet wurde    |
+| **Manuelle Sortierung** | die von Hand gelegte Reihenfolge – eine Liste, ohne Zwischentitel     |
+
+**Die Sortierung gilt für alle.** Sie steht in den Einstellungen und nicht im
+Browser: Die Bischofschaft geht die Pendenzen gemeinsam durch, und «der dritte
+Punkt» ist nur dann eine Angabe, wenn er bei allen der dritte ist. Wer
+umstellt, stellt deshalb für alle um – so wie die Reihenfolge einer
+Traktandenliste auch für alle gilt. Wie viel ein Eintrag von sich zeigt (_Nur
+Titel_ oder _Alles_), bleibt dagegen beim Gerät: Das ist eine Frage des
+Bildschirms, vor dem man sitzt.
+
+**Manuelle Sortierung bringt einen Haken mit: «Reihenfolge anpassen».** Er ist
+zu Beginn ausgeschaltet; eingeschaltet stehen an jeder Zeile die beiden Pfeile
+und links der Griff zum Ziehen, und die Einträge sind durchnummeriert.
+Ausgeschaltet verschwinden die Griffe wieder – die gelegte Reihenfolge bleibt,
+solange «Manuelle Sortierung» gewählt ist. Sie überlebt auch den Ausflug zu
+einer Sortierung nach Datum: Die Position hängt am Eintrag, nicht an der
+Ansicht.
+
+Eine neu erfasste Pendenz ist noch nicht einsortiert und steht **zuoberst** –
+dort, wo sie auch nach Erfassungsdatum stünde; ein Griff auf den Pfeil setzt
+sie an ihren Platz. Umsortiert wird nur unter _Pendent_ und ohne Suche: Ein
+Ausschnitt sagt nichts darüber, wo das Ausgeblendete steht. Im Archiv
+_Erledigt_ steht die Wahl gar nicht erst zur Verfügung – was erledigt ist,
+wird nachgeschlagen und nicht mehr geordnet.
+
 ### Bekanntmachung und Angelegenheit aus der Sitzung heraus
 
 Neben **+ Traktandum** stehen **+ Bekanntmachung** und **+ Angelegenheit**.

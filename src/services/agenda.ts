@@ -220,6 +220,56 @@ export async function reorderItems(orderedIds: string[]): Promise<SaveOutcome> {
 }
 
 /**
+ * Wie viele Änderungen höchstens in einen Firestore-Stapel gehen.
+ *
+ * Die Grenze liegt bei 500; etwas Luft darunter schadet nicht. Für eine
+ * Sitzung spielt das keine Rolle – die Pendenzenliste sammelt dagegen über
+ * alle Sitzungen hinweg und zählt nach einem Import der alten Protokolle
+ * durchaus mehrere Hundert Punkte.
+ */
+const BATCH_LIMIT = 400
+
+/**
+ * Hält die von Hand gelegte Reihenfolge der **Pendenzenliste** fest – die
+ * Liste in der Reihenfolge, in der sie stehen soll.
+ *
+ * Geschrieben wird `pendenzOrder` und nicht `order`: Das eine ist der Platz in
+ * der Pendenzenliste, das andere der Platz in einer einzelnen Sitzung. Beides
+ * in dasselbe Feld zu schreiben hiesse, mit jedem Zug hier die Traktandenliste
+ * einer Sitzung umzustellen.
+ *
+ * Eine Position bekommt **jeder** Eintrag der Liste, nicht nur der verschobene:
+ * Vor dem ersten Umsortieren trägt keiner eine. Erst wenn alle eine haben,
+ * bleibt die Reihenfolge auch dann stehen, wenn jemand einen Punkt bearbeitet.
+ * Geschrieben wird trotzdem nur, was sich tatsächlich ändert.
+ *
+ * Nur `updatedAt`, kein `editedAt`: Umsortieren ist kein Bearbeiten (siehe
+ * `touch()`). Sonst sprängen nach jedem Zug lauter unveränderte Punkte an den
+ * Anfang der nach «Bearbeitungsdatum» sortierten Liste.
+ */
+export async function savePendenzenOrder(items: AgendaItem[]): Promise<SaveOutcome | null> {
+  const changed = items
+    .map((item, index) => ({ item, index }))
+    .filter(({ item, index }) => item.pendenzOrder !== index)
+
+  if (changed.length === 0) return null
+
+  const batches = []
+  for (let start = 0; start < changed.length; start += BATCH_LIMIT) {
+    const batch = writeBatch(db)
+    changed.slice(start, start + BATCH_LIMIT).forEach(({ item, index }) => {
+      batch.update(doc(db, COLLECTIONS.agendaItems, item.id), {
+        pendenzOrder: index,
+        updatedAt: serverTimestamp(),
+      })
+    })
+    batches.push(batch)
+  }
+
+  return commit(Promise.all(batches.map((batch) => batch.commit())))
+}
+
+/**
  * Übernimmt alle offenen Einträge ohne Sitzung in die angegebene Sitzung.
  * Das ist der Schritt «Pendenzen aus der letzten Sitzung mitnehmen».
  *

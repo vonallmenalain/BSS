@@ -601,6 +601,19 @@ export interface AgendaItem extends WithId {
   meetingId: string | null
   /** Position innerhalb der Sitzung – bestimmt die Reihenfolge im Sitzungsmodus */
   order: number
+  /**
+   * Platz in der **Pendenzenliste**, wenn dort von Hand sortiert wurde.
+   *
+   * Nicht dasselbe wie `order`: Das ist der Platz in einer einzelnen Sitzung
+   * und bestimmt, in welcher Folge sie durchgeht. Die Pendenzenliste steht
+   * quer dazu – sie sammelt über alle Sitzungen hinweg –, und beides in
+   * dasselbe Feld zu schreiben hiesse, mit jedem Zug in der einen Ansicht die
+   * andere umzustellen.
+   *
+   * Fehlt das Feld, wurde der Eintrag noch nie einsortiert; er steht dann
+   * zuoberst (siehe `pages/Pendenzen`).
+   */
+  pendenzOrder?: number
 
   /**
    * Traktandum oder Pendenz. Fehlt das Feld (Altbestand), leitet
@@ -684,6 +697,55 @@ export interface AgendaItem extends WithId {
  */
 export function lastEditedAt(item: { editedAt?: TS; updatedAt?: TS }): TS | undefined {
   return item.editedAt ?? item.updatedAt
+}
+
+/* ------------------------------------------------------------------ */
+/* Pendenzenliste                                                      */
+/* ------------------------------------------------------------------ */
+
+/**
+ * Wonach die Pendenzenliste sortiert – und damit zugleich gruppiert – wird.
+ *
+ * Die beiden Datumsfelder ordnen von selbst und geben der Liste ihre
+ * Zwischentitel. `manual` ist das Gegenstück: die Reihenfolge, die jemand von
+ * Hand gelegt hat. Sie steht an den Einträgen (`AgendaItem.pendenzOrder`) und
+ * gilt deshalb für alle – wie die Reihenfolge einer Traktandenliste auch.
+ */
+export type PendenzenSort = 'created' | 'updated' | 'manual'
+
+export const PENDENZEN_SORT_LABELS: Record<PendenzenSort, string> = {
+  created: 'Erfassungsdatum',
+  updated: 'Bearbeitungsdatum',
+  manual: 'Manuelle Sortierung',
+}
+
+export interface PendenzenSortState {
+  field: PendenzenSort
+  dir: SortDirection
+}
+
+/** Offen: das zuletzt Erfasste zuoberst. */
+export const DEFAULT_PENDENZEN_SORT: PendenzenSortState = { field: 'created', dir: 'desc' }
+
+/** Erledigt: das zuletzt Abgehakte zuoberst – der Weg zurück nach einem Versehen. */
+export const DEFAULT_PENDENZEN_DONE_SORT: PendenzenSortState = { field: 'updated', dir: 'desc' }
+
+/**
+ * Was in den Einstellungen steht, auf eine gültige Sortierung zurückführen.
+ *
+ * Sie kommt aus Firestore und damit womöglich aus einer anderen Fassung der
+ * App. Ein unbekanntes Feld darf die Liste nicht leer lassen, sondern fällt
+ * auf die Vorgabe zurück.
+ */
+export function normalizePendenzenSort(
+  stored: unknown,
+  fallback: PendenzenSortState = DEFAULT_PENDENZEN_SORT,
+): PendenzenSortState {
+  const value = (stored ?? {}) as Partial<PendenzenSortState>
+  return {
+    field: value.field && value.field in PENDENZEN_SORT_LABELS ? value.field : fallback.field,
+    dir: value.dir === 'asc' || value.dir === 'desc' ? value.dir : fallback.dir,
+  }
 }
 
 /* ------------------------------------------------------------------ */
@@ -1192,6 +1254,18 @@ export interface AppSettings {
    * er an jedem Sonntag wählbar. Genau wie bei `extraLeaders`.
    */
   customSundayKinds: CustomSundayKind[]
+  /**
+   * Wie die Pendenzenliste sortiert ist – für alle gleich.
+   *
+   * Eine Ansichtseinstellung, die ausnahmsweise nicht zum Gerät gehört: Die
+   * Bischofschaft geht die Pendenzen gemeinsam durch, und «der dritte Punkt»
+   * ist nur dann eine Angabe, wenn er bei allen der dritte ist. Wer die
+   * Sortierung ändert, ändert sie deshalb für alle – so wie die Reihenfolge
+   * einer Traktandenliste auch für alle gilt.
+   */
+  pendenzenSort: PendenzenSortState
+  /** Dasselbe für das Archiv «Erledigt» – dort ohne die gelegte Reihenfolge. */
+  pendenzenDoneSort: PendenzenSortState
   updatedAt?: TS
 }
 
@@ -1224,6 +1298,8 @@ export const DEFAULT_SETTINGS: AppSettings = {
   prayerGapMonths: 6,
   extraLeaders: [],
   customSundayKinds: [],
+  pendenzenSort: DEFAULT_PENDENZEN_SORT,
+  pendenzenDoneSort: DEFAULT_PENDENZEN_DONE_SORT,
 }
 
 /* ------------------------------------------------------------------ */

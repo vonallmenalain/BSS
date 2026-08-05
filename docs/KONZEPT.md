@@ -149,11 +149,27 @@ gebautes Raster lässt sich überall weiter ausfüllen.
 **Pendenzenübersicht.** Drei Ausschnitte: _Pendent_, _Meine_, _Erledigt_.
 Sortiert wird nach Erfassungs- oder Bearbeitungsdatum, auf- oder absteigend;
 die Liste bekommt dabei Zwischentitel – «Sonntag, 2. August 2026» und darunter,
-was an diesem Tag erfasst bzw. bearbeitet wurde. Ein Datum ist die einzige
-Ordnung, die der Datensatz ohne Zutun hergibt, und als Überschrift beantwortet
-es zugleich die Frage «seit wann liegt das hier?». Dazu die Wahl zwischen _Nur
+was an diesem Tag erfasst bzw. bearbeitet wurde. Ein Datum ist die Ordnung, die
+der Datensatz ohne Zutun hergibt, und als Überschrift beantwortet es zugleich
+die Frage «seit wann liegt das hier?». Dazu die Wahl zwischen _Nur
 Titel_ und _Alles anzeigen_ – Letzteres klappt jeden Eintrag auf, für den
 Durchgang durch die offenen Punkte.
+
+**Manuelle Sortierung.** Die dritte Wahl unter _Sortieren nach_: die
+Reihenfolge, die jemand von Hand legt – für die Punkte, deren Abfolge etwas
+bedeutet und die kein Datum hergibt. Dazu gehört der Haken _Reihenfolge
+anpassen_; er ist ausgeschaltet, bis jemand umsortieren will, und erst dann
+stehen an jeder Zeile die Pfeile und der Griff zum Ziehen. Ausgeschaltet
+verschwinden bloss die Griffe, nicht die Reihenfolge.
+
+**Die Sortierung gilt für alle.** Sie steht in den Einstellungen und nicht im
+Browser: Die Bischofschaft geht die Pendenzen gemeinsam durch, und «der dritte
+Punkt» ist nur dann eine Angabe, wenn er bei allen der dritte ist – wie die
+Reihenfolge einer Traktandenliste auch für alle gilt. Die gelegte Reihenfolge
+selbst hängt am Eintrag und überlebt damit jeden Wechsel der Ansicht. Nur was
+die Darstellung betrifft (_Nur Titel_ oder _Alles_), bleibt beim Gerät.
+Umsortiert wird an der vollständigen Liste, also unter _Pendent_ und ohne
+Suche: Ein Ausschnitt sagt nichts darüber, wo das Ausgeblendete steht.
 
 _Erledigt_ ist das Archiv und vor allem der Weg zurück: Wer versehentlich
 abhakt, findet den Punkt dort zuoberst – die Voreinstellung ist «zuletzt
