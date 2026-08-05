@@ -36,15 +36,6 @@ interface Props {
   first?: boolean
   last?: boolean
   readOnly?: boolean
-  /**
-   * Der Haken ganz vorne, mit dem ein Punkt sofort abgehakt ist.
-   *
-   * In der Sitzung ist er die häufigste Handlung und gehört dorthin. In der
-   * Pendenzenübersicht ist er ein Versehen, das darauf wartet zu geschehen:
-   * Man streift ihn beim Blättern, und der Punkt ist weg. Dort schliesst
-   * deshalb allein der Knopf «Erledigt» im aufgeklappten Eintrag ab.
-   */
-  showDoneToggle?: boolean
   nextMeeting?: { id: string; date: Date } | null
   /** Zu welcher Sitzung der Eintrag gehört – ausserhalb der Sitzung nützlich */
   meetingLabel?: string
@@ -69,6 +60,12 @@ interface Props {
  *
  * Umsortiert wird auf zwei Wegen: mit den Pfeilen (auch am Handy) und durch
  * Ziehen und Ablegen (am Zeigergerät). Beides schreibt dieselbe Reihenfolge.
+ *
+ * Einen Haken zum sofortigen Abhaken hat die Zeile bewusst nicht mehr. Er
+ * stand ganz vorne, wo man ihn beim Blättern und beim Umsortieren streift –
+ * und ein Punkt war abgeschlossen, ohne dass jemand es wollte. Abgeschlossen
+ * wird deshalb nur noch dort, wo der Eintrag ausgeschrieben steht: mit dem
+ * grünen Knopf «Erledigt» im aufgeklappten Eintrag oder im Sitzungsmodus.
  */
 export function AgendaItemRow({
   item,
@@ -79,7 +76,6 @@ export function AgendaItemRow({
   first = false,
   last = false,
   readOnly = false,
-  showDoneToggle = true,
   nextMeeting,
   meetingLabel,
   meetingHref,
@@ -145,25 +141,6 @@ export function AgendaItemRow({
           </span>
         )}
 
-        {/* Erledigt-Schalter: die häufigste Aktion, deshalb ganz vorne */}
-        {showDoneToggle && (
-          <button
-            type="button"
-            onClick={() => void toggleDone()}
-            disabled={readOnly}
-            className={cn(
-              'mt-0.5 grid size-5 shrink-0 place-items-center rounded-md border-2 transition',
-              isDone
-                ? 'border-emerald-600 bg-emerald-600 text-white'
-                : 'border-slate-300 hover:border-emerald-500 dark:border-slate-600',
-            )}
-            aria-label={isDone ? 'Als offen markieren' : 'Als erledigt markieren'}
-            aria-pressed={isDone}
-          >
-            {isDone && <Check className="size-3.5" strokeWidth={3} aria-hidden />}
-          </button>
-        )}
-
         <button
           type="button"
           onClick={onToggle}
@@ -211,7 +188,10 @@ export function AgendaItemRow({
                 position !== undefined && 'pl-6',
               )}
             >
-              {item.status === 'new' && <StatusBadge status="new" />}
+              {/* Ohne den Haken vorne trägt die Zeile den Stand selbst: «Neu»
+                  vor dem Start der Sitzung, «Erledigt» danach. «Pendent» ist
+                  der Normalfall und bleibt ungeschrieben. */}
+              {item.status !== 'pending' && <StatusBadge status={item.status} />}
               {item.deferCount > 0 && !isDone && (
                 <span
                   className="badge bg-slate-100 text-slate-500 dark:bg-slate-800 dark:text-slate-400"

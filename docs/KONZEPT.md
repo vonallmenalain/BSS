@@ -157,11 +157,17 @@ Durchgang durch die offenen Punkte.
 
 _Erledigt_ ist das Archiv und vor allem der Weg zurück: Wer versehentlich
 abhakt, findet den Punkt dort zuoberst – die Voreinstellung ist «zuletzt
-bearbeitet». Aus demselben Grund fehlt in dieser Liste der Haken, mit dem sich
-ein Punkt sofort abhaken lässt. In der Sitzung ist er die häufigste Handlung;
-in einer Übersicht, durch die man blättert, ist er ein Versehen, das darauf
-wartet zu geschehen. Abgeschlossen wird hier allein mit dem Knopf _Erledigt_
-im aufgeklappten Eintrag.
+bearbeitet» – und öffnet ihn wieder.
+
+**Abschliessen braucht einen Entschluss.** In keiner Liste steht mehr ein
+Haken am Zeilenanfang. Er war der schnellste Weg und deshalb auch der
+schnellste Irrtum: Er stand genau dort, wo man beim Blättern und beim
+Umsortieren hinfasst, und ein Punkt war abgeschlossen, ohne dass jemand es
+wollte. Erledigt wird nur noch dort, wo der Eintrag ausgeschrieben steht – mit
+dem grünen Knopf _Erledigt_ im aufgeklappten Eintrag oder im Sitzungsmodus.
+Ein Griff mehr, dafür keiner, den man zurücknehmen muss. Woran ein Punkt
+ist, sagt die Zeile weiterhin: _Neu_ vor dem Start der Sitzung, _Erledigt_
+danach, und der durchgestrichene Titel dazu.
 
 ### 3.2 Abendmahlsversammlung
 

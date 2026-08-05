@@ -392,9 +392,6 @@ export function Pendenzen() {
                     item={item}
                     expanded={isExpanded(item.id)}
                     onToggle={() => toggleOpen(item.id)}
-                    // Ein Haken, den man beim Blättern streift, schliesst hier
-                    // nichts ab: Das tut allein der Knopf «Erledigt».
-                    showDoneToggle={false}
                     nextMeeting={nextMeetingRef}
                     meetingLabel={item.meetingId ? meetingLabels.get(item.meetingId) : undefined}
                     meetingHref={
