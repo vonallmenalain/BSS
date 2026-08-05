@@ -338,6 +338,21 @@ Eintrag selbst ist das Formular:
   bis**, das Kennzeichen «vertraulich» und die eigene Notizliste je Traktandum
   sind weggefallen: Was besprochen wurde, gehört in die Beschreibung.
 
+**Der Cursor bleibt, wo er war.** Gespeichert wird während des Schreibens, und
+was gespeichert ist, meldet Firestore im selben Atemzug als Änderung zurück –
+die Liste ordnet sich um, ein Eintrag wechselt den Abschnitt, und die App baut
+ihn an der neuen Stelle neu auf. Für den Browser war das ein anderes Feld: Der
+Cursor war weg, und wer weiterschreiben wollte, musste erst wieder
+hineinklicken – mitten im Satz. Drei Dinge halten jetzt dagegen:
+
+- Die **Pendenzenliste ordnet sich nicht um**, solange in ihr geschrieben wird
+  (siehe unten).
+- Ein Zeitstempel, der noch beim Server liegt, wird mit der **lokalen Uhr
+  geschätzt** statt als «fehlt» gelesen. Vorher verschwand mit jedem Speichern
+  für einen Augenblick das Bearbeitungsdatum, und die halbe Seite ruckte zweimal.
+- Wird ein Feld trotzdem neu aufgebaut, nimmt es **Schreibmodus und
+  Cursorposition wieder auf** (siehe [`src/lib/writing.ts`](src/lib/writing.ts)).
+
 **Kein Fälligkeitsdatum und keine Priorität.** Beide sagten dasselbe noch
 einmal und meist anders: Eine Pendenz gehört in eine Sitzung, und die hat
 bereits ein Datum; was zuerst drankommt, sagt die Reihenfolge der Liste, und
@@ -369,20 +384,28 @@ Daneben steht ein zweiter Haken: **Berufungsänderung**. Er stellt an dieselbe
 Stelle nicht ein leeres Raster, sondern die eine Runde, die jede
 Bischofschaft regelmässig dreht – zwei Tabellen untereinander:
 
-| Tabelle                        | Spalten                                          | Wofür                         |
-| ------------------------------ | ------------------------------------------------ | ----------------------------- |
-| **Mitglieder ohne Berufungen** | Name · Berufung · Vorschläge                     | Wer eine neue Aufgabe braucht |
-| **Offene Berufungen**          | Berufung · Name (Vorschläge) · Weiteres Vorgehen | Welche Aufgabe niemanden hat  |
+| Tabelle               | Spalten                                          | Wofür                           |
+| --------------------- | ------------------------------------------------ | ------------------------------- |
+| **Neue Berufungen**   | Name · Berufung · Vorschläge                     | Wer eine neue Aufgabe bekommt   |
+| **Offene Berufungen** | Berufung · Name (Vorschläge) · Weiteres Vorgehen | Welche Aufgabe jemanden braucht |
 
 Die beiden Haken schliessen einander aus – beide füllen die Stelle, an der
-sonst die Beschreibung steht.
+sonst die Beschreibung steht. Über den Tabellen steht nur ihr Titel; ein
+Erklärsatz darunter wiederholte ihn bloss mit anderen Worten.
 
-In der Spalte **Name** wird aus dem Verzeichnis gewählt; jeder Name steht auf
-einer eigenen Zeile über die ganze Breite, und **Weitere lassen sich
-hinzufügen** – das Ehepaar gehört auf eine Zeile, nicht auf zwei. Alle übrigen
-Felder sind Freitext und dürfen mehrere Zeilen tragen: «PV-Lehrerin, möchte
-entlassen werden», «Braucht eine Berufung», oder gar nichts. In jedem davon
-öffnet ein `@` die Mitgliederliste, und der eingesetzte Name bleibt anklickbar.
+In der Spalte **Name** steht **genau eine Person je Zeile**, gewählt aus dem
+Verzeichnis. Geht es um ein Ehepaar, sind es zwei Zeilen: Zwei Namen in einer
+Zeile machten aus der Tabelle eine Liste von Listen. Steht der Name da, ist er
+zugleich ein **Verweis auf das Profil** – auch beim Ausfüllen; dort steht, was
+die Person bisher getan hat, und genau das fragt man in einer Runde als
+Nächstes. Ein Griff auf das «×» daneben gibt das Feld wieder zum Suchen frei.
+Was früher zu zweit erfasst wurde, bleibt stehen und lässt sich einzeln
+entfernen.
+
+Alle übrigen Felder sind Freitext und dürfen mehrere Zeilen tragen:
+«PV-Lehrerin, möchte entlassen werden», «Braucht eine Berufung», oder gar
+nichts. In jedem davon öffnet ein `@` die Mitgliederliste, und der eingesetzte
+Name bleibt anklickbar.
 
 **Es ändert nichts.** Was hier steht, ist eine Ideenliste – kein Eintrag wirkt
 auf eine Berufung, ein Mitglied oder die Liste unter «Berufungen». Wer welche
@@ -404,10 +427,30 @@ verschwinden soll nichts. Die Wahl gehört dem Gerät und nicht den Daten: Sie
 beginnt bei jedem Öffnen wieder bei «alle», und wer eine Zeile hinzufügt,
 sieht sie – der Filter geht dabei auf.
 
-**Zuständig, Zeile für Zeile.** Unter jeder Zeile steht die Bischofschaft als
-Knopfleiste; ein Klick genügt. Der Grund dafür ist die Runde selbst: Sie geht
-zwanzig Namen durch, und die verteilt man untereinander – eine Zuständigkeit
-für das ganze Traktandum sagte nichts.
+**Farbe und Zuständigkeit stehen unten rechts in der Zeile** – beisammen, in
+einer schmalen Reihe: die drei Kreise, daneben die Bischofschaft als
+Knopfleiste, ein Klick je Person. Sie sind die Bedienung und nicht der Inhalt;
+links unter den Feldern standen sie mitten im Lesefluss, und die Beschriftung
+«Zuständig» sagte nichts, was die Namen daneben nicht schon sagen. Der
+Papierkorb steht als einziges am anderen Ende der Reihe, weit weg von den
+Knöpfen, die man dauernd trifft.
+
+Dass die Zuständigkeit an der **Zeile** hängt und nicht am Traktandum, liegt an
+der Runde selbst: Sie geht zwanzig Namen durch, und die verteilt man
+untereinander.
+
+### Potentielle Berufungsänderungen im Profil
+
+Was in einer Runde über eine Person notiert wird, steht auch in ihrem Profil –
+unter den Berufungen als eigene Kachel **«Potentielle Berufungsänderungen»**.
+Sie erscheint nur, wenn es etwas zu zeigen gibt: die Zeilen, in denen die
+Person genannt (Spalte «Name») oder mit «@» erwähnt ist, mit Farbe, Feldern und
+Zuständigen wie in der Runde. Darüber steht der Eintrag, aus dem sie stammt,
+und ein Griff darauf führt dorthin – in die Sitzung oder in die Pendenzenliste.
+
+Sie steht bewusst **unter** den Berufungen und heisst «potentiell»: Was hier
+steht, ist eine Idee der Bischofschaft und keine Berufung. Wer welche hat, sagt
+die Kachel darüber – und die kommt allein aus dem LCR.
 
 ### Wann ein Eintrag «meiner» ist
 
@@ -475,6 +518,13 @@ solange «Manuelle Sortierung» gewählt ist. Sie überlebt auch den Ausflug zu
 einer Sortierung nach Datum: Die Position hängt am Eintrag, nicht an der
 Ansicht.
 
+**Die Liste bleibt stehen, solange jemand in ihr schreibt.** Sobald der Fokus
+in einem Feld der Liste steht, gilt für Reihenfolge und Zwischentitel der Stand
+von diesem Augenblick – auch wenn das automatische Speichern das
+Bearbeitungsdatum inzwischen hochgesetzt hat. Was geschrieben wird, steht
+trotzdem sofort da; eingefroren ist die Gliederung, nicht der Inhalt. Beim
+Verlassen des Feldes ordnet sich die Liste in einem Zug neu.
+
 Eine neu erfasste Pendenz ist noch nicht einsortiert und steht **zuoberst** –
 dort, wo sie auch nach Erfassungsdatum stünde; ein Griff auf den Pfeil setzt
 sie an ihren Platz. Umsortiert wird nur unter _Pendent_ und ohne Suche: Ein
@@ -499,10 +549,15 @@ braucht, findet unten den Weg zum ganzen Sonntag.
 ### Namen im Text
 
 Ein `@` mitten im Satz öffnet die Mitgliederliste. Nach der Auswahl steht der
-volle Name im Text, das `@` verschwindet – der Name bleibt aber **farbig
-unterlegt und anklickbar** und führt zur Person in der Mitgliederliste. Der
-Weg zurück führt nicht in die Liste, sondern genau zu dem Punkt, den man
-gerade gelesen hat; die Adresse merkt sich dafür den offenen Eintrag
+volle Name im Text, das `@` verschwindet – und der Name steht da wie überall
+sonst in der App: **ein Kreis mit den Initialen, daneben der Name**, anklickbar
+und ohne weiteres Beiwerk. Vorher war eine Erwähnung blau hinterlegt und
+gepunktet unterstrichen; das schrie mitten im Satz nach Aufmerksamkeit und sah
+anders aus als dieselbe Person zwei Zeilen weiter oben. Der Kreis sagt dasselbe
+ruhiger: Hier ist eine Person gemeint.
+
+Der Weg zurück führt nicht in die Mitgliederliste, sondern genau zu dem Punkt,
+den man gerade gelesen hat; die Adresse merkt sich dafür den offenen Eintrag
 (`…/sitzungen/<id>?traktandum=<id>`).
 
 ### Der Weg zurück

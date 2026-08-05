@@ -4,6 +4,7 @@ import { test } from 'node:test'
 import {
   callingChangesConcern,
   callingChangesToText,
+  callingRowsAbout,
   emptyCallingChanges,
   isCallingChangesEmpty,
   isOwnItem,
@@ -133,7 +134,7 @@ test('als Text: Überschriften, leere Zeilen bleiben weg, Namen werden aufgelös
 
   const text = callingChangesToText(value, (id) => (id === 'm1' ? 'Alain von Allmen' : 'Bischof'))
 
-  assert.ok(text.includes('Mitglieder ohne Berufungen'))
+  assert.ok(text.includes('Neue Berufungen'))
   assert.ok(
     text.includes('Alain von Allmen · PV-Lehrerin, möchte entlassen werden · Sonntagsschule'),
   )
@@ -183,6 +184,52 @@ test('eine fremde Runde gehört niemandem', () => {
     open: [{ ...newCallingOpenRow(), calling: 'Sekretär', assignees: ['u9'] }],
   })
   assert.equal(callingChangesConcern(value, 'u1', ALAIN), false)
+})
+
+/* ---------------- Wo kommt jemand vor? ---------------- */
+
+test('die Zeilen einer Person: genannt in der Spalte «Name»', () => {
+  const value = changes({
+    members: [
+      { ...newCallingMemberRow(), memberIds: ['m1'], calling: 'PV-Lehrerin' },
+      { ...newCallingMemberRow(), memberIds: ['m9'] },
+    ],
+  })
+  const rows = callingRowsAbout(value, ALAIN)
+  assert.equal(rows.length, 1)
+  assert.equal(rows[0].table, 'members')
+  assert.equal(rows[0].row.id, value.members[0].id)
+})
+
+test('die Zeilen einer Person: erwähnt als Vorschlag in der anderen Tabelle', () => {
+  const value = changes({
+    open: [{ ...newCallingOpenRow(), calling: 'Sekretär', candidates: 'Alain von Allmen' }],
+  })
+  const rows = callingRowsAbout(value, ALAIN)
+  assert.equal(rows.length, 1)
+  assert.equal(rows[0].table, 'open')
+})
+
+test('dieselbe Zeile zählt einmal, auch wenn der Name zweimal darin steht', () => {
+  const value = changes({
+    members: [
+      {
+        ...newCallingMemberRow(),
+        memberIds: ['m1'],
+        calling: 'Alain von Allmen ist heute Lehrer',
+        ideas: 'Alain von Allmen als Berater',
+      },
+    ],
+    open: [newCallingOpenRow()],
+  })
+  assert.equal(callingRowsAbout(value, ALAIN).length, 1)
+})
+
+test('ohne Mitglied und ohne Runde gibt es nichts zu finden', () => {
+  const value = changes({ members: [{ ...newCallingMemberRow(), memberIds: ['m1'] }] })
+  assert.deepEqual(callingRowsAbout(value, null), [])
+  assert.deepEqual(callingRowsAbout(null, ALAIN), [])
+  assert.deepEqual(callingRowsAbout(emptyCallingChanges(), ALAIN), [])
 })
 
 test('«Meine Pendenzen»: Zuweisung am Eintrag oder eine Zeile darin', () => {

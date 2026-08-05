@@ -183,6 +183,28 @@ export function useDoneItems(enabled = true) {
   )
 }
 
+/**
+ * Alle Berufungsrunden – Traktanden und Pendenzen mit den beiden Tabellen.
+ *
+ * Gebraucht im Mitgliederprofil: Dort steht unter «Potentielle
+ * Berufungsänderungen», in welchen Runden eine Person vorkommt. Zuletzt
+ * bearbeitete zuoberst – was gestern besprochen wurde, zählt mehr als eine
+ * Idee von vor zwei Jahren.
+ */
+export function useCallingRounds() {
+  const state = useAgendaStore()
+  return useMemo(
+    () => ({
+      ...state,
+      data: byDate(
+        state.data.filter((item) => Boolean(item.callingChanges)),
+        'updatedAt',
+      ),
+    }),
+    [state],
+  )
+}
+
 /** Traktanden für die Archiv-/Suchansicht, zuletzt geändertes zuerst. */
 export function useAllItems(limitCount = 500, enabled = true) {
   const state = useAgendaStore()

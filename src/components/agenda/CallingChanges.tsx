@@ -1,9 +1,9 @@
-import { useId, useState, type ReactNode } from 'react'
-import { Plus, Trash2 } from 'lucide-react'
+import { useState, type ReactNode } from 'react'
+import { Plus, Trash2, X } from 'lucide-react'
 import { useData } from '@/contexts/DataContext'
 import { Avatar } from '@/components/ui/Avatar'
 import { MemberLink } from '@/components/ui/MemberLink'
-import { MentionEditable } from '@/components/ui/MentionText'
+import { MentionEditable, MentionText } from '@/components/ui/MentionText'
 import { MemberPicker, PersonButton } from '@/components/ui/Pickers'
 import {
   CALLING_TABLE_TITLES,
@@ -11,6 +11,7 @@ import {
   isCallingOpenRowEmpty,
   newCallingMemberRow,
   newCallingOpenRow,
+  type CallingRowMatch,
 } from '@/lib/callingChanges'
 import { cn } from '@/lib/utils'
 import {
@@ -28,23 +29,27 @@ import {
 /**
  * Die Berufungsrunde: zwei Tabellen untereinander.
  *
- * **Mitglieder ohne Berufungen** – wer eine neue Aufgabe braucht: der Name
- * (auch zwei, wenn ein Ehepaar zusammen besprochen wird), was heute ist,
- * was in Frage käme. **Offene Berufungen** – die Gegenrichtung: welche
- * Aufgabe niemanden hat, wer dafür in Frage käme, wie es weitergeht.
+ * **Neue Berufungen** – wer eine neue Aufgabe bekommen soll: der Name, was
+ * heute ist, was in Frage käme. **Offene Berufungen** – die Gegenrichtung:
+ * welche Aufgabe niemanden hat, wer dafür in Frage käme, wie es weitergeht.
  *
  * Es ist eine Ideenliste. Nichts davon ändert eine Berufung oder einen
  * Mitgliederdatensatz – das tut allein das LCR und der Import von dort.
  *
  * Drei Dinge tragen die Ansicht:
  *
- *  - **Die Farbe gehört der Zeile.** Rot, Orange, Grün sagen, wie dringend
- *    es ist; oben rechts blenden dieselben drei Kreise aus, was gerade
- *    nicht interessiert. Der Text bleibt in jeder Farbe lesbar – gefärbt
- *    ist der Hintergrund nur so weit, dass sich die Zeilen trennen lassen.
- *  - **Die Zuständigkeit gehört der Zeile.** Eine Runde geht zwanzig Namen
- *    durch, und die verteilt man untereinander. Wer eine Zeile trägt, hat
- *    den ganzen Eintrag unter «Pendenzen → Meine».
+ *  - **Farbe und Zuständigkeit stehen unten rechts in der Zeile.** Beides
+ *    gehört der Zeile: Rot, Orange, Grün sagen, wie dringend es ist – oben
+ *    rechts blenden dieselben drei Kreise aus, was gerade nicht
+ *    interessiert –, und wer eine Zeile trägt, hat den ganzen Eintrag unter
+ *    «Pendenzen → Meine». Eine Runde geht zwanzig Namen durch, und die
+ *    verteilt man untereinander. Beides steht in **einer** Zeile am Fuss
+ *    und so knapp wie möglich: Gelesen wird der Text darüber, nicht die
+ *    Bedienung darunter.
+ *  - **Ein Name je Zeile.** In der Spalte «Name» steht genau eine Person;
+ *    geht es um zwei, sind es zwei Zeilen. Mehrere Namen in einer Zeile
+ *    machten aus der Tabelle eine Liste von Listen, und dann sagt keine
+ *    Spalte mehr, wovon sie handelt.
  *  - **Am Telefon steht alles untereinander.** Drei Spalten mit
  *    mehrzeiligem Text passen dort nicht nebeneinander; die
  *    Spaltenüberschriften erscheinen deshalb ab Tabletbreite, darunter
@@ -66,7 +71,6 @@ export function CallingChangesTables({
   memberRefs?: string[]
   readOnly?: boolean
 }) {
-  const baseId = useId()
   const editable = Boolean(onChange) && !readOnly
 
   /*
@@ -108,7 +112,6 @@ export function CallingChangesTables({
 
       <CallingTable
         title={CALLING_TABLE_TITLES.members}
-        hint="Wer eine neue Aufgabe braucht."
         columns={['Name', 'Berufung', 'Vorschläge']}
         editable={editable}
         hidden={value.members.filter((row) => !visible(row)).length}
@@ -132,21 +135,41 @@ export function CallingChangesTables({
             }
           >
             <Cell label="Name">
-              {editable ? (
+              {/*
+                Steht ein Name da, steht er auch beim Schreiben als Verweis da
+                – ein Griff darauf führt zum Profil, wo die bisherigen
+                Berufungen stehen. Genau die schaut man in einer Runde nach.
+                Gesucht wird nur, solange die Zeile keinen Namen hat: Es ist
+                **eine** Person je Zeile. Geht es um ein Ehepaar, sind es zwei
+                Zeilen; was früher zu zweit erfasst wurde, bleibt stehen und
+                lässt sich einzeln entfernen.
+              */}
+              {!editable || row.memberIds.length > 0 ? (
+                <MemberNames
+                  ids={row.memberIds}
+                  onRemove={
+                    editable
+                      ? (id) =>
+                          changeMember(row.id, {
+                            memberIds: row.memberIds.filter((entry) => entry !== id),
+                          })
+                      : undefined
+                  }
+                />
+              ) : (
                 <MemberPicker
+                  single
                   stacked
                   label=""
                   value={row.memberIds}
                   onChange={(next) => changeMember(row.id, { memberIds: next })}
                   placeholder="Name suchen …"
                 />
-              ) : (
-                <MemberNames ids={row.memberIds} />
               )}
             </Cell>
             <Cell label="Berufung">
               <TextCell
-                id={`${baseId}-m-${row.id}-calling`}
+                id={fieldId(row.id, 'calling')}
                 label={`Berufung, Zeile ${index + 1}`}
                 value={row.calling}
                 onChange={(next) => changeMember(row.id, { calling: next })}
@@ -158,7 +181,7 @@ export function CallingChangesTables({
             </Cell>
             <Cell label="Vorschläge">
               <TextCell
-                id={`${baseId}-m-${row.id}-ideas`}
+                id={fieldId(row.id, 'ideas')}
                 label={`Vorschläge, Zeile ${index + 1}`}
                 value={row.ideas}
                 onChange={(next) => changeMember(row.id, { ideas: next })}
@@ -174,7 +197,6 @@ export function CallingChangesTables({
 
       <CallingTable
         title={CALLING_TABLE_TITLES.open}
-        hint="Welche Aufgabe niemanden hat."
         columns={['Berufung', 'Name (Vorschläge)', 'Weiteres Vorgehen']}
         editable={editable}
         hidden={value.open.filter((row) => !visible(row)).length}
@@ -199,7 +221,7 @@ export function CallingChangesTables({
           >
             <Cell label="Berufung">
               <TextCell
-                id={`${baseId}-o-${row.id}-calling`}
+                id={fieldId(row.id, 'calling')}
                 label={`Offene Berufung, Zeile ${index + 1}`}
                 value={row.calling}
                 onChange={(next) => changeOpen(row.id, { calling: next })}
@@ -211,7 +233,7 @@ export function CallingChangesTables({
             </Cell>
             <Cell label="Name (Vorschläge)">
               <TextCell
-                id={`${baseId}-o-${row.id}-candidates`}
+                id={fieldId(row.id, 'candidates')}
                 label={`Vorschläge, Zeile ${index + 1}`}
                 value={row.candidates}
                 onChange={(next) => changeOpen(row.id, { candidates: next })}
@@ -223,7 +245,7 @@ export function CallingChangesTables({
             </Cell>
             <Cell label="Weiteres Vorgehen">
               <TextCell
-                id={`${baseId}-o-${row.id}-next`}
+                id={fieldId(row.id, 'next')}
                 label={`Weiteres Vorgehen, Zeile ${index + 1}`}
                 value={row.next}
                 onChange={(next) => changeOpen(row.id, { next })}
@@ -238,6 +260,20 @@ export function CallingChangesTables({
       </CallingTable>
     </div>
   )
+}
+
+/**
+ * Die `id` eines Feldes – aus der Zeile und nicht aus der Stelle im Baum.
+ *
+ * Sie muss einen Neuaufbau der Ansicht überstehen: An ihr erkennt das Feld,
+ * dass darin eben geschrieben wurde, und schreibt weiter, statt in den
+ * Lesezustand zurückzufallen (siehe `lib/writing`). Eine aus der Baumstelle
+ * abgeleitete `id` (`useId`) täte das nicht – sie ist eine andere, sobald der
+ * Eintrag in der Liste den Abschnitt wechselt. Die Zeilen-ID ist ohnehin
+ * eindeutig, auch über beide Tabellen hinweg.
+ */
+function fieldId(rowId: string, column: string): string {
+  return `berufung-${rowId}-${column}`
 }
 
 /**
@@ -258,7 +294,6 @@ function withoutRow<T extends CallingRowBase>(rows: T[], id: string, fresh: () =
 
 function CallingTable({
   title,
-  hint,
   columns,
   editable,
   hidden,
@@ -266,7 +301,6 @@ function CallingTable({
   children,
 }: {
   title: string
-  hint: string
   columns: [string, string, string]
   editable: boolean
   /** Wie viele Zeilen der Farbfilter gerade wegnimmt */
@@ -276,8 +310,10 @@ function CallingTable({
 }) {
   return (
     <section>
-      <h4 className="text-sm font-semibold">{title}</h4>
-      <p className="hint mb-2">{hint}</p>
+      {/* Nur der Titel – ein Satz darunter, der ihn mit anderen Worten
+          wiederholt, kostet in jeder Runde zwei Zeilen und sagt beim zweiten
+          Mal nichts mehr. */}
+      <h4 className="mb-1.5 text-sm font-semibold">{title}</h4>
 
       {/* Ab Tabletbreite stehen die Überschriften einmal über der Tabelle;
           darunter trägt jedes Feld seine eigene (siehe `Cell`). */}
@@ -312,8 +348,7 @@ function CallingTable({
 /* ------------------------------------------------------------------ */
 
 /**
- * Wie eine Zeile aussieht: die drei Felder, darunter Farbe und
- * Zuständigkeit.
+ * Die Farbe der Zeile.
  *
  * Gefärbt wird der Hintergrund nur schwach und der linke Rand kräftig. So
  * lassen sich die Stufen auch nebeneinander auseinanderhalten, ohne dass
@@ -338,6 +373,16 @@ const URGENCY_BADGE: Record<CallingUrgency, string> = {
   low: 'bg-emerald-100 text-emerald-900 dark:bg-emerald-950 dark:text-emerald-100',
 }
 
+/**
+ * Wie eine Zeile aussieht: die drei Felder, darunter Farbe und
+ * Zuständigkeit – **unten rechts** und in einer einzigen schmalen Reihe.
+ *
+ * Beides ist Bedienung und nicht Inhalt. Links unter den Feldern stand es
+ * mitten im Lesefluss, und die Beschriftung «Zuständig» sagte dabei nichts,
+ * was die Namen daneben nicht schon sagen. Rechts aussen bleibt es in
+ * Reichweite, ohne die Tabelle zu zerschneiden – und der Papierkorb steht als
+ * einziges am anderen Ende, weit weg von den Knöpfen, die man dauernd trifft.
+ */
 function RowFrame({
   row,
   editable,
@@ -372,20 +417,40 @@ function RowFrame({
       <div className="grid gap-2 sm:grid-cols-3">{children}</div>
 
       {editable ? (
-        <div className="mt-2 flex flex-wrap items-center gap-x-3 gap-y-2 border-t border-black/5 pt-2 dark:border-white/10">
+        <div className="mt-2 flex flex-wrap items-center justify-end gap-x-2 gap-y-1">
+          {/* Ganz links und damit so weit wie möglich weg von den Knöpfen, die
+              man dauernd trifft. */}
+          {onRemove && (
+            <button
+              type="button"
+              className="btn-ghost mr-auto p-1 text-slate-400 hover:text-rose-600 dark:hover:text-rose-400"
+              onClick={onRemove}
+              aria-label={`Zeile ${position} entfernen`}
+            >
+              <Trash2 className="size-3.5" aria-hidden />
+            </button>
+          )}
+
           <UrgencyPicker
             value={row.urgency}
             onChange={onUrgency}
             label={`Dringlichkeit, Zeile ${position}`}
           />
 
-          <div className="flex min-w-0 flex-wrap items-center gap-1">
-            <span className="text-xs text-slate-500 dark:text-slate-400">Zuständig</span>
+          {/* Ohne Beschriftung: «Zuständig» stand vor fünf Namen und sagte
+              nichts, was die Namen nicht selbst sagen. Für Bildschirmleser
+              steht es an der Gruppe. */}
+          <div
+            className="flex min-w-0 flex-wrap items-center justify-end gap-1"
+            role="group"
+            aria-label={`Zuständig, Zeile ${position}`}
+          >
             {bishopric.map((user) => (
               <PersonButton
                 key={user.id}
                 id={user.id}
                 name={user.displayName}
+                compact
                 selected={row.assignees.includes(user.id)}
                 onClick={() =>
                   onAssignees(
@@ -397,21 +462,10 @@ function RowFrame({
               />
             ))}
           </div>
-
-          {onRemove && (
-            <button
-              type="button"
-              className="btn-ghost ml-auto p-1 text-rose-600 dark:text-rose-400"
-              onClick={onRemove}
-              aria-label={`Zeile ${position} entfernen`}
-            >
-              <Trash2 className="size-4" aria-hidden />
-            </button>
-          )}
         </div>
       ) : (
         (row.urgency || row.assignees.length > 0) && (
-          <div className="mt-2 flex flex-wrap items-center gap-2">
+          <div className="mt-1.5 flex flex-wrap items-center justify-end gap-1.5">
             {row.urgency && (
               <span className={cn('badge', URGENCY_BADGE[row.urgency])}>
                 {CALLING_URGENCY_LABELS[row.urgency]}
@@ -422,6 +476,88 @@ function RowFrame({
             ))}
           </div>
         )
+      )}
+    </li>
+  )
+}
+
+/* ------------------------------------------------------------------ */
+/* Eine Zeile anderswo                                                 */
+/* ------------------------------------------------------------------ */
+
+/**
+ * Eine einzelne Zeile, wie sie gelesen wird – für das Mitgliederprofil.
+ *
+ * Dort steht die Runde nicht als Tabelle, sondern als das, was sie über
+ * **eine** Person sagt: aus welcher der beiden Tabellen die Zeile stammt,
+ * was in ihren Feldern steht, wie dringend es ist und wer sich darum
+ * kümmert. Farbe und Zuständigkeit sehen dabei genauso aus wie in der Runde
+ * selbst – es ist dieselbe Zeile, bloss an einem anderen Ort.
+ *
+ * Leere Felder bleiben weg: Eine Beschriftung mit nichts dahinter sagt
+ * nichts, was die leere Stelle nicht auch sagt.
+ */
+export function CallingRowSummary({
+  match,
+  memberRefs,
+}: {
+  match: CallingRowMatch
+  /** Verweise des Eintrags, damit «@»-Namen im Text anklickbar bleiben */
+  memberRefs?: string[]
+}) {
+  const { row } = match
+  const fields =
+    match.table === 'members'
+      ? [
+          { label: 'Berufung', text: match.row.calling },
+          { label: 'Vorschläge', text: match.row.ideas },
+        ]
+      : [
+          { label: 'Berufung', text: match.row.calling },
+          { label: 'Name (Vorschläge)', text: match.row.candidates },
+          { label: 'Weiteres Vorgehen', text: match.row.next },
+        ]
+  const filled = fields.filter((field) => field.text.trim() !== '')
+
+  return (
+    <li
+      className={cn(
+        'rounded-lg border border-l-4 border-slate-200 p-2 dark:border-slate-800',
+        row.urgency ? URGENCY_ROW[row.urgency] : 'border-l-slate-200 dark:border-l-slate-700',
+      )}
+    >
+      <span className="text-xs text-slate-500 dark:text-slate-400">
+        {CALLING_TABLE_TITLES[match.table]}
+      </span>
+
+      {filled.length === 0 ? (
+        <p className="text-sm text-slate-400">Noch nichts notiert.</p>
+      ) : (
+        <dl className="mt-0.5 space-y-1">
+          {filled.map((field) => (
+            <div key={field.label} className="flex flex-wrap items-baseline gap-x-2">
+              <dt className="text-xs font-medium text-slate-500 dark:text-slate-400">
+                {field.label}
+              </dt>
+              <dd className="min-w-0 flex-1 text-sm break-words whitespace-pre-wrap">
+                <MentionText text={field.text} memberRefs={memberRefs} />
+              </dd>
+            </div>
+          ))}
+        </dl>
+      )}
+
+      {(row.urgency || row.assignees.length > 0) && (
+        <div className="mt-1.5 flex flex-wrap items-center justify-end gap-1.5">
+          {row.urgency && (
+            <span className={cn('badge', URGENCY_BADGE[row.urgency])}>
+              {CALLING_URGENCY_LABELS[row.urgency]}
+            </span>
+          )}
+          {row.assignees.map((id) => (
+            <AssigneeChip key={id} id={id} />
+          ))}
+        </div>
       )}
     </li>
   )
@@ -493,8 +629,15 @@ function TextCell({
   )
 }
 
-/** Die gewählten Namen, wenn nur gelesen wird – jeder führt zur Person. */
-function MemberNames({ ids }: { ids: string[] }) {
+/**
+ * Der gewählte Name – er führt zur Person, gelesen wie geschrieben.
+ *
+ * Auch beim Ausfüllen bleibt er ein Verweis: In einer Berufungsrunde ist die
+ * nächste Frage fast immer «was hat die Person bisher getan?», und die
+ * Antwort steht in ihrem Profil. Steht ein `onRemove` bereit, lässt sich der
+ * Name daneben wieder wegnehmen – dann steht wieder das Suchfeld da.
+ */
+function MemberNames({ ids, onRemove }: { ids: string[]; onRemove?: (id: string) => void }) {
   const { membersById } = useData()
 
   if (ids.length === 0) return <span className="px-3 text-sm text-slate-400">Niemand</span>
@@ -505,7 +648,14 @@ function MemberNames({ ids }: { ids: string[] }) {
         const member = membersById.get(id)
         const name = member ? `${member.firstName} ${member.lastName}` : 'Unbekanntes Mitglied'
         return (
-          <div key={id} className="flex items-center gap-2">
+          <div
+            key={id}
+            className={cn(
+              'flex items-center gap-2',
+              onRemove &&
+                'rounded-lg border border-slate-200 bg-white px-2 py-1.5 dark:border-slate-700 dark:bg-slate-900',
+            )}
+          >
             <Avatar name={name} id={id} size="sm" />
             {member ? (
               <MemberLink
@@ -518,6 +668,16 @@ function MemberNames({ ids }: { ids: string[] }) {
             ) : (
               <span className="min-w-0 flex-1 truncate text-sm">{name}</span>
             )}
+            {onRemove && (
+              <button
+                type="button"
+                onClick={() => onRemove(id)}
+                className="btn-ghost shrink-0 p-1"
+                aria-label={`${name} entfernen`}
+              >
+                <X className="size-3.5" aria-hidden />
+              </button>
+            )}
           </div>
         )
       })}
@@ -529,7 +689,13 @@ function MemberNames({ ids }: { ids: string[] }) {
 /* Die Farben                                                          */
 /* ------------------------------------------------------------------ */
 
-/** Die drei Kreise an der Zeile: Wie dringend ist das? */
+/**
+ * Die drei Kreise an der Zeile: Wie dringend ist das?
+ *
+ * Der Kreis ist klein, die Fläche darum nicht: Der Knopf trägt einen
+ * Innenabstand und bleibt damit auch am Telefon zu treffen, während die
+ * Zeile schmal bleibt.
+ */
 function UrgencyPicker({
   value,
   onChange,
@@ -540,7 +706,7 @@ function UrgencyPicker({
   label: string
 }) {
   return (
-    <div className="flex items-center gap-1.5" role="group" aria-label={label}>
+    <div className="flex items-center" role="group" aria-label={label}>
       {CALLING_URGENCY_ORDER.map((level) => {
         const selected = value === level
         return (
@@ -554,13 +720,14 @@ function UrgencyPicker({
             title={CALLING_URGENCY_LABELS[level]}
             aria-label={CALLING_URGENCY_LABELS[level]}
             className={cn(
-              'size-5 rounded-full transition',
-              URGENCY_DOT[level],
+              'grid place-items-center rounded-full p-1 transition',
               selected
-                ? 'ring-2 ring-slate-500 ring-offset-1 dark:ring-slate-300 dark:ring-offset-slate-900'
+                ? 'ring-2 ring-slate-500 dark:ring-slate-300'
                 : 'opacity-30 hover:opacity-70',
             )}
-          />
+          >
+            <span className={cn('size-3.5 rounded-full', URGENCY_DOT[level])} aria-hidden />
+          </button>
         )
       })}
     </div>

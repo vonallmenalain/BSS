@@ -113,13 +113,15 @@ interface DayGroup {
 /**
  * Die sortierte Liste in Tage schneiden.
  *
- * Sie ist bereits nach demselben Feld geordnet – deshalb genügt ein Durchgang:
- * Wechselt der Tag, beginnt ein neuer Abschnitt.
+ * Sie ist bereits nach demselben Datum geordnet – deshalb genügt ein
+ * Durchgang: Wechselt der Tag, beginnt ein neuer Abschnitt. Gefragt wird
+ * dasselbe `dateOf` wie beim Sortieren; zwei verschiedene Auskünfte ergäben
+ * eine Liste, deren Überschriften nicht zu ihrer Reihenfolge passen.
  */
-function groupByDay(items: AgendaItem[], field: DateField): DayGroup[] {
+function groupByDay(items: AgendaItem[], dateOf: (item: AgendaItem) => Date | null): DayGroup[] {
   const groups: DayGroup[] = []
   items.forEach((item, index) => {
-    const date = sortDate(item, field)
+    const date = dateOf(item)
     const key = date ? toDateInput(date) : 'ohne-datum'
     const last = groups[groups.length - 1]
     if (last && last.key === key) last.items.push(item)
@@ -368,13 +370,64 @@ export function Pendenzen() {
     [userName, memberName],
   )
 
-  const visible = useMemo(() => {
-    const base =
-      scope === 'done' ? doneItems : scope === 'mine' ? pendenzen.filter(ownItem) : pendenzen
+  /** Der Ausschnitt, aus dem die Liste gezeichnet wird. */
+  const pool = useMemo(
+    () => (scope === 'done' ? doneItems : scope === 'mine' ? pendenzen.filter(ownItem) : pendenzen),
+    [scope, doneItems, pendenzen, ownItem],
+  )
 
+  /*
+   * Die Liste bleibt stehen, solange jemand in ihr schreibt.
+   *
+   * Gespeichert wird, während getippt wird: kurz nach dem letzten Tastendruck
+   * geht der Eintrag zu Firestore und kommt als geändert zurück. Nach
+   * «Bearbeitungsdatum» sortiert heisst das mitten im Satz: Der Eintrag
+   * springt an den Anfang und unter die Überschrift von heute, React baut ihn
+   * an der neuen Stelle neu auf – und der Cursor ist weg. Genau das war beim
+   * Schreiben einer Berufungsrunde nicht auszuhalten.
+   *
+   * Deshalb gilt, solange der Fokus in der Liste steht, das Datum von vorhin;
+   * die Reihenfolge und die Zwischentitel bleiben, wie sie waren. Was
+   * geschrieben wird, steht trotzdem sofort da – eingefroren ist die
+   * Gliederung, nicht der Inhalt. Sobald das Feld verlassen wird, ordnet sich
+   * die Liste in einem Zug neu; dann stört es niemanden.
+   */
+  const dateField: DateField = sort.field === 'manual' ? 'created' : sort.field
+
+  const freshDates = useMemo(() => {
+    const dates = new Map<string, Date | null>()
+    pool.forEach((item) => dates.set(item.id, sortDate(item, dateField)))
+    return dates
+  }, [pool, dateField])
+
+  /**
+   * Der Stand von dem Moment, in dem jemand in die Liste griff – oder `null`,
+   * solange niemand darin schreibt.
+   *
+   * Nach welchem Feld damals einsortiert wurde, steht dabei: Wer die
+   * Sortierung umstellt, will die neue Reihenfolge sehen und nicht die alte
+   * mit neuer Überschrift.
+   */
+  const [held, setHeld] = useState<{ field: DateField; dates: Map<string, Date | null> } | null>(
+    null,
+  )
+
+  const dates = held && held.field === dateField ? held.dates : freshDates
+  const dateOf = useCallback(
+    (item: AgendaItem) => {
+      // Was seither dazugekommen ist, kennt der festgehaltene Stand nicht –
+      // dafür gilt das Datum, das der Eintrag jetzt trägt. Ein Eintrag ganz
+      // ohne Datum steht dort als `null` und ist damit bekannt.
+      const known = dates.get(item.id)
+      return known === undefined ? sortDate(item, dateField) : known
+    },
+    [dates, dateField],
+  )
+
+  const visible = useMemo(() => {
     const found = search.trim()
-      ? base.filter((item) => matchesSearch(haystack(item), search))
-      : base
+      ? pool.filter((item) => matchesSearch(haystack(item), search))
+      : pool
 
     /*
      * Die von Hand gelegte Reihenfolge.
@@ -388,7 +441,7 @@ export function Pendenzen() {
     if (sort.field === 'manual') {
       const platz = (item: AgendaItem) =>
         typeof item.pendenzOrder === 'number' ? item.pendenzOrder : null
-      const erfasst = (item: AgendaItem) => sortDate(item, 'created')?.getTime() ?? 0
+      const erfasst = (item: AgendaItem) => dateOf(item)?.getTime() ?? 0
       return [...found].sort((a, b) => {
         const links = platz(a)
         const rechts = platz(b)
@@ -401,15 +454,14 @@ export function Pendenzen() {
 
     // Ohne Datum ans Ende, in beiden Richtungen: Es steht nicht «vor» dem
     // ältesten Eintrag, es fehlt schlicht.
-    const field = sort.field
     return [...found].sort((a, b) => {
-      const at = sortDate(a, field)?.getTime()
-      const bt = sortDate(b, field)?.getTime()
+      const at = dateOf(a)?.getTime()
+      const bt = dateOf(b)?.getTime()
       if (at === undefined) return bt === undefined ? 0 : 1
       if (bt === undefined) return -1
       return sort.dir === 'asc' ? at - bt : bt - at
     })
-  }, [scope, doneItems, pendenzen, ownItem, search, haystack, sort])
+  }, [pool, search, haystack, sort, dateOf])
 
   /*
    * Umsortieren – mit den Pfeilen und durch Ziehen.
@@ -471,8 +523,8 @@ export function Pendenzen() {
   const groups = useMemo(() => {
     const page = visible.slice(0, shown)
     if (sort.field === 'manual') return [{ key: 'manuell', label: '', offset: 0, items: page }]
-    return groupByDay(page, sort.field)
-  }, [visible, shown, sort.field])
+    return groupByDay(page, dateOf)
+  }, [visible, shown, sort.field, dateOf])
   const rest = Math.max(0, visible.length - shown)
 
   const loading = scope === 'done' ? doneLoading : openLoading
@@ -578,7 +630,19 @@ export function Pendenzen() {
         /* Ein Abschnitt je Tag: Die Überschrift ist das Datum, nach dem
            sortiert wird – erfasst oder zuletzt bearbeitet. Von Hand gelegt
            steht die Liste ohne Überschrift da, in einem Stück. */
-        <div className="space-y-5">
+        <div
+          className="space-y-5"
+          /* Steht der Fokus in der Liste, wird in ihr geschrieben – dann hält
+             sie den Stand von diesem Augenblick fest und ordnet sich nicht um
+             (siehe oben). React meldet den Wechsel bis hierher hoch; ein
+             Sprung von einem Feld ins nächste bleibt dabei innerhalb der
+             Liste und zählt nicht als Verlassen. */
+          onFocus={() => setHeld((current) => current ?? { field: dateField, dates: freshDates })}
+          onBlur={(event) => {
+            if (event.currentTarget.contains(event.relatedTarget)) return
+            setHeld(null)
+          }}
+        >
           {groups.map((group) => (
             <section key={group.key}>
               {group.label && (

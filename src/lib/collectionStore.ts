@@ -142,6 +142,25 @@ export function clearSyncWatermarks(): void {
 /* Der Speicher je Sammlung                                            */
 /* ------------------------------------------------------------------ */
 
+/**
+ * Zeitstempel, die noch beim Server liegen, mit der lokalen Uhr schätzen.
+ *
+ * `serverTimestamp()` steht erst fest, wenn der Server bestätigt hat; bis
+ * dahin liefert Firestore für dieses Feld standardmässig `null`. Für die
+ * Oberfläche heisst das: Kaum ist eine Änderung gespeichert, hat der Eintrag
+ * für einen Augenblick **kein** Bearbeitungsdatum mehr – die Zeile «zuletzt
+ * bearbeitet» verschwindet, die nach diesem Datum sortierte Liste wirft ihn
+ * an eine ganz andere Stelle, und wenn die Bestätigung eintrifft, springt
+ * alles ein zweites Mal. Wer gerade tippt, sieht das als Ruckeln der ganzen
+ * Seite.
+ *
+ * Geschätzt wird stattdessen die lokale Uhrzeit – also genau das, was
+ * gemeint ist: eben jetzt bearbeitet. Der Wasserstand bleibt davon
+ * unberührt; er wächst ausschliesslich aus bestätigten Schnappschüssen
+ * (siehe `remember()`).
+ */
+const ESTIMATED = { serverTimestamps: 'estimate' } as const
+
 export interface StoreState<T> {
   data: T[]
   loading: boolean
@@ -241,7 +260,7 @@ async function start(store: Store): Promise<void> {
   /* 1. Aus dem Zwischenspeicher füllen – kostenlos und sofort. */
   try {
     const cached = await getDocsFromCache(ref)
-    cached.forEach((snapshot) => remember(store, snapshot.id, snapshot.data(), false))
+    cached.forEach((snapshot) => remember(store, snapshot.id, snapshot.data(ESTIMATED), false))
     // Weniger Datensätze als beim letzten Mal heisst: Der Browser hat den
     // Zwischenspeicher geleert (oder es ist ein anderes Gerät). Dann taugt
     // der Wasserstand nicht – es fehlte, was zwischendurch geschrieben wurde.
@@ -309,7 +328,12 @@ function apply(store: Store, snapshot: QuerySnapshot): void {
       if (store.docs.delete(change.doc.id)) changed = true
       return
     }
-    remember(store, change.doc.id, change.doc.data(), !change.doc.metadata.hasPendingWrites)
+    remember(
+      store,
+      change.doc.id,
+      change.doc.data(ESTIMATED),
+      !change.doc.metadata.hasPendingWrites,
+    )
     changed = true
   })
 

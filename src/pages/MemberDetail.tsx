@@ -6,6 +6,7 @@ import {
   Cake,
   ChevronsLeftRight,
   HandHeart,
+  Lightbulb,
   Mail,
   MapPin,
   Mic,
@@ -16,11 +17,18 @@ import {
 import { useData } from '@/contexts/DataContext'
 import { useToast } from '@/contexts/ToastContext'
 import { useBack } from '@/hooks/useBack'
-import { useMemberCallings, usePrayers, useTalks } from '@/hooks/useFirestore'
+import { useCallingRounds, useMemberCallings, usePrayers, useTalks } from '@/hooks/useFirestore'
 import { Modal } from '@/components/ui/Modal'
 import { EmptyState } from '@/components/ui/Feedback'
 import { Avatar } from '@/components/ui/Avatar'
-import { CallingStatusBadge, TalkStatusBadge } from '@/components/ui/Badge'
+import { CallingStatusBadge, StatusBadge, TalkStatusBadge } from '@/components/ui/Badge'
+import { CallingRowSummary } from '@/components/agenda/CallingChanges'
+import { FOCUS_PARAM } from '@/components/agenda/MeetingFocus'
+import {
+  callingRowsAbout,
+  normalizeCallingChanges,
+  type CallingRowMatch,
+} from '@/lib/callingChanges'
 import { prayerAvailability, talkAvailability, type Availability } from '@/lib/availability'
 import { formatDate, getAge, monthsSince, toDate, toDateInput } from '@/lib/dates'
 import { cn, formatPhone, telHref } from '@/lib/utils'
@@ -30,9 +38,11 @@ import { sortPrayersByDate } from '@/services/prayers'
 import {
   ACTIVE_CALLING_STATUSES,
   GENDER_LABELS,
+  lastEditedAt,
   MEMBER_STATUS_LABELS,
   ORGANIZATION_LABELS,
   PRAYER_SLOT_LABELS,
+  type AgendaItem,
   type Calling,
   type Member,
   type MemberStatus,
@@ -48,6 +58,9 @@ export function MemberDetail() {
      Gebeten – wie in der Mitgliederliste. */
   const { data: prayers } = usePrayers(600)
   const { data: callings } = useMemberCallings(memberId)
+  /* Die Berufungsrunden der Bischofschaft – für «Potentielle
+     Berufungsänderungen» weiter unten. */
+  const { data: rounds } = useCallingRounds()
 
   /*
    * Zurück dorthin, woher der Aufruf kam – und zwar wirklich dorthin.
@@ -85,6 +98,28 @@ export function MemberDetail() {
     () => (memberId ? callingsForMember(callings, memberId) : []),
     [callings, memberId],
   )
+
+  /*
+   * Wo diese Person in einer Berufungsrunde vorkommt.
+   *
+   * Zusammengesucht wird über beide Wege, auf denen jemand in einer Runde
+   * landet: als Name in der Spalte «Name» oder mit «@» in einem der
+   * Freitextfelder erwähnt (siehe `callingRowsAbout`). Was dabei nichts
+   * findet, fällt weg – die Kachel erscheint nur, wenn es etwas zu zeigen
+   * gibt.
+   */
+  const ideas = useMemo(() => {
+    if (!member) return []
+    const mention = { id: member.id, name: `${member.firstName} ${member.lastName}` }
+    return rounds
+      .map((item) => ({
+        item,
+        // Erst geradeziehen: Was aus Firestore kommt, darf kaputt sein, und
+        // ein Profil soll daran nicht zerbrechen.
+        matches: callingRowsAbout(normalizeCallingChanges(item.callingChanges), mention),
+      }))
+      .filter((entry) => entry.matches.length > 0)
+  }, [rounds, member])
   const running = memberCallings.filter((calling) =>
     ACTIVE_CALLING_STATUSES.includes(calling.status),
   )
@@ -290,10 +325,88 @@ export function MemberDetail() {
             </>
           )}
         </section>
+
+        {/* ---------- Potentielle Berufungsänderungen ----------
+             Steht nur da, wenn diese Person in einer Berufungsrunde
+             vorkommt: An den meisten Profilen gäbe es nichts zu zeigen, und
+             eine dauerhaft leere Kachel unter den Berufungen behauptete, es
+             fehle etwas. */}
+        {ideas.length > 0 && <CallingIdeas entries={ideas} />}
       </div>
 
       <MemberForm open={editOpen} onClose={() => setEditOpen(false)} member={member} />
     </>
+  )
+}
+
+/* ------------------------------------------------------------------ */
+/* Potentielle Berufungsänderungen                                     */
+/* ------------------------------------------------------------------ */
+
+/**
+ * Was die Bischofschaft in ihren Berufungsrunden über diese Person notiert
+ * hat.
+ *
+ * Die Runde selbst steht in einer Pendenz oder einem Traktandum und geht
+ * zwanzig Namen durch; hier steht davon genau das, was diese eine Person
+ * betrifft – die Zeilen, in denen sie genannt oder erwähnt ist, mit Farbe,
+ * Feldern und Zuständigen wie in der Runde.
+ *
+ * **Es ist eine Ideenliste.** Nichts davon ist eine Berufung; wer welche
+ * hat, steht in der Kachel darüber und kommt allein aus dem LCR. Deshalb
+ * heisst es «potentiell» und steht bewusst **unter** den Berufungen.
+ *
+ * Jeder Abschnitt trägt den Titel seines Eintrags und führt dorthin – in die
+ * Sitzung, in der die Runde steht, oder in die Pendenzenliste. Wer hier
+ * etwas ändern will, tut es dort, wo die ganze Runde beisammen ist.
+ */
+function CallingIdeas({
+  entries,
+}: {
+  entries: { item: AgendaItem; matches: CallingRowMatch[] }[]
+}) {
+  return (
+    <section className="card p-4 lg:col-span-3">
+      <h2 className="mb-1 flex items-center gap-2 text-sm font-semibold">
+        <Lightbulb className="size-4 text-slate-400" aria-hidden />
+        Potentielle Berufungsänderungen
+      </h2>
+      <p className="hint mb-3">
+        Zeilen aus den Berufungsrunden der Bischofschaft. Eine Ideenliste – an den Berufungen ändert
+        sie nichts.
+      </p>
+
+      <div className="space-y-4">
+        {entries.map(({ item, matches }) => (
+          <div key={item.id}>
+            <div className="mb-1.5 flex flex-wrap items-baseline gap-x-2 gap-y-1">
+              <Link
+                to={
+                  item.meetingId
+                    ? `/sitzungen/${item.meetingId}?${FOCUS_PARAM}=${item.id}`
+                    : `/pendenzen?pendenz=${item.id}`
+                }
+                className="text-brand-700 dark:text-brand-300 text-sm font-medium hover:underline"
+              >
+                {item.title || 'Ohne Titel'}
+              </Link>
+              {item.status === 'done' && <StatusBadge status="done" />}
+              {lastEditedAt(item) && (
+                <span className="tabular text-xs text-slate-400">
+                  {formatDate(lastEditedAt(item))}
+                </span>
+              )}
+            </div>
+
+            <ul className="space-y-2">
+              {matches.map((match) => (
+                <CallingRowSummary key={match.row.id} match={match} memberRefs={item.memberRefs} />
+              ))}
+            </ul>
+          </div>
+        ))}
+      </div>
+    </section>
   )
 }
 

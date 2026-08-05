@@ -191,17 +191,26 @@ export function PeopleChoice({
   )
 }
 
-/** Ein Name als Knopf – nur der Vorname, der Rest steht im Tooltip. */
+/**
+ * Ein Name als Knopf – nur der Vorname, der Rest steht im Tooltip.
+ *
+ * `compact` lässt den Kreis mit den Initialen weg und schreibt bloss den
+ * Vornamen: Wo eine ganze Knopfleiste an jeder Tabellenzeile steht – in der
+ * Berufungsrunde –, kostet jeder Kreis Breite und sagt dasselbe wie der Name
+ * daneben. Der volle Name steht weiterhin im Tooltip und für Bildschirmleser.
+ */
 export function PersonButton({
   id,
   name,
   selected,
   onClick,
+  compact = false,
 }: {
   id: string
   name: string
   selected: boolean
   onClick: () => void
+  compact?: boolean
 }) {
   return (
     <button
@@ -209,14 +218,16 @@ export function PersonButton({
       onClick={onClick}
       aria-pressed={selected}
       title={name}
+      aria-label={name}
       className={cn(
-        'inline-flex items-center gap-1.5 rounded-full border py-0.5 pr-2.5 pl-0.5 text-xs font-medium transition',
+        'inline-flex items-center rounded-full border font-medium transition',
+        compact ? 'gap-1 px-2 py-0.5 text-[11px]' : 'gap-1.5 py-0.5 pr-2.5 pl-0.5 text-xs',
         selected
           ? 'border-brand-500 bg-brand-50 text-brand-900 dark:border-brand-500 dark:bg-brand-950 dark:text-brand-100'
           : 'border-slate-300 bg-white text-slate-600 hover:border-slate-400 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-300',
       )}
     >
-      <Avatar name={name} id={id} size="xs" />
+      {!compact && <Avatar name={name} id={id} size="xs" />}
       <span className="max-w-28 truncate">{name.split(' ')[0]}</span>
     </button>
   )
