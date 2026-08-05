@@ -1633,6 +1633,32 @@ Ein Kennzeichen «vertraulich» am einzelnen Traktandum gibt es nicht mehr. Es
 schränkte den Zugriff innerhalb der Bischofschaft ohnehin nie ein, und was
 niemand sonst sehen soll, gehört nicht in diese Datenbank.
 
+### Konto und Mitglied verknüpfen
+
+Ein **Konto** meldet sich an; ein **Mitglied** steht im Verzeichnis der
+Gemeinde und stammt aus dem LCR. Meistens ist das dieselbe Person – nur weiss
+die App das nicht, solange es niemand festhält. Deshalb steht unter
+**Einstellungen → Benutzer und Rollen** neben der Rolle ein zweites Feld:
+**wer im Mitgliederverzeichnis zu diesem Konto gehört**. Tippen genügt,
+gewählt wird aus den Treffern, und das Kreuz hebt die Verknüpfung wieder auf.
+Gespeichert wird sofort, ohne Speichern-Knopf.
+
+Jedes Konto mit Vollzugriff setzt sie für alle, auch für sich selbst – die
+eigene Zeile steht mit «(du)» in derselben Liste. Bei den beiden AP-Zugängen
+fehlt das Feld: Sie erreichen das Mitgliederverzeichnis gar nicht, es gäbe
+dort nichts zu wählen.
+
+**Ein Mitglied, ein Konto.** Ein bereits verknüpfter Mitgliedersatz lässt sich
+kein zweites Mal vergeben; die App sagt stattdessen, bei wem er schon steht.
+Sonst zeigte ein Name auf zwei Konten, und «meine Pendenz» wäre die Pendenz
+von zweien. Steht umgekehrt ein Verweis da, zu dem kein Mitglied mehr gehört,
+erscheint **«Unbekanntes Mitglied»** – ein leeres Suchfeld sähe aus wie «nicht
+verknüpft», während in der Datenbank etwas anderes steht.
+
+Am Zugriff ändert die Verknüpfung nichts, und die Rolle bleibt davon
+unberührt. Sie hält vorerst nur fest, wer wer ist: Ausgewertet wird sie noch
+nirgends.
+
 ---
 
 ## Projektstruktur

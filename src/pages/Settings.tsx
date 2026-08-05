@@ -26,7 +26,7 @@ import { useAuth } from '@/contexts/AuthContext'
 import { useData } from '@/contexts/DataContext'
 import { useToast } from '@/contexts/ToastContext'
 import { useAutosave, saveStateLabel } from '@/hooks/useAutosave'
-import { PageHeader } from '@/components/ui/Pickers'
+import { MemberCombobox, PageHeader } from '@/components/ui/Pickers'
 import { ConfirmDialog } from '@/components/ui/Modal'
 import { Avatar } from '@/components/ui/Avatar'
 import { WEEKDAYS } from '@/lib/dates'
@@ -446,6 +446,11 @@ export function Settings() {
             AP’s» zeigen – einen mit und einen ohne Schreibrecht. Wer{' '}
             <strong>«Wartet auf Freigabe»</strong> ist, sieht nichts.
           </p>
+          <p className="hint mb-4">
+            Neben der Rolle steht, <strong>wer im Mitgliederverzeichnis</strong> zu diesem Konto
+            gehört. Ein Konto ist eine Anmeldung, ein Mitglied ein Eintrag der Gemeinde – erst diese
+            Verknüpfung sagt der App, dass beides dieselbe Person ist.
+          </p>
 
           <PendingUsers users={pendingUsers} />
 
@@ -739,13 +744,74 @@ function PendingUserCard({ user }: { user: AppUser }) {
 /* Bestehende Konten                                                   */
 /* ------------------------------------------------------------------ */
 
-function UserRow({
-  user,
-  isSelf,
-}: {
-  user: { id: string; displayName: string; email: string; role: Role; active: boolean }
-  isSelf: boolean
-}) {
+/**
+ * Wer im Mitgliederverzeichnis zu diesem Konto gehört.
+ *
+ * Konto und Mitglied sind zwei verschiedene Dinge: Das eine meldet sich an,
+ * das andere steht im Verzeichnis der Gemeinde und wird aus dem LCR
+ * eingelesen. Meist ist es dieselbe Person – aber die App weiss das nicht,
+ * solange es niemand hier festhält. Erst danach lässt sich sagen, dass ein
+ * «@Alain» im Traktandum den angemeldeten Alain meint.
+ *
+ * Gespeichert wird sofort, ohne Speichern-Knopf – wie überall in den
+ * Einstellungen.
+ */
+function MemberLinkField({ user }: { user: AppUser }) {
+  const toast = useToast()
+  const { users, members, membersById } = useData()
+
+  const linked = user.memberId ? (membersById.get(user.memberId) ?? null) : null
+
+  /*
+   * Steht ein Verweis da, zu dem kein Mitglied (mehr) gehört, wird das
+   * angeschrieben statt verschwiegen: Ein leeres Suchfeld sähe aus wie «nicht
+   * verknüpft», während in der Datenbank etwas anderes steht. Solange das
+   * Verzeichnis noch lädt, ist gar nichts zu sagen.
+   */
+  const orphan = user.memberId && !linked && members.length > 0 ? 'Unbekanntes Mitglied' : ''
+
+  const save = async (memberId: string | null) => {
+    /*
+     * Ein Mitglied, ein Konto: Denselben Mitgliedersatz zweimal zu vergeben
+     * hiesse, dass ein Name auf zwei Konten zeigt – «meine Pendenz» wäre dann
+     * die Pendenz von zweien.
+     */
+    const taken = memberId
+      ? users.find((other) => other.id !== user.id && other.memberId === memberId)
+      : undefined
+    if (taken) {
+      toast.error(`Dieses Mitglied ist bereits mit ${taken.displayName} verknüpft.`)
+      return
+    }
+
+    try {
+      const outcome = await updateUserProfile(user.id, { memberId })
+      const member = memberId ? membersById.get(memberId) : null
+      toast.saved(
+        member
+          ? `${user.displayName} ist ${member.firstName} ${member.lastName}.`
+          : `Verknüpfung von ${user.displayName} aufgehoben.`,
+        outcome,
+      )
+    } catch (error) {
+      console.error(error)
+      toast.error('Verknüpfung konnte nicht gespeichert werden.')
+    }
+  }
+
+  return (
+    <MemberCombobox
+      memberId={user.memberId}
+      name={orphan}
+      onChange={(next) => void save(next.memberId)}
+      label={`Mitglied von ${user.displayName}`}
+      placeholder="Mit Mitglied verknüpfen …"
+      className="w-full sm:w-60"
+    />
+  )
+}
+
+function UserRow({ user, isSelf }: { user: AppUser; isSelf: boolean }) {
   const toast = useToast()
   const [confirmDelete, setConfirmDelete] = useState(false)
 
@@ -811,6 +877,10 @@ function UserRow({
           </optgroup>
         )}
       </select>
+
+      {/* Ein AP-Zugang erreicht das Mitgliederverzeichnis gar nicht – für ihn
+          gäbe es nichts, was die Verknüpfung beantworten könnte. */}
+      {!apOnly && <MemberLinkField user={user} />}
 
       {!isSelf && (
         <>
