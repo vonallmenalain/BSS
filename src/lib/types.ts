@@ -735,30 +735,35 @@ export interface Member extends WithId {
   city?: string
 
   status: MemberStatus
-  /** Darf für Ansprachen angefragt werden? */
-  availableForTalks: boolean
+
   /**
-   * Vorerst nicht anfragen.
+   * Darf für Ansprachen angefragt werden?
    *
-   * Der Unterschied zu `availableForTalks` ist die Dauer: Dort steht, dass
-   * jemand grundsätzlich nicht spricht – ein Kind, jemand, der es nicht
-   * möchte. Hier steht ein «im Moment nicht»: eine Krankheit, eine
-   * Abwesenheit, ein Gespräch, das noch aussteht. Solche Personen fallen aus
-   * den Vorschlägen heraus, bleiben aber einen Haken weit sichtbar und
-   * lassen sich mit einem Griff wieder aufnehmen.
+   * Eine Entscheidung, nicht zwei: Wie lange sie gilt, sagt `talkHoldUntil`.
+   * Ausgewertet wird beides zusammen in `lib/availability` – dort steht auch,
+   * warum aus den früheren zwei Haken einer geworden ist.
    */
+  availableForTalks: boolean
+  /** Bis wann «nicht anfragen» gilt – fehlt es, gilt der Vermerk auf Weiteres. */
+  talkHoldUntil?: TS | null
+  /** Wann diese Entscheidung zuletzt getroffen wurde */
+  talkAvailabilityChangedAt?: TS | null
+  /** Altbestand: der frühere zweite Haken «vorerst nicht anfragen» */
   talkHold?: boolean
 
   /**
-   * Beim Gebet vorerst überspringen – bis zu diesem Zeitpunkt.
+   * Darf um ein Gebet gebeten werden?
    *
-   * Anders als `talkHold` ein Datum und kein Haken: Beim Zuteilen der Gebete
-   * geht es um den nächsten Sonntag, nicht um eine Grundsatzfrage. «Heute
-   * nicht» heisst «für ein paar Wochen nicht», und danach soll die Person von
-   * selbst wieder erscheinen – ein Haken, den jemand setzt und nie mehr
-   * anfasst, nähme sie dauerhaft aus der Gemeinde heraus.
+   * Dasselbe Paar wie bei den Ansprachen. Beim Zuteilen der Gebete geht es
+   * meist um den nächsten Sonntag und nicht um eine Grundsatzfrage – «Heute
+   * nicht» setzt deshalb ein Datum ein paar Wochen voraus, und danach steht
+   * die Person von selbst wieder in der Liste.
    */
+  availableForPrayers?: boolean
+  /** Bis wann «nicht anfragen» gilt – fehlt es, gilt der Vermerk auf Weiteres. */
   prayerHoldUntil?: TS | null
+  /** Wann diese Entscheidung zuletzt getroffen wurde */
+  prayerAvailabilityChangedAt?: TS | null
 
   /** Freie Notiz, z. B. Kontaktperson, Besonderheiten, Betreuungshinweise */
   notes?: string

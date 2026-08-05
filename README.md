@@ -613,13 +613,14 @@ Liste – jemand ist krank, verreist, oder das Gespräch steht noch aus. Ohne da
 blieben die immer gleichen drei Namen zuoberst stehen. Der Vermerk steht am
 Mitglied und gilt damit für die ganze Bischofschaft; wer gerade übersprungen
 wird, steht unter der Liste hinter «_n_ übersprungen» und lässt sich mit einem
-Griff wieder aufnehmen.
+Griff wieder aufnehmen. Ein anderes «bis wann» – oder gar keines – trägt ein,
+wer das Profil öffnet (siehe **Ansprachen und Gebete** unter «Mitglieder»).
 
 ### Vorschläge: wer als Nächstes angefragt wird
 
 Der Reiter **Vorschläge** ordnet die Gemeinde nach Dringlichkeit: Wer noch nie
 gesprochen hat, steht zuoberst, danach der längste Abstand. Bereits
-eingeplante und zurückgestellte Personen rutschen ans Ende, statt zu
+eingeplante und ausgenommene Personen rutschen ans Ende, statt zu
 verschwinden – so bleibt sichtbar, warum sie gerade nicht in Frage kommen.
 
 **«Bereits eingeplant» hört mit dem Sonntag auf.** Gemeint ist ein Platz, der
@@ -642,7 +643,7 @@ zu ist. Darin:
 | **Nur Aktive**              | Ohne diesen Haken stehen auch Inaktive zur Auswahl                |
 | **Geschlecht**              | Alle, nur Frauen oder nur Männer                                  |
 | **Zuletzt gesprochen**      | Eine oder mehrere Jahrzahlen, dazu «noch nie»                     |
-| **Zurückgestellte zeigen**  | Holt zurück, was «Nicht anfragen» ausgeblendet hat                |
+| **Ausgenommene zeigen**     | Holt zurück, was «Nicht anfragen» ausgeblendet hat                |
 
 Zur Wahl stehen nur Jahre, die im Bestand auch vorkommen – eine Jahrzahl, die
 zu niemandem führt, wäre eine Auswahl ohne Antwort. Eine gewählte Jahrzahl
@@ -651,20 +652,21 @@ ist per Definition nicht überfällig, und die Frage «wer sprach 2025?» liesse
 sich sonst gar nicht stellen.
 
 **Nicht anfragen.** Neben **+ Anfragen** steht **Nicht anfragen**. Ein Griff
-darauf stellt jemanden zurück: Die Person verschwindet aus den Vorschlägen und
-kommt mit dem Haken **Zurückgestellte zeigen** wieder zum Vorschein – dort
-heisst der Knopf dann **Wieder anfragen**.
+darauf nimmt jemanden heraus: Die Person verschwindet aus den Vorschlägen und
+kommt mit dem Haken **Ausgenommene zeigen** wieder zum Vorschein – dort heisst
+der Knopf dann **Wieder anfragen**.
 
-Das ist das «im Moment nicht»: eine Krankheit, eine Abwesenheit, ein Gespräch,
-das noch aussteht. Es ist bewusst etwas anderes als **Kann für Ansprachen
-angefragt werden** am Mitglied selbst; dort steht das grundsätzliche «gar
-nicht», und wer so gekennzeichnet ist, erscheint in keiner Vorschlagsliste
-mehr. Beides steht auch auf der Seite des Mitglieds und lässt sich dort
-ändern – ein Zustand, der nur in einer Liste sichtbar wäre, die ihn selbst
-ausblendet, wäre nicht mehr zu finden.
+**Aus zwei Haken ist einer geworden.** Am Mitglied standen früher zwei:
+«Kann für Ansprachen angefragt werden» für das grundsätzliche «gar nicht» und
+daneben «vorerst nicht anfragen» für das «im Moment nicht». Sie stellten
+dieselbe Frage zweimal, und beide zugleich angehakt ergaben keinen Sinn.
+Geblieben ist eine Entscheidung – und ein Datum, das sagt, wie lange sie gilt:
+ohne Datum auf Weiteres, mit Datum läuft der Vermerk von selbst ab. Der Knopf
+hier trägt kein Datum ein; wer weiss, wie lange es dauert, trägt es im Profil
+nach.
 
 Gesperrt ist damit nichts: Wer im Zuteilungsfenster ausdrücklich nach einer
-zurückgestellten Person sucht, findet sie samt Vermerk und kann sie eintragen.
+ausgenommenen Person sucht, findet sie samt Vermerk und kann sie eintragen.
 Der Vermerk hält sie aus den **Vorschlägen** heraus, nicht aus dem Programm.
 
 ### Angelegenheiten: Art, Person, Aufgabe
@@ -1055,6 +1057,47 @@ zuerst.
 Die Suche steht in der Adresse, die Einstellungen im Browser: Wer ein Profil
 öffnet und zurückkommt, findet dieselbe Liste vor, die er verlassen hat.
 
+### Ansprachen und Gebete im Profil
+
+Im Profil steht eine Kachel **Ansprachen und Gebete** – die beiden Fragen, die
+vor jedem Sonntag stehen, und sie stehen beisammen, weil sie zusammen gestellt
+werden. Je Hälfte dasselbe: wann die Person zuletzt dran war (und vor wie
+vielen Monaten), ob sie im Moment angefragt werden kann, und darunter die
+letzten Einträge. Ein Gebet, das noch bevorsteht, ist als **geplant**
+angeschrieben; «zuletzt» meint immer das Gewesene.
+
+**Der Stand steht in Worten da**, nicht nur als Etikett: «Nicht für Ansprachen
+anfragen bis 31.12.2026 · vermerkt am 02.07.2026». Wann die Entscheidung fiel,
+gehört dazu – ein «nicht anfragen» ohne Zeitpunkt lässt offen, ob es von
+letzter Woche stammt oder von vor drei Jahren. Läuft der Vermerk ab, steht die
+Person wieder als anfragbar da, und das abgelaufene Datum erklärt, warum sie
+eine Weile fehlte. Gilt ein Vermerk gerade, steht er zusätzlich als Etikett
+oben neben dem Namen.
+
+### Bearbeiten: nur, was die App selbst führt
+
+**Bearbeiten** im Profil öffnet genau das, was das LCR nicht kennt:
+
+| Feld                                     | Wozu                                           |
+| ---------------------------------------- | ---------------------------------------------- |
+| **Status**                               | Aktiv oder inaktiv                             |
+| **Letzte Ansprache**                     | Steuert die Auswertung «lange nicht mehr dran» |
+| **Kann für Ansprachen angefragt werden** | Haken, dazu wahlweise ein «nicht anfragen bis» |
+| **Kann für Gebete angefragt werden**     | Dasselbe für das Gebet                         |
+| **Notiz** und **Schlagworte**            | Freitext zur Person                            |
+
+Name, Geschlecht, Geburtsdatum, Adresse, Kontakt und Betreuung stehen
+weiterhin im Dialog, lassen sich aber nicht ändern. Sie kommen aus dem LCR und
+werden dort gepflegt: Von Hand nachgeführt hiesse, zwei Stände nebeneinander
+zu führen – und beim nächsten Import wäre der eine ohnehin überschrieben.
+
+Die beiden Haken tragen ein **«bis wann»**, sobald sie weg sind. Leer heisst
+«auf Weiteres»; mit Datum steht die Person am Tag danach von selbst wieder in
+den Vorschlägen, ohne dass jemand daran denken müsste. Darunter steht, wann
+die Entscheidung zuletzt geändert wurde – und dieser Zeitpunkt wird nur dann
+neu gesetzt, wenn sich tatsächlich etwas geändert hat. Ein Datum, das jedes
+Speichern erneuert, beantwortete die Frage «seit wann?» nicht mehr.
+
 ---
 
 ## Mitgliederliste importieren
@@ -1068,8 +1111,9 @@ LCR und wird dort gepflegt: Ein von Hand erfasster Datensatz wäre beim
 nächsten Import entweder doppelt oder einer, den niemand wiederfindet, und
 ein von Hand gelöschter wäre beim übernächsten wieder da, weil er im LCR nie
 verschwand. Was die App darüber hinaus führt und das LCR gar nicht kennt –
-Notiz, Schlagworte, «kann für Ansprachen angefragt werden», Betreuung –, wird
-weiterhin am einzelnen Mitglied gepflegt (**Bearbeiten** im Profil).
+Status, letzte Ansprache, «kann für Ansprachen und Gebete angefragt werden»,
+Notiz, Schlagworte –, wird weiterhin am einzelnen Mitglied gepflegt
+(**Bearbeiten** im Profil). Alles Übrige ist dort gesperrt.
 
 Der Assistent führt durch vier Schritte: Quelle wählen, Spalten zuordnen
 (wird geraten), Vorschau prüfen, importieren. Als Quelle dienen wahlweise
