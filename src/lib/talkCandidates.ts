@@ -1,3 +1,4 @@
+import { talkAvailability } from './availability.ts'
 import { getAge, monthsSince, startOfDay, toDate } from './dates.ts'
 import { matchesSearch } from './utils.ts'
 import { ACTIVE_TALK_STATUSES, type Member, type Talk } from './types.ts'
@@ -21,8 +22,10 @@ export interface TalkCandidate {
   lastTalkYear: number | null
   /** Für einen **kommenden** Sonntag eingeplant? Dann nicht doppelt anfragen. */
   alreadyPlanned: boolean
-  /** Von Hand zurückgestellt – im Moment nicht anfragen. */
+  /** Von Hand ausgenommen – nicht anfragen (siehe `lib/availability`). */
   onHold: boolean
+  /** Bis wann der Vermerk gilt; `null` heisst «auf Weiteres» */
+  holdUntil: Date | null
   /** Je höher, desto dringender ist eine Anfrage */
   score: number
 }
@@ -58,10 +61,16 @@ export function plannedTalkMemberIds(talks: Talk[], from: Date = new Date()): Se
  * Ermittelt, wer als Nächstes für eine Ansprache angefragt werden sollte.
  *
  * Ganz oben stehen aktive Mitglieder, die noch nie gesprochen haben, danach
- * jene mit dem längsten Abstand. Bereits eingeplante und zurückgestellte
+ * jene mit dem längsten Abstand. Bereits eingeplante und ausgenommene
  * Personen werden nach hinten sortiert, statt sie hier zu verstecken – ob
  * sie in der Liste erscheinen, entscheiden die Filter (siehe
  * `filterTalkCandidates`).
+ *
+ * **Auch wer gar nicht angefragt werden soll, wird bewertet.** Früher fiel
+ * er hier heraus und war damit unauffindbar; wer ihn wieder aufnehmen wollte,
+ * musste sein Profil suchen. Jetzt steht er zuunterst, der Filter
+ * «Ausgenommene zeigen» holt ihn hervor, und ein Griff nimmt ihn zurück in
+ * die Liste.
  *
  * `minAge` hält die Kinder heraus. Ohne diese Grenze stünden sie zuoberst,
  * denn sie haben noch nie gesprochen. Wer kein Geburtsdatum hat, bleibt in
@@ -78,7 +87,6 @@ export function rankTalkCandidates(
   return members
     .map((member) => ({ member, age: getAge(member.birthDate) }))
     .filter(({ member, age }) => {
-      if (!member.availableForTalks) return false
       if (onlyActive && member.status !== 'active') return false
       if (minAge > 0 && age !== null && age < minAge) return false
       return true
@@ -86,12 +94,13 @@ export function rankTalkCandidates(
     .map(({ member, age }) => {
       const months = monthsSince(member.lastTalkDate)
       const alreadyPlanned = plannedMemberIds.has(member.id)
-      const onHold = member.talkHold === true
+      const availability = talkAvailability(member, now)
+      const onHold = !availability.available
 
       // Noch nie gesprochen erhält bewusst mehr Gewicht als der reine Zeitabstand.
       let score = months === null ? gapMonths * 2 + 24 : months
       if (alreadyPlanned) score -= 1000
-      // Zurückgestellte stehen auch dann zuunterst, wenn sie eingeblendet
+      // Ausgenommene stehen auch dann zuunterst, wenn sie eingeblendet
       // werden – sie sind die Antwort auf «wer kommt sonst noch in Frage?».
       if (onHold) score -= 2000
 
@@ -102,6 +111,7 @@ export function rankTalkCandidates(
         lastTalkYear: toDate(member.lastTalkDate)?.getFullYear() ?? null,
         alreadyPlanned,
         onHold,
+        holdUntil: onHold ? availability.until : null,
         score,
       }
     })
@@ -132,7 +142,7 @@ export interface TalkCandidateFilter {
   gender: TalkGenderFilter
   /** Jahre der letzten Ansprache; leer heisst «alle». `0` = noch nie gesprochen */
   years: number[]
-  /** Zurückgestellte mitzeigen */
+  /** Ausgenommene mitzeigen */
   showOnHold: boolean
 }
 
@@ -141,7 +151,7 @@ export interface TalkCandidateFilter {
  *
  * Die drei Haken sind gesetzt, weil sie die Frage der Seite stellen: Wer aus
  * der Gemeinde ist erwachsen, aktiv und lange nicht dran gewesen? Alles
- * Weitere ist offen – und wer zurückgestellt wurde, bleibt aussen vor.
+ * Weitere ist offen – und wer ausgenommen wurde, bleibt aussen vor.
  */
 export const DEFAULT_TALK_FILTER: TalkCandidateFilter = {
   search: '',

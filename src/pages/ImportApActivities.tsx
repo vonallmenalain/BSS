@@ -275,7 +275,7 @@ export function ImportApActivities() {
               'Art',
               'Aktivität / Klasse',
               'Treffpunkt',
-              'Zuständig AP',
+              'Zuständig',
               'BSS',
               'Berater',
             ]}

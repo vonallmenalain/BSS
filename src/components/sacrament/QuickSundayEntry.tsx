@@ -42,7 +42,6 @@ export function QuickAnnouncementDialog({ onClose }: { onClose: () => void }) {
   const toast = useToast()
   const [date, setDate] = useNextSunday()
   const [text, setText] = useState('')
-  const [details, setDetails] = useState('')
   const [saving, setSaving] = useState(false)
 
   const handleSubmit = async (event: FormEvent) => {
@@ -54,10 +53,7 @@ export function QuickAnnouncementDialog({ onClose }: { onClose: () => void }) {
 
     setSaving(true)
     try {
-      const outcome = await appendAnnouncement(asSunday(date), {
-        ...newAnnouncement(text.trim()),
-        details: details.trim(),
-      })
+      const outcome = await appendAnnouncement(asSunday(date), newAnnouncement(text.trim()))
       toast.saved('Bekanntmachung erfasst.', outcome)
       onClose()
     } catch (error) {
@@ -93,25 +89,15 @@ export function QuickAnnouncementDialog({ onClose }: { onClose: () => void }) {
           <label className="label" htmlFor="quick-announcement-text">
             Bekanntmachung
           </label>
-          <input
+          {/* Mehrzeilig, wie unter «Bekanntmachungen»: Der ganze Wortlaut
+              steht in einem Feld, Zeilenumbrüche eingeschlossen. */}
+          <textarea
             id="quick-announcement-text"
-            className="input"
+            className="input min-h-20 resize-y"
             value={text}
             onChange={(event) => setText(event.target.value)}
             maxLength={300}
             required
-          />
-        </div>
-
-        <div>
-          <label className="label" htmlFor="quick-announcement-details">
-            Einzelheiten für die Person am Pult
-          </label>
-          <textarea
-            id="quick-announcement-details"
-            className="input min-h-20 resize-y text-sm"
-            value={details}
-            onChange={(event) => setDetails(event.target.value)}
           />
         </div>
 

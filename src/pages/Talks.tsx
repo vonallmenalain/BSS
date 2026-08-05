@@ -50,7 +50,7 @@ import {
   filterTalkCandidates,
   NEVER_SPOKE,
   rankTalkCandidates,
-  setTalkHold,
+  setTalkAvailability,
   setTalkStatus,
   speakerFields,
   talkYearOptions,
@@ -545,14 +545,16 @@ function CandidateList({
   const set = <K extends keyof TalkCandidateFilter>(key: K, value: TalkCandidateFilter[K]) =>
     onFilter({ ...filter, [key]: value })
 
-  /** Vorerst nicht anfragen – oder wieder aufnehmen. */
+  /** Nicht anfragen – oder wieder aufnehmen. */
   const toggleHold = async (member: Member, onHold: boolean) => {
     try {
-      const outcome = await setTalkHold(member.id, !onHold)
+      // Ohne Datum: ein Vermerk auf Weiteres. Ein «bis wann» trägt ein, wer
+      // im Profil weiss, wie lange es dauert.
+      const outcome = await setTalkAvailability(member.id, onHold)
       toast.saved(
         onHold
           ? `${member.firstName} ${member.lastName} steht wieder in den Vorschlägen.`
-          : `${member.firstName} ${member.lastName} wird vorerst nicht angefragt.`,
+          : `${member.firstName} ${member.lastName} wird nicht mehr angefragt.`,
         outcome,
       )
     } catch (error) {
@@ -640,10 +642,10 @@ function CandidateList({
           <MenuDivider />
 
           <MenuToggle
-            label={`Zurückgestellte zeigen${onHoldCount > 0 ? ` (${onHoldCount})` : ''}`}
+            label={`Ausgenommene zeigen${onHoldCount > 0 ? ` (${onHoldCount})` : ''}`}
             checked={filter.showOnHold}
             onChange={(next) => set('showOnHold', next)}
-            hint="Wer über «Nicht anfragen» zurückgestellt wurde, bleibt sonst ausgeblendet."
+            hint="Wer nicht angefragt werden soll – auf Weiteres oder bis zu einem Datum –, bleibt sonst ausgeblendet."
           />
         </ViewMenu>
 
@@ -670,7 +672,7 @@ function CandidateList({
             title="Kein Vorschlag passt zu diesen Filtern"
             description={
               onHoldCount > 0 && !filter.showOnHold
-                ? `${onHoldCount} zurückgestellte Mitglieder sind ausgeblendet – der Filter blendet sie wieder ein.`
+                ? `${onHoldCount} ausgenommene Mitglieder sind ausgeblendet – der Filter blendet sie wieder ein.`
                 : 'Setze die Filter zurück oder wähle andere Jahre.'
             }
             action={
@@ -688,7 +690,7 @@ function CandidateList({
         <ul className="card divide-list overflow-hidden">
           {visible
             .slice(0, 60)
-            .map(({ member, age, monthsSince: months, alreadyPlanned, onHold }) => (
+            .map(({ member, age, monthsSince: months, alreadyPlanned, onHold, holdUntil }) => (
               <li
                 key={member.id}
                 className={cn(
@@ -720,7 +722,10 @@ function CandidateList({
                     {age !== null && ` · ${age} Jahre`}
                     {member.status !== 'active' && ' · inaktiv'}
                     {alreadyPlanned && ' · bereits eingeplant'}
-                    {onHold && ' · zurückgestellt'}
+                    {onHold &&
+                      (holdUntil
+                        ? ` · nicht anfragen bis ${formatDate(holdUntil)}`
+                        : ' · nicht anfragen')}
                   </p>
                 </div>
 
@@ -729,8 +734,8 @@ function CandidateList({
                     type="button"
                     className="btn-secondary btn-sm"
                     onClick={() => onAssign(member)}
-                    // Zurückgestellt heisst «im Moment nicht»: Wer trotzdem
-                    // anfragen will, nimmt die Person nebenan wieder auf.
+                    // Ausgenommen heisst «nicht anfragen»: Wer es trotzdem
+                    // will, nimmt die Person nebenan wieder auf.
                     disabled={alreadyPlanned || onHold}
                   >
                     <Plus className="size-3.5" aria-hidden />
@@ -746,12 +751,12 @@ function CandidateList({
                     aria-label={
                       onHold
                         ? `${member.firstName} ${member.lastName} wieder anfragen`
-                        : `${member.firstName} ${member.lastName} vorerst nicht anfragen`
+                        : `${member.firstName} ${member.lastName} nicht mehr anfragen`
                     }
                     title={
                       onHold
                         ? 'Wieder in die Vorschläge aufnehmen'
-                        : 'Vorerst nicht anfragen – blendet die Person aus den Vorschlägen aus'
+                        : 'Nicht anfragen – blendet die Person aus den Vorschlägen aus'
                     }
                   >
                     {onHold ? (
@@ -1039,12 +1044,12 @@ function AssignDialog({
                             eingeplant
                           </span>
                         ) : onHold ? (
-                          /* Zurückgestellt heisst «vorerst nicht anfragen» –
-                             gesperrt ist hier trotzdem nichts: Wer die Person
-                             ausdrücklich sucht, weiss, was er tut. */
+                          /* Ausgenommen heisst «nicht anfragen» – gesperrt ist
+                             hier trotzdem nichts: Wer die Person ausdrücklich
+                             sucht, weiss, was er tut. */
                           <span className="inline-flex items-center gap-1 text-amber-600">
                             <UserMinus className="size-3" aria-hidden />
-                            zurückgestellt
+                            nicht anfragen
                           </span>
                         ) : months === null ? (
                           'nie'

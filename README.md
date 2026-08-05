@@ -436,14 +436,14 @@ Zwei Dinge zusammen machen das aus (siehe
 Ein Bereich, sechs Unterpunkte – oben wird der Sonntag gewählt, und er gilt
 für alle Unterpunkte.
 
-| Unterpunkt           | Wofür                                                                          |
-| -------------------- | ------------------------------------------------------------------------------ |
-| **Leitung**          | Der ganze Ablauf auf einer Seite – zum Leiten am Pult, auf Knopfdruck änderbar |
-| **Bekanntmachungen** | Liste pro Sonntag und wiederkehrende Serien; speichert von selbst              |
-| **Angelegenheiten**  | Bestätigungen, Entlassungen, Segnungen, Konfirmierungen                        |
-| **Ansprachen**       | Programmplätze vergeben, Vorschlagsliste, Verlauf                              |
-| **Musik**            | Drei bis vier Lieder und Musikeinlagen                                         |
-| **Gebet**            | Anfangs- und Schlussgebet, mit «zuletzt gebetet»                               |
+| Unterpunkt           | Wofür                                                                                               |
+| -------------------- | --------------------------------------------------------------------------------------------------- |
+| **Leitung**          | Der ganze Ablauf auf einer Seite – zum Leiten am Pult, auf Knopfdruck änderbar                      |
+| **Bekanntmachungen** | Liste pro Sonntag und wiederkehrende Serien; ein mehrzeiliges Feld je Eintrag, speichert von selbst |
+| **Angelegenheiten**  | Bestätigungen, Entlassungen, Segnungen, Konfirmierungen                                             |
+| **Ansprachen**       | Programmplätze vergeben, Vorschlagsliste, Verlauf                                                   |
+| **Musik**            | Drei bis vier Lieder und Musikeinlagen                                                              |
+| **Gebet**            | Anfangs- und Schlussgebet, mit «zuletzt gebetet»                                                    |
 
 ### Wer sich um diesen Sonntag kümmert
 
@@ -613,13 +613,14 @@ Liste – jemand ist krank, verreist, oder das Gespräch steht noch aus. Ohne da
 blieben die immer gleichen drei Namen zuoberst stehen. Der Vermerk steht am
 Mitglied und gilt damit für die ganze Bischofschaft; wer gerade übersprungen
 wird, steht unter der Liste hinter «_n_ übersprungen» und lässt sich mit einem
-Griff wieder aufnehmen.
+Griff wieder aufnehmen. Ein anderes «bis wann» – oder gar keines – trägt ein,
+wer das Profil öffnet (siehe **Ansprachen und Gebete** unter «Mitglieder»).
 
 ### Vorschläge: wer als Nächstes angefragt wird
 
 Der Reiter **Vorschläge** ordnet die Gemeinde nach Dringlichkeit: Wer noch nie
 gesprochen hat, steht zuoberst, danach der längste Abstand. Bereits
-eingeplante und zurückgestellte Personen rutschen ans Ende, statt zu
+eingeplante und ausgenommene Personen rutschen ans Ende, statt zu
 verschwinden – so bleibt sichtbar, warum sie gerade nicht in Frage kommen.
 
 **«Bereits eingeplant» hört mit dem Sonntag auf.** Gemeint ist ein Platz, der
@@ -642,7 +643,7 @@ zu ist. Darin:
 | **Nur Aktive**              | Ohne diesen Haken stehen auch Inaktive zur Auswahl                |
 | **Geschlecht**              | Alle, nur Frauen oder nur Männer                                  |
 | **Zuletzt gesprochen**      | Eine oder mehrere Jahrzahlen, dazu «noch nie»                     |
-| **Zurückgestellte zeigen**  | Holt zurück, was «Nicht anfragen» ausgeblendet hat                |
+| **Ausgenommene zeigen**     | Holt zurück, was «Nicht anfragen» ausgeblendet hat                |
 
 Zur Wahl stehen nur Jahre, die im Bestand auch vorkommen – eine Jahrzahl, die
 zu niemandem führt, wäre eine Auswahl ohne Antwort. Eine gewählte Jahrzahl
@@ -651,20 +652,21 @@ ist per Definition nicht überfällig, und die Frage «wer sprach 2025?» liesse
 sich sonst gar nicht stellen.
 
 **Nicht anfragen.** Neben **+ Anfragen** steht **Nicht anfragen**. Ein Griff
-darauf stellt jemanden zurück: Die Person verschwindet aus den Vorschlägen und
-kommt mit dem Haken **Zurückgestellte zeigen** wieder zum Vorschein – dort
-heisst der Knopf dann **Wieder anfragen**.
+darauf nimmt jemanden heraus: Die Person verschwindet aus den Vorschlägen und
+kommt mit dem Haken **Ausgenommene zeigen** wieder zum Vorschein – dort heisst
+der Knopf dann **Wieder anfragen**.
 
-Das ist das «im Moment nicht»: eine Krankheit, eine Abwesenheit, ein Gespräch,
-das noch aussteht. Es ist bewusst etwas anderes als **Kann für Ansprachen
-angefragt werden** am Mitglied selbst; dort steht das grundsätzliche «gar
-nicht», und wer so gekennzeichnet ist, erscheint in keiner Vorschlagsliste
-mehr. Beides steht auch auf der Seite des Mitglieds und lässt sich dort
-ändern – ein Zustand, der nur in einer Liste sichtbar wäre, die ihn selbst
-ausblendet, wäre nicht mehr zu finden.
+**Aus zwei Haken ist einer geworden.** Am Mitglied standen früher zwei:
+«Kann für Ansprachen angefragt werden» für das grundsätzliche «gar nicht» und
+daneben «vorerst nicht anfragen» für das «im Moment nicht». Sie stellten
+dieselbe Frage zweimal, und beide zugleich angehakt ergaben keinen Sinn.
+Geblieben ist eine Entscheidung – und ein Datum, das sagt, wie lange sie gilt:
+ohne Datum auf Weiteres, mit Datum läuft der Vermerk von selbst ab. Der Knopf
+hier trägt kein Datum ein; wer weiss, wie lange es dauert, trägt es im Profil
+nach.
 
 Gesperrt ist damit nichts: Wer im Zuteilungsfenster ausdrücklich nach einer
-zurückgestellten Person sucht, findet sie samt Vermerk und kann sie eintragen.
+ausgenommenen Person sucht, findet sie samt Vermerk und kann sie eintragen.
 Der Vermerk hält sie aus den **Vorschlägen** heraus, nicht aus dem Programm.
 
 ### Angelegenheiten: Art, Person, Aufgabe
@@ -708,6 +710,12 @@ Sie wird **nicht** in die einzelnen Sonntage geschrieben, sondern bei jedem
 Aufruf dazugerechnet. Das hat zwei Folgen, und beide sind gewollt: Wer den
 Wortlaut ändert, ändert ihn für jeden künftigen Sonntag; und die Serie steht
 auch dort, wo sonst noch nichts erfasst ist.
+
+**Ein Feld, nicht zwei.** Der **Wortlaut** ist alles, was erfasst wird – so
+lang und so mehrzeilig, wie er sein muss. Daneben stand einmal ein Zusatz
+«Einzelheiten für die Person am Pult»; er verlangte eine Einteilung, die
+niemand vornehmen wollte, und ist weggefallen. Wo er noch ausgefüllt ist,
+wird er weiterhin angezeigt.
 
 **Wie oft.** Entweder jeden Sonntag oder bestimmte Sonntage im Monat – 1. bis 5. und «letzter», auch mehrere zugleich. Gezählt wird im Kalender: Der 3. Sonntag ist der dritte Sonntag dieses Monats, ganz gleich, auf welchen
 Wochentag der Monatsanfang fällt. Dazu ein **Ab**-Datum und wahlweise ein
@@ -798,7 +806,7 @@ Woche neu stellt: **Was kommt als Nächstes?** Deshalb steht die Antwort ganz
 oben und gross, über die ganze Breite, mit Treffpunkt, Zuständigkeit und den
 Teilnehmenden aus der Bischofschaft. Darunter der ganze Plan, nach Monaten
 gruppiert wie in der Tabelle – und untereinander steht überall dasselbe:
-Datum, Aktivität, Treffpunkt, Zuständig AP, Teilnahme. Auf schmalen Geräten
+Datum, Aktivität, Treffpunkt, Zuständig, Teilnahme. Auf schmalen Geräten
 rücken die Angaben unter die Aktivität, statt sich in Spalten zu quetschen.
 
 ### Ansicht: Liste oder Kacheln
@@ -810,14 +818,18 @@ Er zeigt den gewählten Zeitraum an; ein Klick öffnet die drei Einstellungen:
 | --------------- | --------------------------------- | ------------------------------------------------------------------------------- |
 | **Zeitraum**    | Kommend · Vergangen · Ganzer Plan | Welcher Ausschnitt gezeigt wird; Vergangenes steht rückwärts, das Letzte zuerst |
 | **Darstellung** | Liste · Kacheln                   | Ein Fahrplan von oben nach unten – oder ein Feld aus Kacheln, je Termin eine    |
-| **Abstand**     | Kompakt · Normal · Weit           | Polster, Abstände und Schriftgrad zugleich                                      |
+| **Abstand**     | Kompakt · Normal · Weit           | Polster, Abstände, Schriftgrad – und wie viele Kacheln nebeneinander stehen     |
 
 Die **Liste** ist der Fahrplan: eine Zeile je Termin, ein Blick von oben nach
 unten sagt, was der Monat bringt. Die **Kacheln** stellen jeden Termin für
 sich hin – mit Datum, Art als angeschriebenem Etikett, Titel, allen Angaben
-und der Bemerkung. Auf einem breiten Bildschirm stehen mehrere nebeneinander,
-und man überblickt mehr Wochen auf einmal. Es fehlt in keiner der beiden
-Ansichten etwas.
+und der Bemerkung. Es fehlt in keiner der beiden Ansichten etwas.
+
+**Wie viele Kacheln nebeneinander stehen, sagt der Abstand** – und zwar
+umgekehrt zum Namen: **Kompakt** stellt auf einem breiten Bildschirm bis zu
+drei nebeneinander und lässt viele Wochen auf einmal überblicken, **Normal**
+höchstens zwei, **Weit** genau eine über die ganze Breite. Zwei Stufen, die
+gleich viele Spalten zeigten, wären zweimal dieselbe Ansicht.
 
 **Der Zeitraum stand früher als breite Knopfleiste über dem Plan.** Er hat
 sie nicht verdient: Fast immer bleibt es bei «Kommend», und eine Leiste, die
@@ -862,9 +874,9 @@ zwei Zustände, und sie sind sauber getrennt:
 
   Jeder Termin bekommt dabei so viel Platz, wie er braucht: oben das Datum
   und der **ganze Titel** – er wird nie abgeschnitten und bricht lieber um –,
-  darunter **Startzeit, Treffpunkt, Zuständig AP, Teilnahme BSS, Teilnahme
+  darunter **Startzeit, Treffpunkt, Zuständig, Teilnahme BSS, Teilnahme
   Berater** und die Bemerkung, jede Angabe mit ihrer Beschriftung und nur,
-  wenn sie ausgefüllt ist. **Zuständig AP** steht bei jeder Art von Termin –
+  wenn sie ausgefüllt ist. **Zuständig** steht bei jeder Art von Termin –
   wer eine Aktivität organisiert, ist die Auskunft, die im Plan gesucht wird.
   Wer das Kollegium des Monats führt, steht daneben über der Gruppe.
 
@@ -889,7 +901,7 @@ zweites Mal drücken und füllt dann nur die Lücken.
 
 Im Bearbeitungsmodus öffnet jede Zeile alle Felder der bisherigen Tabelle:
 Datum (auf Wunsch mehrtägig), Uhrzeit, Art, Aktivität bzw. Klasse,
-Treffpunkt, Zuständig AP, Teilnahme Bischofschaft, Teilnahme Berater und die
+Treffpunkt, Zuständig, Teilnahme Bischofschaft, Teilnahme Berater und die
 Bemerkung. Die Personenfelder sind Freitext wie in der Tabelle – die
 Vorschlagsliste kommt aus dem, was schon im Plan steht, und hält die
 Schreibweise einheitlich.
@@ -1045,6 +1057,47 @@ zuerst.
 Die Suche steht in der Adresse, die Einstellungen im Browser: Wer ein Profil
 öffnet und zurückkommt, findet dieselbe Liste vor, die er verlassen hat.
 
+### Ansprachen und Gebete im Profil
+
+Im Profil steht eine Kachel **Ansprachen und Gebete** – die beiden Fragen, die
+vor jedem Sonntag stehen, und sie stehen beisammen, weil sie zusammen gestellt
+werden. Je Hälfte dasselbe: wann die Person zuletzt dran war (und vor wie
+vielen Monaten), ob sie im Moment angefragt werden kann, und darunter die
+letzten Einträge. Ein Gebet, das noch bevorsteht, ist als **geplant**
+angeschrieben; «zuletzt» meint immer das Gewesene.
+
+**Der Stand steht in Worten da**, nicht nur als Etikett: «Nicht für Ansprachen
+anfragen bis 31.12.2026 · vermerkt am 02.07.2026». Wann die Entscheidung fiel,
+gehört dazu – ein «nicht anfragen» ohne Zeitpunkt lässt offen, ob es von
+letzter Woche stammt oder von vor drei Jahren. Läuft der Vermerk ab, steht die
+Person wieder als anfragbar da, und das abgelaufene Datum erklärt, warum sie
+eine Weile fehlte. Gilt ein Vermerk gerade, steht er zusätzlich als Etikett
+oben neben dem Namen.
+
+### Bearbeiten: nur, was die App selbst führt
+
+**Bearbeiten** im Profil öffnet genau das, was das LCR nicht kennt:
+
+| Feld                                     | Wozu                                           |
+| ---------------------------------------- | ---------------------------------------------- |
+| **Status**                               | Aktiv oder inaktiv                             |
+| **Letzte Ansprache**                     | Steuert die Auswertung «lange nicht mehr dran» |
+| **Kann für Ansprachen angefragt werden** | Haken, dazu wahlweise ein «nicht anfragen bis» |
+| **Kann für Gebete angefragt werden**     | Dasselbe für das Gebet                         |
+| **Notiz** und **Schlagworte**            | Freitext zur Person                            |
+
+Name, Geschlecht, Geburtsdatum, Adresse, Kontakt und Betreuung stehen
+weiterhin im Dialog, lassen sich aber nicht ändern. Sie kommen aus dem LCR und
+werden dort gepflegt: Von Hand nachgeführt hiesse, zwei Stände nebeneinander
+zu führen – und beim nächsten Import wäre der eine ohnehin überschrieben.
+
+Die beiden Haken tragen ein **«bis wann»**, sobald sie weg sind. Leer heisst
+«auf Weiteres»; mit Datum steht die Person am Tag danach von selbst wieder in
+den Vorschlägen, ohne dass jemand daran denken müsste. Darunter steht, wann
+die Entscheidung zuletzt geändert wurde – und dieser Zeitpunkt wird nur dann
+neu gesetzt, wenn sich tatsächlich etwas geändert hat. Ein Datum, das jedes
+Speichern erneuert, beantwortete die Frage «seit wann?» nicht mehr.
+
 ---
 
 ## Mitgliederliste importieren
@@ -1058,8 +1111,9 @@ LCR und wird dort gepflegt: Ein von Hand erfasster Datensatz wäre beim
 nächsten Import entweder doppelt oder einer, den niemand wiederfindet, und
 ein von Hand gelöschter wäre beim übernächsten wieder da, weil er im LCR nie
 verschwand. Was die App darüber hinaus führt und das LCR gar nicht kennt –
-Notiz, Schlagworte, «kann für Ansprachen angefragt werden», Betreuung –, wird
-weiterhin am einzelnen Mitglied gepflegt (**Bearbeiten** im Profil).
+Status, letzte Ansprache, «kann für Ansprachen und Gebete angefragt werden»,
+Notiz, Schlagworte –, wird weiterhin am einzelnen Mitglied gepflegt
+(**Bearbeiten** im Profil). Alles Übrige ist dort gesperrt.
 
 Der Assistent führt durch vier Schritte: Quelle wählen, Spalten zuordnen
 (wird geraten), Vorschau prüfen, importieren. Als Quelle dienen wahlweise

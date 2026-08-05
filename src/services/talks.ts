@@ -1,6 +1,7 @@
 import {
   collection,
   deleteDoc,
+  deleteField,
   doc,
   getDoc,
   getDocs,
@@ -221,16 +222,28 @@ export {
 } from '@/lib/talkCandidates'
 
 /**
- * Ein Mitglied vorerst nicht anfragen – oder wieder aufnehmen.
+ * Ein Mitglied nicht anfragen – oder wieder aufnehmen.
  *
  * Ein Zustand am Mitglied und nicht an einer Ansprache: Es gibt keine, und
- * genau darum geht es. Wer zurückgestellt ist, fällt aus den Vorschlägen
+ * genau darum geht es. Wer ausgenommen ist, fällt aus den Vorschlägen
  * heraus, bleibt aber über den Filter sichtbar (siehe `lib/talkCandidates`).
+ *
+ * `until` sagt, bis wann – ohne Datum gilt der Vermerk auf Weiteres. Der
+ * frühere zweite Haken `talkHold` wird dabei weggeräumt: Bliebe er stehen,
+ * hielte er die Person auch dann noch heraus, wenn sie eben aufgenommen
+ * wurde (siehe `lib/availability`).
  */
-export async function setTalkHold(memberId: string, hold: boolean): Promise<SaveOutcome> {
+export async function setTalkAvailability(
+  memberId: string,
+  available: boolean,
+  until: Date | null = null,
+): Promise<SaveOutcome> {
   return commit(
     updateDoc(doc(db, COLLECTIONS.members, memberId), {
-      talkHold: hold,
+      availableForTalks: available,
+      talkHoldUntil: available || !until ? null : Timestamp.fromDate(until),
+      talkAvailabilityChangedAt: serverTimestamp(),
+      talkHold: deleteField(),
       updatedAt: serverTimestamp(),
     }),
   )

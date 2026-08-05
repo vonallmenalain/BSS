@@ -245,7 +245,6 @@ export function Callings() {
           zwei Stände nebeneinander zu führen – und der eine wäre falsch. */}
       <PageHeader
         title="Berufungen"
-        subtitle="Aus dem LCR übernommen – erfasst wird unter «Einstellungen › Importe»"
         actions={<CallingsMenu view={view} counts={counts} onChange={setView} />}
       />
 

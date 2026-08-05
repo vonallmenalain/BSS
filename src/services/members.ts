@@ -10,6 +10,7 @@ import {
   Timestamp,
 } from 'firebase/firestore'
 import { db, COLLECTIONS } from '@/lib/firebase'
+import { talkAvailability } from '@/lib/availability'
 import { getAge, monthsSince } from '@/lib/dates'
 import { compareNames, normalize, stripUndefined } from '@/lib/utils'
 import { commit, type SaveOutcome } from '@/lib/sync'
@@ -32,19 +33,32 @@ export function buildSearchName(firstName: string, lastName: string): string {
   return normalize(`${lastName} ${firstName}`)
 }
 
-export async function updateMember(
-  id: string,
-  patch: Partial<Omit<Member, 'id' | 'birthDate' | 'lastTalkDate'>> & {
-    birthDate?: Date | null
-    lastTalkDate?: Date | null
-  },
-): Promise<SaveOutcome> {
+/**
+ * Datumsfelder am Mitglied.
+ *
+ * Sie werden als gewöhnliches `Date` übergeben und hier in Timestamps
+ * übersetzt – einmal an einer Stelle, statt an jedem Aufrufer.
+ */
+const MEMBER_DATE_FIELDS = [
+  'birthDate',
+  'lastTalkDate',
+  'talkHoldUntil',
+  'talkAvailabilityChangedAt',
+  'prayerHoldUntil',
+  'prayerAvailabilityChangedAt',
+] as const
+
+type MemberDateField = (typeof MEMBER_DATE_FIELDS)[number]
+
+export type MemberPatch = Partial<Omit<Member, 'id' | MemberDateField>> &
+  Partial<Record<MemberDateField, Date | null>>
+
+export async function updateMember(id: string, patch: MemberPatch): Promise<SaveOutcome> {
   const data: Record<string, unknown> = stripUndefined(patch as Record<string, unknown>)
-  if ('birthDate' in patch) {
-    data.birthDate = patch.birthDate ? Timestamp.fromDate(patch.birthDate) : null
-  }
-  if ('lastTalkDate' in patch) {
-    data.lastTalkDate = patch.lastTalkDate ? Timestamp.fromDate(patch.lastTalkDate) : null
+  for (const field of MEMBER_DATE_FIELDS) {
+    if (!(field in patch)) continue
+    const value = patch[field]
+    data[field] = value ? Timestamp.fromDate(value) : null
   }
   if (patch.firstName || patch.lastName) {
     // searchName konsistent halten – sonst findet die Suche den Datensatz nicht mehr.
@@ -116,9 +130,11 @@ export function filterMembers(members: Member[], filter: MemberFilter): Member[]
       if (filter.maxAge != null && age > filter.maxAge) return false
     }
 
+    // Der Vermerk kann ein Datum tragen und von selbst ablaufen – gefragt ist
+    // deshalb der Stand von heute und nicht das rohe Feld.
     if (
       filter.availableForTalks !== undefined &&
-      member.availableForTalks !== filter.availableForTalks
+      talkAvailability(member).available !== filter.availableForTalks
     ) {
       return false
     }

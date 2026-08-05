@@ -5,6 +5,7 @@ import {
   Award,
   Cake,
   ChevronsLeftRight,
+  HandHeart,
   Mail,
   MapPin,
   Mic,
@@ -15,31 +16,37 @@ import {
 import { useData } from '@/contexts/DataContext'
 import { useToast } from '@/contexts/ToastContext'
 import { useBack } from '@/hooks/useBack'
-import { useMemberCallings, useTalks } from '@/hooks/useFirestore'
+import { useMemberCallings, usePrayers, useTalks } from '@/hooks/useFirestore'
 import { Modal } from '@/components/ui/Modal'
 import { EmptyState } from '@/components/ui/Feedback'
 import { Avatar } from '@/components/ui/Avatar'
 import { CallingStatusBadge, TalkStatusBadge } from '@/components/ui/Badge'
-import { MemberPicker } from '@/components/ui/Pickers'
-import { formatDate, getAge, monthsSince, toDateInput } from '@/lib/dates'
+import { prayerAvailability, talkAvailability, type Availability } from '@/lib/availability'
+import { formatDate, getAge, monthsSince, toDate, toDateInput } from '@/lib/dates'
 import { cn, formatPhone, telHref } from '@/lib/utils'
 import { updateMember } from '@/services/members'
 import { callingPeriod, callingsForMember } from '@/services/callings'
+import { sortPrayersByDate } from '@/services/prayers'
 import {
   ACTIVE_CALLING_STATUSES,
   GENDER_LABELS,
   MEMBER_STATUS_LABELS,
   ORGANIZATION_LABELS,
+  PRAYER_SLOT_LABELS,
   type Calling,
-  type Gender,
   type Member,
   type MemberStatus,
+  type Prayer,
+  type Talk,
 } from '@/lib/types'
 
 export function MemberDetail() {
   const { memberId } = useParams<{ memberId: string }>()
   const { membersById, loading } = useData()
   const { data: talks } = useTalks(300)
+  /* Wann jemand zuletzt gebetet hat, steht nicht am Mitglied, sondern in den
+     Gebeten – wie in der Mitgliederliste. */
+  const { data: prayers } = usePrayers(600)
   const { data: callings } = useMemberCallings(memberId)
 
   /*
@@ -67,6 +74,11 @@ export function MemberDetail() {
           return bTime - aTime
         }),
     [talks, memberId],
+  )
+
+  const memberPrayers = useMemo(
+    () => sortPrayersByDate(prayers.filter((prayer) => prayer.memberId === memberId)),
+    [prayers, memberId],
   )
 
   const memberCallings = useMemo(
@@ -99,11 +111,13 @@ export function MemberDetail() {
   }
 
   const age = getAge(member.birthDate)
-  const months = monthsSince(member.lastTalkDate)
   const resolve = (ids: string[] | undefined): Member[] =>
     (ids ?? []).map((id) => membersById.get(id)).filter((m): m is Member => m !== undefined)
   const partners = resolve(member.ministeringPartnerIds)
   const assigned = resolve(member.ministeringAssignedIds)
+
+  const talkStatus = talkAvailability(member)
+  const prayerStatus = prayerAvailability(member)
 
   return (
     <>
@@ -138,22 +152,10 @@ export function MemberDetail() {
                 {member.firstName} {member.lastName}
               </h1>
               <StatusToggle member={member} />
-              {!member.availableForTalks && (
-                <span className="badge bg-slate-100 text-slate-500 dark:bg-slate-800 dark:text-slate-400">
-                  Keine Ansprachen
-                </span>
-              )}
-              {/* Das «im Moment nicht» aus den Vorschlägen – hier sichtbar,
-                  damit es nicht in einer Liste verschwindet, die es selbst
-                  ausblendet. */}
-              {member.talkHold && (
-                <span
-                  className="badge bg-amber-100 text-amber-800 dark:bg-amber-950 dark:text-amber-200"
-                  title="Erscheint nicht in den Vorschlägen für Ansprachen"
-                >
-                  Vorerst nicht anfragen
-                </span>
-              )}
+              {/* Der Vermerk «nicht anfragen» – hier sichtbar, damit er nicht
+                  in den Listen verschwindet, die er selbst ausblendet. */}
+              <HoldBadge status={talkStatus} topic="Ansprachen" />
+              <HoldBadge status={prayerStatus} topic="Gebete" />
             </div>
 
             <div className="mt-2 flex flex-wrap gap-x-4 gap-y-1 text-sm text-slate-600 dark:text-slate-300">
@@ -243,40 +245,20 @@ export function MemberDetail() {
           )}
         </section>
 
-        {/* ---------- Ansprachen ---------- */}
+        {/* ---------- Ansprachen und Gebete ---------- */}
         <section className="card p-4">
-          <h2 className="mb-2 flex items-center gap-2 text-sm font-semibold">
-            <Mic className="size-4 text-slate-400" aria-hidden />
-            Ansprachen
-          </h2>
-          <p className="mb-3 text-sm">
-            {member.lastTalkDate ? (
-              <>
-                Zuletzt <strong>{formatDate(member.lastTalkDate)}</strong>
-                {months !== null && (
-                  <span className="text-slate-500 dark:text-slate-400">
-                    {' '}
-                    · vor {months} Monaten
-                  </span>
-                )}
-              </>
-            ) : (
-              <span className="text-amber-600 dark:text-amber-400">Noch keine Ansprache</span>
-            )}
-          </p>
+          <h2 className="mb-3 text-sm font-semibold">Ansprachen und Gebete</h2>
 
-          {memberTalks.length > 0 ? (
-            <ul className="divide-list -mx-1 text-sm">
-              {memberTalks.slice(0, 6).map((talk) => (
-                <li key={talk.id} className="flex items-center justify-between gap-2 px-1 py-2">
-                  <span>{formatDate(talk.date)}</span>
-                  <TalkStatusBadge status={talk.status} />
-                </li>
-              ))}
-            </ul>
-          ) : (
-            <p className="text-xs text-slate-400">Keine Einträge.</p>
-          )}
+          {/* Beide Fragen stehen beisammen, weil sie zusammen gestellt werden:
+              Wer am Pult vorgesehen ist, ist es selten nur für das eine. Und
+              beide werden gleich beantwortet – zuletzt dran, und ob eine
+              Anfrage im Moment überhaupt in Frage kommt. */}
+          <div className="space-y-4">
+            <TalkPanel talks={memberTalks} member={member} status={talkStatus} />
+            <div className="border-t border-slate-200 pt-4 dark:border-slate-800">
+              <PrayerPanel prayers={memberPrayers} status={prayerStatus} />
+            </div>
+          </div>
         </section>
 
         {/* ---------- Berufungen ---------- */}
@@ -312,6 +294,173 @@ export function MemberDetail() {
 
       <MemberForm open={editOpen} onClose={() => setEditOpen(false)} member={member} />
     </>
+  )
+}
+
+/* ------------------------------------------------------------------ */
+/* Anfragen: Ansprachen und Gebete                                     */
+/* ------------------------------------------------------------------ */
+
+/**
+ * «Nicht anfragen» als Etikett – oben neben dem Namen.
+ *
+ * Es steht nur da, wenn der Vermerk gerade gilt: Ein Etikett «kann angefragt
+ * werden» an jedem zweiten Profil sagte nichts, denn das ist der Normalfall.
+ * Bis wann er gilt, steht gleich mit dabei – ohne Datum gilt er auf Weiteres.
+ */
+function HoldBadge({ status, topic }: { status: Availability; topic: string }) {
+  if (status.available) return null
+  return (
+    <span
+      className="badge bg-amber-100 text-amber-800 dark:bg-amber-950 dark:text-amber-200"
+      title={
+        status.changedAt
+          ? `Seit ${formatDate(status.changedAt)} vermerkt – erscheint nicht in den Vorschlägen`
+          : 'Erscheint nicht in den Vorschlägen'
+      }
+    >
+      Keine {topic}
+      {status.until && ` bis ${formatDate(status.until)}`}
+    </span>
+  )
+}
+
+/**
+ * Der Stand in Worten – für die Kachel im Profil.
+ *
+ * Drei Fälle, und alle drei kommen vor: Der Vermerk gilt, er ist abgelaufen
+ * (dann ist die Person wieder frei, und das Datum erklärt, warum sie eine
+ * Weile fehlte), oder er stand nie. Wann die Entscheidung getroffen wurde,
+ * steht dabei – ein «nicht anfragen» ohne Zeitpunkt lässt offen, ob es von
+ * letzter Woche stammt oder von vor drei Jahren.
+ */
+function AvailabilityNote({ status, topic }: { status: Availability; topic: string }) {
+  if (!status.available) {
+    return (
+      <p className="mt-1 text-xs text-amber-700 dark:text-amber-400">
+        {status.until
+          ? `Nicht für ${topic} anfragen bis ${formatDate(status.until)}`
+          : `Nicht für ${topic} anfragen`}
+        {status.changedAt && (
+          <span className="text-slate-500 dark:text-slate-400">
+            {' '}
+            · vermerkt am {formatDate(status.changedAt)}
+          </span>
+        )}
+      </p>
+    )
+  }
+
+  return (
+    <p className="mt-1 text-xs text-slate-500 dark:text-slate-400">
+      Kann angefragt werden
+      {status.expired && status.until
+        ? ` · Vermerk lief am ${formatDate(status.until)} ab`
+        : status.changedAt && ` · seit ${formatDate(status.changedAt)}`}
+    </p>
+  )
+}
+
+/** Zuletzt gesprochen, der Stand der Anfragen und die letzten Einträge. */
+function TalkPanel({
+  talks,
+  member,
+  status,
+}: {
+  talks: Talk[]
+  member: Member
+  status: Availability
+}) {
+  const months = monthsSince(member.lastTalkDate)
+
+  return (
+    <div>
+      <h3 className="flex items-center gap-2 text-xs font-semibold tracking-wide text-slate-500 uppercase dark:text-slate-400">
+        <Mic className="size-3.5" aria-hidden />
+        Ansprachen
+      </h3>
+
+      <p className="mt-1.5 text-sm">
+        {member.lastTalkDate ? (
+          <>
+            Zuletzt <strong>{formatDate(member.lastTalkDate)}</strong>
+            {months !== null && (
+              <span className="text-slate-500 dark:text-slate-400"> · vor {months} Monaten</span>
+            )}
+          </>
+        ) : (
+          <span className="text-amber-600 dark:text-amber-400">Noch keine Ansprache</span>
+        )}
+      </p>
+
+      <AvailabilityNote status={status} topic="Ansprachen" />
+
+      {talks.length > 0 && (
+        <ul className="divide-list -mx-1 mt-2 text-sm">
+          {talks.slice(0, 5).map((talk) => (
+            <li key={talk.id} className="flex items-center justify-between gap-2 px-1 py-2">
+              <span className="tabular">{formatDate(talk.date)}</span>
+              <TalkStatusBadge status={talk.status} />
+            </li>
+          ))}
+        </ul>
+      )}
+    </div>
+  )
+}
+
+/**
+ * Dasselbe für die Gebete.
+ *
+ * «Zuletzt» meint das letzte gehaltene Gebet und nicht die nächste
+ * Zuteilung: Wer fragt, wie lange jemand nicht mehr dran war, meint die
+ * Vergangenheit. Was noch bevorsteht, steht in der Liste darunter und ist
+ * dort als kommend angeschrieben.
+ */
+function PrayerPanel({ prayers, status }: { prayers: Prayer[]; status: Availability }) {
+  const now = new Date()
+  const last = prayers.map((prayer) => toDate(prayer.date)).find((date) => date && date <= now)
+  const months = monthsSince(last)
+
+  return (
+    <div>
+      <h3 className="flex items-center gap-2 text-xs font-semibold tracking-wide text-slate-500 uppercase dark:text-slate-400">
+        <HandHeart className="size-3.5" aria-hidden />
+        Gebete
+      </h3>
+
+      <p className="mt-1.5 text-sm">
+        {last ? (
+          <>
+            Zuletzt <strong>{formatDate(last)}</strong>
+            {months !== null && (
+              <span className="text-slate-500 dark:text-slate-400"> · vor {months} Monaten</span>
+            )}
+          </>
+        ) : (
+          <span className="text-amber-600 dark:text-amber-400">Noch kein Gebet</span>
+        )}
+      </p>
+
+      <AvailabilityNote status={status} topic="Gebete" />
+
+      {prayers.length > 0 && (
+        <ul className="divide-list -mx-1 mt-2 text-sm">
+          {prayers.slice(0, 5).map((prayer) => {
+            const date = toDate(prayer.date)
+            return (
+              <li key={prayer.id} className="flex items-center justify-between gap-2 px-1 py-2">
+                <span className="tabular">{formatDate(prayer.date)}</span>
+                <span className="text-xs text-slate-500 dark:text-slate-400">
+                  {PRAYER_SLOT_LABELS[prayer.slot]}
+                  {date && date > now && ' · geplant'}
+                </span>
+              </li>
+            )
+          })}
+        </ul>
+      )}
+    </div>
   )
 }
 
@@ -361,56 +510,60 @@ function StatusToggle({ member }: { member: Member }) {
 /* ------------------------------------------------------------------ */
 
 interface FormState {
-  firstName: string
-  lastName: string
-  gender: Gender
-  birthDate: string
-  email: string
-  phone: string
-  mobile: string
-  street: string
-  zip: string
-  city: string
   status: MemberStatus
-  availableForTalks: boolean
-  talkHold: boolean
-  notes: string
-  ministeringPartnerIds: string[]
-  ministeringAssignedIds: string[]
   lastTalkDate: string
+  availableForTalks: boolean
+  /** Bis wann «nicht anfragen» gilt – leer heisst «auf Weiteres» */
+  talkHoldUntil: string
+  availableForPrayers: boolean
+  prayerHoldUntil: string
+  notes: string
   tags: string
 }
 
 const EMPTY: FormState = {
-  firstName: '',
-  lastName: '',
-  gender: 'unknown',
-  birthDate: '',
-  email: '',
-  phone: '',
-  mobile: '',
-  street: '',
-  zip: '',
-  city: '',
   status: 'active',
-  availableForTalks: true,
-  talkHold: false,
-  notes: '',
-  ministeringPartnerIds: [],
-  ministeringAssignedIds: [],
   lastTalkDate: '',
+  availableForTalks: true,
+  talkHoldUntil: '',
+  availableForPrayers: true,
+  prayerHoldUntil: '',
+  notes: '',
   tags: '',
+}
+
+/**
+ * Ein Datum aus dem Formular als Ende eines Vermerks.
+ *
+ * Der letzte Moment des Tages und nicht der Mittag: «bis 31.12.2026» heisst,
+ * dass der 31. noch dazugehört. Bei Mittag fiele der halbe Tag weg, und das
+ * merkte niemand – ausser der Person, die an jenem Sonntag plötzlich wieder
+ * in der Liste stünde.
+ */
+function holdDate(value: string): Date | null {
+  return value ? new Date(`${value}T23:59:59`) : null
+}
+
+/** Hat sich an dieser Entscheidung etwas geändert? */
+function holdChanged(before: Availability, available: boolean, until: Date | null): boolean {
+  if (before.available !== available) return true
+  if (available) return false
+  return toDateInput(before.until) !== toDateInput(until)
 }
 
 /**
  * Ein Mitglied bearbeiten.
  *
- * Nur bearbeiten – anlegen lässt sich hier niemand. Das Verzeichnis kommt
- * aus dem LCR und wird dort gepflegt; ein von Hand erfasstes Mitglied wäre
- * beim nächsten Import entweder doppelt oder ein Datensatz, den niemand
- * wiederfindet. Was die App darüber hinaus führt – Notiz, Schlagworte,
- * «kann angefragt werden», Betreuung –, steht im LCR nicht und wird deshalb
- * weiterhin hier gepflegt.
+ * **Das Verzeichnis gehört dem LCR.** Name, Geschlecht, Geburtsdatum,
+ * Adresse, Kontakt und Betreuung kommen von dort und werden dort gepflegt –
+ * hier stehen sie, lassen sich aber nicht ändern. Von Hand nachgeführt hiesse,
+ * zwei Stände nebeneinander zu führen, und der eine wäre falsch: Was hier
+ * entstünde, wäre beim nächsten Import ohnehin wieder überschrieben.
+ *
+ * Bearbeiten lässt sich, was allein diese App führt – der Status, wann jemand
+ * zuletzt gesprochen hat, ob er für Ansprachen und Gebete angefragt werden
+ * kann, dazu Notiz und Schlagworte. Anlegen lässt sich hier niemand; auch das
+ * geschieht beim Import.
  */
 export function MemberForm({
   open,
@@ -422,29 +575,25 @@ export function MemberForm({
   member: Member
 }) {
   const toast = useToast()
+  const { membersById } = useData()
   const [form, setForm] = useState<FormState>(EMPTY)
   const [saving, setSaving] = useState(false)
 
   useEffect(() => {
     if (!open) return
+    // Aus dem **geltenden** Stand und nicht aus den rohen Feldern: Ein
+    // abgelaufener Vermerk steht als Haken wieder da, wo er hingehört, und
+    // räumt sich beim nächsten Speichern von selbst weg.
+    const talk = talkAvailability(member)
+    const prayer = prayerAvailability(member)
     setForm({
-      firstName: member.firstName,
-      lastName: member.lastName,
-      gender: member.gender,
-      birthDate: toDateInput(member.birthDate),
-      email: member.email ?? '',
-      phone: member.phone ?? '',
-      mobile: member.mobile ?? '',
-      street: member.street ?? '',
-      zip: member.zip ?? '',
-      city: member.city ?? '',
       status: member.status,
-      availableForTalks: member.availableForTalks ?? true,
-      talkHold: member.talkHold === true,
-      notes: member.notes ?? '',
-      ministeringPartnerIds: member.ministeringPartnerIds ?? [],
-      ministeringAssignedIds: member.ministeringAssignedIds ?? [],
       lastTalkDate: toDateInput(member.lastTalkDate),
+      availableForTalks: talk.available,
+      talkHoldUntil: talk.available ? '' : toDateInput(talk.until),
+      availableForPrayers: prayer.available,
+      prayerHoldUntil: prayer.available ? '' : toDateInput(prayer.until),
+      notes: member.notes ?? '',
       tags: (member.tags ?? []).join(', '),
     })
   }, [open, member])
@@ -452,37 +601,52 @@ export function MemberForm({
   const update = <K extends keyof FormState>(key: K, value: FormState[K]) =>
     setForm((current) => ({ ...current, [key]: value }))
 
+  const names = (ids: string[] | undefined): string =>
+    (ids ?? [])
+      .map((id) => membersById.get(id))
+      .filter((entry): entry is Member => entry !== undefined)
+      .map((entry) => `${entry.firstName} ${entry.lastName}`)
+      .join(', ')
+
   const handleSubmit = async (event: FormEvent) => {
     event.preventDefault()
-    if (!form.lastName.trim() && !form.firstName.trim()) {
-      toast.error('Bitte gib mindestens einen Namen ein.')
-      return
-    }
 
     setSaving(true)
     try {
+      const talkBefore = talkAvailability(member)
+      const prayerBefore = prayerAvailability(member)
+      const talkUntil = form.availableForTalks ? null : holdDate(form.talkHoldUntil)
+      const prayerUntil = form.availableForPrayers ? null : holdDate(form.prayerHoldUntil)
+      const now = new Date()
+
       const payload = {
-        firstName: form.firstName.trim(),
-        lastName: form.lastName.trim(),
-        gender: form.gender,
-        birthDate: form.birthDate ? new Date(`${form.birthDate}T12:00:00`) : null,
-        email: form.email.trim(),
-        phone: form.phone.trim(),
-        mobile: form.mobile.trim(),
-        street: form.street.trim(),
-        zip: form.zip.trim(),
-        city: form.city.trim(),
         status: form.status,
-        availableForTalks: form.availableForTalks,
-        talkHold: form.talkHold,
-        notes: form.notes.trim(),
-        ministeringPartnerIds: form.ministeringPartnerIds,
-        ministeringAssignedIds: form.ministeringAssignedIds,
         lastTalkDate: form.lastTalkDate ? new Date(`${form.lastTalkDate}T12:00:00`) : null,
+
+        availableForTalks: form.availableForTalks,
+        talkHoldUntil: talkUntil,
+        // Der frühere zweite Haken wird beim Speichern still abgeräumt –
+        // stehen geblieben hielte er die Person weiter heraus.
+        talkHold: false,
+
+        availableForPrayers: form.availableForPrayers,
+        prayerHoldUntil: prayerUntil,
+
+        notes: form.notes.trim(),
         tags: form.tags
           .split(',')
           .map((tag) => tag.trim())
           .filter(Boolean),
+
+        // Nur, wenn sich tatsächlich etwas geändert hat: Ein Zeitpunkt, den
+        // jedes Speichern neu setzt, beantwortet die Frage «seit wann?» nicht
+        // mehr.
+        ...(holdChanged(talkBefore, form.availableForTalks, talkUntil) && {
+          talkAvailabilityChangedAt: now,
+        }),
+        ...(holdChanged(prayerBefore, form.availableForPrayers, prayerUntil) && {
+          prayerAvailabilityChangedAt: now,
+        }),
       }
 
       const outcome = await updateMember(member.id, payload)
@@ -516,62 +680,6 @@ export function MemberForm({
       <form id="member-form" onSubmit={handleSubmit} className="space-y-4">
         <div className="grid gap-4 sm:grid-cols-2">
           <div>
-            <label className="label" htmlFor="m-firstName">
-              Vorname
-            </label>
-            <input
-              id="m-firstName"
-              className="input"
-              value={form.firstName}
-              onChange={(event) => update('firstName', event.target.value)}
-              autoComplete="given-name"
-            />
-          </div>
-          <div>
-            <label className="label" htmlFor="m-lastName">
-              Nachname
-            </label>
-            <input
-              id="m-lastName"
-              className="input"
-              value={form.lastName}
-              onChange={(event) => update('lastName', event.target.value)}
-              autoComplete="family-name"
-            />
-          </div>
-        </div>
-
-        <div className="grid gap-4 sm:grid-cols-3">
-          <div>
-            <label className="label" htmlFor="m-gender">
-              Geschlecht
-            </label>
-            <select
-              id="m-gender"
-              className="input"
-              value={form.gender}
-              onChange={(event) => update('gender', event.target.value as Gender)}
-            >
-              {Object.entries(GENDER_LABELS).map(([value, label]) => (
-                <option key={value} value={value}>
-                  {label}
-                </option>
-              ))}
-            </select>
-          </div>
-          <div>
-            <label className="label" htmlFor="m-birth">
-              Geburtsdatum
-            </label>
-            <input
-              id="m-birth"
-              type="date"
-              className="input"
-              value={form.birthDate}
-              onChange={(event) => update('birthDate', event.target.value)}
-            />
-          </div>
-          <div>
             <label className="label" htmlFor="m-status">
               Status
             </label>
@@ -588,87 +696,6 @@ export function MemberForm({
               ))}
             </select>
           </div>
-        </div>
-
-        <div className="grid gap-4 sm:grid-cols-3">
-          <div className="sm:col-span-3">
-            <label className="label" htmlFor="m-email">
-              E-Mail
-            </label>
-            <input
-              id="m-email"
-              type="email"
-              className="input"
-              value={form.email}
-              onChange={(event) => update('email', event.target.value)}
-              autoComplete="email"
-            />
-          </div>
-          <div>
-            <label className="label" htmlFor="m-mobile">
-              Mobile
-            </label>
-            <input
-              id="m-mobile"
-              type="tel"
-              className="input"
-              value={form.mobile}
-              onChange={(event) => update('mobile', event.target.value)}
-            />
-          </div>
-          <div>
-            <label className="label" htmlFor="m-phone">
-              Festnetz
-            </label>
-            <input
-              id="m-phone"
-              type="tel"
-              className="input"
-              value={form.phone}
-              onChange={(event) => update('phone', event.target.value)}
-            />
-          </div>
-        </div>
-
-        <div className="grid gap-4 sm:grid-cols-4">
-          <div className="sm:col-span-2">
-            <label className="label" htmlFor="m-street">
-              Strasse
-            </label>
-            <input
-              id="m-street"
-              className="input"
-              value={form.street}
-              onChange={(event) => update('street', event.target.value)}
-              autoComplete="street-address"
-            />
-          </div>
-          <div>
-            <label className="label" htmlFor="m-zip">
-              PLZ
-            </label>
-            <input
-              id="m-zip"
-              className="input"
-              value={form.zip}
-              onChange={(event) => update('zip', event.target.value)}
-              autoComplete="postal-code"
-            />
-          </div>
-          <div>
-            <label className="label" htmlFor="m-city">
-              Ort
-            </label>
-            <input
-              id="m-city"
-              className="input"
-              value={form.city}
-              onChange={(event) => update('city', event.target.value)}
-            />
-          </div>
-        </div>
-
-        <div className="grid gap-4 sm:grid-cols-2">
           <div>
             <label className="label" htmlFor="m-lastTalk">
               Letzte Ansprache
@@ -682,32 +709,30 @@ export function MemberForm({
             />
             <p className="hint">Steuert die Auswertung «lange nicht mehr dran».</p>
           </div>
-          <div>
-            <label className="label" htmlFor="m-tags">
-              Schlagworte
-            </label>
-            <input
-              id="m-tags"
-              className="input"
-              value={form.tags}
-              onChange={(event) => update('tags', event.target.value)}
-            />
-            <p className="hint">Mit Komma trennen.</p>
-          </div>
         </div>
 
-        <MemberPicker
-          value={form.ministeringPartnerIds}
-          onChange={(next) => update('ministeringPartnerIds', next)}
-          label="Betreuungspartner"
-          placeholder="Mitglied suchen …"
+        <AvailabilityField
+          id="m-talk"
+          label="Kann für Ansprachen angefragt werden"
+          hint="Abwählen, wenn eine Anfrage nicht in Frage kommt – dann steht die Person in keiner Vorschlagsliste mehr."
+          available={form.availableForTalks}
+          until={form.talkHoldUntil}
+          changedAt={talkAvailability(member).changedAt}
+          onChange={(next) => setForm((current) => ({ ...current, ...next }))}
+          availableKey="availableForTalks"
+          untilKey="talkHoldUntil"
         />
 
-        <MemberPicker
-          value={form.ministeringAssignedIds}
-          onChange={(next) => update('ministeringAssignedIds', next)}
-          label="Betreuungsauftrag"
-          placeholder="Mitglied suchen …"
+        <AvailabilityField
+          id="m-prayer"
+          label="Kann für Gebete angefragt werden"
+          hint="Abwählen, wenn im Moment kein Gebet in Frage kommt. Das «Heute nicht» beim Zuteilen setzt hier ein Datum ein paar Wochen voraus."
+          available={form.availableForPrayers}
+          until={form.prayerHoldUntil}
+          changedAt={prayerAvailability(member).changedAt}
+          onChange={(next) => setForm((current) => ({ ...current, ...next }))}
+          availableKey="availableForPrayers"
+          untilKey="prayerHoldUntil"
         />
 
         <div>
@@ -722,42 +747,174 @@ export function MemberForm({
           />
         </div>
 
-        <label className="flex cursor-pointer items-center gap-3 rounded-lg border border-slate-200 p-3 dark:border-slate-700">
+        <div>
+          <label className="label" htmlFor="m-tags">
+            Schlagworte
+          </label>
           <input
-            type="checkbox"
-            className="size-4 rounded"
-            checked={form.availableForTalks}
-            onChange={(event) => update('availableForTalks', event.target.checked)}
+            id="m-tags"
+            className="input"
+            value={form.tags}
+            onChange={(event) => update('tags', event.target.value)}
           />
-          <span className="text-sm">
-            Kann für Ansprachen angefragt werden
-            <span className="hint mt-0.5 block">
-              Abwählen, wenn grundsätzlich keine Anfrage in Frage kommt – dann steht die Person in
-              keiner Vorschlagsliste mehr.
-            </span>
-          </span>
-        </label>
+          <p className="hint">Mit Komma trennen.</p>
+        </div>
 
-        {/* Die beiden Haken beantworten dieselbe Frage für verschiedene
-            Zeiträume: «gar nicht» und «im Moment nicht». */}
-        <label className="flex cursor-pointer items-center gap-3 rounded-lg border border-slate-200 p-3 dark:border-slate-700">
-          <input
-            type="checkbox"
-            className="size-4 rounded"
-            checked={form.talkHold}
-            onChange={(event) => update('talkHold', event.target.checked)}
-          />
-          <span className="text-sm">
-            Vorerst nicht anfragen
-            <span className="hint mt-0.5 block">
-              Für ein «im Moment nicht»: Krankheit, Abwesenheit, ein Gespräch, das noch aussteht.
-              Die Person fällt aus den Vorschlägen heraus, lässt sich dort aber einblenden und mit
-              einem Griff wieder aufnehmen.
-            </span>
-          </span>
-        </label>
+        {/* Ab hier steht der Bestand des LCR: sichtbar, damit das Profil
+            vollständig bleibt, und gesperrt, weil er dort gepflegt wird. */}
+        <fieldset
+          disabled
+          className="space-y-4 border-t border-slate-200 pt-4 dark:border-slate-800"
+        >
+          <div className="grid gap-4 sm:grid-cols-2">
+            <div>
+              <span className="label">Vorname</span>
+              <input className="input" value={member.firstName} readOnly />
+            </div>
+            <div>
+              <span className="label">Nachname</span>
+              <input className="input" value={member.lastName} readOnly />
+            </div>
+          </div>
+
+          <div className="grid gap-4 sm:grid-cols-2">
+            <div>
+              <span className="label">Geschlecht</span>
+              <input className="input" value={GENDER_LABELS[member.gender]} readOnly />
+            </div>
+            <div>
+              <span className="label">Geburtsdatum</span>
+              <input className="input" value={toDateInput(member.birthDate)} type="date" readOnly />
+            </div>
+          </div>
+
+          <div className="grid gap-4 sm:grid-cols-3">
+            <div className="sm:col-span-3">
+              <span className="label">E-Mail</span>
+              <input className="input" value={member.email ?? ''} readOnly />
+            </div>
+            <div>
+              <span className="label">Mobile</span>
+              <input className="input" value={member.mobile ?? ''} readOnly />
+            </div>
+            <div>
+              <span className="label">Festnetz</span>
+              <input className="input" value={member.phone ?? ''} readOnly />
+            </div>
+          </div>
+
+          <div className="grid gap-4 sm:grid-cols-4">
+            <div className="sm:col-span-2">
+              <span className="label">Strasse</span>
+              <input className="input" value={member.street ?? ''} readOnly />
+            </div>
+            <div>
+              <span className="label">PLZ</span>
+              <input className="input" value={member.zip ?? ''} readOnly />
+            </div>
+            <div>
+              <span className="label">Ort</span>
+              <input className="input" value={member.city ?? ''} readOnly />
+            </div>
+          </div>
+
+          <div className="grid gap-4 sm:grid-cols-2">
+            <div>
+              <span className="label">Betreuungspartner</span>
+              <input className="input" value={names(member.ministeringPartnerIds)} readOnly />
+            </div>
+            <div>
+              <span className="label">Betreuungsauftrag</span>
+              <input className="input" value={names(member.ministeringAssignedIds)} readOnly />
+            </div>
+          </div>
+        </fieldset>
       </form>
     </Modal>
+  )
+}
+
+/**
+ * Ein Haken mit einem «bis wann» – für Ansprachen wie für Gebete.
+ *
+ * **Aus zwei Haken ist einer geworden.** «Kann angefragt werden» und daneben
+ * «vorerst nicht anfragen» stellten dieselbe Frage zweimal; beide zugleich
+ * angehakt ergaben keinen Sinn, und welcher von beiden dann galt, wusste
+ * niemand. Jetzt steht eine Entscheidung da, und das Datum sagt, wie lange
+ * sie gilt: leer heisst «auf Weiteres», ein Datum lässt den Vermerk von
+ * selbst ablaufen.
+ *
+ * Das Feld erscheint erst, wenn der Haken weg ist: Ein «bis wann» zu jemandem,
+ * der angefragt werden darf, beantwortet keine Frage.
+ */
+function AvailabilityField<A extends string, U extends string>({
+  id,
+  label,
+  hint,
+  available,
+  until,
+  changedAt,
+  onChange,
+  availableKey,
+  untilKey,
+}: {
+  id: string
+  label: string
+  hint: string
+  available: boolean
+  until: string
+  /** Wann die Entscheidung zuletzt getroffen wurde – `null`, solange nie */
+  changedAt: Date | null
+  onChange: (patch: Partial<Record<A, boolean> & Record<U, string>>) => void
+  availableKey: A
+  untilKey: U
+}) {
+  return (
+    <div className="rounded-lg border border-slate-200 p-3 dark:border-slate-700">
+      <label className="flex cursor-pointer items-start gap-3">
+        <input
+          type="checkbox"
+          className="checkbox mt-0.5"
+          checked={available}
+          onChange={(event) =>
+            onChange({
+              [availableKey]: event.target.checked,
+              // Wieder anfragbar heisst: Das «bis wann» hat sich erledigt.
+              [untilKey]: event.target.checked ? '' : until,
+            } as Partial<Record<A, boolean> & Record<U, string>>)
+          }
+        />
+        <span className="text-sm">
+          {label}
+          <span className="hint mt-0.5 block">{hint}</span>
+        </span>
+      </label>
+
+      {!available && (
+        <div className="mt-3 border-t border-slate-200 pt-3 dark:border-slate-700">
+          <label className="label" htmlFor={id}>
+            Nicht anfragen bis
+          </label>
+          <input
+            id={id}
+            type="date"
+            className="input sm:max-w-56"
+            value={until}
+            onChange={(event) =>
+              onChange({ [untilKey]: event.target.value } as Partial<
+                Record<A, boolean> & Record<U, string>
+              >)
+            }
+          />
+          <p className="hint">
+            Leer heisst «auf Weiteres». Mit Datum steht die Person am Tag danach von selbst wieder
+            in den Vorschlägen.
+          </p>
+        </div>
+      )}
+
+      {changedAt && <p className="hint">Zuletzt geändert am {formatDate(changedAt)}.</p>}
+    </div>
   )
 }
 

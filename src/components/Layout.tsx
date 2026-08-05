@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { NavLink, Outlet, useLocation } from 'react-router-dom'
 import {
   LayoutDashboard,
@@ -406,14 +406,47 @@ function BottomLink({ item }: { item: NavItem }) {
   )
 }
 
+/**
+ * Name, Rolle, Einstellungen, Abmelden – hinter dem Kürzel oben rechts.
+ *
+ * Ein Griff irgendwohin in die App schliesst das Menü wieder, und zwar über
+ * einen Lauscher am Dokument statt über eine unsichtbare Fläche darunter.
+ * Die Fläche gab es, sie half hier aber nicht: Die Kopfzeile ist mit
+ * `backdrop-blur` hinterlegt, und das macht sie zum Bezugsrahmen für alles
+ * Festpositionierte darin. Das «über den ganzen Bildschirm» der Fläche
+ * endete deshalb am unteren Rand der Kopfzeile – wer in die Seite klickte,
+ * traf sie gar nicht, und das Menü blieb offen stehen.
+ *
+ * `pointerdown` statt `click`: Das Menü ist weg, sobald der Finger aufsetzt,
+ * und nicht erst, wenn er wieder loslässt.
+ */
 function UserMenu() {
   const { profile, signOut, isApproved } = useAuth()
   const [open, setOpen] = useState(false)
+  const menu = useRef<HTMLDivElement>(null)
+
+  useEffect(() => {
+    if (!open) return
+
+    const onPointerDown = (event: PointerEvent) => {
+      if (!menu.current?.contains(event.target as Node)) setOpen(false)
+    }
+    const onKeyDown = (event: KeyboardEvent) => {
+      if (event.key === 'Escape') setOpen(false)
+    }
+
+    document.addEventListener('pointerdown', onPointerDown)
+    document.addEventListener('keydown', onKeyDown)
+    return () => {
+      document.removeEventListener('pointerdown', onPointerDown)
+      document.removeEventListener('keydown', onKeyDown)
+    }
+  }, [open])
 
   if (!profile) return null
 
   return (
-    <div className="relative">
+    <div className="relative" ref={menu}>
       <button
         type="button"
         onClick={() => setOpen((v) => !v)}
@@ -425,36 +458,33 @@ function UserMenu() {
       </button>
 
       {open && (
-        <>
-          <div className="fixed inset-0 z-10" onClick={() => setOpen(false)} aria-hidden />
-          <div className="animate-scale-in absolute right-0 z-20 mt-2 w-56 origin-top-right rounded-xl border border-slate-200 bg-white p-1 shadow-lg dark:border-slate-700 dark:bg-slate-800">
-            <div className="border-b border-slate-100 px-3 py-2 dark:border-slate-700">
-              <p className="truncate text-sm font-medium">{profile.displayName}</p>
-              <p className="truncate text-xs text-slate-500 dark:text-slate-400">{profile.email}</p>
-              <p className="text-brand-600 dark:text-brand-300 mt-1 text-xs font-medium">
-                {ROLE_LABELS[profile.role]}
-              </p>
-            </div>
-            {isApproved && (
-              <NavLink
-                to="/einstellungen"
-                onClick={() => setOpen(false)}
-                className="flex items-center gap-2 rounded-lg px-3 py-2 text-sm transition hover:bg-slate-100 dark:hover:bg-slate-700"
-              >
-                <Settings className="size-4" aria-hidden />
-                Einstellungen
-              </NavLink>
-            )}
-            <button
-              type="button"
-              onClick={() => void signOut()}
-              className="flex w-full items-center gap-2 rounded-lg px-3 py-2 text-sm text-rose-600 transition hover:bg-rose-50 dark:text-rose-400 dark:hover:bg-rose-950"
-            >
-              <LogOut className="size-4" aria-hidden />
-              Abmelden
-            </button>
+        <div className="animate-scale-in absolute right-0 z-20 mt-2 w-56 origin-top-right rounded-xl border border-slate-200 bg-white p-1 shadow-lg dark:border-slate-700 dark:bg-slate-800">
+          <div className="border-b border-slate-100 px-3 py-2 dark:border-slate-700">
+            <p className="truncate text-sm font-medium">{profile.displayName}</p>
+            <p className="truncate text-xs text-slate-500 dark:text-slate-400">{profile.email}</p>
+            <p className="text-brand-600 dark:text-brand-300 mt-1 text-xs font-medium">
+              {ROLE_LABELS[profile.role]}
+            </p>
           </div>
-        </>
+          {isApproved && (
+            <NavLink
+              to="/einstellungen"
+              onClick={() => setOpen(false)}
+              className="flex items-center gap-2 rounded-lg px-3 py-2 text-sm transition hover:bg-slate-100 dark:hover:bg-slate-700"
+            >
+              <Settings className="size-4" aria-hidden />
+              Einstellungen
+            </NavLink>
+          )}
+          <button
+            type="button"
+            onClick={() => void signOut()}
+            className="flex w-full items-center gap-2 rounded-lg px-3 py-2 text-sm text-rose-600 transition hover:bg-rose-50 dark:text-rose-400 dark:hover:bg-rose-950"
+          >
+            <LogOut className="size-4" aria-hidden />
+            Abmelden
+          </button>
+        </div>
       )}
     </div>
   )

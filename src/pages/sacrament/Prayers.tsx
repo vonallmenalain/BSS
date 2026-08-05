@@ -218,7 +218,9 @@ export function Prayers() {
                           {member.firstName} {member.lastName}
                         </span>
                         <span className="tabular shrink-0 text-xs text-slate-400">
-                          bis {formatDate(member.prayerHoldUntil)}
+                          {member.prayerHoldUntil
+                            ? `bis ${formatDate(member.prayerHoldUntil)}`
+                            : 'auf Weiteres'}
                         </span>
                         <button
                           type="button"

@@ -77,6 +77,7 @@ const kandidat = (partial: Partial<TalkCandidate> & { member?: Member } = {}): T
   lastTalkYear: null,
   alreadyPlanned: false,
   onHold: false,
+  holdUntil: null,
   score: 0,
   ...partial,
 })
@@ -157,9 +158,15 @@ test('noch nie gesprochen wiegt schwerer als ein gewöhnlicher Abstand', () => {
   )
 })
 
-test('wer nicht angefragt werden darf, kommt gar nicht erst vor', () => {
-  const members = [member('m1', { availableForTalks: false })]
-  assert.equal(rankTalkCandidates(members, [], { now: JETZT }).length, 0)
+test('wer nicht angefragt werden darf, wird bewertet – aber als ausgenommen', () => {
+  // Herausfiltern hiesse: unauffindbar. Wer die Person wieder aufnehmen will,
+  // muss sie in der Liste sehen können; ausgeblendet wird sie erst vom Filter.
+  const ranked = rankTalkCandidates([member('m1', { availableForTalks: false })], [], {
+    now: JETZT,
+  })
+  assert.equal(ranked.length, 1)
+  assert.equal(ranked[0].onHold, true)
+  assert.equal(ranked[0].holdUntil, null)
 })
 
 test('Mindestalter und «nur Aktive» entscheiden, wer bewertet wird', () => {
@@ -186,9 +193,9 @@ test('ohne Geburtsdatum bleibt jemand in der Liste', () => {
   assert.equal(ranked[0].age, null)
 })
 
-test('Zurückgestellte stehen zuunterst', () => {
+test('Ausgenommene stehen zuunterst', () => {
   const members = [
-    member('zurueck', { talkHold: true }),
+    member('zurueck', { availableForTalks: false }),
     member('offen', { lastTalkDate: new Date('2024-01-01') as never }),
   ]
   const ranked = rankTalkCandidates(members, [], { now: JETZT })
@@ -204,7 +211,7 @@ test('Zurückgestellte stehen zuunterst', () => {
 /* Die Filter                                                          */
 /* ------------------------------------------------------------------ */
 
-test('Zurückgestellte sind ausgeblendet, bis der Haken sie holt', () => {
+test('Ausgenommene sind ausgeblendet, bis der Haken sie holt', () => {
   const liste = [kandidat({ member: member('m1'), onHold: true })]
 
   assert.equal(filterTalkCandidates(liste, filter(), 18).length, 0)

@@ -1,7 +1,8 @@
 import { deleteDoc, doc, serverTimestamp, setDoc, Timestamp, updateDoc } from 'firebase/firestore'
 import { db, COLLECTIONS } from '@/lib/firebase'
 import { forgetDoc } from '@/lib/collectionStore'
-import { differenceInMonths, toDate, toDateInput } from '@/lib/dates'
+import { prayerAvailability } from '@/lib/availability'
+import { addDays, differenceInMonths, toDate, toDateInput } from '@/lib/dates'
 import { commit, type SaveOutcome } from '@/lib/sync'
 import type { Member, Prayer, PrayerSlot } from '@/lib/types'
 
@@ -106,32 +107,43 @@ export function plannedPrayerMemberIds(prayers: Prayer[], from = new Date()): Se
  */
 export const PRAYER_HOLD_DAYS = 30
 
-/** Ist dieses Mitglied gerade zurückgestellt? */
+/** Ist dieses Mitglied gerade ausgenommen? Siehe `lib/availability`. */
 export function isPrayerHeld(member: Member, now = new Date()): boolean {
-  const until = toDate(member.prayerHoldUntil)
-  return until !== null && until > now
+  return !prayerAvailability(member, now).available
 }
 
 /**
- * Ein Mitglied für die nächsten Wochen aus den Vorschlägen nehmen –
- * oder es sofort wieder aufnehmen (`days = 0`).
+ * Ein Mitglied aus den Vorschlägen nehmen – oder es wieder aufnehmen.
  *
  * Der Zustand steht am Mitglied und damit in Firestore: Wer zuteilt, wechselt
  * sich in einer Bischofschaft ab, und ein Vermerk, den nur ein Gerät kennt,
  * hilft dem nächsten nicht.
+ *
+ * `until` sagt, bis wann – ohne Datum gilt der Vermerk auf Weiteres. Das
+ * «Heute nicht» der Zuteilung setzt es auf `PRAYER_HOLD_DAYS` voraus; im
+ * Profil lässt sich jedes andere Datum eintragen.
  */
+export async function setPrayerAvailability(
+  memberId: string,
+  available: boolean,
+  until: Date | null = null,
+): Promise<SaveOutcome> {
+  return commit(
+    updateDoc(doc(db, COLLECTIONS.members, memberId), {
+      availableForPrayers: available,
+      prayerHoldUntil: available || !until ? null : Timestamp.fromDate(until),
+      prayerAvailabilityChangedAt: serverTimestamp(),
+      updatedAt: serverTimestamp(),
+    }),
+  )
+}
+
+/** «Heute nicht» – für die nächsten Wochen überspringen, oder wieder aufnehmen. */
 export async function setPrayerHold(
   memberId: string,
   days: number = PRAYER_HOLD_DAYS,
 ): Promise<SaveOutcome> {
-  const until = new Date()
-  until.setDate(until.getDate() + days)
-  return commit(
-    updateDoc(doc(db, COLLECTIONS.members, memberId), {
-      prayerHoldUntil: days > 0 ? Timestamp.fromDate(until) : null,
-      updatedAt: serverTimestamp(),
-    }),
-  )
+  return setPrayerAvailability(memberId, days <= 0, days > 0 ? addDays(new Date(), days) : null)
 }
 
 export interface PrayerCandidate {
