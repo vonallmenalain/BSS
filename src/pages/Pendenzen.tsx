@@ -494,7 +494,7 @@ function PendenzenMenu({
   onDetailChange: (next: Detail) => void
 }) {
   return (
-    <ViewMenu width="w-64">
+    <ViewMenu width="sm:w-64">
       <MenuSection label="Sortieren nach">
         <div className="-mx-1">
           {(Object.keys(SORT_FIELD_LABELS) as SortField[]).map((field) => (

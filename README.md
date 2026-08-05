@@ -20,7 +20,12 @@ Abendmahlsversammlung, Berufungsverwaltung und Mitgliederdaten.
 | **Abendmahlsversammlung** | Ganzer Ablauf pro Sonntag: Leitung, Bekanntmachungen, Angelegenheiten, Ansprachen, Musik, Gebet     |
 | **Aktivitäten AP's**      | Aktivitätenplan der Priestertumskollegien – teilbar mit Beratern, ohne Einblick in Personendaten    |
 | **Berufungen**            | Wer welche Aufgabe hat, gruppiert nach Organisation – und wer keine hat; Stand aus dem LCR          |
-| **Mitglieder**            | Stammdaten, Notizen, Suche und Sortierung                                                           |
+| **Mitglieder**            | Stammdaten, Notizen, Suche – gefiltert nach Status, Geschlecht und Alter, sortiert wonach man will  |
+
+**Auf jeder Seite oben rechts «Ansicht».** Was die Darstellung betrifft –
+welcher Ausschnitt, welche Filter, welche Reihenfolge –, steht dort und
+nirgends sonst. Über der Liste bleibt so Platz für die Liste. Am Telefon zieht
+das Menü als Blatt von unten auf, ab dem Tablet klappt es unter dem Knopf auf.
 
 Traktandum und Pendenz sind derselbe Datensatz: Was in einer Sitzung offen
 bleibt, erscheint automatisch wieder – ohne Umtragen, und in der nächsten
@@ -237,6 +242,31 @@ einschliesslich Programm der Abendmahlsversammlung, Gebete, Liederliste und
 Notizen.
 
 Dieselben Tests laufen in der CI, bevor Regeln ausgerollt werden.
+
+---
+
+## Übersicht
+
+Die Startseite besteht aus **Kacheln**: nächste Sitzung, Zahlen, Ansprachen,
+Aktivitäten AP's, Geburtstage, eigene Pendenzen. Was jemanden zuerst
+interessiert, ist von Person zu Person verschieden – deshalb sagt **Ansicht**
+oben rechts, was davon erscheint:
+
+- **Begrüssung und Gemeinde** ein- oder ausblenden. Abgewählt beginnt die Seite
+  gleich mit der ersten Kachel – am Telefon zwei gewonnene Zeilen.
+- Je Kachel: **Haken** blendet ein, die **Pfeile** ordnen, und **Haupt / Seite /
+  Breit** bestimmt den Platz – die breite Hauptspalte, die schmale daneben oder
+  die ganze Breite.
+- Wo etwas gezählt wird, steht dort auch, **wie viele** es sein sollen.
+
+Die **Reihenfolge gilt immer**, unabhängig vom Platz: Wer «Nächste Sitzung»
+nach oben stellt, findet sie oben – auch als breite Kachel. Die Seite geht die
+Liste von oben nach unten durch und beginnt bei jedem Wechsel zwischen «breit»
+und «zweispaltig» ein neues Band; nebeneinander steht damit nur, was in der
+Liste auch nebeneinander eingereiht ist.
+
+Die Wahl liegt im Browser: Sie gehört zum Gerät, an dem man sitzt, und ist
+schon da, bevor der erste Schnappschuss aus Firestore eintrifft.
 
 ---
 
@@ -938,32 +968,82 @@ nebeneinander zu führen – und der eine wäre über kurz oder lang der falsche
 Was in der App entstünde, wäre beim nächsten Import ohnehin wieder weg:
 überschrieben oder als «fehlt in der Quelle» entlassen.
 
-**Vier Ansichten**, oben umschaltbar:
+**Vier Ausschnitte**, unter **Ansicht** oben rechts:
 
-| Ansicht           | Was darin steht                                                     |
+| Ausschnitt        | Was darin steht                                                     |
 | ----------------- | ------------------------------------------------------------------- |
 | **Aktuell**       | Alles, was gerade gilt – bestätigt und eingesetzt                   |
 | **Ohne Berufung** | Mitglieder, zu denen keine laufende Berufung erfasst ist            |
 | **Entlassen**     | Abgegebene Berufungen, mit Zeitraum                                 |
 | **Alle**          | Beides zusammen, einschliesslich der übernommenen Berufungshistorie |
 
-Daneben steht der Umschalter **Alle Mitglieder / Nur Aktive**. Er gilt für
-alle vier Ansichten: Wer inaktiv ist, verschwindet damit samt seinen
+Im selben Menü steht der **Kreis**: _Alle Mitglieder / Nur Aktive_. Er gilt für
+alle vier Ausschnitte: Wer inaktiv ist, verschwindet damit samt seinen
 Berufungen aus der Liste. Wer im Mitgliederverzeichnis gar nicht (mehr) steht,
 bleibt sichtbar – über seinen Status lässt sich nichts sagen, und eine
 Berufung stillschweigend verschwinden zu lassen wäre das Schlechtere.
 
+**Geschlecht und Alter** schränken weiter ein: nur Männer, nur Frauen, «ab 18»,
+«bis 30» – beide Grenzen freilassbar. Sie beantworten die Frage vor einer
+Berufung («wer käme dafür überhaupt in Frage?»), ohne dass man die Liste im
+Kopf durchgehen muss. Sobald eine solche Einschränkung gilt, fällt heraus, wer
+sich nicht zuordnen lässt: Ohne Datensatz im Verzeichnis ist weder Geschlecht
+noch Alter bekannt, und ihn trotzdem zu zeigen hiesse, die Einschränkung
+stillschweigend zu übergehen.
+
+**Die Reihenfolge** ist ebenfalls dort wählbar – auf- und absteigend:
+
+| Sortierung       | Wirkung                                                                |
+| ---------------- | ---------------------------------------------------------------------- |
+| **Organisation** | Die Vorgabe: Sparte für Sparte, darin die Reihenfolge des LCR          |
+| **Name**         | Alphabetisch nach der Person                                           |
+| **Bezeichnung**  | Alphabetisch nach der Aufgabe                                          |
+| **Alter**        | Aufsteigend heisst: die Jüngsten zuerst                                |
+| **Bestätigung**  | Nach dem Datum der Bestätigung – wer am längsten dient, steht zuoberst |
+
+Nur **Organisation** hält die Liste in Sparten; jede andere Ordnung macht daraus
+eine einzige. Anders ginge es nicht – «alle nach Alter» hat keine Antwort,
+solange die Sparten dazwischenstehen. Dafür steht in der flachen Liste die
+Organisation bei jedem Eintrag, damit unterwegs nicht verloren geht, wohin eine
+Berufung gehört.
+
 **Ohne Berufung** beantwortet die Frage, die vor jeder neuen Berufung steht.
 Sie beantwortet sie ehrlich: In der Liste steht die ganze Gemeinde, Kinder
-eingeschlossen – deshalb steht das Alter dabei, und deshalb gibt es den
-Umschalter. Eine Berufung ausserhalb der Einheit zählt mit; auch sie ist eine
-Aufgabe. Wo eine frühere Berufung erfasst ist, steht sie mit Zeitraum daneben:
+eingeschlossen – deshalb steht das Alter dabei, und deshalb gibt es Kreis,
+Geschlecht und Altersgrenze. Eine Berufung ausserhalb der Einheit zählt mit;
+auch sie ist eine Aufgabe. Wo eine frühere Berufung erfasst ist, steht sie mit Zeitraum daneben:
 War da schon einmal etwas, und wie lange ist es her?
 
 **Ein Griff auf eine Zeile führt zur Person.** Was die Seite sonst noch
 beantworten könnte – seit wann, wie oft, was davor –, steht im Profil, und
 «Zurück» führt von dort wieder hierher. Die Suche greift auf Name, Position
 und Organisation zu, in der Ansicht «Ohne Berufung» auf den Namen.
+
+---
+
+## Mitglieder
+
+**Mitglieder** in der Seitenleiste zeigt das Verzeichnis: Name, Alter, Ort und
+wann jemand zuletzt gesprochen hat. Auch hier wird gelesen und nicht
+geschrieben – der Bestand kommt aus dem LCR (siehe unten).
+
+Über der Liste steht die **Suche** (Name, E-Mail, Telefon, Ort). Alles andere
+steht unter **Ansicht** oben rechts:
+
+- **Status** – Aktiv, Inaktiv, Alle
+- **Geschlecht** – nur Männer, nur Frauen
+- **Alter** – «ab», «bis», beides freilassbar
+- **Sortierung** – Nachname, Vorname, Alter, _Ansprache zuletzt_, _Gebet
+  zuletzt_; jeweils auf- und absteigend
+
+«Ansprache zuletzt» und «Gebet zuletzt» sind die beiden Fragen, die vor jedem
+Sonntag stehen; wer noch nie an der Reihe war, steht dabei zuoberst. Ist nach
+dem Gebet sortiert, steht das Datum auch in der Zeile – eine Liste soll
+ausweisen, wonach sie geordnet ist. **Alter aufsteigend** heisst: die Jüngsten
+zuerst.
+
+Die Suche steht in der Adresse, die Einstellungen im Browser: Wer ein Profil
+öffnet und zurückkommt, findet dieselbe Liste vor, die er verlassen hat.
 
 ---
 
@@ -1508,6 +1588,17 @@ und läuft offline. Firestore hält eine lokale Kopie der Daten vor.
 Neue Versionen werden nicht ungefragt geladen – stattdessen erscheint ein
 Hinweis mit einer Schaltfläche. So startet die App nicht mitten in der Sitzung
 neu und verliert Eingaben.
+
+**Hoch und quer.** Die App war einmal auf das Hochformat festgelegt; das ist
+sie nicht mehr. Am Pult zählt das: Wer die **Leitung** ins Vollbild schaltet
+und das Telefon dreht, liest doppelt so lange Zeilen, und Kopf- und Fusszeile
+werden im Querformat von selbst flacher. Auf dem Tablet gilt dasselbe für
+Pendenzen und Notizen.
+
+> Android liest das Manifest beim Einrichten. Eine **bereits installierte** PWA
+> übernimmt die Lage erst mit der nächsten Aktualisierung des Startsymbols –
+> sofort geht es, indem man sie einmal entfernt und neu zum Startbildschirm
+> hinzufügt.
 
 ---
 

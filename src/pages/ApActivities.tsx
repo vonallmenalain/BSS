@@ -354,7 +354,7 @@ function ApViewMenu({
   counts: Record<ApView['scope'], number>
 }) {
   return (
-    <ViewMenu width="w-[22rem]">
+    <ViewMenu width="sm:w-[22rem]">
       <MenuChoice<ApView['scope']>
         label="Zeitraum"
         value={view.scope}

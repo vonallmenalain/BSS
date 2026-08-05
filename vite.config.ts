@@ -23,7 +23,21 @@ export default defineConfig({
         background_color: '#f8fafc',
         display: 'standalone',
         display_override: ['window-controls-overlay', 'standalone'],
-        orientation: 'portrait-primary',
+        /*
+         * Beide Lagen erlaubt.
+         *
+         * Die App war auf Hochformat festgenagelt – am Pult ist das falsch:
+         * Wer die Leitung im Vollbild liest, dreht das Telefon quer und hat
+         * doppelt so viel Zeile. Dasselbe gilt für Pendenzen und Notizen auf
+         * dem Tablet. Die Wahl liegt jetzt beim Gerät, wie bei jeder anderen
+         * App auch.
+         *
+         * Hinweis: Android liest das Manifest beim Einrichten. Eine bereits
+         * installierte PWA übernimmt die Änderung erst mit der nächsten
+         * Aktualisierung des Startsymbols – oder sofort, wenn man sie neu zum
+         * Startbildschirm hinzufügt.
+         */
+        orientation: 'any',
         scope: '/',
         start_url: '/?source=pwa',
         categories: ['productivity', 'business'],

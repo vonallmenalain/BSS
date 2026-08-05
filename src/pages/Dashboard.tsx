@@ -32,7 +32,14 @@ import { AP_KIND_STYLES, apDateLabel, apTitle } from '@/components/ap/ApActivity
 import { MeetingStatusBadge } from '@/components/ui/Badge'
 import { EmptyState, SkeletonList } from '@/components/ui/Feedback'
 import { PageHeader } from '@/components/ui/Pickers'
-import { AddButton, MenuCounter, MenuSection, ViewMenu } from '@/components/ui/ViewMenu'
+import {
+  AddButton,
+  MenuCounter,
+  MenuDivider,
+  MenuSection,
+  MenuToggle,
+  ViewMenu,
+} from '@/components/ui/ViewMenu'
 import {
   formatDateLong,
   formatDateShort,
@@ -479,21 +486,47 @@ export function Dashboard() {
     ),
   }
 
-  const areas = useMemo(() => {
-    const result: Record<DashboardArea, DashboardTileId[]> = { main: [], side: [], full: [] }
-    view.tiles.filter((tile) => tile.visible).forEach((tile) => result[tile.area].push(tile.id))
+  /*
+   * Die Kacheln in Bänder aufteilen – in der gewählten Reihenfolge.
+   *
+   * Früher wurden zuerst Haupt- und Seitenspalte gezeichnet und alles Breite
+   * danach. Wer «Nächste Sitzung» nach oben stellte und auf «Breit» setzte,
+   * fand sie deshalb ganz unten wieder: Der Platz überstimmte die
+   * Reihenfolge. Jetzt wandert die Liste von oben nach unten durch und
+   * beginnt bei jedem Wechsel zwischen «breit» und «zweispaltig» ein neues
+   * Band. Die Reihenfolge gilt damit immer, und nebeneinander steht, was
+   * ohnehin nebeneinander gehört.
+   */
+  const bands = useMemo(() => {
+    type Band =
+      | { kind: 'full'; ids: DashboardTileId[] }
+      | { kind: 'columns'; main: DashboardTileId[]; side: DashboardTileId[] }
+
+    const result: Band[] = []
+    for (const tile of view.tiles) {
+      if (!tile.visible) continue
+      const last = result[result.length - 1]
+      if (tile.area === 'full') {
+        if (last?.kind === 'full') last.ids.push(tile.id)
+        else result.push({ kind: 'full', ids: [tile.id] })
+      } else {
+        const band =
+          last?.kind === 'columns' ? last : ({ kind: 'columns', main: [], side: [] } as Band)
+        if (band !== last) result.push(band)
+        if (band.kind === 'columns') band[tile.area].push(tile.id)
+      }
+    }
     return result
   }, [view.tiles])
 
-  const hasMain = areas.main.length > 0
-  const hasSide = areas.side.length > 0
-  const nothingVisible = !hasMain && !hasSide && areas.full.length === 0
+  const nothingVisible = bands.length === 0
 
   return (
     <>
       <PageHeader
         title={`${greeting}, ${profile?.displayName.split(' ')[0] ?? ''}`}
         subtitle={settings.wardName}
+        hidden={!view.greeting}
         actions={
           <>
             <DashboardMenu view={view} onChange={setView} />
@@ -534,29 +567,54 @@ export function Dashboard() {
           />
         </div>
       ) : (
-        <div className={cn('grid gap-4', hasMain && hasSide && 'lg:grid-cols-3')}>
-          {hasMain && (
-            <div className={cn('space-y-4', hasSide && 'lg:col-span-2')}>
-              {areas.main.map((id) => (
-                <div key={id}>{tiles[id]}</div>
-              ))}
-            </div>
+        <div className="space-y-6">
+          {bands.map((band, index) =>
+            band.kind === 'full' ? (
+              <div key={index} className="space-y-6">
+                {band.ids.map((id) => (
+                  <div key={id} className="min-w-0">
+                    {tiles[id]}
+                  </div>
+                ))}
+              </div>
+            ) : (
+              /*
+               * `grid-cols-1` statt gar keiner Angabe: Ohne sie richtet sich
+               * die Spalte nach dem längsten Inhalt, den sie enthält – ein
+               * Name, der nicht umbrechen darf, machte die Spalte breiter als
+               * den Bildschirm. Die Kachel schob sich dann über den rechten
+               * Rand hinaus, während links der gewohnte Abstand stehen blieb.
+               * `minmax(0, 1fr)` lässt die Spalte enden, wo die Seite endet –
+               * und die Namen darin abgeschnitten werden, wie vorgesehen.
+               */
+              <div
+                key={index}
+                className={cn(
+                  'grid grid-cols-1 gap-4',
+                  band.main.length > 0 && band.side.length > 0 && 'lg:grid-cols-3',
+                )}
+              >
+                {band.main.length > 0 && (
+                  <div className={cn('min-w-0 space-y-4', band.side.length > 0 && 'lg:col-span-2')}>
+                    {band.main.map((id) => (
+                      <div key={id} className="min-w-0">
+                        {tiles[id]}
+                      </div>
+                    ))}
+                  </div>
+                )}
+                {band.side.length > 0 && (
+                  <div className="min-w-0 space-y-4">
+                    {band.side.map((id) => (
+                      <div key={id} className="min-w-0">
+                        {tiles[id]}
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+            ),
           )}
-          {hasSide && (
-            <div className="space-y-4">
-              {areas.side.map((id) => (
-                <div key={id}>{tiles[id]}</div>
-              ))}
-            </div>
-          )}
-        </div>
-      )}
-
-      {areas.full.length > 0 && (
-        <div className="mt-6 space-y-6">
-          {areas.full.map((id) => (
-            <div key={id}>{tiles[id]}</div>
-          ))}
         </div>
       )}
 
@@ -606,54 +664,66 @@ function DashboardMenu({
   const shown = (id: DashboardTileId) => view.tiles.some((tile) => tile.id === id && tile.visible)
 
   return (
-    <ViewMenu width="w-[24rem]">
+    <ViewMenu width="sm:w-[24rem]">
+      <MenuToggle
+        label="Begrüssung und Gemeinde"
+        checked={view.greeting}
+        onChange={(greeting) => patch({ greeting })}
+        hint="Abgewählt beginnt die Seite gleich mit der ersten Kachel."
+      />
+
+      <MenuDivider />
+
       <MenuSection
         label="Kacheln"
         hint="Haken blendet ein, die Pfeile ordnen, «Haupt / Seite / Breit» bestimmt den Platz."
       >
-        <ul className="space-y-1">
+        <ul>
           {view.tiles.map((tile, index) => (
-            <li key={tile.id} className="flex items-center gap-1.5">
+            <li key={tile.id} className="flex items-center gap-1">
               <span className="-my-1 flex shrink-0 flex-col">
                 <button
                   type="button"
-                  className="btn-ghost p-0.5"
+                  className="btn-ghost px-2 py-1.5"
                   onClick={() => move(index, -1)}
                   disabled={index === 0}
                   aria-label={`${DASHBOARD_TILE_LABELS[tile.id]} nach oben`}
                 >
-                  <ChevronUp className="size-3.5" aria-hidden />
+                  <ChevronUp className="size-4" aria-hidden />
                 </button>
                 <button
                   type="button"
-                  className="btn-ghost p-0.5"
+                  className="btn-ghost px-2 py-1.5"
                   onClick={() => move(index, 1)}
                   disabled={index === view.tiles.length - 1}
                   aria-label={`${DASHBOARD_TILE_LABELS[tile.id]} nach unten`}
                 >
-                  <ChevronDown className="size-3.5" aria-hidden />
+                  <ChevronDown className="size-4" aria-hidden />
                 </button>
               </span>
 
-              <input
-                type="checkbox"
-                className="size-4 shrink-0 rounded"
-                checked={tile.visible}
-                onChange={(event) => update(index, { visible: event.target.checked })}
-                aria-label={`${DASHBOARD_TILE_LABELS[tile.id]} anzeigen`}
-              />
-
-              <span
-                className={cn(
-                  'min-w-0 flex-1 truncate text-sm',
-                  !tile.visible && 'text-slate-400 dark:text-slate-500',
-                )}
-              >
-                {DASHBOARD_TILE_LABELS[tile.id]}
-              </span>
+              {/* Haken und Name gehören zusammen: Der Griff auf den Namen
+                  blendet die Kachel ebenso ein wie der auf das Kästchen. Am
+                  Telefon trifft man das Kästchen allein kaum. */}
+              <label className="flex min-w-0 flex-1 cursor-pointer items-center gap-2.5 rounded-lg py-2.5 pl-1 transition hover:bg-slate-50 dark:hover:bg-slate-700/50">
+                <input
+                  type="checkbox"
+                  className="checkbox"
+                  checked={tile.visible}
+                  onChange={(event) => update(index, { visible: event.target.checked })}
+                />
+                <span
+                  className={cn(
+                    'min-w-0 flex-1 truncate text-sm',
+                    !tile.visible && 'text-slate-400 dark:text-slate-500',
+                  )}
+                >
+                  {DASHBOARD_TILE_LABELS[tile.id]}
+                </span>
+              </label>
 
               <select
-                className="input w-auto shrink-0 px-2 py-1 text-xs"
+                className="input w-auto shrink-0 px-2 py-1.5 text-xs"
                 value={tile.area}
                 onChange={(event) => update(index, { area: event.target.value as DashboardArea })}
                 aria-label={`${DASHBOARD_TILE_LABELS[tile.id]}: Platz`}
@@ -726,7 +796,7 @@ function StatRow({
   const stats = [
     { label: 'Pendenzen', value: pendenzen, to: '/pendenzen', danger: false },
     { label: 'Meine', value: mine, to: '/pendenzen' },
-    { label: 'Reden offen', value: openTalks, to: '/abendmahl/ansprachen' },
+    { label: 'Ansprachen offen', value: openTalks, to: '/abendmahl/ansprachen' },
   ]
 
   return (
@@ -740,7 +810,11 @@ function StatRow({
           >
             {stat.value}
           </p>
-          <p className="mt-0.5 text-xs text-slate-500 dark:text-slate-400">{stat.label}</p>
+          {/* «Ansprachen offen» braucht am Telefon zwei Zeilen – eng gesetzt
+              bleiben die drei Kacheln trotzdem gleich hoch. */}
+          <p className="mt-0.5 text-xs leading-tight text-slate-500 dark:text-slate-400">
+            {stat.label}
+          </p>
         </Link>
       ))}
     </div>

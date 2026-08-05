@@ -139,8 +139,10 @@ export function Layout() {
   return (
     <div className="flex min-h-dvh flex-col bg-slate-50 dark:bg-slate-950">
       {/* ---------- Kopfzeile ---------- */}
-      <header className="no-print sticky top-0 z-40 border-b border-slate-200 bg-white/85 backdrop-blur-md dark:border-slate-800 dark:bg-slate-900/85">
-        <div className="mx-auto flex h-14 max-w-7xl items-center gap-3 px-4 pt-safe">
+      <header className="no-print sticky top-0 z-40 border-b border-slate-200 bg-white/85 px-safe backdrop-blur-md dark:border-slate-800 dark:bg-slate-900/85">
+        {/* Quer auf dem Telefon ist der Bildschirm niedrig – dort wird die
+            Kopfzeile flacher, damit vom Inhalt mehr übrig bleibt. */}
+        <div className="mx-auto flex h-14 max-w-7xl items-center gap-3 px-4 pt-safe landscape-short:h-12">
           {navItems.length > 1 && (
             <button
               type="button"
@@ -208,7 +210,7 @@ export function Layout() {
         </div>
       </header>
 
-      <div className="mx-auto flex w-full max-w-7xl flex-1">
+      <div className="mx-auto flex w-full max-w-7xl flex-1 px-safe">
         {/* ---------- Seitennavigation (Desktop) ---------- */}
         <nav className="no-print sticky top-14 hidden h-[calc(100dvh-3.5rem)] w-56 shrink-0 flex-col gap-0.5 overflow-y-auto border-r border-slate-200 px-3 py-4 lg:flex dark:border-slate-800">
           {/* Name, Rolle und Abmelden stehen nur noch im Benutzermenü oben
@@ -246,13 +248,13 @@ export function Layout() {
         )}
 
         {/* ---------- Inhalt ---------- */}
-        <main className="min-w-0 flex-1 px-4 py-5 pb-24 sm:px-6 lg:pb-8">
+        <main className="min-w-0 flex-1 px-4 py-5 pb-24 sm:px-6 lg:pb-8 landscape-short:py-3 landscape-short:pb-16">
           <Outlet />
         </main>
       </div>
 
       {/* ---------- Untere Leiste (Handy) ---------- */}
-      <nav className="no-print fixed inset-x-0 bottom-0 z-40 border-t border-slate-200 bg-white/95 backdrop-blur-md pb-safe lg:hidden dark:border-slate-800 dark:bg-slate-900/95">
+      <nav className="no-print fixed inset-x-0 bottom-0 z-40 border-t border-slate-200 bg-white/95 px-safe backdrop-blur-md pb-safe lg:hidden dark:border-slate-800 dark:bg-slate-900/95">
         <div className="flex items-stretch">
           {navItems
             .filter((item) => item.primary)
@@ -265,9 +267,9 @@ export function Layout() {
             <button
               type="button"
               onClick={() => setMenuOpen(true)}
-              className="flex flex-1 flex-col items-center gap-0.5 py-2 text-slate-500 transition dark:text-slate-400"
+              className={cn(BOTTOM_LINK, 'text-slate-500 dark:text-slate-400')}
             >
-              <ChevronDown className="size-5 rotate-180" aria-hidden />
+              <ChevronDown className="size-5 shrink-0 rotate-180" aria-hidden />
               <span className="text-[10px] font-medium">Mehr</span>
             </button>
           )}
@@ -367,6 +369,16 @@ function SidebarLink({ item }: { item: NavItem }) {
   )
 }
 
+/**
+ * Ein Platz in der unteren Leiste.
+ *
+ * Quer auf dem Telefon stehen Symbol und Wort nebeneinander statt
+ * übereinander: Das spart eine Zeile Höhe, und quer ist Höhe das, was fehlt.
+ */
+const BOTTOM_LINK =
+  'relative flex flex-1 flex-col items-center justify-center gap-0.5 py-2 transition ' +
+  'landscape-short:flex-row landscape-short:gap-1.5 landscape-short:py-1.5'
+
 function BottomLink({ item }: { item: NavItem }) {
   const Icon = item.icon
   const location = useLocation()
@@ -381,14 +393,14 @@ function BottomLink({ item }: { item: NavItem }) {
       end={item.to === '/'}
       className={({ isActive }) =>
         cn(
-          'relative flex flex-1 flex-col items-center gap-0.5 py-2 transition',
+          BOTTOM_LINK,
           isActive || inSection
             ? 'text-brand-600 dark:text-brand-300'
             : 'text-slate-500 dark:text-slate-400',
         )
       }
     >
-      <Icon className="size-5" aria-hidden />
+      <Icon className="size-5 shrink-0" aria-hidden />
       <span className="text-[10px] font-medium">{item.shortLabel}</span>
     </NavLink>
   )

@@ -919,8 +919,11 @@ export function Conducting() {
           // Im Vollbild kommt oben und unten Luft dazu: Ohne Kopfzeile
           // beginnt der Bildschirmrand sonst unmittelbar am ersten Punkt,
           // und das liest sich am Pult eng.
+          //
+          // Quer gedreht wird daraus wieder wenig: Dort ist Höhe knapp, und
+          // die Aussparung der Kamera liegt seitlich – deshalb `px-safe`.
           fullscreen
-            ? 'pt-safe-14 pb-safe-10 fixed inset-0 z-50 overflow-y-auto bg-white dark:bg-slate-950'
+            ? 'pt-safe-14 pb-safe-10 px-safe fixed inset-0 z-50 overflow-y-auto bg-white dark:bg-slate-950'
             : 'card relative',
         )}
       >

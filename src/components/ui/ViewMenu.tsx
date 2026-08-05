@@ -1,5 +1,5 @@
-import { useState, type ReactNode } from 'react'
-import { ChevronDown, Minus, Plus, SlidersHorizontal } from 'lucide-react'
+import { useEffect, useState, type ReactNode } from 'react'
+import { ChevronDown, Minus, Plus, SlidersHorizontal, X } from 'lucide-react'
 import { SegmentedControl } from '@/components/ui/Pickers'
 import { cn } from '@/lib/utils'
 
@@ -45,24 +45,40 @@ export function AddButton({
  * dorthin ist überall derselbe, und über der Liste bleibt kein Platz für
  * Umschalter, die man einmal im Monat anfasst.
  *
- * Die Breite gibt die aufrufende Seite an: Ein Menü mit drei Umschaltgruppen
- * braucht mehr als eines mit zwei Zeilen. Auf schmalen Bildschirmen wird es in
- * jedem Fall auf die Fensterbreite gestutzt.
+ * **Am Telefon ein Blatt von unten, ab dem Tablet ein Menü am Knopf.**
+ * Das ist keine Spielerei: Ein am Knopf aufgehängtes Menü steht dort, wo der
+ * Knopf steht – und der rutscht auf schmalen Bildschirmen in die zweite Zeile
+ * und damit nach links. Das Menü hing danach zur Hälfte ausserhalb des
+ * Bildschirms; die Haken ganz links waren gar nicht mehr zu treffen. Von
+ * unten aufgezogen hat es immer die volle Breite und einen festen Platz.
+ *
+ * Die Breite gilt deshalb erst ab dem Tablet und wird mit dem Vorsatz `sm:`
+ * angegeben (`sm:w-80`): Am Telefon bestimmt sie der Bildschirm.
  */
 export function ViewMenu({
   label = 'Ansicht',
-  width = 'w-72',
+  width = 'sm:w-72',
   children,
 }: {
   label?: string
-  /** Tailwind-Breite des Menüs, z. B. `w-80` */
+  /** Breite ab dem Tablet, z. B. `sm:w-80` – am Telefon volle Breite */
   width?: string
   children: ReactNode
 }) {
   const [open, setOpen] = useState(false)
 
+  /* Die Escape-Taste schliesst, egal wo der Fokus gerade steht. */
+  useEffect(() => {
+    if (!open) return
+    const onKeyDown = (event: KeyboardEvent) => {
+      if (event.key === 'Escape') setOpen(false)
+    }
+    document.addEventListener('keydown', onKeyDown)
+    return () => document.removeEventListener('keydown', onKeyDown)
+  }, [open])
+
   return (
-    <div className="relative" onKeyDown={(event) => event.key === 'Escape' && setOpen(false)}>
+    <div className="relative">
       <button
         type="button"
         className="btn-secondary"
@@ -77,17 +93,40 @@ export function ViewMenu({
 
       {open && (
         <>
-          <div className="fixed inset-0 z-10" onClick={() => setOpen(false)} aria-hidden />
+          {/* Am Telefon verdunkelt der Hintergrund und macht das Blatt zum
+              Vordergrund; ab dem Tablet fängt er bloss den Klick daneben ab. */}
+          <div
+            className="animate-fade-in fixed inset-0 z-40 bg-slate-900/40 sm:bg-transparent"
+            onClick={() => setOpen(false)}
+            aria-hidden
+          />
           <div
             role="menu"
             className={cn(
-              'animate-scale-in absolute right-0 z-20 mt-1 max-h-[70vh] origin-top-right space-y-3 overflow-y-auto rounded-xl border border-slate-200 bg-white p-3 shadow-lg dark:border-slate-700 dark:bg-slate-800',
-              // Nie breiter als das Fenster: Am Handy stünde das Menü sonst
-              // halb ausserhalb des Bildschirms.
-              'max-w-[calc(100vw-1.5rem)]',
+              'z-50 space-y-3 overflow-y-auto overscroll-contain bg-white dark:bg-slate-800',
+              // Telefon: ein Blatt von unten, über die ganze Breite.
+              'animate-slide-up fixed inset-x-0 bottom-0 max-h-[80dvh] rounded-t-2xl border-t border-slate-200 p-4',
+              'pb-[calc(env(safe-area-inset-bottom)+1.25rem)] dark:border-slate-700',
+              // Ab dem Tablet: das gewohnte Menü unter dem Knopf.
+              'sm:animate-scale-in sm:absolute sm:inset-x-auto sm:right-0 sm:bottom-auto sm:mt-1',
+              'sm:max-h-[70vh] sm:origin-top-right sm:rounded-xl sm:border sm:p-3 sm:pb-3 sm:shadow-lg',
               width,
             )}
           >
+            {/* Nur am Telefon: Das Blatt sagt, wozu es gehört, und lässt sich
+                ohne Zielen wieder schliessen. */}
+            <div className="flex items-center justify-between sm:hidden">
+              <span className="text-sm font-semibold">{label}</span>
+              <button
+                type="button"
+                className="btn-ghost -mr-1.5 p-2"
+                onClick={() => setOpen(false)}
+                aria-label={`${label} schliessen`}
+              >
+                <X className="size-5" aria-hidden />
+              </button>
+            </div>
+
             {children}
           </div>
         </>
@@ -144,6 +183,7 @@ export function MenuChoice<T extends string>({
         value={value}
         onChange={onChange}
         size="sm"
+        wrap
         options={options}
         className="w-full"
       />
@@ -212,7 +252,7 @@ function MenuChip({
       onClick={onClick}
       aria-pressed={selected}
       className={cn(
-        'tabular rounded-full border px-2.5 py-1 text-xs font-medium transition',
+        'tabular rounded-full border px-3 py-1.5 text-xs font-medium transition',
         selected
           ? 'border-brand-500 bg-brand-50 text-brand-900 dark:border-brand-500 dark:bg-brand-950 dark:text-brand-100'
           : 'border-slate-300 bg-white text-slate-600 hover:border-slate-400 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-300',
@@ -223,7 +263,13 @@ function MenuChip({
   )
 }
 
-/** Ein Schalter – etwas ein- oder ausblenden. */
+/**
+ * Ein Schalter – etwas ein- oder ausblenden.
+ *
+ * Die ganze Zeile gehört zur Beschriftung: Am Telefon zielt niemand auf ein
+ * Kästchen von der Grösse eines Fingernagels, und ein Griff daneben blieb
+ * bisher wirkungslos.
+ */
 export function MenuToggle({
   label,
   checked,
@@ -237,17 +283,149 @@ export function MenuToggle({
 }) {
   return (
     <div>
-      <label className="flex cursor-pointer items-center justify-between gap-3 text-sm">
+      <label className="-mx-1 flex cursor-pointer items-center justify-between gap-3 rounded-lg px-1 py-2 text-sm transition hover:bg-slate-50 dark:hover:bg-slate-700/50">
         <span className="min-w-0">{label}</span>
         <input
           type="checkbox"
-          className="size-4 shrink-0 rounded"
+          className="checkbox"
           checked={checked}
           onChange={(event) => onChange(event.target.checked)}
         />
       </label>
       {hint && <p className="hint">{hint}</p>}
     </div>
+  )
+}
+
+/**
+ * Eine Spanne aus zwei Zahlen – «ab 18», «bis 30», beides freilassbar.
+ *
+ * Für das Alter: Zwei Knöpfe wie beim Zähler wären hier falsch, weil der Weg
+ * von 0 auf 18 achtzehn Griffe bedeutete. Leer heisst «keine Grenze» – und
+ * genau so wird es auch angeschrieben.
+ */
+export function MenuRange({
+  label,
+  hint,
+  from,
+  to,
+  onChange,
+  min = 0,
+  max = 120,
+  fromLabel = 'ab',
+  toLabel = 'bis',
+}: {
+  label: string
+  hint?: string
+  from: number | null
+  to: number | null
+  onChange: (next: { from: number | null; to: number | null }) => void
+  min?: number
+  max?: number
+  fromLabel?: string
+  toLabel?: string
+}) {
+  const parse = (value: string) => {
+    if (!value.trim()) return null
+    const parsed = Number.parseInt(value, 10)
+    if (!Number.isFinite(parsed)) return null
+    return Math.min(max, Math.max(min, parsed))
+  }
+
+  return (
+    <MenuSection label={label} hint={hint}>
+      <div className="flex items-center gap-2">
+        <input
+          type="number"
+          inputMode="numeric"
+          className="input tabular py-1.5"
+          value={from ?? ''}
+          min={min}
+          max={max}
+          placeholder={fromLabel}
+          aria-label={`${label}: ${fromLabel}`}
+          onChange={(event) => onChange({ from: parse(event.target.value), to })}
+        />
+        <span className="shrink-0 text-xs text-slate-500 dark:text-slate-400">–</span>
+        <input
+          type="number"
+          inputMode="numeric"
+          className="input tabular py-1.5"
+          value={to ?? ''}
+          min={min}
+          max={max}
+          placeholder={toLabel}
+          aria-label={`${label}: ${toLabel}`}
+          onChange={(event) => onChange({ from, to: parse(event.target.value) })}
+        />
+        {(from !== null || to !== null) && (
+          <button
+            type="button"
+            className="btn-ghost shrink-0 p-2"
+            onClick={() => onChange({ from: null, to: null })}
+            aria-label={`${label}: Einschränkung aufheben`}
+          >
+            <X className="size-4" aria-hidden />
+          </button>
+        )}
+      </div>
+    </MenuSection>
+  )
+}
+
+/**
+ * Wonach sortiert wird – und in welche Richtung.
+ *
+ * Beides gehört zusammen: «Alter aufsteigend» ist eine Angabe, keine zwei.
+ * Deshalb stehen sie untereinander im selben Abschnitt statt als Auswahlfeld
+ * hier und als Pfeilknopf irgendwo daneben.
+ */
+export function MenuSort<T extends string>({
+  label = 'Sortieren nach',
+  value,
+  direction,
+  onChange,
+  onDirection,
+  options,
+  ascLabel = 'Aufsteigend',
+  descLabel = 'Absteigend',
+}: {
+  label?: string
+  value: T
+  direction: 'asc' | 'desc'
+  onChange: (next: T) => void
+  onDirection: (next: 'asc' | 'desc') => void
+  options: { value: T; label: string }[]
+  ascLabel?: string
+  descLabel?: string
+}) {
+  return (
+    <MenuSection label={label}>
+      <select
+        className="input"
+        value={value}
+        onChange={(event) => onChange(event.target.value as T)}
+        aria-label={label}
+      >
+        {options.map((option) => (
+          <option key={option.value} value={option.value}>
+            {option.label}
+          </option>
+        ))}
+      </select>
+      <div className="mt-2">
+        <SegmentedControl<'asc' | 'desc'>
+          value={direction}
+          onChange={onDirection}
+          size="sm"
+          className="w-full"
+          options={[
+            { value: 'asc', label: ascLabel },
+            { value: 'desc', label: descLabel },
+          ]}
+        />
+      </div>
+    </MenuSection>
   )
 }
 
@@ -282,7 +460,7 @@ export function MenuCounter({
         <span className="flex shrink-0 items-center gap-1">
           <button
             type="button"
-            className="btn-ghost p-1"
+            className="btn-ghost p-2"
             onClick={() => clamp(value - 1)}
             disabled={value <= min}
             aria-label={`${label}: weniger`}
@@ -292,7 +470,7 @@ export function MenuCounter({
           <span className="tabular w-6 text-center text-sm font-medium">{value}</span>
           <button
             type="button"
-            className="btn-ghost p-1"
+            className="btn-ghost p-2"
             onClick={() => clamp(value + 1)}
             disabled={value >= max}
             aria-label={`${label}: mehr`}

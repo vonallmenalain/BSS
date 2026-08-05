@@ -1,49 +1,52 @@
 import { useMemo } from 'react'
-import { ArrowDownUp, Mail, Phone, Search, Users } from 'lucide-react'
+import { Mail, Phone, Search, Users } from 'lucide-react'
 import { useData } from '@/contexts/DataContext'
 import { EmptyState, SkeletonList } from '@/components/ui/Feedback'
-import { PageHeader, SegmentedControl } from '@/components/ui/Pickers'
+import { PageHeader } from '@/components/ui/Pickers'
 import { MemberStatusBadge } from '@/components/ui/Badge'
 import { Avatar } from '@/components/ui/Avatar'
+import { MenuChoice, MenuDivider, MenuRange, MenuSort, ViewMenu } from '@/components/ui/ViewMenu'
 import { useLocalStorage } from '@/hooks/useLocalStorage'
+import { usePrayers } from '@/hooks/useFirestore'
 import { useUrlState } from '@/hooks/useUrlState'
 import { MemberLink } from '@/components/ui/MemberLink'
 import { formatDate, getAge, monthsSince } from '@/lib/dates'
 import { formatPhone, telHref } from '@/lib/utils'
+import { lastPrayerByMember } from '@/services/prayers'
+import { filterMembers, sortMembers, type MemberFilter } from '@/services/members'
 import {
-  filterMembers,
-  sortMembers,
-  type MemberFilter,
-  type MemberSortKey,
-} from '@/services/members'
-import type { MemberStatus } from '@/lib/types'
-
-const SORT_OPTIONS: { value: MemberSortKey; label: string }[] = [
-  { value: 'name', label: 'Nachname' },
-  { value: 'firstName', label: 'Vorname' },
-  { value: 'age', label: 'Alter' },
-  { value: 'lastTalk', label: 'Letzte Ansprache' },
-  { value: 'status', label: 'Status' },
-]
+  DEFAULT_MEMBERS_VIEW,
+  GENDER_SCOPE_LABELS,
+  MEMBER_SORT_LABELS,
+  MEMBER_STATUS_SCOPE_LABELS,
+  type Gender,
+  type MemberSort,
+  type MembersView,
+  type MemberStatus,
+  type SortDirection,
+} from '@/lib/types'
 
 export function Members() {
   const { members, loading } = useData()
+  /* Für «Gebet zuletzt»: Wann jemand zuletzt gebetet hat, steht nicht am
+     Mitglied, sondern in den Gebeten. */
+  const { data: prayers } = usePrayers(600)
 
   /*
-   * Suche und Filter stehen in der Adresse.
+   * Die Suche steht in der Adresse.
    *
    * Wer ein Mitglied öffnet und zurückkommt, findet damit dieselbe Liste
-   * vor, die er verlassen hat – und nicht wieder alle Aktiven von A an
-   * (siehe `hooks/useUrlState`).
+   * vor, die er verlassen hat (siehe `hooks/useUrlState`). Alles andere ist
+   * eine Einstellung des Geräts und liegt im Browser: Wer nach Alter sortiert
+   * arbeitet, will das morgen wieder so vorfinden.
    */
   const [search, setSearch] = useUrlState<string>('suche', '')
-  const [status, setStatus] = useUrlState<MemberStatus | 'all'>('status', 'active', [
-    'all',
-    'active',
-    'inactive',
-  ])
-  const [sortKey, setSortKey] = useLocalStorage<MemberSortKey>('bss:members:sort', 'name')
-  const [direction, setDirection] = useLocalStorage<'asc' | 'desc'>('bss:members:dir', 'asc')
+  const [stored, setView] = useLocalStorage<MembersView>(
+    'bss:mitglieder:ansicht',
+    DEFAULT_MEMBERS_VIEW,
+  )
+  // Fehlende Angaben aus einer früheren Fassung mit der Vorgabe auffüllen.
+  const view = useMemo(() => ({ ...DEFAULT_MEMBERS_VIEW, ...stored }), [stored])
 
   const counts = useMemo(
     () => ({
@@ -54,10 +57,18 @@ export function Members() {
     [members],
   )
 
+  const lastPrayer = useMemo(() => lastPrayerByMember(prayers), [prayers])
+
   const visible = useMemo(() => {
-    const filter: MemberFilter = { search, status }
-    return sortMembers(filterMembers(members, filter), sortKey, direction)
-  }, [members, search, status, sortKey, direction])
+    const filter: MemberFilter = {
+      search,
+      status: view.status,
+      gender: view.gender,
+      minAge: view.minAge,
+      maxAge: view.maxAge,
+    }
+    return sortMembers(filterMembers(members, filter), view.sort, view.direction, lastPrayer)
+  }, [members, search, view, lastPrayer])
 
   return (
     <>
@@ -66,59 +77,24 @@ export function Members() {
           Import entweder doppelt oder ein Datensatz, den niemand
           wiederfindet. Erfasst wird unter «Einstellungen › Importe ›
           Mitglieder». */}
-      <PageHeader title="Mitglieder" subtitle={`${counts.all} Personen erfasst`} />
+      <PageHeader
+        title="Mitglieder"
+        subtitle={`${counts.all} Personen erfasst`}
+        actions={<MembersMenu view={view} counts={counts} onChange={setView} />}
+      />
 
-      <div className="mb-4 space-y-3">
-        <div className="relative">
-          <Search
-            className="pointer-events-none absolute top-1/2 left-3 size-4 -translate-y-1/2 text-slate-400"
-            aria-hidden
-          />
-          <input
-            type="search"
-            className="input pl-9"
-            placeholder="Name, E-Mail, Telefon, Ort …"
-            value={search}
-            onChange={(event) => setSearch(event.target.value)}
-          />
-        </div>
-
-        <div className="flex flex-wrap items-center justify-between gap-2">
-          <SegmentedControl<MemberStatus | 'all'>
-            value={status}
-            onChange={setStatus}
-            size="sm"
-            options={[
-              { value: 'active', label: 'Aktiv', count: counts.active },
-              { value: 'inactive', label: 'Inaktiv', count: counts.inactive },
-              { value: 'all', label: 'Alle', count: counts.all },
-            ]}
-          />
-
-          <div className="flex items-center gap-1">
-            <select
-              className="input w-auto py-1.5 text-xs"
-              value={sortKey}
-              onChange={(event) => setSortKey(event.target.value as MemberSortKey)}
-              aria-label="Sortieren nach"
-            >
-              {SORT_OPTIONS.map((option) => (
-                <option key={option.value} value={option.value}>
-                  {option.label}
-                </option>
-              ))}
-            </select>
-            <button
-              type="button"
-              className="btn-secondary btn-sm"
-              onClick={() => setDirection(direction === 'asc' ? 'desc' : 'asc')}
-              aria-label={direction === 'asc' ? 'Absteigend sortieren' : 'Aufsteigend sortieren'}
-              title={direction === 'asc' ? 'Aufsteigend' : 'Absteigend'}
-            >
-              <ArrowDownUp className="size-3.5" aria-hidden />
-            </button>
-          </div>
-        </div>
+      <div className="relative mb-4">
+        <Search
+          className="pointer-events-none absolute top-1/2 left-3 size-4 -translate-y-1/2 text-slate-400"
+          aria-hidden
+        />
+        <input
+          type="search"
+          className="input pl-9"
+          placeholder="Name, E-Mail, Telefon, Ort …"
+          value={search}
+          onChange={(event) => setSearch(event.target.value)}
+        />
       </div>
 
       {loading ? (
@@ -131,7 +107,7 @@ export function Members() {
             description={
               members.length === 0
                 ? 'Die Mitgliederliste kommt aus dem LCR: «Einstellungen › Importe › Mitglieder».'
-                : 'Passe Suche oder Filter an.'
+                : 'Passe die Suche an oder lockere unter «Ansicht» die Filter.'
             }
           />
         </div>
@@ -174,6 +150,16 @@ export function Members() {
                               }`
                             : 'Noch keine Ansprache'}
                         </span>
+                        {/* Wer nach dem Gebet ordnet, will auch sehen, wonach
+                            geordnet wurde – sonst steht die Liste in einer
+                            Reihenfolge, die sie nicht ausweist. */}
+                        {view.sort === 'lastPrayer' && (
+                          <span>
+                            {lastPrayer.has(member.id)
+                              ? `Gebet ${formatDate(lastPrayer.get(member.id)!)}`
+                              : 'Noch kein Gebet'}
+                          </span>
+                        )}
                       </p>
                     </div>
 
@@ -209,5 +195,77 @@ export function Members() {
         </>
       )}
     </>
+  )
+}
+
+/* ------------------------------------------------------------------ */
+/* Ansicht anpassen                                                    */
+/* ------------------------------------------------------------------ */
+
+/**
+ * Das Ansichtsmenü der Mitgliederliste.
+ *
+ * Was früher als Knopfleiste über der Liste stand – Aktiv / Inaktiv / Alle
+ * und die Sortierung –, steht jetzt darin, zusammen mit dem, was neu dazu
+ * gehört: Geschlecht und Alter. Über der Liste bleibt die Suche und sonst
+ * nichts; Filter, die man einmal setzt und lange behält, nehmen der Liste
+ * nicht mehr die obersten Zeilen weg.
+ */
+function MembersMenu({
+  view,
+  counts,
+  onChange,
+}: {
+  view: MembersView
+  counts: { all: number; active: number; inactive: number }
+  onChange: (next: MembersView) => void
+}) {
+  const patch = (changes: Partial<MembersView>) => onChange({ ...view, ...changes })
+
+  return (
+    <ViewMenu width="sm:w-80">
+      <MenuChoice<MemberStatus | 'all'>
+        label="Status"
+        value={view.status}
+        onChange={(status) => patch({ status })}
+        options={[
+          { value: 'active', label: MEMBER_STATUS_SCOPE_LABELS.active, count: counts.active },
+          { value: 'inactive', label: MEMBER_STATUS_SCOPE_LABELS.inactive, count: counts.inactive },
+          { value: 'all', label: MEMBER_STATUS_SCOPE_LABELS.all, count: counts.all },
+        ]}
+      />
+
+      <MenuChoice<Gender | 'all'>
+        label="Geschlecht"
+        value={view.gender}
+        onChange={(gender) => patch({ gender })}
+        options={[
+          { value: 'all', label: GENDER_SCOPE_LABELS.all },
+          { value: 'm', label: GENDER_SCOPE_LABELS.m },
+          { value: 'f', label: GENDER_SCOPE_LABELS.f },
+        ]}
+      />
+
+      <MenuRange
+        label="Alter"
+        from={view.minAge}
+        to={view.maxAge}
+        onChange={({ from, to }) => patch({ minAge: from, maxAge: to })}
+        hint="Beides freilassbar. Wessen Geburtsdatum fehlt, erscheint bei gesetzter Grenze nicht."
+      />
+
+      <MenuDivider />
+
+      <MenuSort<MemberSort>
+        value={view.sort}
+        direction={view.direction}
+        onChange={(sort) => patch({ sort })}
+        onDirection={(direction: SortDirection) => patch({ direction })}
+        options={(Object.keys(MEMBER_SORT_LABELS) as MemberSort[]).map((value) => ({
+          value,
+          label: MEMBER_SORT_LABELS[value],
+        }))}
+      />
+    </ViewMenu>
   )
 }

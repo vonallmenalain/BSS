@@ -2,31 +2,53 @@ import { useMemo } from 'react'
 
 import { Award, ChevronRight, Search, Users } from 'lucide-react'
 import { useData } from '@/contexts/DataContext'
+import { useLocalStorage } from '@/hooks/useLocalStorage'
 import { useUrlState } from '@/hooks/useUrlState'
 import { MemberLink } from '@/components/ui/MemberLink'
 import { useCallings } from '@/hooks/useFirestore'
 import { EmptyState, SkeletonList } from '@/components/ui/Feedback'
-import { PageHeader, SegmentedControl } from '@/components/ui/Pickers'
+import { PageHeader } from '@/components/ui/Pickers'
 import { CallingStatusBadge, MemberStatusBadge } from '@/components/ui/Badge'
 import { Avatar } from '@/components/ui/Avatar'
+import { MenuChoice, MenuDivider, MenuRange, MenuSort, ViewMenu } from '@/components/ui/ViewMenu'
 import { getAge, toDate } from '@/lib/dates'
 import { cn, compareNames, groupBy, matchesSearch } from '@/lib/utils'
 import { activeCallings, callingPeriod, isWardCalling } from '@/services/callings'
-import { ORGANIZATION_LABELS, type Calling, type Member } from '@/lib/types'
-
-/**
- * Was die Liste zeigt.
- *
- * `without` fällt aus der Reihe: Dort stehen keine Berufungen, sondern die
- * Personen, zu denen keine gehört – die Frage vor jeder neuen Berufung.
- */
-type Scope = 'active' | 'without' | 'released' | 'all'
-
-/** Ob die ganze Gemeinde zählt oder nur, wer aktiv ist. */
-type Audience = 'all' | 'active'
+import { filterMembers, sortMembers, type MemberSortKey } from '@/services/members'
+import {
+  CALLING_AUDIENCE_LABELS,
+  CALLING_SCOPE_LABELS,
+  CALLING_SORT_LABELS,
+  DEFAULT_CALLINGS_VIEW,
+  GENDER_SCOPE_LABELS,
+  ORGANIZATION_LABELS,
+  type Calling,
+  type CallingAudience,
+  type CallingScope,
+  type CallingSort,
+  type CallingsView,
+  type Gender,
+  type Member,
+  type SortDirection,
+} from '@/lib/types'
 
 /** Woher der Weg kam – damit «Zurück» im Profil hierher führt. */
 const FROM_LABEL = 'Berufungen'
+
+/**
+ * Wonach die Liste «Ohne Berufung» geordnet wird.
+ *
+ * Dort stehen Personen und keine Berufungen: «Bezeichnung» und «Bestätigung»
+ * gibt es nicht, und sie fallen auf den Namen zurück, statt eine Ordnung zu
+ * behaupten, die keine ist.
+ */
+const MEMBER_SORT_FOR: Record<CallingSort, MemberSortKey> = {
+  organization: 'name',
+  name: 'name',
+  position: 'name',
+  age: 'age',
+  sustained: 'name',
+}
 
 export function Callings() {
   /*
@@ -44,33 +66,49 @@ export function Callings() {
    */
   const { data: callings, loading: callingsLoading } = useCallings(2000)
   const { members, membersById, loading: membersLoading } = useData()
-  /* Ausschnitt, Kreis und Suche stehen in der Adresse – damit «Zurück» aus
-     einem Profil dieselbe Liste wiederfindet (siehe `hooks/useUrlState`). */
-  const [scope, setScope] = useUrlState<Scope>('ausschnitt', 'active', [
-    'active',
-    'without',
-    'released',
-    'all',
-  ])
-  const [audience, setAudience] = useUrlState<Audience>('kreis', 'all', ['all', 'active'])
+  /* Die Suche steht in der Adresse – damit «Zurück» aus einem Profil
+     dieselbe Liste wiederfindet (siehe `hooks/useUrlState`). Alles Übrige
+     steht hinter «Ansicht» und bleibt am Gerät. */
   const [search, setSearch] = useUrlState<string>('suche', '')
+  const [stored, setView] = useLocalStorage<CallingsView>(
+    'bss:berufungen:ansicht',
+    DEFAULT_CALLINGS_VIEW,
+  )
+  // Fehlende Angaben aus einer früheren Fassung mit der Vorgabe auffüllen.
+  const view = useMemo(() => ({ ...DEFAULT_CALLINGS_VIEW, ...stored }), [stored])
+  const scope = view.scope
 
   const loading = callingsLoading || membersLoading
 
-  /*
-   * Der Bestand, auf den die Wahl «alle / nur Aktive» schon angewandt ist.
+  /**
+   * Ob eine Berufung zur eingestellten Personengruppe gehört.
    *
-   * Wer im Verzeichnis nicht (mehr) steht, bleibt sichtbar: Über seinen
-   * Status lässt sich nichts sagen, und eine Berufung stillschweigend
-   * verschwinden zu lassen wäre das Schlechtere.
+   * Ohne Einschränkung bleibt jede Berufung sichtbar – auch die von jemandem,
+   * der im Verzeichnis nicht (mehr) steht: Über seinen Status lässt sich
+   * nichts sagen, und ihn stillschweigend verschwinden zu lassen wäre das
+   * Schlechtere. Sobald aber nach Geschlecht oder Alter eingeschränkt wird,
+   * fällt heraus, wer sich nicht zuordnen lässt – sonst stünde in einer
+   * Liste «nur Frauen» am Ende doch jemand ohne Datensatz.
    */
-  const pool = useMemo(() => {
-    if (audience === 'all') return callings
-    return callings.filter((calling) => {
-      const member = membersById.get(calling.memberId)
-      return !member || member.status === 'active'
-    })
-  }, [callings, audience, membersById])
+  const personFilter = useMemo(() => {
+    const restricted = view.gender !== 'all' || view.minAge != null || view.maxAge != null
+    return (memberId: string) => {
+      const member = membersById.get(memberId)
+      if (view.audience === 'active' && member && member.status !== 'active') return false
+      if (!restricted) return true
+      if (!member) return false
+      if (view.gender !== 'all' && member.gender !== view.gender) return false
+      const age = getAge(member.birthDate)
+      if (view.minAge != null && (age === null || age < view.minAge)) return false
+      if (view.maxAge != null && (age === null || age > view.maxAge)) return false
+      return true
+    }
+  }, [membersById, view.audience, view.gender, view.minAge, view.maxAge])
+
+  const pool = useMemo(
+    () => callings.filter((calling) => personFilter(calling.memberId)),
+    [callings, personFilter],
+  )
 
   const running = useMemo(() => activeCallings(pool), [pool])
   const released = useMemo(() => pool.filter(isReleased), [pool])
@@ -85,11 +123,27 @@ export function Callings() {
    */
   const withoutCalling = useMemo(() => {
     const busy = new Set(activeCallings(callings).map((calling) => calling.memberId))
-    return members
-      .filter((member) => !busy.has(member.id))
-      .filter((member) => audience === 'all' || member.status === 'active')
-      .sort((a, b) => compareNames(`${a.lastName} ${a.firstName}`, `${b.lastName} ${b.firstName}`))
-  }, [members, callings, audience])
+    const remaining = members.filter((member) => !busy.has(member.id))
+    return sortMembers(
+      filterMembers(remaining, {
+        status: view.audience === 'active' ? 'active' : 'all',
+        gender: view.gender,
+        minAge: view.minAge,
+        maxAge: view.maxAge,
+      }),
+      MEMBER_SORT_FOR[view.sort],
+      view.direction,
+    )
+  }, [
+    members,
+    callings,
+    view.audience,
+    view.gender,
+    view.minAge,
+    view.maxAge,
+    view.sort,
+    view.direction,
+  ])
 
   const counts = useMemo(
     () => ({
@@ -121,19 +175,67 @@ export function Callings() {
     )
   }, [withoutCalling, search])
 
+  /*
+   * Nach Organisation bleibt die Liste in Sparten – jede andere Ordnung macht
+   * daraus eine einzige.
+   *
+   * Anders ginge es nicht: «Alle nach Alter» hat keine Antwort, solange die
+   * Sparten dazwischenstehen; man läse fünf kurze Listen statt einer. In der
+   * flachen Liste steht dafür die Organisation bei jedem Eintrag – sonst
+   * ginge unterwegs verloren, wohin eine Berufung gehört.
+   */
+  const grouped = view.sort === 'organization'
+  const factor = view.direction === 'asc' ? 1 : -1
+
+  const sortCallings = (entries: Calling[]): Calling[] => {
+    const ageOf = (calling: Calling) => getAge(membersById.get(calling.memberId)?.birthDate)
+    const sustainedAt = (calling: Calling) => toDate(calling.sustainedDate)?.getTime() ?? null
+    /** Ohne Angabe immer ans Ende – in beide Richtungen. */
+    const missingLast = (a: number | null, b: number | null, compare: () => number) => {
+      if (a === null && b === null) return 0
+      if (a === null) return 1
+      if (b === null) return -1
+      return compare()
+    }
+
+    const sorted = [...entries]
+    switch (view.sort) {
+      case 'name':
+        return sorted.sort((a, b) => factor * compareNames(a.memberName, b.memberName))
+      case 'position':
+        return sorted.sort((a, b) => factor * compareNames(a.position, b.position))
+      case 'age':
+        return sorted.sort((a, b) => {
+          const left = ageOf(a)
+          const right = ageOf(b)
+          return missingLast(left, right, () => factor * (left! - right!))
+        })
+      case 'sustained':
+        return sorted.sort((a, b) => {
+          const left = sustainedAt(a)
+          const right = sustainedAt(b)
+          return missingLast(left, right, () => factor * (left! - right!))
+        })
+      default:
+        // Innerhalb einer Sparte gilt die Reihenfolge des LCR.
+        return sorted.sort(compareByImportOrder)
+    }
+  }
+
   // Zwei Sparten. Der Sonntagsschulpräsident des Pfahls ist nicht der
   // Sonntagsschulpräsident der Gemeinde – nebeneinander in derselben Liste
   // sähen sie aber genau so aus.
   const byOrganization = useMemo(() => {
-    const grouped = groupBy(visible.filter(isWardCalling), (calling) => calling.organization)
-    return [...grouped.entries()].sort(([a], [b]) =>
-      compareNames(ORGANIZATION_LABELS[a], ORGANIZATION_LABELS[b]),
+    if (!grouped) return []
+    const sections = groupBy(visible.filter(isWardCalling), (calling) => calling.organization)
+    return [...sections.entries()].sort(
+      ([a], [b]) => factor * compareNames(ORGANIZATION_LABELS[a], ORGANIZATION_LABELS[b]),
     )
-  }, [visible])
+  }, [visible, grouped, factor])
 
   const outsideUnit = useMemo(
-    () => visible.filter((calling) => !isWardCalling(calling)).sort(compareByImportOrder),
-    [visible],
+    () => (grouped ? visible.filter((calling) => !isWardCalling(calling)) : []),
+    [visible, grouped],
   )
 
   return (
@@ -144,46 +246,21 @@ export function Callings() {
       <PageHeader
         title="Berufungen"
         subtitle="Aus dem LCR übernommen – erfasst wird unter «Einstellungen › Importe»"
+        actions={<CallingsMenu view={view} counts={counts} onChange={setView} />}
       />
 
-      <div className="mb-4 space-y-3">
-        <div className="relative">
-          <Search
-            className="pointer-events-none absolute top-1/2 left-3 size-4 -translate-y-1/2 text-slate-400"
-            aria-hidden
-          />
-          <input
-            type="search"
-            className="input pl-9"
-            placeholder={scope === 'without' ? 'Name suchen …' : 'Name, Position, Organisation …'}
-            value={search}
-            onChange={(event) => setSearch(event.target.value)}
-          />
-        </div>
-
-        <div className="flex flex-wrap items-center justify-between gap-2">
-          <SegmentedControl<Scope>
-            value={scope}
-            onChange={setScope}
-            size="sm"
-            options={[
-              { value: 'active', label: 'Aktuell', count: counts.active },
-              { value: 'without', label: 'Ohne Berufung', count: counts.without },
-              { value: 'released', label: 'Entlassen', count: counts.released },
-              { value: 'all', label: 'Alle', count: counts.all },
-            ]}
-          />
-
-          <SegmentedControl<Audience>
-            value={audience}
-            onChange={setAudience}
-            size="sm"
-            options={[
-              { value: 'all', label: 'Alle Mitglieder' },
-              { value: 'active', label: 'Nur Aktive' },
-            ]}
-          />
-        </div>
+      <div className="relative mb-4">
+        <Search
+          className="pointer-events-none absolute top-1/2 left-3 size-4 -translate-y-1/2 text-slate-400"
+          aria-hidden
+        />
+        <input
+          type="search"
+          className="input pl-9"
+          placeholder={scope === 'without' ? 'Name suchen …' : 'Name, Position, Organisation …'}
+          value={search}
+          onChange={(event) => setSearch(event.target.value)}
+        />
       </div>
 
       {loading ? (
@@ -203,17 +280,17 @@ export function Callings() {
             description={
               callings.length === 0
                 ? 'Die Berufungen kommen aus dem LCR: «Einstellungen › Importe › Berufungen», eingefügt aus der Zwischenablage.'
-                : 'Passe Suche oder Filter an.'
+                : 'Passe die Suche an oder lockere unter «Ansicht» die Filter.'
             }
           />
         </div>
-      ) : (
+      ) : grouped ? (
         <div className="space-y-5">
           {byOrganization.map(([organization, entries]) => (
             <CallingSection
               key={organization}
               title={ORGANIZATION_LABELS[organization]}
-              entries={entries.sort(compareByImportOrder)}
+              entries={sortCallings(entries)}
             />
           ))}
 
@@ -222,11 +299,18 @@ export function Callings() {
               <CallingSection
                 title="Ausserhalb der Einheit"
                 hint="Pfahl, Seminar, Institut und Mission – nicht Teil des Organisationsplans der Gemeinde."
-                entries={outsideUnit}
+                entries={sortCallings(outsideUnit)}
               />
             </div>
           )}
         </div>
+      ) : (
+        <CallingSection
+          title={`Nach ${CALLING_SORT_LABELS[view.sort]}`}
+          hint="Alle Sparten in einer Liste – die Organisation steht bei jedem Eintrag."
+          entries={sortCallings(visible)}
+          showOrganization
+        />
       )}
     </>
   )
@@ -263,10 +347,13 @@ function CallingSection({
   title,
   hint,
   entries,
+  showOrganization = false,
 }: {
   title: string
   hint?: string
   entries: Calling[]
+  /** In der flachen Liste: die Organisation bei jedem Eintrag mitschreiben */
+  showOrganization?: boolean
 }) {
   return (
     <section>
@@ -290,6 +377,7 @@ function CallingSection({
                 <p className="truncate text-sm font-medium">{calling.position}</p>
                 <p className="truncate text-xs text-slate-500 dark:text-slate-400">
                   <span className="group-hover:underline">{calling.memberName}</span>
+                  {showOrganization && ` · ${ORGANIZATION_LABELS[calling.organization]}`}
                   {callingPeriod(calling) && ` · ${callingPeriod(calling)}`}
                 </p>
               </div>
@@ -416,4 +504,86 @@ function lastReleasedByMember(callings: Calling[]): Map<string, Calling> {
 /** Wann die Berufung endete – ohne erfasstes Datum ganz nach hinten. */
 function releasedAt(calling: Calling): number {
   return toDate(calling.releasedDate)?.getTime() ?? 0
+}
+
+/* ------------------------------------------------------------------ */
+/* Ansicht anpassen                                                    */
+/* ------------------------------------------------------------------ */
+
+/**
+ * Das Ansichtsmenü der Berufungen.
+ *
+ * Über der Liste standen bisher zwei Knopfleisten – «Aktuell / Ohne Berufung
+ * / Entlassen / Alle» und «Alle Mitglieder / Nur Aktive». Zusammen mit den
+ * neuen Einschränkungen nach Geschlecht und Alter wären es vier; sie nähmen
+ * am Telefon die halbe erste Bildschirmhöhe ein. Hier stehen sie am selben
+ * Ort wie auf jeder anderen Seite.
+ */
+function CallingsMenu({
+  view,
+  counts,
+  onChange,
+}: {
+  view: CallingsView
+  counts: { active: number; without: number; released: number; all: number }
+  onChange: (next: CallingsView) => void
+}) {
+  const patch = (changes: Partial<CallingsView>) => onChange({ ...view, ...changes })
+
+  return (
+    <ViewMenu width="sm:w-80">
+      <MenuChoice<CallingScope>
+        label="Ausschnitt"
+        value={view.scope}
+        onChange={(scope) => patch({ scope })}
+        options={(Object.keys(CALLING_SCOPE_LABELS) as CallingScope[]).map((value) => ({
+          value,
+          label: CALLING_SCOPE_LABELS[value],
+          count: counts[value],
+        }))}
+      />
+
+      <MenuChoice<CallingAudience>
+        label="Kreis"
+        value={view.audience}
+        onChange={(audience) => patch({ audience })}
+        options={(Object.keys(CALLING_AUDIENCE_LABELS) as CallingAudience[]).map((value) => ({
+          value,
+          label: CALLING_AUDIENCE_LABELS[value],
+        }))}
+      />
+
+      <MenuChoice<Gender | 'all'>
+        label="Geschlecht"
+        value={view.gender}
+        onChange={(gender) => patch({ gender })}
+        options={[
+          { value: 'all', label: GENDER_SCOPE_LABELS.all },
+          { value: 'm', label: GENDER_SCOPE_LABELS.m },
+          { value: 'f', label: GENDER_SCOPE_LABELS.f },
+        ]}
+      />
+
+      <MenuRange
+        label="Alter"
+        from={view.minAge}
+        to={view.maxAge}
+        onChange={({ from, to }) => patch({ minAge: from, maxAge: to })}
+        hint="Beides freilassbar. Wer nicht im Verzeichnis steht, erscheint bei gesetzter Grenze nicht."
+      />
+
+      <MenuDivider />
+
+      <MenuSort<CallingSort>
+        value={view.sort}
+        direction={view.direction}
+        onChange={(sort) => patch({ sort })}
+        onDirection={(direction: SortDirection) => patch({ direction })}
+        options={(Object.keys(CALLING_SORT_LABELS) as CallingSort[]).map((value) => ({
+          value,
+          label: CALLING_SORT_LABELS[value],
+        }))}
+      />
+    </ViewMenu>
+  )
 }
