@@ -1,7 +1,6 @@
 import { useCallback, useMemo, useState, type DragEvent } from 'react'
 import { useSearchParams } from 'react-router-dom'
 import { Check, CheckCircle2, Plus, Search } from 'lucide-react'
-import { useAuth } from '@/contexts/AuthContext'
 import { useData } from '@/contexts/DataContext'
 import { useToast } from '@/contexts/ToastContext'
 import { useDoneItems, useMeetings, useOpenItems } from '@/hooks/useFirestore'
@@ -12,9 +11,11 @@ import { EmptyState, SkeletonList } from '@/components/ui/Feedback'
 import { PageHeader, SegmentedControl } from '@/components/ui/Pickers'
 import { AddButton, MenuSection, MenuToggle, ViewMenu } from '@/components/ui/ViewMenu'
 import { useLocalStorage } from '@/hooks/useLocalStorage'
+import { useOwnItem } from '@/hooks/useOwnItem'
 import { savePendenzenOrder } from '@/services/agenda'
 import { saveSettings } from '@/services/settings'
 import { formatDateLong, formatDateShort, toDate, toDateInput } from '@/lib/dates'
+import { callingChangesToText } from '@/lib/callingChanges'
 import { layoutToText } from '@/lib/layout'
 import { cn, matchesSearch } from '@/lib/utils'
 import {
@@ -161,7 +162,6 @@ function groupByDay(items: AgendaItem[], field: DateField): DayGroup[] {
  * abhakt, findet den Punkt dort zuoberst und öffnet ihn wieder.
  */
 export function Pendenzen() {
-  const { profile } = useAuth()
   const { userName, memberName, settings } = useData()
   const toast = useToast()
 
@@ -326,42 +326,51 @@ export function Pendenzen() {
    */
   const pendenzen = useMemo(() => items.filter((item) => toItemKind(item) === 'pendenz'), [items])
 
+  /*
+   * «Meine» ist mehr als «mir zugewiesen».
+   *
+   * Bei einem gewöhnlichen Eintrag bleibt es dabei; eine Berufungsrunde
+   * dagegen wird zeilenweise verteilt und gehört auch dem, der darin eine
+   * Zeile trägt oder namentlich darin steht (siehe `hooks/useOwnItem`).
+   */
+  const ownItem = useOwnItem()
+
   const counts = useMemo(
     () => ({
       open: pendenzen.length,
-      mine: pendenzen.filter((item) => item.assignees?.includes(profile?.id ?? '')).length,
+      mine: pendenzen.filter(ownItem).length,
     }),
-    [pendenzen, profile?.id],
+    [pendenzen, ownItem],
   )
 
   /** Was durchsucht wird – der ganze Eintrag, nicht bloss sein Titel. */
   const haystack = useCallback(
-    (item: AgendaItem) =>
-      [
+    (item: AgendaItem) => {
+      // Konten und Mitglieder stehen in denselben Feldern; gesucht wird der
+      // Name, gleich woher er kommt.
+      const name = (id: string) => {
+        const user = userName(id)
+        return user === 'Unbekannt' ? memberName(id) : user
+      }
+      return [
         item.title,
         item.description,
-        // Wer statt einer Beschreibung ein Raster gebaut hat, soll es
-        // trotzdem wiederfinden – gesucht wird im ganzen Eintrag.
-        item.layout
-          ? layoutToText(item.layout, (id) => {
-              const user = userName(id)
-              return user === 'Unbekannt' ? memberName(id) : user
-            })
-          : '',
+        // Wer statt einer Beschreibung ein Raster gebaut hat oder eine
+        // Berufungsrunde führt, soll sie trotzdem wiederfinden – gesucht wird
+        // im ganzen Eintrag.
+        item.layout ? layoutToText(item.layout, name) : '',
+        callingChangesToText(item.callingChanges, name),
         ...(item.assignees ?? []).map(userName),
       ]
         .filter(Boolean)
-        .join(' '),
+        .join(' ')
+    },
     [userName, memberName],
   )
 
   const visible = useMemo(() => {
     const base =
-      scope === 'done'
-        ? doneItems
-        : scope === 'mine'
-          ? pendenzen.filter((item) => item.assignees?.includes(profile?.id ?? ''))
-          : pendenzen
+      scope === 'done' ? doneItems : scope === 'mine' ? pendenzen.filter(ownItem) : pendenzen
 
     const found = search.trim()
       ? base.filter((item) => matchesSearch(haystack(item), search))
@@ -400,7 +409,7 @@ export function Pendenzen() {
       if (bt === undefined) return -1
       return sort.dir === 'asc' ? at - bt : bt - at
     })
-  }, [scope, doneItems, pendenzen, profile?.id, search, haystack, sort])
+  }, [scope, doneItems, pendenzen, ownItem, search, haystack, sort])
 
   /*
    * Umsortieren – mit den Pfeilen und durch Ziehen.

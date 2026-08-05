@@ -4,7 +4,9 @@ import { AssigneeAvatars } from '@/components/ui/Avatar'
 import { StatusBadge } from '@/components/ui/Badge'
 import { MentionText } from '@/components/ui/MentionText'
 import { LayoutGrid } from '@/components/agenda/LayoutGrid'
+import { CallingChangesTables } from '@/components/agenda/CallingChanges'
 import { normalizeLayout } from '@/lib/layout'
+import { normalizeCallingChanges } from '@/lib/callingChanges'
 import { cn } from '@/lib/utils'
 import type { AgendaItem } from '@/lib/types'
 
@@ -32,6 +34,11 @@ export function AgendaItemPreview({
   /* Einmal geradeziehen und dabei belassen: Lücken bekommen IDs, und ein bei
      jedem Zeichnen neu gebautes Raster liesse die Zeile flackern. */
   const layout = useMemo(() => (item.layout ? normalizeLayout(item.layout) : null), [item.layout])
+
+  const callingChanges = useMemo(
+    () => (item.callingChanges ? normalizeCallingChanges(item.callingChanges) : null),
+    [item.callingChanges],
+  )
 
   const isDone = item.status === 'done'
 
@@ -64,7 +71,11 @@ export function AgendaItemPreview({
         </span>
       </div>
 
-      {layout ? (
+      {callingChanges ? (
+        <div className={cn('mt-2', position !== undefined && 'pl-6')}>
+          <CallingChangesTables value={callingChanges} memberRefs={item.memberRefs} readOnly />
+        </div>
+      ) : layout ? (
         <div className={cn('mt-2', position !== undefined && 'pl-6')}>
           <LayoutGrid layout={layout} memberRefs={item.memberRefs} readOnly />
         </div>

@@ -233,12 +233,21 @@ export function MemberPicker({
   label = 'Betrifft Mitglieder',
   single = false,
   placeholder = 'Name eingeben …',
+  stacked = false,
 }: {
   value: string[]
   onChange: (next: string[]) => void
   label?: string
   single?: boolean
   placeholder?: string
+  /**
+   * Ein Name je Zeile, über die ganze Breite – statt Marken nebeneinander.
+   *
+   * In einer Tabellenspalte «Name» ist das der Normalfall: Dort stehen ein
+   * Ehepaar oder drei Geschwister untereinander, und nebeneinander gequetscht
+   * wäre keiner davon zu lesen.
+   */
+  stacked?: boolean
 }) {
   const { members, membersById } = useData()
   const [search, setSearch] = useState('')
@@ -267,12 +276,32 @@ export function MemberPicker({
       {label && <span className="label">{label}</span>}
 
       {value.length > 0 && (
-        <div className="mb-2 flex flex-wrap gap-1.5">
+        <div className={cn('mb-2', stacked ? 'space-y-1' : 'flex flex-wrap gap-1.5')}>
           {value.map((id) => {
             const member = membersById.get(id)
+            const name = member ? `${member.firstName} ${member.lastName}` : 'Unbekannt'
+            if (stacked) {
+              return (
+                <div
+                  key={id}
+                  className="flex items-center gap-2 rounded-lg border border-slate-200 bg-white px-2 py-1.5 dark:border-slate-700 dark:bg-slate-900"
+                >
+                  <Avatar name={name} id={id} size="sm" />
+                  <span className="min-w-0 flex-1 truncate text-sm font-medium">{name}</span>
+                  <button
+                    type="button"
+                    onClick={() => remove(id)}
+                    className="btn-ghost shrink-0 p-1"
+                    aria-label={`${name} entfernen`}
+                  >
+                    <X className="size-3.5" aria-hidden />
+                  </button>
+                </div>
+              )
+            }
             return (
               <span key={id} className={cn('chip', colorForId(id))}>
-                {member ? `${member.firstName} ${member.lastName}` : 'Unbekannt'}
+                {name}
                 <button
                   type="button"
                   onClick={() => remove(id)}

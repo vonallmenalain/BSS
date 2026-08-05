@@ -17,7 +17,14 @@ import { db, COLLECTIONS } from '@/lib/firebase'
 import { forgetDoc } from '@/lib/collectionStore'
 import { stripUndefined, uid } from '@/lib/utils'
 import { commit, type SaveOutcome } from '@/lib/sync'
-import type { AgendaItem, HistoryEntry, ItemKind, ItemLayout, ItemStatus } from '@/lib/types'
+import type {
+  AgendaItem,
+  CallingChanges,
+  HistoryEntry,
+  ItemKind,
+  ItemLayout,
+  ItemStatus,
+} from '@/lib/types'
 import { ITEM_KIND_LABELS, ITEM_STATUS_LABELS, OPEN_STATUS_QUERY, toItemKind } from '@/lib/types'
 
 const itemsRef = collection(db, COLLECTIONS.agendaItems)
@@ -47,6 +54,8 @@ export interface AgendaItemInput {
   kind?: ItemKind
   /** Selbst gebautes Raster statt der Beschreibung – siehe `lib/layout` */
   layout?: ItemLayout | null
+  /** Die beiden Berufungstabellen statt der Beschreibung – siehe `lib/callingChanges` */
+  callingChanges?: CallingChanges | null
 }
 
 function historyEntry(action: string, actor: Actor): HistoryEntry {
@@ -80,6 +89,7 @@ export async function createAgendaItem(input: AgendaItemInput, actor: Actor): Pr
       assignees: input.assignees ?? [],
       memberRefs: input.memberRefs ?? [],
       layout: input.layout ?? null,
+      callingChanges: input.callingChanges ?? null,
       deferCount: 0,
       history: [historyEntry(`${ITEM_KIND_LABELS[kind]} erstellt`, actor)],
       createdAt: serverTimestamp(),

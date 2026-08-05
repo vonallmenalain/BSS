@@ -24,6 +24,7 @@ import {
   useTalks,
 } from '@/hooks/useFirestore'
 import { useLocalStorage } from '@/hooks/useLocalStorage'
+import { useOwnItem } from '@/hooks/useOwnItem'
 import { MemberLink } from '@/components/ui/MemberLink'
 import { AgendaItemCard } from '@/components/agenda/AgendaItemCard'
 import { AgendaItemForm } from '@/components/agenda/AgendaItemForm'
@@ -129,10 +130,14 @@ export function Dashboard() {
     [openItems],
   )
 
-  const myItems = useMemo(
-    () => sortForPendenzen(pendenzen.filter((item) => item.assignees?.includes(profile?.id ?? ''))),
-    [pendenzen, profile?.id],
-  )
+  /*
+   * «Meine» ist mehr als «mir zugewiesen»: Eine Berufungsrunde gehört auch
+   * dem, der darin eine Zeile trägt oder namentlich darin steht. Dieselbe
+   * Frage beantwortet die Pendenzenliste (siehe `hooks/useOwnItem`).
+   */
+  const ownItem = useOwnItem()
+
+  const myItems = useMemo(() => sortForPendenzen(pendenzen.filter(ownItem)), [pendenzen, ownItem])
 
   // Dieselbe Reihenfolge wie in der Sitzung: zuerst die neuen Traktanden,
   // danach die Pendenzen aus früheren Sitzungen.
