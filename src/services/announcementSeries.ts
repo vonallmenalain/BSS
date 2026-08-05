@@ -1,5 +1,6 @@
 import { collection, deleteDoc, doc, serverTimestamp, setDoc, updateDoc } from 'firebase/firestore'
 import { db, COLLECTIONS } from '@/lib/firebase'
+import { forgetDoc } from '@/lib/collectionStore'
 import { commit, type SaveOutcome } from '@/lib/sync'
 import { endedBefore, withoutSunday } from '@/lib/series'
 import type { AnnouncementSeries, SeriesRhythm, SeriesSource } from '@/lib/types'
@@ -60,8 +61,10 @@ export function updateSeries(id: string, input: SeriesInput): Promise<SaveOutcom
 }
 
 /** Die ganze Serie entfernen – auch aus vergangenen Sonntagen. */
-export function deleteSeries(id: string): Promise<SaveOutcome> {
-  return commit(deleteDoc(doc(db, COLLECTIONS.announcementSeries, id)))
+export async function deleteSeries(id: string): Promise<SaveOutcome> {
+  const outcome = await commit(deleteDoc(doc(db, COLLECTIONS.announcementSeries, id)))
+  forgetDoc(COLLECTIONS.announcementSeries, id)
+  return outcome
 }
 
 /** Nur diesen einen Sonntag streichen; die Serie läuft weiter. */

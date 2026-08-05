@@ -644,10 +644,34 @@ export interface AgendaItem extends WithId {
   importedFrom?: string | null
 
   createdAt?: TS
+  /**
+   * Stand des Datensatzes – jede Änderung setzt ihn, auch das Umsortieren.
+   *
+   * Daran erkennt der Abgleich beim Start, was seit dem letzten Mal neu ist
+   * (siehe `lib/collectionStore`). Für die Frage «wann wurde daran zuletzt
+   * gearbeitet?» ist `editedAt` zuständig.
+   */
   updatedAt?: TS
+  /**
+   * Wann zuletzt am Inhalt gearbeitet wurde.
+   *
+   * Fehlt bei allem, was vor dieser Unterscheidung erfasst wurde – dann gilt
+   * `updatedAt`. Siehe `lastEditedAt()`.
+   */
+  editedAt?: TS
   createdBy?: string
   completedAt?: TS | null
   completedBy?: string | null
+}
+
+/**
+ * Wann zuletzt am Eintrag gearbeitet wurde.
+ *
+ * `editedAt` steht erst an dem, was seit der Trennung von «Stand» und
+ * «bearbeitet» geschrieben wurde; alles Ältere fällt auf `updatedAt` zurück.
+ */
+export function lastEditedAt(item: { editedAt?: TS; updatedAt?: TS }): TS | undefined {
+  return item.editedAt ?? item.updatedAt
 }
 
 /* ------------------------------------------------------------------ */
@@ -712,6 +736,17 @@ export interface Member extends WithId {
    * lassen sich mit einem Griff wieder aufnehmen.
    */
   talkHold?: boolean
+
+  /**
+   * Beim Gebet vorerst überspringen – bis zu diesem Zeitpunkt.
+   *
+   * Anders als `talkHold` ein Datum und kein Haken: Beim Zuteilen der Gebete
+   * geht es um den nächsten Sonntag, nicht um eine Grundsatzfrage. «Heute
+   * nicht» heisst «für ein paar Wochen nicht», und danach soll die Person von
+   * selbst wieder erscheinen – ein Haken, den jemand setzt und nie mehr
+   * anfasst, nähme sie dauerhaft aus der Gemeinde heraus.
+   */
+  prayerHoldUntil?: TS | null
 
   /** Freie Notiz, z. B. Kontaktperson, Besonderheiten, Betreuungshinweise */
   notes?: string
@@ -1422,6 +1457,12 @@ export const PRAYER_SLOT_LABELS: Record<PrayerSlot, string> = {
   closing: 'Schlussgebet',
 }
 
+/** Für schmale Knöpfe, wo der Zusammenhang die Bedeutung schon hergibt. */
+export const PRAYER_SLOT_SHORT: Record<PrayerSlot, string> = {
+  opening: 'Anfang',
+  closing: 'Schluss',
+}
+
 /**
  * Wer spricht wann ein Gebet.
  *
@@ -1554,7 +1595,10 @@ export interface Note extends WithId {
   createdById?: string | null
   updatedById?: string | null
   createdAt?: TS
+  /** Stand des Datensatzes – siehe `AgendaItem.updatedAt` */
   updatedAt?: TS
+  /** Wann zuletzt am Text gearbeitet wurde – siehe `lastEditedAt()` */
+  editedAt?: TS
 }
 
 /* ------------------------------------------------------------------ */

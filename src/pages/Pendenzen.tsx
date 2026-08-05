@@ -14,7 +14,7 @@ import { useLocalStorage } from '@/hooks/useLocalStorage'
 import { formatDateLong, formatDateShort, toDate, toDateInput } from '@/lib/dates'
 import { layoutToText } from '@/lib/layout'
 import { cn, matchesSearch } from '@/lib/utils'
-import { toItemKind, type AgendaItem, type MeetingStatus } from '@/lib/types'
+import { lastEditedAt, toItemKind, type AgendaItem, type MeetingStatus } from '@/lib/types'
 
 /** Welcher Ausschnitt gezeigt wird. */
 type Scope = 'open' | 'mine' | 'done'
@@ -80,10 +80,15 @@ const OPEN_PARAM = 'pendenz'
  * jedes Datum steht am Schluss unter «Ohne Datum».
  */
 function sortDate(item: AgendaItem, field: SortField): Date | null {
-  if (field === 'created') return toDate(item.createdAt) ?? toDate(item.updatedAt)
+  if (field === 'created') return toDate(item.createdAt) ?? toDate(lastEditedAt(item))
   // Beim erledigten Punkt ist das zugleich der Moment, in dem er abgehakt
   // wurde: «Erledigt» schreibt beide Zeitstempel.
-  return toDate(item.updatedAt) ?? toDate(item.completedAt) ?? toDate(item.createdAt)
+  //
+  // Gefragt ist das Bearbeitungs- und nicht das Änderungsdatum: Umsortieren
+  // hebt den Stand des Datensatzes, ist aber keine Bearbeitung – sonst
+  // sprängen nach jedem Umsortieren einer Sitzung lauter unveränderte Punkte
+  // an den Anfang der Liste (siehe `lastEditedAt`).
+  return toDate(lastEditedAt(item)) ?? toDate(item.completedAt) ?? toDate(item.createdAt)
 }
 
 /** Ein Tag mit allem, was an ihm erfasst bzw. bearbeitet wurde. */
@@ -431,6 +436,7 @@ export function Pendenzen() {
                         ? `/sitzungen/${item.meetingId}?${FOCUS_PARAM}=${item.id}`
                         : undefined
                     }
+                    meetingDate={(id) => meetingLabels.get(id)}
                   />
                 ))}
               </ul>

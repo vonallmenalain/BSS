@@ -1,4 +1,13 @@
-import { useEffect, useId, useMemo, useRef, useState, type KeyboardEvent } from 'react'
+import {
+  useCallback,
+  useEffect,
+  useId,
+  useLayoutEffect,
+  useMemo,
+  useRef,
+  useState,
+  type KeyboardEvent,
+} from 'react'
 import { useData } from '@/contexts/DataContext'
 import { Avatar } from '@/components/ui/Avatar'
 import { cn, matchesSearch } from '@/lib/utils'
@@ -28,6 +37,8 @@ export function MentionField({
   onBlur,
   multiline = false,
   autoFocus = false,
+  autoGrow = false,
+  minHeight,
   className,
   wrapperClassName,
   ...rest
@@ -42,6 +53,16 @@ export function MentionField({
   multiline?: boolean
   /** Beim Erscheinen den Cursor ans Ende setzen (Wechsel vom Lesen zum Schreiben) */
   autoFocus?: boolean
+  /**
+   * Das Feld wächst mit dem Text – nur mehrzeilig sinnvoll.
+   *
+   * Ohne das steht in einem Kasten von drei Zeilen ein Text von zwanzig, und
+   * wer ihn ändern will, scrollt in einem Guckloch. Von Hand vergrössern
+   * lässt er sich weiterhin.
+   */
+  autoGrow?: boolean
+  /** Mindesthöhe in Pixeln – so gross wie der Text, der vorher dastand */
+  minHeight?: number
   className?: string
   /**
    * Klassen für den Rahmen um Feld und Trefferliste. Nötig, wo das Feld eine
@@ -81,6 +102,21 @@ export function MentionField({
     return list.slice(0, 6)
   }, [members, trigger])
 
+  /*
+   * Mit dem Text wachsen.
+   *
+   * Erst auf `auto` zurück, dann auf die tatsächliche Höhe des Inhalts:
+   * Ohne den Zwischenschritt bliebe das Feld beim Löschen von Zeilen gross.
+   */
+  const grow = useCallback(() => {
+    const field = fieldRef.current
+    if (!field || !multiline || !autoGrow) return
+    field.style.height = 'auto'
+    field.style.height = `${field.scrollHeight}px`
+  }, [multiline, autoGrow])
+
+  useLayoutEffect(grow, [grow, value])
+
   const close = () => setTrigger(null)
 
   const handleChange = (next: string, caret: number) => {
@@ -111,6 +147,7 @@ export function MentionField({
       field.focus()
       field.value = next
       field.setSelectionRange(caret, caret)
+      grow()
     }
 
     onChange(next)
@@ -139,6 +176,7 @@ export function MentionField({
     id,
     ref: fieldRef as never,
     className: cn('input', className),
+    style: minHeight ? { minHeight } : undefined,
     value,
     onChange: (event: { target: { value: string; selectionStart: number | null } }) =>
       handleChange(event.target.value, event.target.selectionStart ?? event.target.value.length),

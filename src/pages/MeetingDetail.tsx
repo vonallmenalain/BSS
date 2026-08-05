@@ -34,7 +34,7 @@ import { ConfirmDialog, Modal } from '@/components/ui/Modal'
 import { EmptyState, LoadingScreen } from '@/components/ui/Feedback'
 import { PeopleChoice, PersonChoice, SegmentedControl } from '@/components/ui/Pickers'
 import { MeetingForm } from '@/pages/Meetings'
-import { formatDateLong, formatTime, toDate } from '@/lib/dates'
+import { formatDateLong, formatDateShort, formatTime, toDate } from '@/lib/dates'
 import {
   assignToMeeting,
   carryOverOpenItems,
@@ -66,6 +66,13 @@ export function MeetingDetail() {
   const { data: items } = useMeetingItems(meetingId)
   const { data: poolItems } = useUnassignedItems()
   const { data: meetings } = useMeetings(50)
+
+  /* Datum einer Sitzung als Text – für die Angaben im aufgeklappten Eintrag. */
+  const meetingDates = useMemo(() => {
+    const map = new Map<string, string>()
+    meetings.forEach((entry) => map.set(entry.id, formatDateShort(entry.date)))
+    return map
+  }, [meetings])
 
   // Die gewählte Ansicht überlebt den Ausflug auf eine Mitgliederseite –
   // sonst käme man aus dem «Zurück» in einer anderen Ansicht heraus, als man
@@ -352,6 +359,7 @@ export function MeetingDetail() {
             onReorder={(ordered) => void saveOrder('traktandum', ordered)}
             readOnly={isClosed}
             nextMeeting={nextMeetingRef}
+            meetingDate={(id) => meetingDates.get(id)}
           />
           <ItemGroup
             kind="pendenz"
@@ -362,6 +370,7 @@ export function MeetingDetail() {
             onReorder={(ordered) => void saveOrder('pendenz', ordered)}
             readOnly={isClosed}
             nextMeeting={nextMeetingRef}
+            meetingDate={(id) => meetingDates.get(id)}
           />
           <p className="text-center text-xs text-slate-400">
             {doneCount} von {items.length} erledigt
@@ -459,6 +468,7 @@ function ItemGroup({
   onReorder,
   readOnly,
   nextMeeting,
+  meetingDate,
 }: {
   kind: ItemKind
   hint: string
@@ -468,6 +478,7 @@ function ItemGroup({
   onReorder: (ordered: AgendaItem[]) => void
   readOnly: boolean
   nextMeeting: { id: string; date: Date } | null
+  meetingDate: (meetingId: string) => string | undefined
 }) {
   const [dragId, setDragId] = useState<string | null>(null)
   const [overId, setOverId] = useState<string | null>(null)
@@ -513,6 +524,7 @@ function ItemGroup({
             last={index === items.length - 1}
             readOnly={readOnly}
             nextMeeting={nextMeeting}
+            meetingDate={meetingDate}
             onDragStart={
               readOnly
                 ? undefined

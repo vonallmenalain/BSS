@@ -1,5 +1,4 @@
-import { useMemo, useState } from 'react'
-import { Link } from 'react-router-dom'
+import { useMemo } from 'react'
 import { ArrowDownUp, Mail, Phone, Search, Users } from 'lucide-react'
 import { useData } from '@/contexts/DataContext'
 import { EmptyState, SkeletonList } from '@/components/ui/Feedback'
@@ -7,6 +6,8 @@ import { PageHeader, SegmentedControl } from '@/components/ui/Pickers'
 import { MemberStatusBadge } from '@/components/ui/Badge'
 import { Avatar } from '@/components/ui/Avatar'
 import { useLocalStorage } from '@/hooks/useLocalStorage'
+import { useUrlState } from '@/hooks/useUrlState'
+import { MemberLink } from '@/components/ui/MemberLink'
 import { formatDate, getAge, monthsSince } from '@/lib/dates'
 import { formatPhone, telHref } from '@/lib/utils'
 import {
@@ -28,8 +29,19 @@ const SORT_OPTIONS: { value: MemberSortKey; label: string }[] = [
 export function Members() {
   const { members, loading } = useData()
 
-  const [search, setSearch] = useState('')
-  const [status, setStatus] = useState<MemberStatus | 'all'>('active')
+  /*
+   * Suche und Filter stehen in der Adresse.
+   *
+   * Wer ein Mitglied öffnet und zurückkommt, findet damit dieselbe Liste
+   * vor, die er verlassen hat – und nicht wieder alle Aktiven von A an
+   * (siehe `hooks/useUrlState`).
+   */
+  const [search, setSearch] = useUrlState<string>('suche', '')
+  const [status, setStatus] = useUrlState<MemberStatus | 'all'>('status', 'active', [
+    'all',
+    'active',
+    'inactive',
+  ])
   const [sortKey, setSortKey] = useLocalStorage<MemberSortKey>('bss:members:sort', 'name')
   const [direction, setDirection] = useLocalStorage<'asc' | 'desc'>('bss:members:dir', 'asc')
 
@@ -134,8 +146,9 @@ export function Members() {
               const months = monthsSince(member.lastTalkDate)
               return (
                 <li key={member.id}>
-                  <Link
-                    to={`/mitglieder/${member.id}`}
+                  <MemberLink
+                    memberId={member.id}
+                    label="Mitglieder"
                     className="flex items-center gap-3 px-4 py-3 transition hover:bg-slate-50 dark:hover:bg-slate-800/60"
                   >
                     <Avatar
@@ -188,7 +201,7 @@ export function Members() {
                         </a>
                       )}
                     </div>
-                  </Link>
+                  </MemberLink>
                 </li>
               )
             })}

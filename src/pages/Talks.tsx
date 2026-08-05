@@ -22,6 +22,8 @@ import { useData } from '@/contexts/DataContext'
 import { useAuth } from '@/contexts/AuthContext'
 import { useToast } from '@/contexts/ToastContext'
 import { useSacramentMeetings, useTalks } from '@/hooks/useFirestore'
+import { useUrlState } from '@/hooks/useUrlState'
+import { MemberLink } from '@/components/ui/MemberLink'
 import { Modal, ConfirmDialog } from '@/components/ui/Modal'
 import { EmptyState, SkeletonList } from '@/components/ui/Feedback'
 import { SegmentedControl } from '@/components/ui/Pickers'
@@ -75,7 +77,17 @@ import {
   type TalkStatus,
 } from '@/lib/types'
 
-type Tab = 'plan' | 'candidates' | 'history'
+/**
+ * Der Reiter steht in der Adresse, nicht bloss im Zustand der Komponente.
+ *
+ * Wer aus den Vorschlägen heraus ein Mitglied öffnet, kommt mit «Zurück»
+ * sonst zwar auf diese Seite zurück – aber auf das Programm statt auf die
+ * Vorschläge, weil der Zustand beim Verlassen weggeworfen wurde. In der
+ * Adresse überlebt er den Weg (siehe `hooks/useUrlState`).
+ */
+type Tab = 'programm' | 'vorschlaege' | 'verlauf'
+
+const TABS: readonly Tab[] = ['programm', 'vorschlaege', 'verlauf']
 
 export function Talks() {
   const { settings, members } = useData()
@@ -83,7 +95,7 @@ export function Talks() {
   const { data: talks, loading } = useTalks(400)
   const { data: sacramentMeetings } = useSacramentMeetings(40)
   const toast = useToast()
-  const [tab, setTab] = useState<Tab>('plan')
+  const [tab, setTab] = useUrlState<Tab>('ansicht', 'programm', TABS)
   const [assignFor, setAssignFor] = useState<{ date: Date; slot: number; kind: TalkKind } | null>(
     null,
   )
@@ -231,15 +243,15 @@ export function Talks() {
         value={tab}
         onChange={setTab}
         options={[
-          { value: 'plan', label: 'Programm', count: openSlots },
-          { value: 'candidates', label: 'Vorschläge' },
-          { value: 'history', label: 'Verlauf', count: history.length },
+          { value: 'programm', label: 'Programm', count: openSlots },
+          { value: 'vorschlaege', label: 'Vorschläge' },
+          { value: 'verlauf', label: 'Verlauf', count: history.length },
         ]}
       />
 
       {loading ? (
         <SkeletonList rows={4} />
-      ) : tab === 'plan' ? (
+      ) : tab === 'programm' ? (
         <div className="space-y-3">
           {schedule.map((sunday) => {
             // Erst eine bestehende Lücke füllen, sonst hinten anhängen –
@@ -369,7 +381,7 @@ export function Talks() {
             )
           })}
         </div>
-      ) : tab === 'candidates' ? (
+      ) : tab === 'vorschlaege' ? (
         <CandidateList
           candidates={candidates}
           gapMonths={settings.talkGapMonths}
@@ -684,12 +696,13 @@ function CandidateList({
                 <Avatar name={`${member.firstName} ${member.lastName}`} id={member.id} size="md" />
 
                 <div className="min-w-0 flex-1">
-                  <Link
-                    to={`/mitglieder/${member.id}`}
+                  <MemberLink
+                    memberId={member.id}
+                    label="Ansprachen"
                     className="block truncate text-sm font-medium hover:underline"
                   >
                     {member.firstName} {member.lastName}
-                  </Link>
+                  </MemberLink>
                   <p className="text-xs text-slate-500 dark:text-slate-400">
                     {months === null ? (
                       <span className="font-medium text-amber-600 dark:text-amber-400">
@@ -781,12 +794,13 @@ function HistoryList({ talks }: { talks: Talk[] }) {
           <div className="min-w-0 flex-1">
             {/* Ein von Hand erfasster Name führt zu keinem Mitglied. */}
             {talk.memberId ? (
-              <Link
-                to={`/mitglieder/${talk.memberId}`}
+              <MemberLink
+                memberId={talk.memberId}
+                label="Ansprachen"
                 className="block truncate text-sm font-medium hover:underline"
               >
                 {talk.memberName}
-              </Link>
+              </MemberLink>
             ) : (
               <p className="truncate text-sm font-medium">{talk.memberName}</p>
             )}

@@ -6,6 +6,7 @@ import Papa from 'papaparse'
 // Blätter, und mehrblättrige Mitgliederlisten kommen in der Praxis nicht vor.
 import { readSheet } from 'read-excel-file/browser'
 import { db, COLLECTIONS } from '@/lib/firebase'
+import { resyncCollections } from '@/lib/collectionStore'
 import { parseDirectoryDate } from '@/services/importPaste'
 import { normalize } from '@/lib/utils'
 import { requireOnline } from '@/lib/sync'
@@ -543,6 +544,10 @@ export async function runImport(
     }
     await batch.commit()
   }
+
+  // Nach dem Löschen einmal frisch lesen: Ein entfernter Datensatz taucht in
+  // einer Abfrage «was ist neuer als …» nicht auf.
+  if (removals.length > 0) resyncCollections([COLLECTIONS.members])
 
   return { created, updated, skipped: preview.skipCount, removed: removals.length }
 }

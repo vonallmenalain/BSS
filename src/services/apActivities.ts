@@ -12,6 +12,7 @@ import {
   writeBatch,
 } from 'firebase/firestore'
 import { db, COLLECTIONS } from '@/lib/firebase'
+import { forgetDoc, resyncCollections } from '@/lib/collectionStore'
 import { commit, requireOnline, type SaveOutcome } from '@/lib/sync'
 import type { ParsedApActivity, ParsedApMonth } from '@/services/importApActivities'
 import type { ApActivity, ApActivityKind } from '@/lib/types'
@@ -82,7 +83,9 @@ export async function saveApActivity(
 }
 
 export async function deleteApActivity(id: string): Promise<SaveOutcome> {
-  return commit(deleteDoc(doc(db, COLLECTIONS.apActivities, id)))
+  const outcome = await commit(deleteDoc(doc(db, COLLECTIONS.apActivities, id)))
+  forgetDoc(COLLECTIONS.apActivities, id)
+  return outcome
 }
 
 /** Das führende Kollegium eines Monats – «2026-03», «Leitung Diakone». */
@@ -217,6 +220,9 @@ export async function importApPlan(
     }
     await batch.commit()
   }
+
+  // Gelöschtes sieht der schrittweise Abgleich nicht – siehe `resyncCollections`.
+  if (removed > 0) resyncCollections([COLLECTIONS.apActivities])
 
   return { written: activities.length, removed, months: months.length }
 }

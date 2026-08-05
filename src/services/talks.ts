@@ -13,6 +13,7 @@ import {
   Timestamp,
 } from 'firebase/firestore'
 import { db, COLLECTIONS } from '@/lib/firebase'
+import { forgetDoc } from '@/lib/collectionStore'
 import { toDate } from '@/lib/dates'
 import { stripUndefined } from '@/lib/utils'
 import { commit, type SaveOutcome } from '@/lib/sync'
@@ -191,6 +192,7 @@ export async function deleteTalk(id: string): Promise<SaveOutcome> {
   const snapshot = await getDoc(ref)
   const talk = snapshot.exists() ? ({ id: snapshot.id, ...snapshot.data() } as Talk) : null
   const outcome = await commit(deleteDoc(ref))
+  forgetDoc(COLLECTIONS.talks, id)
   // Zählte die Ansprache bereits, muss die Mitgliederstatistik nachgeführt werden.
   if (countsAsHeld(talk?.status) && talk?.memberId) await recalculateLastTalk(talk.memberId)
   return outcome

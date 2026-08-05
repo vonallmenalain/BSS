@@ -1,7 +1,22 @@
-import { createContext, useContext, useEffect, useMemo, useState, type ReactNode } from 'react'
-import { collection, doc, onSnapshot, orderBy, query } from 'firebase/firestore'
+import {
+  createContext,
+  useCallback,
+  useContext,
+  useEffect,
+  useMemo,
+  useState,
+  useSyncExternalStore,
+  type ReactNode,
+} from 'react'
+import { doc, onSnapshot } from 'firebase/firestore'
 import { db, COLLECTIONS } from '@/lib/firebase'
 import { useAuth } from '@/contexts/AuthContext'
+import {
+  collectionSnapshot,
+  subscribeToCollection,
+  IDLE_STATE,
+  type StoreState,
+} from '@/lib/collectionStore'
 import { codeOf, hymnKey } from '@/lib/hymnCode'
 import {
   DEFAULT_SETTINGS,
@@ -44,75 +59,55 @@ interface DataContextValue {
 
 const DataContext = createContext<DataContextValue | undefined>(undefined)
 
+/**
+ * Eine Sammlung aus `lib/collectionStore` – einmal abonniert, danach nur noch
+ * nachgeführt.
+ */
+function useStore<T>(name: string, enabled: boolean): StoreState<T> {
+  const subscribe = useCallback(
+    (listener: () => void) => (enabled ? subscribeToCollection(name, listener) : () => {}),
+    [name, enabled],
+  )
+  const snapshot = useCallback(
+    () => (enabled ? collectionSnapshot<T>(name) : (IDLE_STATE as StoreState<T>)),
+    [name, enabled],
+  )
+  return useSyncExternalStore(subscribe, snapshot, snapshot)
+}
+
 export function DataProvider({ children }: { children: ReactNode }) {
   const { isApproved, canViewAp } = useAuth()
 
-  const [users, setUsers] = useState<AppUser[]>([])
-  const [members, setMembers] = useState<Member[]>([])
-  const [hymns, setHymns] = useState<Hymn[]>([])
   const [settings, setSettings] = useState<AppSettings>(DEFAULT_SETTINGS)
-  const [usersLoaded, setUsersLoaded] = useState(false)
-  const [membersLoaded, setMembersLoaded] = useState(false)
 
   /* Team ------------------------------------------------------------- */
-  useEffect(() => {
-    if (!isApproved) {
-      setUsers([])
-      setUsersLoaded(false)
-      return
-    }
-    return onSnapshot(
-      query(collection(db, COLLECTIONS.users), orderBy('displayName')),
-      (snapshot) => {
-        setUsers(snapshot.docs.map((d) => ({ id: d.id, ...d.data() }) as AppUser))
-        setUsersLoaded(true)
-      },
-      (error) => {
-        console.error('[data] Benutzer konnten nicht geladen werden:', error)
-        setUsersLoaded(true)
-      },
-    )
-  }, [isApproved])
+  const usersState = useStore<AppUser>(COLLECTIONS.users, isApproved)
+  const users = useMemo(
+    () =>
+      [...usersState.data].sort((a, b) =>
+        (a.displayName ?? '').localeCompare(b.displayName ?? '', 'de'),
+      ),
+    [usersState.data],
+  )
 
   /* Mitglieder ------------------------------------------------------- */
-  useEffect(() => {
-    if (!isApproved) {
-      setMembers([])
-      setMembersLoaded(false)
-      return
-    }
-    return onSnapshot(
-      query(collection(db, COLLECTIONS.members), orderBy('lastName')),
-      (snapshot) => {
-        setMembers(
-          snapshot.docs.map((d) => {
-            const data = d.data()
-            // Alte Datensätze tragen noch «weniger aktiv» oder «weggezogen».
-            // Sie hier einmal zurückzuführen erspart jeder Ansicht die Frage.
-            return { id: d.id, ...data, status: toMemberStatus(data.status) } as Member
-          }),
-        )
-        setMembersLoaded(true)
-      },
-      (error) => {
-        console.error('[data] Mitglieder konnten nicht geladen werden:', error)
-        setMembersLoaded(true)
-      },
-    )
-  }, [isApproved])
+  const membersState = useStore<Member>(COLLECTIONS.members, isApproved)
+  const members = useMemo(
+    () =>
+      membersState.data
+        // Alte Datensätze tragen noch «weniger aktiv» oder «weggezogen».
+        // Sie hier einmal zurückzuführen erspart jeder Ansicht die Frage.
+        .map((member) => ({ ...member, status: toMemberStatus(member.status) }) as Member)
+        .sort((a, b) => (a.lastName ?? '').localeCompare(b.lastName ?? '', 'de')),
+    [membersState.data],
+  )
 
   /* Liederliste ------------------------------------------------------ */
-  useEffect(() => {
-    if (!isApproved) {
-      setHymns([])
-      return
-    }
-    return onSnapshot(
-      query(collection(db, COLLECTIONS.hymns), orderBy('number')),
-      (snapshot) => setHymns(snapshot.docs.map((d) => ({ id: d.id, ...d.data() }) as Hymn)),
-      (error) => console.error('[data] Liederliste konnte nicht geladen werden:', error),
-    )
-  }, [isApproved])
+  const hymnsState = useStore<Hymn>(COLLECTIONS.hymns, isApproved)
+  const hymns = useMemo(
+    () => [...hymnsState.data].sort((a, b) => (a.number ?? 0) - (b.number ?? 0)),
+    [hymnsState.data],
+  )
 
   /* Einstellungen ---------------------------------------------------- */
   // Auch für Konten, die nur den AP-Kalender sehen: Der Name der Gemeinde
@@ -145,7 +140,7 @@ export function DataProvider({ children }: { children: ReactNode }) {
       hymns,
       hymnsByCode,
       settings,
-      loading: isApproved && (!usersLoaded || !membersLoaded),
+      loading: isApproved && (usersState.loading || membersState.loading),
       userName: (id) => usersById.get(id)?.displayName ?? 'Unbekannt',
       memberName: (id) => {
         const member = membersById.get(id)
@@ -157,7 +152,7 @@ export function DataProvider({ children }: { children: ReactNode }) {
         return choice.title || hymnTitle(choice.code ?? String(choice.number ?? ''))
       },
     }
-  }, [users, members, hymns, settings, usersLoaded, membersLoaded, isApproved])
+  }, [users, members, hymns, settings, usersState.loading, membersState.loading, isApproved])
 
   return <DataContext.Provider value={value}>{children}</DataContext.Provider>
 }

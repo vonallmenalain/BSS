@@ -245,6 +245,13 @@ Dieselben Tests laufen in der CI, bevor Regeln ausgerollt werden.
 **Sitzungen** in der Seitenleiste. Eine Sitzung wird geplant, gestartet,
 durchgeführt und abgeschlossen; danach lässt sich das Protokoll drucken.
 
+**Die Liste zeigt auf Wunsch den Inhalt mit** – «Ansicht» oben rechts stellt
+je Gruppe ein, ob die Titel genügen oder der ganze Eintrag zu lesen sein soll.
+Damit wird die Sitzungsliste zum Programm mehrerer Sitzungen. Ein Griff auf
+einen Eintrag öffnet ihn dort in einem Fenster und lässt ihn ändern, ohne dass
+die Liste verlassen werden muss; erledigen, verschieben und löschen stehen
+darin ebenfalls. Ein «@»-Name im Eintrag führt weiterhin zur Person.
+
 **Zuoberst stehen die vier Angaben, die zu Beginn festgehalten werden**:
 Anwesenheit, Anfangsgebet, Schlussgebet und geistiger Gedanke – je eine Zeile
 mit den Konten der Bischofschaft und der Sekretäre als Knöpfe. Ein Griff je
@@ -330,7 +337,16 @@ Stelle der Beschreibung.
 
 Die Listenansicht ist zum Vorbereiten da. Jede Zeile ist zugeklappt schmal und
 zeigt Titel und das Nötigste; ein Klick klappt sie auf, und dann steht der
-ganze Inhalt da – und lässt sich gleich dort ändern.
+ganze Inhalt da – und lässt sich gleich dort ändern. Anklickbar ist dabei die
+**ganze Kopfzeile**, nicht bloss der Titel: zugeklappt die Zeile, aufgeklappt
+der Bereich bis zur Trennlinie. Die Knöpfe darin (Pfeile, Haken) behalten
+ihren Klick bei sich.
+
+Aufgeklappt stehen unter dem Eintrag die vier Daten, die ihn einordnen:
+**nächste Sitzung** (wann er das nächste Mal drankommt), **erfasst**,
+**ursprünglich** (die Sitzung, in der er zum ersten Mal stand) und **zuletzt
+bearbeitet**. Was fehlt, steht nicht da – ein «–» hinter einer Beschriftung
+sagt nichts, das die leere Stelle nicht auch sagt.
 
 Umsortiert wird innerhalb einer Gruppe, auf zwei Wegen: mit den **Pfeilen** an
 jeder Zeile (auch am Handy) oder durch **Ziehen und Ablegen** am Zeigergerät.
@@ -360,6 +376,28 @@ unterlegt und anklickbar** und führt zur Person in der Mitgliederliste. Der
 Weg zurück führt nicht in die Liste, sondern genau zu dem Punkt, den man
 gerade gelesen hat; die Adresse merkt sich dafür den offenen Eintrag
 (`…/sitzungen/<id>?traktandum=<id>`).
+
+### Der Weg zurück
+
+Das gilt überall: **Zurück führt einen Schritt zurück, nicht zwei.** Wer unter
+«Ansprachen» im Reiter «Vorschläge» steht, ein Mitglied öffnet und zurückgeht,
+landet wieder bei den Vorschlägen – nicht beim Programm und nicht in der
+Mitgliederliste.
+
+Zwei Dinge zusammen machen das aus (siehe
+[`src/hooks/useBack.ts`](src/hooks/useBack.ts) und
+[`src/hooks/useUrlState.ts`](src/hooks/useUrlState.ts)):
+
+- Der Zurück-Knopf geht **einen Eintrag im Browserverlauf zurück**, wie die
+  Zurück-Geste des Telefons. Damit steht die vorige Adresse wieder da. Er
+  schreibt sich auch selbst an, wohin er führt – die App merkt sich beim
+  Seitenwechsel, wo man war.
+- Was eine Ansicht umschaltet, steht **in der Adresse**: der Reiter
+  (`?ansicht=vorschlaege`), die Suche (`?suche=…`), der Ausschnitt der
+  Berufungen, der aufgeklappte Eintrag. Nur dann gibt es überhaupt etwas,
+  wohin man zurückkehren könnte. Das Umschalten selbst legt keinen neuen
+  Verlaufseintrag an – man müsste sich sonst durch jede Zwischeneinstellung
+  zurücktippen, bevor man die Seite verlässt.
 
 ---
 
@@ -530,9 +568,22 @@ lässt sich von Hand ergänzen und auf Wunsch in die Liste aufnehmen. Der Titel
 wird im Programm mitgespeichert, damit ein bereits verteiltes Programm nach
 einem Neuimport gleich bleibt.
 
-**Gebet.** Beim Zuteilen steht bei jedem Vorschlag, wann die Person zuletzt
-gebetet hat; zuoberst steht, wer noch nie an der Reihe war – dieselbe Logik
-wie bei den Ansprachen.
+**Gebet.** Oben stehen die beiden Plätze – Anfangs- und Schlussgebet –, jeder
+mit einem Feld zum Suchen oder Eintippen. Darunter steht **eine**
+Vorschlagsliste für beide: zwanzig Namen, geordnet nach Dringlichkeit, bei
+jedem, wann die Person zuletzt gebetet hat; zuoberst, wer noch nie an der
+Reihe war. Ein Griff auf **Anfang** oder **Schluss** teilt zu.
+
+Zwei Listen standen hier einmal nebeneinander – dieselben Namen in derselben
+Reihenfolge, zweimal untereinander. Sie beantworteten dieselbe Frage und
+verdoppelten bloss die Höhe der Seite.
+
+**«Heute nicht»** neben jedem Namen nimmt die Person für 30 Tage aus der
+Liste – jemand ist krank, verreist, oder das Gespräch steht noch aus. Ohne das
+blieben die immer gleichen drei Namen zuoberst stehen. Der Vermerk steht am
+Mitglied und gilt damit für die ganze Bischofschaft; wer gerade übersprungen
+wird, steht unter der Liste hinter «_n_ übersprungen» und lässt sich mit einem
+Griff wieder aufnehmen.
 
 ### Vorschläge: wer als Nächstes angefragt wird
 
@@ -1429,9 +1480,10 @@ src/
 │   ├── Layout.tsx       Navigation (Seitenleiste bzw. untere Leiste)
 │   └── UpdatePrompt.tsx Hinweis auf neue Version
 ├── contexts/            Anmeldung, Stammdaten, Meldungen
-├── hooks/               Firestore-Abfragen, Bekanntmachungen eines Sonntags, lokale Einstellungen
-├── lib/                 Firebase-Anbindung, Typen, Datums-, Serien-, Programm-, Sonntags-,
-│                        Vorschlags-, Word- und Hilfsfunktionen
+├── hooks/               Sammlungen lesen, Weg zurück, Ansicht in der Adresse,
+│                        Bekanntmachungen eines Sonntags, lokale Einstellungen
+├── lib/                 Firebase-Anbindung, Sammlungsspeicher (Abgleich), Typen, Datums-,
+│                        Serien-, Programm-, Sonntags-, Vorschlags-, Word- und Hilfsfunktionen
 ├── pages/
 │   ├── sacrament/       Leitung, Bekanntmachungen, Angelegenheiten, Musik, Gebet
 │   └── …                Eine Datei pro übriger Ansicht
@@ -1456,6 +1508,61 @@ und läuft offline. Firestore hält eine lokale Kopie der Daten vor.
 Neue Versionen werden nicht ungefragt geladen – stattdessen erscheint ein
 Hinweis mit einer Schaltfläche. So startet die App nicht mitten in der Sitzung
 neu und verliert Eingaben.
+
+---
+
+## Daten laden: einmal ganz, danach nur noch Änderungen
+
+Firestore rechnet **jede gelesene Zeile** ab, und das kostenlose Kontingent
+liegt bei 50 000 Lesevorgängen am Tag. Ein gewöhnlicher `onSnapshot()` auf eine
+Sammlung ist dabei teurer, als es aussieht: Wer die Ansicht wechselt, meldet
+den alten Horcher ab und den neuen an – und war die Verbindung länger als eine
+halbe Stunde unterbrochen (also bei jedem neuen Aufruf der App), liest der
+neue Horcher **alles noch einmal**. Bei einem Dutzend Sammlungen und ein paar
+tausend Datensätzen kommen so schnell Zehntausende Lesevorgänge am Tag
+zusammen – für Daten, die sich seit gestern nicht bewegt haben.
+
+[`src/lib/collectionStore.ts`](src/lib/collectionStore.ts) dreht das um. Jede
+Sammlung wird **einmal je Sitzung** angemeldet, und zwar in drei Schritten:
+
+1. **Aus dem Zwischenspeicher füllen.** Firestore legt ohnehin eine
+   vollständige Kopie in IndexedDB ab. `getDocsFromCache()` liest daraus –
+   kostenlos, ohne Netz und ohne Ladebalken. Die Liste steht sofort da.
+2. **Nur das Neue nachladen.** Statt der ganzen Sammlung wird ab dem höchsten
+   bekannten `updatedAt` abonniert. Der Server schickt, was sich seither
+   geändert hat – meist nichts, sonst eine Handvoll Datensätze. Der Horcher
+   bleibt offen: Was ein anderes Gerät **jetzt** ändert, ist ebenfalls «neuer»
+   und kommt über denselben Weg herein.
+3. **Einmal nachzählen.** Eine Zählabfrage kostet einen einzigen Lesevorgang je
+   tausend Datensätze und verrät, ob etwas gelöscht wurde – das sähe die
+   Teilabfrage sonst nicht. Stimmt die Zahl nicht, wird die Sammlung einmal
+   vollständig gelesen. Dasselbe geschieht, wenn der letzte vollständige
+   Abgleich über eine Woche her ist.
+
+**Die App ist dadurch nicht weniger aktuell, sondern schneller.** Der Horcher
+läuft weiter wie vorher; fremde Änderungen erscheinen unverändert sofort. Neu
+ist nur, dass ein Ansichtswechsel gar nichts mehr kostet: Die Hooks in
+[`src/hooks/useFirestore.ts`](src/hooks/useFirestore.ts) filtern und sortieren
+im Client, statt für jede Ansicht eine eigene Abfrage zu stellen. Der Wechsel
+zwischen «Pendent» und «Erledigt», das Öffnen einer Sitzung, der Sprung ins
+Mitgliederprofil – alles aus demselben, bereits geladenen Bestand.
+
+Damit das trägt, muss **jeder** Schreibvorgang `updatedAt` setzen. Daneben
+steht `editedAt`: Es hält fest, wann zuletzt am Inhalt _gearbeitet_ wurde.
+Umsortieren hebt den Stand des Datensatzes (`updatedAt`), ist aber keine
+Bearbeitung – sonst sprängen nach jedem Umsortieren einer Sitzung lauter
+unveränderte Punkte an den Anfang der Pendenzenliste.
+
+Drei Dinge sieht die Teilabfrage nicht, und für alle drei gibt es einen Weg:
+
+| Fall                                 | Antwort                                                            |
+| ------------------------------------ | ------------------------------------------------------------------ |
+| Im eigenen Fenster gelöscht          | `forgetDoc()` entfernt den Datensatz sofort aus der Liste          |
+| Auf einem anderen Gerät gelöscht     | Die Zählabfrage beim Start findet die Abweichung                   |
+| Import (löscht, oder datiert zurück) | `resyncCollections()` liest die betroffenen Sammlungen einmal ganz |
+
+Fehlt trotzdem einmal etwas, holt «Einstellungen → Daten neu laden» den ganzen
+Bestand frisch. Im Alltag wird der Knopf nicht gebraucht.
 
 ---
 

@@ -8,6 +8,7 @@ import {
   writeBatch,
 } from 'firebase/firestore'
 import { db, COLLECTIONS } from '@/lib/firebase'
+import { forgetDoc } from '@/lib/collectionStore'
 import { commit, type SaveOutcome } from '@/lib/sync'
 import type { Note } from '@/lib/types'
 
@@ -39,6 +40,7 @@ export async function createNote(
       updatedById: authorId,
       createdAt: serverTimestamp(),
       updatedAt: serverTimestamp(),
+      editedAt: serverTimestamp(),
     }),
   )
   return { id: ref.id, outcome }
@@ -55,12 +57,15 @@ export async function updateNote(
       body: input.body,
       updatedById: authorId,
       updatedAt: serverTimestamp(),
+      editedAt: serverTimestamp(),
     }),
   )
 }
 
 export async function deleteNote(id: string): Promise<SaveOutcome> {
-  return commit(deleteDoc(doc(db, COLLECTIONS.notes, id)))
+  const outcome = await commit(deleteDoc(doc(db, COLLECTIONS.notes, id)))
+  forgetDoc(COLLECTIONS.notes, id)
+  return outcome
 }
 
 /**
@@ -72,9 +77,11 @@ export async function deleteNote(id: string): Promise<SaveOutcome> {
  * bearbeitet». Erst wenn alle eine Position haben, bleibt die Reihenfolge auch
  * dann stehen, wenn jemand eine Notiz bearbeitet.
  *
- * `updatedAt` und `updatedById` bleiben unangetastet: Umsortieren ist kein
+ * `editedAt` und `updatedById` bleiben unangetastet: Umsortieren ist kein
  * Bearbeiten. Sonst stünde nachher überall dieselbe Zeit, und die andere
- * Ansicht hätte nichts mehr, wonach sie ordnen könnte.
+ * Ansicht hätte nichts mehr, wonach sie ordnen könnte. `updatedAt` wird
+ * dagegen mitgeschrieben – daran erkennt der Abgleich beim Start, dass sich
+ * am Datensatz etwas getan hat (siehe `lib/collectionStore`).
  */
 export async function saveNoteOrder(notes: Note[]): Promise<SaveOutcome | null> {
   const batch = writeBatch(db)
@@ -82,7 +89,10 @@ export async function saveNoteOrder(notes: Note[]): Promise<SaveOutcome | null> 
 
   notes.forEach((note, index) => {
     if (note.order === index) return
-    batch.update(doc(db, COLLECTIONS.notes, note.id), { order: index })
+    batch.update(doc(db, COLLECTIONS.notes, note.id), {
+      order: index,
+      updatedAt: serverTimestamp(),
+    })
     changed++
   })
 

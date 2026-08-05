@@ -1,4 +1,4 @@
-import { useMemo, useState, type ReactNode } from 'react'
+import { useMemo, useRef, useState, type ReactNode } from 'react'
 import { Link, useLocation } from 'react-router-dom'
 import { useData } from '@/contexts/DataContext'
 import { MentionField } from '@/components/ui/MentionField'
@@ -80,6 +80,12 @@ export function MentionText({
  * Einen Bearbeiten-Knopf gibt es nicht: In der Sitzung wird geschrieben,
  * während gesprochen wird, und jeder Klick, der nur den Schreibmodus einlegt,
  * ist einer zu viel.
+ *
+ * Das Feld ist dabei so gross wie der Text, der eben noch dastand: Beim
+ * Wechsel wird die Höhe des gelesenen Absatzes gemessen und dem Feld als
+ * Mindestmass mitgegeben, und danach wächst es mit dem Tippen weiter. Vorher
+ * schrumpfte eine lange Pendenz beim Antippen auf drei Zeilen zusammen, und
+ * der Rest verschwand hinter dem Rand.
  */
 export function MentionEditable({
   id,
@@ -114,6 +120,15 @@ export function MentionEditable({
   maxLength?: number
 }): ReactNode {
   const [writing, setWriting] = useState(false)
+  /** Höhe des gelesenen Textes im Moment des Wechsels – das Mass für das Feld. */
+  const [readHeight, setReadHeight] = useState<number | undefined>(undefined)
+  const readRef = useRef<HTMLDivElement>(null)
+
+  const startWriting = () => {
+    const box = readRef.current?.getBoundingClientRect()
+    setReadHeight(box ? Math.round(box.height) : undefined)
+    setWriting(true)
+  }
 
   if (readOnly) {
     return (
@@ -134,6 +149,8 @@ export function MentionEditable({
         onBlur={() => setWriting(false)}
         autoFocus
         multiline={multiline}
+        autoGrow={multiline}
+        minHeight={multiline ? readHeight : undefined}
         rows={rows}
         maxLength={maxLength}
         placeholder={placeholder}
@@ -152,14 +169,15 @@ export function MentionEditable({
    */
   return (
     <div
+      ref={readRef}
       role="textbox"
       tabIndex={0}
       aria-label={label}
-      onClick={() => setWriting(true)}
+      onClick={startWriting}
       onKeyDown={(event) => {
         if (event.key !== 'Enter' && event.key !== ' ') return
         event.preventDefault()
-        setWriting(true)
+        startWriting()
       }}
       className={cn(
         'w-full cursor-text rounded-lg px-3 py-2 break-words whitespace-pre-wrap transition',

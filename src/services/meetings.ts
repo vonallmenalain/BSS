@@ -14,6 +14,7 @@ import {
   Timestamp,
 } from 'firebase/firestore'
 import { db, COLLECTIONS } from '@/lib/firebase'
+import { forgetDoc } from '@/lib/collectionStore'
 import { nextWeekday } from '@/lib/dates'
 import { stripUndefined } from '@/lib/utils'
 import { commit, type SaveOutcome } from '@/lib/sync'
@@ -92,6 +93,7 @@ export async function startMeeting(id: string): Promise<SaveOutcome> {
     batch.update(item.ref, {
       status: 'pending' satisfies ItemStatus,
       updatedAt: serverTimestamp(),
+      editedAt: serverTimestamp(),
     })
   })
   batch.update(doc(db, COLLECTIONS.meetings, id), {
@@ -133,6 +135,7 @@ export async function closeMeeting(id: string): Promise<number> {
       kind: 'pendenz' satisfies ItemKind,
       status: 'pending' satisfies ItemStatus,
       updatedAt: serverTimestamp(),
+      editedAt: serverTimestamp(),
     })
   })
   batch.update(doc(db, COLLECTIONS.meetings, id), {
@@ -185,9 +188,17 @@ export async function deleteMeeting(id: string): Promise<SaveOutcome> {
     query(collection(db, COLLECTIONS.agendaItems), where('meetingId', '==', id)),
   )
   const batch = writeBatch(db)
-  items.docs.forEach((item) => batch.update(item.ref, { meetingId: null }))
+  items.docs.forEach((item) =>
+    batch.update(item.ref, {
+      meetingId: null,
+      updatedAt: serverTimestamp(),
+      editedAt: serverTimestamp(),
+    }),
+  )
   batch.delete(doc(db, COLLECTIONS.meetings, id))
-  return commit(batch.commit())
+  const outcome = await commit(batch.commit())
+  forgetDoc(COLLECTIONS.meetings, id)
+  return outcome
 }
 
 /** Terminvorschlag für die Folgesitzung aus den Einstellungen ableiten. */

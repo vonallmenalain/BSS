@@ -6,6 +6,7 @@ import {
   setPersistence,
 } from 'firebase/auth'
 import {
+  CACHE_SIZE_UNLIMITED,
   connectFirestoreEmulator,
   initializeFirestore,
   persistentLocalCache,
@@ -52,10 +53,18 @@ export const auth = getAuth(app)
  * Dadurch funktioniert die App auch ohne Netz – Änderungen werden gepuffert
  * und synchronisieren sich automatisch, sobald wieder Verbindung besteht.
  * Genau das brauchen wir im Sitzungszimmer mit schwachem Empfang.
+ *
+ * Die Kopie wird bewusst **nicht** aufgeräumt (`CACHE_SIZE_UNLIMITED`). Sie ist
+ * seit `lib/collectionStore` nicht mehr nur ein Notvorrat für den Offline-Fall,
+ * sondern die Quelle, aus der die App startet: Was gestern schon gelesen wurde,
+ * wird heute nicht noch einmal beim Server geholt. Räumte Firestore darin auf,
+ * wären ausgerechnet die alten Daten wieder weg – und würden erneut abgefragt.
+ * Der ganze Bestand einer Gemeinde bleibt dabei im einstelligen Megabyte-Bereich.
  */
 export const db = initializeFirestore(app, {
   localCache: persistentLocalCache({
     tabManager: persistentMultipleTabManager(),
+    cacheSizeBytes: CACHE_SIZE_UNLIMITED,
   }),
 })
 
