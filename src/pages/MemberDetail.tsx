@@ -136,6 +136,17 @@ export function MemberDetail() {
                   Keine Ansprachen
                 </span>
               )}
+              {/* Das «im Moment nicht» aus den Vorschlägen – hier sichtbar,
+                  damit es nicht in einer Liste verschwindet, die es selbst
+                  ausblendet. */}
+              {member.talkHold && (
+                <span
+                  className="badge bg-amber-100 text-amber-800 dark:bg-amber-950 dark:text-amber-200"
+                  title="Erscheint nicht in den Vorschlägen für Ansprachen"
+                >
+                  Vorerst nicht anfragen
+                </span>
+              )}
             </div>
 
             <div className="mt-2 flex flex-wrap gap-x-4 gap-y-1 text-sm text-slate-600 dark:text-slate-300">
@@ -355,6 +366,7 @@ interface FormState {
   city: string
   status: MemberStatus
   availableForTalks: boolean
+  talkHold: boolean
   notes: string
   ministeringPartnerIds: string[]
   ministeringAssignedIds: string[]
@@ -375,6 +387,7 @@ const EMPTY: FormState = {
   city: '',
   status: 'active',
   availableForTalks: true,
+  talkHold: false,
   notes: '',
   ministeringPartnerIds: [],
   ministeringAssignedIds: [],
@@ -420,6 +433,7 @@ export function MemberForm({
       city: member.city ?? '',
       status: member.status,
       availableForTalks: member.availableForTalks ?? true,
+      talkHold: member.talkHold === true,
       notes: member.notes ?? '',
       ministeringPartnerIds: member.ministeringPartnerIds ?? [],
       ministeringAssignedIds: member.ministeringAssignedIds ?? [],
@@ -453,6 +467,7 @@ export function MemberForm({
         city: form.city.trim(),
         status: form.status,
         availableForTalks: form.availableForTalks,
+        talkHold: form.talkHold,
         notes: form.notes.trim(),
         ministeringPartnerIds: form.ministeringPartnerIds,
         ministeringAssignedIds: form.ministeringAssignedIds,
@@ -710,7 +725,27 @@ export function MemberForm({
           <span className="text-sm">
             Kann für Ansprachen angefragt werden
             <span className="hint mt-0.5 block">
-              Abwählen bei Kindern oder wenn jemand vorerst nicht angefragt werden soll.
+              Abwählen, wenn grundsätzlich keine Anfrage in Frage kommt – dann steht die Person in
+              keiner Vorschlagsliste mehr.
+            </span>
+          </span>
+        </label>
+
+        {/* Die beiden Haken beantworten dieselbe Frage für verschiedene
+            Zeiträume: «gar nicht» und «im Moment nicht». */}
+        <label className="flex cursor-pointer items-center gap-3 rounded-lg border border-slate-200 p-3 dark:border-slate-700">
+          <input
+            type="checkbox"
+            className="size-4 rounded"
+            checked={form.talkHold}
+            onChange={(event) => update('talkHold', event.target.checked)}
+          />
+          <span className="text-sm">
+            Vorerst nicht anfragen
+            <span className="hint mt-0.5 block">
+              Für ein «im Moment nicht»: Krankheit, Abwesenheit, ein Gespräch, das noch aussteht.
+              Die Person fällt aus den Vorschlägen heraus, lässt sich dort aber einblenden und mit
+              einem Griff wieder aufnehmen.
             </span>
           </span>
         </label>
