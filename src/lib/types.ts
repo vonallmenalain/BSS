@@ -211,6 +211,14 @@ export interface DashboardTile {
 }
 
 export interface DashboardView {
+  /**
+   * Begrüssung und Gemeindename über den Kacheln.
+   *
+   * Sie sagen nichts, was man nicht wüsste – wer die App am Telefon
+   * aufschlägt, will die erste Kachel sehen und nicht «Guten Abend». Wer sie
+   * mag, behält sie; abgewählt gewinnt die Übersicht zwei Zeilen.
+   */
+  greeting: boolean
   /** Alle Kacheln in der gewählten Reihenfolge */
   tiles: DashboardTile[]
   /** Wie viele Traktanden und Pendenzen die Sitzungskachel zeigt */
@@ -224,6 +232,7 @@ export interface DashboardView {
 }
 
 export const DEFAULT_DASHBOARD_VIEW: DashboardView = {
+  greeting: true,
   tiles: [
     { id: 'meeting', area: 'main', visible: true },
     { id: 'stats', area: 'side', visible: true },
@@ -267,6 +276,9 @@ export function normalizeDashboardView(stored: DashboardView): DashboardView {
     typeof value === 'number' && Number.isFinite(value) ? value : fallback
 
   return {
+    // Aus einer Fassung ohne diese Einstellung kommt `undefined` – dann gilt
+    // die Vorgabe und nicht «ausgeblendet».
+    greeting: stored?.greeting !== false,
     tiles,
     meetingItems: count(stored?.meetingItems, DEFAULT_DASHBOARD_VIEW.meetingItems),
     myItems: count(stored?.myItems, DEFAULT_DASHBOARD_VIEW.myItems),
@@ -779,6 +791,68 @@ export interface Member extends WithId {
 }
 
 /* ------------------------------------------------------------------ */
+/* Mitgliederliste                                                     */
+/* ------------------------------------------------------------------ */
+
+/** Auf- oder absteigend – überall dieselbe Angabe. */
+export type SortDirection = 'asc' | 'desc'
+
+/**
+ * Wonach die Mitgliederliste sortiert wird.
+ *
+ * «Zuletzt gesprochen» und «zuletzt gebetet» sind die beiden Fragen, die vor
+ * jedem Sonntag stehen; sie stehen deshalb gleichberechtigt neben dem Namen.
+ */
+export type MemberSort = 'name' | 'firstName' | 'age' | 'lastTalk' | 'lastPrayer'
+
+export const MEMBER_SORT_LABELS: Record<MemberSort, string> = {
+  name: 'Nachname',
+  firstName: 'Vorname',
+  age: 'Alter',
+  lastTalk: 'Ansprache zuletzt',
+  lastPrayer: 'Gebet zuletzt',
+}
+
+export const MEMBER_STATUS_SCOPE_LABELS: Record<MemberStatus | 'all', string> = {
+  active: 'Aktiv',
+  inactive: 'Inaktiv',
+  all: 'Alle',
+}
+
+export const GENDER_SCOPE_LABELS: Record<Gender | 'all', string> = {
+  all: 'Alle',
+  m: 'Männer',
+  f: 'Frauen',
+  unknown: 'Ohne Angabe',
+}
+
+/**
+ * Was die Mitgliederliste zeigt und in welcher Reihenfolge.
+ *
+ * Alles davon steht hinter «Ansicht» oben rechts – so wie auf jeder anderen
+ * Seite auch. Über der Liste bleibt damit die Suche, und sonst nichts.
+ */
+export interface MembersView {
+  status: MemberStatus | 'all'
+  gender: Gender | 'all'
+  /** Untere Altersgrenze in Jahren, `null` = keine */
+  minAge: number | null
+  /** Obere Altersgrenze in Jahren, `null` = keine */
+  maxAge: number | null
+  sort: MemberSort
+  direction: SortDirection
+}
+
+export const DEFAULT_MEMBERS_VIEW: MembersView = {
+  status: 'active',
+  gender: 'all',
+  minAge: null,
+  maxAge: null,
+  sort: 'name',
+  direction: 'asc',
+}
+
+/* ------------------------------------------------------------------ */
 /* Ansprachen                                                          */
 /* ------------------------------------------------------------------ */
 
@@ -991,6 +1065,72 @@ export interface Calling extends WithId {
 
   createdAt?: TS
   updatedAt?: TS
+}
+
+/* ------------------------------------------------------------------ */
+/* Berufungsliste                                                      */
+/* ------------------------------------------------------------------ */
+
+/**
+ * Was die Liste zeigt.
+ *
+ * `without` fällt aus der Reihe: Dort stehen keine Berufungen, sondern die
+ * Personen, zu denen keine gehört – die Frage vor jeder neuen Berufung.
+ */
+export type CallingScope = 'active' | 'without' | 'released' | 'all'
+
+export const CALLING_SCOPE_LABELS: Record<CallingScope, string> = {
+  active: 'Aktuell',
+  without: 'Ohne Berufung',
+  released: 'Entlassen',
+  all: 'Alle',
+}
+
+/** Ob die ganze Gemeinde zählt oder nur, wer aktiv ist. */
+export type CallingAudience = 'all' | 'active'
+
+export const CALLING_AUDIENCE_LABELS: Record<CallingAudience, string> = {
+  all: 'Alle Mitglieder',
+  active: 'Nur Aktive',
+}
+
+/**
+ * Wonach die Berufungen geordnet sind.
+ *
+ * «Organisation» ist die Vorgabe und die einzige Ordnung, die den
+ * Organisationsplan nachbildet: Sparte für Sparte, darin Präsident, Ratgeber,
+ * dann die übrigen – so wie das LCR es ausgibt. Jede andere Wahl macht aus den
+ * Sparten eine einzige Liste; anders liesse sich «alle nach Alter» nicht
+ * beantworten.
+ */
+export type CallingSort = 'organization' | 'name' | 'position' | 'age' | 'sustained'
+
+export const CALLING_SORT_LABELS: Record<CallingSort, string> = {
+  organization: 'Organisation',
+  name: 'Name',
+  position: 'Bezeichnung',
+  age: 'Alter',
+  sustained: 'Bestätigung',
+}
+
+export interface CallingsView {
+  scope: CallingScope
+  audience: CallingAudience
+  gender: Gender | 'all'
+  minAge: number | null
+  maxAge: number | null
+  sort: CallingSort
+  direction: SortDirection
+}
+
+export const DEFAULT_CALLINGS_VIEW: CallingsView = {
+  scope: 'active',
+  audience: 'all',
+  gender: 'all',
+  minAge: null,
+  maxAge: null,
+  sort: 'organization',
+  direction: 'asc',
 }
 
 /* ------------------------------------------------------------------ */

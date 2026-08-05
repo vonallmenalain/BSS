@@ -487,25 +487,36 @@ export interface SegmentOption<T extends string> {
   count?: number
 }
 
-/** Kompakter Umschalter für Filter mit wenigen, sich ausschliessenden Werten. */
+/**
+ * Kompakter Umschalter für Filter mit wenigen, sich ausschliessenden Werten.
+ *
+ * `wrap` bricht die Knöpfe auf mehrere Zeilen um, statt sie seitwärts
+ * scrollen zu lassen. Im Ansichtsmenü ist das der Normalfall: Dort wäre eine
+ * Wahlmöglichkeit, die man erst herbeischieben muss, eine, die niemand
+ * findet – vier Ausschnitte mit ihren Zahlen passen am Telefon nicht in eine
+ * Zeile.
+ */
 export function SegmentedControl<T extends string>({
   options,
   value,
   onChange,
   size = 'md',
+  wrap = false,
   className,
 }: {
   options: SegmentOption<T>[]
   value: T
   onChange: (next: T) => void
   size?: 'sm' | 'md'
+  wrap?: boolean
   className?: string
 }) {
   return (
     <div
       role="tablist"
       className={cn(
-        'no-scrollbar inline-flex max-w-full gap-1 overflow-x-auto rounded-lg bg-slate-100 p-1 dark:bg-slate-800',
+        'inline-flex max-w-full gap-1 rounded-lg bg-slate-100 p-1 dark:bg-slate-800',
+        wrap ? 'flex-wrap' : 'no-scrollbar overflow-x-auto',
         className,
       )}
     >
@@ -520,7 +531,7 @@ export function SegmentedControl<T extends string>({
             onClick={() => onChange(option.value)}
             className={cn(
               'inline-flex shrink-0 items-center gap-1.5 rounded-md font-medium whitespace-nowrap transition',
-              size === 'sm' ? 'px-2.5 py-1 text-xs' : 'px-3 py-1.5 text-sm',
+              size === 'sm' ? 'px-2.5 py-1.5 text-xs' : 'px-3 py-1.5 text-sm',
               active
                 ? 'bg-white text-slate-900 shadow-xs dark:bg-slate-700 dark:text-slate-50'
                 : 'text-slate-600 hover:text-slate-900 dark:text-slate-400 dark:hover:text-slate-200',
@@ -550,24 +561,47 @@ export function SegmentedControl<T extends string>({
 /* Seitenkopf                                                          */
 /* ------------------------------------------------------------------ */
 
+/**
+ * Der Kopf einer Seite: Titel links, Knöpfe rechts.
+ *
+ * `hidden` blendet die Beschriftung aus, ohne die Knöpfe mitzunehmen – auf
+ * der Übersicht lässt sich die Begrüssung so abwählen. Für Bildschirmleser
+ * bleibt der Titel stehen: Eine Seite ohne Überschrift ist dort eine Seite
+ * ohne Namen.
+ *
+ * Die Knöpfe hängen an `ms-auto` und nicht nur am `justify-between`: Rutschen
+ * sie bei einem langen Titel in die zweite Zeile, stünden sie dort sonst
+ * links – eine Reihe, die auf jeder Seite oben rechts steht, ausgerechnet am
+ * Telefon in der Mitte des Bildes.
+ */
 export function PageHeader({
   title,
   subtitle,
   actions,
+  hidden = false,
 }: {
   title: string
   subtitle?: string
   actions?: React.ReactNode
+  /** Titel und Untertitel nur für Bildschirmleser ausgeben */
+  hidden?: boolean
 }) {
   return (
-    <header className="mb-5 flex flex-wrap items-start justify-between gap-3">
-      <div className="min-w-0">
+    <header
+      className={cn(
+        'mb-5 flex flex-wrap items-start justify-between gap-3',
+        // Ohne sichtbaren Titel bleibt die Knopfreihe allein – dann darf sie
+        // näher an den Inhalt rücken.
+        hidden && 'mb-3',
+      )}
+    >
+      <div className={cn('min-w-0', hidden && 'sr-only')}>
         <h1 className="text-xl font-semibold tracking-tight sm:text-2xl">{title}</h1>
         {subtitle && (
           <p className="mt-0.5 text-sm text-slate-500 dark:text-slate-400">{subtitle}</p>
         )}
       </div>
-      {actions && <div className="flex flex-wrap items-center gap-2">{actions}</div>}
+      {actions && <div className="ms-auto flex flex-wrap items-center gap-2">{actions}</div>}
     </header>
   )
 }

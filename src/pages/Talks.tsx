@@ -592,7 +592,10 @@ function CandidateList({
         {/* Die Haken standen einmal alle nebeneinander über der Liste. Seit
             es mehr als drei sind, stehen sie hinter einem Knopf – die Zahl
             daran sagt, dass etwas eingestellt ist, auch wenn er zu ist. */}
-        <ViewMenu label={activeFilters > 0 ? `Filter · ${activeFilters}` : 'Filter'} width="w-80">
+        <ViewMenu
+          label={activeFilters > 0 ? `Filter · ${activeFilters}` : 'Filter'}
+          width="sm:w-80"
+        >
           <MenuToggle
             label={`Nur seit über ${gapMonths} Monaten`}
             checked={filter.onlyOverdue}

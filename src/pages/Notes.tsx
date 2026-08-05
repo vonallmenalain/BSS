@@ -161,7 +161,7 @@ export function Notes() {
         title="Notizen"
         actions={
           <>
-            <ViewMenu width="w-72">
+            <ViewMenu width="sm:w-72">
               <MenuChoice<Ansicht>
                 label="Darstellung"
                 value={ansicht}

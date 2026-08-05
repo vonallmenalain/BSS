@@ -3,6 +3,16 @@
 /* Dark Mode über eine Klasse am <html>-Element steuern. */
 @custom-variant dark (&:where(.dark, .dark *));
 
+/**
+ * Querformat auf einem niedrigen Bildschirm.
+ *
+ * Ein gedrehtes Telefon hat rund 390 Pixel Höhe – davon nähmen Kopfzeile und
+ * untere Leiste in ihrer gewohnten Grösse fast ein Drittel weg. Diese
+ * Variante macht sie flacher, damit vom Inhalt etwas übrig bleibt. Sie greift
+ * bewusst nicht auf dem Tablet: Dort ist auch quer genug Platz.
+ */
+@custom-variant landscape-short (@media (orientation: landscape) and (max-height: 32rem));
+
 @theme {
   /* Markenfarbe: gedecktes Blau – ruhig, seriös, gut lesbar */
   --color-brand-50: oklch(0.97 0.014 250);
@@ -163,6 +173,17 @@
   @apply mb-1.5 block text-sm font-medium text-slate-700 dark:text-slate-300;
 }
 
+/**
+ * Ein Haken, den man auch mit dem Daumen trifft.
+ *
+ * 16 Pixel sind auf dem Bildschirm gut zu sehen und mit der Maus gut zu
+ * treffen – am Telefon aber nicht. Deshalb überall dieselbe, grössere Grösse;
+ * die Zeile darum herum liefert den Rest der Trefferfläche.
+ */
+@utility checkbox {
+  @apply size-5 shrink-0 rounded border-slate-300 accent-brand-600 dark:border-slate-600;
+}
+
 @utility hint {
   @apply mt-1 text-xs text-slate-500 dark:text-slate-400;
 }
@@ -192,6 +213,13 @@
     padding-top: env(safe-area-inset-top);
   }
 
+  /* Im Querformat liegt die Kamera-Aussparung seitlich: Ohne diesen Abstand
+     verschwände dort der Anfang jeder Zeile hinter dem Rand des Geräts. */
+  .px-safe {
+    padding-left: env(safe-area-inset-left);
+    padding-right: env(safe-area-inset-right);
+  }
+
   /* Wie oben, aber mit Luft: für Flächen, die den ganzen Bildschirm
      einnehmen – der Ablauf am Pult etwa soll nicht am oberen Rand kleben. */
   .pt-safe-14 {
@@ -199,6 +227,17 @@
   }
   .pb-safe-10 {
     padding-bottom: calc(env(safe-area-inset-bottom) + 2.5rem);
+  }
+
+  /* Quer auf dem Telefon wird aus der Luft oben und unten schnell die Hälfte
+     des Bildschirms. Dann genügt ein Rand. */
+  @media (orientation: landscape) and (max-height: 32rem) {
+    .pt-safe-14 {
+      padding-top: calc(env(safe-area-inset-top) + 1.25rem);
+    }
+    .pb-safe-10 {
+      padding-bottom: calc(env(safe-area-inset-bottom) + 1rem);
+    }
   }
 
   /* Horizontal scrollbare Bereiche mit Einrastpunkten */

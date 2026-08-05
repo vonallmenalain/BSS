@@ -10,7 +10,7 @@ import {
   Timestamp,
 } from 'firebase/firestore'
 import { db, COLLECTIONS } from '@/lib/firebase'
-import { monthsSince } from '@/lib/dates'
+import { getAge, monthsSince } from '@/lib/dates'
 import { compareNames, normalize, stripUndefined } from '@/lib/utils'
 import { commit, type SaveOutcome } from '@/lib/sync'
 import type { Gender, Member, MemberStatus } from '@/lib/types'
@@ -81,7 +81,7 @@ export async function loadMembersForMatching(): Promise<Member[]> {
 /* ------------------------------------------------------------------ */
 
 export type MemberSortKey =
-  'name' | 'firstName' | 'birthDate' | 'age' | 'lastTalk' | 'status' | 'talkCount'
+  'name' | 'firstName' | 'birthDate' | 'age' | 'lastTalk' | 'lastPrayer' | 'status' | 'talkCount'
 
 export interface MemberFilter {
   search?: string
@@ -91,12 +91,31 @@ export interface MemberFilter {
   tag?: string
   /** Nur Mitglieder, die seit mindestens X Monaten keine Ansprache hatten */
   minMonthsSinceTalk?: number
+  /**
+   * Altersgrenzen in Jahren – beide Seiten frei lassbar.
+   *
+   * Wessen Geburtsdatum fehlt, fällt heraus, sobald eine Grenze gesetzt ist:
+   * Über sein Alter lässt sich nichts sagen, und ihn trotzdem zu zeigen
+   * hiesse, die Einschränkung stillschweigend zu übergehen.
+   */
+  minAge?: number | null
+  maxAge?: number | null
 }
 
 export function filterMembers(members: Member[], filter: MemberFilter): Member[] {
+  const hasAgeLimit = filter.minAge != null || filter.maxAge != null
+
   return members.filter((member) => {
     if (filter.status && filter.status !== 'all' && member.status !== filter.status) return false
     if (filter.gender && filter.gender !== 'all' && member.gender !== filter.gender) return false
+
+    if (hasAgeLimit) {
+      const age = getAge(member.birthDate)
+      if (age === null) return false
+      if (filter.minAge != null && age < filter.minAge) return false
+      if (filter.maxAge != null && age > filter.maxAge) return false
+    }
+
     if (
       filter.availableForTalks !== undefined &&
       member.availableForTalks !== filter.availableForTalks
@@ -132,10 +151,19 @@ export function filterMembers(members: Member[], filter: MemberFilter): Member[]
   })
 }
 
+/**
+ * Die Liste ordnen.
+ *
+ * `lastPrayer` steht nicht am Mitglied: Gebete liegen in ihrer eigenen
+ * Sammlung, und nur wer sie geladen hat, kann danach sortieren. Deshalb
+ * kommt die Zuordnung von aussen – ohne sie bleibt die Reihenfolge, wie sie
+ * war, statt eine Sortierung vorzutäuschen.
+ */
 export function sortMembers(
   members: Member[],
   key: MemberSortKey,
   direction: 'asc' | 'desc' = 'asc',
+  lastPrayer?: Map<string, Date>,
 ): Member[] {
   const factor = direction === 'asc' ? 1 : -1
   const time = (value: Member['birthDate']) => {
@@ -161,12 +189,29 @@ export function sortMembers(
         if (aTime === null && bTime === null) return 0
         if (aTime === null) return 1
         if (bTime === null) return -1
-        return factor * (aTime - bTime)
+        /*
+         * «Alter aufsteigend» heisst: die Jüngsten zuerst.
+         *
+         * Nach dem Geburtsdatum wäre es genau umgekehrt – wer früher geboren
+         * ist, steht vorn und ist der Älteste. Wer «Alter» wählt, meint das
+         * Alter; deshalb dreht sich hier das Vorzeichen, und `birthDate`
+         * bleibt daneben für die Ordnung nach dem Datum selbst.
+         */
+        return key === 'age' ? factor * (bTime - aTime) : factor * (aTime - bTime)
       }
       case 'lastTalk': {
         const aTime = time(a.lastTalkDate)
         const bTime = time(b.lastTalkDate)
         // «Noch nie gesprochen» ist die dringendste Information – zuerst zeigen.
+        if (aTime === null && bTime === null) return 0
+        if (aTime === null) return -1 * factor
+        if (bTime === null) return 1 * factor
+        return factor * (aTime - bTime)
+      }
+      case 'lastPrayer': {
+        const aTime = lastPrayer?.get(a.id)?.getTime() ?? null
+        const bTime = lastPrayer?.get(b.id)?.getTime() ?? null
+        // Wie bei der Ansprache: «noch nie» steht zuoberst.
         if (aTime === null && bTime === null) return 0
         if (aTime === null) return -1 * factor
         if (bTime === null) return 1 * factor

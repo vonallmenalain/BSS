@@ -455,7 +455,7 @@ function MeetingsMenu({
   counts: Record<MeetingScope, number>
 }) {
   return (
-    <ViewMenu width="w-80">
+    <ViewMenu width="sm:w-80">
       <MenuChoice<MeetingScope>
         label="Zeitraum"
         value={view.scope}
