@@ -1,11 +1,10 @@
 import { useCallback, useEffect, useMemo, useState } from 'react'
 import { useSearchParams } from 'react-router-dom'
-import { Check, ChevronLeft, ChevronRight, Clock, Plus, Trash2 } from 'lucide-react'
+import { Check, ChevronLeft, ChevronRight, Plus, Trash2 } from 'lucide-react'
 import { cn } from '@/lib/utils'
-import { getDueInfo } from '@/lib/dates'
 import { useAuth } from '@/contexts/AuthContext'
 import { useToast } from '@/contexts/ToastContext'
-import { DueBadge, KindBadge, StatusBadge } from '@/components/ui/Badge'
+import { KindBadge, StatusBadge } from '@/components/ui/Badge'
 import { ConfirmDialog } from '@/components/ui/Modal'
 import { EmptyState } from '@/components/ui/Feedback'
 import { AgendaItemEditor } from '@/components/agenda/AgendaItemEditor'
@@ -40,8 +39,8 @@ export const FOCUS_PARAM = 'traktandum'
  * wo man steht, und erlaubt den direkten Sprung.
  *
  * Bearbeitet wird ohne Umweg: Titel und Beschreibung sind Text, in den man
- * hineingreift, Priorität, Termin und Zuständige stehen darunter. Einen
- * Bearbeiten-Stift gibt es nicht mehr.
+ * hineingreift, die Zuständigen stehen darunter. Einen Bearbeiten-Stift gibt
+ * es nicht mehr.
  *
  * Welcher Punkt offen ist, steht in der Adresse. Das ist kein Selbstzweck:
  * Ein Klick auf einen erwähnten Namen führt zur Mitgliederseite, und «Zurück»
@@ -145,7 +144,6 @@ export function MeetingFocus({ items, onAdd, nextMeeting, readOnly = false }: Pr
   if (!current) return null
 
   const actor = profile ? { id: profile.id, name: profile.displayName } : null
-  const due = getDueInfo(current.dueDate)
   const kind = toItemKind(current)
 
   const changeStatus = async (status: ItemStatus) => {
@@ -245,13 +243,12 @@ export function MeetingFocus({ items, onAdd, nextMeeting, readOnly = false }: Pr
       {/* ---- Aktueller Punkt ---- */}
       <article className="card p-5">
         {/* Angeschrieben wird nur, was vom Normalfall abweicht: «Pendent» neben
-            «Pendenz» sagte dasselbe zweimal, und ein neues Traktandum ohne
-            Termin braucht gar keine Zeile. */}
-        {(kind === 'pendenz' || current.status !== 'pending' || due || current.deferCount > 0) && (
+            «Pendenz» sagte dasselbe zweimal, und ein neues Traktandum braucht
+            gar keine Zeile. */}
+        {(kind === 'pendenz' || current.status !== 'pending' || current.deferCount > 0) && (
           <div className="mb-3 flex flex-wrap items-center gap-1.5">
             <KindBadge kind={kind} />
             {current.status !== 'pending' && <StatusBadge status={current.status} />}
-            {due && <DueBadge label={due.label} overdue={due.overdue} soon={due.soon} />}
             {current.deferCount > 0 && (
               <span className="badge bg-amber-100 text-amber-800 dark:bg-amber-950 dark:text-amber-200">
                 {current.deferCount}× verschoben
@@ -289,17 +286,7 @@ export function MeetingFocus({ items, onAdd, nextMeeting, readOnly = false }: Pr
                 </span>
               </button>
 
-              <DeferMenu
-                itemId={current.id}
-                nextMeeting={nextMeeting}
-                triggerClassName="shrink-0"
-                trigger={
-                  <span className="btn-secondary">
-                    <Clock className="size-4" aria-hidden />
-                    <span className="hidden sm:inline">Verschieben</span>
-                  </span>
-                }
-              />
+              <DeferMenu itemId={current.id} nextMeeting={nextMeeting} compact />
 
               <button
                 type="button"

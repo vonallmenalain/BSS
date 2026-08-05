@@ -1,58 +1,51 @@
-import { useState, type ReactNode } from 'react'
+import { useState } from 'react'
 import { CalendarClock } from 'lucide-react'
-import { Modal } from '@/components/ui/Modal'
+import { cn } from '@/lib/utils'
 import { useAuth } from '@/contexts/AuthContext'
 import { useToast } from '@/contexts/ToastContext'
 import { formatDateShort } from '@/lib/dates'
-import { DEFER_LABELS, deferItem, type DeferTarget } from '@/services/agenda'
+import { deferToNextMeeting } from '@/services/agenda'
 
 interface Props {
   itemId: string
-  /** Sitzung, auf die «auf nächste Sitzung» verschiebt */
+  /** Sitzung, auf die verschoben wird – ohne sie geht es in den Sammelkorb */
   nextMeeting?: { id: string; date: Date } | null
-  trigger: ReactNode
-  /**
-   * Klassen für das auslösende Element. In einer Menüliste soll es die volle
-   * Breite einnehmen, in einer Knopfleiste dagegen nur so breit sein wie nötig.
-   */
-  triggerClassName?: string
+  className?: string
+  /** Nur das Symbol, ohne Beschriftung – für schmale Leisten */
+  compact?: boolean
   onDone?: () => void
 }
 
 /**
- * Verschiebe-Dialog mit den vier Fällen, die im Sitzungsalltag vorkommen:
- * auf die nächste Sitzung, um eine Woche, um einen Monat, um drei Monate –
- * plus ein freies Datum, wenn es doch etwas anderes sein soll.
+ * «Auf die nächste Sitzung» – ein Knopf, kein Menü mehr.
+ *
+ * Früher standen hier fünf Ziele: nächste Sitzung, eine Woche, ein Monat,
+ * drei Monate, freies Datum. Vier davon setzten bloss ein Fälligkeitsdatum,
+ * an dem nichts geschah – der Punkt lag weiter im Sammelkorb und wartete auf
+ * einen Termin, den niemand einberief. Ein Traktandum gehört in eine
+ * Sitzung, und «nicht heute» heisst: in der nächsten.
+ *
+ * Steht noch keine nächste Sitzung fest, wandert der Punkt in den
+ * Sammelkorb und erscheint unter «Pendenzen», bis eine Sitzung ihn aufnimmt.
  */
-export function DeferMenu({
-  itemId,
-  nextMeeting,
-  trigger,
-  triggerClassName = 'w-full text-left',
-  onDone,
-}: Props) {
+export function DeferMenu({ itemId, nextMeeting, className, compact = false, onDone }: Props) {
   const { profile } = useAuth()
   const toast = useToast()
-  const [open, setOpen] = useState(false)
-  const [customDate, setCustomDate] = useState('')
   const [busy, setBusy] = useState(false)
 
-  const run = async (target: DeferTarget, customDateValue?: Date | null) => {
+  const run = async () => {
     if (!profile) return
     setBusy(true)
     try {
-      await deferItem(
-        itemId,
-        target,
-        { id: profile.id, name: profile.displayName },
-        {
-          customDate: customDateValue,
-          nextMeetingId: nextMeeting?.id ?? null,
-          nextMeetingDate: nextMeeting?.date ?? null,
-        },
+      await deferToNextMeeting(itemId, nextMeeting?.id ?? null, {
+        id: profile.id,
+        name: profile.displayName,
+      })
+      toast.success(
+        nextMeeting
+          ? `Auf die Sitzung vom ${formatDateShort(nextMeeting.date)} verschoben.`
+          : 'In die Pendenzen verschoben – es ist noch keine Sitzung geplant.',
       )
-      toast.success('Traktandum verschoben.')
-      setOpen(false)
       onDone?.()
     } catch (error) {
       console.error(error)
@@ -63,70 +56,19 @@ export function DeferMenu({
   }
 
   return (
-    <>
-      <button type="button" onClick={() => setOpen(true)} className={triggerClassName}>
-        {trigger}
-      </button>
-
-      <Modal
-        open={open}
-        onClose={() => setOpen(false)}
-        title="Traktandum verschieben"
-        description="Es verschwindet aus der laufenden Sitzung und taucht zum gewählten Zeitpunkt wieder auf."
-        size="sm"
-      >
-        <div className="space-y-2">
-          <button
-            type="button"
-            className="btn-secondary w-full justify-between"
-            disabled={busy || !nextMeeting}
-            onClick={() => void run('next_meeting')}
-          >
-            <span className="flex items-center gap-2">
-              <CalendarClock className="size-4" aria-hidden />
-              {DEFER_LABELS.next_meeting}
-            </span>
-            <span className="text-xs text-slate-500">
-              {nextMeeting ? formatDateShort(nextMeeting.date) : 'keine geplant'}
-            </span>
-          </button>
-
-          {(['one_week', 'one_month', 'three_months'] as const).map((target) => (
-            <button
-              key={target}
-              type="button"
-              className="btn-secondary w-full justify-start"
-              disabled={busy}
-              onClick={() => void run(target)}
-            >
-              {DEFER_LABELS[target]}
-            </button>
-          ))}
-
-          <div className="border-t border-slate-200 pt-3 dark:border-slate-700">
-            <label className="label" htmlFor="defer-date">
-              Eigenes Datum
-            </label>
-            <div className="flex gap-2">
-              <input
-                id="defer-date"
-                type="date"
-                className="input"
-                value={customDate}
-                onChange={(event) => setCustomDate(event.target.value)}
-              />
-              <button
-                type="button"
-                className="btn-primary"
-                disabled={busy || !customDate}
-                onClick={() => void run('custom', new Date(`${customDate}T12:00:00`))}
-              >
-                Setzen
-              </button>
-            </div>
-          </div>
-        </div>
-      </Modal>
-    </>
+    <button
+      type="button"
+      className={cn('btn-secondary shrink-0', className)}
+      disabled={busy}
+      onClick={() => void run()}
+      title={
+        nextMeeting
+          ? `Auf die Sitzung vom ${formatDateShort(nextMeeting.date)}`
+          : 'Es ist keine weitere Sitzung geplant – der Punkt bleibt unter «Pendenzen».'
+      }
+    >
+      <CalendarClock className="size-4" aria-hidden />
+      <span className={compact ? 'hidden sm:inline' : undefined}>Auf nächste Sitzung</span>
+    </button>
   )
 }

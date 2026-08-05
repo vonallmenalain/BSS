@@ -18,6 +18,7 @@ import { usePrayers, useTalks } from '@/hooks/useFirestore'
 import { useSundayAnnouncements } from '@/hooks/useAnnouncements'
 import { useLocalStorage } from '@/hooks/useLocalStorage'
 import { MemberPicker } from '@/components/ui/Pickers'
+import { BusinessFields } from '@/components/sacrament/BusinessFields'
 import { HymnField } from '@/components/sacrament/HymnField'
 import { LeaderField } from '@/components/sacrament/LeaderField'
 import { MemberSearchSelect } from '@/components/sacrament/MemberSearchSelect'
@@ -52,6 +53,8 @@ import {
   emptySacramentMeeting,
   moveInList,
   newAnnouncement,
+  businessLabel,
+  isBusinessEmpty,
   newBusinessEntry,
   newMusicalNumber,
   removeTalkSlot,
@@ -70,7 +73,6 @@ import {
   TALK_KIND_LABELS,
   type AnnouncementEntry,
   type BusinessEntry,
-  type BusinessType,
   type HymnChoice,
   type HymnSlot,
   type Member,
@@ -474,7 +476,7 @@ export function Conducting() {
    * nicht mit: Sie gehört ins Formular, nicht in die Ansage.
    */
   const announced = sunday.entries.filter((entry) => entry.text.trim())
-  const business = current.business.filter((entry) => entry.text.trim())
+  const business = current.business.filter((entry) => !isBusinessEmpty(entry))
 
   const empty = new Set(
     [
@@ -1204,7 +1206,7 @@ function BusinessList({ entries, rows }: { entries: BusinessEntry[]; rows: strin
           <span className="badge bg-slate-100 text-[0.8em] text-slate-600 dark:bg-slate-800 dark:text-slate-300">
             {BUSINESS_TYPE_LABELS[entry.type]}
           </span>{' '}
-          <span className="font-medium">{entry.text}</span>
+          <span className="font-medium">{businessLabel(entry)}</span>
         </li>
       ))}
     </ul>
@@ -1322,41 +1324,11 @@ function BusinessEditor({
     <div className="no-print space-y-2">
       {entries.map((entry, index) => (
         <div key={entry.id} className="flex items-start gap-2">
-          <div className="min-w-0 flex-1 space-y-1.5">
-            <div className="flex flex-wrap gap-2">
-              <select
-                className="input w-auto py-1.5 text-sm"
-                value={entry.type}
-                onChange={(event) =>
-                  onChange(
-                    replaceInList(entries, { ...entry, type: event.target.value as BusinessType }),
-                  )
-                }
-                aria-label={`Art des Eintrags ${index + 1}`}
-              >
-                {(Object.keys(BUSINESS_TYPE_LABELS) as BusinessType[]).map((type) => (
-                  <option key={type} value={type}>
-                    {BUSINESS_TYPE_LABELS[type]}
-                  </option>
-                ))}
-              </select>
-              <input
-                className="input min-w-40 flex-1"
-                value={entry.text}
-                onChange={(event) =>
-                  onChange(replaceInList(entries, { ...entry, text: event.target.value }))
-                }
-                placeholder="Name und Aufgabe"
-                aria-label={`Text des Eintrags ${index + 1}`}
-              />
-            </div>
-            <MemberPicker
-              value={entry.memberIds}
-              onChange={(next) => onChange(replaceInList(entries, { ...entry, memberIds: next }))}
-              label="Betroffene Mitglieder (optional)"
-              placeholder="Name eingeben …"
-            />
-          </div>
+          <BusinessFields
+            entry={entry}
+            index={index}
+            onChange={(next) => onChange(replaceInList(entries, next))}
+          />
           <ListButtons
             index={index}
             length={entries.length}

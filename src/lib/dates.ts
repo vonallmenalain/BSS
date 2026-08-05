@@ -117,38 +117,6 @@ export function formatRelative(value: Parameters<typeof toDate>[0]): string {
 }
 
 /* ------------------------------------------------------------------ */
-/* Fälligkeiten                                                        */
-/* ------------------------------------------------------------------ */
-
-export interface DueInfo {
-  /** Tage bis zur Fälligkeit; negativ = überfällig */
-  days: number
-  overdue: boolean
-  dueToday: boolean
-  soon: boolean
-  label: string
-}
-
-export function getDueInfo(value: Parameters<typeof toDate>[0]): DueInfo | null {
-  const date = toDate(value)
-  if (!date) return null
-
-  const days = differenceInCalendarDays(startOfDay(date), startOfDay(new Date()))
-  const overdue = days < 0
-  const dueToday = days === 0
-
-  let label: string
-  if (dueToday) label = 'Heute fällig'
-  else if (days === 1) label = 'Morgen fällig'
-  else if (days === -1) label = '1 Tag überfällig'
-  else if (overdue) label = `${Math.abs(days)} Tage überfällig`
-  else if (days <= 7) label = `In ${days} Tagen`
-  else label = `Bis ${formatDate(date)}`
-
-  return { days, overdue, dueToday, soon: days >= 0 && days <= 3, label }
-}
-
-/* ------------------------------------------------------------------ */
 /* Terminberechnung                                                    */
 /* ------------------------------------------------------------------ */
 

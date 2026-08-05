@@ -22,15 +22,13 @@ import {
   Tent,
 } from 'lucide-react'
 import { cn } from '@/lib/utils'
-import { toDate } from '@/lib/dates'
 import { useAuth } from '@/contexts/AuthContext'
 import { useData } from '@/contexts/DataContext'
 import { useOnlineStatus, useTheme } from '@/hooks/useLocalStorage'
-import { useNow } from '@/hooks/useNow'
 import { useOpenItems } from '@/hooks/useFirestore'
 import { usePendingWrites } from '@/hooks/useSync'
 import { Avatar } from '@/components/ui/Avatar'
-import { ROLE_LABELS } from '@/lib/types'
+import { ROLE_LABELS, toItemKind } from '@/lib/types'
 import { UpdatePrompt } from '@/components/UpdatePrompt'
 
 interface NavItem {
@@ -65,7 +63,6 @@ export function Layout() {
   const { data: openItems } = useOpenItems()
   const online = useOnlineStatus()
   const unsent = usePendingWrites()
-  const now = useNow()
   const [theme, setTheme] = useTheme()
   const [menuOpen, setMenuOpen] = useState(false)
   const location = useLocation()
@@ -73,13 +70,17 @@ export function Layout() {
   // Beim Seitenwechsel das mobile Menü schliessen.
   useEffect(() => setMenuOpen(false), [location.pathname])
 
-  const overdueCount = useMemo(
-    () =>
-      openItems.filter((item) => {
-        const date = toDate(item.dueDate)
-        return date !== null && date.getTime() < now
-      }).length,
-    [openItems, now],
+  /*
+   * Die Zahl neben «Pendenzen»: was liegengeblieben ist.
+   *
+   * Neue Traktanden zählen nicht mit – sie stehen in ihrer Sitzung und
+   * werden erst zur Pendenz, wenn diese abgeschlossen wird, ohne dass der
+   * Haken gesetzt ist. Sonst zeigte die Zahl bloss, wie gut die nächste
+   * Sitzung vorbereitet ist.
+   */
+  const pendenzCount = useMemo(
+    () => openItems.filter((item) => toItemKind(item) === 'pendenz').length,
+    [openItems],
   )
 
   /**
@@ -113,7 +114,7 @@ export function Layout() {
           shortLabel: 'Pendenz',
           icon: ListTodo,
           primary: true,
-          badge: overdueCount || undefined,
+          badge: pendenzCount || undefined,
         },
         { to: '/notizen', label: 'Notizen', shortLabel: 'Notiz', icon: NotebookPen },
         { to: '/putzplan', label: 'Putzplan', shortLabel: 'Putzen', icon: Brush },

@@ -1,82 +1,118 @@
-import { useEffect, useMemo, useState, type FormEvent } from 'react'
-import { Link } from 'react-router-dom'
-import { Award, ChevronRight, Plus, Search, Trash2 } from 'lucide-react'
+import { useMemo, useState } from 'react'
+import { Link, useLocation } from 'react-router-dom'
+import { Award, ChevronRight, Search, Users } from 'lucide-react'
 import { useData } from '@/contexts/DataContext'
-import { useToast } from '@/contexts/ToastContext'
 import { useCallings } from '@/hooks/useFirestore'
-import { Modal, ConfirmDialog } from '@/components/ui/Modal'
 import { EmptyState, SkeletonList } from '@/components/ui/Feedback'
-import { PageHeader, SegmentedControl, MemberPicker } from '@/components/ui/Pickers'
-import { CallingStatusBadge } from '@/components/ui/Badge'
+import { PageHeader, SegmentedControl } from '@/components/ui/Pickers'
+import { CallingStatusBadge, MemberStatusBadge } from '@/components/ui/Badge'
 import { Avatar } from '@/components/ui/Avatar'
-import { toDateInput } from '@/lib/dates'
+import { getAge, toDate } from '@/lib/dates'
 import { cn, compareNames, groupBy, matchesSearch } from '@/lib/utils'
-import {
-  advanceCalling,
-  callingPeriod,
-  COMMON_POSITIONS,
-  createCalling,
-  deleteCalling,
-  isWardCalling,
-  updateCalling,
-} from '@/services/callings'
-import {
-  CALLING_STATUS_LABELS,
-  ORGANIZATION_LABELS,
-  type Calling,
-  type CallingStatus,
-  type Organization,
-} from '@/lib/types'
+import { activeCallings, callingPeriod, isWardCalling } from '@/services/callings'
+import { ORGANIZATION_LABELS, type Calling, type Member } from '@/lib/types'
 
-type Scope = 'active' | 'process' | 'released' | 'all'
+/**
+ * Was die Liste zeigt.
+ *
+ * `without` fällt aus der Reihe: Dort stehen keine Berufungen, sondern die
+ * Personen, zu denen keine gehört – die Frage vor jeder neuen Berufung.
+ */
+type Scope = 'active' | 'without' | 'released' | 'all'
 
-/** Reihenfolge der Schritte im Berufungsprozess. */
-const FLOW: CallingStatus[] = ['proposed', 'approved', 'extended', 'sustained', 'set_apart']
+/** Ob die ganze Gemeinde zählt oder nur, wer aktiv ist. */
+type Audience = 'all' | 'active'
+
+/** Woher der Weg kam – damit «Zurück» im Profil hierher führt. */
+const FROM_LABEL = 'Berufungen'
 
 export function Callings() {
-  // Grosszügig bemessen: Die Seite zählt und filtert selbst, und seit die
-  // Berufungshistorie mitkommt, umfasst der Bestand einer Gemeinde leicht
-  // einige hundert Einträge. Ein zu kleiner Ausschnitt liesse ausgerechnet
-  // die laufenden Berufungen verschwinden – sie sind die ältesten.
-  const { data: callings, loading } = useCallings(2000)
+  /*
+   * Grosszügig bemessen: Die Seite zählt und filtert selbst, und seit die
+   * Berufungshistorie mitkommt, umfasst der Bestand einer Gemeinde leicht
+   * einige hundert Einträge. Ein zu kleiner Ausschnitt liesse ausgerechnet
+   * die laufenden Berufungen verschwinden – sie sind die ältesten.
+   *
+   * Für «ohne Berufung» hängt daran mehr als die Vollständigkeit einer
+   * Liste: Eine fehlende Berufung liesse ihren Träger dort auftauchen, als
+   * hätte er keine. Der Ausschnitt nimmt die zuletzt geänderten Einträge –
+   * und der Import berührt jedes Mal den ganzen laufenden Bestand. Was
+   * gerade gilt, steht damit zuvorderst; abgeschnitten wird höchstens
+   * Vergangenheit.
+   */
+  const { data: callings, loading: callingsLoading } = useCallings(2000)
+  const { members, membersById, loading: membersLoading } = useData()
+  const location = useLocation()
   const [scope, setScope] = useState<Scope>('active')
+  const [audience, setAudience] = useState<Audience>('all')
   const [search, setSearch] = useState('')
-  const [formOpen, setFormOpen] = useState(false)
-  const [editCalling, setEditCalling] = useState<Calling | null>(null)
+
+  const loading = callingsLoading || membersLoading
+  const from = `${location.pathname}${location.search}`
+
+  /*
+   * Der Bestand, auf den die Wahl «alle / nur Aktive» schon angewandt ist.
+   *
+   * Wer im Verzeichnis nicht (mehr) steht, bleibt sichtbar: Über seinen
+   * Status lässt sich nichts sagen, und eine Berufung stillschweigend
+   * verschwinden zu lassen wäre das Schlechtere.
+   */
+  const pool = useMemo(() => {
+    if (audience === 'all') return callings
+    return callings.filter((calling) => {
+      const member = membersById.get(calling.memberId)
+      return !member || member.status === 'active'
+    })
+  }, [callings, audience, membersById])
+
+  const running = useMemo(() => activeCallings(pool), [pool])
+  const released = useMemo(() => pool.filter(isReleased), [pool])
+
+  /*
+   * Mitglieder ohne laufende Berufung.
+   *
+   * Gezählt wird gegen den **ganzen** Bestand und nicht gegen die gewählte
+   * Gruppe: Wer eine Berufung hat, hat sie auch dann, wenn seine Berufung
+   * gerade ausgeblendet ist. Berufungen ausserhalb der Einheit – Pfahl,
+   * Seminar, Institut – zählen mit; auch sie sind eine Aufgabe.
+   */
+  const withoutCalling = useMemo(() => {
+    const busy = new Set(activeCallings(callings).map((calling) => calling.memberId))
+    return members
+      .filter((member) => !busy.has(member.id))
+      .filter((member) => audience === 'all' || member.status === 'active')
+      .sort((a, b) => compareNames(`${a.lastName} ${a.firstName}`, `${b.lastName} ${b.firstName}`))
+  }, [members, callings, audience])
 
   const counts = useMemo(
     () => ({
-      active: callings.filter((c) => c.status === 'set_apart' || c.status === 'sustained').length,
-      process: callings.filter((c) => ['proposed', 'approved', 'extended'].includes(c.status))
-        .length,
-      released: callings.filter((c) => c.status === 'released' || c.status === 'declined').length,
-      all: callings.length,
+      active: running.length,
+      without: withoutCalling.length,
+      released: released.length,
+      all: pool.length,
     }),
-    [callings],
+    [running, withoutCalling, released, pool],
   )
 
   const visible = useMemo(() => {
-    let result = callings
+    if (scope === 'without') return []
+    const base = scope === 'active' ? running : scope === 'released' ? released : pool
 
-    if (scope === 'active') {
-      result = result.filter((c) => c.status === 'set_apart' || c.status === 'sustained')
-    } else if (scope === 'process') {
-      result = result.filter((c) => ['proposed', 'approved', 'extended'].includes(c.status))
-    } else if (scope === 'released') {
-      result = result.filter((c) => c.status === 'released' || c.status === 'declined')
-    }
+    if (!search.trim()) return base
+    return base.filter((calling) =>
+      matchesSearch(
+        `${calling.memberName} ${calling.position} ${ORGANIZATION_LABELS[calling.organization]}`,
+        search,
+      ),
+    )
+  }, [pool, running, released, scope, search])
 
-    if (search.trim()) {
-      result = result.filter((c) =>
-        matchesSearch(
-          `${c.memberName} ${c.position} ${ORGANIZATION_LABELS[c.organization]}`,
-          search,
-        ),
-      )
-    }
-
-    return result
-  }, [callings, scope, search])
+  const visibleMembers = useMemo(() => {
+    if (!search.trim()) return withoutCalling
+    return withoutCalling.filter((member) =>
+      matchesSearch(`${member.firstName} ${member.lastName}`, search),
+    )
+  }, [withoutCalling, search])
 
   // Zwei Sparten. Der Sonntagsschulpräsident des Pfahls ist nicht der
   // Sonntagsschulpräsident der Gemeinde – nebeneinander in derselben Liste
@@ -95,16 +131,12 @@ export function Callings() {
 
   return (
     <>
+      {/* Kein Knopf für eine neue Berufung, kein Bearbeiten, kein Löschen:
+          Wer welche Berufung hat, sagt das LCR. Von Hand nachgeführt hiesse,
+          zwei Stände nebeneinander zu führen – und der eine wäre falsch. */}
       <PageHeader
         title="Berufungen"
-        actions={
-          /* Der Import aus dem LCR steht unter «Einstellungen › Importe».
-             Hier bleibt nur der Weg, der eine einzelne Berufung betrifft. */
-          <button type="button" className="btn-primary" onClick={() => setFormOpen(true)}>
-            <Plus className="size-4" aria-hidden />
-            <span className="hidden sm:inline">Neue Berufung</span>
-          </button>
-        }
+        subtitle="Aus dem LCR übernommen – erfasst wird unter «Einstellungen › Importe»"
       />
 
       <div className="mb-4 space-y-3">
@@ -116,26 +148,47 @@ export function Callings() {
           <input
             type="search"
             className="input pl-9"
-            placeholder="Name, Position, Organisation …"
+            placeholder={scope === 'without' ? 'Name suchen …' : 'Name, Position, Organisation …'}
             value={search}
             onChange={(event) => setSearch(event.target.value)}
           />
         </div>
 
-        <SegmentedControl<Scope>
-          value={scope}
-          onChange={setScope}
-          options={[
-            { value: 'active', label: 'Laufend', count: counts.active },
-            { value: 'process', label: 'In Bearbeitung', count: counts.process },
-            { value: 'released', label: 'Entlassen', count: counts.released },
-            { value: 'all', label: 'Alle', count: counts.all },
-          ]}
-        />
+        <div className="flex flex-wrap items-center justify-between gap-2">
+          <SegmentedControl<Scope>
+            value={scope}
+            onChange={setScope}
+            size="sm"
+            options={[
+              { value: 'active', label: 'Aktuell', count: counts.active },
+              { value: 'without', label: 'Ohne Berufung', count: counts.without },
+              { value: 'released', label: 'Entlassen', count: counts.released },
+              { value: 'all', label: 'Alle', count: counts.all },
+            ]}
+          />
+
+          <SegmentedControl<Audience>
+            value={audience}
+            onChange={setAudience}
+            size="sm"
+            options={[
+              { value: 'all', label: 'Alle Mitglieder' },
+              { value: 'active', label: 'Nur Aktive' },
+            ]}
+          />
+        </div>
       </div>
 
       {loading ? (
         <SkeletonList rows={4} />
+      ) : scope === 'without' ? (
+        <WithoutCallingSection
+          entries={visibleMembers}
+          callings={callings}
+          from={from}
+          searching={Boolean(search.trim())}
+          hasMembers={members.length > 0}
+        />
       ) : visible.length === 0 ? (
         <div className="card">
           <EmptyState
@@ -143,16 +196,8 @@ export function Callings() {
             title={callings.length === 0 ? 'Noch keine Berufungen erfasst' : 'Nichts gefunden'}
             description={
               callings.length === 0
-                ? 'Erfasse Berufungen, um den Überblick über Vorschläge, Bestätigungen und Einsetzungen zu behalten.'
+                ? 'Die Berufungen kommen aus dem LCR: «Einstellungen › Importe › Berufungen», eingefügt aus der Zwischenablage.'
                 : 'Passe Suche oder Filter an.'
-            }
-            action={
-              callings.length === 0 && (
-                <button type="button" className="btn-primary" onClick={() => setFormOpen(true)}>
-                  <Plus className="size-4" aria-hidden />
-                  Berufung erfassen
-                </button>
-              )
             }
           />
         </div>
@@ -163,7 +208,7 @@ export function Callings() {
               key={organization}
               title={ORGANIZATION_LABELS[organization]}
               entries={entries.sort(compareByImportOrder)}
-              onSelect={setEditCalling}
+              from={from}
             />
           ))}
 
@@ -173,24 +218,22 @@ export function Callings() {
                 title="Ausserhalb der Einheit"
                 hint="Pfahl, Seminar, Institut und Mission – nicht Teil des Organisationsplans der Gemeinde."
                 entries={outsideUnit}
-                onSelect={setEditCalling}
+                from={from}
               />
             </div>
           )}
         </div>
       )}
-
-      <CallingForm open={formOpen} onClose={() => setFormOpen(false)} />
-      <CallingForm
-        open={Boolean(editCalling)}
-        onClose={() => setEditCalling(null)}
-        calling={editCalling}
-      />
     </>
   )
 }
 
 /* ------------------------------------------------------------------ */
+
+/** Entlassen oder abgelehnt – die Berufung ist vorbei. */
+function isReleased(calling: Calling): boolean {
+  return calling.status === 'released' || calling.status === 'declined'
+}
 
 /**
  * Reihenfolge innerhalb einer Organisation – wie im LCR.
@@ -199,9 +242,9 @@ export function Callings() {
  * Das ist die Ordnung, in der die Bischofschaft eine Organisation denkt;
  * alphabetisch sortiert stünde der Bischof unter «B» zwischen den Lehrern.
  *
- * Von Hand erfasste Berufungen tragen keine Nummer. Sie kommen ans Ende
- * und sind dort nach Bezeichnung geordnet – irgendwo müssen sie hin, und
- * hinten stören sie die eingelesene Ordnung nicht.
+ * Berufungen aus einem älteren Import tragen keine Nummer. Sie kommen ans
+ * Ende und sind dort nach Bezeichnung geordnet – irgendwo müssen sie hin,
+ * und hinten stören sie die eingelesene Ordnung nicht.
  */
 function compareByImportOrder(a: Calling, b: Calling): number {
   const left = a.order ?? Number.MAX_SAFE_INTEGER
@@ -216,12 +259,12 @@ function CallingSection({
   title,
   hint,
   entries,
-  onSelect,
+  from,
 }: {
   title: string
   hint?: string
   entries: Calling[]
-  onSelect: (calling: Calling) => void
+  from: string
 }) {
   return (
     <section>
@@ -232,22 +275,25 @@ function CallingSection({
       <ul className={cn('card divide-list overflow-hidden', !hint && 'mt-2')}>
         {entries.map((calling) => (
           <li key={calling.id}>
-            <button
-              type="button"
-              onClick={() => onSelect(calling)}
-              className="flex w-full items-center gap-3 px-4 py-3 text-left transition hover:bg-slate-50 dark:hover:bg-slate-800/60"
+            {/* Der Griff auf eine Zeile führt zur Person: Was die App hier
+                beantworten kann, ist «wer ist das?» – und das steht im
+                Profil, mitsamt allem, was diese Person sonst noch tut. */}
+            <Link
+              to={`/mitglieder/${calling.memberId}`}
+              state={{ from, fromLabel: FROM_LABEL }}
+              className="group flex w-full items-center gap-3 px-4 py-3 text-left transition hover:bg-slate-50 dark:hover:bg-slate-800/60"
             >
               <Avatar name={calling.memberName} id={calling.memberId} size="md" />
               <div className="min-w-0 flex-1">
                 <p className="truncate text-sm font-medium">{calling.position}</p>
                 <p className="truncate text-xs text-slate-500 dark:text-slate-400">
-                  {calling.memberName}
+                  <span className="group-hover:underline">{calling.memberName}</span>
                   {callingPeriod(calling) && ` · ${callingPeriod(calling)}`}
                 </p>
               </div>
               <CallingStatusBadge status={calling.status} />
               <ChevronRight className="size-4 shrink-0 text-slate-300" aria-hidden />
-            </button>
+            </Link>
           </li>
         ))}
       </ul>
@@ -257,345 +303,117 @@ function CallingSection({
 
 /* ------------------------------------------------------------------ */
 
-interface FormState {
-  memberIds: string[]
-  position: string
-  organization: Organization
-  status: CallingStatus
-  proposedDate: string
-  extendedDate: string
-  sustainedDate: string
-  setApartDate: string
-  releasedDate: string
-  notes: string
-  /** Berufung ausserhalb der eigenen Einheit */
-  outOfUnit: boolean
-}
-
-const EMPTY: FormState = {
-  memberIds: [],
-  position: '',
-  organization: 'ward',
-  outOfUnit: false,
-  status: 'proposed',
-  proposedDate: '',
-  extendedDate: '',
-  sustainedDate: '',
-  setApartDate: '',
-  releasedDate: '',
-  notes: '',
-}
-
-function CallingForm({
-  open,
-  onClose,
-  calling,
+/**
+ * Wer keine Berufung hat.
+ *
+ * Die Liste beantwortet die Frage, die vor jeder Berufung steht – und sie
+ * beantwortet sie ehrlich: Sie enthält die ganze Gemeinde, Kinder
+ * eingeschlossen. Deshalb steht das Alter dabei, und deshalb gibt es den
+ * Umschalter auf «nur Aktive».
+ */
+function WithoutCallingSection({
+  entries,
+  callings,
+  from,
+  searching,
+  hasMembers,
 }: {
-  open: boolean
-  onClose: () => void
-  calling?: Calling | null
+  entries: Member[]
+  callings: Calling[]
+  from: string
+  searching: boolean
+  /** Ob überhaupt Mitglieder erfasst sind – sonst hiesse «alle haben eine». */
+  hasMembers: boolean
 }) {
-  const { membersById } = useData()
-  const toast = useToast()
-  const [form, setForm] = useState<FormState>(EMPTY)
-  const [saving, setSaving] = useState(false)
-  const [confirmDelete, setConfirmDelete] = useState(false)
+  const lastCallings = useMemo(() => lastReleasedByMember(callings), [callings])
 
-  useEffect(() => {
-    if (!open) return
-    setForm(
-      calling
-        ? {
-            memberIds: [calling.memberId],
-            position: calling.position,
-            organization: calling.organization,
-            outOfUnit: Boolean(calling.outOfUnit),
-            status: calling.status,
-            proposedDate: toDateInput(calling.proposedDate),
-            extendedDate: toDateInput(calling.extendedDate),
-            sustainedDate: toDateInput(calling.sustainedDate),
-            setApartDate: toDateInput(calling.setApartDate),
-            releasedDate: toDateInput(calling.releasedDate),
-            notes: calling.notes ?? '',
+  if (entries.length === 0) {
+    return (
+      <div className="card">
+        <EmptyState
+          icon={Users}
+          title={
+            !hasMembers
+              ? 'Noch keine Mitglieder'
+              : searching
+                ? 'Nichts gefunden'
+                : 'Alle haben eine Berufung'
           }
-        : EMPTY,
+          description={
+            !hasMembers
+              ? 'Ohne Mitgliederliste lässt sich nicht sagen, wer keine Berufung hat. Sie kommt unter «Einstellungen › Importe › Mitglieder».'
+              : searching
+                ? 'Passe Suche oder Filter an.'
+                : 'Zu jedem Mitglied dieser Auswahl ist eine laufende Berufung erfasst.'
+          }
+        />
+      </div>
     )
-  }, [open, calling])
-
-  const update = <K extends keyof FormState>(key: K, value: FormState[K]) =>
-    setForm((current) => ({ ...current, [key]: value }))
-
-  const asDate = (value: string) => (value ? new Date(`${value}T12:00:00`) : null)
-
-  const handleSubmit = async (event: FormEvent) => {
-    event.preventDefault()
-    const memberId = form.memberIds[0]
-    if (!memberId) {
-      toast.error('Bitte wähle ein Mitglied aus.')
-      return
-    }
-    if (!form.position.trim()) {
-      toast.error('Bitte gib die Position an.')
-      return
-    }
-
-    const member = membersById.get(memberId)
-    const payload = {
-      memberId,
-      memberName: member ? `${member.firstName} ${member.lastName}` : 'Unbekannt',
-      position: form.position.trim(),
-      organization: form.organization,
-      outOfUnit: form.outOfUnit,
-      status: form.status,
-      proposedDate: asDate(form.proposedDate),
-      extendedDate: asDate(form.extendedDate),
-      sustainedDate: asDate(form.sustainedDate),
-      setApartDate: asDate(form.setApartDate),
-      releasedDate: asDate(form.releasedDate),
-      notes: form.notes.trim(),
-    }
-
-    setSaving(true)
-    try {
-      if (calling) {
-        const outcome = await updateCalling(calling.id, payload)
-        toast.saved('Berufung aktualisiert.', outcome)
-      } else {
-        const { outcome } = await createCalling(payload)
-        toast.saved('Berufung erfasst.', outcome)
-      }
-      onClose()
-    } catch (error) {
-      console.error(error)
-      toast.error('Speichern fehlgeschlagen.')
-    } finally {
-      setSaving(false)
-    }
   }
 
-  /** Nächster Schritt im Prozess – als ein Klick statt Datum-Tippen. */
-  const nextStep = calling ? FLOW[FLOW.indexOf(calling.status) + 1] : undefined
-
-  const suggestions = COMMON_POSITIONS[form.organization] ?? []
-
   return (
-    <>
-      <Modal
-        open={open}
-        onClose={onClose}
-        title={calling ? 'Berufung bearbeiten' : 'Neue Berufung'}
-        size="lg"
-        footer={
-          <>
-            {calling && (
-              <button
-                type="button"
-                className="btn-ghost mr-auto text-rose-600 dark:text-rose-400"
-                onClick={() => setConfirmDelete(true)}
+    <section>
+      <h2 className="text-xs font-semibold tracking-wide text-slate-500 uppercase dark:text-slate-400">
+        Ohne Berufung ({entries.length})
+      </h2>
+      <p className="hint mb-2">
+        Mitglieder, zu denen keine laufende Berufung erfasst ist. Berufungen ausserhalb der Einheit
+        – Pfahl, Seminar, Institut – zählen mit.
+      </p>
+      <ul className="card divide-list overflow-hidden">
+        {entries.map((member) => {
+          const age = getAge(member.birthDate)
+          const last = lastCallings.get(member.id)
+          const period = last ? callingPeriod(last) : ''
+          const facts = [
+            age !== null ? `${age} Jahre` : null,
+            last ? `zuletzt ${last.position}${period ? ` (${period})` : ''}` : null,
+          ].filter(Boolean)
+
+          return (
+            <li key={member.id}>
+              <Link
+                to={`/mitglieder/${member.id}`}
+                state={{ from, fromLabel: FROM_LABEL }}
+                className="group flex w-full items-center gap-3 px-4 py-3 text-left transition hover:bg-slate-50 dark:hover:bg-slate-800/60"
               >
-                <Trash2 className="size-4" aria-hidden />
-                Löschen
-              </button>
-            )}
-            <button type="button" className="btn-secondary" onClick={onClose} disabled={saving}>
-              Abbrechen
-            </button>
-            <button type="submit" form="calling-form" className="btn-primary" disabled={saving}>
-              Speichern
-            </button>
-          </>
-        }
-      >
-        <form id="calling-form" onSubmit={handleSubmit} className="space-y-4">
-          {calling && nextStep && (
-            <div className="border-brand-200 bg-brand-50 dark:border-brand-800 dark:bg-brand-950 flex flex-wrap items-center justify-between gap-2 rounded-lg border p-3">
-              <div>
-                <p className="text-sm font-medium">Nächster Schritt</p>
-                <p className="text-xs text-slate-600 dark:text-slate-300">
-                  {CALLING_STATUS_LABELS[nextStep]}
-                </p>
-              </div>
-              <button
-                type="button"
-                className="btn-primary btn-sm"
-                onClick={() =>
-                  void advanceCalling(calling.id, nextStep).then((outcome) => {
-                    toast.saved(`Status: ${CALLING_STATUS_LABELS[nextStep]}`, outcome)
-                    onClose()
-                  })
-                }
-              >
-                Mit heutigem Datum
-              </button>
-            </div>
-          )}
-
-          <MemberPicker
-            value={form.memberIds}
-            onChange={(next) => update('memberIds', next)}
-            label="Mitglied"
-            single
-            placeholder="Name suchen …"
-          />
-
-          <div>
-            <span className="label">Bereich</span>
-            <div className="flex flex-wrap gap-2">
-              {[
-                { value: false, label: 'Gemeinde' },
-                { value: true, label: 'Ausserhalb der Einheit' },
-              ].map((option) => (
-                <button
-                  key={String(option.value)}
-                  type="button"
-                  onClick={() => update('outOfUnit', option.value)}
-                  aria-pressed={form.outOfUnit === option.value}
-                  className={cn(
-                    'rounded-full border px-3 py-1.5 text-sm font-medium transition',
-                    form.outOfUnit === option.value
-                      ? 'border-brand-500 bg-brand-50 text-brand-900 dark:bg-brand-950 dark:text-brand-100'
-                      : 'border-slate-300 text-slate-600 hover:border-slate-400 dark:border-slate-700 dark:text-slate-300',
-                  )}
-                >
-                  {option.label}
-                </button>
-              ))}
-            </div>
-            <p className="hint">
-              Pfahl, Seminar, Institut und Mission stehen für sich. Sie zählen als Berufung, aber
-              nicht im Organisationsplan der Gemeinde – und der Sonntagsschulpräsident des Pfahls
-              ist nicht derselbe wie der der Gemeinde.
-            </p>
-          </div>
-
-          <div className="grid gap-4 sm:grid-cols-2">
-            {!form.outOfUnit && (
-              <div>
-                <label className="label" htmlFor="c-organization">
-                  Organisation
-                </label>
-                <select
-                  id="c-organization"
-                  className="input"
-                  value={form.organization}
-                  onChange={(event) => update('organization', event.target.value as Organization)}
-                >
-                  {Object.entries(ORGANIZATION_LABELS).map(([value, label]) => (
-                    <option key={value} value={value}>
-                      {label}
-                    </option>
-                  ))}
-                </select>
-              </div>
-            )}
-
-            <div>
-              <label className="label" htmlFor="c-position">
-                Position
-              </label>
-              <input
-                id="c-position"
-                className="input"
-                value={form.position}
-                onChange={(event) => update('position', event.target.value)}
-                list="position-suggestions"
-                required
-              />
-              <datalist id="position-suggestions">
-                {suggestions.map((position) => (
-                  <option key={position} value={position} />
-                ))}
-              </datalist>
-            </div>
-          </div>
-
-          <div>
-            <label className="label" htmlFor="c-status">
-              Status
-            </label>
-            <select
-              id="c-status"
-              className="input"
-              value={form.status}
-              onChange={(event) => update('status', event.target.value as CallingStatus)}
-            >
-              {Object.entries(CALLING_STATUS_LABELS).map(([value, label]) => (
-                <option key={value} value={value}>
-                  {label}
-                </option>
-              ))}
-            </select>
-          </div>
-
-          <fieldset className="rounded-lg border border-slate-200 p-3 dark:border-slate-700">
-            <legend className="px-1 text-xs font-medium text-slate-500 dark:text-slate-400">
-              Meilensteine
-            </legend>
-            <div className="grid gap-3 sm:grid-cols-2">
-              {(
-                [
-                  ['proposedDate', 'Vorgeschlagen'],
-                  ['extendedDate', 'Berufung ausgesprochen'],
-                  ['sustainedDate', 'Bestätigt'],
-                  ['setApartDate', 'Eingesetzt'],
-                  ['releasedDate', 'Entlassen'],
-                ] as [keyof FormState, string][]
-              ).map(([key, label]) => (
-                <div key={key}>
-                  <label className="label text-xs" htmlFor={`c-${key}`}>
-                    {label}
-                  </label>
-                  <input
-                    id={`c-${key}`}
-                    type="date"
-                    className="input"
-                    value={form[key] as string}
-                    onChange={(event) => update(key, event.target.value as FormState[typeof key])}
-                  />
+                <Avatar name={`${member.firstName} ${member.lastName}`} id={member.id} size="md" />
+                <div className="min-w-0 flex-1">
+                  <p className="truncate text-sm font-medium group-hover:underline">
+                    {member.lastName}, {member.firstName}
+                  </p>
+                  <p className="truncate text-xs text-slate-500 dark:text-slate-400">
+                    {facts.length > 0 ? facts.join(' · ') : 'Noch keine Berufung erfasst'}
+                  </p>
                 </div>
-              ))}
-            </div>
-          </fieldset>
-
-          <div>
-            <label className="label" htmlFor="c-notes">
-              Notiz
-            </label>
-            <textarea
-              id="c-notes"
-              className="input min-h-20 resize-y"
-              value={form.notes}
-              onChange={(event) => update('notes', event.target.value)}
-            />
-          </div>
-
-          {calling && (
-            <Link
-              to={`/mitglieder/${calling.memberId}`}
-              className="text-brand-600 dark:text-brand-300 inline-block text-sm hover:underline"
-            >
-              Zum Mitgliederprofil →
-            </Link>
-          )}
-        </form>
-      </Modal>
-
-      {calling && (
-        <ConfirmDialog
-          open={confirmDelete}
-          onClose={() => setConfirmDelete(false)}
-          onConfirm={() => {
-            void deleteCalling(calling.id).then(() => {
-              toast.success('Berufung gelöscht.')
-              onClose()
-            })
-          }}
-          title="Berufung löschen?"
-          message={`«${calling.position}» von ${calling.memberName} wird entfernt.`}
-          confirmLabel="Löschen"
-          danger
-        />
-      )}
-    </>
+                {member.status !== 'active' && <MemberStatusBadge status={member.status} />}
+                <ChevronRight className="size-4 shrink-0 text-slate-300" aria-hidden />
+              </Link>
+            </li>
+          )
+        })}
+      </ul>
+    </section>
   )
+}
+
+/**
+ * Die zuletzt abgegebene Berufung je Person.
+ *
+ * Sie beantwortet in der Liste «Ohne Berufung» die Frage, die sich sofort
+ * stellt: War da schon einmal etwas – und wie lange ist es her?
+ */
+function lastReleasedByMember(callings: Calling[]): Map<string, Calling> {
+  const latest = new Map<string, Calling>()
+  for (const calling of callings) {
+    if (!isReleased(calling)) continue
+    const current = latest.get(calling.memberId)
+    if (!current || releasedAt(calling) > releasedAt(current)) latest.set(calling.memberId, calling)
+  }
+  return latest
+}
+
+/** Wann die Berufung endete – ohne erfasstes Datum ganz nach hinten. */
+function releasedAt(calling: Calling): number {
+  return toDate(calling.releasedDate)?.getTime() ?? 0
 }

@@ -275,6 +275,16 @@ export interface ImportPreview {
   createCount: number
   updateCount: number
   skipCount: number
+  /**
+   * Erfasste Personen, die in der Quelle fehlen.
+   *
+   * Die kopierte LCR-Seite ist die vollständige Wahrheit über den Bestand:
+   * Wer dort nicht mehr steht, gehört nicht mehr zur Gemeinde. Weil sich in
+   * der App niemand von Hand löschen lässt, ist der Import der einzige Ort,
+   * an dem das nachvollzogen wird – deshalb stehen die Betroffenen in der
+   * Vorschau namentlich da, bevor etwas geschrieben wird.
+   */
+  removals: Member[]
 }
 
 /**
@@ -388,11 +398,19 @@ export function buildPreview(
     }
   })
 
+  /*
+   * Wer in der Quelle vorkommt, bleibt – auch wenn seine Zeile übersprungen
+   * wird. Eine unleserliche Zeile heisst «nicht zuzuordnen» und nicht «nicht
+   * mehr in der Gemeinde».
+   */
+  const seen = new Set(rows.flatMap((row) => (row.matchId ? [row.matchId] : [])))
+
   return {
     rows,
     createCount: rows.filter((r) => r.action === 'create').length,
     updateCount: rows.filter((r) => r.action === 'update').length,
     skipCount: rows.filter((r) => r.action === 'skip').length,
+    removals: existing.filter((member) => !seen.has(member.id)),
   }
 }
 
@@ -407,18 +425,28 @@ export interface ImportOptions {
   preserveNotes: boolean
   /** Status bestehender Mitglieder nicht überschreiben */
   preserveStatus: boolean
+  /**
+   * Erfasste Personen entfernen, die in der Quelle fehlen.
+   *
+   * Der Normalfall, denn die kopierte LCR-Seite ist der ganze Bestand.
+   * Abschalten, wer bewusst nur einen Ausschnitt einliest – sonst verlöre
+   * er alle übrigen.
+   */
+  removeMissing: boolean
 }
 
 export const DEFAULT_IMPORT_OPTIONS: ImportOptions = {
   keepExistingOnEmpty: true,
   preserveNotes: true,
   preserveStatus: true,
+  removeMissing: true,
 }
 
 export interface ImportResult {
   created: number
   updated: number
   skipped: number
+  removed: number
 }
 
 /**
@@ -501,7 +529,22 @@ export async function runImport(
     onProgress?.(Math.min(offset + chunk.length, rows.length), rows.length)
   }
 
-  return { created, updated, skipped: preview.skipCount }
+  /*
+   * Zum Schluss, was die Quelle nicht mehr führt.
+   *
+   * Nach den Schreibvorgängen und nicht davor: Bricht der Import in der
+   * Mitte ab, ist zu wenig geschrieben – aber nichts zu viel gelöscht.
+   */
+  const removals = options.removeMissing ? preview.removals : []
+  for (let offset = 0; offset < removals.length; offset += 400) {
+    const batch = writeBatch(db)
+    for (const member of removals.slice(offset, offset + 400)) {
+      batch.delete(doc(db, COLLECTIONS.members, member.id))
+    }
+    await batch.commit()
+  }
+
+  return { created, updated, skipped: preview.skipCount, removed: removals.length }
 }
 
 /* ------------------------------------------------------------------ */

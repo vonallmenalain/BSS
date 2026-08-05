@@ -4,27 +4,19 @@ import {
   doc,
   getDoc,
   getDocs,
+  increment,
   query,
   serverTimestamp,
   setDoc,
   updateDoc,
   where,
   writeBatch,
-  Timestamp,
   arrayUnion,
 } from 'firebase/firestore'
 import { db, COLLECTIONS } from '@/lib/firebase'
-import { addMonths, startOfDay, toDate } from '@/lib/dates'
 import { stripUndefined, uid } from '@/lib/utils'
 import { commit, type SaveOutcome } from '@/lib/sync'
-import type {
-  AgendaItem,
-  HistoryEntry,
-  ItemKind,
-  ItemLayout,
-  ItemStatus,
-  Priority,
-} from '@/lib/types'
+import type { AgendaItem, HistoryEntry, ItemKind, ItemLayout, ItemStatus } from '@/lib/types'
 import { ITEM_STATUS_LABELS, OPEN_STATUS_QUERY, toItemKind } from '@/lib/types'
 
 const itemsRef = collection(db, COLLECTIONS.agendaItems)
@@ -39,10 +31,8 @@ export interface AgendaItemInput {
   description?: string
   meetingId?: string | null
   status?: ItemStatus
-  priority?: Priority
   assignees?: string[]
   memberRefs?: string[]
-  dueDate?: Date | null
   order?: number
   /** Selbst gebautes Raster statt der Beschreibung – siehe `lib/layout` */
   layout?: ItemLayout | null
@@ -72,10 +62,8 @@ export async function createAgendaItem(input: AgendaItemInput, actor: Actor): Pr
       // wenn es eine Sitzung überlebt (siehe `closeMeeting`).
       kind: 'traktandum' satisfies ItemKind,
       status: input.status ?? 'new',
-      priority: input.priority ?? 'normal',
       assignees: input.assignees ?? [],
       memberRefs: input.memberRefs ?? [],
-      dueDate: input.dueDate ? Timestamp.fromDate(input.dueDate) : null,
       layout: input.layout ?? null,
       deferCount: 0,
       history: [historyEntry('Traktandum erstellt', actor)],
@@ -91,15 +79,11 @@ export async function createAgendaItem(input: AgendaItemInput, actor: Actor): Pr
 
 export async function updateAgendaItem(
   id: string,
-  patch: Partial<Omit<AgendaItem, 'id' | 'dueDate'>> & { dueDate?: Date | null },
+  patch: Partial<Omit<AgendaItem, 'id'>>,
 ): Promise<SaveOutcome> {
-  const data: Record<string, unknown> = stripUndefined(patch as Record<string, unknown>)
-  if ('dueDate' in patch) {
-    data.dueDate = patch.dueDate ? Timestamp.fromDate(patch.dueDate) : null
-  }
   return commit(
     updateDoc(doc(db, COLLECTIONS.agendaItems, id), {
-      ...data,
+      ...stripUndefined(patch as Record<string, unknown>),
       updatedAt: serverTimestamp(),
     }),
   )
@@ -123,75 +107,38 @@ export async function setItemStatus(
   )
 }
 
-export type DeferTarget = 'next_meeting' | 'one_week' | 'one_month' | 'three_months' | 'custom'
-
-export const DEFER_LABELS: Record<Exclude<DeferTarget, 'custom'>, string> = {
-  next_meeting: 'Auf nächste Sitzung',
-  one_week: 'Um 1 Woche',
-  one_month: 'Um 1 Monat',
-  three_months: 'Um 3 Monate',
-}
-
 /**
- * Verschiebt ein Traktandum. Es verlässt die aktuelle Sitzung und erhält je
- * nach Ziel ein neues Fälligkeitsdatum. `deferCount` macht sichtbar, welche
- * Themen immer wieder vertagt werden.
+ * Verschiebt einen Punkt auf die nächste Sitzung.
+ *
+ * Mehr Ziele gibt es nicht mehr. Früher liess sich um eine Woche, einen
+ * Monat oder auf ein freies Datum verschieben – das setzte einen Termin,
+ * der mit keiner Sitzung zusammenfiel und an dem folglich nichts geschah.
+ * Ein Punkt gehört in eine Sitzung, und die nächste ist die Antwort auf
+ * «nicht heute».
+ *
+ * Ist keine Sitzung geplant, landet er im Sammelkorb und steht so lange
+ * unter «Pendenzen», bis eine Sitzung ihn aufnimmt. `deferCount` macht
+ * sichtbar, welche Themen immer wieder vertagt werden.
  */
-export async function deferItem(
+export async function deferToNextMeeting(
   id: string,
-  target: DeferTarget,
+  meetingId: string | null,
   actor: Actor,
-  options: {
-    customDate?: Date | null
-    nextMeetingId?: string | null
-    nextMeetingDate?: Date | null
-  } = {},
-): Promise<SaveOutcome | null> {
-  const ref = doc(db, COLLECTIONS.agendaItems, id)
-  const snapshot = await getDoc(ref)
-  if (!snapshot.exists()) return null
-
-  const current = snapshot.data() as AgendaItem
-  const today = startOfDay(new Date())
-
-  let newDueDate: Date | null = null
-  let meetingId: string | null = null
-  let label: string
-
-  switch (target) {
-    case 'next_meeting':
-      meetingId = options.nextMeetingId ?? null
-      newDueDate = options.nextMeetingDate ?? null
-      label = 'Auf die nächste Sitzung verschoben'
-      break
-    case 'one_week':
-      newDueDate = new Date(today.getTime() + 7 * 86400000)
-      label = 'Um eine Woche verschoben'
-      break
-    case 'one_month':
-      newDueDate = addMonths(today, 1)
-      label = 'Um einen Monat verschoben'
-      break
-    case 'three_months':
-      newDueDate = addMonths(today, 3)
-      label = 'Um drei Monate verschoben'
-      break
-    case 'custom':
-      newDueDate = options.customDate ?? null
-      label = 'Termin angepasst'
-      break
-  }
-
+): Promise<SaveOutcome> {
   return commit(
-    updateDoc(ref, {
+    updateDoc(doc(db, COLLECTIONS.agendaItems, id), {
       // Wer verschoben wird, ist nicht erledigt – und damit von jetzt an eine
       // Pendenz, auch wenn er in dieser Sitzung neu aufgetaucht ist.
       kind: 'pendenz' satisfies ItemKind,
       status: 'pending' satisfies ItemStatus,
       meetingId,
-      dueDate: newDueDate ? Timestamp.fromDate(newDueDate) : null,
-      deferCount: (current.deferCount ?? 0) + 1,
-      history: arrayUnion(historyEntry(label, actor)),
+      deferCount: increment(1),
+      history: arrayUnion(
+        historyEntry(
+          meetingId ? 'Auf die nächste Sitzung verschoben' : 'Aus der Sitzung genommen',
+          actor,
+        ),
+      ),
       updatedAt: serverTimestamp(),
     }),
   )
@@ -299,13 +246,15 @@ export function groupByKind(items: AgendaItem[]): Record<ItemKind, AgendaItem[]>
   }
 }
 
-/** Sortierung für die Pendenzenliste: überfällig zuerst, dann nach Priorität. */
+/**
+ * Sortierung für die Pendenzenliste: das am längsten Liegengebliebene zuerst.
+ *
+ * Ohne Fälligkeitsdatum und ohne Priorität bleibt die ehrlichste Auskunft,
+ * die der Datensatz hergibt – wie oft ein Punkt schon verschoben wurde und,
+ * bei gleichem Stand, seine Reihenfolge in der Sitzung.
+ */
 export function sortForPendenzen(items: AgendaItem[]): AgendaItem[] {
-  const priorityRank: Record<Priority, number> = { high: 0, normal: 1, low: 2 }
-  return [...items].sort((a, b) => {
-    const dateA = toDate(a.dueDate)?.getTime() ?? Number.POSITIVE_INFINITY
-    const dateB = toDate(b.dueDate)?.getTime() ?? Number.POSITIVE_INFINITY
-    if (dateA !== dateB) return dateA - dateB
-    return priorityRank[a.priority] - priorityRank[b.priority]
-  })
+  return [...items].sort(
+    (a, b) => (b.deferCount ?? 0) - (a.deferCount ?? 0) || (a.order ?? 0) - (b.order ?? 0),
+  )
 }

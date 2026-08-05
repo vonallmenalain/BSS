@@ -346,6 +346,138 @@ export function MemberPicker({
 }
 
 /* ------------------------------------------------------------------ */
+/* Ein Mitglied in einer Spalte                                        */
+/* ------------------------------------------------------------------ */
+
+/**
+ * Ein einzelnes Mitglied, so breit wie eine Tabellenspalte.
+ *
+ * Anders als der `MemberPicker` sammelt dieses Feld nichts an: Es steht
+ * genau ein Name darin, und wer tippt, bekommt die Treffer als Überlagerung
+ * statt als aufklappende Liste – neben zwei weiteren Spalten wäre für mehr
+ * kein Platz.
+ *
+ * Getippter Text allein wählt nie jemanden aus; das geschieht ausschliesslich
+ * über die Trefferliste. Steht ein Name da, der zu keinem Mitglied (mehr)
+ * gehört – etwa aus einem früheren Programm –, bleibt er lesbar stehen.
+ */
+export function MemberCombobox({
+  memberId,
+  name,
+  onChange,
+  label,
+  placeholder = 'Name eingeben …',
+  className,
+}: {
+  memberId: string | null | undefined
+  /** Der gespeicherte Name – gilt, solange kein Mitglied dahintersteht */
+  name: string
+  onChange: (next: { memberId: string | null; name: string }) => void
+  /** Für Bildschirmleser, weil über dem Feld keine Beschriftung steht */
+  label: string
+  placeholder?: string
+  className?: string
+}) {
+  const { members, membersById } = useData()
+  const [search, setSearch] = useState('')
+  const [open, setOpen] = useState(false)
+
+  const selected = memberId ? (membersById.get(memberId) ?? null) : null
+  const chosen = selected ? `${selected.firstName} ${selected.lastName}` : name.trim()
+
+  const results = useMemo(() => {
+    if (!search.trim()) return []
+    return members
+      .filter((member) => matchesSearch(`${member.firstName} ${member.lastName}`, search))
+      .slice(0, 8)
+  }, [members, search])
+
+  if (chosen) {
+    return (
+      <div
+        className={cn(
+          'flex items-center gap-2 rounded-lg border border-slate-300 px-2 py-1.5 dark:border-slate-700',
+          className,
+        )}
+      >
+        <Avatar name={chosen} id={selected?.id} size="sm" />
+        <span className="min-w-0 flex-1 truncate text-sm">{chosen}</span>
+        <button
+          type="button"
+          className="btn-ghost p-1"
+          onClick={() => {
+            onChange({ memberId: null, name: '' })
+            setSearch('')
+          }}
+          aria-label={`${label}: Auswahl aufheben`}
+        >
+          <X className="size-3.5" aria-hidden />
+        </button>
+      </div>
+    )
+  }
+
+  return (
+    <div className={cn('relative', className)}>
+      <Search
+        className="pointer-events-none absolute top-1/2 left-3 size-4 -translate-y-1/2 text-slate-400"
+        aria-hidden
+      />
+      <input
+        type="search"
+        className="input pl-9"
+        aria-label={label}
+        placeholder={placeholder}
+        value={search}
+        onChange={(event) => {
+          setSearch(event.target.value)
+          setOpen(true)
+        }}
+        onFocus={() => setOpen(true)}
+        // Klick auf einen Treffer muss vor dem Schliessen ankommen.
+        onBlur={() => window.setTimeout(() => setOpen(false), 150)}
+      />
+
+      {open && results.length > 0 && (
+        <ul className="absolute z-20 mt-1 max-h-64 w-full overflow-y-auto rounded-lg border border-slate-200 bg-white py-1 shadow-lg dark:border-slate-700 dark:bg-slate-800">
+          {results.map((member) => (
+            <li key={member.id}>
+              <button
+                type="button"
+                onMouseDown={(event) => event.preventDefault()}
+                onClick={() => {
+                  onChange({
+                    memberId: member.id,
+                    name: `${member.firstName} ${member.lastName}`,
+                  })
+                  setSearch('')
+                  setOpen(false)
+                }}
+                className="flex w-full items-center gap-2 px-3 py-2 text-left text-sm transition hover:bg-slate-100 dark:hover:bg-slate-700"
+              >
+                <Avatar name={`${member.firstName} ${member.lastName}`} id={member.id} size="sm" />
+                <span className="min-w-0 flex-1 truncate">
+                  {member.lastName}, {member.firstName}
+                </span>
+                {member.status !== 'active' && (
+                  <span className="text-xs text-slate-400">inaktiv</span>
+                )}
+              </button>
+            </li>
+          ))}
+        </ul>
+      )}
+
+      {open && search.trim().length > 1 && results.length === 0 && (
+        <div className="absolute z-20 mt-1 w-full rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm text-slate-500 shadow-lg dark:border-slate-700 dark:bg-slate-800">
+          Keine Übereinstimmung im Mitgliederverzeichnis.
+        </div>
+      )}
+    </div>
+  )
+}
+
+/* ------------------------------------------------------------------ */
 /* Umschalter                                                          */
 /* ------------------------------------------------------------------ */
 

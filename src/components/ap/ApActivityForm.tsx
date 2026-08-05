@@ -156,7 +156,7 @@ export function ApActivityForm({
             <ReadOnlyRow label="Art" value={AP_ACTIVITY_KIND_LABELS[activity.kind]} />
             <ReadOnlyRow label="Uhrzeit" value={activity.time ?? ''} />
             <ReadOnlyRow label="Treffpunkt" value={activity.location ?? ''} />
-            <ReadOnlyRow label="Leitung / Org" value={activity.leader ?? ''} />
+            <ReadOnlyRow label="Zuständig AP" value={activity.leader ?? ''} />
             <ReadOnlyRow label="Teilnahme Bischofschaft" value={activity.bishopric ?? ''} />
             <ReadOnlyRow label="Teilnahme Berater" value={activity.advisor ?? ''} />
             <ReadOnlyRow label="Bemerkung" value={activity.note ?? ''} />
@@ -298,7 +298,7 @@ export function ApActivityForm({
             />
             <Field
               id="ap-leader"
-              label="Leitung / Org"
+              label="Zuständig AP"
               value={form.leader}
               onChange={(value) => update('leader', value)}
               options={suggestions.leader}

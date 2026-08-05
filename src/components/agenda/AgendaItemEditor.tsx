@@ -1,13 +1,11 @@
-import { useRef, useState } from 'react'
+import { useState } from 'react'
 import { useAutosave } from '@/hooks/useAutosave'
 import { MentionEditable } from '@/components/ui/MentionText'
-import { ConfirmDialog } from '@/components/ui/Modal'
-import { AssigneePicker, SegmentedControl } from '@/components/ui/Pickers'
+import { AssigneePicker } from '@/components/ui/Pickers'
 import { LayoutGrid } from '@/components/agenda/LayoutGrid'
-import { toDateInput } from '@/lib/dates'
 import { updateAgendaItem } from '@/services/agenda'
-import { emptyLayout, isLayoutEmpty, normalizeLayout, serializeLayout } from '@/lib/layout'
-import { PRIORITY_LABELS, type AgendaItem, type ItemLayout, type Priority } from '@/lib/types'
+import { normalizeLayout, serializeLayout } from '@/lib/layout'
+import type { AgendaItem, ItemLayout } from '@/lib/types'
 
 /**
  * Ein Traktandum bearbeiten – ohne Formular, ohne Speichern-Knopf.
@@ -19,11 +17,16 @@ import { PRIORITY_LABELS, type AgendaItem, type ItemLayout, type Priority } from
  * Beschreibung sind Text, in den man hineingreift, und gespeichert wird kurz
  * nach dem letzten Tastendruck.
  *
- * Zu sehen sind nur die Angaben, die am Sitzungstisch gebraucht werden:
- * Priorität, Termin, Zuständige. Bereich, betroffene Mitglieder, das
+ * Zu sehen ist nur, was am Sitzungstisch gebraucht wird: Titel, Beschreibung
+ * und die Zuständigen. Bereich, betroffene Mitglieder, Priorität, Termin, das
  * Kennzeichen «vertraulich» und die eigene Notizliste sind weggefallen – sie
  * wurden gepflegt, aber nie gelesen. Was besprochen wurde, gehört in die
  * Beschreibung.
+ *
+ * Auch der Haken «Variables Layout» steht nicht hier, sondern nur beim
+ * Erfassen: Ob ein Punkt ein Absatz Text ist oder eine kleine Tabelle,
+ * entscheidet sich einmal. Ein Raster, das bereits gebaut wurde, lässt sich
+ * hier weiterhin ausfüllen – es tritt an die Stelle der Beschreibung.
  *
  * Der Aufrufer muss die Komponente je Eintrag frisch aufbauen
  * (`key={item.id}`): Der Stand im Feld gehört dem Eintrag, nicht der Stelle
@@ -38,8 +41,6 @@ export function AgendaItemEditor({
 }) {
   const [title, setTitle] = useState(item.title)
   const [description, setDescription] = useState(item.description ?? '')
-  const [priority, setPriority] = useState<Priority>(item.priority ?? 'normal')
-  const [dueDate, setDueDate] = useState(toDateInput(item.dueDate))
   const [assignees, setAssignees] = useState<string[]>(item.assignees ?? [])
   const [memberRefs, setMemberRefs] = useState<string[]>(item.memberRefs ?? [])
 
@@ -53,19 +54,15 @@ export function AgendaItemEditor({
   const [layout, setLayout] = useState<ItemLayout | null>(() =>
     item.layout ? normalizeLayout(item.layout) : null,
   )
-  const lastLayout = useRef<ItemLayout | null>(layout)
-  const [confirmOff, setConfirmOff] = useState(false)
 
   const autosave = useAutosave(
-    { title, description, priority, dueDate, assignees, memberRefs, layout },
+    { title, description, assignees, memberRefs, layout },
     async (draft) => {
       await updateAgendaItem(item.id, {
         title: draft.title.trim(),
         description: draft.description,
-        priority: draft.priority,
         assignees: draft.assignees,
         memberRefs: draft.memberRefs,
-        dueDate: draft.dueDate ? new Date(`${draft.dueDate}T12:00:00`) : null,
         layout: draft.layout ? serializeLayout(draft.layout) : null,
       })
     },
@@ -73,27 +70,6 @@ export function AgendaItemEditor({
     // Titel löscht, um ihn neu zu schreiben, behält so lange den alten.
     { savable: (draft) => draft.title.trim() !== '' },
   )
-
-  /*
-   * Der Haken schaltet um, was an der Stelle der Beschreibung steht.
-   *
-   * Ausschalten löscht das Raster beim nächsten Speichern – deshalb die
-   * Rückfrage, sobald etwas darin steht. Innerhalb der Sitzung bleibt es
-   * trotzdem in der Hand: Wer versehentlich umschaltet, holt es mit
-   * demselben Haken zurück.
-   */
-  const toggleLayout = (on: boolean) => {
-    if (on) {
-      setLayout(lastLayout.current ?? emptyLayout())
-      return
-    }
-    if (layout && !isLayoutEmpty(layout)) {
-      setConfirmOff(true)
-      return
-    }
-    lastLayout.current = layout
-    setLayout(null)
-  }
 
   /*
    * Ein mit «@» eingesetzter Name ist zugleich ein Verweis: Wer im Text steht,
@@ -112,20 +88,6 @@ export function AgendaItemEditor({
 
   return (
     <div className="space-y-3">
-      {!readOnly && (
-        <div className="flex justify-end">
-          <label className="flex cursor-pointer items-center gap-2 text-sm">
-            <input
-              type="checkbox"
-              className="size-4 rounded"
-              checked={layout !== null}
-              onChange={(event) => toggleLayout(event.target.checked)}
-            />
-            Variables Layout
-          </label>
-        </div>
-      )}
-
       <MentionEditable
         id={`item-title-${item.id}`}
         label="Titel"
@@ -171,34 +133,6 @@ export function AgendaItemEditor({
 
       {!readOnly && (
         <>
-          <div className="grid gap-3 sm:grid-cols-2">
-            <div>
-              <span className="label">Priorität</span>
-              <SegmentedControl<Priority>
-                value={priority}
-                onChange={setPriority}
-                size="sm"
-                options={(['low', 'normal', 'high'] as Priority[]).map((value) => ({
-                  value,
-                  label: PRIORITY_LABELS[value],
-                }))}
-              />
-            </div>
-
-            <div>
-              <label className="label" htmlFor={`item-due-${item.id}`}>
-                Erledigen bis
-              </label>
-              <input
-                id={`item-due-${item.id}`}
-                type="date"
-                className="input"
-                value={dueDate}
-                onChange={(event) => setDueDate(event.target.value)}
-              />
-            </div>
-          </div>
-
           <AssigneePicker value={assignees} onChange={setAssignees} />
 
           {/* Nur melden, was zu tun ist. «Wird laufend gespeichert» stand sonst
@@ -210,19 +144,6 @@ export function AgendaItemEditor({
           )}
         </>
       )}
-
-      <ConfirmDialog
-        open={confirmOff}
-        onClose={() => setConfirmOff(false)}
-        onConfirm={() => {
-          lastLayout.current = layout
-          setLayout(null)
-        }}
-        title="Variables Layout abschalten?"
-        message="Das Raster und alles, was darin steht, wird entfernt. Die Beschreibung tritt wieder an seine Stelle."
-        confirmLabel="Abschalten"
-        danger
-      />
     </div>
   )
 }

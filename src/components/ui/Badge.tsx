@@ -5,7 +5,6 @@ import {
   ITEM_STATUS_LABELS,
   MEETING_STATUS_LABELS,
   MEMBER_STATUS_LABELS,
-  PRIORITY_LABELS,
   TALK_STATUS_LABELS,
   CALLING_STATUS_LABELS,
   type CallingStatus,
@@ -13,7 +12,6 @@ import {
   type ItemStatus,
   type MeetingStatus,
   type MemberStatus,
-  type Priority,
   type TalkStatus,
 } from '@/lib/types'
 
@@ -69,22 +67,6 @@ const ITEM_KIND_STYLES: Record<ItemKind, string> = {
 export function KindBadge({ kind }: { kind: ItemKind }) {
   if (kind === 'traktandum') return null
   return <Badge className={ITEM_KIND_STYLES[kind]}>{ITEM_KIND_LABELS[kind]}</Badge>
-}
-
-/* ------------------------------------------------------------------ */
-/* Priorität                                                           */
-/* ------------------------------------------------------------------ */
-
-const PRIORITY_STYLES: Record<Priority, string> = {
-  high: 'bg-rose-100 text-rose-800 dark:bg-rose-950 dark:text-rose-200',
-  normal: 'bg-slate-100 text-slate-600 dark:bg-slate-800 dark:text-slate-400',
-  low: 'bg-slate-50 text-slate-500 dark:bg-slate-900 dark:text-slate-500',
-}
-
-export function PriorityBadge({ priority }: { priority: Priority }) {
-  // «Normal» ist der Regelfall und braucht kein visuelles Gewicht.
-  if (priority === 'normal') return null
-  return <Badge className={PRIORITY_STYLES[priority]}>{PRIORITY_LABELS[priority]}</Badge>
 }
 
 /* ------------------------------------------------------------------ */
@@ -151,32 +133,4 @@ const CALLING_STATUS_STYLES: Record<CallingStatus, string> = {
 
 export function CallingStatusBadge({ status }: { status: CallingStatus }) {
   return <Badge className={CALLING_STATUS_STYLES[status]}>{CALLING_STATUS_LABELS[status]}</Badge>
-}
-
-/* ------------------------------------------------------------------ */
-/* Fälligkeit                                                          */
-/* ------------------------------------------------------------------ */
-
-export function DueBadge({
-  label,
-  overdue,
-  soon,
-}: {
-  label: string
-  overdue: boolean
-  soon: boolean
-}) {
-  return (
-    <Badge
-      className={cn(
-        overdue
-          ? 'bg-rose-100 text-rose-800 dark:bg-rose-950 dark:text-rose-200'
-          : soon
-            ? 'bg-amber-100 text-amber-800 dark:bg-amber-950 dark:text-amber-200'
-            : 'bg-slate-100 text-slate-600 dark:bg-slate-800 dark:text-slate-400',
-      )}
-    >
-      {label}
-    </Badge>
-  )
 }

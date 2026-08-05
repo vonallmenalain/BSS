@@ -4,20 +4,25 @@ import {
   CalendarDays,
   CalendarPlus,
   Check,
+  ChevronDown,
   Eye,
   Info,
   Pencil,
   Plus,
+  Settings2,
   Sparkles,
 } from 'lucide-react'
 import { useAuth } from '@/contexts/AuthContext'
 import { useToast } from '@/contexts/ToastContext'
 import { useApActivities, useApMonths } from '@/hooks/useFirestore'
+import { useApView } from '@/hooks/useApView'
 import { useNow } from '@/hooks/useNow'
 import {
+  ApActivityCard,
   ApActivityRow,
   ApDetails,
   AP_KIND_STYLES,
+  AP_SPACING,
   apCountdown,
   apDateLabel,
   apTitle,
@@ -31,9 +36,14 @@ import { differenceInCalendarDays, formatMonth, startOfDay, toDateInput } from '
 import { apActivityEnd, saveApMonth } from '@/services/apActivities'
 import { nextFreeApDate } from '@/services/apSchedule'
 import { fromIsoDate } from '@/services/importHistory'
-import { AP_ACTIVITY_KIND_LABELS, type ApActivity } from '@/lib/types'
-
-type Scope = 'upcoming' | 'past' | 'all'
+import {
+  AP_ACTIVITY_KIND_LABELS,
+  AP_DENSITY_LABELS,
+  AP_SCOPE_LABELS,
+  AP_VIEW_MODE_LABELS,
+  type ApActivity,
+  type ApView,
+} from '@/lib/types'
 
 /**
  * Der Aktivitätenplan der Priestertumskollegien.
@@ -41,9 +51,15 @@ type Scope = 'upcoming' | 'past' | 'all'
  * Er beantwortet vor allem eine Frage, und die stellt sich jede Woche neu:
  * **Was kommt als Nächstes?** Deshalb steht die Antwort ganz oben und
  * gross, über die volle Breite, mit allem, was man dafür wissen muss –
- * Treffpunkt, Leitung, wer aus der Bischofschaft dabei ist. Darunter der
- * Plan im Ganzen: eine Zeile je Termin, nach Monaten gruppiert wie in der
- * Tabelle, aus der er stammt.
+ * Treffpunkt, Zuständigkeit, wer aus der Bischofschaft dabei ist. Darunter
+ * der Plan im Ganzen, nach Monaten gruppiert wie in der Tabelle, aus der er
+ * stammt.
+ *
+ * Wie er dargestellt wird, sagt ein Knopf oben rechts: als **Liste** – ein
+ * Fahrplan, von oben nach unten zu lesen – oder als **Kacheln**, die jeden
+ * Termin für sich hinstellen und auf breiten Bildschirmen mehrere Wochen
+ * nebeneinander zeigen. Dazu drei Abstufungen, wie viel Luft der Plan
+ * bekommt, und der Zeitraum. Die Wahl bleibt: im Browser und am Konto.
  *
  * Ausgefallene Abende bleiben stehen, zählen aber nicht als «das
  * Nächste»: Sie erklären eine Lücke, statt eine zu sein.
@@ -67,7 +83,10 @@ export function ApActivities() {
   const { data: months } = useApMonths()
   const now = useNow(300_000)
 
-  const [scope, setScope] = useState<Scope>('upcoming')
+  const [view, setView] = useApView()
+  const scope = view.scope
+  const spacing = AP_SPACING[view.density]
+
   const [wantsEdit, setWantsEdit] = useState(false)
   const [formOpen, setFormOpen] = useState(false)
   const [editing, setEditing] = useState<ApActivity | null>(null)
@@ -163,28 +182,36 @@ export function ApActivities() {
           editMode ? 'Bearbeitungsmodus – ein Klick auf einen Termin öffnet ihn' : undefined
         }
         actions={
-          canEditAp &&
-          (editMode ? (
-            <>
-              <button type="button" className="btn-secondary" onClick={leaveEditMode}>
-                <Eye className="size-4" aria-hidden />
-                Ansichtsmodus
-              </button>
-              <button type="button" className="btn-secondary" onClick={() => setScheduleOpen(true)}>
-                <CalendarPlus className="size-4" aria-hidden />
-                <span className="hidden sm:inline">Termine erzeugen</span>
-              </button>
-              <button type="button" className="btn-primary" onClick={() => open(null)}>
-                <Plus className="size-4" aria-hidden />
-                <span className="hidden sm:inline">Termin</span>
-              </button>
-            </>
-          ) : (
-            <button type="button" className="btn-secondary" onClick={() => setWantsEdit(true)}>
-              <Pencil className="size-4" aria-hidden />
-              Bearbeitungsmodus
-            </button>
-          ))
+          <>
+            <ViewMenu view={view} onChange={setView} counts={counts} />
+
+            {canEditAp &&
+              (editMode ? (
+                <>
+                  <button type="button" className="btn-secondary" onClick={leaveEditMode}>
+                    <Eye className="size-4" aria-hidden />
+                    Ansichtsmodus
+                  </button>
+                  <button
+                    type="button"
+                    className="btn-secondary"
+                    onClick={() => setScheduleOpen(true)}
+                  >
+                    <CalendarPlus className="size-4" aria-hidden />
+                    <span className="hidden sm:inline">Termine erzeugen</span>
+                  </button>
+                  <button type="button" className="btn-primary" onClick={() => open(null)}>
+                    <Plus className="size-4" aria-hidden />
+                    <span className="hidden sm:inline">Termin</span>
+                  </button>
+                </>
+              ) : (
+                <button type="button" className="btn-secondary" onClick={() => setWantsEdit(true)}>
+                  <Pencil className="size-4" aria-hidden />
+                  Bearbeitungsmodus
+                </button>
+              ))}
+          </>
         }
       />
 
@@ -222,19 +249,6 @@ export function ApActivities() {
             />
           )}
 
-          {/* ---------- Zeitraum ---------- */}
-          <div className="mb-4">
-            <SegmentedControl<Scope>
-              value={scope}
-              onChange={setScope}
-              options={[
-                { value: 'upcoming', label: 'Kommend', count: counts.upcoming },
-                { value: 'past', label: 'Vergangen', count: counts.past },
-                { value: 'all', label: 'Ganzer Plan', count: counts.all },
-              ]}
-            />
-          </div>
-
           {/* ---------- Der Plan ---------- */}
           {groups.length === 0 ? (
             <div className="card">
@@ -245,7 +259,7 @@ export function ApActivities() {
               />
             </div>
           ) : (
-            <div className="space-y-6">
+            <div className={spacing.sections}>
               {groups.map(([month, entries]) => (
                 <section key={month}>
                   <MonthHeader
@@ -253,17 +267,33 @@ export function ApActivities() {
                     leadership={leadershipOf.get(month) ?? ''}
                     editable={editMode}
                   />
-                  <div className="card divide-y divide-slate-100 overflow-hidden dark:divide-slate-800">
-                    {entries.map((activity) => (
-                      <ApActivityRow
-                        key={activity.id}
-                        activity={activity}
-                        onOpen={editMode ? () => open(activity) : undefined}
-                        highlight={activity.id === next?.id}
-                        past={apActivityEnd(activity) < today}
-                      />
-                    ))}
-                  </div>
+                  {view.mode === 'cards' ? (
+                    <div className={spacing.grid}>
+                      {entries.map((activity) => (
+                        <ApActivityCard
+                          key={activity.id}
+                          activity={activity}
+                          onOpen={editMode ? () => open(activity) : undefined}
+                          highlight={activity.id === next?.id}
+                          past={apActivityEnd(activity) < today}
+                          density={view.density}
+                        />
+                      ))}
+                    </div>
+                  ) : (
+                    <div className="card divide-y divide-slate-100 overflow-hidden dark:divide-slate-800">
+                      {entries.map((activity) => (
+                        <ApActivityRow
+                          key={activity.id}
+                          activity={activity}
+                          onOpen={editMode ? () => open(activity) : undefined}
+                          highlight={activity.id === next?.id}
+                          past={apActivityEnd(activity) < today}
+                          density={view.density}
+                        />
+                      ))}
+                    </div>
+                  )}
                 </section>
               ))}
             </div>
@@ -288,6 +318,114 @@ export function ApActivities() {
         activities={activities}
       />
     </>
+  )
+}
+
+/* ------------------------------------------------------------------ */
+/* Ansicht                                                             */
+/* ------------------------------------------------------------------ */
+
+/**
+ * Ein Knopf oben rechts, hinter dem alles steht, was die Darstellung
+ * betrifft: Liste oder Kacheln, wie viel Luft, welcher Zeitraum.
+ *
+ * Der Zeitraum stand früher als breite Knopfleiste über dem Plan. Er hat
+ * sie nicht verdient: Fast immer bleibt es bei «Kommend», und eine Leiste,
+ * die man einmal im Jahr anfasst, nimmt dem Plan die oberste Zeile weg.
+ * Hier steht sie mit den beiden anderen Wahlmöglichkeiten zusammen – alle
+ * drei beantworten dieselbe Frage, nämlich wie man den Plan gerade ansehen
+ * will.
+ *
+ * Die getroffene Wahl bleibt: im Browser und am Konto (siehe
+ * `hooks/useApView`).
+ */
+function ViewMenu({
+  view,
+  onChange,
+  counts,
+}: {
+  view: ApView
+  onChange: (patch: Partial<ApView>) => void
+  counts: Record<ApView['scope'], number>
+}) {
+  const [open, setOpen] = useState(false)
+
+  return (
+    <div className="relative">
+      <button
+        type="button"
+        className="btn-secondary"
+        onClick={() => setOpen((value) => !value)}
+        aria-expanded={open}
+        aria-label="Ansicht einstellen"
+      >
+        <Settings2 className="size-4" aria-hidden />
+        <span className="hidden sm:inline">{AP_SCOPE_LABELS[view.scope]}</span>
+        <ChevronDown className="size-3" aria-hidden />
+      </button>
+
+      {open && (
+        <>
+          <div className="fixed inset-0 z-10" onClick={() => setOpen(false)} aria-hidden />
+          <div className="animate-scale-in absolute right-0 z-20 mt-1 w-72 origin-top-right space-y-3 rounded-xl border border-slate-200 bg-white p-3 shadow-lg dark:border-slate-700 dark:bg-slate-800">
+            <Choice
+              label="Zeitraum"
+              value={view.scope}
+              onChange={(scope) => onChange({ scope })}
+              options={(Object.keys(AP_SCOPE_LABELS) as ApView['scope'][]).map((value) => ({
+                value,
+                label: AP_SCOPE_LABELS[value],
+                count: counts[value],
+              }))}
+            />
+            <Choice
+              label="Darstellung"
+              value={view.mode}
+              onChange={(mode) => onChange({ mode })}
+              options={(Object.keys(AP_VIEW_MODE_LABELS) as ApView['mode'][]).map((value) => ({
+                value,
+                label: AP_VIEW_MODE_LABELS[value],
+              }))}
+            />
+            <Choice
+              label="Abstand"
+              value={view.density}
+              onChange={(density) => onChange({ density })}
+              options={(Object.keys(AP_DENSITY_LABELS) as ApView['density'][]).map((value) => ({
+                value,
+                label: AP_DENSITY_LABELS[value],
+              }))}
+            />
+          </div>
+        </>
+      )}
+    </div>
+  )
+}
+
+/** Eine beschriftete Umschaltgruppe im Ansichtsmenü. */
+function Choice<T extends string>({
+  label,
+  value,
+  onChange,
+  options,
+}: {
+  label: string
+  value: T
+  onChange: (next: T) => void
+  options: { value: T; label: string; count?: number }[]
+}) {
+  return (
+    <div>
+      <span className="label">{label}</span>
+      <SegmentedControl<T>
+        value={value}
+        onChange={onChange}
+        size="sm"
+        options={options}
+        className="w-full"
+      />
+    </div>
   )
 }
 

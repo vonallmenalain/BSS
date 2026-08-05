@@ -4,10 +4,12 @@ import {
   ArrowLeft,
   CheckCircle2,
   ChevronDown,
+  ClipboardList,
   Download,
   Inbox,
   LayoutList,
   MapPin,
+  Megaphone,
   Play,
   Plus,
   Printer,
@@ -23,6 +25,10 @@ import { AgendaItemCard } from '@/components/agenda/AgendaItemCard'
 import { AgendaItemForm } from '@/components/agenda/AgendaItemForm'
 import { AgendaItemRow } from '@/components/agenda/AgendaItemRow'
 import { FOCUS_PARAM, MeetingFocus } from '@/components/agenda/MeetingFocus'
+import {
+  QuickAnnouncementDialog,
+  QuickBusinessDialog,
+} from '@/components/sacrament/QuickSundayEntry'
 import { MeetingStatusBadge } from '@/components/ui/Badge'
 import { ConfirmDialog, Modal } from '@/components/ui/Modal'
 import { EmptyState, LoadingScreen } from '@/components/ui/Feedback'
@@ -67,6 +73,8 @@ export function MeetingDetail() {
   const [view, setView] = useLocalStorage<ViewMode>('bss:sitzung:ansicht', 'focus')
   const [searchParams, setSearchParams] = useSearchParams()
   const [formOpen, setFormOpen] = useState(false)
+  const [announcementOpen, setAnnouncementOpen] = useState(false)
+  const [businessOpen, setBusinessOpen] = useState(false)
   const [poolOpen, setPoolOpen] = useState(false)
   const [confirmClose, setConfirmClose] = useState(false)
   const [confirmDelete, setConfirmDelete] = useState(false)
@@ -262,10 +270,36 @@ export function MeetingDetail() {
             </button>
           )}
           {!isClosed && (
-            <button type="button" className="btn-primary btn-sm" onClick={() => setFormOpen(true)}>
-              <Plus className="size-4" aria-hidden />
-              Traktandum
-            </button>
+            <>
+              {/* Beides fällt in der Sitzung laufend an – «das sagen wir am
+                  Sonntag an», «den bestätigen wir». Dafür die Sitzung zu
+                  verlassen, den Sonntag zu suchen und zurückzufinden, sind
+                  drei Handgriffe für einen Satz. */}
+              <button
+                type="button"
+                className="btn-secondary btn-sm"
+                onClick={() => setAnnouncementOpen(true)}
+              >
+                <Megaphone className="size-4" aria-hidden />
+                Bekanntmachung
+              </button>
+              <button
+                type="button"
+                className="btn-secondary btn-sm"
+                onClick={() => setBusinessOpen(true)}
+              >
+                <ClipboardList className="size-4" aria-hidden />
+                Angelegenheit
+              </button>
+              <button
+                type="button"
+                className="btn-primary btn-sm"
+                onClick={() => setFormOpen(true)}
+              >
+                <Plus className="size-4" aria-hidden />
+                Traktandum
+              </button>
+            </>
           )}
         </div>
       </div>
@@ -342,6 +376,11 @@ export function MeetingDetail() {
         meetingId={meetingId}
         defaultStatus={meeting.status === 'planned' ? 'new' : 'pending'}
       />
+
+      {/* Nur gezeichnet, solange offen – so beginnt jedes Erfassen mit
+          leeren Feldern, ohne dass sie jemand zurücksetzen müsste. */}
+      {announcementOpen && <QuickAnnouncementDialog onClose={() => setAnnouncementOpen(false)} />}
+      {businessOpen && <QuickBusinessDialog onClose={() => setBusinessOpen(false)} />}
 
       <PoolDialog
         open={poolOpen}

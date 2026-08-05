@@ -1,6 +1,7 @@
 import {
   collection,
   doc,
+  getDoc,
   getDocs,
   limit,
   query,
@@ -102,13 +103,17 @@ export async function startMeeting(id: string): Promise<SaveOutcome> {
 }
 
 /**
- * Schliesst eine Sitzung ab. Was nicht erledigt ist, wird aus der Sitzung
- * gelöst und landet wieder im Sammelkorb – von dort holt es die Planung der
- * nächsten Sitzung zurück.
+ * Schliesst eine Sitzung ab. Was nicht erledigt ist, wandert weiter auf die
+ * nächste geplante Sitzung.
  *
  * Genau hier wird aus einem Traktandum eine Pendenz: Es hat eine Sitzung
  * überstanden, ohne erledigt zu werden, und erscheint in der nächsten deshalb
  * unter den Pendenzen statt unter den neuen Traktanden.
+ *
+ * Eine offene Pendenz gehört immer in eine Sitzung – sonst wartet sie auf
+ * einen Termin, den niemand kennt. Steht noch keine nächste Sitzung fest,
+ * bleibt sie im Sammelkorb und erscheint so lange unter «Pendenzen»; die
+ * Planung der nächsten Sitzung holt sie von dort zurück.
  */
 export async function closeMeeting(id: string): Promise<number> {
   const openItems = await getDocs(
@@ -119,10 +124,12 @@ export async function closeMeeting(id: string): Promise<number> {
     ),
   )
 
+  const followUp = openItems.empty ? null : await findNextMeetingAfter(id)
+
   const batch = writeBatch(db)
   openItems.docs.forEach((item) => {
     batch.update(item.ref, {
-      meetingId: null,
+      meetingId: followUp,
       kind: 'pendenz' satisfies ItemKind,
       status: 'pending' satisfies ItemStatus,
       updatedAt: serverTimestamp(),
@@ -136,6 +143,26 @@ export async function closeMeeting(id: string): Promise<number> {
   await commit(batch.commit())
 
   return openItems.size
+}
+
+/**
+ * Die nächste noch offene Sitzung nach dieser.
+ *
+ * Abgeschlossene zählen nicht: Eine Pendenz dorthin zu schieben hiesse, sie
+ * in einem bereits geschriebenen Protokoll abzulegen. Findet sich keine,
+ * bleibt der Sammelkorb – mehr als zehn abgeschlossene Sitzungen in Folge
+ * zu durchsuchen lohnt den Aufwand nicht.
+ */
+async function findNextMeetingAfter(id: string): Promise<string | null> {
+  const current = await getDoc(doc(db, COLLECTIONS.meetings, id))
+  const date = current.exists() ? (current.data() as Meeting).date : null
+  if (!date) return null
+
+  const later = await getDocs(
+    query(meetingsRef, where('date', '>', date), orderBy('date'), limit(10)),
+  )
+  const next = later.docs.find((meeting) => (meeting.data() as Meeting).status !== 'closed')
+  return next?.id ?? null
 }
 
 /** Setzt eine abgeschlossene Sitzung zurück auf «läuft». */

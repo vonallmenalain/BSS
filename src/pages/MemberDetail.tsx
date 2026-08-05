@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState, type FormEvent } from 'react'
-import { Link, useLocation, useNavigate, useParams } from 'react-router-dom'
+import { Link, useLocation, useParams } from 'react-router-dom'
 import {
   ArrowLeft,
   Award,
@@ -10,21 +10,19 @@ import {
   Mic,
   Pencil,
   Phone,
-  Trash2,
   UserRound,
 } from 'lucide-react'
 import { useData } from '@/contexts/DataContext'
-import { useAuth } from '@/contexts/AuthContext'
 import { useToast } from '@/contexts/ToastContext'
 import { useMemberCallings, useTalks } from '@/hooks/useFirestore'
-import { Modal, ConfirmDialog } from '@/components/ui/Modal'
+import { Modal } from '@/components/ui/Modal'
 import { EmptyState } from '@/components/ui/Feedback'
 import { Avatar } from '@/components/ui/Avatar'
 import { CallingStatusBadge, TalkStatusBadge } from '@/components/ui/Badge'
 import { MemberPicker } from '@/components/ui/Pickers'
 import { formatDate, getAge, monthsSince, toDateInput } from '@/lib/dates'
 import { cn, formatPhone, telHref } from '@/lib/utils'
-import { createMember, deleteMember, updateMember } from '@/services/members'
+import { updateMember } from '@/services/members'
 import { callingPeriod, callingsForMember } from '@/services/callings'
 import {
   ACTIVE_CALLING_STATUSES,
@@ -40,9 +38,6 @@ import {
 export function MemberDetail() {
   const { memberId } = useParams<{ memberId: string }>()
   const { membersById, loading } = useData()
-  const { isApproved } = useAuth()
-  const toast = useToast()
-  const navigate = useNavigate()
   const location = useLocation()
   const { data: talks } = useTalks(300)
   const { data: callings } = useMemberCallings(memberId)
@@ -59,7 +54,6 @@ export function MemberDetail() {
   const back = { to: origin?.from ?? '/mitglieder', label: origin?.fromLabel ?? 'Mitglieder' }
 
   const [editOpen, setEditOpen] = useState(false)
-  const [confirmDelete, setConfirmDelete] = useState(false)
 
   const member = memberId ? membersById.get(memberId) : undefined
 
@@ -185,21 +179,14 @@ export function MemberDetail() {
             </div>
           </div>
 
+          {/* Kein Löschen: Wer nicht mehr zur Gemeinde gehört, fehlt im LCR –
+              und der nächste Import räumt ihn weg. Von Hand gelöscht wäre er
+              beim übernächsten Import wieder da. */}
           <div className="flex shrink-0 gap-2">
             <button type="button" className="btn-secondary" onClick={() => setEditOpen(true)}>
               <Pencil className="size-4" aria-hidden />
               Bearbeiten
             </button>
-            {isApproved && (
-              <button
-                type="button"
-                className="btn-ghost text-rose-600 dark:text-rose-400"
-                onClick={() => setConfirmDelete(true)}
-                aria-label="Mitglied löschen"
-              >
-                <Trash2 className="size-4" aria-hidden />
-              </button>
-            )}
           </div>
         </div>
 
@@ -306,21 +293,6 @@ export function MemberDetail() {
       </div>
 
       <MemberForm open={editOpen} onClose={() => setEditOpen(false)} member={member} />
-
-      <ConfirmDialog
-        open={confirmDelete}
-        onClose={() => setConfirmDelete(false)}
-        onConfirm={() => {
-          void deleteMember(member.id).then(() => {
-            toast.success('Mitglied gelöscht.')
-            navigate('/mitglieder')
-          })
-        }}
-        title="Mitglied löschen?"
-        message={`${member.firstName} ${member.lastName} wird endgültig entfernt. Erfasste Ansprachen und Berufungen bleiben bestehen, verlieren aber ihren Bezug.`}
-        confirmLabel="Löschen"
-        danger
-      />
     </>
   )
 }
@@ -410,6 +382,16 @@ const EMPTY: FormState = {
   tags: '',
 }
 
+/**
+ * Ein Mitglied bearbeiten.
+ *
+ * Nur bearbeiten – anlegen lässt sich hier niemand. Das Verzeichnis kommt
+ * aus dem LCR und wird dort gepflegt; ein von Hand erfasstes Mitglied wäre
+ * beim nächsten Import entweder doppelt oder ein Datensatz, den niemand
+ * wiederfindet. Was die App darüber hinaus führt – Notiz, Schlagworte,
+ * «kann angefragt werden», Betreuung –, steht im LCR nicht und wird deshalb
+ * weiterhin hier gepflegt.
+ */
 export function MemberForm({
   open,
   onClose,
@@ -417,7 +399,7 @@ export function MemberForm({
 }: {
   open: boolean
   onClose: () => void
-  member?: Member
+  member: Member
 }) {
   const toast = useToast()
   const [form, setForm] = useState<FormState>(EMPTY)
@@ -425,29 +407,25 @@ export function MemberForm({
 
   useEffect(() => {
     if (!open) return
-    setForm(
-      member
-        ? {
-            firstName: member.firstName,
-            lastName: member.lastName,
-            gender: member.gender,
-            birthDate: toDateInput(member.birthDate),
-            email: member.email ?? '',
-            phone: member.phone ?? '',
-            mobile: member.mobile ?? '',
-            street: member.street ?? '',
-            zip: member.zip ?? '',
-            city: member.city ?? '',
-            status: member.status,
-            availableForTalks: member.availableForTalks ?? true,
-            notes: member.notes ?? '',
-            ministeringPartnerIds: member.ministeringPartnerIds ?? [],
-            ministeringAssignedIds: member.ministeringAssignedIds ?? [],
-            lastTalkDate: toDateInput(member.lastTalkDate),
-            tags: (member.tags ?? []).join(', '),
-          }
-        : EMPTY,
-    )
+    setForm({
+      firstName: member.firstName,
+      lastName: member.lastName,
+      gender: member.gender,
+      birthDate: toDateInput(member.birthDate),
+      email: member.email ?? '',
+      phone: member.phone ?? '',
+      mobile: member.mobile ?? '',
+      street: member.street ?? '',
+      zip: member.zip ?? '',
+      city: member.city ?? '',
+      status: member.status,
+      availableForTalks: member.availableForTalks ?? true,
+      notes: member.notes ?? '',
+      ministeringPartnerIds: member.ministeringPartnerIds ?? [],
+      ministeringAssignedIds: member.ministeringAssignedIds ?? [],
+      lastTalkDate: toDateInput(member.lastTalkDate),
+      tags: (member.tags ?? []).join(', '),
+    })
   }, [open, member])
 
   const update = <K extends keyof FormState>(key: K, value: FormState[K]) =>
@@ -485,13 +463,8 @@ export function MemberForm({
           .filter(Boolean),
       }
 
-      if (member) {
-        const outcome = await updateMember(member.id, payload)
-        toast.saved('Mitglied aktualisiert.', outcome)
-      } else {
-        const { outcome } = await createMember(payload)
-        toast.saved('Mitglied erfasst.', outcome)
-      }
+      const outcome = await updateMember(member.id, payload)
+      toast.saved('Mitglied aktualisiert.', outcome)
       onClose()
     } catch (error) {
       console.error(error)
@@ -505,7 +478,7 @@ export function MemberForm({
     <Modal
       open={open}
       onClose={onClose}
-      title={member ? 'Mitglied bearbeiten' : 'Neues Mitglied'}
+      title="Mitglied bearbeiten"
       size="lg"
       footer={
         <>

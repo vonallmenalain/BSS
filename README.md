@@ -14,12 +14,12 @@ Abendmahlsversammlung, Berufungsverwaltung und Mitgliederdaten.
 | Bereich                   | Was die App leistet                                                                                 |
 | ------------------------- | --------------------------------------------------------------------------------------------------- |
 | **Sitzungen**             | Termin festlegen, Traktanden und Pendenzen sammeln, Sitzungsmodus zum Durchgehen, Protokoll drucken |
-| **Pendenzen**             | Offenes über alle Sitzungen hinweg, gefiltert nach «meine», «überfällig», «ohne Sitzung»            |
+| **Pendenzen**             | Was eine Sitzung überstanden hat, ohne erledigt zu werden – alles oder nur das eigene               |
 | **Notizen**               | Was nicht an eine Sitzung gehört – für alle sichtbar, speichert von selbst                          |
 | **Putzplan**              | Die Halbjahrestabelle der Gemeinde als Wochenplan – Grundlage für die Ansage am Sonntag             |
 | **Abendmahlsversammlung** | Ganzer Ablauf pro Sonntag: Leitung, Bekanntmachungen, Angelegenheiten, Ansprachen, Musik, Gebet     |
 | **Aktivitäten AP's**      | Aktivitätenplan der Priestertumskollegien – teilbar mit Beratern, ohne Einblick in Personendaten    |
-| **Berufungen**            | Vom Vorschlag bis zur Einsetzung, gruppiert nach Organisation; Verlauf aus der bisherigen Liste     |
+| **Berufungen**            | Wer welche Aufgabe hat, gruppiert nach Organisation – und wer keine hat; Stand aus dem LCR          |
 | **Mitglieder**            | Stammdaten, Notizen, Suche und Sortierung                                                           |
 
 Traktandum und Pendenz sind derselbe Datensatz: Was in einer Sitzung offen
@@ -261,9 +261,11 @@ Beides ist derselbe Datensatz, aber nicht dasselbe Wort:
 - **Pendenz** – hat eine frühere Sitzung überstanden, ohne erledigt zu werden.
 
 Der Weg führt nur in eine Richtung. Wird eine Sitzung abgeschlossen, wandert
-alles Unerledigte in den Sammelkorb und ist von da an eine Pendenz; wer sie in
-die nächste Sitzung übernimmt, findet sie dort unter **Pendenzen** und nicht
-unter den neuen Traktanden. Die beiden Gruppen stehen unter eigenen
+alles Unerledigte **auf die nächste geplante Sitzung** und ist von da an eine
+Pendenz; dort steht es unter **Pendenzen** und nicht unter den neuen
+Traktanden. Steht noch keine nächste Sitzung fest, bleibt es im Sammelkorb und
+erscheint so lange unter «Pendenzen»; die nächste Sitzung holt es mit einem
+Griff zurück («_n_ Pendenzen» in der Werkzeugleiste). Die beiden Gruppen stehen unter eigenen
 Überschriften, **zuerst die neuen Traktanden, danach die Pendenzen** – in
 dieser Reihenfolge geht eine Sitzung durch, und der erste Teil ist nicht eine
 Wiederholung der letzten. Angeschrieben wird nur die Pendenz: dass sie pendent
@@ -293,17 +295,36 @@ Eintrag selbst ist das Formular:
   wird kurz nach dem letzten Tastendruck und noch einmal beim Weiterblättern.
   Gemeldet wird nur, was zu tun ist – ein fehlender Titel oder ein Schreiben,
   das nicht durchkam.
-- **Priorität** (Standard _Normal_), **Erledigen bis** (Standard leer) und
-  **Zuständig** (niemand vorausgewählt) stehen unmittelbar darunter. Zur Wahl
+- **Zuständig** (niemand vorausgewählt) steht unmittelbar darunter. Zur Wahl
   stehen der Bischof, beide Ratgeber und die Sekretäre – ein Klick genügt.
-- Sonst nichts. Bereich, betroffene Mitglieder, das Kennzeichen «vertraulich»
-  und die eigene Notizliste je Traktandum sind weggefallen: Was besprochen
-  wurde, gehört in die Beschreibung.
+- Sonst nichts. Bereich, betroffene Mitglieder, **Priorität**, **Erledigen
+  bis**, das Kennzeichen «vertraulich» und die eigene Notizliste je Traktandum
+  sind weggefallen: Was besprochen wurde, gehört in die Beschreibung.
+
+**Kein Fälligkeitsdatum und keine Priorität.** Beide sagten dasselbe noch
+einmal und meist anders: Eine Pendenz gehört in eine Sitzung, und die hat
+bereits ein Datum; was zuerst drankommt, sagt die Reihenfolge der Liste, und
+die lässt sich von Hand festlegen. Aus «Verschieben» ist deshalb ein einziger
+Knopf geworden – **auf die nächste Sitzung**. Die früheren Ziele «um eine
+Woche», «um einen Monat», «eigenes Datum» setzten bloss einen Termin, an dem
+nichts geschah.
 
 Oben steht, wo man innerhalb der eigenen Gruppe ist – «2 von 5 Traktanden»,
 später «1 von 8 Pendenzen». Auch die Sprungleiste zählt je Gruppe von vorn und
 lässt zwischen ihnen eine Lücke. Nach «Erledigt» rückt die App von selbst zum
 nächsten Punkt; am Laptop blättern die Pfeiltasten.
+
+### Variables Layout
+
+Nicht jedes Traktandum ist ein Absatz Text. Manches ist eine kleine Tabelle –
+Aufgabe, wer, bis wann. Der Haken **Variables Layout** stellt beim Erfassen an
+die Stelle der Beschreibung ein Raster, das sich selbst zusammenstellen lässt.
+
+Der Haken steht **nur im Fenster «Neues Traktandum»**. Ob ein Punkt Text ist
+oder Tabelle, entscheidet sich einmal; über zwanzig Pendenzen hinweg stand er
+sonst überall, wo ihn niemand brauchte. Ein Raster, das einmal gebaut ist,
+lässt sich weiterhin überall ausfüllen und ändern – es tritt schlicht an die
+Stelle der Beschreibung.
 
 ### Liste: Reihenfolge festlegen
 
@@ -316,6 +337,20 @@ jeder Zeile (auch am Handy) oder durch **Ziehen und Ablegen** am Zeigergerät.
 Die Reihenfolge gilt für alle und bestimmt auch, in welcher Folge der
 Sitzungsmodus durchgeht. Zwischen den Gruppen wird nicht verschoben – eine
 Pendenz zu den neuen Traktanden zu ziehen hiesse, sie zurückzudatieren.
+
+### Bekanntmachung und Angelegenheit aus der Sitzung heraus
+
+Neben **+ Traktandum** stehen **+ Bekanntmachung** und **+ Angelegenheit**.
+Beides fällt in der Sitzung laufend an – «das sagen wir am Sonntag an», «den
+bestätigen wir» –, und bis anhin hiess das: die Sitzung verlassen, den Sonntag
+suchen, zurückfinden. Drei Handgriffe für einen Satz.
+
+Ein Klick öffnet stattdessen ein Fenster über der Sitzung. Gefragt wird zuerst
+nach dem **Sonntag** – vorgeschlagen ist der nächste, zur Wahl stehen die
+nächsten acht –, danach folgen die Felder. Der Eintrag wird beim gewählten
+Sonntag **angehängt**; alles, was dort schon steht, bleibt unberührt, auch
+wenn jemand anders gleichzeitig daran arbeitet. Wer mehr als den einen Satz
+braucht, findet unten den Weg zum ganzen Sonntag.
 
 ### Namen im Text
 
@@ -499,6 +534,32 @@ einem Neuimport gleich bleibt.
 gebetet hat; zuoberst steht, wer noch nie an der Reihe war – dieselbe Logik
 wie bei den Ansprachen.
 
+### Angelegenheiten: Art, Person, Aufgabe
+
+Ein Eintrag hat drei Spalten, mehr braucht er nicht:
+
+| Spalte       | Was darin steht                                                    |
+| ------------ | ------------------------------------------------------------------ |
+| **Art**      | Bestätigung, Entlassung, Ordinierung, Konfirmierung, Segnung, …    |
+| **Mitglied** | Aus dem Verzeichnis – tippen genügt, gewählt wird aus den Treffern |
+| **Aufgabe**  | Funktion bzw. Berufung: «Lehrer in der Sonntagsschule»             |
+
+Vorgelesen wird daraus «_Name_ – _Aufgabe_»; genauso steht es unter
+«Leitung» im Ablauf. Der Name wird beim Eintrag mitgeschrieben, damit ein
+Programm von vor zwei Jahren auch dann lesbar bleibt, wenn der Datensatz
+später nicht mehr da ist – wie beim Liedtitel und beim Namen der leitenden
+Person.
+
+**An der Berufung ändert das nichts.** Wer welche Berufung hat, sagt allein
+das LCR und der Import von dort; diese Liste ist der Wortlaut für den Sonntag
+und sonst nichts. Früher liessen sich Einträge aus dem Bereich «Berufungen»
+übernehmen und blieben mit ihnen verknüpft – das ist weggefallen, zusammen
+mit dem Feld «Betroffene Mitglieder».
+
+Einträge aus früheren Fassungen tragen statt Person und Aufgabe einen
+Freitext. Er bleibt lesbar stehen und wird darunter angezeigt, bis jemand die
+beiden Felder ausfüllt – überschrieben wird nichts von selbst.
+
 ---
 
 ## Wiederkehrende Bekanntmachungen
@@ -601,12 +662,38 @@ Dank an niemanden wäre schlimmer als gar keiner.
 Der Jahresplan der Priestertumskollegien – bisher eine Excel-Tabelle, die
 herumgereicht wurde. Die Seite beantwortet zuerst die Frage, die sich jede
 Woche neu stellt: **Was kommt als Nächstes?** Deshalb steht die Antwort ganz
-oben und gross, über die ganze Breite, mit Treffpunkt, Leitung und den
+oben und gross, über die ganze Breite, mit Treffpunkt, Zuständigkeit und den
 Teilnehmenden aus der Bischofschaft. Darunter der ganze Plan, nach Monaten
-gruppiert wie in der Tabelle – **eine Zeile je Termin**, und untereinander
-steht überall dasselbe: Datum, Aktivität, Treffpunkt, Leitung, Teilnahme.
-Auf schmalen Geräten rücken die Angaben unter die Aktivität, statt sich in
-Spalten zu quetschen.
+gruppiert wie in der Tabelle – und untereinander steht überall dasselbe:
+Datum, Aktivität, Treffpunkt, Zuständig AP, Teilnahme. Auf schmalen Geräten
+rücken die Angaben unter die Aktivität, statt sich in Spalten zu quetschen.
+
+### Ansicht: Liste oder Kacheln
+
+Oben rechts steht ein Knopf, hinter dem alles zur Darstellung zusammenkommt.
+Er zeigt den gewählten Zeitraum an; ein Klick öffnet die drei Einstellungen:
+
+| Einstellung     | Wahl                              | Was sie ändert                                                                  |
+| --------------- | --------------------------------- | ------------------------------------------------------------------------------- |
+| **Zeitraum**    | Kommend · Vergangen · Ganzer Plan | Welcher Ausschnitt gezeigt wird; Vergangenes steht rückwärts, das Letzte zuerst |
+| **Darstellung** | Liste · Kacheln                   | Ein Fahrplan von oben nach unten – oder ein Feld aus Kacheln, je Termin eine    |
+| **Abstand**     | Kompakt · Normal · Weit           | Polster, Abstände und Schriftgrad zugleich                                      |
+
+Die **Liste** ist der Fahrplan: eine Zeile je Termin, ein Blick von oben nach
+unten sagt, was der Monat bringt. Die **Kacheln** stellen jeden Termin für
+sich hin – mit Datum, Art als angeschriebenem Etikett, Titel, allen Angaben
+und der Bemerkung. Auf einem breiten Bildschirm stehen mehrere nebeneinander,
+und man überblickt mehr Wochen auf einmal. Es fehlt in keiner der beiden
+Ansichten etwas.
+
+**Der Zeitraum stand früher als breite Knopfleiste über dem Plan.** Er hat
+sie nicht verdient: Fast immer bleibt es bei «Kommend», und eine Leiste, die
+man einmal im Jahr anfasst, nimmt dem Plan die oberste Zeile weg.
+
+Die getroffene Wahl bleibt – **im Browser und am eigenen Konto**. Im Browser,
+damit sie sofort und auch ohne Netz stimmt; am Konto, damit sie auf jedem
+Gerät gilt. Wer den Plan am Laptop auf Kacheln gestellt hat, findet ihn am
+Telefon genauso vor.
 
 ### Der Takt
 
@@ -642,11 +729,11 @@ zwei Zustände, und sie sind sauber getrennt:
 
   Jeder Termin bekommt dabei so viel Platz, wie er braucht: oben das Datum
   und der **ganze Titel** – er wird nie abgeschnitten und bricht lieber um –,
-  darunter **Startzeit, Treffpunkt, Leitung AP, Teilnahme BSS, Teilnahme
+  darunter **Startzeit, Treffpunkt, Zuständig AP, Teilnahme BSS, Teilnahme
   Berater** und die Bemerkung, jede Angabe mit ihrer Beschriftung und nur,
-  wenn sie ausgefüllt ist. Wer die Aktivität leitet, steht nur bei der
-  AP-Klasse: Bei den übrigen Terminen führt ohnehin das Kollegium des
-  Monats, und das steht über der Gruppe.
+  wenn sie ausgefüllt ist. **Zuständig AP** steht bei jeder Art von Termin –
+  wer eine Aktivität organisiert, ist die Auskunft, die im Plan gesucht wird.
+  Wer das Kollegium des Monats führt, steht daneben über der Gruppe.
 
 - Der **Bearbeitungsmodus** kommt auf Knopfdruck – **Bearbeitungsmodus**
   oben rechts. Erst dort erscheinen **+ Termin** und **Termine erzeugen**,
@@ -669,7 +756,7 @@ zweites Mal drücken und füllt dann nur die Lücken.
 
 Im Bearbeitungsmodus öffnet jede Zeile alle Felder der bisherigen Tabelle:
 Datum (auf Wunsch mehrtägig), Uhrzeit, Art, Aktivität bzw. Klasse,
-Treffpunkt, Leitung, Teilnahme Bischofschaft, Teilnahme Berater und die
+Treffpunkt, Zuständig AP, Teilnahme Bischofschaft, Teilnahme Berater und die
 Bemerkung. Die Personenfelder sind Freitext wie in der Tabelle – die
 Vorschlagsliste kommt aus dem, was schon im Plan steht, und hält die
 Schreibweise einheitlich.
@@ -732,9 +819,64 @@ keine Reihenfolge festhalten.
 
 ---
 
+## Berufungen
+
+**Berufungen** in der Seitenleiste. Die Seite zeigt den Organisationsplan der
+Gemeinde: je Organisation, wer welche Aufgabe hat – in der Reihenfolge des
+LCR, also Präsident, Ratgeber, dann die übrigen. Was ausserhalb der Einheit
+liegt (Pfahl, Seminar, Institut, Mission), steht in einer eigenen Sparte am
+Ende.
+
+**Gelesen, nicht geschrieben.** Es gibt keinen Knopf für eine neue Berufung,
+kein Bearbeiten und kein Löschen. Der ganze Bestand kommt aus dem LCR und wird
+dort gepflegt; erfasst wird er unter **Einstellungen → Importe → Berufungen**,
+eingefügt aus der Zwischenablage. Von Hand nachzuführen hiesse, zwei Stände
+nebeneinander zu führen – und der eine wäre über kurz oder lang der falsche.
+Was in der App entstünde, wäre beim nächsten Import ohnehin wieder weg:
+überschrieben oder als «fehlt in der Quelle» entlassen.
+
+**Vier Ansichten**, oben umschaltbar:
+
+| Ansicht           | Was darin steht                                                     |
+| ----------------- | ------------------------------------------------------------------- |
+| **Aktuell**       | Alles, was gerade gilt – bestätigt und eingesetzt                   |
+| **Ohne Berufung** | Mitglieder, zu denen keine laufende Berufung erfasst ist            |
+| **Entlassen**     | Abgegebene Berufungen, mit Zeitraum                                 |
+| **Alle**          | Beides zusammen, einschliesslich der übernommenen Berufungshistorie |
+
+Daneben steht der Umschalter **Alle Mitglieder / Nur Aktive**. Er gilt für
+alle vier Ansichten: Wer inaktiv ist, verschwindet damit samt seinen
+Berufungen aus der Liste. Wer im Mitgliederverzeichnis gar nicht (mehr) steht,
+bleibt sichtbar – über seinen Status lässt sich nichts sagen, und eine
+Berufung stillschweigend verschwinden zu lassen wäre das Schlechtere.
+
+**Ohne Berufung** beantwortet die Frage, die vor jeder neuen Berufung steht.
+Sie beantwortet sie ehrlich: In der Liste steht die ganze Gemeinde, Kinder
+eingeschlossen – deshalb steht das Alter dabei, und deshalb gibt es den
+Umschalter. Eine Berufung ausserhalb der Einheit zählt mit; auch sie ist eine
+Aufgabe. Wo eine frühere Berufung erfasst ist, steht sie mit Zeitraum daneben:
+War da schon einmal etwas, und wie lange ist es her?
+
+**Ein Griff auf eine Zeile führt zur Person.** Was die Seite sonst noch
+beantworten könnte – seit wann, wie oft, was davor –, steht im Profil, und
+«Zurück» führt von dort wieder hierher. Die Suche greift auf Name, Position
+und Organisation zu, in der Ansicht «Ohne Berufung» auf den Namen.
+
+---
+
 ## Mitgliederliste importieren
 
 **Einstellungen → Importe → Mitglieder**.
+
+**Der einzige Weg ins Verzeichnis – und wieder heraus.** In der App lässt
+sich kein Mitglied von Hand anlegen und keines von Hand löschen; es gibt
+weder einen «Neu»- noch einen «Löschen»-Knopf. Das Verzeichnis kommt aus dem
+LCR und wird dort gepflegt: Ein von Hand erfasster Datensatz wäre beim
+nächsten Import entweder doppelt oder einer, den niemand wiederfindet, und
+ein von Hand gelöschter wäre beim übernächsten wieder da, weil er im LCR nie
+verschwand. Was die App darüber hinaus führt und das LCR gar nicht kennt –
+Notiz, Schlagworte, «kann für Ansprachen angefragt werden», Betreuung –, wird
+weiterhin am einzelnen Mitglied gepflegt (**Bearbeiten** im Profil).
 
 Der Assistent führt durch vier Schritte: Quelle wählen, Spalten zuordnen
 (wird geraten), Vorschau prüfen, importieren. Als Quelle dienen wahlweise
@@ -764,6 +906,23 @@ allein (dann mit Warnung). Drei Schalter schützen gepflegte Daten:
 
 Damit der Abgleich beim nächsten Mal sicher greift, lohnt es sich, eine Spalte
 mit der Mitglieds-Nummer mitzuliefern und als «Mitglieds-Nr.» zuzuordnen.
+
+### Wer in der Quelle fehlt
+
+Die eingefügte LCR-Seite gilt als der **ganze Bestand**: Wer dort nicht mehr
+steht, gehört nicht mehr zur Gemeinde und wird beim Import entfernt. Weil
+sich in der App niemand von Hand löschen lässt, ist das der einzige Ort, an
+dem der Wegzug nachvollzogen wird.
+
+Die Vorschau nennt die Betroffenen deshalb **namentlich** und nicht bloss als
+Zahl – ein versehentlich nur halb kopiertes Verzeichnis fällt an den Namen
+sofort auf, an einer Zahl erst hinterher. Wer bewusst nur einen Ausschnitt
+einliest, schaltet das Entfernen im selben Kasten ab.
+
+Gelöscht wird erst, wenn alles Übrige geschrieben ist: Bricht der Import in
+der Mitte ab, ist zu wenig geschrieben – aber nichts zu viel entfernt.
+Erfasste Ansprachen und Berufungen bleiben bestehen; sie tragen den Namen
+mitgeschrieben und bleiben lesbar, verlieren aber ihren Bezug zur Person.
 
 ---
 
@@ -1064,7 +1223,7 @@ sie sich nach dem Import auf der Seite **Putzplan** einzeln richtigstellen.
 
 Den bisherigen Jahresplan als `.xlsx` oder `.csv` einlesen, per Auswahl oder
 Drag-and-drop. Gelesen wird das erste Arbeitsblatt: eine Kopfzeile mit
-«Datum», «Aktivität / Klasse», «Treffpunkt», «Leitung / Org», den beiden
+«Datum», «Aktivität / Klasse», «Treffpunkt», «Zuständig AP», den beiden
 Teilnahmespalten und «Bemerkung», darunter je Zeile ein Termin. Wo die
 Spalten stehen, bestimmt die Kopfzeile; fehlt sie, gilt die gewohnte
 Reihenfolge – die Vorschau sagt, welcher Fall eingetreten ist.
