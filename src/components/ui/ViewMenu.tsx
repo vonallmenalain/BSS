@@ -151,6 +151,78 @@ export function MenuChoice<T extends string>({
   )
 }
 
+/**
+ * Mehrfachauswahl als Reihe von Chips – für Filter mit vielen gleichrangigen
+ * Werten, etwa Jahrzahlen.
+ *
+ * Nichts gewählt heisst «alles»; genau das sagt der erste Chip, und ein Griff
+ * auf ihn stellt diesen Zustand wieder her. Eine Liste zum Aufklappen wäre
+ * hier falsch: Man wählt zwei Jahre nebeneinander und will beide sehen.
+ */
+export function MenuChips<T extends string | number>({
+  label,
+  hint,
+  values,
+  onChange,
+  options,
+  allLabel = 'Alle',
+}: {
+  label: string
+  hint?: string
+  values: T[]
+  onChange: (next: T[]) => void
+  options: { value: T; label: string }[]
+  allLabel?: string
+}) {
+  const toggle = (value: T) =>
+    onChange(values.includes(value) ? values.filter((v) => v !== value) : [...values, value])
+
+  return (
+    <MenuSection label={label} hint={hint}>
+      <div className="flex flex-wrap gap-1">
+        <MenuChip selected={values.length === 0} onClick={() => onChange([])}>
+          {allLabel}
+        </MenuChip>
+        {options.map((option) => (
+          <MenuChip
+            key={option.value}
+            selected={values.includes(option.value)}
+            onClick={() => toggle(option.value)}
+          >
+            {option.label}
+          </MenuChip>
+        ))}
+      </div>
+    </MenuSection>
+  )
+}
+
+function MenuChip({
+  selected,
+  onClick,
+  children,
+}: {
+  selected: boolean
+  onClick: () => void
+  children: ReactNode
+}) {
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      aria-pressed={selected}
+      className={cn(
+        'tabular rounded-full border px-2.5 py-1 text-xs font-medium transition',
+        selected
+          ? 'border-brand-500 bg-brand-50 text-brand-900 dark:border-brand-500 dark:bg-brand-950 dark:text-brand-100'
+          : 'border-slate-300 bg-white text-slate-600 hover:border-slate-400 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-300',
+      )}
+    >
+      {children}
+    </button>
+  )
+}
+
 /** Ein Schalter – etwas ein- oder ausblenden. */
 export function MenuToggle({
   label,

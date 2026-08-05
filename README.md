@@ -534,6 +534,58 @@ einem Neuimport gleich bleibt.
 gebetet hat; zuoberst steht, wer noch nie an der Reihe war – dieselbe Logik
 wie bei den Ansprachen.
 
+### Vorschläge: wer als Nächstes angefragt wird
+
+Der Reiter **Vorschläge** ordnet die Gemeinde nach Dringlichkeit: Wer noch nie
+gesprochen hat, steht zuoberst, danach der längste Abstand. Bereits
+eingeplante und zurückgestellte Personen rutschen ans Ende, statt zu
+verschwinden – so bleibt sichtbar, warum sie gerade nicht in Frage kommen.
+
+**«Bereits eingeplant» hört mit dem Sonntag auf.** Gemeint ist ein Platz, der
+noch bevorsteht, und nicht eine Ansprache, die vor vier Jahren gehalten wurde.
+Beides steht in derselben Sammlung – eine Zusage bleibt am Eintrag stehen,
+denn sie **ist** der Verlauf –, unterschieden werden sie am Datum. Zählte auch
+die Vergangenheit als Einplanung, wäre nach ein paar Jahren die halbe Gemeinde
+gesperrt, und zwar ausgerechnet die Hälfte, die schon einmal gesprochen hat.
+Gerechnet wird ab Tagesbeginn: Am Sonntag selbst fragt man ohnehin niemanden
+mehr an.
+
+**Der Filter.** Neben der Namenssuche steht **Filter**; die Zahl am Knopf sagt,
+wie viele Einstellungen von der Voreinstellung abweichen, auch wenn das Menü
+zu ist. Darin:
+
+| Filter                      | Was er tut                                                        |
+| --------------------------- | ----------------------------------------------------------------- |
+| **Nur seit über X Monaten** | Blendet aus, wer erst kürzlich dran war (Schwelle: Einstellungen) |
+| **Erst ab X Jahren**        | Hält die Kinder heraus – sie haben ja noch nie gesprochen         |
+| **Nur Aktive**              | Ohne diesen Haken stehen auch Inaktive zur Auswahl                |
+| **Geschlecht**              | Alle, nur Frauen oder nur Männer                                  |
+| **Zuletzt gesprochen**      | Eine oder mehrere Jahrzahlen, dazu «noch nie»                     |
+| **Zurückgestellte zeigen**  | Holt zurück, was «Nicht anfragen» ausgeblendet hat                |
+
+Zur Wahl stehen nur Jahre, die im Bestand auch vorkommen – eine Jahrzahl, die
+zu niemandem führt, wäre eine Auswahl ohne Antwort. Eine gewählte Jahrzahl
+**sticht** dabei «nur seit über X Monaten»: Wer letztes Jahr gesprochen hat,
+ist per Definition nicht überfällig, und die Frage «wer sprach 2025?» liesse
+sich sonst gar nicht stellen.
+
+**Nicht anfragen.** Neben **+ Anfragen** steht **Nicht anfragen**. Ein Griff
+darauf stellt jemanden zurück: Die Person verschwindet aus den Vorschlägen und
+kommt mit dem Haken **Zurückgestellte zeigen** wieder zum Vorschein – dort
+heisst der Knopf dann **Wieder anfragen**.
+
+Das ist das «im Moment nicht»: eine Krankheit, eine Abwesenheit, ein Gespräch,
+das noch aussteht. Es ist bewusst etwas anderes als **Kann für Ansprachen
+angefragt werden** am Mitglied selbst; dort steht das grundsätzliche «gar
+nicht», und wer so gekennzeichnet ist, erscheint in keiner Vorschlagsliste
+mehr. Beides steht auch auf der Seite des Mitglieds und lässt sich dort
+ändern – ein Zustand, der nur in einer Liste sichtbar wäre, die ihn selbst
+ausblendet, wäre nicht mehr zu finden.
+
+Gesperrt ist damit nichts: Wer im Zuteilungsfenster ausdrücklich nach einer
+zurückgestellten Person sucht, findet sie samt Vermerk und kann sie eintragen.
+Der Vermerk hält sie aus den **Vorschlägen** heraus, nicht aus dem Programm.
+
 ### Angelegenheiten: Art, Person, Aufgabe
 
 Ein Eintrag hat drei Spalten, mehr braucht er nicht:
@@ -1379,7 +1431,7 @@ src/
 ├── contexts/            Anmeldung, Stammdaten, Meldungen
 ├── hooks/               Firestore-Abfragen, Bekanntmachungen eines Sonntags, lokale Einstellungen
 ├── lib/                 Firebase-Anbindung, Typen, Datums-, Serien-, Programm-, Sonntags-,
-│                        Word- und Hilfsfunktionen
+│                        Vorschlags-, Word- und Hilfsfunktionen
 ├── pages/
 │   ├── sacrament/       Leitung, Bekanntmachungen, Angelegenheiten, Musik, Gebet
 │   └── …                Eine Datei pro übriger Ansicht

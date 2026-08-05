@@ -701,6 +701,17 @@ export interface Member extends WithId {
   status: MemberStatus
   /** Darf für Ansprachen angefragt werden? */
   availableForTalks: boolean
+  /**
+   * Vorerst nicht anfragen.
+   *
+   * Der Unterschied zu `availableForTalks` ist die Dauer: Dort steht, dass
+   * jemand grundsätzlich nicht spricht – ein Kind, jemand, der es nicht
+   * möchte. Hier steht ein «im Moment nicht»: eine Krankheit, eine
+   * Abwesenheit, ein Gespräch, das noch aussteht. Solche Personen fallen aus
+   * den Vorschlägen heraus, bleiben aber einen Haken weit sichtbar und
+   * lassen sich mit einem Griff wieder aufnehmen.
+   */
+  talkHold?: boolean
 
   /** Freie Notiz, z. B. Kontaktperson, Besonderheiten, Betreuungshinweise */
   notes?: string

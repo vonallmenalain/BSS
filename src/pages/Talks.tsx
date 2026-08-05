@@ -10,9 +10,11 @@ import {
   Mic,
   Phone,
   Plus,
+  RotateCcw,
   Sparkles,
   Trash2,
   TriangleAlert,
+  UserMinus,
   UserPlus,
   X,
 } from 'lucide-react'
@@ -23,6 +25,7 @@ import { useSacramentMeetings, useTalks } from '@/hooks/useFirestore'
 import { Modal, ConfirmDialog } from '@/components/ui/Modal'
 import { EmptyState, SkeletonList } from '@/components/ui/Feedback'
 import { SegmentedControl } from '@/components/ui/Pickers'
+import { MenuChips, MenuChoice, MenuDivider, MenuToggle, ViewMenu } from '@/components/ui/ViewMenu'
 import { SectionHeader, useSacrament } from '@/components/sacrament/SacramentLayout'
 import {
   SundayProgramBadge,
@@ -36,14 +39,23 @@ import {
 import { TalkStatusBadge } from '@/components/ui/Badge'
 import { Avatar } from '@/components/ui/Avatar'
 import { formatDate, formatDateLong, toDate, toDateInput, upcomingWeekdays } from '@/lib/dates'
-import { formatPhone, matchesSearch, telHref } from '@/lib/utils'
+import { cn, formatPhone, matchesSearch, telHref } from '@/lib/utils'
 import {
+  activeTalkFilterCount,
   createTalk,
+  DEFAULT_TALK_FILTER,
   deleteTalk,
+  filterTalkCandidates,
+  NEVER_SPOKE,
   rankTalkCandidates,
+  setTalkHold,
   setTalkStatus,
   speakerFields,
+  talkYearOptions,
   updateTalk,
+  type TalkCandidate,
+  type TalkCandidateFilter,
+  type TalkGenderFilter,
   type TalkSpeaker,
 } from '@/services/talks'
 import {
@@ -169,19 +181,21 @@ export function Talks() {
     }
   }
 
-  // Die beiden Filter gehören der Seite, nicht der Liste: Sie bestimmen,
-  // wer überhaupt bewertet wird.
-  const [onlyActive, setOnlyActive] = useState(true)
-  const [hideChildren, setHideChildren] = useState(true)
+  /*
+   * Ein einziger Satz Filter für die Vorschläge – er gehört der Seite und
+   * nicht der Liste. Zwei davon bestimmen schon, wer überhaupt bewertet wird
+   * (Mindestalter und «nur Aktive»), die übrigen erst, was davon zu sehen ist.
+   */
+  const [filter, setFilter] = useState<TalkCandidateFilter>(DEFAULT_TALK_FILTER)
 
   const candidates = useMemo(
     () =>
       rankTalkCandidates(members, talks, {
         gapMonths: settings.talkGapMonths,
-        onlyActive,
-        minAge: hideChildren ? settings.talkMinAge : 0,
+        onlyActive: filter.onlyActive,
+        minAge: filter.minAge ? settings.talkMinAge : 0,
       }),
-    [members, talks, settings.talkGapMonths, settings.talkMinAge, onlyActive, hideChildren],
+    [members, talks, settings.talkGapMonths, settings.talkMinAge, filter.onlyActive, filter.minAge],
   )
 
   /* Gehalten heisst: zugesagt und vorbei. Einen eigenen Status dafür gibt es
@@ -360,10 +374,8 @@ export function Talks() {
           candidates={candidates}
           gapMonths={settings.talkGapMonths}
           minAge={settings.talkMinAge}
-          onlyActive={onlyActive}
-          onOnlyActive={setOnlyActive}
-          hideChildren={hideChildren}
-          onHideChildren={setHideChildren}
+          filter={filter}
+          onFilter={setFilter}
           onAssign={(member) => {
             // Den nächsten freien Programmplatz vorschlagen.
             const target = schedule.find((sunday) => sunday.openCount > 0)
@@ -497,36 +509,45 @@ function CandidateList({
   candidates,
   gapMonths,
   minAge,
-  onlyActive,
-  onOnlyActive,
-  hideChildren,
-  onHideChildren,
+  filter,
+  onFilter,
   onAssign,
 }: {
-  candidates: ReturnType<typeof rankTalkCandidates>
+  candidates: TalkCandidate[]
   gapMonths: number
   minAge: number
-  onlyActive: boolean
-  onOnlyActive: (next: boolean) => void
-  hideChildren: boolean
-  onHideChildren: (next: boolean) => void
+  filter: TalkCandidateFilter
+  onFilter: (next: TalkCandidateFilter) => void
   onAssign: (member: Member) => void
 }) {
-  const [search, setSearch] = useState('')
-  const [onlyOverdue, setOnlyOverdue] = useState(true)
+  const toast = useToast()
 
-  const visible = useMemo(() => {
-    let result = candidates
-    if (onlyOverdue) {
-      result = result.filter((c) => c.monthsSince === null || c.monthsSince >= gapMonths)
-    }
-    if (search.trim()) {
-      result = result.filter((c) =>
-        matchesSearch(`${c.member.firstName} ${c.member.lastName}`, search),
+  const visible = useMemo(
+    () => filterTalkCandidates(candidates, filter, gapMonths),
+    [candidates, filter, gapMonths],
+  )
+  const years = useMemo(() => talkYearOptions(candidates), [candidates])
+  const onHoldCount = useMemo(() => candidates.filter((c) => c.onHold).length, [candidates])
+  const activeFilters = activeTalkFilterCount(filter)
+
+  const set = <K extends keyof TalkCandidateFilter>(key: K, value: TalkCandidateFilter[K]) =>
+    onFilter({ ...filter, [key]: value })
+
+  /** Vorerst nicht anfragen – oder wieder aufnehmen. */
+  const toggleHold = async (member: Member, onHold: boolean) => {
+    try {
+      const outcome = await setTalkHold(member.id, !onHold)
+      toast.saved(
+        onHold
+          ? `${member.firstName} ${member.lastName} steht wieder in den Vorschlägen.`
+          : `${member.firstName} ${member.lastName} wird vorerst nicht angefragt.`,
+        outcome,
       )
+    } catch (error) {
+      console.error(error)
+      toast.error('Konnte nicht gespeichert werden.')
     }
-    return result
-  }, [candidates, onlyOverdue, gapMonths, search])
+  }
 
   if (candidates.length === 0) {
     return (
@@ -552,36 +573,74 @@ function CandidateList({
           type="search"
           className="input max-w-xs"
           placeholder="Name suchen …"
-          value={search}
-          onChange={(event) => setSearch(event.target.value)}
+          value={filter.search}
+          onChange={(event) => set('search', event.target.value)}
         />
-        <label className="flex cursor-pointer items-center gap-2 text-sm">
-          <input
-            type="checkbox"
-            className="size-4 rounded"
-            checked={onlyOverdue}
-            onChange={(event) => setOnlyOverdue(event.target.checked)}
+
+        {/* Die Haken standen einmal alle nebeneinander über der Liste. Seit
+            es mehr als drei sind, stehen sie hinter einem Knopf – die Zahl
+            daran sagt, dass etwas eingestellt ist, auch wenn er zu ist. */}
+        <ViewMenu label={activeFilters > 0 ? `Filter · ${activeFilters}` : 'Filter'} width="w-80">
+          <MenuToggle
+            label={`Nur seit über ${gapMonths} Monaten`}
+            checked={filter.onlyOverdue}
+            onChange={(next) => set('onlyOverdue', next)}
           />
-          Nur seit über {gapMonths} Monaten
-        </label>
-        <label className="flex cursor-pointer items-center gap-2 text-sm">
-          <input
-            type="checkbox"
-            className="size-4 rounded"
-            checked={hideChildren}
-            onChange={(event) => onHideChildren(event.target.checked)}
+          <MenuToggle
+            label={`Erst ab ${minAge} Jahren`}
+            checked={filter.minAge}
+            onChange={(next) => set('minAge', next)}
           />
-          Erst ab {minAge} Jahren
-        </label>
-        <label className="flex cursor-pointer items-center gap-2 text-sm">
-          <input
-            type="checkbox"
-            className="size-4 rounded"
-            checked={onlyActive}
-            onChange={(event) => onOnlyActive(event.target.checked)}
+          <MenuToggle
+            label="Nur Aktive"
+            checked={filter.onlyActive}
+            onChange={(next) => set('onlyActive', next)}
           />
-          Nur Aktive
-        </label>
+
+          <MenuDivider />
+
+          <MenuChoice<TalkGenderFilter>
+            label="Geschlecht"
+            value={filter.gender}
+            onChange={(next) => set('gender', next)}
+            options={[
+              { value: 'all', label: 'Alle' },
+              { value: 'f', label: 'Frauen' },
+              { value: 'm', label: 'Männer' },
+            ]}
+          />
+
+          <MenuChips<number>
+            label="Zuletzt gesprochen"
+            values={filter.years}
+            onChange={(next) => set('years', next)}
+            options={years.map((year) => ({
+              value: year,
+              label: year === NEVER_SPOKE ? 'Noch nie' : String(year),
+            }))}
+            allLabel="Egal"
+            hint={`Mehrere Jahre lassen sich zusammen wählen. Eine Jahrzahl sticht «nur seit über ${gapMonths} Monaten» – wer letztes Jahr gesprochen hat, ist ja nicht überfällig.`}
+          />
+
+          <MenuDivider />
+
+          <MenuToggle
+            label={`Zurückgestellte zeigen${onHoldCount > 0 ? ` (${onHoldCount})` : ''}`}
+            checked={filter.showOnHold}
+            onChange={(next) => set('showOnHold', next)}
+            hint="Wer über «Nicht anfragen» zurückgestellt wurde, bleibt sonst ausgeblendet."
+          />
+        </ViewMenu>
+
+        {(activeFilters > 0 || filter.search.trim() !== '') && (
+          <button
+            type="button"
+            className="btn-ghost btn-sm"
+            onClick={() => onFilter(DEFAULT_TALK_FILTER)}
+          >
+            Zurücksetzen
+          </button>
+        )}
       </div>
 
       <p className="mb-2 flex items-center gap-1.5 text-xs text-slate-500 dark:text-slate-400">
@@ -589,50 +648,110 @@ function CandidateList({
         Sortiert nach Dringlichkeit: wer noch nie gesprochen hat, steht zuoberst.
       </p>
 
-      <ul className="card divide-list overflow-hidden">
-        {visible.slice(0, 60).map(({ member, age, monthsSince: months, alreadyPlanned }) => (
-          <li
-            key={member.id}
-            className={`flex items-center gap-3 px-4 py-3 ${alreadyPlanned ? 'opacity-50' : ''}`}
-          >
-            <Avatar name={`${member.firstName} ${member.lastName}`} id={member.id} size="md" />
-
-            <div className="min-w-0 flex-1">
-              <Link
-                to={`/mitglieder/${member.id}`}
-                className="block truncate text-sm font-medium hover:underline"
+      {visible.length === 0 ? (
+        <div className="card">
+          <EmptyState
+            icon={Mic}
+            title="Kein Vorschlag passt zu diesen Filtern"
+            description={
+              onHoldCount > 0 && !filter.showOnHold
+                ? `${onHoldCount} zurückgestellte Mitglieder sind ausgeblendet – der Filter blendet sie wieder ein.`
+                : 'Setze die Filter zurück oder wähle andere Jahre.'
+            }
+            action={
+              <button
+                type="button"
+                className="btn-secondary"
+                onClick={() => onFilter(DEFAULT_TALK_FILTER)}
               >
-                {member.firstName} {member.lastName}
-              </Link>
-              <p className="text-xs text-slate-500 dark:text-slate-400">
-                {months === null ? (
-                  <span className="font-medium text-amber-600 dark:text-amber-400">
-                    Noch nie gesprochen
-                  </span>
-                ) : (
-                  <>
-                    Zuletzt vor {months} Monaten
-                    {member.lastTalkDate && ` (${formatDate(member.lastTalkDate)})`}
-                  </>
+                Filter zurücksetzen
+              </button>
+            }
+          />
+        </div>
+      ) : (
+        <ul className="card divide-list overflow-hidden">
+          {visible
+            .slice(0, 60)
+            .map(({ member, age, monthsSince: months, alreadyPlanned, onHold }) => (
+              <li
+                key={member.id}
+                className={cn(
+                  'flex items-center gap-3 px-4 py-3',
+                  (alreadyPlanned || onHold) && 'opacity-50',
                 )}
-                {age !== null && ` · ${age} Jahre`}
-                {member.status !== 'active' && ' · inaktiv'}
-                {alreadyPlanned && ' · bereits eingeplant'}
-              </p>
-            </div>
+              >
+                <Avatar name={`${member.firstName} ${member.lastName}`} id={member.id} size="md" />
 
-            <button
-              type="button"
-              className="btn-secondary btn-sm shrink-0"
-              onClick={() => onAssign(member)}
-              disabled={alreadyPlanned}
-            >
-              <Plus className="size-3.5" aria-hidden />
-              Anfragen
-            </button>
-          </li>
-        ))}
-      </ul>
+                <div className="min-w-0 flex-1">
+                  <Link
+                    to={`/mitglieder/${member.id}`}
+                    className="block truncate text-sm font-medium hover:underline"
+                  >
+                    {member.firstName} {member.lastName}
+                  </Link>
+                  <p className="text-xs text-slate-500 dark:text-slate-400">
+                    {months === null ? (
+                      <span className="font-medium text-amber-600 dark:text-amber-400">
+                        Noch nie gesprochen
+                      </span>
+                    ) : (
+                      <>
+                        Zuletzt vor {months} Monaten
+                        {member.lastTalkDate && ` (${formatDate(member.lastTalkDate)})`}
+                      </>
+                    )}
+                    {age !== null && ` · ${age} Jahre`}
+                    {member.status !== 'active' && ' · inaktiv'}
+                    {alreadyPlanned && ' · bereits eingeplant'}
+                    {onHold && ' · zurückgestellt'}
+                  </p>
+                </div>
+
+                <div className="flex shrink-0 items-center gap-1">
+                  <button
+                    type="button"
+                    className="btn-secondary btn-sm"
+                    onClick={() => onAssign(member)}
+                    // Zurückgestellt heisst «im Moment nicht»: Wer trotzdem
+                    // anfragen will, nimmt die Person nebenan wieder auf.
+                    disabled={alreadyPlanned || onHold}
+                  >
+                    <Plus className="size-3.5" aria-hidden />
+                    Anfragen
+                  </button>
+
+                  {/* Kein Löschen und kein Status: Wer im Moment nicht
+                      angefragt werden soll, ist mit einem Griff wieder da. */}
+                  <button
+                    type="button"
+                    className="btn-ghost btn-sm"
+                    onClick={() => void toggleHold(member, onHold)}
+                    aria-label={
+                      onHold
+                        ? `${member.firstName} ${member.lastName} wieder anfragen`
+                        : `${member.firstName} ${member.lastName} vorerst nicht anfragen`
+                    }
+                    title={
+                      onHold
+                        ? 'Wieder in die Vorschläge aufnehmen'
+                        : 'Vorerst nicht anfragen – blendet die Person aus den Vorschlägen aus'
+                    }
+                  >
+                    {onHold ? (
+                      <RotateCcw className="size-3.5" aria-hidden />
+                    ) : (
+                      <UserMinus className="size-3.5" aria-hidden />
+                    )}
+                    <span className="hidden sm:inline">
+                      {onHold ? 'Wieder anfragen' : 'Nicht anfragen'}
+                    </span>
+                  </button>
+                </div>
+              </li>
+            ))}
+        </ul>
+      )}
 
       {visible.length > 60 && (
         <p className="mt-2 text-center text-xs text-slate-400">
@@ -881,7 +1000,7 @@ function AssignDialog({
                 }}
               />
               <ul className="mt-2 max-h-56 space-y-1 overflow-y-auto">
-                {results.map(({ member, monthsSince: months, alreadyPlanned }) => (
+                {results.map(({ member, monthsSince: months, alreadyPlanned, onHold }) => (
                   <li key={member.id}>
                     <button
                       type="button"
@@ -901,6 +1020,14 @@ function AssignDialog({
                           <span className="inline-flex items-center gap-1 text-amber-600">
                             <TriangleAlert className="size-3" aria-hidden />
                             eingeplant
+                          </span>
+                        ) : onHold ? (
+                          /* Zurückgestellt heisst «vorerst nicht anfragen» –
+                             gesperrt ist hier trotzdem nichts: Wer die Person
+                             ausdrücklich sucht, weiss, was er tut. */
+                          <span className="inline-flex items-center gap-1 text-amber-600">
+                            <UserMinus className="size-3" aria-hidden />
+                            zurückgestellt
                           </span>
                         ) : months === null ? (
                           'nie'

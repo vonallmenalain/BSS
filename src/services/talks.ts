@@ -13,11 +13,10 @@ import {
   Timestamp,
 } from 'firebase/firestore'
 import { db, COLLECTIONS } from '@/lib/firebase'
-import { getAge, monthsSince, toDate } from '@/lib/dates'
+import { toDate } from '@/lib/dates'
 import { stripUndefined } from '@/lib/utils'
 import { commit, type SaveOutcome } from '@/lib/sync'
 import {
-  ACTIVE_TALK_STATUSES,
   HELD_STATUS_QUERY,
   type Talk,
   type Member,
@@ -201,58 +200,38 @@ export async function deleteTalk(id: string): Promise<SaveOutcome> {
 /* Vorschlagsliste                                                     */
 /* ------------------------------------------------------------------ */
 
-export interface TalkCandidate {
-  member: Member
-  /** Alter in Jahren; `null`, wenn kein Geburtsdatum erfasst ist */
-  age: number | null
-  /** Monate seit der letzten Ansprache; `null` = noch nie gesprochen */
-  monthsSince: number | null
-  /** Bereits eine Ansprache eingeplant? Dann nicht doppelt anfragen. */
-  alreadyPlanned: boolean
-  /** Je höher, desto dringender ist eine Anfrage */
-  score: number
-}
+/*
+ * Wer angefragt werden sollte, steht firestore-frei in `lib/talkCandidates` –
+ * von hier mitverteilt, damit die Oberfläche nur einen Ort kennen muss. Wie
+ * bei `services/sacrament` und `lib/sunday`.
+ */
+export {
+  activeTalkFilterCount,
+  DEFAULT_TALK_FILTER,
+  filterTalkCandidates,
+  NEVER_SPOKE,
+  plannedTalkMemberIds,
+  rankTalkCandidates,
+  talkYearOptions,
+  type TalkCandidate,
+  type TalkCandidateFilter,
+  type TalkGenderFilter,
+} from '@/lib/talkCandidates'
 
 /**
- * Ermittelt, wer als Nächstes für eine Ansprache angefragt werden sollte.
+ * Ein Mitglied vorerst nicht anfragen – oder wieder aufnehmen.
  *
- * Ganz oben stehen aktive Mitglieder, die noch nie gesprochen haben, danach
- * jene mit dem längsten Abstand. Bereits eingeplante Personen werden nach
- * hinten sortiert, statt sie zu verstecken – so bleibt sichtbar, dass sie dran sind.
- *
- * `minAge` hält die Kinder heraus. Ohne diese Grenze stünden sie zuoberst,
- * denn sie haben noch nie gesprochen. Wer kein Geburtsdatum hat, bleibt in
- * der Liste: Ein fehlendes Datum ist kein Grund, jemanden zu übergehen.
+ * Ein Zustand am Mitglied und nicht an einer Ansprache: Es gibt keine, und
+ * genau darum geht es. Wer zurückgestellt ist, fällt aus den Vorschlägen
+ * heraus, bleibt aber über den Filter sichtbar (siehe `lib/talkCandidates`).
  */
-export function rankTalkCandidates(
-  members: Member[],
-  plannedTalks: Talk[],
-  options: { gapMonths?: number; onlyActive?: boolean; minAge?: number } = {},
-): TalkCandidate[] {
-  const { gapMonths = 18, onlyActive = true, minAge = 0 } = options
-  const plannedMemberIds = new Set(
-    plannedTalks.filter((t) => ACTIVE_TALK_STATUSES.includes(t.status)).map((t) => t.memberId),
+export async function setTalkHold(memberId: string, hold: boolean): Promise<SaveOutcome> {
+  return commit(
+    updateDoc(doc(db, COLLECTIONS.members, memberId), {
+      talkHold: hold,
+      updatedAt: serverTimestamp(),
+    }),
   )
-
-  return members
-    .map((member) => ({ member, age: getAge(member.birthDate) }))
-    .filter(({ member, age }) => {
-      if (!member.availableForTalks) return false
-      if (onlyActive && member.status !== 'active') return false
-      if (minAge > 0 && age !== null && age < minAge) return false
-      return true
-    })
-    .map(({ member, age }) => {
-      const months = monthsSince(member.lastTalkDate)
-      const alreadyPlanned = plannedMemberIds.has(member.id)
-
-      // Noch nie gesprochen erhält bewusst mehr Gewicht als der reine Zeitabstand.
-      let score = months === null ? gapMonths * 2 + 24 : months
-      if (alreadyPlanned) score -= 1000
-
-      return { member, age, monthsSince: months, alreadyPlanned, score }
-    })
-    .sort((a, b) => b.score - a.score)
 }
 
 /** Ansprachen eines Datums, nach Programmposition sortiert. */
