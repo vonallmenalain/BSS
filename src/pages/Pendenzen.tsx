@@ -1,20 +1,34 @@
-import { useCallback, useMemo, useState } from 'react'
+import { useCallback, useMemo, useState, type DragEvent } from 'react'
 import { useSearchParams } from 'react-router-dom'
 import { Check, CheckCircle2, Plus, Search } from 'lucide-react'
 import { useAuth } from '@/contexts/AuthContext'
 import { useData } from '@/contexts/DataContext'
+import { useToast } from '@/contexts/ToastContext'
 import { useDoneItems, useMeetings, useOpenItems } from '@/hooks/useFirestore'
 import { AgendaItemForm } from '@/components/agenda/AgendaItemForm'
 import { AgendaItemRow } from '@/components/agenda/AgendaItemRow'
 import { FOCUS_PARAM } from '@/components/agenda/MeetingFocus'
 import { EmptyState, SkeletonList } from '@/components/ui/Feedback'
 import { PageHeader, SegmentedControl } from '@/components/ui/Pickers'
-import { AddButton, MenuSection, ViewMenu } from '@/components/ui/ViewMenu'
+import { AddButton, MenuSection, MenuToggle, ViewMenu } from '@/components/ui/ViewMenu'
 import { useLocalStorage } from '@/hooks/useLocalStorage'
+import { savePendenzenOrder } from '@/services/agenda'
+import { saveSettings } from '@/services/settings'
 import { formatDateLong, formatDateShort, toDate, toDateInput } from '@/lib/dates'
 import { layoutToText } from '@/lib/layout'
 import { cn, matchesSearch } from '@/lib/utils'
-import { lastEditedAt, toItemKind, type AgendaItem, type MeetingStatus } from '@/lib/types'
+import {
+  DEFAULT_PENDENZEN_DONE_SORT,
+  lastEditedAt,
+  normalizePendenzenSort,
+  PENDENZEN_SORT_LABELS,
+  toItemKind,
+  type AgendaItem,
+  type MeetingStatus,
+  type PendenzenSort,
+  type PendenzenSortState,
+  type SortDirection,
+} from '@/lib/types'
 
 /** Welcher Ausschnitt gezeigt wird. */
 type Scope = 'open' | 'mine' | 'done'
@@ -23,28 +37,21 @@ type Scope = 'open' | 'mine' | 'done'
 const SCOPES: Scope[] = ['open', 'mine', 'done']
 
 /**
- * Wonach sortiert und gruppiert wird.
+ * Die beiden Datumsfelder, nach denen sortiert **und** gruppiert wird.
  *
  * Beides in einem: Die Zwischentitel der Liste sind die Tage des
  * Sortierfeldes. Etwas nach dem einen Datum zu ordnen und nach dem anderen zu
  * gruppieren ergäbe eine Liste, deren Überschriften vor- und zurückspringen.
+ *
+ * Die dritte Wahl – die von Hand gelegte Reihenfolge – kennt keine Tage und
+ * damit auch keine Zwischentitel; sie steht als eine Liste da.
  */
-type SortField = 'created' | 'updated'
-type SortDir = 'desc' | 'asc'
-interface SortState {
-  field: SortField
-  dir: SortDir
-}
+type DateField = Exclude<PendenzenSort, 'manual'>
 
 /** Ganze Einträge oder nur ihre Titel. */
 type Detail = 'titles' | 'full'
 
-const SORT_FIELD_LABELS: Record<SortField, string> = {
-  created: 'Erfassungsdatum',
-  updated: 'Bearbeitungsdatum',
-}
-
-const SORT_DIR_LABELS: Record<SortDir, string> = {
+const SORT_DIR_LABELS: Record<SortDirection, string> = {
   desc: 'Neuste zuerst',
   asc: 'Älteste zuerst',
 }
@@ -53,12 +60,6 @@ const DETAIL_LABELS: Record<Detail, string> = {
   titles: 'Nur Titel anzeigen',
   full: 'Alles anzeigen',
 }
-
-/** Offen: das zuletzt Erfasste zuoberst. */
-const DEFAULT_SORT: SortState = { field: 'created', dir: 'desc' }
-
-/** Erledigt: das zuletzt Abgehakte zuoberst – der Weg zurück nach einem Versehen. */
-const DEFAULT_DONE_SORT: SortState = { field: 'updated', dir: 'desc' }
 
 /**
  * Wie viele Einträge auf einmal gezeichnet werden.
@@ -79,7 +80,7 @@ const OPEN_PARAM = 'pendenz'
  * stammt –, wird genommen, was der Datensatz sonst hergibt. Ein Eintrag ohne
  * jedes Datum steht am Schluss unter «Ohne Datum».
  */
-function sortDate(item: AgendaItem, field: SortField): Date | null {
+function sortDate(item: AgendaItem, field: DateField): Date | null {
   if (field === 'created') return toDate(item.createdAt) ?? toDate(lastEditedAt(item))
   // Beim erledigten Punkt ist das zugleich der Moment, in dem er abgehakt
   // wurde: «Erledigt» schreibt beide Zeitstempel.
@@ -91,10 +92,20 @@ function sortDate(item: AgendaItem, field: SortField): Date | null {
   return toDate(lastEditedAt(item)) ?? toDate(item.completedAt) ?? toDate(item.createdAt)
 }
 
-/** Ein Tag mit allem, was an ihm erfasst bzw. bearbeitet wurde. */
+/**
+ * Ein Abschnitt der Liste – ein Tag mit allem, was an ihm erfasst bzw.
+ * bearbeitet wurde.
+ *
+ * `offset` ist der Platz des ersten Eintrags in der ganzen Liste. Ohne ihn
+ * wüsste die Zeile beim Umsortieren nicht, an welcher Stelle sie steht: Der
+ * Index innerhalb des Abschnitts beginnt bei jedem Titel wieder bei null.
+ * `label` bleibt leer, wo es nichts zu überschreiben gibt – bei der von Hand
+ * gelegten Reihenfolge.
+ */
 interface DayGroup {
   key: string
   label: string
+  offset: number
   items: AgendaItem[]
 }
 
@@ -104,15 +115,22 @@ interface DayGroup {
  * Sie ist bereits nach demselben Feld geordnet – deshalb genügt ein Durchgang:
  * Wechselt der Tag, beginnt ein neuer Abschnitt.
  */
-function groupByDay(items: AgendaItem[], field: SortField): DayGroup[] {
+function groupByDay(items: AgendaItem[], field: DateField): DayGroup[] {
   const groups: DayGroup[] = []
-  for (const item of items) {
+  items.forEach((item, index) => {
     const date = sortDate(item, field)
     const key = date ? toDateInput(date) : 'ohne-datum'
     const last = groups[groups.length - 1]
     if (last && last.key === key) last.items.push(item)
-    else groups.push({ key, label: date ? formatDateLong(date) : 'Ohne Datum', items: [item] })
-  }
+    else {
+      groups.push({
+        key,
+        label: date ? formatDateLong(date) : 'Ohne Datum',
+        offset: index,
+        items: [item],
+      })
+    }
+  })
   return groups
 }
 
@@ -133,12 +151,19 @@ function groupByDay(items: AgendaItem[], field: SortField): DayGroup[] {
  * die nächste noch nicht geplant. Sobald eine geplant ist, lässt sich das
  * mit einem Griff nachholen («Pendenzen übernehmen» in der Sitzung).
  *
+ * **Sortiert wird für alle gleich.** Nach dem Erfassungs- oder dem
+ * Bearbeitungsdatum – dann trägt die Liste die Tage als Zwischentitel – oder
+ * in der Reihenfolge, die jemand von Hand gelegt hat. Die Wahl steht in den
+ * Einstellungen und nicht im Browser: Am Sitzungstisch schauen alle auf
+ * dieselbe Liste, und «der dritte Punkt» soll bei allen der dritte sein.
+ *
  * «Erledigt» ist das Gegenstück und der Weg zurück: Wer versehentlich
  * abhakt, findet den Punkt dort zuoberst und öffnet ihn wieder.
  */
 export function Pendenzen() {
   const { profile } = useAuth()
-  const { userName, memberName } = useData()
+  const { userName, memberName, settings } = useData()
+  const toast = useToast()
 
   const [storedScope, setScope] = useLocalStorage<Scope>('bss:pendenzen:scope', 'open')
   const scope = SCOPES.includes(storedScope) ? storedScope : 'open'
@@ -150,27 +175,78 @@ export function Pendenzen() {
   const { data: meetings } = useMeetings(200)
 
   /*
-   * Sortierung je Ausschnitt gemerkt.
+   * Sortierung je Ausschnitt – und für alle dieselbe.
    *
-   * Die beiden Listen beantworten verschiedene Fragen: bei den offenen «was
-   * kam wann herein?», im Archiv «was habe ich zuletzt abgehakt?». Eine
-   * gemeinsame Einstellung wäre nach jedem Wechsel die falsche.
+   * Sie steht in den Einstellungen und nicht im Browser: Die Bischofschaft
+   * geht die Pendenzen gemeinsam durch, und «der dritte Punkt» ist nur dann
+   * eine Angabe, wenn er bei allen der dritte ist. Wer hier etwas umstellt,
+   * stellt es deshalb für alle um – so wie die Reihenfolge einer
+   * Traktandenliste auch für alle gilt.
+   *
+   * Zwei Einstellungen, weil die beiden Listen verschiedene Fragen
+   * beantworten: bei den offenen «was kam wann herein?», im Archiv «was wurde
+   * zuletzt abgehakt?». Eine gemeinsame wäre nach jedem Wechsel die falsche.
    */
-  const [openSort, setOpenSort] = useLocalStorage<SortState>(
-    'bss:pendenzen:sortierung',
-    DEFAULT_SORT,
+  const openSort = useMemo(
+    () => normalizePendenzenSort(settings.pendenzenSort),
+    [settings.pendenzenSort],
   )
-  const [doneSort, setDoneSort] = useLocalStorage<SortState>(
-    'bss:pendenzen:sortierung:erledigt',
-    DEFAULT_DONE_SORT,
-  )
+  const doneSort = useMemo(() => {
+    const stored = normalizePendenzenSort(settings.pendenzenDoneSort, DEFAULT_PENDENZEN_DONE_SORT)
+    // Von Hand gelegt wird die Arbeitsliste, nicht das Archiv: Was erledigt
+    // ist, wird nachgeschlagen und nicht mehr geordnet. Stünde der Wert
+    // trotzdem da (andere Fassung, andere Reihenfolge der Entwicklung), gilt
+    // wieder die Vorgabe.
+    return stored.field === 'manual'
+      ? { ...stored, field: DEFAULT_PENDENZEN_DONE_SORT.field }
+      : stored
+  }, [settings.pendenzenDoneSort])
   const sort = scope === 'done' ? doneSort : openSort
-  const setSort = scope === 'done' ? setDoneSort : setOpenSort
 
   const [detail, setDetail] = useLocalStorage<Detail>('bss:pendenzen:umfang', 'titles')
   const [search, setSearch] = useState('')
   const [formOpen, setFormOpen] = useState(false)
   const [searchParams, setSearchParams] = useSearchParams()
+
+  /**
+   * «Reihenfolge anpassen» – die Pfeile und das Ziehen.
+   *
+   * Sie sind zu Beginn ausgeschaltet und bleiben es, bis jemand sie im
+   * Ansichtsmenü einschaltet: Die Liste wird gelesen und selten umgestellt,
+   * und wo an jeder Zeile zwei Pfeile stehen, greift man beim Blättern
+   * daneben. Ausgeschaltet verschwinden bloss die Griffe – die gelegte
+   * Reihenfolge bleibt.
+   *
+   * Ein Zustand der Seite und keiner des Kontos: Er sagt, was man **gerade**
+   * tut, und nicht, wie die Liste auszusehen hat.
+   */
+  const [reordering, setReordering] = useState(false)
+
+  const searching = search.trim() !== ''
+  const manual = sort.field === 'manual'
+
+  /*
+   * Umsortiert wird nur an der **vollständigen** Liste.
+   *
+   * Geschrieben wird die Position jedes Eintrags; ein Ausschnitt sagt aber
+   * nichts darüber, wo das Ausgeblendete steht. Wer unter «Meine» oder in
+   * einer Suche zöge, schriebe eine Reihenfolge, die es so nie gab. Deshalb
+   * fehlen dort die Griffe – und das Menü sagt, was zu tun ist.
+   */
+  const sortable = manual && scope === 'open' && !searching
+  const reorder = sortable && reordering
+
+  const changeSort = (next: PendenzenSortState) => {
+    // Aus der gelegten Reihenfolge heraus braucht es die Griffe nicht mehr;
+    // beim nächsten Mal beginnt die Wahl wieder ausgeschaltet.
+    if (next.field !== 'manual') setReordering(false)
+    void saveSettings(
+      scope === 'done' ? { pendenzenDoneSort: next } : { pendenzenSort: next },
+    ).catch((error) => {
+      console.error(error)
+      toast.error('Sortierung konnte nicht gespeichert werden.')
+    })
+  }
 
   /*
    * Zugeklappt: der eine Eintrag aus der Adresse. Aufgeklappt («Alles
@@ -291,16 +367,73 @@ export function Pendenzen() {
       ? base.filter((item) => matchesSearch(haystack(item), search))
       : base
 
+    /*
+     * Die von Hand gelegte Reihenfolge.
+     *
+     * Ein Eintrag ohne Position wurde noch nie einsortiert – er steht
+     * zuoberst, dort, wo er auch nach «Erfassungsdatum» stünde. So beginnt die
+     * Ansicht mit derselben Liste, die man vorher gesehen hat, und eine eben
+     * erfasste Pendenz verschwindet nicht am Ende. Ein Griff auf den Pfeil
+     * setzt sie dorthin, wo sie hingehört.
+     */
+    if (sort.field === 'manual') {
+      const platz = (item: AgendaItem) =>
+        typeof item.pendenzOrder === 'number' ? item.pendenzOrder : null
+      const erfasst = (item: AgendaItem) => sortDate(item, 'created')?.getTime() ?? 0
+      return [...found].sort((a, b) => {
+        const links = platz(a)
+        const rechts = platz(b)
+        if (links === null && rechts === null) return erfasst(b) - erfasst(a)
+        if (links === null) return -1
+        if (rechts === null) return 1
+        return links - rechts
+      })
+    }
+
     // Ohne Datum ans Ende, in beiden Richtungen: Es steht nicht «vor» dem
     // ältesten Eintrag, es fehlt schlicht.
+    const field = sort.field
     return [...found].sort((a, b) => {
-      const at = sortDate(a, sort.field)?.getTime()
-      const bt = sortDate(b, sort.field)?.getTime()
+      const at = sortDate(a, field)?.getTime()
+      const bt = sortDate(b, field)?.getTime()
       if (at === undefined) return bt === undefined ? 0 : 1
       if (bt === undefined) return -1
       return sort.dir === 'asc' ? at - bt : bt - at
     })
   }, [scope, doneItems, pendenzen, profile?.id, search, haystack, sort])
+
+  /*
+   * Umsortieren – mit den Pfeilen und durch Ziehen.
+   *
+   * Beide Wege schreiben dasselbe: die ganze Liste in ihrer neuen Reihenfolge.
+   * Danach trägt jeder Eintrag seine Position, und die Liste steht bei allen
+   * gleich (siehe `savePendenzenOrder`).
+   */
+  const [dragId, setDragId] = useState<string | null>(null)
+  const [overId, setOverId] = useState<string | null>(null)
+
+  const move = async (from: number, to: number) => {
+    if (from === to || from < 0 || to < 0 || from >= visible.length || to >= visible.length) return
+    const next = [...visible]
+    const [moved] = next.splice(from, 1)
+    next.splice(to, 0, moved)
+    try {
+      await savePendenzenOrder(next)
+    } catch (error) {
+      console.error(error)
+      toast.error('Reihenfolge konnte nicht gespeichert werden.')
+    }
+  }
+
+  const drop = (targetId: string) => {
+    setOverId(null)
+    if (!dragId || dragId === targetId) return
+    void move(
+      visible.findIndex((item) => item.id === dragId),
+      visible.findIndex((item) => item.id === targetId),
+    )
+    setDragId(null)
+  }
 
   /*
    * Jede neue Zusammenstellung beginnt wieder oben.
@@ -318,14 +451,22 @@ export function Pendenzen() {
     setShown(pageSize)
   }
 
-  const groups = useMemo(
-    () => groupByDay(visible.slice(0, shown), sort.field),
-    [visible, shown, sort.field],
-  )
+  /*
+   * Die Liste in Abschnitte – oder eben nicht.
+   *
+   * Nach einem Datum sortiert bekommt jeder Tag seine Überschrift. Die von
+   * Hand gelegte Reihenfolge kennt keine Tage: Sie steht als **eine** Liste
+   * da, sonst zerschnitte ein Zwischentitel genau die Abfolge, die jemand
+   * eben gelegt hat.
+   */
+  const groups = useMemo(() => {
+    const page = visible.slice(0, shown)
+    if (sort.field === 'manual') return [{ key: 'manuell', label: '', offset: 0, items: page }]
+    return groupByDay(page, sort.field)
+  }, [visible, shown, sort.field])
   const rest = Math.max(0, visible.length - shown)
 
   const loading = scope === 'done' ? doneLoading : openLoading
-  const searching = search.trim() !== ''
 
   return (
     <>
@@ -340,7 +481,13 @@ export function Pendenzen() {
           <>
             <PendenzenMenu
               sort={sort}
-              onSortChange={setSort}
+              onSortChange={changeSort}
+              // Gelegt wird die Reihenfolge der offenen Punkte – im Archiv
+              // steht die Wahl deshalb gar nicht erst zur Verfügung.
+              manualAllowed={scope !== 'done'}
+              sortable={sortable}
+              reordering={reordering}
+              onReorderingChange={setReordering}
               detail={detail}
               onDetailChange={changeDetail}
             />
@@ -376,6 +523,15 @@ export function Pendenzen() {
             onChange={(event) => setSearch(event.target.value)}
           />
         </div>
+
+        {/* Eingeschaltet, aber gerade nicht möglich: Wer die Griffe sucht,
+            soll nicht raten müssen, warum sie fehlen. */}
+        {manual && reordering && !sortable && (
+          <p className="hint">
+            Umsortiert wird unter «Pendent» und ohne Suche – ein Ausschnitt sagt nichts über die
+            Reihenfolge der ganzen Liste.
+          </p>
+        )}
       </div>
 
       {loading ? (
@@ -411,34 +567,85 @@ export function Pendenzen() {
         </div>
       ) : (
         /* Ein Abschnitt je Tag: Die Überschrift ist das Datum, nach dem
-           sortiert wird – erfasst oder zuletzt bearbeitet. */
+           sortiert wird – erfasst oder zuletzt bearbeitet. Von Hand gelegt
+           steht die Liste ohne Überschrift da, in einem Stück. */
         <div className="space-y-5">
           {groups.map((group) => (
             <section key={group.key}>
-              <div className="mb-2 flex flex-wrap items-baseline gap-x-2">
-                <h2 className="text-sm font-semibold">{group.label}</h2>
-                <span className="tabular text-xs text-slate-400">{group.items.length}</span>
-              </div>
+              {group.label && (
+                <div className="mb-2 flex flex-wrap items-baseline gap-x-2">
+                  <h2 className="text-sm font-semibold">{group.label}</h2>
+                  <span className="tabular text-xs text-slate-400">{group.items.length}</span>
+                </div>
+              )}
 
               {/* Aufgeklappt steht alles da und lässt sich unmittelbar ändern –
                   für Titel und Beschreibung genügt ein Griff in den Text. */}
               <ul className="space-y-2">
-                {group.items.map((item) => (
-                  <AgendaItemRow
-                    key={item.id}
-                    item={item}
-                    expanded={isExpanded(item.id)}
-                    onToggle={() => toggleOpen(item.id)}
-                    nextMeeting={nextMeetingRef}
-                    meetingLabel={item.meetingId ? meetingLabels.get(item.meetingId) : undefined}
-                    meetingHref={
-                      item.meetingId
-                        ? `/sitzungen/${item.meetingId}?${FOCUS_PARAM}=${item.id}`
-                        : undefined
-                    }
-                    meetingDate={(id) => meetingLabels.get(id)}
-                  />
-                ))}
+                {group.items.map((item, index) => {
+                  /* Der Platz in der ganzen Liste – nicht der im Abschnitt. */
+                  const place = group.offset + index
+                  return (
+                    <AgendaItemRow
+                      key={item.id}
+                      item={item}
+                      /* Die Nummer steht nur an der vollständigen, von Hand
+                         gelegten Liste: Dort ist sie die Reihenfolge, auf die
+                         sich alle beziehen. In einem Ausschnitt zählte sie
+                         bloss den Ausschnitt. */
+                      position={sortable ? place + 1 : undefined}
+                      expanded={isExpanded(item.id)}
+                      onToggle={() => toggleOpen(item.id)}
+                      onMove={reorder ? (delta) => void move(place, place + delta) : undefined}
+                      first={place === 0}
+                      last={place === visible.length - 1}
+                      onDragStart={
+                        reorder
+                          ? (event: DragEvent<HTMLElement>) => {
+                              setDragId(item.id)
+                              event.dataTransfer.effectAllowed = 'move'
+                            }
+                          : undefined
+                      }
+                      onDragOver={
+                        reorder
+                          ? (event: DragEvent<HTMLElement>) => {
+                              if (!dragId) return
+                              event.preventDefault()
+                              event.dataTransfer.dropEffect = 'move'
+                              setOverId(item.id)
+                            }
+                          : undefined
+                      }
+                      onDrop={
+                        reorder
+                          ? (event: DragEvent<HTMLElement>) => {
+                              event.preventDefault()
+                              drop(item.id)
+                            }
+                          : undefined
+                      }
+                      onDragEnd={
+                        reorder
+                          ? () => {
+                              setDragId(null)
+                              setOverId(null)
+                            }
+                          : undefined
+                      }
+                      dragging={dragId === item.id}
+                      dropTarget={overId === item.id && dragId !== item.id}
+                      nextMeeting={nextMeetingRef}
+                      meetingLabel={item.meetingId ? meetingLabels.get(item.meetingId) : undefined}
+                      meetingHref={
+                        item.meetingId
+                          ? `/sitzungen/${item.meetingId}?${FOCUS_PARAM}=${item.id}`
+                          : undefined
+                      }
+                      meetingDate={(id) => meetingLabels.get(id)}
+                    />
+                  )
+                })}
               </ul>
             </section>
           ))}
@@ -481,26 +688,45 @@ export function Pendenzen() {
  * jedesmal ganz umstellen. Als Knopfleiste stünden sie dauerhaft über der
  * Liste und nähmen ihr den Platz; hier stehen sie beisammen und bleiben
  * offen, solange jemand daran dreht.
+ *
+ * Die Sortierung gilt für alle – deshalb steht es auch dort. Der Haken
+ * «Reihenfolge anpassen» tut es nicht: Er sagt bloss, dass **hier gerade**
+ * umsortiert wird, und wäre bei allen anderen ein Paar Pfeile, um das
+ * niemand gebeten hat.
  */
 function PendenzenMenu({
   sort,
   onSortChange,
+  manualAllowed,
+  sortable,
+  reordering,
+  onReorderingChange,
   detail,
   onDetailChange,
 }: {
-  sort: SortState
-  onSortChange: (next: SortState) => void
+  sort: PendenzenSortState
+  onSortChange: (next: PendenzenSortState) => void
+  /** Steht die von Hand gelegte Reihenfolge in dieser Liste zur Wahl? */
+  manualAllowed: boolean
+  /** Lässt sich hier und jetzt umsortieren – vollständige Liste, keine Suche? */
+  sortable: boolean
+  reordering: boolean
+  onReorderingChange: (next: boolean) => void
   detail: Detail
   onDetailChange: (next: Detail) => void
 }) {
+  const fields = (Object.keys(PENDENZEN_SORT_LABELS) as PendenzenSort[]).filter(
+    (field) => manualAllowed || field !== 'manual',
+  )
+
   return (
-    <ViewMenu width="sm:w-64">
-      <MenuSection label="Sortieren nach">
+    <ViewMenu width="sm:w-72">
+      <MenuSection label="Sortieren nach" hint="Gilt für alle – wie in einer Sitzung auch.">
         <div className="-mx-1">
-          {(Object.keys(SORT_FIELD_LABELS) as SortField[]).map((field) => (
+          {fields.map((field) => (
             <MenuRadio
               key={field}
-              label={SORT_FIELD_LABELS[field]}
+              label={PENDENZEN_SORT_LABELS[field]}
               selected={sort.field === field}
               onClick={() => onSortChange({ ...sort, field })}
             />
@@ -508,18 +734,38 @@ function PendenzenMenu({
         </div>
       </MenuSection>
 
-      <MenuSection label="Reihenfolge">
-        <div className="-mx-1">
-          {(Object.keys(SORT_DIR_LABELS) as SortDir[]).map((dir) => (
-            <MenuRadio
-              key={dir}
-              label={SORT_DIR_LABELS[dir]}
-              selected={sort.dir === dir}
-              onClick={() => onSortChange({ ...sort, dir })}
-            />
-          ))}
-        </div>
-      </MenuSection>
+      {/* Auf- oder absteigend gibt es nur, wo ein Datum ordnet: Die von Hand
+          gelegte Reihenfolge ist die Reihenfolge – rückwärts gelesen wäre sie
+          eine andere, um die niemand gebeten hat. An ihrer Stelle steht der
+          Haken, der die Griffe zum Umsortieren einschaltet. */}
+      {sort.field === 'manual' ? (
+        sortable ? (
+          <MenuToggle
+            label="Reihenfolge anpassen"
+            checked={reordering}
+            onChange={onReorderingChange}
+            hint="Mit den Pfeilen an jeder Zeile oder durch Ziehen und Ablegen. Die Reihenfolge gilt für alle."
+          />
+        ) : (
+          <p className="hint">
+            Umsortiert wird unter «Pendent» und ohne Suche – ein Ausschnitt sagt nichts über die
+            Reihenfolge der ganzen Liste.
+          </p>
+        )
+      ) : (
+        <MenuSection label="Reihenfolge">
+          <div className="-mx-1">
+            {(Object.keys(SORT_DIR_LABELS) as SortDirection[]).map((dir) => (
+              <MenuRadio
+                key={dir}
+                label={SORT_DIR_LABELS[dir]}
+                selected={sort.dir === dir}
+                onClick={() => onSortChange({ ...sort, dir })}
+              />
+            ))}
+          </div>
+        </MenuSection>
+      )}
 
       <MenuSection label="Einträge">
         <div className="-mx-1">
