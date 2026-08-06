@@ -268,6 +268,13 @@ Liste auch nebeneinander eingereiht ist.
 Die Wahl liegt im Browser: Sie gehört zum Gerät, an dem man sitzt, und ist
 schon da, bevor der erste Schnappschuss aus Firestore eintrifft.
 
+**Jede Zahl führt auf die Liste, die sie gezählt hat.** _Pendenzen_ öffnet die
+Pendenzenliste unter _Pendent_, _Meine_ öffnet sie unter _Meine_, _Ansprachen
+offen_ führt zu den Ansprachen. Der Ausschnitt steht dafür in der Adresse
+(`/pendenzen?ansicht=meine`); ohne ihn landete «Meine» auf der Liste, die
+zuletzt offen war. Dasselbe Ziel hat «Alle anzeigen» in der Kachel **Meine
+Pendenzen** – «alle» heisst dort: alle meine.
+
 ---
 
 ## Sitzungen, Traktanden und Pendenzen
@@ -431,13 +438,13 @@ Kontrast verliert. Der Name der Stufe steht an jedem Knopf, im Ausdruck und in
 der gelesenen Ansicht: Eine Farbe allein sagt nichts, wenn man sie nicht
 unterscheiden kann.
 
-**Oben rechts stehen dieselben drei Kreise als Filter.** Alle drei an heisst:
-kein Filter – dann stehen auch die Zeilen da, die noch keine Farbe haben. Wer
-Grün und Orange wegklickt, sieht genau die roten. Was dabei wegfällt, steht
-als Zahl unter der Tabelle («_n_ Zeilen sind ausgeblendet»); still
-verschwinden soll nichts. Die Wahl gehört dem Gerät und nicht den Daten: Sie
-beginnt bei jedem Öffnen wieder bei «alle», und wer eine Zeile hinzufügt,
-sieht sie – der Filter geht dabei auf.
+**Oben rechts stehen dieselben drei Kreise als Filter**, angeschrieben mit
+**Priorität**. Alle drei an heisst: kein Filter – dann stehen auch die Zeilen
+da, die noch keine Farbe haben. Wer Grün und Orange wegklickt, sieht genau die
+roten. Was dabei wegfällt, steht als Zahl unter der Tabelle («_n_ Zeilen sind
+ausgeblendet»); still verschwinden soll nichts. Die Wahl gehört dem Gerät und
+nicht den Daten: Sie beginnt bei jedem Öffnen wieder bei «alle», und wer eine
+Zeile hinzufügt, sieht sie – der Filter geht dabei auf.
 
 **Farbe, Zuständigkeit und Papierkorb stehen in einer vierten, schmalen
 Spalte** – hinter einem Knopf, der zugleich anschreibt, was gesetzt ist: der
@@ -449,7 +456,28 @@ ein-, zweimal anfasst.
 
 Dass die Zuständigkeit an der **Zeile** hängt und nicht am Traktandum, liegt an
 der Runde selbst: Sie geht zwanzig Namen durch, und die verteilt man
-untereinander.
+untereinander. Deshalb steht unter einer Berufungsrunde auch **keine**
+Zuständigkeit für den ganzen Eintrag mehr: Sie sagte dasselbe ein zweites Mal
+und meinte etwas anderes. Was früher dort gesetzt wurde, bleibt gespeichert
+und wirkt weiter.
+
+**Erledigt wird zeilenweise.** Im selben kleinen Menü steht **«Erledigt»**;
+ein Griff darauf räumt die Zeile weg – die Tabelle zeigt, was noch aussteht.
+Ganz unten sammelt sie ein Knopf: **«Erledigte anzeigen · _n_ Zeilen»** holt
+sie zurück, blass und mit einem Haken statt der Farbe angeschrieben, und
+«Wieder offen» im Menü macht die Zeile zur Aufgabe zurück. Gelöscht wird dabei
+nichts; im Protokoll steht die Zeile weiterhin, dort mit dem Vermerk
+«Erledigt».
+
+Deshalb hat eine Berufungsrunde **keinen grünen Knopf «Erledigt» am ganzen
+Eintrag** – solange noch eine Zeile offen ist. An seiner Stelle steht, wie
+viele es noch sind. Erst wenn keine mehr aussteht, erscheint der Knopf: Die
+Runde ist fertig, wenn die Arbeit darin fertig ist, und nicht schon dann, wenn
+jemand sie für fertig hält. Wieder öffnen lässt sich der Eintrag jederzeit.
+
+Wessen letzte Zeile abgehakt ist, für den fällt die Runde damit auch von der
+Liste **Pendenzen → Meine** – sie ist dort ja gerade wegen dieser Zeile
+gestanden.
 
 **Die Zeilen sind so flach wie ihr Inhalt.** Ein Feld beginnt einzeilig und
 wächst mit dem Text – vorher stand jede Zeile zwei Zeilen hoch da, auch wenn
@@ -460,7 +488,18 @@ denen «PV» vorkommt – gleich in welcher Spalte, im Namen so gut wie im
 Freitext. Was dabei wegfällt, steht als Zahl unter der Tabelle. Die Suche
 gehört wie der Farbfilter dem Gerät und nicht den Daten: Sie ändert nichts und
 beginnt bei jedem Öffnen wieder leer. Eine neu angelegte Zeile ist leer und
-passte zu keiner Suche – deshalb räumt «+ Zeile» Suche und Farbfilter weg.
+gehört noch niemandem – deshalb räumt «+ Zeile» alle drei Filter weg.
+
+**Daneben steht «Nur meine».** Eine Runde wird zeilenweise verteilt: zwanzig
+Namen, und jeder in der Bischofschaft nimmt ein paar davon mit. Der Knopf zeigt
+genau diese – die Zeilen, an denen das eigene Konto unter «Zuständig» steht
+oder in denen das verknüpfte Mitglied genannt bzw. erwähnt ist. Er erscheint
+nur, wenn es solche Zeilen gibt, und was er wegnimmt, steht als Zahl unter der
+Tabelle. **Unter «Pendenzen → Meine» ist er von Anfang an gedrückt**: Dort
+steht die Runde ja, weil eine ihrer Zeilen mich angeht (siehe [«Wann ein
+Eintrag _meiner_ ist»](#wann-ein-eintrag-meiner-ist)) – und dann sind auch
+diese Zeilen gemeint und nicht die ganze Runde. Ein Griff darauf holt die
+übrigen zurück; überall sonst beginnt die Runde vollständig.
 
 **Die Reihenfolge lässt sich von Hand legen.** Neue Zeilen kommen unten dazu,
 und so bleibt es, bis jemand sie umstellt: **Reihenfolge** oben rechts stellt
@@ -500,6 +539,20 @@ festgehalten ist, welches Mitglied zum Konto gehört. Ohne diese Verknüpfung
 ist ein Name im Text bloss ein Name, und die App hat keinen Anhaltspunkt, wer
 gemeint ist.
 
+**Unter «Meine» geöffnet, zeigt eine Runde die eigenen Zeilen.** Sie steht dort
+wegen des zweiten oder dritten Weges – also wegen einzelner Zeilen –, und
+genau die stehen dann da; der Knopf «Nur meine» oben ist gedrückt und holt mit
+einem Griff die ganze Runde zurück. Steht sie wegen des ersten Weges dort
+(zugewiesen ist das **Traktandum**, keine einzelne Zeile), bleibt sie
+vollständig: Dann ist die ganze Runde meine Sache, und eine leere Tabelle wäre
+die falsche Auskunft. Unter «Pendent», in der Sitzung und überall sonst ändert
+sich nichts.
+
+**Eine erledigte Zeile zählt nicht mehr mit.** Sie ist keine Aufgabe, und wer
+sie abhakt, hat sie hinter sich: Sind alle eigenen Zeilen einer Runde
+erledigt, verschwindet sie aus «Meine» – auch aus der Kachel «Meine
+Pendenzen». Unter «Pendent» steht sie weiter, bis die letzte Zeile fertig ist.
+
 ### Liste: Reihenfolge festlegen
 
 Die Listenansicht ist zum Vorbereiten da. Jede Zeile ist zugeklappt schmal und
@@ -532,6 +585,15 @@ Liste geordnet ist, steht unter **Ansicht** oben rechts:
 | **Erfassungsdatum**     | Tag für Tag, das Datum als Zwischentitel – neuste oder älteste zuerst |
 | **Bearbeitungsdatum**   | dasselbe, nach dem Tag, an dem zuletzt am Eintrag gearbeitet wurde    |
 | **Manuelle Sortierung** | die von Hand gelegte Reihenfolge – eine Liste, ohne Zwischentitel     |
+
+**Der Ausschnitt steht in der Adresse** (`?ansicht=pendent`, `?ansicht=meine`,
+`?ansicht=erledigt`) und lässt sich damit verlinken: Auf der Übersicht führen
+die Zahl **Meine** und das «Alle anzeigen» der Kachel **Meine Pendenzen**
+geradewegs nach _Meine_, die Zahl **Pendenzen** nach _Pendent_. Ohne Angabe
+gilt, was das Gerät sich zuletzt gemerkt hat – wer die Seite in der
+Seitenleiste aufruft, findet die Liste vor, die er verlassen hat. Ein Verweis
+ist eine einmalige Anweisung und keine Einstellung: Er schreibt das Gemerkte
+nicht um.
 
 **Die Sortierung gilt für alle.** Sie steht in den Einstellungen und nicht im
 Browser: Die Bischofschaft geht die Pendenzen gemeinsam durch, und «der dritte
@@ -621,10 +683,11 @@ Zwei Dinge zusammen machen das aus (siehe
   Seitenwechsel, wo man war.
 - Was eine Ansicht umschaltet, steht **in der Adresse**: der Reiter
   (`?ansicht=vorschlaege`), die Suche (`?suche=…`), der Ausschnitt der
-  Berufungen, der aufgeklappte Eintrag. Nur dann gibt es überhaupt etwas,
-  wohin man zurückkehren könnte. Das Umschalten selbst legt keinen neuen
-  Verlaufseintrag an – man müsste sich sonst durch jede Zwischeneinstellung
-  zurücktippen, bevor man die Seite verlässt.
+  Berufungen und der Pendenzen (`?ansicht=meine`), der aufgeklappte Eintrag.
+  Nur dann gibt es überhaupt etwas, wohin man zurückkehren könnte. Das
+  Umschalten selbst legt keinen neuen Verlaufseintrag an – man müsste sich
+  sonst durch jede Zwischeneinstellung zurücktippen, bevor man die Seite
+  verlässt.
 
 ---
 
@@ -1949,6 +2012,27 @@ Drei Dinge sieht die Teilabfrage nicht, und für alle drei gibt es einen Weg:
 | Im eigenen Fenster gelöscht          | `forgetDoc()` entfernt den Datensatz sofort aus der Liste          |
 | Auf einem anderen Gerät gelöscht     | Die Zählabfrage beim Start findet die Abweichung                   |
 | Import (löscht, oder datiert zurück) | `resyncCollections()` liest die betroffenen Sammlungen einmal ganz |
+
+**«Entfernt» heisst bei der Teilabfrage nicht «gelöscht».** Sie lautet «alles,
+was neuer ist als …», und `serverTimestamp()` steht im Moment des Schreibens
+noch nicht fest: Bis der Server bestätigt, trägt der eigene Datensatz lokal
+**kein** `updatedAt` – und was keines hat, erfüllt die Bedingung nicht.
+Firestore meldet ihn deshalb als «entfernt» und zwei Zehntelsekunden später,
+mit der Bestätigung, wieder als «neu». Für die Oberfläche war das jahrelang
+_das_ «dauernde Neuladen»: Wer in einer Berufungsrunde eine Zeile schrieb oder
+eine Zuständigkeit setzte, sah beim Speichern den ganzen Eintrag aus der Liste
+fallen und sich neu aufbauen – mitsamt Animation, verlorenem Cursor und einer
+für einen Augenblick leeren Seite.
+
+Am Datensatz selbst ist das nicht abzulesen: Die Meldung beschreibt die
+Abfrage **nach** der Änderung, und darin kommt er nicht mehr vor –
+`hasPendingWrites` ist deshalb `false`, genau wie beim wirklich gelöschten
+(am Emulator nachgemessen). Unterscheiden lässt es sich am
+**Zwischenspeicher**: Er kennt den eigenen, noch nicht bestätigten Stand.
+Steht der Datensatz dort noch, ist er bloss aus der Teilabfrage gefallen und
+bleibt in der Liste – samt dem Stand von dort, damit auch ohne Netz die eigene
+Eingabe in allen Ansichten steht. Fehlt er, ist er wirklich weg
+(`forgetIfGone()`).
 
 Fehlt trotzdem einmal etwas, holt «Einstellungen → Daten neu laden» den ganzen
 Bestand frisch. Im Alltag wird der Knopf nicht gebraucht.

@@ -629,6 +629,15 @@ export interface CallingRowBase {
    * durch, und die verteilt man untereinander.
    */
   assignees: string[]
+  /**
+   * Diese Zeile ist abgeschlossen.
+   *
+   * Erledigt wird in einer Runde zeilenweise – die eine Berufung steht,
+   * während die nächste noch offen ist. Eine erledigte Zeile verschwindet
+   * aus der Tabelle; «Erledigte anzeigen» ganz unten holt sie zurück. Der
+   * ganze Eintrag ist damit erst fertig, wenn keine Zeile mehr offen ist.
+   */
+  done?: boolean
 }
 
 /** «Neue Berufungen»: Wer eine neue Aufgabe bekommen soll. */

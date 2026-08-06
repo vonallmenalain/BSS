@@ -4,10 +4,13 @@ import { test } from 'node:test'
 import {
   callingChangesConcern,
   callingChangesToText,
+  callingRowCounts,
   callingRowsAbout,
   callingRowText,
   emptyCallingChanges,
+  hasOpenCallingRows,
   isCallingChangesEmpty,
+  isOwnCallingRow,
   isOwnItem,
   MAX_CALLING_ROWS,
   moveCallingRow,
@@ -316,6 +319,121 @@ test('ohne Mitglied und ohne Runde gibt es nichts zu finden', () => {
   assert.deepEqual(callingRowsAbout(value, null), [])
   assert.deepEqual(callingRowsAbout(null, ALAIN), [])
   assert.deepEqual(callingRowsAbout(emptyCallingChanges(), ALAIN), [])
+})
+
+/* ---------------- Welche Zeile geht mich an? ---------------- */
+
+test('meine Zeile: das eigene Konto steht darunter', () => {
+  const row = { ...newCallingOpenRow(), calling: 'Sekretär', assignees: ['u1'] }
+  assert.ok(isOwnCallingRow(row, 'u1', null))
+  assert.equal(isOwnCallingRow(row, 'u2', null), false)
+})
+
+test('meine Zeile: das verknüpfte Mitglied ist genannt oder erwähnt', () => {
+  const genannt = { ...newCallingMemberRow(), memberIds: ['m1'], calling: 'PV-Lehrerin' }
+  const erwaehnt = { ...newCallingOpenRow(), candidates: 'Alain von Allmen' }
+
+  assert.ok(isOwnCallingRow(genannt, 'u1', ALAIN))
+  assert.ok(isOwnCallingRow(erwaehnt, 'u1', ALAIN))
+
+  // Ohne Verknüpfung ist ein Name im Text bloss ein Name.
+  assert.equal(isOwnCallingRow(genannt, 'u1', null), false)
+  assert.equal(isOwnCallingRow(erwaehnt, 'u1', null), false)
+})
+
+test('fremde Zeile: weder zugewiesen noch genannt', () => {
+  const row = {
+    ...newCallingMemberRow(),
+    memberIds: ['m9'],
+    ideas: 'Bruder Meier',
+    assignees: ['u9'],
+  }
+  assert.equal(isOwnCallingRow(row, 'u1', ALAIN), false)
+})
+
+test('was den Eintrag zu meinem macht, ist genau das, was «Nur meine» zeigt', () => {
+  const value = changes({
+    members: [
+      { ...newCallingMemberRow(), memberIds: ['m9'], calling: 'Lehrer' },
+      { ...newCallingMemberRow(), memberIds: ['m1'], calling: 'PV-Lehrerin' },
+    ],
+    open: [
+      { ...newCallingOpenRow(), calling: 'Sekretär', assignees: ['u1'] },
+      { ...newCallingOpenRow(), calling: 'Organist', assignees: ['u9'] },
+    ],
+  })
+
+  const meine = [...value.members, ...value.open].filter((row) => isOwnCallingRow(row, 'u1', ALAIN))
+  assert.equal(meine.length, 2)
+  // Steht eine Runde unter «Meine», bleibt aufgeklappt auch etwas stehen.
+  assert.equal(callingChangesConcern(value, 'u1', ALAIN), meine.length > 0)
+})
+
+/* ---------------- Zeilenweise erledigen ---------------- */
+
+test('erledigte Zeilen zählen, leere nicht', () => {
+  const value = changes({
+    members: [
+      { ...newCallingMemberRow(), memberIds: ['m1'], calling: 'PV-Lehrerin' },
+      { ...newCallingMemberRow(), memberIds: ['m9'], calling: 'Organist', done: true },
+      // Die letzte, leere Zeile ist der Eingang und keine Arbeit.
+      newCallingMemberRow(),
+    ],
+    open: [{ ...newCallingOpenRow(), calling: 'Sekretär', done: true }],
+  })
+
+  assert.deepEqual(callingRowCounts(value), { open: 1, done: 2 })
+  assert.ok(hasOpenCallingRows(value))
+
+  // Ohne Runde gibt es nichts zu zählen – und nichts, was offen wäre.
+  assert.deepEqual(callingRowCounts(null), { open: 0, done: 0 })
+  assert.equal(hasOpenCallingRows(null), false)
+  assert.equal(hasOpenCallingRows(emptyCallingChanges()), false)
+})
+
+test('eine erledigte Zeile ist keine Aufgabe mehr', () => {
+  const zugewiesen = { ...newCallingOpenRow(), calling: 'Sekretär', assignees: ['u1'] }
+  const genannt = { ...newCallingMemberRow(), memberIds: ['m1'], calling: 'PV-Lehrerin' }
+
+  assert.ok(isOwnCallingRow(zugewiesen, 'u1', ALAIN))
+  assert.ok(isOwnCallingRow(genannt, 'u1', ALAIN))
+  assert.equal(isOwnCallingRow({ ...zugewiesen, done: true }, 'u1', ALAIN), false)
+  assert.equal(isOwnCallingRow({ ...genannt, done: true }, 'u1', ALAIN), false)
+})
+
+test('sind alle meine Zeilen erledigt, fällt die Runde von der Liste «Meine»', () => {
+  const offen = changes({
+    open: [{ ...newCallingOpenRow(), calling: 'Sekretär', assignees: ['u1'] }],
+  })
+  const erledigt = changes({
+    open: [{ ...newCallingOpenRow(), calling: 'Sekretär', assignees: ['u1'], done: true }],
+  })
+
+  assert.ok(callingChangesConcern(offen, 'u1', ALAIN))
+  assert.equal(callingChangesConcern(erledigt, 'u1', ALAIN), false)
+})
+
+test('erledigt übersteht den Weg durch Firestore', () => {
+  const value = normalizeCallingChanges({
+    members: [{ id: 'a', memberIds: [], calling: 'PV', ideas: '', assignees: [], done: true }],
+    // Alles, was nicht ausdrücklich `true` ist, gilt als offen.
+    open: [{ id: 'b', calling: 'Sekretär', candidates: '', next: '', assignees: [], done: 'ja' }],
+  } as never)
+
+  assert.equal(value.members[0].done, true)
+  assert.equal('done' in value.open[0], false)
+
+  const stored = serializeCallingChanges(value)
+  assert.equal(stored.members[0].done, true)
+  assert.equal('done' in stored.open[0], false)
+})
+
+test('als Text: eine erledigte Zeile schreibt es an', () => {
+  const value = changes({
+    open: [{ ...newCallingOpenRow(), calling: 'Sekretär', done: true }],
+    members: [newCallingMemberRow()],
+  })
+  assert.ok(callingChangesToText(value).includes('Sekretär · Erledigt'))
 })
 
 test('«Meine Pendenzen»: Zuweisung am Eintrag oder eine Zeile darin', () => {

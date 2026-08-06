@@ -5,7 +5,6 @@ import type {
   CallingChanges,
   CallingMemberRow,
   CallingOpenRow,
-  CallingRowBase,
   CallingUrgency,
 } from './types.ts'
 
@@ -78,6 +77,49 @@ export function isCallingChangesEmpty(changes: CallingChanges | null | undefined
   return changes.members.every(isCallingMemberRowEmpty) && changes.open.every(isCallingOpenRowEmpty)
 }
 
+/** Ist diese Zeile beschrieben? Die letzte, leere Zeile jeder Tabelle ist es nicht. */
+export function isCallingRowEmpty(row: CallingMemberRow | CallingOpenRow): boolean {
+  return 'memberIds' in row ? isCallingMemberRowEmpty(row) : isCallingOpenRowEmpty(row)
+}
+
+/**
+ * Wie viel in dieser Runde noch offen ist – und wie viel abgeschlossen.
+ *
+ * Gezählt wird, was beschrieben ist: Die leere Zeile am Ende einer Tabelle
+ * steht dort als Eingang und ist keine Arbeit. Daran hängt, ob der ganze
+ * Eintrag abgehakt werden kann – eine Berufungsrunde ist fertig, wenn keine
+ * Zeile mehr offen ist, und nicht schon dann, wenn jemand sie für fertig
+ * hält.
+ */
+export function callingRowCounts(changes: CallingChanges | null | undefined): {
+  open: number
+  done: number
+} {
+  const counts = { open: 0, done: 0 }
+  if (!changes) return counts
+  // Was aus Firestore kommt, darf kaputt sein – eine fehlende Tabelle soll
+  // nicht die halbe Seite mitreissen.
+  ;[...(changes.members ?? []), ...(changes.open ?? [])].forEach((row) => {
+    if (isCallingRowEmpty(row)) return
+    if (row.done) counts.done += 1
+    else counts.open += 1
+  })
+  return counts
+}
+
+/**
+ * Steht in dieser Runde noch etwas offen?
+ *
+ * Daran hängt der grüne Knopf «Erledigt» am ganzen Eintrag: Eine
+ * Berufungsrunde wird zeilenweise abgeschlossen, und sie als Ganzes
+ * abzuhaken, während die Hälfte noch aussteht, hiesse mehr zu erledigen, als
+ * besprochen wurde. Wieder öffnen lässt sich ein Eintrag dagegen immer – das
+ * fragt hier niemand.
+ */
+export function hasOpenCallingRows(changes: CallingChanges | null | undefined): boolean {
+  return callingRowCounts(changes).open > 0
+}
+
 /* ------------------------------------------------------------------ */
 /* Lesen und schreiben                                                 */
 /* ------------------------------------------------------------------ */
@@ -102,10 +144,13 @@ function rowsOf(value: unknown): Record<string, unknown>[] {
     .slice(0, MAX_CALLING_ROWS)
 }
 
-function base(row: Record<string, unknown>): { id: string; assignees: string[] } {
+function base(row: Record<string, unknown>): { id: string; assignees: string[]; done?: true } {
   return {
     id: typeof row.id === 'string' && row.id ? row.id : uid(),
     assignees: idList(row.assignees),
+    // Nur die abgeschlossene Zeile trägt den Schlüssel – ein `false` an jeder
+    // offenen Zeile wäre in zwanzig Zeilen zwanzigmal nichts.
+    ...(row.done === true ? { done: true as const } : {}),
   }
 }
 
@@ -167,6 +212,7 @@ export function serializeCallingChanges(changes: CallingChanges): CallingChanges
         assignees: row.assignees ?? [],
       }
       if (row.urgency) stored.urgency = row.urgency
+      if (row.done) stored.done = true
       return stored
     }),
     open: changes.open.map((row) => {
@@ -178,6 +224,7 @@ export function serializeCallingChanges(changes: CallingChanges): CallingChanges
         assignees: row.assignees ?? [],
       }
       if (row.urgency) stored.urgency = row.urgency
+      if (row.done) stored.done = true
       return stored
     }),
   }
@@ -279,6 +326,7 @@ export function callingChangesToText(
             row.calling,
             row.ideas,
             row.assignees.length > 0 ? `Zuständig: ${row.assignees.map(name).join(', ')}` : '',
+            row.done ? 'Erledigt' : '',
           ]),
         ),
       ].join('\n'),
@@ -296,6 +344,7 @@ export function callingChangesToText(
             row.candidates,
             row.next,
             row.assignees.length > 0 ? `Zuständig: ${row.assignees.map(name).join(', ')}` : '',
+            row.done ? 'Erledigt' : '',
           ]),
         ),
       ].join('\n'),
@@ -320,13 +369,29 @@ export type CallingRowMatch =
   { table: 'members'; row: CallingMemberRow } | { table: 'open'; row: CallingOpenRow }
 
 /**
- * Alle Zeilen, in denen ein bestimmtes Mitglied vorkommt.
+ * Kommt ein bestimmtes Mitglied in **dieser einen** Zeile vor?
  *
  * Zwei Wege führen dahin, und beide zählen gleich:
  *
  *  - Die Zeile **nennt** das Mitglied in der Spalte «Name».
  *  - Die Zeile **erwähnt** es mit «@» in einem der Freitextfelder – wer
  *    «@Alain» als Vorschlag schreibt, meint Alain.
+ *
+ * Welche Felder dabei zu lesen sind, sagt die Tabelle: In «Neue Berufungen»
+ * steht die Person in der Spalte «Name», in «Offene Berufungen» kann sie nur
+ * erwähnt sein – eine offene Aufgabe ist niemand.
+ */
+function rowAbout(row: CallingMemberRow | CallingOpenRow, member: Mention): boolean {
+  const named = (value: string) =>
+    splitMentions(value, [member]).some((part) => part.memberId !== undefined)
+
+  return 'memberIds' in row
+    ? row.memberIds.includes(member.id) || named(row.calling) || named(row.ideas)
+    : named(row.calling) || named(row.candidates) || named(row.next)
+}
+
+/**
+ * Alle Zeilen, in denen ein bestimmtes Mitglied vorkommt.
  *
  * Ohne Mitglied gibt es nichts zu finden: Ein Name im Text ist dann bloss ein
  * Name, und die App hat keinen Anhaltspunkt, wer gemeint ist.
@@ -337,28 +402,18 @@ export function callingRowsAbout(
 ): CallingRowMatch[] {
   if (!changes || member === null) return []
 
-  const named = (value: string) =>
-    splitMentions(value, [member]).some((part) => part.memberId !== undefined)
-
   const matches: CallingRowMatch[] = []
-
   changes.members.forEach((row) => {
-    if (row.memberIds.includes(member.id) || named(row.calling) || named(row.ideas)) {
-      matches.push({ table: 'members', row })
-    }
+    if (rowAbout(row, member)) matches.push({ table: 'members', row })
   })
-
   changes.open.forEach((row) => {
-    if (named(row.calling) || named(row.candidates) || named(row.next)) {
-      matches.push({ table: 'open', row })
-    }
+    if (rowAbout(row, member)) matches.push({ table: 'open', row })
   })
-
   return matches
 }
 
 /**
- * Betrifft eine dieser Zeilen die angemeldete Person?
+ * Geht **diese Zeile** die angemeldete Person an?
  *
  * Zwei Wege führen dahin, und beide zählen gleich:
  *
@@ -370,20 +425,33 @@ export function callingRowsAbout(
  *
  * Ohne Verknüpfung bleibt der zweite Weg wirkungslos: Ein Name im Text ist
  * dann bloss ein Name.
+ *
+ * Es ist dieselbe Frage, die den ganzen Eintrag auf die Liste «Meine» bringt –
+ * bloss eine Ebene tiefer gestellt. Deshalb zeigt die Runde, die von dort aus
+ * geöffnet wird, genau diese Zeilen: Was den Eintrag zu meinem macht, ist auch
+ * das, was ich darin zu tun habe.
  */
+export function isOwnCallingRow(
+  row: CallingMemberRow | CallingOpenRow,
+  userId: string | null | undefined,
+  member: Mention | null,
+): boolean {
+  // Eine abgeschlossene Zeile ist keine Aufgabe mehr: Wessen letzte Zeile
+  // erledigt ist, für den fällt die ganze Runde von der Liste «Meine».
+  if (row.done) return false
+  if (userId && row.assignees.includes(userId)) return true
+  return member !== null && rowAbout(row, member)
+}
+
+/** Betrifft **eine** dieser Zeilen die angemeldete Person? */
 export function callingChangesConcern(
   changes: CallingChanges | null | undefined,
   userId: string | null | undefined,
   member: Mention | null,
 ): boolean {
   if (!changes) return false
-
-  if (userId) {
-    const assigned = (rows: CallingRowBase[]) => rows.some((row) => row.assignees.includes(userId))
-    if (assigned(changes.members) || assigned(changes.open)) return true
-  }
-
-  return callingRowsAbout(changes, member).length > 0
+  const own = (row: CallingMemberRow | CallingOpenRow) => isOwnCallingRow(row, userId, member)
+  return changes.members.some(own) || changes.open.some(own)
 }
 
 /**

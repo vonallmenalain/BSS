@@ -10,6 +10,7 @@ import { EmptyState } from '@/components/ui/Feedback'
 import { AgendaItemEditor } from '@/components/agenda/AgendaItemEditor'
 import { DeferMenu } from '@/components/agenda/DeferMenu'
 import { deleteAgendaItem, setItemStatus } from '@/services/agenda'
+import { hasOpenCallingRows } from '@/lib/callingChanges'
 import {
   ITEM_KIND_LABELS,
   ITEM_KIND_PLURAL,
@@ -146,6 +147,13 @@ export function MeetingFocus({ items, onAdd, nextMeeting, readOnly = false }: Pr
   const actor = profile ? { id: profile.id, name: profile.displayName } : null
   const kind = toItemKind(current)
 
+  /*
+   * Eine Berufungsrunde wird zeilenweise erledigt – im Menü rechts an jeder
+   * Zeile. Als Ganzes ist sie erst fertig, wenn keine mehr offen ist; bis
+   * dahin bleibt der grüne Knopf still. Wieder öffnen geht immer.
+   */
+  const openRows = current.status !== 'done' && hasOpenCallingRows(current.callingChanges)
+
   const changeStatus = async (status: ItemStatus) => {
     if (!actor) return
     try {
@@ -277,7 +285,12 @@ export function MeetingFocus({ items, onAdd, nextMeeting, readOnly = false }: Pr
                 className={cn(
                   'min-w-0 flex-1',
                   current.status === 'done' ? 'btn-secondary' : 'btn-success',
+                  openRows && 'cursor-default opacity-50',
                 )}
+                disabled={openRows}
+                title={
+                  openRows ? 'Erledigt wird in der Runde selbst – Zeile für Zeile.' : undefined
+                }
                 onClick={() => void changeStatus(current.status === 'done' ? 'pending' : 'done')}
               >
                 <Check className="size-4" aria-hidden />
