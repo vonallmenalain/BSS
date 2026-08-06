@@ -132,10 +132,9 @@ export function AgendaItemRow({
    * zurückzuholen sein, auch wenn inzwischen wieder eine Zeile offen ist.
    *
    * Gezählt wird am Stand im Editor und nicht am gespeicherten: Gespeichert
-   * wird erst beim Verlassen des Eintrags, und bis dahin stünde hier «noch
-   * eine Zeile offen», nachdem man eben die letzte abgehakt hat. Beim
-   * Zuklappen fällt der Merkwert weg – dann gilt wieder, was in der Datenbank
-   * steht.
+   * wird erst beim Verlassen des Eintrags, und bis dahin fehlte der Knopf
+   * noch, nachdem man eben die letzte Zeile abgehakt hat. Beim Zuklappen
+   * fällt der Merkwert weg – dann gilt wieder, was in der Datenbank steht.
    */
   const [live, setLive] = useState<CallingChanges | null>(null)
   const [liveWhileOpen, setLiveWhileOpen] = useState(expanded)
@@ -350,7 +349,11 @@ export function AgendaItemRow({
 
           {!readOnly && (
             <div className="mt-4 flex flex-wrap items-center gap-2">
-              {closable ? (
+              {/* Eine Berufungsrunde wird zeilenweise erledigt (im Menü rechts
+                  an jeder Zeile). Der ganze Eintrag ist erst fertig, wenn
+                  keine Zeile mehr offen ist – bis dahin stünde hier ein Knopf,
+                  der mehr abhakte, als besprochen wurde. */}
+              {closable && (
                 <button
                   type="button"
                   className={isDone ? 'btn-secondary btn-sm' : 'btn-success btn-sm'}
@@ -359,16 +362,6 @@ export function AgendaItemRow({
                   <Check className="size-4" aria-hidden />
                   {isDone ? 'Wieder offen' : 'Erledigt'}
                 </button>
-              ) : (
-                /* Eine Berufungsrunde wird zeilenweise erledigt (im Menü
-                   rechts an jeder Zeile). Der ganze Eintrag ist erst fertig,
-                   wenn keine Zeile mehr offen ist – bis dahin stünde hier ein
-                   Knopf, der mehr abhakte, als besprochen wurde. */
-                <p className="hint">
-                  {openRows === 1
-                    ? 'Noch eine Zeile offen – erledigt wird in der Runde selbst.'
-                    : `Noch ${openRows} Zeilen offen – erledigt wird in der Runde selbst.`}
-                </p>
               )}
 
               <DeferMenu itemId={item.id} nextMeeting={nextMeeting} className="btn-sm" />

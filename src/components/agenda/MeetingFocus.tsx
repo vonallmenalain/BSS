@@ -288,9 +288,6 @@ export function MeetingFocus({ items, onAdd, nextMeeting, readOnly = false }: Pr
                   openRows && 'cursor-default opacity-50',
                 )}
                 disabled={openRows}
-                title={
-                  openRows ? 'Erledigt wird in der Runde selbst – Zeile für Zeile.' : undefined
-                }
                 onClick={() => void changeStatus(current.status === 'done' ? 'pending' : 'done')}
               >
                 <Check className="size-4" aria-hidden />

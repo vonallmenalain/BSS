@@ -114,8 +114,9 @@ export function AgendaItemDialog({
               <div className="flex flex-wrap items-center gap-2 border-t border-slate-200 pt-3 dark:border-slate-800">
                 {/* Eine Berufungsrunde wird zeilenweise erledigt; als Ganzes
                     ist sie erst fertig, wenn keine Zeile mehr offen ist
-                    (siehe `hasOpenCallingRows`). */}
-                {!openRows ? (
+                    (siehe `hasOpenCallingRows`) – bis dahin steht hier kein
+                    Knopf. */}
+                {!openRows && (
                   <button
                     type="button"
                     className={isDone ? 'btn-secondary btn-sm' : 'btn-success btn-sm'}
@@ -124,8 +125,6 @@ export function AgendaItemDialog({
                     <Check className="size-4" aria-hidden />
                     {isDone ? 'Wieder offen' : 'Erledigt'}
                   </button>
-                ) : (
-                  <p className="hint">Erledigt wird in der Runde selbst – Zeile für Zeile.</p>
                 )}
 
                 <DeferMenu itemId={item.id} nextMeeting={nextMeeting ?? null} className="btn-sm" />

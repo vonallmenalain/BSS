@@ -405,7 +405,7 @@ Bischofschaft regelmässig dreht – zwei Tabellen untereinander:
 
 | Tabelle               | Spalten                                          | Wofür                           |
 | --------------------- | ------------------------------------------------ | ------------------------------- |
-| **Neue Berufungen**   | Name · Berufung · Vorschläge                     | Wer eine neue Aufgabe bekommt   |
+| **Neue Berufungen**   | Name · Berufung · Ideen und weiteres Vorgehen    | Wer eine neue Aufgabe bekommt   |
 | **Offene Berufungen** | Berufung · Name (Vorschläge) · Weiteres Vorgehen | Welche Aufgabe jemanden braucht |
 
 Die beiden Haken schliessen einander aus – beide füllen die Stelle, an der
@@ -475,10 +475,10 @@ es auch nicht, denn eine abgeblendete Zeile blendet alles mit ab, was in ihr
 steht.
 
 Deshalb hat eine Berufungsrunde **keinen grünen Knopf «Erledigt» am ganzen
-Eintrag** – solange noch eine Zeile offen ist. An seiner Stelle steht, wie
-viele es noch sind. Erst wenn keine mehr aussteht, erscheint der Knopf: Die
-Runde ist fertig, wenn die Arbeit darin fertig ist, und nicht schon dann, wenn
-jemand sie für fertig hält. Wieder öffnen lässt sich der Eintrag jederzeit.
+Eintrag** – solange noch eine Zeile offen ist. An seiner Stelle steht nichts;
+erst wenn keine Zeile mehr aussteht, erscheint der Knopf: Die Runde ist
+fertig, wenn die Arbeit darin fertig ist, und nicht schon dann, wenn jemand
+sie für fertig hält. Wieder öffnen lässt sich der Eintrag jederzeit.
 
 Wessen letzte Zeile abgehakt ist, für den fällt die Runde damit auch von der
 Liste **Pendenzen → Meine** – sie ist dort ja gerade wegen dieser Zeile

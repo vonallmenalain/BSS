@@ -75,13 +75,12 @@ export function AgendaItemCard({
         {/* Erledigt-Schalter: die häufigste Aktion, deshalb ganz vorne.
             Eine Berufungsrunde mit offenen Zeilen lässt sich hier nicht
             abhaken – sie wird zeilenweise erledigt (siehe
-            `hasOpenCallingRows`); der Haken sagt, warum er nicht geht. */}
+            `hasOpenCallingRows`). */}
         {showDoneToggle && (
           <button
             type="button"
             onClick={() => void toggleDone()}
             disabled={openRows}
-            title={openRows ? 'Erledigt wird in der Runde selbst – Zeile für Zeile.' : undefined}
             className={cn(
               'mt-0.5 grid size-5 shrink-0 place-items-center rounded-md border-2 transition',
               isDone
