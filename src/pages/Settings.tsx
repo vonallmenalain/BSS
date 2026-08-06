@@ -10,8 +10,11 @@ import {
   ChevronDown,
   ChevronRight,
   ClipboardList,
+  DatabaseBackup,
+  Download,
   HeartHandshake,
   History,
+  Loader2,
   Mic,
   Music,
   NotebookPen,
@@ -31,6 +34,8 @@ import { ConfirmDialog } from '@/components/ui/Modal'
 import { Avatar } from '@/components/ui/Avatar'
 import { WEEKDAYS } from '@/lib/dates'
 import { resyncCollectionStores } from '@/lib/collectionStore'
+import { backupTotal } from '@/lib/backup'
+import { BACKUP_COLLECTIONS, createBackup, downloadBackup } from '@/services/backup'
 import { saveSettings } from '@/services/settings'
 import { deleteUserProfile, setUserActive, setUserRole, updateUserProfile } from '@/services/users'
 import { formatRelative } from '@/lib/dates'
@@ -515,6 +520,10 @@ export function Settings() {
             anderes. Die ganze Liste erscheint erst auf Wunsch. */}
         <ImportSection />
 
+        {/* Die Sicherung steht bewusst gleich unter den Importen: Ein Import
+            ist der Handgriff, nach dem man sie am ehesten bräuchte. */}
+        <BackupSection />
+
         <SyncSection />
       </div>
     </>
@@ -619,6 +628,95 @@ function ImportSection() {
           ))}
         </ul>
       )}
+    </section>
+  )
+}
+
+/* ------------------------------------------------------------------ */
+/* Sicherung                                                           */
+/* ------------------------------------------------------------------ */
+
+/**
+ * Alles auf einmal mitnehmen – für den Fall, dass etwas schiefgeht.
+ *
+ * Firestore kennt keinen Papierkorb, und die App kennt mehrere Wege, viel auf
+ * einmal zu löschen: Ein Mitgliederimport entfernt auf Wunsch alle, die in
+ * der Quelle fehlen, der AP-Import ersetzt den ganzen Jahresplan. Deshalb
+ * steht der Knopf gleich unter den Importen.
+ *
+ * Er ersetzt die Sicherung im Firebase-Projekt nicht: Point-in-time-Recovery
+ * hält dort sieben Tage lang jeden Stand vor, ohne dass jemand daran gedacht
+ * haben muss. Diese Datei ist die Kopie daneben – lesbar ohne Konsole, und
+ * sie darf älter werden als sieben Tage.
+ */
+function BackupSection() {
+  const { firebaseUser } = useAuth()
+  const toast = useToast()
+  const [busy, setBusy] = useState(false)
+  const [done, setDone] = useState(0)
+
+  const download = async () => {
+    setBusy(true)
+    setDone(0)
+    try {
+      const backup = await createBackup(firebaseUser?.email ?? 'unbekannt', (count) =>
+        setDone(count),
+      )
+      const filename = downloadBackup(backup)
+      const total = backupTotal(backup.counts).toLocaleString('de-CH')
+      /*
+       * Ohne Verbindung liest Firestore aus der lokalen Kopie. Die Sicherung
+       * ist dann vollständig, aber womöglich nicht der neueste Stand – das
+       * wird gesagt, statt einen Erfolg zu behaupten, der so nicht stimmt.
+       */
+      if (backup.source === 'cache') {
+        toast.warning(
+          `${total} Datensätze aus der lokalen Kopie: ${filename}. Ohne Verbindung fehlt womöglich das Neueste – bitte online wiederholen.`,
+        )
+      } else {
+        toast.success(`${total} Datensätze gesichert: ${filename}`)
+      }
+    } catch (error) {
+      console.error(error)
+      toast.error('Die Sicherung konnte nicht erstellt werden.')
+    } finally {
+      setBusy(false)
+    }
+  }
+
+  return (
+    <section className="card p-5">
+      <h2 className="mb-1 flex items-center gap-2 text-sm font-semibold">
+        <DatabaseBackup className="size-4 text-slate-400" aria-hidden />
+        Sicherung
+      </h2>
+      <p className="hint mb-4">
+        Gelöschtes ist gelöscht – einen Papierkorb gibt es nicht, und ein Import ersetzt ganze
+        Bereiche auf einmal. Dieser Knopf legt den ganzen Bestand als eine JSON-Datei auf dieses
+        Gerät: Mitglieder, Sitzungen, Traktanden und Pendenzen, Notizen, Berufungen, Ansprachen und
+        Gebete, Putzplan und Aktivitäten. Vor jedem Import einmal drücken.
+      </p>
+      <button
+        type="button"
+        className="btn-secondary"
+        onClick={() => void download()}
+        disabled={busy}
+      >
+        {busy ? (
+          <Loader2 className="size-4 animate-spin" aria-hidden />
+        ) : (
+          <Download className="size-4" aria-hidden />
+        )}
+        {busy
+          ? `Sicherung läuft … (${done} von ${BACKUP_COLLECTIONS.length})`
+          : 'Alle Daten als JSON herunterladen'}
+      </button>
+      <p className="hint mt-3">
+        Die Datei enthält Personendaten – Adressen, Telefonnummern, Notizen. Sie gehört an einen
+        Ort, der dazu passt, und nicht in einen geteilten Ordner. Zurückspielen lässt sie sich nur
+        von Hand; der bequeme Weg zurück liegt im Firebase-Projekt, wo Point-in-time-Recovery –
+        einmal eingeschaltet – sieben Tage lang jeden Stand vorhält.
+      </p>
     </section>
   )
 }
