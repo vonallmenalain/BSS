@@ -287,6 +287,14 @@
   }
 }
 
+/* --- Drucken ---------------------------------------------------------
+   Ein Blatt ist A4 und hat einen Rand, den kein Drucker unterschreitet.
+   14 mm liegen darüber und lassen den Satzspiegel ruhig wirken. */
+@page {
+  size: A4 portrait;
+  margin: 14mm;
+}
+
 /* Beim Drucken (Protokoll) nur den Inhalt ausgeben */
 @media print {
   .no-print {
@@ -299,6 +307,62 @@
   .card {
     border: 1px solid #ddd;
     box-shadow: none;
+    break-inside: avoid;
+  }
+
+  /* --- Der Ablauf unter «Leitung» ---------------------------------
+     Dort ist das Blatt die ganze Seite: Was daneben steht – Seitenkopf,
+     Sonntagswahl, die Überschrift «Ablauf» – gehört nicht aufs Papier,
+     denn Versammlung und Datum stehen bereits im Blatt selbst.
+
+     Die Klasse `sheet-page` setzt die Seite ans `<body>`, solange sie
+     offen ist. So druckt Strg+P dasselbe wie der Knopf «Drucken», und
+     alle übrigen Ansichten drucken weiterhin, was sie immer gedruckt
+     haben. */
+  .sheet-page .no-print-sheet {
+    display: none !important;
+  }
+
+  /* Den Abstand, den der Inhaltsbereich für Kopfzeile und Fussleiste
+     vorhält, braucht das Papier nicht: Dort ist der Rand der Seite der
+     Rand. Stehen liesse er den Ablauf auf eine zweite Seite rutschen. */
+  .sheet-page main {
+    padding: 0;
+  }
+
+  /* Rahmen, Schatten und Innenabstand sind Bildschirmsachen: Auf Papier
+     macht sie der Rand der Seite überflüssig. Das Vollbild löst sich hier
+     ebenfalls auf – eine feste Lage kennt eine gedruckte Seite nicht.
+
+     Der engere Zeilenabstand ist kein Sparen am falschen Ort: Papier wird
+     näher gelesen als ein Bildschirm am Pult, und der ganze Ablauf soll
+     auf eine Seite passen, damit am Rednerpult niemand blättern muss.
+
+     `print-color-adjust` sorgt dafür, dass die Nummern in ihren Kreisen
+     stehen bleiben – sonst lässt der Browser die Flächen einfach weg.
+
+     `--sheet-zoom` setzt der Knopf «Drucken», und zwar nur an einem
+     Sonntag, der sonst nicht auf eine Seite ginge (siehe `fitToPage`).
+     Ohne ihn – etwa bei Strg+P – bleibt es bei voller Grösse. */
+  .sheet-page .print-sheet {
+    border: 0;
+    box-shadow: none;
+    padding: 0;
+    position: static;
+    overflow: visible;
+    /* Die A4-Breite braucht nur die Messung am Bildschirm – auf dem Papier
+       gibt die Seite sie ohnehin vor. Stünde sie fest, geriete sie unter
+       `zoom` schmaler als die Seite. */
+    width: auto;
+    line-height: 1.4;
+    zoom: var(--sheet-zoom, 1);
+    print-color-adjust: exact;
+    -webkit-print-color-adjust: exact;
+  }
+
+  /* Ein Programmpunkt gehört nicht über den Seitenumbruch hinweg
+     zerrissen – am Pult wird Zeile für Zeile gelesen. */
+  .sheet-page .print-sheet li {
     break-inside: avoid;
   }
 }
