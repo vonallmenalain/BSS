@@ -91,7 +91,7 @@ import {
  * schon da, bevor der erste Schnappschuss aus Firestore eintrifft.
  */
 export function Dashboard() {
-  const { profile } = useAuth()
+  const { profile, isAdmin } = useAuth()
   const { settings, members, users } = useData()
   const navigate = useNavigate()
   const { data: meetings, loading: meetingsLoading } = useMeetings(20)
@@ -563,7 +563,9 @@ export function Dashboard() {
         }
       />
 
-      {pendingUsers.length > 0 && (
+      {/* Freischalten kann nur das Administrator-Konto – allen anderen
+          würde der Hinweis eine Tür zeigen, die für sie zu ist. */}
+      {isAdmin && pendingUsers.length > 0 && (
         <Link
           to="/einstellungen#benutzer"
           className="card card-hover mb-4 flex items-center gap-3 border-amber-200 bg-amber-50/70 p-4 dark:border-amber-800 dark:bg-amber-950/40"

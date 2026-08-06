@@ -20,6 +20,7 @@ import {
 import { codeOf, hymnKey } from '@/lib/hymnCode'
 import {
   DEFAULT_SETTINGS,
+  normalizeSettings,
   type AppSettings,
   type AppUser,
   type Hymn,
@@ -118,7 +119,8 @@ export function DataProvider({ children }: { children: ReactNode }) {
       doc(db, COLLECTIONS.settings, 'app'),
       (snapshot) => {
         if (snapshot.exists()) {
-          setSettings({ ...DEFAULT_SETTINGS, ...(snapshot.data() as Partial<AppSettings>) })
+          // `normalizeSettings` heilt verunglückte Werte (leere Zeit, 0 Plätze).
+          setSettings(normalizeSettings(snapshot.data() as Partial<AppSettings>))
         }
       },
       (error) => console.error('[data] Einstellungen konnten nicht geladen werden:', error),

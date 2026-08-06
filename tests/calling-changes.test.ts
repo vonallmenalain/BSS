@@ -14,6 +14,7 @@ import {
   isOwnCallingRow,
   isOwnItem,
   MAX_CALLING_ROWS,
+  mergeCallingChanges,
   moveCallingRow,
   newCallingMemberRow,
   newCallingOpenRow,
@@ -464,4 +465,71 @@ test('«Meine Pendenzen»: Zuweisung am Eintrag oder eine Zeile darin', () => {
 
   // Ohne Konto gehört niemandem etwas – auch nicht die leere Runde.
   assert.equal(isOwnItem(item({ callingChanges: emptyCallingChanges() }), null, ALAIN), false)
+})
+
+/* ---------------- Zusammenführen ---------------- */
+
+test('Zusammenführen: jede Person behält ihre Zeile', () => {
+  // A hakt Zeile 1 ab, B füllt Zeile 2 aus – beide auf demselben Ausgangsstand.
+  const zeile1 = { ...newCallingOpenRow(), calling: 'PV-Leiterin' }
+  const zeile2 = { ...newCallingOpenRow(), calling: 'Sekretär' }
+  const base = changes({ open: [zeile1, zeile2] })
+
+  const meins = changes({ open: [{ ...zeile1, done: true as const }, zeile2] })
+  const fremd = changes({ open: [zeile1, { ...zeile2, candidates: '@Peter' }] })
+
+  const ergebnis = mergeCallingChanges(base, meins, fremd)
+  const [erste, zweite] = ergebnis.open
+  assert.equal(erste.done, true)
+  assert.equal('candidates' in zweite && zweite.candidates, '@Peter')
+})
+
+test('Zusammenführen: unangetastete Zeilen folgen dem Server – samt Löschung', () => {
+  const zeile = { ...newCallingOpenRow(), calling: 'Chorleiter' }
+  const base = changes({ open: [zeile] })
+  const meins = changes({ open: [zeile] })
+  const fremd = changes({ open: [] })
+
+  const ergebnis = mergeCallingChanges(base, meins, fremd)
+  assert.equal(
+    ergebnis.open.some((row) => row.calling === 'Chorleiter'),
+    false,
+  )
+})
+
+test('Zusammenführen: bei derselben Zeile gewinnt die eigene Fassung', () => {
+  const zeile = { ...newCallingOpenRow(), calling: 'Chorleiter', next: 'anfragen' }
+  const base = changes({ open: [zeile] })
+  const meins = changes({ open: [{ ...zeile, next: 'berufen' }] })
+  const fremd = changes({ open: [{ ...zeile, next: 'warten' }] })
+
+  const ergebnis = mergeCallingChanges(base, meins, fremd)
+  assert.equal(ergebnis.open[0].next, 'berufen')
+})
+
+test('Zusammenführen: drüben neu entstandene Zeilen kommen ans Ende', () => {
+  const base = changes({})
+  const meins = changes({ open: [{ ...newCallingOpenRow(), calling: 'Sekretär' }] })
+  const neuDort = { ...newCallingOpenRow(), calling: 'Organistin' }
+  const leerDort = newCallingOpenRow()
+  const fremd = changes({ open: [neuDort, leerDort] })
+
+  const ergebnis = mergeCallingChanges(base, meins, fremd)
+  assert.deepEqual(
+    ergebnis.open.map((row) => row.calling),
+    ['Sekretär', 'Organistin'],
+  )
+})
+
+test('Zusammenführen: selbst gelöschte, drüben geänderte Zeile bleibt erhalten', () => {
+  const zeile = { ...newCallingOpenRow(), calling: 'Chorleiter' }
+  const behalten = { ...newCallingOpenRow(), calling: 'Sekretär' }
+  const base = changes({ open: [zeile, behalten] })
+  const meins = changes({ open: [behalten] })
+  const fremd = changes({ open: [{ ...zeile, next: 'am Sonntag fragen' }, behalten] })
+
+  const ergebnis = mergeCallingChanges(base, meins, fremd)
+  const wieder = ergebnis.open.find((row) => row.calling === 'Chorleiter')
+  assert.ok(wieder)
+  assert.equal(wieder.next, 'am Sonntag fragen')
 })

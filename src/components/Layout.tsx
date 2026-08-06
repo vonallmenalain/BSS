@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from 'react'
 import { NavLink, Outlet, useLocation } from 'react-router-dom'
+import { ErrorBoundary } from '@/components/ErrorBoundary'
 import {
   LayoutDashboard,
   CalendarDays,
@@ -249,7 +250,11 @@ export function Layout() {
 
         {/* ---------- Inhalt ---------- */}
         <main className="min-w-0 flex-1 px-4 py-5 pb-24 sm:px-6 lg:pb-8 landscape-short:py-3 landscape-short:pb-16">
-          <Outlet />
+          {/* Bricht eine Seite beim Zeichnen, bleibt die Navigation stehen –
+              und der Seitenwechsel gibt der Ansicht einen neuen Versuch. */}
+          <ErrorBoundary resetKey={location.pathname}>
+            <Outlet />
+          </ErrorBoundary>
         </main>
       </div>
 

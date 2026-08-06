@@ -51,6 +51,16 @@ export function WardBusiness() {
   const entries = draft.value
   const change = draft.set
 
+  /*
+   * Löschen ohne Rückfrage, aber mit Reue: «Rückgängig» in der Meldung stellt
+   * den Stand von unmittelbar vor dem Löschen wieder her.
+   */
+  const remove = (entry: BusinessEntry) => {
+    const before = entries
+    change(entries.filter((e) => e.id !== entry.id))
+    toast.undo('Eintrag entfernt.', () => change(before))
+  }
+
   return (
     <>
       <SectionHeader
@@ -120,7 +130,7 @@ export function WardBusiness() {
                   <button
                     type="button"
                     className="btn-ghost p-1.5 text-rose-600 dark:text-rose-400"
-                    onClick={() => change(entries.filter((e) => e.id !== entry.id))}
+                    onClick={() => remove(entry)}
                     aria-label="Entfernen"
                   >
                     <Trash2 className="size-4" aria-hidden />

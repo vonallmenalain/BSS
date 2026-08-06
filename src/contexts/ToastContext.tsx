@@ -17,6 +17,8 @@ interface Toast {
   id: string
   kind: ToastKind
   message: string
+  /** Ein Knopf in der Meldung – etwa «Rückgängig» nach dem Löschen. */
+  action?: { label: string; onClick: () => void | Promise<void> }
 }
 
 interface ToastContextValue {
@@ -31,6 +33,13 @@ interface ToastContextValue {
    * Erfolg zu behaupten, der noch aussteht.
    */
   saved: (message: string, outcome?: SaveOutcome) => void
+  /**
+   * Meldung nach dem Löschen, mit ein paar Sekunden Reue: Ein Griff auf
+   * «Rückgängig» stellt den Eintrag wieder her. Das ersetzt die Rückfrage
+   * vor dem Löschen dort, wo eine Rückfrage bei jedem Handgriff stören
+   * würde – gelöscht ist erst, wer die Meldung verstreichen lässt.
+   */
+  undo: (message: string, onUndo: () => void | Promise<void>) => void
 }
 
 const ToastContext = createContext<ToastContextValue | undefined>(undefined)
@@ -60,11 +69,13 @@ export function ToastProvider({ children }: { children: ReactNode }) {
   }, [])
 
   const toast = useCallback(
-    (message: string, kind: ToastKind = 'info') => {
+    (message: string, kind: ToastKind = 'info', action?: Toast['action']) => {
       const id = uid()
-      setToasts((current) => [...current, { id, kind, message }])
-      // Fehler bleiben länger stehen, damit man sie sicher liest.
-      setTimeout(() => dismiss(id), kind === 'error' ? 8000 : 4000)
+      setToasts((current) => [...current, { id, kind, message, action }])
+      // Fehler bleiben länger stehen, damit man sie sicher liest – und eine
+      // Meldung mit «Rückgängig» ebenfalls, denn sie ist die einzige
+      // Gelegenheit dazu.
+      setTimeout(() => dismiss(id), kind === 'error' || action ? 8000 : 4000)
     },
     [dismiss],
   )
@@ -93,6 +104,18 @@ export function ToastProvider({ children }: { children: ReactNode }) {
         outcome === 'queued'
           ? toast(`${m} Wird übertragen, sobald wieder Verbindung besteht.`, 'info')
           : toast(m, 'success'),
+      undo: (m: string, onUndo: () => void | Promise<void>) =>
+        toast(m, 'info', {
+          label: 'Rückgängig',
+          onClick: async () => {
+            try {
+              await onUndo()
+            } catch (error) {
+              console.error(error)
+              toast('Konnte nicht wiederhergestellt werden.', 'error')
+            }
+          },
+        }),
     }),
     [toast],
   )
@@ -117,6 +140,18 @@ export function ToastProvider({ children }: { children: ReactNode }) {
             >
               <Icon className="mt-0.5 size-5 shrink-0" aria-hidden />
               <p className="flex-1 text-sm font-medium">{t.message}</p>
+              {t.action && (
+                <button
+                  type="button"
+                  onClick={() => {
+                    dismiss(t.id)
+                    void t.action?.onClick()
+                  }}
+                  className="-my-1 shrink-0 rounded-lg px-2 py-1 text-sm font-semibold underline underline-offset-2 transition hover:opacity-80"
+                >
+                  {t.action.label}
+                </button>
+              )}
               <button
                 type="button"
                 onClick={() => dismiss(t.id)}

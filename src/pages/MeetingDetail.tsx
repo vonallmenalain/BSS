@@ -280,7 +280,12 @@ export function MeetingDetail() {
               <button
                 type="button"
                 className="btn-primary"
-                onClick={() => void startMeeting(meetingId)}
+                onClick={() =>
+                  void startMeeting(meetingId).catch((error: unknown) => {
+                    console.error(error)
+                    toast.error('Sitzung konnte nicht gestartet werden.')
+                  })
+                }
               >
                 <Play className="size-4" aria-hidden />
                 Sitzung starten
@@ -296,7 +301,12 @@ export function MeetingDetail() {
               <button
                 type="button"
                 className="btn-secondary"
-                onClick={() => void reopenMeeting(meetingId)}
+                onClick={() =>
+                  void reopenMeeting(meetingId).catch((error: unknown) => {
+                    console.error(error)
+                    toast.error('Sitzung konnte nicht geöffnet werden.')
+                  })
+                }
               >
                 Wieder öffnen
               </button>
@@ -480,10 +490,15 @@ export function MeetingDetail() {
         open={confirmDelete}
         onClose={() => setConfirmDelete(false)}
         onConfirm={() => {
-          void deleteMeeting(meetingId).then(() => {
-            toast.success('Sitzung gelöscht. Die Traktanden bleiben als Pendenzen erhalten.')
-            navigate('/sitzungen')
-          })
+          void deleteMeeting(meetingId)
+            .then(() => {
+              toast.success('Sitzung gelöscht. Die Traktanden bleiben als Pendenzen erhalten.')
+              navigate('/sitzungen')
+            })
+            .catch((error: unknown) => {
+              console.error(error)
+              toast.error('Sitzung konnte nicht gelöscht werden.')
+            })
         }}
         title="Sitzung löschen?"
         message="Die Traktanden bleiben erhalten und wandern zurück in die Pendenzen."

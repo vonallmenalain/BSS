@@ -97,6 +97,15 @@ export const AP_ACCESS_ROLES: Role[] = [...FULL_ACCESS_ROLES, ...AP_ONLY_ROLES]
 export const AP_WRITE_ROLES: Role[] = [...FULL_ACCESS_ROLES, 'ap_editor']
 
 /**
+ * Das Administrator-Konto – verwaltet als Einziges Benutzer und Rollen.
+ *
+ * Erkannt wird es an der Anmelde-E-Mail (dem Token), nicht am frei
+ * beschreibbaren Profil. Dieselbe Adresse steht in `firestore.rules` –
+ * beide müssen zusammen geändert werden.
+ */
+export const ADMIN_EMAIL = 'alain.sc2@gmail.com'
+
+/**
  * Was beim Freischalten zur Wahl steht.
  *
  * Die Rolle beantwortet zwei verschiedene Fragen zugleich – «welche Aufgabe?»
@@ -1415,6 +1424,35 @@ export const DEFAULT_SETTINGS: AppSettings = {
   customSundayKinds: [],
   pendenzenSort: DEFAULT_PENDENZEN_SORT,
   pendenzenDoneSort: DEFAULT_PENDENZEN_DONE_SORT,
+}
+
+/**
+ * Aus irgendetwas gültige Einstellungen machen.
+ *
+ * Ein geleertes Zeitfeld speicherte einmal `''`, ein geleertes Zahlenfeld
+ * `0` – und beides legte anderswo das Eintragen lahm: `10:00` wurde zu
+ * «Invalid Date», null Ansprachen-Plätze zeigten lauter leere Sonntage.
+ * Deshalb wird an beiden Enden geradegezogen: beim Speichern
+ * (`services/settings`) und beim Lesen (`DataContext`) – so heilt sich auch
+ * ein bereits verunglückter Datensatz von selbst.
+ */
+export function normalizeSettings(input: Partial<AppSettings> | null | undefined): AppSettings {
+  const merged = { ...DEFAULT_SETTINGS, ...(input ?? {}) }
+
+  const time = (value: string, fallback: string) =>
+    /^\d{1,2}:\d{2}$/.test(value) ? value : fallback
+  const count = (value: number, fallback: number, min: number, max: number) =>
+    Number.isFinite(value) && value >= min ? Math.min(max, Math.round(value)) : fallback
+
+  return {
+    ...merged,
+    meetingTime: time(merged.meetingTime, DEFAULT_SETTINGS.meetingTime),
+    sacramentTime: time(merged.sacramentTime, DEFAULT_SETTINGS.sacramentTime),
+    talksPerSunday: count(merged.talksPerSunday, DEFAULT_SETTINGS.talksPerSunday, 1, 6),
+    talkGapMonths: count(merged.talkGapMonths, DEFAULT_SETTINGS.talkGapMonths, 1, 120),
+    talkMinAge: count(merged.talkMinAge, DEFAULT_SETTINGS.talkMinAge, 0, 30),
+    prayerGapMonths: count(merged.prayerGapMonths, DEFAULT_SETTINGS.prayerGapMonths, 1, 120),
+  }
 }
 
 /* ------------------------------------------------------------------ */

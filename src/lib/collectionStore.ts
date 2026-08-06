@@ -454,6 +454,29 @@ async function reconcile(store: Store): Promise<void> {
   }
 }
 
+/*
+ * Den Zählabgleich gelegentlich wiederholen.
+ *
+ * Er lief bisher genau einmal je Sitzung – wer die App als installierte PWA
+ * tagelang offen hält, sah fremde Löschungen deshalb erst beim nächsten
+ * Kaltstart. Jetzt wird beim Zurückkehren zur App (frühestens nach einer
+ * Stunde) noch einmal gezählt: ein Lesevorgang je Sammlung, und gelöschte
+ * Einträge verschwinden auch aus lange laufenden Sitzungen.
+ */
+const RECONCILE_AGAIN_AFTER_MS = 60 * 60 * 1000
+let lastReconcileAt = Date.now()
+
+if (typeof document !== 'undefined') {
+  document.addEventListener('visibilitychange', () => {
+    if (document.visibilityState !== 'visible') return
+    if (Date.now() - lastReconcileAt < RECONCILE_AGAIN_AFTER_MS) return
+    lastReconcileAt = Date.now()
+    stores.forEach((store) => {
+      if (store.started && store.partial) void reconcile(store)
+    })
+  })
+}
+
 /** Die Sammlung von vorne lesen – nach einer Abweichung oder von Hand. */
 function resync(store: Store): void {
   store.unsubscribe?.()

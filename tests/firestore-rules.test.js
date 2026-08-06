@@ -41,6 +41,9 @@ const AP_EDITOR = 'uid-ap-schreibend'
 const AP_VIEWER = 'uid-ap-lesend'
 const PENDING = 'uid-wartend'
 
+/** Die Anmelde-E-Mail des Administrator-Kontos – wie in firestore.rules. */
+const ADMIN_EMAIL = 'alain.sc2@gmail.com'
+
 let testEnv
 
 /** Legt einen Datenbestand an, ohne dass die Regeln greifen. */
@@ -169,7 +172,9 @@ after(async () => {
   await testEnv?.cleanup()
 })
 
-const asBishop = () => testEnv.authenticatedContext(BISHOP).firestore()
+// Der Bischof ist zugleich das Administrator-Konto: Sein Token trägt die
+// Admin-E-Mail. Nur sie zählt für die Benutzerverwaltung – nicht die Rolle.
+const asBishop = () => testEnv.authenticatedContext(BISHOP, { email: ADMIN_EMAIL }).firestore()
 const asCounselor1 = () => testEnv.authenticatedContext(COUNSELOR1).firestore()
 const asCounselor2 = () => testEnv.authenticatedContext(COUNSELOR2).firestore()
 const asLegacyCounselor = () => testEnv.authenticatedContext(LEGACY_COUNSELOR).firestore()
@@ -333,20 +338,45 @@ describe('Rollen und Rechteausweitung', () => {
     )
   })
 
-  it('erlaubt jeder freigeschalteten Person, ihre eigene Rolle zu setzen', async () => {
-    // Genau dafür ist die Regel da: Wer als Bischof angelegt wurde, aber
-    // 1. Ratgeber ist, korrigiert das selbst.
-    await assertSucceeds(updateDoc(doc(asSecretary(), 'users', SECRETARY), { role: 'counselor2' }))
+  it('lässt nur den Administrator Rollen ändern – auch die eigene nicht', async () => {
+    // Benutzerverwaltung ist dem Administrator-Konto vorbehalten. Ein
+    // freigeschaltetes Konto kann weder die eigene noch eine fremde Rolle
+    // setzen – sonst genügte ein kompromittiertes Konto, um alle zu übernehmen.
+    await assertFails(updateDoc(doc(asSecretary(), 'users', SECRETARY), { role: 'counselor2' }))
+    await assertFails(updateDoc(doc(asSecretary(), 'users', PENDING), { role: 'secretary' }))
+    await assertFails(updateDoc(doc(asCounselor1(), 'users', BISHOP), { active: false }))
+  })
+
+  it('lässt den Administrator freischalten, Rollen ändern und deaktivieren', async () => {
+    await assertSucceeds(updateDoc(doc(asBishop(), 'users', PENDING), { role: 'secretary' }))
+    await assertSucceeds(updateDoc(doc(asBishop(), 'users', SECRETARY), { active: false }))
     await testEnv.withSecurityRulesDisabled(async (context) => {
-      await updateDoc(doc(context.firestore(), 'users', SECRETARY), { role: 'secretary' })
+      await updateDoc(doc(context.firestore(), 'users', PENDING), { role: 'pending' })
+      await updateDoc(doc(context.firestore(), 'users', SECRETARY), { active: true })
     })
   })
 
-  it('lässt jede freigeschaltete Rolle wartende Konten freischalten', async () => {
-    await assertSucceeds(updateDoc(doc(asSecretary(), 'users', PENDING), { role: 'secretary' }))
+  it('lässt nur den Administrator Profile löschen', async () => {
     await testEnv.withSecurityRulesDisabled(async (context) => {
-      await updateDoc(doc(context.firestore(), 'users', PENDING), { role: 'pending' })
+      await setDoc(doc(context.firestore(), 'users', 'uid-weg'), {
+        email: 'weg@example.ch',
+        displayName: 'Weg',
+        role: 'pending',
+        active: true,
+      })
     })
+    await assertFails(deleteDoc(doc(asSecretary(), 'users', 'uid-weg')))
+    await assertFails(deleteDoc(doc(asPending(), 'users', PENDING)))
+    await assertSucceeds(deleteDoc(doc(asBishop(), 'users', 'uid-weg')))
+  })
+
+  it('lässt Freigeschaltete das eigene Profil pflegen, ohne Rolle und Status', async () => {
+    // Name, Mitglieder-Verknüpfung und Ansichts-Einstellungen bleiben
+    // Selbstbedienung – nur Rolle und Aktivstatus sind tabu.
+    await assertSucceeds(
+      updateDoc(doc(asSecretary(), 'users', SECRETARY), { displayName: 'Sekretär B' }),
+    )
+    await assertFails(updateDoc(doc(asSecretary(), 'users', SECRETARY), { active: false }))
   })
 
   it('lässt ein neues Konto nur ein Profil mit der Rolle «pending» anlegen', async () => {

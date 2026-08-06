@@ -231,6 +231,84 @@ export function serializeCallingChanges(changes: CallingChanges): CallingChanges
 }
 
 /* ------------------------------------------------------------------ */
+/* Zusammenführen                                                      */
+/* ------------------------------------------------------------------ */
+
+/**
+ * Drei Fassungen einer Tabelle zu einer machen – zeilenweise.
+ *
+ * Die Berufungsrunde ist dafür gebaut, dass mehrere Personen sie
+ * **gleichzeitig** ausfüllen: A hakt Zeile 3 ab, während B Zeile 7 schreibt.
+ * Der Editor schreibt aber den ganzen Eintrag – wer später speichert, würde
+ * die Zeilen der anderen kommentarlos überschreiben.
+ *
+ * Deshalb wird vor dem Schreiben zusammengeführt: Jede Zeile gehört dem, der
+ * sie seit dem Öffnen angefasst hat. Unangetastete Zeilen folgen dem Server –
+ * samt Löschung. Haben beide dieselbe Zeile geändert, gewinnt die eigene
+ * Fassung (sie liegt gerade vor einem und ist die bewusstere Entscheidung);
+ * eine selbst gelöschte Zeile, die drüben geändert wurde, bleibt in der
+ * fremden Fassung erhalten – lieber eine Zeile zu viel als eine Änderung weg.
+ */
+function mergeRows<T extends CallingMemberRow | CallingOpenRow>(
+  base: T[],
+  ours: T[],
+  theirs: T[],
+): T[] {
+  const byId = (rows: T[]) => new Map(rows.map((row) => [row.id, row]))
+  const baseMap = byId(base)
+  const theirMap = byId(theirs)
+
+  const same = (a: T | undefined, b: T | undefined) =>
+    JSON.stringify(a ?? null) === JSON.stringify(b ?? null)
+
+  const pick = (id: string, ourRow: T | undefined): T | null => {
+    const baseRow = baseMap.get(id)
+    const theirRow = theirMap.get(id)
+    if (!same(ourRow, baseRow)) {
+      if (ourRow) return ourRow
+      // Selbst gelöscht: weg – ausser drüben wurde daran weitergearbeitet.
+      return same(theirRow, baseRow) ? null : (theirRow ?? null)
+    }
+    return theirRow ?? null
+  }
+
+  const result: T[] = []
+  const seen = new Set<string>()
+  for (const row of ours) {
+    seen.add(row.id)
+    const picked = pick(row.id, row)
+    if (picked) result.push(picked)
+  }
+  // Zeilen, die es nur drüben gibt (dort neu entstanden), ans Ende – in der
+  // dortigen Reihenfolge. Leere Eingabezeilen der anderen bleiben weg, sonst
+  // sammelten sich mit jedem Speichern weitere Leerzeilen an.
+  for (const row of theirs) {
+    if (seen.has(row.id)) continue
+    const picked = pick(row.id, undefined)
+    if (picked && !isCallingRowEmpty(picked)) result.push(picked)
+  }
+  return result
+}
+
+/**
+ * Die eigene Fassung einer Runde mit dem aktuellen Serverstand zusammenführen.
+ *
+ * `base` ist der Stand beim Öffnen des Editors, `ours` das, was gespeichert
+ * werden soll, `theirs` der aktuelle Stand aus Firestore. Geprüft in
+ * `tests/calling-changes.test.ts`.
+ */
+export function mergeCallingChanges(
+  base: CallingChanges | null | undefined,
+  ours: CallingChanges,
+  theirs: CallingChanges | null | undefined,
+): CallingChanges {
+  return normalizeCallingChanges({
+    members: mergeRows(base?.members ?? [], ours.members ?? [], theirs?.members ?? []),
+    open: mergeRows(base?.open ?? [], ours.open ?? [], theirs?.open ?? []),
+  })
+}
+
+/* ------------------------------------------------------------------ */
 /* Reihenfolge                                                         */
 /* ------------------------------------------------------------------ */
 

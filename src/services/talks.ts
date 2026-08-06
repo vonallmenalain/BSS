@@ -11,6 +11,7 @@ import {
   setDoc,
   updateDoc,
   where,
+  writeBatch,
   Timestamp,
 } from 'firebase/firestore'
 import { db, COLLECTIONS } from '@/lib/firebase'
@@ -110,6 +111,25 @@ export async function updateTalk(
   return commit(
     updateDoc(doc(db, COLLECTIONS.talks, id), { ...data, updatedAt: serverTimestamp() }),
   )
+}
+
+/**
+ * Mehrere Positionen in einem Zug umschreiben – als Batch, ganz oder gar
+ * nicht.
+ *
+ * Beim Tauschen und Aufrücken hängen die Schreibvorgänge zusammen: Ginge nur
+ * einer von zweien durch, stünden zwei Ansprachen auf demselben Platz, und
+ * die Programmansicht zeigte nur die erste davon.
+ */
+export async function updateTalkSlots(
+  updates: { id: string; slot: number }[],
+): Promise<SaveOutcome | null> {
+  if (updates.length === 0) return null
+  const batch = writeBatch(db)
+  updates.forEach(({ id, slot }) =>
+    batch.update(doc(db, COLLECTIONS.talks, id), { slot, updatedAt: serverTimestamp() }),
+  )
+  return commit(batch.commit())
 }
 
 /**

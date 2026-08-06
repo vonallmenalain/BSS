@@ -126,6 +126,7 @@ export function useBack(fallback: { to: string; label: string }): BackTarget {
   const location = useLocation()
 
   const origin = location.state as { from?: string; fromLabel?: string } | null
+  const originFrom = origin?.from
   const previous = trail.get(historyIndex() - 1) ?? null
 
   const go = useCallback(() => {
@@ -133,12 +134,12 @@ export function useBack(fallback: { to: string; label: string }): BackTarget {
       navigate(-1)
       return
     }
-    if (origin?.from) {
-      navigate(origin.from)
+    if (originFrom) {
+      navigate(originFrom)
       return
     }
     navigate(fallback.to)
-  }, [navigate, origin?.from, fallback.to])
+  }, [navigate, originFrom, fallback.to])
 
   if (previous) {
     return { label: previous.title, to: `${previous.pathname}${previous.search}`, go }
