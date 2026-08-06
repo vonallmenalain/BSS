@@ -2200,9 +2200,11 @@ in einen Cloud-Storage-Bucket.
 
 ### 2. «Alle Daten als JSON herunterladen»
 
-**Einstellungen → Sicherung**, in der App. Der Knopf liest jede Sammlung
-einmal beim Server und legt den ganzen Bestand als **eine** Datei auf das
-Gerät: `bss-sicherung-2026-08-06-1830.json`. Vor jedem Import einmal drücken.
+**Einstellungen → Sicherung**, in der App – der Abschnitt erscheint allein
+beim Administrator-Konto, weil die Datei den ganzen Bestand samt
+Personendaten aus der App herausträgt. Der Knopf liest jede Sammlung einmal
+beim Server und legt alles als **eine** Datei auf das Gerät:
+`bss-sicherung-2026-08-06-1830.json`. Vor jedem Import einmal drücken.
 
 Die Datei ist zum Lesen gemacht: eingerückt, je Sammlung eine Liste, die
 Firestore-ID als Feld `id`, Zeitstempel als ISO-Zeichenketten
