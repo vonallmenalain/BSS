@@ -14,12 +14,20 @@ export function Avatar({
   size = 'md',
   className,
   title,
+  initials,
 }: {
   name: string
   id?: string
   size?: keyof typeof SIZES
   className?: string
   title?: string
+  /**
+   * Die Buchstaben im Kreis, falls sie nicht aus `name` kommen sollen.
+   *
+   * Braucht `UserAvatar`: Dort steht der Anmeldename daneben, das Kürzel
+   * stammt aber vom verknüpften Mitglied.
+   */
+  initials?: string
 }) {
   return (
     <span
@@ -32,8 +40,66 @@ export function Avatar({
       title={title ?? name}
       aria-label={name}
     >
-      {getInitials(name)}
+      {initials || getInitials(name)}
     </span>
+  )
+}
+
+/**
+ * Woher Kürzel und Farbe eines Kontos stammen: vom verknüpften Mitglied,
+ * sobald eines eingetragen ist.
+ *
+ * Ein Konto ist eine Anmeldung, ein Mitglied ein Eintrag der Gemeinde – erst
+ * die Verknüpfung sagt der App, dass beides dieselbe Person ist. Von da an
+ * soll diese Person überall dasselbe Zeichen tragen, in der Benutzerliste
+ * wie im Mitgliederverzeichnis. Bei der Registrierung schreibt man oft bloss
+ * den Vornamen hin; daraus entstünde ein zweiter Kreis für dieselbe Person –
+ * ein «AA» neben dem «AR», das sie sonst überall trägt.
+ *
+ * Ohne Verknüpfung – und für die AP-Zugänge, die das Verzeichnis gar nicht
+ * lesen dürfen – bleibt der Anmeldename die einzige Quelle.
+ */
+function useUserAvatar(userId: string, fallbackName?: string) {
+  const { usersById, membersById } = useData()
+  const user = usersById.get(userId)
+  const member = user?.memberId ? membersById.get(user.memberId) : undefined
+
+  return {
+    /** Der Anmeldename – er steht neben dem Kreis und bleibt, wie er ist. */
+    name: user?.displayName || fallbackName || 'Unbekannt',
+    initials: member ? getInitials(`${member.firstName} ${member.lastName}`) : undefined,
+    /** Die Farbe folgt dem Mitglied mit: Ein «AR» in Bernstein neben
+        demselben «AR» in Violett wären wieder zwei Zeichen für eine Person. */
+    colorId: member?.id ?? userId,
+  }
+}
+
+/** Der Kreis vor dem Namen eines Kontos – siehe `useUserAvatar`. */
+export function UserAvatar({
+  userId,
+  name,
+  size = 'md',
+  className,
+  title,
+}: {
+  userId: string
+  /** Rückfallname, solange das Konto nicht im geladenen Bestand steht. */
+  name?: string
+  size?: keyof typeof SIZES
+  className?: string
+  title?: string
+}) {
+  const avatar = useUserAvatar(userId, name)
+
+  return (
+    <Avatar
+      name={avatar.name}
+      id={avatar.colorId}
+      initials={avatar.initials}
+      size={size}
+      className={className}
+      title={title}
+    />
   )
 }
 
@@ -59,10 +125,7 @@ export function AssigneeAvatars({
     return (
       <div className="flex flex-wrap items-center gap-1.5">
         {userIds.map((id) => (
-          <span key={id} className={cn('chip', colorForId(id))}>
-            <Avatar name={userName(id)} id={id} size="xs" className="-ml-1" />
-            {userName(id)}
-          </span>
+          <AssigneeChip key={id} userId={id} />
         ))}
       </div>
     )
@@ -71,10 +134,9 @@ export function AssigneeAvatars({
   return (
     <div className="flex items-center -space-x-1.5" title={userIds.map(userName).join(', ')}>
       {visible.map((id) => (
-        <Avatar
+        <UserAvatar
           key={id}
-          name={userName(id)}
-          id={id}
+          userId={id}
           size={size}
           className="ring-2 ring-white dark:ring-slate-900"
         />
@@ -90,5 +152,17 @@ export function AssigneeAvatars({
         </span>
       )}
     </div>
+  )
+}
+
+/** Eine zugewiesene Person mit Namen – Chip und Kreis in derselben Farbe. */
+function AssigneeChip({ userId }: { userId: string }) {
+  const avatar = useUserAvatar(userId)
+
+  return (
+    <span className={cn('chip', colorForId(avatar.colorId))}>
+      <UserAvatar userId={userId} size="xs" className="-ml-1" />
+      {avatar.name}
+    </span>
   )
 }

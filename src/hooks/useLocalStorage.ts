@@ -63,10 +63,25 @@ export function useTheme() {
         ?.setAttribute('content', dark ? '#0f172a' : '#1e3a5f')
     }
 
+    /*
+     * Gedruckt wird immer hell.
+     *
+     * Papier ist weiss: Die dunkle Darstellung ergäbe helle Schrift auf
+     * hellem Grund, und vom Ausdruck bliebe wenig übrig. Der Browser
+     * meldet den Druck an, bevor er die Seiten setzt; danach kommt die
+     * gewählte Darstellung von selbst zurück.
+     */
+    const beforePrint = () => root.classList.remove('dark')
+
     apply()
-    if (theme === 'system') {
-      media.addEventListener('change', apply)
-      return () => media.removeEventListener('change', apply)
+    window.addEventListener('beforeprint', beforePrint)
+    window.addEventListener('afterprint', apply)
+    if (theme === 'system') media.addEventListener('change', apply)
+
+    return () => {
+      window.removeEventListener('beforeprint', beforePrint)
+      window.removeEventListener('afterprint', apply)
+      media.removeEventListener('change', apply)
     }
   }, [theme])
 

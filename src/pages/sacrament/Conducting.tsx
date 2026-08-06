@@ -1,4 +1,4 @@
-import { Fragment, useEffect, useMemo, useState, type ReactNode } from 'react'
+import { Fragment, useEffect, useMemo, useRef, useState, type ReactNode } from 'react'
 import {
   CalendarCog,
   CalendarOff,
@@ -8,6 +8,7 @@ import {
   Minimize2,
   Pencil,
   Plus,
+  Printer,
   Repeat,
   Trash2,
 } from 'lucide-react'
@@ -192,6 +193,57 @@ const VIEWS: Record<ViewSize, ViewStyle> = {
 }
 
 /**
+ * Wie hoch eine A4-Seite innerhalb ihrer Ränder ist – in CSS-Pixeln, mit
+ * denen der Browser rechnet (96 pro Zoll). Der Rand steht in `index.css`
+ * bei `@page`; ändert er sich dort, gehört er hier nachgeführt.
+ */
+const A4_CONTENT_HEIGHT = ((297 - 2 * 14) / 25.4) * 96
+
+/**
+ * Wie stark das Blatt kleiner gesetzt werden muss, damit es auf eine Seite
+ * passt.
+ *
+ * An einem vollen Sonntag – vier Bekanntmachungen, drei Berufungen, dazu
+ * Notizen – wird der Ablauf länger als eine Seite. Zwei Seiten sind am Pult
+ * das eine Blatt zu viel: Wer mitten in der Versammlung umblättert, verliert
+ * die Zeile. Also rückt der Satz enger zusammen, und zwar nur so weit wie
+ * nötig; ein gewöhnlicher Sonntag wird gar nicht angetastet.
+ *
+ * Nach unten ist bei drei Vierteln Schluss. Was man nicht mehr vorlesen
+ * kann, ist auf einer Seite nicht gewonnen – dann lieber zwei.
+ */
+function fitToPage(height: number): number {
+  if (height <= A4_CONTENT_HEIGHT) return 1
+  return Math.max(0.75, A4_CONTENT_HEIGHT / height)
+}
+
+/**
+ * Das Mass fürs Papier.
+ *
+ * Gedruckt wird nicht in der Grösse, die gerade am Bildschirm eingestellt
+ * ist: Am Bildschirm entscheidet der Abstand zum Gerät, auf dem Blatt
+ * entscheidet, dass der ganze Ablauf auf eine A4-Seite passt. «Weit» wären
+ * zwei Seiten, und wer am Pult umblättern muss, verliert die Zeile.
+ *
+ * Enger als «Kompakt» ist es trotzdem nicht: Papier liest sich näher als ein
+ * Bildschirm, und was ausgedruckt wird, wird vorgelesen.
+ */
+const PRINT_VIEW: ViewStyle = {
+  label: 'Druck',
+  // Den Rand setzt die Seite (`@page` in `index.css`), nicht das Blatt.
+  pad: 'p-0',
+  text: 'text-sm',
+  steps: 'space-y-4',
+  heading: 'text-xl',
+  title: 'text-base',
+  badge: 'size-6 text-xs',
+  gap: 'gap-3',
+  indent: 'pl-9',
+  body: 'mt-1',
+  rows: 'space-y-1',
+}
+
+/**
  * Leitung: der ganze Ablauf auf einer Seite – und alles davon hier änderbar.
  *
  * Der Aufbau folgt dem Handbuch (Abschnitt 29.2.1), bewusst gekürzt auf das,
@@ -225,7 +277,23 @@ export function Conducting() {
   // Mal neu treffen muss.
   const [editing, setEditing] = useLocalStorage<boolean>('bss:leitung:bearbeiten', false)
   const [size, setSize] = useLocalStorage<ViewSize>('bss:leitung:ansicht', 'mittel')
-  const view = VIEWS[size] ?? VIEWS.mittel
+
+  /*
+   * Drucken: dasselbe Blatt, nur auf Papier.
+   *
+   * Der Knopf ist kein zweiter Ablauf, sondern derselbe – gesetzt im
+   * Druckmass und ohne alles, was um ihn herum auf dem Bildschirm steht.
+   * Der Zustand hält bloss den Augenblick fest, in dem der Browser die
+   * Seite setzt; unmittelbar danach steht wieder die gewählte Grösse da.
+   *
+   * Solange er gilt, steht das Blatt auch am Bildschirm in der Breite einer
+   * A4-Seite. Das ist kein Selbstzweck: Nur so bricht der Text gleich um wie
+   * nachher auf dem Papier, und nur so lässt sich vorher messen, ob alles
+   * auf eine Seite passt (siehe `fitToPage`).
+   */
+  const [printing, setPrinting] = useState(false)
+  const sheet = useRef<HTMLElement>(null)
+  const view = printing ? PRINT_VIEW : (VIEWS[size] ?? VIEWS.mittel)
 
   /*
    * Vollbild: das Blatt allein auf dem Bildschirm.
@@ -271,6 +339,37 @@ export function Conducting() {
       document.removeEventListener('fullscreenchange', onFullscreenChange)
     }
   }, [fullscreen])
+
+  /*
+   * Solange die Leitung offen ist, gilt fürs Papier: das Blatt und sonst
+   * nichts. Die Klasse am `<body>` sagt das dem Stylesheet – so kommt aus
+   * «Drucken» und aus Strg+P dieselbe Seite, und die übrigen Ansichten
+   * drucken weiterhin, was sie immer gedruckt haben.
+   */
+  useEffect(() => {
+    document.body.classList.add('sheet-page')
+    return () => document.body.classList.remove('sheet-page')
+  }, [])
+
+  useEffect(() => {
+    if (!printing) return
+
+    const el = sheet.current
+    if (el) el.style.setProperty('--sheet-zoom', String(fitToPage(el.scrollHeight)))
+
+    // `print()` hält in den meisten Browsern an, bis der Dialog geschlossen
+    // ist – dort genügt die Zeile danach. Wo er sofort zurückkehrt, holt
+    // `afterprint` die gewählte Grösse zurück auf den Bildschirm.
+    const done = () => setPrinting(false)
+    window.addEventListener('afterprint', done)
+    window.print()
+    done()
+
+    return () => {
+      el?.style.removeProperty('--sheet-zoom')
+      window.removeEventListener('afterprint', done)
+    }
+  }, [printing])
 
   const dateKey = toDateInput(date)
   const sundayTalks = useMemo(() => talksForDate(talks, date), [talks, date])
@@ -824,6 +923,17 @@ export function Conducting() {
     }
   }
 
+  const printSheet = () => {
+    // Gedruckt wird der Ablauf, nicht das Formular: Beim Bearbeiten stünden
+    // Eingabefelder auf dem Blatt, und was noch aussteht, gehört vorher
+    // geschrieben.
+    if (editing) {
+      void draft.flush()
+      setEditing(false)
+    }
+    setPrinting(true)
+  }
+
   /* An einem Sonntag ohne Versammlung gibt es keinen Ablauf zu leiten. Das
      Blatt bliebe leer und liesse offen, ob es nur noch niemand erfasst hat –
      deshalb steht an seiner Stelle der Grund. */
@@ -877,6 +987,7 @@ export function Conducting() {
     <>
       <SectionHeader
         title="Ablauf"
+        className="no-print-sheet"
         actions={
           <>
             <ResponsibleButton meeting={meeting} onClick={() => setResponsibleOpen(true)} />
@@ -897,6 +1008,17 @@ export function Conducting() {
             >
               <Pencil className="size-4" aria-hidden />
               {editing ? 'Fertig' : 'Bearbeiten'}
+            </button>
+            {/* Am Pult liegt ein Blatt neben dem Gerät – für den Fall, dass
+                der Akku leer ist, und für alle, die lieber Papier lesen. */}
+            <button
+              type="button"
+              className="btn-secondary"
+              onClick={printSheet}
+              title="Den Ablauf auf einer A4-Seite drucken"
+            >
+              <Printer className="size-4" aria-hidden />
+              <span className="hidden sm:inline">Drucken</span>
             </button>
             <select
               className="input w-auto py-1.5 text-sm"
@@ -928,12 +1050,21 @@ export function Conducting() {
       {draft.conflict && <ConflictNotice onDiscard={draft.reset} />}
 
       <article
+        ref={sheet}
         className={cn(
-          'leading-relaxed',
+          // `print-sheet` ist das Blatt selbst: Auf Papier fallen damit
+          // Rahmen, Schatten und Innenabstand weg – den Rand setzt die
+          // Seite (siehe `index.css`).
+          'print-sheet',
+          // Der Zeilenabstand fürs Papier ist enger: Ein Blatt wird näher
+          // gelesen als ein Bildschirm am Pult. Beim Drucken gilt er schon
+          // am Bildschirm, damit die Messung stimmt.
+          printing ? 'w-[182mm] leading-[1.4]' : 'leading-relaxed',
           view.pad,
           view.text,
-          // Platz für den Knopf oben rechts, damit er nichts überdeckt.
-          'pr-14',
+          // Platz für den Knopf oben rechts, damit er nichts überdeckt –
+          // auf dem Papier steht dort kein Knopf.
+          !printing && 'pr-14',
           // Entweder Blatt oder Vollbild – die Klassen für Position, Rahmen
           // und Ecken stehen bewusst in zwei Zweigen statt übereinander:
           // Zwei Utilities für dieselbe Eigenschaft entscheidet sonst die
@@ -988,23 +1119,29 @@ export function Conducting() {
         {/* Im Vollbild ist der Seitenkopf weg – und damit auch die Angabe,
             welche Versammlung an welchem Tag hier eigentlich abläuft. Am
             Pult ist beides die erste Zeile, die man sagt, also steht es
-            hier oben. */}
-        {fullscreen && (
-          <header className="mx-auto mb-7 w-full max-w-3xl border-b border-slate-200 pb-4 dark:border-slate-800">
-            {/* «Abendmahlsversammlung» ist ein Wort und passt auf dem Handy
-                nicht in eine Zeile – dann lieber getrennt als über den Rand
-                hinaus. */}
-            <h2
-              className={cn(
-                'font-semibold tracking-tight text-balance hyphens-auto break-words',
-                view.heading,
-              )}
-            >
-              {sundayKind.label}
-            </h2>
-            <p className="mt-1 text-slate-500 dark:text-slate-400">{formatDateLong(date)}</p>
-          </header>
-        )}
+            hier oben.
+            Auf Papier steht der Seitenkopf ebenso wenig da (`no-print-sheet`),
+            deshalb erscheint dieser hier auch im Druck – dann als einzige
+            Überschrift des Blattes. */}
+        <header
+          className={cn(
+            'mx-auto mb-7 w-full max-w-3xl border-b border-slate-200 pb-4 dark:border-slate-800',
+            !fullscreen && !printing && 'hidden print:block',
+          )}
+        >
+          {/* «Abendmahlsversammlung» ist ein Wort und passt auf dem Handy
+              nicht in eine Zeile – dann lieber getrennt als über den Rand
+              hinaus. */}
+          <h2
+            className={cn(
+              'font-semibold tracking-tight text-balance hyphens-auto break-words',
+              view.heading,
+            )}
+          >
+            {sundayKind.label}
+          </h2>
+          <p className="mt-1 text-slate-500 dark:text-slate-400">{formatDateLong(date)}</p>
+        </header>
 
         {/* Die Nummerierung ergibt sich aus der Liste: Ein zusätzlicher
             Programmpunkt verschiebt alles Folgende automatisch. */}

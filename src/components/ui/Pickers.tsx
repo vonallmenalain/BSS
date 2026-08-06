@@ -2,7 +2,7 @@ import { useMemo, useState } from 'react'
 import { Check, Search, UserPlus, X } from 'lucide-react'
 import { useData } from '@/contexts/DataContext'
 import { cn, colorForId, matchesSearch } from '@/lib/utils'
-import { Avatar } from '@/components/ui/Avatar'
+import { Avatar, UserAvatar } from '@/components/ui/Avatar'
 import { FULL_ACCESS_ROLES, type Member } from '@/lib/types'
 
 /* ------------------------------------------------------------------ */
@@ -60,7 +60,7 @@ export function AssigneePicker({
                   : 'border-slate-300 bg-white text-slate-600 hover:border-slate-400 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-300',
               )}
             >
-              <Avatar name={user.displayName} id={user.id} size="sm" />
+              <UserAvatar userId={user.id} name={user.displayName} size="sm" />
               <span className="max-w-32 truncate">{user.displayName}</span>
               {selected && <Check className="size-3.5 shrink-0" aria-hidden />}
             </button>
@@ -227,7 +227,7 @@ export function PersonButton({
           : 'border-slate-300 bg-white text-slate-600 hover:border-slate-400 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-300',
       )}
     >
-      {!compact && <Avatar name={name} id={id} size="xs" />}
+      {!compact && <UserAvatar userId={id} name={name} size="xs" />}
       <span className="max-w-28 truncate">{name.split(' ')[0]}</span>
     </button>
   )

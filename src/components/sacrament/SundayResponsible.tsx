@@ -3,7 +3,7 @@ import { UserCog } from 'lucide-react'
 import { useData } from '@/contexts/DataContext'
 import { useToast } from '@/contexts/ToastContext'
 import { Modal } from '@/components/ui/Modal'
-import { Avatar } from '@/components/ui/Avatar'
+import { UserAvatar } from '@/components/ui/Avatar'
 import { PersonButton } from '@/components/ui/Pickers'
 import { cn } from '@/lib/utils'
 import { formatDateLong, formatMonth } from '@/lib/dates'
@@ -57,7 +57,7 @@ export function ResponsibleButton({
     >
       {person ? (
         <>
-          <Avatar name={person.displayName} id={person.id} size="xs" />
+          <UserAvatar userId={person.id} name={person.displayName} size="xs" />
           <span className="max-w-28 truncate">{person.displayName.split(' ')[0]}</span>
         </>
       ) : (

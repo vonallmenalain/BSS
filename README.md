@@ -829,6 +829,22 @@ Grössenwahl steht im Vollbild neben dem Knopf, weil die Kopfzeile dann weg
 ist. Wer aus dem Bearbeiten heraus ins Vollbild geht, verlässt es dabei – was
 noch offen war, wird vorher geschrieben.
 
+Neben **Bearbeiten** steht **Drucken**. Aufs Papier kommt genau das Blatt des
+Vollbilds: zuoberst die Versammlung und der Sonntag, darunter der Ablauf –
+ohne Kopfzeile, Sonntagswahl und Knöpfe, denn auf Papier sind sie nichts als
+Rand. Gedruckt wird immer die Leseansicht; wer beim Bearbeiten druckt,
+verlässt es dabei, und was noch offen war, wird vorher geschrieben. Auch die
+dunkle Darstellung bleibt aussen vor: Papier ist weiss.
+
+Die Grösse fürs Papier ist eine eigene und nicht die am Bildschirm gewählte –
+am Pult zählt der Abstand zum Gerät, auf dem Blatt zählt, dass alles auf eine
+A4-Seite passt. An einem vollen Sonntag – viele Bekanntmachungen, mehrere
+Berufungen, dazu Notizen – rückt der Satz so weit zusammen, wie es dafür
+nötig ist, und keinen Schritt weiter; unter drei Viertel geht er nicht, denn
+was sich nicht mehr vorlesen lässt, ist auf einer Seite nicht gewonnen. Ein
+gewöhnlicher Sonntag wird gar nicht erst angetastet. Strg+P druckt dasselbe
+Blatt, dann allerdings in der Grösse, die gerade eingestellt ist.
+
 Erfasst wird trotzdem nichts doppelt: Es sind dieselben Daten wie in den
 übrigen Bereichen. Eine hier eingefügte Ansprache steht auch unter
 **Ansprachen**, ein dort gewähltes Lied auch hier – und beide Seiten ordnen
