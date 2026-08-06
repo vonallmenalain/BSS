@@ -1,13 +1,15 @@
 # Gesamt-Review vor dem Produktivstart
 
 > **Stand der Umsetzung (6. August 2026):** Erledigt sind 1.1 (Logout löscht
-> lokale Daten), 1.4 (Error Boundary), 1.5 (Autosave), 1.6 (iOS-Zoom),
+> lokale Daten), 1.2b (JSON-Sicherung unter «Einstellungen → Sicherung»),
+> 1.4 (Error Boundary), 1.5 (Autosave), 1.6 (iOS-Zoom),
 > 1.7 (Lint) sowie aus Stufe 2: Benutzerverwaltung nur noch über das
 > Administrator-Konto (2.1), zeilenweises Zusammenführen der Berufungsrunde
 > und Konfliktkopie bei Notizen (2.2), «Rückgängig»-Toast statt sofortigem
 > Löschen (2.4b), Absicherung der Einstellungswerte (2.5), fehlende
-> Fehlerbehandlung (2.7) und die kleineren Bugs (2.8). Punkt 1.2 (PITR)
-> übernimmt der Betreiber in der Firebase-Konsole; 1.3 ist bei 3–4 bekannten
+> Fehlerbehandlung (2.7) und die kleineren Bugs (2.8). Offen bleibt vom
+> Punkt 1.2 der wichtigere Teil: **PITR einschalten** – ein Befehl beim
+> Betreiber, Anleitung im README unter «Sicherung». 1.3 ist bei 3–4 bekannten
 > Nutzern als Risiko akzeptiert; 2.3 (Touch-Ziele), 2.4a (Dialog-Fokus),
 > 2.6 (CSP) und Stufe 3 sind bewusst zurückgestellt.
 

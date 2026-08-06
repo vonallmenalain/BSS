@@ -92,6 +92,10 @@ npm run deploy:rules -- --project DEINE-PROJEKT-ID
 Danach übernimmt das GitHub Actions automatisch – siehe
 [Automatisches Ausrollen](#automatisches-ausrollen).
 
+Vor den ersten echten Personendaten fehlt noch ein Handgriff:
+**Point-in-time-Recovery einschalten** (ein Befehl, sieben Tage Rückgriff) –
+siehe [Sicherung](#sicherung).
+
 ### 4. Ersten Benutzer freischalten
 
 Damit sich niemand selbst Zugriff auf Personendaten verschaffen kann, starten
@@ -2121,9 +2125,97 @@ node scripts/generate-icons.mjs
 
 ## Sicherung
 
-Die Daten liegen im Firebase-Projekt. Eine regelmässige Sicherung ist trotzdem
-sinnvoll:
+Firestore kennt ohne Zutun weder Sicherung noch Papierkorb. Gleichzeitig gibt
+es in der App mehrere Wege, viel auf einmal zu verlieren: Der Mitgliederimport
+entfernt auf Wunsch alle, die in der Quelle fehlen, der AP-Import ersetzt den
+ganzen Jahresplan, und Sitzungen, Notizen und Ansprachen lassen sich einzeln
+löschen. Eine falsche Datei genügt.
 
-- **Mitgliederliste:** _Mitglieder → Export_ sichert sie als CSV
-- **Vollständig:** [geplante Firestore-Exporte](https://firebase.google.com/docs/firestore/manage-data/export-import)
-  in einen Cloud-Storage-Bucket
+Dagegen stehen zwei Vorkehrungen: eine im Projekt, eine in der App. Die erste
+ist die wichtige.
+
+### 1. Point-in-time-Recovery einschalten
+
+Einmalig, und danach nie wieder daran denken müssen: PITR hält **sieben Tage**
+lang jeden Stand der Datenbank vor. Wer um 14:00 den Import mit der falschen
+Datei laufen lässt, holt den Stand von 13:59 zurück – ohne dass vorher jemand
+an eine Sicherung gedacht haben muss. Das ist die einzige Massnahme, die auch
+den Fall abdeckt, an den niemand gedacht hat.
+
+**Wo:** in der Firebase-Konsole bei der Datenbank, Karte
+**«Wiederherstellung zu einem bestimmten Zeitpunkt»** – ein Schalter, sonst
+nichts. Dieselbe Einstellung steht in der Google-Cloud-Konsole unter
+_Firestore → Disaster recovery_ und auf der Kommandozeile:
+
+```bash
+gcloud firestore databases update \
+  --database='(default)' --enable-pitr --project=DEINE-PROJEKT-ID
+```
+
+Kontrolle – in der Antwort muss
+`pointInTimeRecoveryEnablement: POINT_IN_TIME_RECOVERY_ENABLED` stehen:
+
+```bash
+gcloud firestore databases describe --database='(default)' --project=DEINE-PROJEKT-ID
+```
+
+**Das Fenster beginnt beim Einschalten**, nicht rückwirkend. Wie weit es
+zurückreicht, steht in der Konsole unter «Zeit der frühesten Version»: am
+ersten Tag eine Stunde, nach einer Woche die vollen sieben Tage.
+
+> **Voraussetzung:** ein Projekt mit aktivierter Abrechnung (Blaze). Für
+> PITR-Speicher gibt es keinen Gratisrahmen; verrechnet wird die
+> **durchschnittliche Datenbankgrösse** mal dem PITR-Preis – Grössenordnung
+> 0.15 US-Dollar je GiB und Monat, je nach Region etwas mehr. Der Bestand
+> einer Gemeinde liegt im einstelligen Megabyte-Bereich; das sind Bruchteile
+> eines Rappens im Monat. Die aktuelle Grösse steht in der Firebase-Konsole
+> unter _Firestore → Nutzung_.
+
+**Was PITR nicht abdeckt:** die Konten in Firebase Authentication. Gelöscht
+wird dort ohnehin nur von Hand, und das Profil in `users` – das, was die App
+sieht – liegt in Firestore und ist damit geschützt.
+
+**Wenn der Ernstfall eintritt.** Der Zeitstempel muss auf die Minute genau
+sein und darf höchstens sieben Tage zurückliegen. Zuerst den alten Stand in
+einen Cloud-Storage-Bucket exportieren, dann zurückspielen:
+
+```bash
+gcloud firestore export gs://DEIN-BUCKET/rueckgriff-2026-08-06 \
+  --snapshot-time=2026-08-06T11:59:00.00Z --project=DEINE-PROJEKT-ID
+
+gcloud firestore import gs://DEIN-BUCKET/rueckgriff-2026-08-06 \
+  --collection-ids=members --project=DEINE-PROJEKT-ID
+```
+
+`--collection-ids` weglassen heisst: alles. Der Import **überschreibt**
+Dokumente mit derselben ID und lässt stehen, was seither dazugekommen ist –
+gelöschte Datensätze kommen also zurück, ohne dass neue verschwinden. Wer
+zuerst hineinsehen statt gleich zurückspielen will: `gcloud firestore
+databases clone` legt aus demselben Zeitpunkt eine zweite Datenbank an.
+
+Für länger als sieben Tage gibt es
+[geplante Sicherungen](https://firebase.google.com/docs/firestore/backups)
+(bis 14 Wochen) und [Exporte](https://firebase.google.com/docs/firestore/manage-data/export-import)
+in einen Cloud-Storage-Bucket.
+
+### 2. «Alle Daten als JSON herunterladen»
+
+**Einstellungen → Sicherung**, in der App. Der Knopf liest jede Sammlung
+einmal beim Server und legt den ganzen Bestand als **eine** Datei auf das
+Gerät: `bss-sicherung-2026-08-06-1830.json`. Vor jedem Import einmal drücken.
+
+Die Datei ist zum Lesen gemacht: eingerückt, je Sammlung eine Liste, die
+Firestore-ID als Feld `id`, Zeitstempel als ISO-Zeichenketten
+(`2026-08-06T16:30:00.000Z`). Im Kopf stehen Datum, Konto und die Anzahl
+Datensätze je Sammlung – und `"source"`: Steht dort `cache` statt `server`,
+bestand keine Verbindung; die Sicherung stammt dann aus der lokalen Kopie und
+ist womöglich nicht der neueste Stand. Die App sagt das auch in der Meldung.
+
+Sie ersetzt PITR nicht: Zurückspielen lässt sie sich nur mit einem Skript
+(`Timestamp.fromDate(new Date(wert))` für die Datumsfelder). Sie ist die
+Kopie, die ohne Konsole zu lesen ist, älter als sieben Tage werden darf und
+auch dann noch da ist, wenn das Firebase-Projekt selbst abhandenkommt.
+
+**Die Datei enthält Personendaten** – Adressen, Telefonnummern, Notizen. Sie
+gehört an einen Ort, der dazu passt, und nicht in einen geteilten Ordner oder
+eine Chat-Nachricht.
