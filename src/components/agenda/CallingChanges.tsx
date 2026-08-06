@@ -390,7 +390,7 @@ export function CallingChangesTables({
 
       <CallingTable
         title={CALLING_TABLE_TITLES.members}
-        columns={['Name', 'Berufung', 'Vorschläge']}
+        columns={['Name', 'Berufung', 'Ideen und weiteres Vorgehen']}
         editable={editable}
         hidden={hiddenIn(value.members)}
         onAdd={() => {
@@ -467,10 +467,10 @@ export function CallingChangesTables({
                 placeholder="Berufung"
               />
             </Cell>
-            <Cell label="Vorschläge">
+            <Cell label="Ideen und weiteres Vorgehen">
               <TextCell
                 id={fieldId(row.id, 'ideas')}
-                label={`Vorschläge, Zeile ${index + 1}`}
+                label={`Ideen und weiteres Vorgehen, Zeile ${index + 1}`}
                 value={row.ideas}
                 onChange={(next) => changeMember(row.id, { ideas: next })}
                 onMention={onMention}
@@ -1114,7 +1114,7 @@ export function CallingRowSummary({
     match.table === 'members'
       ? [
           { label: 'Berufung', text: match.row.calling },
-          { label: 'Vorschläge', text: match.row.ideas },
+          { label: 'Ideen und weiteres Vorgehen', text: match.row.ideas },
         ]
       : [
           { label: 'Berufung', text: match.row.calling },
