@@ -469,6 +469,11 @@ sie zurück, blass und mit einem Haken statt der Farbe angeschrieben, und
 nichts; im Protokoll steht die Zeile weiterhin, dort mit dem Vermerk
 «Erledigt».
 
+Blass ist die hervorgeholte Zeile nur in Ruhe: Wer ihr Menü aufmacht, hat sie
+gerade wieder vor sich, und dann steht sie – samt Menü – voll da. Anders ginge
+es auch nicht, denn eine abgeblendete Zeile blendet alles mit ab, was in ihr
+steht.
+
 Deshalb hat eine Berufungsrunde **keinen grünen Knopf «Erledigt» am ganzen
 Eintrag** – solange noch eine Zeile offen ist. An seiner Stelle steht, wie
 viele es noch sind. Erst wenn keine mehr aussteht, erscheint der Knopf: Die
@@ -500,6 +505,13 @@ steht die Runde ja, weil eine ihrer Zeilen mich angeht (siehe [«Wann ein
 Eintrag _meiner_ ist»](#wann-ein-eintrag-meiner-ist)) – und dann sind auch
 diese Zeilen gemeint und nicht die ganze Runde. Ein Griff darauf holt die
 übrigen zurück; überall sonst beginnt die Runde vollständig.
+
+**Abgehakt bleibt meine Zeile meine.** Der Knopf fragt, _wessen_ Zeile es ist,
+und nicht, ob sie noch aussteht – ob das Erledigte überhaupt dasteht, sagt der
+Schalter ganz unten. Wer also eine eigene Zeile erledigt, sieht sie
+verschwinden und mit «Erledigte anzeigen» wieder auftauchen, ohne «Nur meine»
+dafür aufmachen zu müssen. Aus demselben Grund verschwindet auch der Knopf
+nicht unter einem, wenn man seine letzte Zeile abhakt.
 
 **Die Reihenfolge lässt sich von Hand legen.** Neue Zeilen kommen unten dazu,
 und so bleibt es, bis jemand sie umstellt: **Reihenfolge** oben rechts stellt
@@ -552,6 +564,12 @@ sich nichts.
 sie abhakt, hat sie hinter sich: Sind alle eigenen Zeilen einer Runde
 erledigt, verschwindet sie aus «Meine» – auch aus der Kachel «Meine
 Pendenzen». Unter «Pendent» steht sie weiter, bis die letzte Zeile fertig ist.
+
+Das gilt für die **Liste** und nicht für den Knopf «Nur meine» in der Runde
+selbst: Ob eine Zeile noch eine Aufgabe ist, und wem sie gehört, sind zwei
+Fragen. Drinnen zählt die zweite – sonst fiele die eben abgehakte Zeile aus
+der eigenen Auswahl heraus und käme auch mit «Erledigte anzeigen» nicht
+zurück.
 
 ### Liste: Reihenfolge festlegen
 

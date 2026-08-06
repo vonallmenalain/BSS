@@ -14,7 +14,7 @@ import {
   X,
 } from 'lucide-react'
 import { useData } from '@/contexts/DataContext'
-import { useOwnCallingRow } from '@/hooks/useOwnItem'
+import { useCallingRowConcern } from '@/hooks/useOwnItem'
 import { Avatar } from '@/components/ui/Avatar'
 import { MemberLink } from '@/components/ui/MemberLink'
 import { MentionEditable, MentionText } from '@/components/ui/MentionText'
@@ -150,9 +150,16 @@ export function CallingChangesTables({
    * Bildschirm und nicht den Daten, ändert nichts und lässt sich mit einem
    * Griff wieder aufmachen – auf die ganze Runde zu schauen, ist am
    * Sitzungstisch der Normalfall.
+   *
+   * Gefragt ist dabei, **wessen** Zeile es ist, und nicht, ob sie noch
+   * aussteht: Eine abgehakte Zeile bleibt meine. Sonst fiele sie in dem
+   * Augenblick, in dem ich sie erledige, aus «Nur meine» heraus – und käme
+   * auch mit «Erledigte anzeigen» nicht zurück, obwohl sie mir zugewiesen
+   * ist. Was erledigt dasteht, sagt der Schalter ganz unten und sonst
+   * niemand.
    */
   const [mineOnly, setMineOnly] = useState(ownRowsOnly)
-  const ownRow = useOwnCallingRow()
+  const ownRow = useCallingRowConcern()
 
   /*
    * Wie viele Zeilen mich überhaupt angehen.
@@ -161,6 +168,10 @@ export function CallingChangesTables({
    * Eine Runde kann auch deshalb unter «Meine» stehen, weil der **Eintrag**
    * mir zugewiesen ist – dann sind alle Zeilen meine Sache, und eine leere
    * Tabelle wäre die falsche Auskunft.
+   *
+   * Die erledigten zählen mit: Wer seine letzte Zeile abhakt, soll nicht
+   * plötzlich vor der ganzen Runde stehen, weil der Knopf unter ihm
+   * verschwunden ist.
    */
   const ownRows = value.members.filter(ownRow).length + value.open.filter(ownRow).length
 
@@ -749,6 +760,20 @@ function RowFrame({
   const [grabbed, setGrabbed] = useState(false)
   const release = () => setGrabbed(false)
 
+  /*
+   * Ist das Menü der Zeile offen? Das muss die **Zeile** wissen.
+   *
+   * Erledigt steht sie blass da, und `opacity` gilt für alles, was in ihr
+   * steht – auch für ein Menü, das darüber aufgeht. Zurückholen lässt sich
+   * die Deckkraft von innen nicht: Ein Kind wird nie kräftiger als sein
+   * Elternteil. Das Menü stand deshalb halb durchsichtig über der halb
+   * durchsichtigen Zeile und war kaum zu lesen.
+   *
+   * Solange es offen ist, steht die Zeile darum voll da. Blass heisst
+   * «weggeräumt» – wer das Menü aufmacht, räumt sie gerade wieder hervor.
+   */
+  const [menuOpen, setMenuOpen] = useState(false)
+
   // Nur Konten mit Vollzugriff: Wer allein den AP-Kalender sieht, bekommt
   // eine Berufungsrunde gar nicht zu Gesicht.
   const bishopric = users.filter((user) => user.active && FULL_ACCESS_ROLES.includes(user.role))
@@ -769,8 +794,9 @@ function RowFrame({
         row.urgency ? URGENCY_ROW[row.urgency] : 'border-l-slate-200 dark:border-l-slate-700',
         /* Erledigt steht sie blass da – zu sehen ist sie nur, wenn jemand das
            Erledigte ausdrücklich hervorgeholt hat, und dann soll sie sich vom
-           Offenen unterscheiden. */
-        row.done && 'opacity-60',
+           Offenen unterscheiden. Nicht aber, solange ihr Menü offen ist: Es
+           stünde sonst selbst blass da (siehe `menuOpen`). */
+        row.done && !menuOpen && 'opacity-60',
         dragging && 'opacity-40',
         dropTarget && 'border-brand-500 border-dashed',
       )}
@@ -821,6 +847,8 @@ function RowFrame({
                 row={row}
                 position={position}
                 bishopric={bishopric}
+                open={menuOpen}
+                onOpenChange={setMenuOpen}
                 onUrgency={onUrgency}
                 onAssignees={onAssignees}
                 onDone={onDone}
@@ -867,6 +895,8 @@ function RowMenu({
   row,
   position,
   bishopric,
+  open,
+  onOpenChange,
   onUrgency,
   onAssignees,
   onDone,
@@ -875,23 +905,30 @@ function RowMenu({
   row: CallingRowBase
   position: number
   bishopric: AppUser[]
+  /**
+   * Offen oder zu – geführt von der Zeile.
+   *
+   * Sie richtet sich danach: Erledigt steht sie blass da, und blass wäre
+   * sonst auch das Menü darin (siehe `RowFrame`).
+   */
+  open: boolean
+  onOpenChange: (next: boolean) => void
   onUrgency: (next: CallingUrgency | undefined) => void
   onAssignees: (next: string[]) => void
   onDone?: () => void
   onRemove?: () => void
 }) {
   const { userName } = useData()
-  const [open, setOpen] = useState(false)
 
   /* Die Escape-Taste schliesst, egal wo der Fokus gerade steht. */
   useEffect(() => {
     if (!open) return
     const onKeyDown = (event: KeyboardEvent) => {
-      if (event.key === 'Escape') setOpen(false)
+      if (event.key === 'Escape') onOpenChange(false)
     }
     document.addEventListener('keydown', onKeyDown)
     return () => document.removeEventListener('keydown', onKeyDown)
-  }, [open])
+  }, [open, onOpenChange])
 
   const label = row.done
     ? 'Erledigt'
@@ -915,7 +952,7 @@ function RowMenu({
     <div className="relative flex w-full justify-end sm:justify-start">
       <button
         type="button"
-        onClick={() => setOpen((value) => !value)}
+        onClick={() => onOpenChange(!open)}
         aria-haspopup="menu"
         aria-expanded={open}
         title={assignees ? `${label} · ${assignees}` : label}
@@ -960,7 +997,7 @@ function RowMenu({
         <>
           {/* Fängt den Klick daneben ab – so schliesst das Menü wie überall
               in der App, ohne dass man den Knopf wieder treffen muss. */}
-          <div className="fixed inset-0 z-40" onClick={() => setOpen(false)} aria-hidden />
+          <div className="fixed inset-0 z-40" onClick={() => onOpenChange(false)} aria-hidden />
           {/* `top-full` statt der Stelle im Fluss: In einer Flex-Reihe stünde
               das Menü sonst **neben** dem Knopf statt darunter. */}
           <div
@@ -1009,7 +1046,7 @@ function RowMenu({
               <button
                 type="button"
                 onClick={() => {
-                  setOpen(false)
+                  onOpenChange(false)
                   onDone()
                 }}
                 className="flex w-full items-center gap-2 rounded-lg px-2 py-1.5 text-left text-sm text-emerald-700 transition hover:bg-emerald-50 dark:text-emerald-400 dark:hover:bg-emerald-950/40"
@@ -1032,7 +1069,7 @@ function RowMenu({
               <button
                 type="button"
                 onClick={() => {
-                  setOpen(false)
+                  onOpenChange(false)
                   onRemove()
                 }}
                 className="flex w-full items-center gap-2 rounded-lg px-2 py-1.5 text-left text-sm text-rose-600 transition hover:bg-rose-50 dark:text-rose-400 dark:hover:bg-rose-950/40"
