@@ -1,7 +1,7 @@
 import { useCallback, useMemo } from 'react'
 import { useAuth } from '@/contexts/AuthContext'
 import { useData } from '@/contexts/DataContext'
-import { isOwnCallingRow, isOwnItem } from '@/lib/callingChanges'
+import { callingRowConcern, isOwnItem } from '@/lib/callingChanges'
 import type { Mention } from '@/lib/mention'
 import type { AgendaItem, CallingMemberRow, CallingOpenRow } from '@/lib/types'
 
@@ -49,11 +49,17 @@ export function useOwnItem(): (item: AgendaItem) => boolean {
  * werden. Sie kommt deshalb auf die Liste «Meine», sobald **eine** davon mich
  * angeht – und genau die zeigt sie, wenn sie von dort aus geöffnet wird
  * (siehe `components/agenda/CallingChanges`).
+ *
+ * Gefragt ist die Zeile und nicht ihr Stand: Eine erledigte Zeile, die mir
+ * zugewiesen war, bleibt meine. Ob das Erledigte überhaupt dasteht, sagt in
+ * der Runde ein eigener Schalter – zwei Fragen, zwei Knöpfe. Für die Liste
+ * «Meine», wo eine abgehakte Zeile keine Aufgabe mehr ist, beantwortet
+ * dieselbe Frage `isOwnCallingRow`.
  */
-export function useOwnCallingRow(): (row: CallingMemberRow | CallingOpenRow) => boolean {
+export function useCallingRowConcern(): (row: CallingMemberRow | CallingOpenRow) => boolean {
   const { userId, member } = useMe()
   return useCallback(
-    (row: CallingMemberRow | CallingOpenRow) => isOwnCallingRow(row, userId, member),
+    (row: CallingMemberRow | CallingOpenRow) => callingRowConcern(row, userId, member),
     [userId, member],
   )
 }

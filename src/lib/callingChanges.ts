@@ -426,21 +426,39 @@ export function callingRowsAbout(
  * Ohne Verknüpfung bleibt der zweite Weg wirkungslos: Ein Name im Text ist
  * dann bloss ein Name.
  *
+ * **Vom Abhaken weiss diese Frage nichts.** Wem eine Zeile gehört, ändert
+ * sich nicht dadurch, dass sie erledigt ist – die erledigte Zeile ist die
+ * meine, die ich abgehakt habe. Genau das braucht der Knopf «Nur meine» in
+ * der Runde: Dort sagt ein zweiter Schalter, ob das Erledigte dabei ist, und
+ * beide Fragen dürfen sich nicht ins Gehege kommen. Für die Liste «Meine»
+ * kommt die Bedingung eine Zeile weiter unten dazu (`isOwnCallingRow`).
+ */
+export function callingRowConcern(
+  row: CallingMemberRow | CallingOpenRow,
+  userId: string | null | undefined,
+  member: Mention | null,
+): boolean {
+  if (userId && row.assignees.includes(userId)) return true
+  return member !== null && rowAbout(row, member)
+}
+
+/**
+ * Ist **diese Zeile** eine offene Aufgabe der angemeldeten Person?
+ *
+ * Dieselbe Frage wie `callingRowConcern`, mit einer Bedingung mehr: Eine
+ * abgeschlossene Zeile ist keine Aufgabe. Wessen letzte Zeile erledigt ist,
+ * für den fällt die ganze Runde von der Liste «Meine».
+ *
  * Es ist dieselbe Frage, die den ganzen Eintrag auf die Liste «Meine» bringt –
- * bloss eine Ebene tiefer gestellt. Deshalb zeigt die Runde, die von dort aus
- * geöffnet wird, genau diese Zeilen: Was den Eintrag zu meinem macht, ist auch
- * das, was ich darin zu tun habe.
+ * bloss eine Ebene tiefer gestellt.
  */
 export function isOwnCallingRow(
   row: CallingMemberRow | CallingOpenRow,
   userId: string | null | undefined,
   member: Mention | null,
 ): boolean {
-  // Eine abgeschlossene Zeile ist keine Aufgabe mehr: Wessen letzte Zeile
-  // erledigt ist, für den fällt die ganze Runde von der Liste «Meine».
   if (row.done) return false
-  if (userId && row.assignees.includes(userId)) return true
-  return member !== null && rowAbout(row, member)
+  return callingRowConcern(row, userId, member)
 }
 
 /** Betrifft **eine** dieser Zeilen die angemeldete Person? */

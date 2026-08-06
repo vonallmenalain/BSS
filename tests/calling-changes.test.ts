@@ -4,6 +4,7 @@ import { test } from 'node:test'
 import {
   callingChangesConcern,
   callingChangesToText,
+  callingRowConcern,
   callingRowCounts,
   callingRowsAbout,
   callingRowText,
@@ -399,6 +400,21 @@ test('eine erledigte Zeile ist keine Aufgabe mehr', () => {
   assert.ok(isOwnCallingRow(genannt, 'u1', ALAIN))
   assert.equal(isOwnCallingRow({ ...zugewiesen, done: true }, 'u1', ALAIN), false)
   assert.equal(isOwnCallingRow({ ...genannt, done: true }, 'u1', ALAIN), false)
+})
+
+test('sie bleibt trotzdem meine – sonst käme sie unter «Nur meine» nie zurück', () => {
+  const zugewiesen = { ...newCallingOpenRow(), calling: 'Sekretär', assignees: ['u1'] }
+  const genannt = { ...newCallingMemberRow(), memberIds: ['m1'], calling: 'PV-Lehrerin' }
+
+  // Abgehakt oder nicht: Wem die Zeile gehört, ändert das Erledigen nicht.
+  assert.ok(callingRowConcern(zugewiesen, 'u1', ALAIN))
+  assert.ok(callingRowConcern({ ...zugewiesen, done: true }, 'u1', ALAIN))
+  assert.ok(callingRowConcern({ ...genannt, done: true }, 'u1', ALAIN))
+
+  // Fremd bleibt fremd, erledigt wie offen.
+  const fremd = { ...newCallingOpenRow(), calling: 'Organist', assignees: ['u9'] }
+  assert.equal(callingRowConcern(fremd, 'u1', ALAIN), false)
+  assert.equal(callingRowConcern({ ...fremd, done: true }, 'u1', ALAIN), false)
 })
 
 test('sind alle meine Zeilen erledigt, fällt die Runde von der Liste «Meine»', () => {
