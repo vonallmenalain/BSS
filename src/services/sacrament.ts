@@ -11,7 +11,7 @@ import { toDate, toDateInput, weekdaysInMonth } from '@/lib/dates'
 import { stripUndefined, uid } from '@/lib/utils'
 import { commit, type SaveOutcome } from '@/lib/sync'
 import { planProgramOrder } from '@/lib/program'
-import { updateTalk } from '@/services/talks'
+import { updateTalkSlots } from '@/services/talks'
 import {
   HYMN_SLOTS,
   type AnnouncementEntry,
@@ -254,7 +254,9 @@ export async function saveProgramOrder(
   talks: Talk[],
 ): Promise<SaveOutcome> {
   const { order, slots } = planProgramOrder(keys, talks)
-  await Promise.all(slots.map((entry) => updateTalk(entry.id, { slot: entry.slot })))
+  // Ein Batch, ganz oder gar nicht – ein halb geschriebener Tausch liesse
+  // zwei Ansprachen auf demselben Platz stehen.
+  await updateTalkSlots(slots.map((entry) => ({ id: entry.id, slot: entry.slot })))
   return saveSacramentMeeting(date, { programOrder: order })
 }
 
@@ -333,10 +335,8 @@ export async function removeTalkSlot(
   planned: number,
   defaultCount: number,
 ): Promise<SaveOutcome> {
-  await Promise.all(
-    talks
-      .filter((talk) => talk.slot > slot)
-      .map((talk) => updateTalk(talk.id, { slot: talk.slot - 1 })),
+  await updateTalkSlots(
+    talks.filter((talk) => talk.slot > slot).map((talk) => ({ id: talk.id, slot: talk.slot - 1 })),
   )
   const next = Math.max(0, planned - 1)
   return saveSacramentMeeting(date, { talkSlots: next === defaultCount ? null : next })

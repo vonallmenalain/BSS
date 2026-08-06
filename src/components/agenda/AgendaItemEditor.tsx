@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { useAutosave } from '@/hooks/useAutosave'
 import { MentionEditable } from '@/components/ui/MentionText'
 import { AssigneePicker } from '@/components/ui/Pickers'
@@ -6,7 +6,11 @@ import { LayoutGrid } from '@/components/agenda/LayoutGrid'
 import { CallingChangesTables } from '@/components/agenda/CallingChanges'
 import { updateAgendaItem } from '@/services/agenda'
 import { normalizeLayout, serializeLayout } from '@/lib/layout'
-import { normalizeCallingChanges, serializeCallingChanges } from '@/lib/callingChanges'
+import {
+  mergeCallingChanges,
+  normalizeCallingChanges,
+  serializeCallingChanges,
+} from '@/lib/callingChanges'
 import type { AgendaItem, CallingChanges, ItemLayout } from '@/lib/types'
 
 /**
@@ -80,17 +84,80 @@ export function AgendaItemEditor({
     item.callingChanges ? normalizeCallingChanges(item.callingChanges) : null,
   )
 
+  /*
+   * Der Bezugspunkt für das Speichern: der Stand, auf dem dieser Editor
+   * aufsetzt – beim Öffnen der Eintrag selbst, danach das jeweils zuletzt
+   * Geschriebene. Geschrieben wird nur, was davon abweicht: Wer bloss eine
+   * Zeile der Berufungsrunde abhakt, überschreibt damit nicht den Titel, den
+   * gerade jemand anders umformuliert.
+   */
+  const baseline = useRef({
+    title: item.title,
+    description: item.description ?? '',
+    assignees: item.assignees ?? [],
+    memberRefs: item.memberRefs ?? [],
+    layout: item.layout ? normalizeLayout(item.layout) : null,
+    callingChanges: item.callingChanges ? normalizeCallingChanges(item.callingChanges) : null,
+  })
+
+  // Der jeweils aktuelle Stand aus Firestore – gegen ihn wird beim Speichern
+  // zusammengeführt, damit fremde Zeilen der Runde nicht verloren gehen.
+  const live = useRef(item)
+  useEffect(() => {
+    live.current = item
+  })
+
   const autosave = useAutosave(
     { title, description, assignees, memberRefs, layout, callingChanges },
     async (draft) => {
-      await updateAgendaItem(item.id, {
+      const base = baseline.current
+      const differs = (a: unknown, b: unknown) => JSON.stringify(a) !== JSON.stringify(b)
+
+      const patch: Partial<Omit<AgendaItem, 'id'>> = {}
+      if (draft.title.trim() !== base.title) patch.title = draft.title.trim()
+      if (draft.description !== base.description) patch.description = draft.description
+      if (differs(draft.assignees, base.assignees)) patch.assignees = draft.assignees
+      if (differs(draft.memberRefs, base.memberRefs)) patch.memberRefs = draft.memberRefs
+      if (differs(draft.layout, base.layout)) {
+        patch.layout = draft.layout ? serializeLayout(draft.layout) : null
+      }
+
+      /*
+       * Die Runde wird nicht überschrieben, sondern zusammengeführt: Jede
+       * Zeile gehört dem, der sie seit dem Öffnen angefasst hat; die übrigen
+       * folgen dem Serverstand. So können mehrere Personen gleichzeitig
+       * Zeilen abhaken und ausfüllen, ohne einander die Arbeit zu löschen.
+       */
+      let merged: CallingChanges | null = null
+      if (draft.callingChanges && differs(draft.callingChanges, base.callingChanges)) {
+        merged = mergeCallingChanges(
+          base.callingChanges,
+          draft.callingChanges,
+          live.current.callingChanges ?? null,
+        )
+        patch.callingChanges = serializeCallingChanges(merged)
+      }
+
+      if (Object.keys(patch).length === 0) return
+
+      await updateAgendaItem(item.id, patch)
+
+      baseline.current = {
         title: draft.title.trim(),
         description: draft.description,
         assignees: draft.assignees,
         memberRefs: draft.memberRefs,
-        layout: draft.layout ? serializeLayout(draft.layout) : null,
-        callingChanges: draft.callingChanges ? serializeCallingChanges(draft.callingChanges) : null,
-      })
+        layout: draft.layout,
+        callingChanges: merged ?? draft.callingChanges,
+      }
+
+      // Bringt die Zusammenführung fremde Zeilen mit, sollen sie auch auf dem
+      // Bildschirm stehen – sonst sähe man hier weniger, als eben gespeichert
+      // wurde. Der nächste Speicherlauf erkennt daran nichts Neues.
+      if (merged && differs(merged, draft.callingChanges)) {
+        setCallingChanges(merged)
+        onCallingChanges?.(merged)
+      }
     },
     {
       // Ein Eintrag ohne Titel wäre in jeder Liste eine leere Zeile. Wer den

@@ -177,7 +177,11 @@ test('liest Termine, Zeiträume und Monatsangaben aus dem Blatt', () => {
 
   // Ein Mittwoch, an dem nur das Datum steht, bleibt als offener Abend drin.
   assert.deepEqual(
-    { date: plan.activities[5].date, kind: plan.activities[5].kind, title: plan.activities[5].title },
+    {
+      date: plan.activities[5].date,
+      kind: plan.activities[5].kind,
+      title: plan.activities[5].title,
+    },
     { date: '2026-09-02', kind: 'activity', title: '' },
   )
 

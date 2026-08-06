@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { Link, useLocation } from 'react-router-dom'
 import {
   Award,
@@ -105,15 +105,28 @@ const IMPORTS = [
 ]
 
 export function Settings() {
-  const { profile } = useAuth()
+  const { profile, isAdmin } = useAuth()
   const { settings, users } = useData()
   const toast = useToast()
 
   const [form, setForm] = useState<AppSettings>(settings)
   const [displayName, setDisplayName] = useState(profile?.displayName ?? '')
 
-  // Einstellungen aus Firestore übernehmen, sobald sie geladen sind.
-  useEffect(() => setForm(settings), [settings])
+  /*
+   * Einstellungen aus Firestore übernehmen, sobald sie geladen sind – aber
+   * nur, solange hier niemand tippt: Nach jedem Speichern kommt der eigene
+   * Schnappschuss zurück, und übernähme er das Formular bedingungslos, wären
+   * die Tastendrücke der letzten Sekunde weg. Weicht das Formular vom zuletzt
+   * übernommenen Stand ab, behält es die Eingabe; geschrieben wird sie vom
+   * Autosave ohnehin.
+   */
+  const adopted = useRef(settings)
+  useEffect(() => {
+    setForm((current) =>
+      JSON.stringify(current) === JSON.stringify(adopted.current) ? settings : current,
+    )
+    adopted.current = settings
+  }, [settings])
   useEffect(() => setDisplayName(profile?.displayName ?? ''), [profile?.displayName])
 
   const update = <K extends keyof AppSettings>(key: K, value: AppSettings[K]) =>
@@ -357,6 +370,11 @@ export function Settings() {
                 className="input"
                 value={form.sacramentTime}
                 onChange={(event) => update('sacramentTime', event.target.value)}
+                // Ein geleertes Feld fällt auf den letzten gültigen Wert
+                // zurück – ohne Beginn liesse sich keine Ansprache eintragen.
+                onBlur={() => {
+                  if (!form.sacramentTime) update('sacramentTime', settings.sacramentTime)
+                }}
               />
             </div>
             <div>
@@ -371,6 +389,12 @@ export function Settings() {
                 className="input"
                 value={form.talksPerSunday}
                 onChange={(event) => update('talksPerSunday', Number(event.target.value))}
+                // Leer oder 0 hiesse: kein einziger Programmplatz an keinem
+                // Sonntag. Zurück auf den letzten gültigen Wert.
+                onBlur={() => {
+                  if (!form.talksPerSunday || form.talksPerSunday < 1)
+                    update('talksPerSunday', settings.talksPerSunday)
+                }}
               />
               <p className="hint">
                 Standardwert. Für einen einzelnen Sonntag lassen sich unter «Ansprachen» zusätzliche
@@ -451,14 +475,36 @@ export function Settings() {
             gehört. Ein Konto ist eine Anmeldung, ein Mitglied ein Eintrag der Gemeinde – erst diese
             Verknüpfung sagt der App, dass beides dieselbe Person ist.
           </p>
+          {!isAdmin && (
+            <p className="hint mb-4">
+              Freischalten, Rollen ändern und Konten entfernen kann nur das Administrator-Konto.
+            </p>
+          )}
 
-          <PendingUsers users={pendingUsers} />
+          {isAdmin ? (
+            <PendingUsers users={pendingUsers} />
+          ) : (
+            pendingUsers.length > 0 && (
+              <p className="mb-5 rounded-xl border border-amber-200 bg-amber-50/60 p-4 text-xs text-amber-800 dark:border-amber-800 dark:bg-amber-950/40 dark:text-amber-200">
+                {pendingUsers.length === 1
+                  ? 'Eine neue Registrierung wartet auf Freigabe'
+                  : `${pendingUsers.length} neue Registrierungen warten auf Freigabe`}{' '}
+                ({pendingUsers.map((user) => user.displayName || user.email).join(', ')}) –
+                freischalten kann sie nur das Administrator-Konto.
+              </p>
+            )
+          )}
 
           <ul className="divide-list">
             {users
               .filter((user) => user.role !== 'pending')
               .map((user) => (
-                <UserRow key={user.id} user={user} isSelf={user.id === profile?.id} />
+                <UserRow
+                  key={user.id}
+                  user={user}
+                  isSelf={user.id === profile?.id}
+                  canManage={isAdmin}
+                />
               ))}
           </ul>
         </section>
@@ -811,7 +857,16 @@ function MemberLinkField({ user }: { user: AppUser }) {
   )
 }
 
-function UserRow({ user, isSelf }: { user: AppUser; isSelf: boolean }) {
+function UserRow({
+  user,
+  isSelf,
+  canManage,
+}: {
+  user: AppUser
+  isSelf: boolean
+  /** Nur das Administrator-Konto verwaltet Rollen, Status und Konten. */
+  canManage: boolean
+}) {
   const toast = useToast()
   const [confirmDelete, setConfirmDelete] = useState(false)
 
@@ -843,46 +898,58 @@ function UserRow({ user, isSelf }: { user: AppUser; isSelf: boolean }) {
       </div>
 
       {/* Eine einzige Auswahl für Aufgabe und Zugriff: Bei Vollzugriff sind
-          das dieselbe Frage, und die beiden AP-Zugänge kennen keine Aufgabe. */}
-      <select
-        className="input w-auto py-1.5 text-sm"
-        value={user.role}
-        onChange={(event) => void changeRole(event.target.value as Role)}
-        aria-label={`Zugriff von ${user.displayName}`}
-      >
-        <optgroup label="Vollzugriff">
-          {/* Die alte Sammelrolle nur zeigen, solange sie noch gesetzt ist. */}
-          {user.role === 'counselor' && <option value="counselor">{ROLE_LABELS.counselor}</option>}
-          {ASSIGNABLE_ROLES.map((role) => (
-            <option key={role} value={role}>
-              {ROLE_LABELS[role]}
-            </option>
-          ))}
-        </optgroup>
-        {/* Sich selbst auf den AP-Kalender zu beschränken oder den Zugang ganz
-            zu entziehen wäre eine Sackgasse – beides steht nur für andere
-            Konten zur Wahl. */}
-        {!isSelf && (
-          <optgroup label="Nur Aktivitäten AP’s">
-            {AP_ONLY_ROLES.map((role) => (
+          das dieselbe Frage, und die beiden AP-Zugänge kennen keine Aufgabe.
+          Ohne Verwaltungsrecht steht die Rolle nur da – ändern kann sie das
+          Administrator-Konto, und die Zugriffsregeln setzen das durch. */}
+      {canManage ? (
+        <select
+          className="input w-auto py-1.5 text-sm"
+          value={user.role}
+          onChange={(event) => void changeRole(event.target.value as Role)}
+          aria-label={`Zugriff von ${user.displayName}`}
+        >
+          <optgroup label="Vollzugriff">
+            {/* Die alte Sammelrolle nur zeigen, solange sie noch gesetzt ist. */}
+            {user.role === 'counselor' && (
+              <option value="counselor">{ROLE_LABELS.counselor}</option>
+            )}
+            {ASSIGNABLE_ROLES.map((role) => (
               <option key={role} value={role}>
                 {ROLE_LABELS[role]}
               </option>
             ))}
           </optgroup>
-        )}
-        {!isSelf && (
-          <optgroup label="Kein Zugriff">
-            <option value="pending">{ROLE_LABELS.pending}</option>
-          </optgroup>
-        )}
-      </select>
+          {/* Sich selbst auf den AP-Kalender zu beschränken oder den Zugang ganz
+              zu entziehen wäre eine Sackgasse – beides steht nur für andere
+              Konten zur Wahl. */}
+          {!isSelf && (
+            <optgroup label="Nur Aktivitäten AP’s">
+              {AP_ONLY_ROLES.map((role) => (
+                <option key={role} value={role}>
+                  {ROLE_LABELS[role]}
+                </option>
+              ))}
+            </optgroup>
+          )}
+          {!isSelf && (
+            <optgroup label="Kein Zugriff">
+              <option value="pending">{ROLE_LABELS.pending}</option>
+            </optgroup>
+          )}
+        </select>
+      ) : (
+        <span className="text-sm text-slate-600 dark:text-slate-300">
+          {ROLE_LABELS[user.role]}
+          {!user.active && ' · deaktiviert'}
+        </span>
+      )}
 
       {/* Ein AP-Zugang erreicht das Mitgliederverzeichnis gar nicht – für ihn
-          gäbe es nichts, was die Verknüpfung beantworten könnte. */}
-      {!apOnly && <MemberLinkField user={user} />}
+          gäbe es nichts, was die Verknüpfung beantworten könnte. Die eigene
+          Verknüpfung darf jede Person selbst setzen; fremde nur der Admin. */}
+      {!apOnly && (canManage || isSelf) && <MemberLinkField user={user} />}
 
-      {!isSelf && (
+      {canManage && !isSelf && (
         <>
           <button
             type="button"

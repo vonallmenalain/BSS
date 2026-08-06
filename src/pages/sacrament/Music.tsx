@@ -54,6 +54,16 @@ export function Music() {
 
   const changeNumbers = (next: MusicalNumber[]) => draft.set({ ...current, numbers: next })
 
+  /*
+   * Löschen ohne Rückfrage, aber mit Reue: «Rückgängig» in der Meldung stellt
+   * den Stand von unmittelbar vor dem Löschen wieder her.
+   */
+  const removeNumber = (entry: MusicalNumber) => {
+    const before = current
+    changeNumbers(current.numbers.filter((n) => n.id !== entry.id))
+    toast.undo('Musikeinlage entfernt.', () => draft.set(before))
+  }
+
   return (
     <>
       <SectionHeader title="Musik" />
@@ -120,7 +130,7 @@ export function Music() {
                   <button
                     type="button"
                     className="btn-ghost shrink-0 p-2 text-rose-600 dark:text-rose-400"
-                    onClick={() => changeNumbers(current.numbers.filter((n) => n.id !== entry.id))}
+                    onClick={() => removeNumber(entry)}
                     aria-label="Musikeinlage entfernen"
                   >
                     <Trash2 className="size-4" aria-hidden />

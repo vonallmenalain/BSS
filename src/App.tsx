@@ -4,6 +4,7 @@ import { AuthProvider, useAuth } from '@/contexts/AuthContext'
 import { DataProvider } from '@/contexts/DataContext'
 import { ToastProvider } from '@/contexts/ToastContext'
 import { Layout } from '@/components/Layout'
+import { ErrorBoundary } from '@/components/ErrorBoundary'
 import { LoadingScreen } from '@/components/ui/Feedback'
 import { Login } from '@/pages/Login'
 import { PendingApproval } from '@/pages/PendingApproval'
@@ -111,225 +112,227 @@ function LoginRoute() {
 
 export default function App() {
   return (
-    <BrowserRouter>
-      <ToastProvider>
-        <AuthProvider>
-          <DataProvider>
-            <Routes>
-              <Route path="/anmelden" element={<LoginRoute />} />
+    <ErrorBoundary>
+      <BrowserRouter>
+        <ToastProvider>
+          <AuthProvider>
+            <DataProvider>
+              <Routes>
+                <Route path="/anmelden" element={<LoginRoute />} />
 
-              <Route
-                element={
-                  <RequireAuth>
-                    <Layout />
-                  </RequireAuth>
-                }
-              >
-                {/* ---------- Aktivitäten AP ----------
+                <Route
+                  element={
+                    <RequireAuth>
+                      <Layout />
+                    </RequireAuth>
+                  }
+                >
+                  {/* ---------- Aktivitäten AP ----------
                     Steht ausserhalb von `RequireFullAccess`: Berater und
                     Jugendführung erreichen genau diesen Bereich – und sonst
                     nichts. */}
-                <Route
-                  path="ap"
-                  element={
-                    <Suspense fallback={<LoadingScreen />}>
-                      <ApActivities />
-                    </Suspense>
-                  }
-                />
-
-                <Route element={<RequireFullAccess />}>
-                  <Route index element={<Dashboard />} />
-                  <Route path="sitzungen" element={<Meetings />} />
-                  <Route path="sitzungen/:meetingId" element={<MeetingDetail />} />
-                  <Route path="pendenzen" element={<Pendenzen />} />
                   <Route
-                    path="notizen"
+                    path="ap"
                     element={
                       <Suspense fallback={<LoadingScreen />}>
-                        <Notes />
-                      </Suspense>
-                    }
-                  />
-                  <Route
-                    path="putzplan"
-                    element={
-                      <Suspense fallback={<LoadingScreen />}>
-                        <Cleaning />
+                        <ApActivities />
                       </Suspense>
                     }
                   />
 
-                  <Route
-                    path="mitglieder"
-                    element={
-                      <Suspense fallback={<LoadingScreen />}>
-                        <Members />
-                      </Suspense>
-                    }
-                  />
-                  <Route
-                    path="mitglieder/:memberId"
-                    element={
-                      <Suspense fallback={<LoadingScreen />}>
-                        <MemberDetail />
-                      </Suspense>
-                    }
-                  />
-                  {/* ---------- Abendmahlsversammlung ---------- */}
-                  <Route
-                    path="abendmahl"
-                    element={
-                      <Suspense fallback={<LoadingScreen />}>
-                        <SacramentLayout />
-                      </Suspense>
-                    }
-                  >
-                    <Route index element={<Navigate to="leitung" replace />} />
+                  <Route element={<RequireFullAccess />}>
+                    <Route index element={<Dashboard />} />
+                    <Route path="sitzungen" element={<Meetings />} />
+                    <Route path="sitzungen/:meetingId" element={<MeetingDetail />} />
+                    <Route path="pendenzen" element={<Pendenzen />} />
                     <Route
-                      path="leitung"
+                      path="notizen"
                       element={
                         <Suspense fallback={<LoadingScreen />}>
-                          <Conducting />
+                          <Notes />
                         </Suspense>
                       }
                     />
                     <Route
-                      path="bekanntmachungen"
+                      path="putzplan"
                       element={
                         <Suspense fallback={<LoadingScreen />}>
-                          <Announcements />
+                          <Cleaning />
+                        </Suspense>
+                      }
+                    />
+
+                    <Route
+                      path="mitglieder"
+                      element={
+                        <Suspense fallback={<LoadingScreen />}>
+                          <Members />
                         </Suspense>
                       }
                     />
                     <Route
-                      path="angelegenheiten"
+                      path="mitglieder/:memberId"
                       element={
                         <Suspense fallback={<LoadingScreen />}>
-                          <WardBusiness />
+                          <MemberDetail />
                         </Suspense>
                       }
                     />
+                    {/* ---------- Abendmahlsversammlung ---------- */}
+                    <Route
+                      path="abendmahl"
+                      element={
+                        <Suspense fallback={<LoadingScreen />}>
+                          <SacramentLayout />
+                        </Suspense>
+                      }
+                    >
+                      <Route index element={<Navigate to="leitung" replace />} />
+                      <Route
+                        path="leitung"
+                        element={
+                          <Suspense fallback={<LoadingScreen />}>
+                            <Conducting />
+                          </Suspense>
+                        }
+                      />
+                      <Route
+                        path="bekanntmachungen"
+                        element={
+                          <Suspense fallback={<LoadingScreen />}>
+                            <Announcements />
+                          </Suspense>
+                        }
+                      />
+                      <Route
+                        path="angelegenheiten"
+                        element={
+                          <Suspense fallback={<LoadingScreen />}>
+                            <WardBusiness />
+                          </Suspense>
+                        }
+                      />
+                      <Route
+                        path="ansprachen"
+                        element={
+                          <Suspense fallback={<LoadingScreen />}>
+                            <Talks />
+                          </Suspense>
+                        }
+                      />
+                      <Route
+                        path="musik"
+                        element={
+                          <Suspense fallback={<LoadingScreen />}>
+                            <Music />
+                          </Suspense>
+                        }
+                      />
+                      <Route
+                        path="gebet"
+                        element={
+                          <Suspense fallback={<LoadingScreen />}>
+                            <Prayers />
+                          </Suspense>
+                        }
+                      />
+                    </Route>
+
+                    {/* Alte Adresse aus früheren Versionen – Lesezeichen sollen weiter funktionieren. */}
                     <Route
                       path="ansprachen"
+                      element={<Navigate to="/abendmahl/ansprachen" replace />}
+                    />
+
+                    <Route
+                      path="berufungen"
                       element={
                         <Suspense fallback={<LoadingScreen />}>
-                          <Talks />
+                          <Callings />
                         </Suspense>
                       }
                     />
                     <Route
-                      path="musik"
+                      path="einstellungen"
                       element={
                         <Suspense fallback={<LoadingScreen />}>
-                          <Music />
+                          <Settings />
                         </Suspense>
                       }
                     />
                     <Route
-                      path="gebet"
+                      path="import"
                       element={
                         <Suspense fallback={<LoadingScreen />}>
-                          <Prayers />
+                          <ImportMembers />
+                        </Suspense>
+                      }
+                    />
+                    <Route
+                      path="import/berufungen"
+                      element={
+                        <Suspense fallback={<LoadingScreen />}>
+                          <ImportCallings />
+                        </Suspense>
+                      }
+                    />
+                    <Route
+                      path="import/betreuung"
+                      element={
+                        <Suspense fallback={<LoadingScreen />}>
+                          <ImportMinistering />
+                        </Suspense>
+                      }
+                    />
+                    <Route
+                      path="import/putzplan"
+                      element={
+                        <Suspense fallback={<LoadingScreen />}>
+                          <ImportCleaning />
+                        </Suspense>
+                      }
+                    />
+                    <Route
+                      path="import/aktivitaeten"
+                      element={
+                        <Suspense fallback={<LoadingScreen />}>
+                          <ImportApActivities />
+                        </Suspense>
+                      }
+                    />
+                    <Route
+                      path="import/sitzungen"
+                      element={
+                        <Suspense fallback={<LoadingScreen />}>
+                          <ImportMinutes />
+                        </Suspense>
+                      }
+                    />
+                    <Route
+                      path="import/verlauf"
+                      element={
+                        <Suspense fallback={<LoadingScreen />}>
+                          <ImportHistory />
+                        </Suspense>
+                      }
+                    />
+                    <Route
+                      path="import/lieder"
+                      element={
+                        <Suspense fallback={<LoadingScreen />}>
+                          <ImportHymns />
                         </Suspense>
                       }
                     />
                   </Route>
 
-                  {/* Alte Adresse aus früheren Versionen – Lesezeichen sollen weiter funktionieren. */}
-                  <Route
-                    path="ansprachen"
-                    element={<Navigate to="/abendmahl/ansprachen" replace />}
-                  />
-
-                  <Route
-                    path="berufungen"
-                    element={
-                      <Suspense fallback={<LoadingScreen />}>
-                        <Callings />
-                      </Suspense>
-                    }
-                  />
-                  <Route
-                    path="einstellungen"
-                    element={
-                      <Suspense fallback={<LoadingScreen />}>
-                        <Settings />
-                      </Suspense>
-                    }
-                  />
-                  <Route
-                    path="import"
-                    element={
-                      <Suspense fallback={<LoadingScreen />}>
-                        <ImportMembers />
-                      </Suspense>
-                    }
-                  />
-                  <Route
-                    path="import/berufungen"
-                    element={
-                      <Suspense fallback={<LoadingScreen />}>
-                        <ImportCallings />
-                      </Suspense>
-                    }
-                  />
-                  <Route
-                    path="import/betreuung"
-                    element={
-                      <Suspense fallback={<LoadingScreen />}>
-                        <ImportMinistering />
-                      </Suspense>
-                    }
-                  />
-                  <Route
-                    path="import/putzplan"
-                    element={
-                      <Suspense fallback={<LoadingScreen />}>
-                        <ImportCleaning />
-                      </Suspense>
-                    }
-                  />
-                  <Route
-                    path="import/aktivitaeten"
-                    element={
-                      <Suspense fallback={<LoadingScreen />}>
-                        <ImportApActivities />
-                      </Suspense>
-                    }
-                  />
-                  <Route
-                    path="import/sitzungen"
-                    element={
-                      <Suspense fallback={<LoadingScreen />}>
-                        <ImportMinutes />
-                      </Suspense>
-                    }
-                  />
-                  <Route
-                    path="import/verlauf"
-                    element={
-                      <Suspense fallback={<LoadingScreen />}>
-                        <ImportHistory />
-                      </Suspense>
-                    }
-                  />
-                  <Route
-                    path="import/lieder"
-                    element={
-                      <Suspense fallback={<LoadingScreen />}>
-                        <ImportHymns />
-                      </Suspense>
-                    }
-                  />
+                  <Route path="*" element={<Navigate to="/" replace />} />
                 </Route>
-
-                <Route path="*" element={<Navigate to="/" replace />} />
-              </Route>
-            </Routes>
-          </DataProvider>
-        </AuthProvider>
-      </ToastProvider>
-    </BrowserRouter>
+              </Routes>
+            </DataProvider>
+          </AuthProvider>
+        </ToastProvider>
+      </BrowserRouter>
+    </ErrorBoundary>
   )
 }

@@ -60,6 +60,11 @@ export function useAutosave<T>(
   const running = useRef(false)
   const stopped = useRef(false)
 
+  // Der Vergleich läuft über den Inhalt, nicht über die Objektidentität: Ein
+  // Objekt ist bei jedem Rendern ein neues, der Text darin aber meist derselbe.
+  const signature = JSON.stringify(value)
+  const opened = useRef(signature)
+
   useEffect(() => {
     latest.current = { value, save, savable }
   })
@@ -81,6 +86,10 @@ export function useAutosave<T>(
         setState('speichert')
         try {
           await save(value)
+          // Ab jetzt gilt der geschriebene Stand als Bezugspunkt. Sonst würde
+          // eine Änderung, die jemand wieder auf den Öffnungsstand zurücknimmt,
+          // nie gespeichert – der Server behielte den Zwischenstand.
+          opened.current = JSON.stringify(value)
           setState('gespeichert')
         } catch (error) {
           // Der Stand bleibt als ungeschrieben vermerkt und wird beim nächsten
@@ -96,15 +105,10 @@ export function useAutosave<T>(
     }
   }, [])
 
-  // Der Vergleich läuft über den Inhalt, nicht über die Objektidentität: Ein
-  // Objekt ist bei jedem Rendern ein neues, der Text darin aber meist derselbe.
-  const signature = JSON.stringify(value)
-  const opened = useRef(signature)
-
   useEffect(() => {
-    // Verglichen wird gegen den Stand beim Öffnen, nicht gegen «schon einmal
-    // hier gewesen»: Wer eine Änderung wieder rückgängig macht, hat nichts
-    // geändert und soll auch nichts schreiben.
+    // Verglichen wird gegen den zuletzt gespeicherten Stand (beim Öffnen der
+    // Ausgangsstand): Nur was davon abweicht, muss geschrieben werden – auch
+    // die Rücknahme einer bereits gespeicherten Änderung.
     if (signature === opened.current) return
 
     dirty.current = true

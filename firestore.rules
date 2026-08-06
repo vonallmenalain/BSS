@@ -22,6 +22,9 @@ rules_version = '2';
 // und sehen alles. Die Liste unten muss mit `FULL_ACCESS_ROLES` in
 // src/lib/types.ts übereinstimmen.
 //
+// Eine Ausnahme gibt es: Benutzer und Rollen verwaltet ausschliesslich das
+// Administrator-Konto (siehe `isAdmin()`), erkannt an seiner Anmelde-E-Mail.
+//
 // Die beiden AP-Rollen sind die Ausnahme. Der Aktivitätenplan wird mit den
 // Beratern und der Jugendführung geteilt; die haben keine Aufgabe, die
 // Einblick in Personendaten rechtfertigt. Sie erreichen deshalb genau zwei
@@ -37,6 +40,18 @@ service cloud.firestore {
 
     function signedIn() {
       return request.auth != null;
+    }
+
+    /*
+     * Das Administrator-Konto – verwaltet als Einziges Benutzer und Rollen.
+     *
+     * Erkannt an der Anmelde-E-Mail aus dem Auth-Token, nicht am Profil in
+     * der Datenbank: Das Token stammt von Firebase Authentication und lässt
+     * sich – anders als ein Profilfeld – nicht vom Client fälschen.
+     * Dieselbe Adresse steht in `ADMIN_EMAIL` (src/lib/types.ts).
+     */
+    function isAdmin() {
+      return signedIn() && request.auth.token.email == 'alain.sc2@gmail.com';
     }
 
     function userDoc() {
@@ -111,19 +126,22 @@ service cloud.firestore {
         && request.resource.data.role == 'pending'
         && request.resource.data.active == true;
 
-      // Wer noch nicht freigeschaltet ist, darf zwar seinen Namen pflegen,
-      // aber weder Rolle noch Aktivstatus anfassen. Das ist die Sperre gegen
-      // die Selbstfreischaltung.
+      // Das eigene Profil darf jede und jeder pflegen (Name, Verknüpfung,
+      // Ansichts-Einstellungen) – aber weder Rolle noch Aktivstatus anfassen.
+      // Das ist die Sperre gegen die Selbstfreischaltung, und sie gilt für
+      // wartende wie für freigeschaltete Konten gleichermassen.
       allow update: if signedIn()
         && request.auth.uid == userId
         && unchanged('role')
         && unchanged('active');
 
-      // Freigeschaltete verwalten das Team – auch die eigene Rolle, damit
-      // sich jede und jeder als 1. Ratgeber, Sekretär usw. eintragen kann.
-      allow update: if approved();
+      // Benutzer verwalten – freischalten, Rollen zuweisen, deaktivieren,
+      // löschen – darf ausschliesslich der Administrator. Damit genügt ein
+      // kompromittiertes Bischofschafts-Konto nicht mehr, um alle übrigen
+      // Konten zu übernehmen oder auszusperren.
+      allow update: if isAdmin();
 
-      allow delete: if approved();
+      allow delete: if isAdmin();
     }
 
     /* ---------------- Sitzungen ---------------- */

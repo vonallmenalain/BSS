@@ -716,11 +716,13 @@ export function Conducting() {
                   onChange={(next) =>
                     change({ musicalNumbers: replaceInList(current.musicalNumbers, next) })
                   }
-                  onRemove={() =>
+                  onRemove={() => {
+                    const before = current.musicalNumbers
                     change({
-                      musicalNumbers: current.musicalNumbers.filter((n) => n.id !== number.id),
+                      musicalNumbers: before.filter((n) => n.id !== number.id),
                     })
-                  }
+                    toast.undo('Musikeinlage entfernt.', () => change({ musicalNumbers: before }))
+                  }}
                 />
               ) : (
                 <>
@@ -1276,6 +1278,16 @@ function AnnouncementEditor({
   recurring: AnnouncementEntry[]
   onChange: (next: AnnouncementEntry[]) => void
 }) {
+  const toast = useToast()
+
+  // Löschen ohne Rückfrage, aber mit Reue: «Rückgängig» stellt den Stand von
+  // unmittelbar vor dem Löschen wieder her.
+  const remove = (entry: AnnouncementEntry) => {
+    const before = entries
+    onChange(before.filter((e) => e.id !== entry.id))
+    toast.undo('Bekanntmachung entfernt.', () => onChange(before))
+  }
+
   return (
     <div className="no-print space-y-2">
       {entries.map((entry, index) => (
@@ -1296,7 +1308,7 @@ function AnnouncementEditor({
             index={index}
             length={entries.length}
             onMove={(delta) => onChange(moveInList(entries, index, delta))}
-            onRemove={() => onChange(entries.filter((e) => e.id !== entry.id))}
+            onRemove={() => remove(entry)}
           />
         </div>
       ))}
@@ -1338,6 +1350,16 @@ function BusinessEditor({
   entries: BusinessEntry[]
   onChange: (next: BusinessEntry[]) => void
 }) {
+  const toast = useToast()
+
+  // Löschen ohne Rückfrage, aber mit Reue: «Rückgängig» stellt den Stand von
+  // unmittelbar vor dem Löschen wieder her.
+  const remove = (entry: BusinessEntry) => {
+    const before = entries
+    onChange(before.filter((e) => e.id !== entry.id))
+    toast.undo('Eintrag entfernt.', () => onChange(before))
+  }
+
   return (
     <div className="no-print space-y-2">
       {entries.map((entry, index) => (
@@ -1351,7 +1373,7 @@ function BusinessEditor({
             index={index}
             length={entries.length}
             onMove={(delta) => onChange(moveInList(entries, index, delta))}
-            onRemove={() => onChange(entries.filter((e) => e.id !== entry.id))}
+            onRemove={() => remove(entry)}
           />
         </div>
       ))}

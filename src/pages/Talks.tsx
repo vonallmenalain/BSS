@@ -57,6 +57,7 @@ import {
   speakerFields,
   talkYearOptions,
   updateTalk,
+  updateTalkSlots,
   type TalkCandidate,
   type TalkCandidateFilter,
   type TalkGenderFilter,
@@ -196,9 +197,11 @@ export function Talks() {
     if (!talk || target < 1 || target > slots.length) return
     const other = slots.find((entry) => entry.slot === target)?.talk ?? null
     try {
-      await Promise.all([
-        updateTalk(talk.id, { slot: target }),
-        ...(other ? [updateTalk(other.id, { slot })] : []),
+      // Ein Batch, ganz oder gar nicht – sonst stünden nach einem halben
+      // Tausch zwei Ansprachen auf demselben Platz.
+      await updateTalkSlots([
+        { id: talk.id, slot: target },
+        ...(other ? [{ id: other.id, slot }] : []),
       ])
     } catch (error) {
       console.error(error)
@@ -417,7 +420,14 @@ export function Talks() {
               target?.slots.find((s) => !s.talk && !s.extra)?.slot ??
               (target ? target.slots.length + 1 : 1)
             setPresetMember(member)
-            setAssignFor({ date: target?.date ?? new Date(), slot, kind: 'talk' })
+            // Ist kein Platz frei, schlägt der Dialog den nächsten Sonntag
+            // vor – nicht das heutige Datum: Ein Eintrag an einem Werktag
+            // erschiene in keiner Programmansicht und wäre unauffindbar.
+            setAssignFor({
+              date: target?.date ?? schedule[0]?.date ?? new Date(),
+              slot,
+              kind: 'talk',
+            })
           }}
         />
       ) : (
@@ -1427,10 +1437,15 @@ function EditTalkDialog({
         open={confirmDelete}
         onClose={() => setConfirmDelete(false)}
         onConfirm={() => {
-          void deleteTalk(talk.id).then((outcome) => {
-            toast.saved('Eintrag entfernt.', outcome)
-            onClose()
-          })
+          void deleteTalk(talk.id)
+            .then((outcome) => {
+              toast.saved('Eintrag entfernt.', outcome)
+              onClose()
+            })
+            .catch((error: unknown) => {
+              console.error(error)
+              toast.error('Eintrag konnte nicht entfernt werden.')
+            })
         }}
         title="Ansprache entfernen?"
         message="Der Programmplatz wird wieder frei."

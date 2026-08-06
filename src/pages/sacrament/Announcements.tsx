@@ -98,6 +98,16 @@ export function Announcements() {
     toast.success('Für diesen Sonntag übernommen – die Serie bleibt bestehen.')
   }
 
+  /*
+   * Löschen ohne Rückfrage, aber mit Reue: «Rückgängig» in der Meldung stellt
+   * den Stand von unmittelbar vor dem Löschen wieder her.
+   */
+  const remove = (entry: AnnouncementEntry) => {
+    const before = entries
+    change(entries.filter((e) => e.id !== entry.id))
+    toast.undo('Bekanntmachung entfernt.', () => change(before))
+  }
+
   const count = combined.filter((entry) => entry.text.trim()).length
 
   return (
@@ -204,7 +214,7 @@ export function Announcements() {
                   <button
                     type="button"
                     className="btn-ghost p-1.5 text-rose-600 dark:text-rose-400"
-                    onClick={() => change(entries.filter((e) => e.id !== entry.id))}
+                    onClick={() => remove(entry)}
                     aria-label="Entfernen"
                   >
                     <Trash2 className="size-4" aria-hidden />
@@ -796,7 +806,12 @@ function SeriesForm({
           open={confirmDelete}
           onClose={() => setConfirmDelete(false)}
           onConfirm={() => {
-            void onDelete().then(onClose)
+            void onDelete()
+              .then(onClose)
+              .catch((error: unknown) => {
+                console.error(error)
+                toast.error('Serie konnte nicht gelöscht werden.')
+              })
           }}
           title="Serie ganz löschen?"
           message="Die Bekanntmachung verschwindet auch aus vergangenen Sonntagen. Soll sie bloss nicht mehr kommen, ist «Bis» das mildere Mittel."

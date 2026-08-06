@@ -1,4 +1,4 @@
-import { useLayoutEffect, useMemo, useRef, useState, type ReactNode } from 'react'
+import { useEffect, useLayoutEffect, useMemo, useRef, useState, type ReactNode } from 'react'
 import { ChevronDown, ChevronUp, NotebookPen, Pencil, Plus, Search } from 'lucide-react'
 import { useAuth } from '@/contexts/AuthContext'
 import { useData } from '@/contexts/DataContext'
@@ -269,7 +269,15 @@ export function Notes() {
         </ul>
       )}
 
-      {open && <NoteEditor note={open === 'neu' ? null : open} onClose={() => setOpen(null)} />}
+      {/* Die geöffnete Notiz kommt live aus der Sammlung, nicht aus dem
+          Schnappschuss vom Anklicken – nur so kann der Editor erkennen, ob
+          jemand anders sie inzwischen geändert hat. */}
+      {open && (
+        <NoteEditor
+          note={open === 'neu' ? null : (notes.find((n) => n.id === open.id) ?? open)}
+          onClose={() => setOpen(null)}
+        />
+      )}
     </>
   )
 }
@@ -453,18 +461,54 @@ function NoteEditor({ note, onClose }: { note: Note | null; onClose: () => void 
   // zweite anzulegen.
   const idRef = useRef<string | null>(note?.id ?? null)
 
+  /*
+   * Konflikte nicht verschweigen: Der Stand, auf dem dieser Editor aufsetzt
+   * (beim Öffnen die Notiz, danach das zuletzt Geschriebene), und daneben der
+   * jeweils aktuelle Stand aus Firestore. Hat dort jemand anders geschrieben,
+   * während hier getippt wurde, würde das Speichern dessen Fassung
+   * kommentarlos überschreiben – stattdessen bleibt sie als eigene Notiz
+   * «(Konfliktkopie)» erhalten, und ein Hinweis sagt das.
+   */
+  const baseline = useRef({ title: note?.title ?? '', body: note?.body ?? '' })
+  const live = useRef(note)
+  useEffect(() => {
+    live.current = note
+  })
+
   const leer = title.trim() === '' && body.trim() === ''
 
   const autosave = useAutosave(
     { title, body },
     async (entwurf) => {
+      const geschrieben = { title: entwurf.title.trim(), body: entwurf.body }
+
       if (idRef.current) {
+        const fremd = live.current
+        const fremdStand = fremd ? { title: fremd.title ?? '', body: fremd.body ?? '' } : null
+        const konflikt =
+          fremdStand !== null &&
+          JSON.stringify(fremdStand) !== JSON.stringify(baseline.current) &&
+          JSON.stringify(fremdStand) !== JSON.stringify(geschrieben)
+        if (konflikt) {
+          await createNote(
+            {
+              title: `${fremdStand.title || 'Ohne Titel'} (Konfliktkopie)`,
+              body: fremdStand.body,
+            },
+            fremd?.updatedById ?? null,
+          )
+          toast.warning(
+            'Diese Notiz wurde gleichzeitig von jemand anderem geändert. Die andere Fassung liegt jetzt als «Konfliktkopie» in der Liste.',
+          )
+        }
         await updateNote(idRef.current, entwurf, profile?.id ?? null)
+        baseline.current = geschrieben
         return
       }
       const { id } = await createNote(entwurf, profile?.id ?? null)
       idRef.current = id
       setSavedId(id)
+      baseline.current = geschrieben
     },
     // Eine leere Notiz wird nicht angelegt, eine geleerte behält ihren
     // letzten Stand.

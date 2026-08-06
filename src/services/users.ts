@@ -6,11 +6,11 @@ import { commit, type SaveOutcome } from '@/lib/sync'
 import type { ApView, AppUser, Role } from '@/lib/types'
 
 /**
- * Schaltet ein wartendes Konto frei bzw. ändert die Rolle – auch die eigene.
+ * Schaltet ein wartendes Konto frei bzw. ändert die Rolle.
  *
- * Freigeschaltete Konten dürfen das, wartende nicht: Andernfalls könnte sich
- * jedes neu registrierte Konto selbst Zugriff auf Personendaten geben.
- * Durchgesetzt wird das in `firestore.rules`.
+ * Das darf ausschliesslich das Administrator-Konto (`ADMIN_EMAIL`):
+ * Andernfalls genügte ein einzelnes kompromittiertes Konto, um alle übrigen
+ * zu übernehmen. Durchgesetzt wird das in `firestore.rules`.
  */
 export async function setUserRole(userId: string, role: Role): Promise<SaveOutcome> {
   return commit(

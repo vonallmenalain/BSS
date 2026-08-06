@@ -16,12 +16,21 @@ import {
   updateProfile,
   type User as FirebaseUser,
 } from 'firebase/auth'
-import { doc, getDoc, onSnapshot, serverTimestamp, setDoc } from 'firebase/firestore'
+import {
+  clearIndexedDbPersistence,
+  doc,
+  getDoc,
+  onSnapshot,
+  serverTimestamp,
+  setDoc,
+  terminate,
+} from 'firebase/firestore'
 import { auth, db, COLLECTIONS, isFirebaseConfigured } from '@/lib/firebase'
 import { getInitials } from '@/lib/utils'
 import { commit } from '@/lib/sync'
-import { stopCollectionStores } from '@/lib/collectionStore'
+import { clearSyncWatermarks, stopCollectionStores } from '@/lib/collectionStore'
 import {
+  ADMIN_EMAIL,
   AP_ACCESS_ROLES,
   AP_WRITE_ROLES,
   BISHOPRIC_ROLES,
@@ -46,6 +55,8 @@ interface AuthContextValue {
   /** Gehört zur Bischofschaft im engeren Sinn (leitet die Versammlung). */
   isBishopric: boolean
   isBishop: boolean
+  /** Das Administrator-Konto – verwaltet als Einziges Benutzer und Rollen. */
+  isAdmin: boolean
   /** Darf «Aktivitäten AP’s» sehen – Vollzugriff eingeschlossen. */
   canViewAp: boolean
   /** Darf im AP-Kalender auch schreiben. */
@@ -227,6 +238,31 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     stopCollectionStores()
     await fbSignOut(auth)
     setProfile(null)
+
+    /*
+     * Dann die lokale Datenkopie löschen.
+     *
+     * Die Offline-Persistenz legt den ganzen Bestand – Mitglieder, Traktanden,
+     * Berufungen – in der IndexedDB des Browsers ab. Wer sich abmeldet, will
+     * die Daten nicht auf dem Gerät zurücklassen; gerade auf einem fremden
+     * oder geteilten Gerät ist das der Sinn des Abmeldens. Solange man
+     * angemeldet bleibt, bleibt auch die Kopie – die Anmeldung selbst
+     * überdauert Browser-Neustarts (`browserLocalPersistence`).
+     *
+     * `terminate` muss vor `clearIndexedDbPersistence` kommen; danach ist die
+     * Datenbankverbindung dieser Sitzung beendet, deshalb schliesst ein
+     * vollständiges Neuladen der Anmeldeseite den Vorgang ab. Ist die App in
+     * einem zweiten Tab offen, verweigert der Browser das Löschen – das
+     * bleibt ein Behelf, bis auch dieser Tab abgemeldet wird.
+     */
+    clearSyncWatermarks()
+    try {
+      await terminate(db)
+      await clearIndexedDbPersistence(db)
+    } catch (err) {
+      console.warn('[auth] Lokale Datenkopie konnte nicht gelöscht werden:', err)
+    }
+    window.location.replace('/anmelden')
   }, [])
 
   const resetPassword = useCallback(async (email: string) => {
@@ -253,6 +289,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       isApproved,
       isBishopric: Boolean(role && BISHOPRIC_ROLES.includes(role)),
       isBishop: role === 'bishop',
+      isAdmin: firebaseUser?.email?.toLowerCase() === ADMIN_EMAIL,
       canViewAp,
       canEditAp: active && Boolean(role && AP_WRITE_ROLES.includes(role)),
       isApOnly: canViewAp && !isApproved,
