@@ -521,8 +521,11 @@ export function Settings() {
         <ImportSection />
 
         {/* Die Sicherung steht bewusst gleich unter den Importen: Ein Import
-            ist der Handgriff, nach dem man sie am ehesten bräuchte. */}
-        <BackupSection />
+            ist der Handgriff, nach dem man sie am ehesten bräuchte. Sie
+            gehört allein dem Administrator-Konto: Die Datei enthält den
+            ganzen Bestand samt Personendaten, und wer sie herunterlädt,
+            trägt sie ausser Haus. */}
+        {isAdmin && <BackupSection />}
 
         <SyncSection />
       </div>
@@ -648,6 +651,11 @@ function ImportSection() {
  * hält dort sieben Tage lang jeden Stand vor, ohne dass jemand daran gedacht
  * haben muss. Diese Datei ist die Kopie daneben – lesbar ohne Konsole, und
  * sie darf älter werden als sieben Tage.
+ *
+ * Sichtbar ist der Abschnitt allein für das Administrator-Konto (siehe
+ * `Settings`): Die Datei nimmt den ganzen Bestand samt Adressen und Notizen
+ * mit aus der App heraus. Was dabei zu beachten ist, steht im README unter
+ * «Sicherung» – nicht auf dem Knopf, denn wer ihn sieht, weiss es bereits.
  */
 function BackupSection() {
   const { firebaseUser } = useAuth()
@@ -686,16 +694,10 @@ function BackupSection() {
 
   return (
     <section className="card p-5">
-      <h2 className="mb-1 flex items-center gap-2 text-sm font-semibold">
+      <h2 className="mb-4 flex items-center gap-2 text-sm font-semibold">
         <DatabaseBackup className="size-4 text-slate-400" aria-hidden />
         Sicherung
       </h2>
-      <p className="hint mb-4">
-        Gelöschtes ist gelöscht – einen Papierkorb gibt es nicht, und ein Import ersetzt ganze
-        Bereiche auf einmal. Dieser Knopf legt den ganzen Bestand als eine JSON-Datei auf dieses
-        Gerät: Mitglieder, Sitzungen, Traktanden und Pendenzen, Notizen, Berufungen, Ansprachen und
-        Gebete, Putzplan und Aktivitäten. Vor jedem Import einmal drücken.
-      </p>
       <button
         type="button"
         className="btn-secondary"
@@ -711,12 +713,6 @@ function BackupSection() {
           ? `Sicherung läuft … (${done} von ${BACKUP_COLLECTIONS.length})`
           : 'Alle Daten als JSON herunterladen'}
       </button>
-      <p className="hint mt-3">
-        Die Datei enthält Personendaten – Adressen, Telefonnummern, Notizen. Sie gehört an einen
-        Ort, der dazu passt, und nicht in einen geteilten Ordner. Zurückspielen lässt sie sich nur
-        von Hand; der bequeme Weg zurück liegt im Firebase-Projekt, wo Point-in-time-Recovery –
-        einmal eingeschaltet – sieben Tage lang jeden Stand vorhält.
-      </p>
     </section>
   )
 }
