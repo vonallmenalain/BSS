@@ -1,6 +1,7 @@
 import { toDate } from './dates.ts'
 import {
   ACTIVE_TALK_STATUSES,
+  isTalkPlaceholder,
   SACRAMENT_KIND_INFO,
   type SacramentKindInfo,
   type SacramentMeeting,
@@ -124,7 +125,13 @@ export function plannedTalksFor(
   return typeof override === 'number' && override >= 0 ? override : defaultCount
 }
 
-/** Wie viele Programmplätze sind an diesem Sonntag noch offen? */
+/**
+ * Wie viele Programmplätze sind an diesem Sonntag noch offen?
+ *
+ * Ein Platzhalter – ein eingetragener Punkt, zu dem noch niemand feststeht –
+ * zählt weiterhin als offen. Er belegt zwar seine Position im Ablauf, aber
+ * die Frage «wem muss ich noch nachgehen?» beantwortet erst ein Name.
+ */
 export function openTalkSlots(
   date: Date,
   meeting: SacramentMeeting | null,
@@ -133,11 +140,32 @@ export function openTalkSlots(
 ): number {
   const planned = plannedTalksFor(date, meeting, defaultCount)
   const taken = new Set(
-    talks.filter((talk) => ACTIVE_TALK_STATUSES.includes(talk.status)).map((talk) => talk.slot),
+    talks
+      .filter((talk) => ACTIVE_TALK_STATUSES.includes(talk.status) && !isTalkPlaceholder(talk))
+      .map((talk) => talk.slot),
   )
   let open = 0
   for (let slot = 1; slot <= planned; slot++) if (!taken.has(slot)) open++
   return open
+}
+
+/**
+ * Wie viele eingetragene Ansprachen warten noch auf eine Zusage?
+ *
+ * «Vollständig» heisst nicht bloss «jemand steht da», sondern «jemand hat
+ * zugesagt». Ein vorgesehener oder angefragter Eintrag lässt noch etwas zu
+ * tun – dass alle Plätze besetzt sind, sagt darüber nichts.
+ *
+ * Platzhalter zählen hier nicht mit: Sie stehen schon unter den offenen
+ * Plätzen, und zweimal gemeldet wäre dieselbe Lücke doppelt.
+ */
+export function talksWithoutConfirmation(talks: Talk[]): number {
+  return talks.filter(
+    (talk) =>
+      ACTIVE_TALK_STATUSES.includes(talk.status) &&
+      talk.status !== 'confirmed' &&
+      !isTalkPlaceholder(talk),
+  ).length
 }
 
 /**

@@ -21,7 +21,7 @@ import { useCallingRounds, useMemberCallings, usePrayers, useTalks } from '@/hoo
 import { Modal } from '@/components/ui/Modal'
 import { EmptyState } from '@/components/ui/Feedback'
 import { Avatar } from '@/components/ui/Avatar'
-import { CallingStatusBadge, StatusBadge, TalkStatusBadge } from '@/components/ui/Badge'
+import { CallingStatusBadge, StatusBadge } from '@/components/ui/Badge'
 import { CallingRowSummary } from '@/components/agenda/CallingChanges'
 import { FOCUS_PARAM } from '@/components/agenda/MeetingFocus'
 import {
@@ -42,6 +42,7 @@ import {
   MEMBER_STATUS_LABELS,
   ORGANIZATION_LABELS,
   PRAYER_SLOT_LABELS,
+  TALK_KIND_LABELS,
   type AgendaItem,
   type Calling,
   type Member,
@@ -484,6 +485,7 @@ function TalkPanel({
   member: Member
   status: Availability
 }) {
+  const now = new Date()
   const months = monthsSince(member.lastTalkDate)
 
   return (
@@ -510,12 +512,29 @@ function TalkPanel({
 
       {talks.length > 0 && (
         <ul className="divide-list -mx-1 mt-2 text-sm">
-          {talks.slice(0, 5).map((talk) => (
-            <li key={talk.id} className="flex items-center justify-between gap-2 px-1 py-2">
-              <span className="tabular">{formatDate(talk.date)}</span>
-              <TalkStatusBadge status={talk.status} />
-            </li>
-          ))}
+          {talks.slice(0, 5).map((talk) => {
+            /*
+             * Was hier zählt, ist das Datum – wie bei den Gebeten darunter.
+             * Der Status stand einmal daneben und sagte fast immer dasselbe
+             * («Zugesagt»); vermerkt wird deshalb nur, was ein Datum nicht
+             * schon sagt: ein Zeugnis statt einer Ansprache, und ob der
+             * Sonntag noch bevorsteht.
+             */
+            const date = toDate(talk.date)
+            const note = [
+              (talk.kind ?? 'talk') === 'testimony' ? TALK_KIND_LABELS.testimony : '',
+              date && date > now ? 'geplant' : '',
+            ]
+              .filter(Boolean)
+              .join(' · ')
+
+            return (
+              <li key={talk.id} className="flex items-center justify-between gap-2 px-1 py-2">
+                <span className="tabular">{formatDate(talk.date)}</span>
+                {note && <span className="text-xs text-slate-500 dark:text-slate-400">{note}</span>}
+              </li>
+            )
+          })}
         </ul>
       )}
     </div>

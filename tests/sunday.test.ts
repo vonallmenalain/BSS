@@ -6,6 +6,7 @@ import {
   openTalkSlots,
   plannedTalksFor,
   sundayProgram,
+  talksWithoutConfirmation,
   wasHeld,
 } from '../src/lib/sunday.ts'
 import { isWithdrawnTalk, toTalkStatus } from '../src/lib/types.ts'
@@ -168,6 +169,23 @@ test('offene Plätze zählen nur, wo Ansprachen vorgesehen sind', () => {
   assert.equal(openTalkSlots(sunday('2026-02-08'), null, talks, 3), 1)
   // Derselbe Bestand an einer Zeugnisversammlung: nichts offen, nichts fehlt.
   assert.equal(openTalkSlots(sunday('2026-02-01'), null, talks, 3), 0)
+})
+
+test('ein Platzhalter belegt seine Position, gilt aber weiter als offen', () => {
+  // Ein eingetragenes Zeugnis, zu dem noch niemand feststeht: Der Punkt ist
+  // im Ablauf, aber es fehlt noch ein Name – also bleibt der Platz offen.
+  const talks = [talk(1), { ...talk(2), memberId: '', memberName: '' }]
+  assert.equal(openTalkSlots(sunday('2026-02-08'), null, talks, 3), 2)
+})
+
+test('«vollständig» heisst zugesagt, nicht bloss besetzt', () => {
+  assert.equal(talksWithoutConfirmation([talk(1), talk(2)]), 0)
+  assert.equal(talksWithoutConfirmation([talk(1), talk(2, 'asked'), talk(3, 'planned')]), 2)
+  // Ein Platzhalter fehlt schon unter den offenen Plätzen – hier nicht noch einmal.
+  assert.equal(
+    talksWithoutConfirmation([{ ...talk(1, 'planned'), memberId: '', memberName: '' }]),
+    0,
+  )
 })
 
 test('ein abgesagter Eintrag aus einer früheren Fassung belegt keinen Platz', () => {

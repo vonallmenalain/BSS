@@ -31,6 +31,7 @@ import {
   MEETING_DETAIL_LABELS,
   MEETING_LIST_MODE_LABELS,
   MEETING_SCOPE_LABELS,
+  normalizePendenzenSort,
   type AgendaItem,
   type Meeting,
   type MeetingDetailLevel,
@@ -66,6 +67,13 @@ export function Meetings() {
   const [formOpen, setFormOpen] = useState(false)
   /** Der Eintrag, der gerade im Fenster bearbeitet wird. */
   const [openItem, setOpenItem] = useState<AgendaItem | null>(null)
+
+  /* Steht die Pendenzenliste von Hand, folgt ihr auch der Inhalt einer
+     Sitzung – dieselbe Reihenfolge wie unter «Pendenzen». */
+  const manualPendenzen = useMemo(
+    () => normalizePendenzenSort(settings.pendenzenSort).field === 'manual',
+    [settings.pendenzenSort],
+  )
 
   const [view, setView] = useLocalStorage<MeetingsView>(
     'bss:sitzungen:ansicht',
@@ -221,6 +229,7 @@ export function Meetings() {
                 meeting={meeting}
                 openCount={itemCounts.get(meeting.id) ?? 0}
                 items={compact ? (itemsByMeeting.get(meeting.id) ?? []) : undefined}
+                manualPendenzen={manualPendenzen}
                 view={view}
                 onOpenItem={setOpenItem}
               />
@@ -263,6 +272,7 @@ function MeetingRow({
   meeting,
   openCount,
   items,
+  manualPendenzen,
   view,
   onOpenItem,
 }: {
@@ -270,13 +280,18 @@ function MeetingRow({
   openCount: number
   /** Gesetzt heisst: kompakte Ansicht – der Inhalt der Sitzung steht darunter */
   items?: AgendaItem[]
+  /** Steht die Pendenzenliste von Hand, folgt ihr auch die Sitzung */
+  manualPendenzen: boolean
   view: MeetingsView
   onOpenItem: (item: AgendaItem) => void
 }) {
   const date = toDate(meeting.date)
   const isToday = date?.toDateString() === new Date().toDateString()
 
-  const groups = useMemo(() => (items ? groupByKind(items) : null), [items])
+  const groups = useMemo(
+    () => (items ? groupByKind(items, manualPendenzen) : null),
+    [items, manualPendenzen],
+  )
 
   return (
     <li className={groups ? 'card overflow-hidden' : undefined}>

@@ -56,13 +56,20 @@ import {
 import { cn } from '@/lib/utils'
 import { sortForMeeting, sortForPendenzen } from '@/services/agenda'
 import { apActivityEnd } from '@/services/apActivities'
-import { openTalkSlots, sacramentDocId, sundayProgram, talksForDate } from '@/services/sacrament'
+import {
+  openTalkSlots,
+  sacramentDocId,
+  sundayProgram,
+  talksForDate,
+  talksWithoutConfirmation,
+} from '@/services/sacrament'
 import {
   AP_ACTIVITY_KIND_LABELS,
   DASHBOARD_AREA_LABELS,
   DASHBOARD_TILE_LABELS,
   DEFAULT_DASHBOARD_VIEW,
   normalizeDashboardView,
+  normalizePendenzenSort,
   toItemKind,
   type AgendaItem,
   type DashboardArea,
@@ -140,10 +147,16 @@ export function Dashboard() {
   const myItems = useMemo(() => sortForPendenzen(pendenzen.filter(ownItem)), [pendenzen, ownItem])
 
   // Dieselbe Reihenfolge wie in der Sitzung: zuerst die neuen Traktanden,
-  // danach die Pendenzen aus früheren Sitzungen.
+  // danach die Pendenzen aus früheren Sitzungen – diese in der Reihenfolge
+  // der Pendenzenliste, wenn sie dort von Hand gelegt ist.
+  const manualPendenzen = normalizePendenzenSort(settings.pendenzenSort).field === 'manual'
   const meetingItems = useMemo(
-    () => sortForMeeting(openItems.filter((item) => item.meetingId === nextMeeting?.id)),
-    [openItems, nextMeeting?.id],
+    () =>
+      sortForMeeting(
+        openItems.filter((item) => item.meetingId === nextMeeting?.id),
+        manualPendenzen,
+      ),
+    [openItems, nextMeeting?.id, manualPendenzen],
   )
 
   const unassignedCount = pendenzen.filter((item) => !item.meetingId).length
@@ -162,6 +175,8 @@ export function Dashboard() {
         // Berücksichtigt eine abweichende Anzahl Ansprachen und Sonntage,
         // an denen gar keine vorgesehen sind.
         open: openTalkSlots(sunday, meeting, assigned, settings.talksPerSunday),
+        // Besetzt heisst noch nicht zugesagt – auch das ist offene Arbeit.
+        pending: talksWithoutConfirmation(assigned),
       }
     })
   }, [talks, sacramentMeetings, settings.sacramentWeekday, settings.talksPerSunday])
@@ -360,14 +375,20 @@ export function Dashboard() {
                 <span className="badge bg-slate-100 text-slate-600 dark:bg-slate-800 dark:text-slate-300">
                   {gap.program.label}
                 </span>
-              ) : gap.open === 0 ? (
+              ) : gap.open > 0 ? (
+                <span className="badge bg-amber-100 text-amber-800 dark:bg-amber-950 dark:text-amber-200">
+                  {gap.open} offen
+                </span>
+              ) : gap.pending > 0 ? (
+                /* Alle Plätze besetzt, aber noch nicht alle haben zugesagt –
+                   vollständig ist der Sonntag damit noch nicht. */
+                <span className="badge bg-amber-100 text-amber-800 dark:bg-amber-950 dark:text-amber-200">
+                  {gap.pending} ohne Zusage
+                </span>
+              ) : (
                 <span className="badge bg-emerald-100 text-emerald-800 dark:bg-emerald-950 dark:text-emerald-200">
                   <CheckCircle2 className="size-3" aria-hidden />
                   Vollständig
-                </span>
-              ) : (
-                <span className="badge bg-amber-100 text-amber-800 dark:bg-amber-950 dark:text-amber-200">
-                  {gap.open} offen
                 </span>
               )}
             </li>

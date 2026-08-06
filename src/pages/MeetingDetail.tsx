@@ -20,7 +20,13 @@ import { useAuth } from '@/contexts/AuthContext'
 import { useData } from '@/contexts/DataContext'
 import { useToast } from '@/contexts/ToastContext'
 import { useLocalStorage } from '@/hooks/useLocalStorage'
-import { useMeeting, useMeetingItems, useMeetings, useUnassignedItems } from '@/hooks/useFirestore'
+import {
+  useMeeting,
+  useMeetingItems,
+  useMeetings,
+  useOpenItems,
+  useUnassignedItems,
+} from '@/hooks/useFirestore'
 import { AgendaItemCard } from '@/components/agenda/AgendaItemCard'
 import { AgendaItemForm } from '@/components/agenda/AgendaItemForm'
 import { AgendaItemRow } from '@/components/agenda/AgendaItemRow'
@@ -42,6 +48,9 @@ import {
   groupByKind,
   ITEM_KIND_ORDER,
   reorderItems,
+  reorderWithinPendenzen,
+  savePendenzenOrder,
+  sortByPendenzOrder,
   sortForMeeting,
 } from '@/services/agenda'
 import {
@@ -52,7 +61,14 @@ import {
   suggestNextMeetingDate,
   updateMeeting,
 } from '@/services/meetings'
-import { ITEM_KIND_PLURAL, type AgendaItem, type ItemKind, type Meeting } from '@/lib/types'
+import {
+  ITEM_KIND_PLURAL,
+  normalizePendenzenSort,
+  toItemKind,
+  type AgendaItem,
+  type ItemKind,
+  type Meeting,
+} from '@/lib/types'
 
 type ViewMode = 'focus' | 'list'
 
@@ -66,6 +82,7 @@ export function MeetingDetail() {
   const { meeting, loading } = useMeeting(meetingId)
   const { data: items } = useMeetingItems(meetingId)
   const { data: poolItems } = useUnassignedItems()
+  const { data: openItems } = useOpenItems()
   const { data: meetings } = useMeetings(50)
 
   /* Datum einer Sitzung als Text – für die Angaben im aufgeklappten Eintrag. */
@@ -88,8 +105,36 @@ export function MeetingDetail() {
   const [confirmDelete, setConfirmDelete] = useState(false)
   const [followUpOpen, setFollowUpOpen] = useState(false)
 
-  const sortedItems = useMemo(() => sortForMeeting(items), [items])
-  const groups = useMemo(() => groupByKind(items), [items])
+  /*
+   * Die Pendenzen dieser Sitzung sind ein Ausschnitt der Pendenzenliste.
+   *
+   * Wurde die dort von Hand gelegt, gilt sie auch hier: «der dritte Punkt»
+   * ist nur dann eine Angabe, wenn er in beiden Ansichten der dritte ist.
+   * Steht die Liste nach einem Datum, ordnet die Sitzung wie bisher nach
+   * ihrer eigenen Position.
+   */
+  const manualPendenzen = useMemo(
+    () => normalizePendenzenSort(settings.pendenzenSort).field === 'manual',
+    [settings.pendenzenSort],
+  )
+
+  /**
+   * Die ganze Pendenzenliste, in ihrer jetzigen Reihenfolge.
+   *
+   * Nur fürs Umsortieren: Was hier verschoben wird, verschiebt sich in der
+   * gemeinsamen Liste – und alles, was nicht in dieser Sitzung steht, soll
+   * dabei liegen bleiben, wo es liegt.
+   */
+  const allPendenzen = useMemo(
+    () => sortByPendenzOrder(openItems.filter((item) => toItemKind(item) === 'pendenz')),
+    [openItems],
+  )
+
+  const sortedItems = useMemo(
+    () => sortForMeeting(items, manualPendenzen),
+    [items, manualPendenzen],
+  )
+  const groups = useMemo(() => groupByKind(items, manualPendenzen), [items, manualPendenzen])
   const actor = profile ? { id: profile.id, name: profile.displayName } : null
 
   /** Der aufgeklappte Eintrag – dieselbe Angabe wie im Sitzungsmodus. */
@@ -123,11 +168,21 @@ export function MeetingDetail() {
    * Umsortiert wird innerhalb einer Gruppe; geschrieben wird die ganze
    * Sitzung. Die neuen Traktanden behalten dabei ihren Platz vor den
    * Pendenzen – das ist die Reihenfolge, in der eine Sitzung durchgeht.
+   *
+   * Folgen die Pendenzen der von Hand gelegten Liste, wird ein Zug an ihnen
+   * auch dort festgehalten: Schriebe er bloss die Position in der Sitzung,
+   * spränge die Gruppe gleich wieder zurück, denn gezeigt wird die Liste.
+   * Die übrigen Pendenzen behalten dabei ihre Plätze (siehe
+   * `reorderWithinPendenzen`).
    */
   const saveOrder = async (kind: ItemKind, ordered: AgendaItem[]) => {
-    const all =
-      kind === 'traktandum' ? [...ordered, ...groups.pendenz] : [...groups.traktandum, ...ordered]
     try {
+      if (kind === 'pendenz' && manualPendenzen) {
+        await savePendenzenOrder(reorderWithinPendenzen(allPendenzen, ordered))
+        return
+      }
+      const all =
+        kind === 'traktandum' ? [...ordered, ...groups.pendenz] : [...groups.traktandum, ...ordered]
       await reorderItems(all.map((item) => item.id))
     } catch (error) {
       console.error(error)

@@ -72,6 +72,11 @@ export function AgendaItemDialog({
         open={item !== null}
         onClose={onClose}
         title={ITEM_KIND_LABELS[kind]}
+        /* So breit wie die App: Im Fenster steht dasselbe wie im
+           aufgeklappten Eintrag – ein Raster, eine Berufungsrunde, eine
+           Tabelle. Schmaler gedrängt wäre es dieselbe Arbeit auf halber
+           Fläche. */
+        size="page"
         footer={
           <button type="button" className="btn-secondary" onClick={onClose}>
             Schliessen

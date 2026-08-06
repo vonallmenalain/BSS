@@ -29,6 +29,7 @@ import { EmptyState, SkeletonList } from '@/components/ui/Feedback'
 import { SegmentedControl } from '@/components/ui/Pickers'
 import { MenuChips, MenuChoice, MenuDivider, MenuToggle, ViewMenu } from '@/components/ui/ViewMenu'
 import { SectionHeader, useSacrament } from '@/components/sacrament/SacramentLayout'
+import { MemberSearchSelect } from '@/components/sacrament/MemberSearchSelect'
 import {
   SundayProgramBadge,
   SundayProgramDialog,
@@ -51,6 +52,7 @@ import {
   NEVER_SPOKE,
   rankTalkCandidates,
   setTalkAvailability,
+  setTalkSpeaker,
   setTalkStatus,
   speakerFields,
   talkYearOptions,
@@ -67,10 +69,13 @@ import {
   sundayProgram,
   wasHeld,
   talksForDate,
+  talksWithoutConfirmation,
 } from '@/services/sacrament'
 import {
+  isTalkPlaceholder,
   TALK_KIND_LABELS,
   TALK_STATUS_LABELS,
+  talkSpeakerLabel,
   type Member,
   type Talk,
   type TalkKind,
@@ -146,8 +151,16 @@ export function Talks() {
         program,
         planned,
         slots,
-        // Nur die regulären Plätze gelten als «offen»; Zusatzpunkte sind freiwillig.
-        openCount: slots.filter((entry) => !entry.talk && !entry.extra).length,
+        /*
+         * Nur die regulären Plätze gelten als «offen»; Zusatzpunkte sind
+         * freiwillig. Ein Platzhalter zählt weiter mit: Er belegt zwar seine
+         * Position, aber es steht noch niemand dahinter.
+         */
+        openCount: slots.filter(
+          (entry) => !entry.extra && (!entry.talk || isTalkPlaceholder(entry.talk)),
+        ).length,
+        // Besetzt heisst noch nicht zugesagt – auch das ist offene Arbeit.
+        pendingCount: talksWithoutConfirmation(assigned),
       }
     })
   }, [talks, meetingByKey, selectedDate, settings.sacramentWeekday, settings.talksPerSunday])
@@ -269,14 +282,20 @@ export function Talks() {
                         {sunday.planned} statt {settings.talksPerSunday}
                       </span>
                     )}
-                    {!sunday.program.plansTalks ? null : sunday.openCount === 0 ? (
+                    {!sunday.program.plansTalks ? null : sunday.openCount > 0 ? (
+                      <span className="badge bg-amber-100 text-amber-800 dark:bg-amber-950 dark:text-amber-200">
+                        {sunday.openCount} offen
+                      </span>
+                    ) : sunday.pendingCount > 0 ? (
+                      /* Besetzt, aber noch ohne Zusage – dieselbe Regel wie in
+                         der Übersicht: vollständig ist erst, was zugesagt ist. */
+                      <span className="badge bg-amber-100 text-amber-800 dark:bg-amber-950 dark:text-amber-200">
+                        {sunday.pendingCount} ohne Zusage
+                      </span>
+                    ) : (
                       <span className="badge bg-emerald-100 text-emerald-800 dark:bg-emerald-950 dark:text-emerald-200">
                         <Check className="size-3" aria-hidden />
                         Vollständig
-                      </span>
-                    ) : (
-                      <span className="badge bg-amber-100 text-amber-800 dark:bg-amber-950 dark:text-amber-200">
-                        {sunday.openCount} offen
                       </span>
                     )}
                     <ResponsibleButton
@@ -389,9 +408,14 @@ export function Talks() {
           filter={filter}
           onFilter={setFilter}
           onAssign={(member) => {
-            // Den nächsten freien Programmplatz vorschlagen.
+            // Den nächsten freien Programmplatz vorschlagen. Sind alle
+            // Positionen belegt – etwa durch Platzhalter –, kommt der Eintrag
+            // hintendran; zwei Einträge auf derselben Position brächten die
+            // Reihenfolge durcheinander.
             const target = schedule.find((sunday) => sunday.openCount > 0)
-            const slot = target?.slots.find((s) => !s.talk && !s.extra)?.slot ?? 1
+            const slot =
+              target?.slots.find((s) => !s.talk && !s.extra)?.slot ??
+              (target ? target.slots.length + 1 : 1)
             setPresetMember(member)
             setAssignFor({ date: target?.date ?? new Date(), slot, kind: 'talk' })
           }}
@@ -412,7 +436,11 @@ export function Talks() {
         presetMember={presetMember}
       />
 
-      <EditTalkDialog talk={editTalk} onClose={() => setEditTalk(null)} />
+      <EditTalkDialog
+        talk={editTalk}
+        suggestions={candidates.map((candidate) => candidate.member)}
+        onClose={() => setEditTalk(null)}
+      />
 
       <SundayProgramDialog
         open={Boolean(programFor)}
@@ -449,6 +477,10 @@ function TalkRow({
   const { membersById } = useData()
   const member = membersById.get(talk.memberId)
   const kind: TalkKind = talk.kind ?? 'talk'
+  /* Ein Platzhalter steht mit seiner Art da, aber ohne Namen – in Orange,
+     damit beim Durchgehen auffällt, dass hier noch jemand fehlt. */
+  const placeholder = isTalkPlaceholder(talk)
+  const name = talkSpeakerLabel(talk)
 
   return (
     <div className="flex items-center gap-1 rounded-lg border border-slate-200 pr-1 dark:border-slate-700">
@@ -460,10 +492,10 @@ function TalkRow({
         <span className="tabular grid size-7 shrink-0 place-items-center rounded-full bg-slate-100 text-xs font-semibold dark:bg-slate-800">
           {talk.slot}
         </span>
-        <Avatar name={talk.memberName} id={talk.memberId || undefined} size="sm" />
+        <Avatar name={name} id={talk.memberId || undefined} size="sm" />
         <span className="min-w-0 flex-1">
           <span className="block truncate text-sm font-medium">
-            {talk.memberName}
+            <span className={cn(placeholder && 'text-amber-600 dark:text-amber-400')}>{name}</span>
             {kind === 'testimony' && (
               <span className="ml-1.5 align-middle text-xs font-normal text-slate-500 dark:text-slate-400">
                 · {TALK_KIND_LABELS.testimony}
@@ -483,7 +515,7 @@ function TalkRow({
         <a
           href={telHref(member.mobile) ?? '#'}
           className="btn-ghost hidden shrink-0 p-1.5 sm:inline-flex"
-          aria-label={`${talk.memberName} anrufen`}
+          aria-label={`${name} anrufen`}
           title={formatPhone(member.mobile)}
         >
           <Phone className="size-3.5" aria-hidden />
@@ -497,7 +529,7 @@ function TalkRow({
           className="btn-ghost p-0.5"
           onClick={() => onMove(-1)}
           disabled={first}
-          aria-label={`${talk.memberName} nach vorne`}
+          aria-label={`${name} nach vorne`}
         >
           <ChevronUp className="size-4" aria-hidden />
         </button>
@@ -506,7 +538,7 @@ function TalkRow({
           className="btn-ghost p-0.5"
           onClick={() => onMove(1)}
           disabled={last}
-          aria-label={`${talk.memberName} nach hinten`}
+          aria-label={`${name} nach hinten`}
         >
           <ChevronDown className="size-4" aria-hidden />
         </button>
@@ -798,7 +830,7 @@ function HistoryList({ talks }: { talks: Talk[] }) {
     <ul className="card divide-list overflow-hidden">
       {talks.map((talk) => (
         <li key={talk.id} className="flex items-center gap-3 px-4 py-3">
-          <Avatar name={talk.memberName} id={talk.memberId || undefined} size="sm" />
+          <Avatar name={talkSpeakerLabel(talk)} id={talk.memberId || undefined} size="sm" />
           <div className="min-w-0 flex-1">
             {/* Ein von Hand erfasster Name führt zu keinem Mitglied. */}
             {talk.memberId ? (
@@ -810,7 +842,7 @@ function HistoryList({ talks }: { talks: Talk[] }) {
                 {talk.memberName}
               </MemberLink>
             ) : (
-              <p className="truncate text-sm font-medium">{talk.memberName}</p>
+              <p className="truncate text-sm font-medium">{talkSpeakerLabel(talk)}</p>
             )}
             {talk.topic && (
               <p className="truncate text-xs text-slate-500 dark:text-slate-400">{talk.topic}</p>
@@ -891,12 +923,21 @@ function AssignDialog({
       .slice(0, 8)
   }, [ranked, search])
 
-  /** Ein Mitglied nur, wenn eines gewählt wurde – sonst der getippte Name. */
+  /**
+   * Ein Mitglied nur, wenn eines gewählt wurde – sonst der getippte Name.
+   *
+   * Auch der noch nicht übernommene Suchtext zählt: Wer einen Namen tippt und
+   * «Eintragen» drückt, meint diesen Namen und keinen Platzhalter. Ein
+   * Mitglied wird dadurch nach wie vor nicht zugeordnet.
+   */
+  const typed = search.trim()
   const speaker: TalkSpeaker | null = selected
     ? { member: selected }
     : manual.trim()
       ? { name: manual }
-      : null
+      : typed
+        ? { name: typed }
+        : null
 
   const takeAsIs = () => {
     if (!search.trim()) return
@@ -904,12 +945,18 @@ function AssignDialog({
     setSearch('')
   }
 
+  /*
+   * Ohne Person ist nichts angefragt.
+   *
+   * «Angefragt» oder «Zugesagt» beschreibt ein Gespräch mit jemandem – an
+   * einem Platzhalter stünde beides für niemanden. Er ist vorgesehen, mehr
+   * nicht; die Wahl von oben bleibt erhalten und gilt wieder, sobald ein
+   * Name dasteht.
+   */
+  const effectiveStatus: TalkStatus = speaker ? status : 'planned'
+
   const handleSubmit = async (event: FormEvent) => {
     event.preventDefault()
-    if (!speaker) {
-      toast.error('Bitte wähle ein Mitglied aus oder trage einen Namen ein.')
-      return
-    }
 
     setSaving(true)
     try {
@@ -920,10 +967,15 @@ function AssignDialog({
         kind,
         topic: topic.trim(),
         durationMinutes: typeof duration === 'number' ? duration : undefined,
-        status,
-        askedById: profile?.id ?? null,
+        status: effectiveStatus,
+        askedById: speaker ? (profile?.id ?? null) : null,
       })
-      toast.saved(`${TALK_KIND_LABELS[kind]} eingetragen.`, outcome)
+      toast.saved(
+        speaker
+          ? `${TALK_KIND_LABELS[kind]} eingetragen.`
+          : `${TALK_KIND_LABELS[kind]} als Platzhalter eingetragen.`,
+        outcome,
+      )
       onClose()
     } catch (error) {
       console.error(error)
@@ -945,13 +997,9 @@ function AssignDialog({
           <button type="button" className="btn-secondary" onClick={onClose} disabled={saving}>
             Abbrechen
           </button>
-          <button
-            type="submit"
-            form="talk-form"
-            className="btn-primary"
-            disabled={saving || !speaker}
-          >
-            {saving ? 'Wird gespeichert …' : 'Eintragen'}
+          {/* Auch ohne Namen: Der Platz wird dann als Platzhalter vergeben. */}
+          <button type="submit" form="talk-form" className="btn-primary" disabled={saving}>
+            {saving ? 'Wird gespeichert …' : speaker ? 'Eintragen' : 'Platzhalter eintragen'}
           </button>
         </>
       }
@@ -1078,6 +1126,11 @@ function AssignDialog({
                 Wer nicht in der Mitgliederliste steht – ein besuchender Hoher Rat, die Missionare,
                 eine Gruppe –, wird von Hand eingetragen und keinem Mitglied zugeordnet.
               </p>
+              {/* Der Platz darf auch vor der Person feststehen. */}
+              <p className="hint">
+                Ohne Namen entsteht ein Platzhalter: Der Punkt steht mit seiner Art im Programm, der
+                Name lässt sich später nachtragen.
+              </p>
             </>
           )}
         </div>
@@ -1167,8 +1220,9 @@ function AssignDialog({
           <select
             id="talk-status"
             className="input"
-            value={status}
+            value={effectiveStatus}
             onChange={(event) => setStatus(event.target.value as TalkStatus)}
+            disabled={!speaker}
           >
             {(['planned', 'asked', 'confirmed'] as TalkStatus[]).map((value) => (
               <option key={value} value={value}>
@@ -1176,6 +1230,11 @@ function AssignDialog({
               </option>
             ))}
           </select>
+          {!speaker && (
+            <p className="hint">
+              Ein Platzhalter ist vorgesehen – angefragt wird, sobald jemand feststeht.
+            </p>
+          )}
         </div>
       </form>
     </Modal>
@@ -1186,7 +1245,16 @@ function AssignDialog({
 /* Bearbeiten                                                          */
 /* ------------------------------------------------------------------ */
 
-function EditTalkDialog({ talk, onClose }: { talk: Talk | null; onClose: () => void }) {
+function EditTalkDialog({
+  talk,
+  suggestions,
+  onClose,
+}: {
+  talk: Talk | null
+  /** Vorschlagsreihenfolge «wer war lange nicht dran» – wie beim Zuteilen */
+  suggestions: Member[]
+  onClose: () => void
+}) {
   const toast = useToast()
   const [kind, setKind] = useState<TalkKind>('talk')
   const [topic, setTopic] = useState('')
@@ -1230,12 +1298,27 @@ function EditTalkDialog({ talk, onClose }: { talk: Talk | null; onClose: () => v
     }
   }
 
+  /*
+   * Wer spricht, wird sofort geschrieben und nicht erst beim Speichern: Es
+   * ist ein Handgriff für sich – ein Platzhalter bekommt seinen Namen, oder
+   * ein Name fällt wieder weg, weil jemand abgesagt hat.
+   */
+  const changeSpeaker = async (speaker: TalkSpeaker | null) => {
+    try {
+      const outcome = await setTalkSpeaker(talk.id, speaker)
+      toast.saved(speaker ? 'Eingetragen.' : 'Name entfernt – der Platz bleibt stehen.', outcome)
+    } catch (error) {
+      console.error(error)
+      toast.error('Speichern fehlgeschlagen.')
+    }
+  }
+
   return (
     <>
       <Modal
         open
         onClose={onClose}
-        title={talk.memberName}
+        title={talkSpeakerLabel(talk)}
         description={`${formatDate(talk.date)} · Position ${talk.slot} · ${TALK_KIND_LABELS[talk.kind ?? 'talk']}`}
         footer={
           <>
@@ -1257,6 +1340,25 @@ function EditTalkDialog({ talk, onClose }: { talk: Talk | null; onClose: () => v
         }
       >
         <div className="space-y-4">
+          <div>
+            <MemberSearchSelect
+              label="Wer spricht?"
+              value={talk.memberId || null}
+              onChange={(member) => void changeSpeaker(member ? { member } : null)}
+              freeText={talk.memberId ? '' : talk.memberName}
+              onFreeText={(name) => void changeSpeaker(name.trim() ? { name } : null)}
+              suggestions={suggestions}
+              meta={(member) =>
+                member.lastTalkDate ? `zuletzt ${formatDate(member.lastTalkDate)}` : 'noch nie'
+              }
+              compact
+            />
+            <p className="hint">
+              Ohne Namen bleibt der Punkt als Platzhalter im Programm stehen – mit Art, Dauer und
+              Thema.
+            </p>
+          </div>
+
           <div>
             <span className="label">Status</span>
             <div className="flex flex-wrap gap-2">

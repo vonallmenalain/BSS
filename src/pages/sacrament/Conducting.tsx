@@ -69,6 +69,7 @@ import {
 import {
   BUSINESS_TYPE_LABELS,
   HYMN_SLOT_LABELS,
+  isTalkPlaceholder,
   PRAYER_SLOT_LABELS,
   TALK_KIND_LABELS,
   type AnnouncementEntry,
@@ -431,12 +432,15 @@ export function Conducting() {
     )
   }
 
+  /**
+   * Wer spricht – oder noch niemand.
+   *
+   * Ohne Person bleibt der Punkt als Platzhalter stehen: Art, Dauer und
+   * Thema sind erfasst, nur der Name fehlt. Früher verschwand er hier ganz;
+   * damit war eine Absage ein Griff, kostete aber alles andere gleich mit.
+   * Weg ist er über «Programmpunkt entfernen» darunter.
+   */
   const changeSpeaker = (talkId: string, speaker: TalkSpeaker | null) => {
-    if (!speaker) {
-      // Ohne Person gibt es keine Ansprache mehr – der Platz wird wieder frei.
-      void guard(() => deleteTalk(talkId), 'Ansprache konnte nicht entfernt werden.')
-      return
-    }
     void guard(() => setTalkSpeaker(talkId, speaker), 'Ansprache konnte nicht geändert werden.')
   }
 
@@ -680,6 +684,23 @@ export function Conducting() {
                       }
                     />
                   </div>
+                  {/* Solange niemand dasteht, lässt sich der Punkt ganz
+                      wegnehmen – mit einem Namen wäre das ein Fehlgriff. */}
+                  {isTalkPlaceholder(talk) && (
+                    <button
+                      type="button"
+                      className="btn-ghost btn-sm text-rose-600 dark:text-rose-400"
+                      onClick={() =>
+                        void guard(
+                          () => deleteTalk(talk.id),
+                          'Programmpunkt konnte nicht entfernt werden.',
+                        )
+                      }
+                    >
+                      <Trash2 className="size-3.5" aria-hidden />
+                      Programmpunkt entfernen
+                    </button>
+                  )}
                 </>
               ) : entry.kind === 'hymn' ? (
                 <HymnField
