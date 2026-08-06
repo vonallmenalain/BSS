@@ -449,7 +449,11 @@ export function CallingChangesTables({
                 onMention={onMention}
                 memberRefs={memberRefs}
                 readOnly={!editable}
-                placeholder="Heute – und was daran ansteht"
+                // Der Feldname und kein Beispielsatz – wie beim Titel eines
+                // Traktandums. Was in die Spalte gehört, sagt ihre
+                // Überschrift; ein Satz darunter wiederholte sie bloss
+                // umständlicher.
+                placeholder="Berufung"
               />
             </Cell>
             <Cell label="Vorschläge">
