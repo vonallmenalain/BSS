@@ -31,7 +31,7 @@ import { useToast } from '@/contexts/ToastContext'
 import { useAutosave, saveStateLabel } from '@/hooks/useAutosave'
 import { MemberCombobox, PageHeader } from '@/components/ui/Pickers'
 import { ConfirmDialog } from '@/components/ui/Modal'
-import { Avatar } from '@/components/ui/Avatar'
+import { UserAvatar } from '@/components/ui/Avatar'
 import { WEEKDAYS } from '@/lib/dates'
 import { resyncCollectionStores } from '@/lib/collectionStore'
 import { backupTotal } from '@/lib/backup'
@@ -780,7 +780,7 @@ function PendingUserCard({ user }: { user: AppUser }) {
   return (
     <li className="card p-3">
       <div className="flex items-center gap-3">
-        <Avatar name={user.displayName} id={user.id} size="md" />
+        <UserAvatar userId={user.id} name={user.displayName} size="md" />
         <div className="min-w-0 flex-1">
           <p className="truncate text-sm font-medium">{user.displayName}</p>
           <p className="truncate text-xs text-slate-500 dark:text-slate-400">
@@ -978,7 +978,7 @@ function UserRow({
 
   return (
     <li className="flex flex-wrap items-center gap-3 py-3">
-      <Avatar name={user.displayName} id={user.id} size="md" />
+      <UserAvatar userId={user.id} name={user.displayName} size="md" />
 
       <div className="min-w-0 flex-1">
         <p className="truncate text-sm font-medium">

@@ -15,7 +15,7 @@ import {
 } from 'lucide-react'
 import { useData } from '@/contexts/DataContext'
 import { useCallingRowConcern } from '@/hooks/useOwnItem'
-import { Avatar } from '@/components/ui/Avatar'
+import { Avatar, UserAvatar } from '@/components/ui/Avatar'
 import { MemberLink } from '@/components/ui/MemberLink'
 import { MentionEditable, MentionText } from '@/components/ui/MentionText'
 import { MemberPicker, PersonButton } from '@/components/ui/Pickers'
@@ -984,7 +984,7 @@ function RowMenu({
              Kreis den Unterlängen-Abstand seiner Schriftzeile mit und machte
              den Knopf zwei Pixel höher als das feste Mass. */
           <span key={id} className="flex" aria-hidden>
-            <Avatar name={userName(id)} id={id} size="xs" />
+            <UserAvatar userId={id} size="xs" />
           </span>
         ))}
         <ChevronDown
@@ -1183,7 +1183,7 @@ function AssigneeChip({ id }: { id: string }) {
   const { userName } = useData()
   return (
     <span className="chip bg-slate-100 pl-0.5 dark:bg-slate-800">
-      <Avatar name={userName(id)} id={id} size="xs" />
+      <UserAvatar userId={id} size="xs" />
       {userName(id)}
     </span>
   )

@@ -9,7 +9,7 @@ import {
   Ungroup,
 } from 'lucide-react'
 import { useData } from '@/contexts/DataContext'
-import { Avatar } from '@/components/ui/Avatar'
+import { UserAvatar } from '@/components/ui/Avatar'
 import { MentionField } from '@/components/ui/MentionField'
 import { MentionText } from '@/components/ui/MentionText'
 import { ConfirmDialog, Modal } from '@/components/ui/Modal'
@@ -289,7 +289,7 @@ function FieldBody({
           <ChipRow empty="Niemand">
             {ids.map((id) => (
               <span key={id} className="chip bg-slate-100 pl-0.5 dark:bg-slate-800">
-                <Avatar name={userName(id)} id={id} size="xs" />
+                <UserAvatar userId={id} size="xs" />
                 {userName(id)}
               </span>
             ))}

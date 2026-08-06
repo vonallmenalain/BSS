@@ -28,7 +28,7 @@ import { useData } from '@/contexts/DataContext'
 import { useTrackLocation } from '@/hooks/useBack'
 import { useOnlineStatus, useTheme } from '@/hooks/useLocalStorage'
 import { usePendingWrites } from '@/hooks/useSync'
-import { Avatar } from '@/components/ui/Avatar'
+import { UserAvatar } from '@/components/ui/Avatar'
 import { ROLE_LABELS } from '@/lib/types'
 import { UpdatePrompt } from '@/components/UpdatePrompt'
 
@@ -459,7 +459,7 @@ function UserMenu() {
         aria-label="Benutzermenü"
         aria-expanded={open}
       >
-        <Avatar name={profile.displayName} id={profile.id} size="md" />
+        <UserAvatar userId={profile.id} name={profile.displayName} size="md" />
       </button>
 
       {open && (
