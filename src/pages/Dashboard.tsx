@@ -478,8 +478,10 @@ export function Dashboard() {
             <ListTodo className="size-4 text-slate-400" aria-hidden />
             Meine Pendenzen
           </h2>
+          {/* «Alle» heisst hier: alle meine – die Kachel zeigt nur die
+              ersten paar. Der Ausschnitt steht deshalb in der Adresse. */}
           <Link
-            to="/pendenzen"
+            to="/pendenzen?ansicht=meine"
             className="text-brand-600 dark:text-brand-300 text-xs hover:underline"
           >
             Alle anzeigen
@@ -819,9 +821,16 @@ function StatRow({
   mine: number
   openTalks: number
 }) {
+  /*
+   * Jede Zahl führt auf die Liste, die sie gezählt hat.
+   *
+   * Der Ausschnitt steht dafür in der Adresse: Ohne ihn landete «Meine» auf
+   * der Liste, die zuletzt offen war – und wer eben auf die 3 unter «Meine»
+   * gedrückt hat, sucht nicht die 27 unter «Pendent».
+   */
   const stats = [
-    { label: 'Pendenzen', value: pendenzen, to: '/pendenzen', danger: false },
-    { label: 'Meine', value: mine, to: '/pendenzen' },
+    { label: 'Pendenzen', value: pendenzen, to: '/pendenzen?ansicht=pendent', danger: false },
+    { label: 'Meine', value: mine, to: '/pendenzen?ansicht=meine' },
     { label: 'Ansprachen offen', value: openTalks, to: '/abendmahl/ansprachen' },
   ]
 

@@ -37,6 +37,14 @@ interface Props {
   first?: boolean
   last?: boolean
   readOnly?: boolean
+  /**
+   * Eine Berufungsrunde aufgeklappt mit «Nur meine» zeigen.
+   *
+   * Für den Ausschnitt «Meine» der Pendenzenliste: Dort steht die Runde, weil
+   * eine ihrer Zeilen mich angeht – und dann sind auch diese Zeilen gemeint
+   * und nicht die ganze Runde (siehe `CallingChangesTables`).
+   */
+  ownRowsOnly?: boolean
   nextMeeting?: { id: string; date: Date } | null
   /** Zu welcher Sitzung der Eintrag gehört – ausserhalb der Sitzung nützlich */
   meetingLabel?: string
@@ -84,6 +92,7 @@ export function AgendaItemRow({
   first = false,
   last = false,
   readOnly = false,
+  ownRowsOnly = false,
   nextMeeting,
   meetingLabel,
   meetingHref,
@@ -283,7 +292,12 @@ export function AgendaItemRow({
         <div className="animate-slide-up border-t border-slate-200 px-3 pt-3 pb-3 dark:border-slate-800">
           {/* Der Stand gehört dem Eintrag – deshalb baut sich der Editor je
               Eintrag neu auf. */}
-          <AgendaItemEditor key={item.id} item={item} readOnly={readOnly} />
+          <AgendaItemEditor
+            key={item.id}
+            item={item}
+            readOnly={readOnly}
+            ownRowsOnly={ownRowsOnly}
+          />
 
           <ItemDates item={item} meetingDate={meetingDate} />
 

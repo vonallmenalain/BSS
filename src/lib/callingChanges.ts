@@ -5,7 +5,6 @@ import type {
   CallingChanges,
   CallingMemberRow,
   CallingOpenRow,
-  CallingRowBase,
   CallingUrgency,
 } from './types.ts'
 
@@ -320,13 +319,29 @@ export type CallingRowMatch =
   { table: 'members'; row: CallingMemberRow } | { table: 'open'; row: CallingOpenRow }
 
 /**
- * Alle Zeilen, in denen ein bestimmtes Mitglied vorkommt.
+ * Kommt ein bestimmtes Mitglied in **dieser einen** Zeile vor?
  *
  * Zwei Wege führen dahin, und beide zählen gleich:
  *
  *  - Die Zeile **nennt** das Mitglied in der Spalte «Name».
  *  - Die Zeile **erwähnt** es mit «@» in einem der Freitextfelder – wer
  *    «@Alain» als Vorschlag schreibt, meint Alain.
+ *
+ * Welche Felder dabei zu lesen sind, sagt die Tabelle: In «Neue Berufungen»
+ * steht die Person in der Spalte «Name», in «Offene Berufungen» kann sie nur
+ * erwähnt sein – eine offene Aufgabe ist niemand.
+ */
+function rowAbout(row: CallingMemberRow | CallingOpenRow, member: Mention): boolean {
+  const named = (value: string) =>
+    splitMentions(value, [member]).some((part) => part.memberId !== undefined)
+
+  return 'memberIds' in row
+    ? row.memberIds.includes(member.id) || named(row.calling) || named(row.ideas)
+    : named(row.calling) || named(row.candidates) || named(row.next)
+}
+
+/**
+ * Alle Zeilen, in denen ein bestimmtes Mitglied vorkommt.
  *
  * Ohne Mitglied gibt es nichts zu finden: Ein Name im Text ist dann bloss ein
  * Name, und die App hat keinen Anhaltspunkt, wer gemeint ist.
@@ -337,28 +352,18 @@ export function callingRowsAbout(
 ): CallingRowMatch[] {
   if (!changes || member === null) return []
 
-  const named = (value: string) =>
-    splitMentions(value, [member]).some((part) => part.memberId !== undefined)
-
   const matches: CallingRowMatch[] = []
-
   changes.members.forEach((row) => {
-    if (row.memberIds.includes(member.id) || named(row.calling) || named(row.ideas)) {
-      matches.push({ table: 'members', row })
-    }
+    if (rowAbout(row, member)) matches.push({ table: 'members', row })
   })
-
   changes.open.forEach((row) => {
-    if (named(row.calling) || named(row.candidates) || named(row.next)) {
-      matches.push({ table: 'open', row })
-    }
+    if (rowAbout(row, member)) matches.push({ table: 'open', row })
   })
-
   return matches
 }
 
 /**
- * Betrifft eine dieser Zeilen die angemeldete Person?
+ * Geht **diese Zeile** die angemeldete Person an?
  *
  * Zwei Wege führen dahin, und beide zählen gleich:
  *
@@ -370,20 +375,30 @@ export function callingRowsAbout(
  *
  * Ohne Verknüpfung bleibt der zweite Weg wirkungslos: Ein Name im Text ist
  * dann bloss ein Name.
+ *
+ * Es ist dieselbe Frage, die den ganzen Eintrag auf die Liste «Meine» bringt –
+ * bloss eine Ebene tiefer gestellt. Deshalb zeigt die Runde, die von dort aus
+ * geöffnet wird, genau diese Zeilen: Was den Eintrag zu meinem macht, ist auch
+ * das, was ich darin zu tun habe.
  */
+export function isOwnCallingRow(
+  row: CallingMemberRow | CallingOpenRow,
+  userId: string | null | undefined,
+  member: Mention | null,
+): boolean {
+  if (userId && row.assignees.includes(userId)) return true
+  return member !== null && rowAbout(row, member)
+}
+
+/** Betrifft **eine** dieser Zeilen die angemeldete Person? */
 export function callingChangesConcern(
   changes: CallingChanges | null | undefined,
   userId: string | null | undefined,
   member: Mention | null,
 ): boolean {
   if (!changes) return false
-
-  if (userId) {
-    const assigned = (rows: CallingRowBase[]) => rows.some((row) => row.assignees.includes(userId))
-    if (assigned(changes.members) || assigned(changes.open)) return true
-  }
-
-  return callingRowsAbout(changes, member).length > 0
+  const own = (row: CallingMemberRow | CallingOpenRow) => isOwnCallingRow(row, userId, member)
+  return changes.members.some(own) || changes.open.some(own)
 }
 
 /**

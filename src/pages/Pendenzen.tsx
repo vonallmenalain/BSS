@@ -12,6 +12,7 @@ import { PageHeader, SegmentedControl } from '@/components/ui/Pickers'
 import { AddButton, MenuSection, MenuToggle, ViewMenu } from '@/components/ui/ViewMenu'
 import { useLocalStorage } from '@/hooks/useLocalStorage'
 import { useOwnItem } from '@/hooks/useOwnItem'
+import { useUrlState } from '@/hooks/useUrlState'
 import { savePendenzenOrder } from '@/services/agenda'
 import { saveSettings } from '@/services/settings'
 import { formatDateLong, formatDateShort, toDate, toDateInput } from '@/lib/dates'
@@ -36,6 +37,33 @@ type Scope = 'open' | 'mine' | 'done'
 
 /** «Alle» hiess der offene Ausschnitt früher – alte Merkwerte fallen zurück. */
 const SCOPES: Scope[] = ['open', 'mine', 'done']
+
+/**
+ * Der Ausschnitt steht in der Adresse – und damit lässt er sich verlinken.
+ *
+ * Die Übersicht zeigt von der Zahl «Meine» und aus der Kachel «Meine
+ * Pendenzen» geradewegs hierher (`/pendenzen?ansicht=meine`) statt auf die
+ * Liste, die zuletzt offen war. Steht nichts in der Adresse, gilt weiterhin
+ * das Gemerkte (siehe `hooks/useUrlState`).
+ *
+ * In der Adresse steht das deutsche Wort, wie überall in dieser App; der
+ * Schlüssel darunter bleibt, was er ist – er liegt so in den Browsern der
+ * Bischofschaft.
+ */
+const SCOPE_PARAM = 'ansicht'
+
+const SCOPE_VALUES: Record<Scope, string> = {
+  open: 'pendent',
+  mine: 'meine',
+  done: 'erledigt',
+}
+
+const SCOPE_PARAM_VALUES = Object.values(SCOPE_VALUES)
+
+/** Vom Wort in der Adresse zurück zum Ausschnitt. */
+function toScope(value: string): Scope {
+  return SCOPES.find((scope) => SCOPE_VALUES[scope] === value) ?? 'open'
+}
 
 /**
  * Die beiden Datumsfelder, nach denen sortiert **und** gruppiert wird.
@@ -167,8 +195,29 @@ export function Pendenzen() {
   const { userName, memberName, settings } = useData()
   const toast = useToast()
 
-  const [storedScope, setScope] = useLocalStorage<Scope>('bss:pendenzen:scope', 'open')
-  const scope = SCOPES.includes(storedScope) ? storedScope : 'open'
+  /*
+   * Welcher Ausschnitt offen ist: was in der Adresse steht – und sonst das,
+   * was dieses Gerät sich zuletzt gemerkt hat.
+   *
+   * Beides zusammen, weil beides gebraucht wird: Wer die Seite in der
+   * Seitenleiste aufruft, findet die Liste vor, die er zuletzt gelesen hat;
+   * ein Verweis von der Übersicht führt trotzdem dorthin, wohin er zeigt.
+   * Ein Verweis ist eine einmalige Anweisung und keine Einstellung – deshalb
+   * schreibt er das Gemerkte nicht um.
+   */
+  const [remembered, remember] = useLocalStorage<Scope>('bss:pendenzen:scope', 'open')
+  const fallback = SCOPES.includes(remembered) ? remembered : 'open'
+  const [scopeValue, setScopeValue] = useUrlState(
+    SCOPE_PARAM,
+    SCOPE_VALUES[fallback],
+    SCOPE_PARAM_VALUES,
+  )
+  const scope = toScope(scopeValue)
+
+  const setScope = (next: Scope) => {
+    remember(next)
+    setScopeValue(SCOPE_VALUES[next])
+  }
 
   const { data: items, loading: openLoading } = useOpenItems()
   // Das Archiv wird erst gelesen, wenn jemand hinsieht.
@@ -669,6 +718,11 @@ export function Pendenzen() {
                       position={sortable ? place + 1 : undefined}
                       expanded={isExpanded(item.id)}
                       onToggle={() => toggleOpen(item.id)}
+                      /* Unter «Meine» steht eine Berufungsrunde, weil eine
+                         ihrer Zeilen mich angeht – aufgeklappt sind dann auch
+                         diese Zeilen gemeint und nicht die ganze Runde. Der
+                         Knopf «Nur meine» darin schaltet die übrigen dazu. */
+                      ownRowsOnly={scope === 'mine'}
                       onMove={reorder ? (delta) => void move(place, place + delta) : undefined}
                       first={place === 0}
                       last={place === visible.length - 1}

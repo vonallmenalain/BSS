@@ -38,9 +38,15 @@ import type { AgendaItem, CallingChanges, ItemLayout } from '@/lib/types'
 export function AgendaItemEditor({
   item,
   readOnly = false,
+  ownRowsOnly = false,
 }: {
   item: AgendaItem
   readOnly?: boolean
+  /**
+   * Eine Berufungsrunde mit «Nur meine» öffnen – so kommt sie unter
+   * «Pendenzen → Meine» herein (siehe `CallingChangesTables`).
+   */
+  ownRowsOnly?: boolean
 }) {
   const [title, setTitle] = useState(item.title)
   const [description, setDescription] = useState(item.description ?? '')
@@ -153,6 +159,7 @@ export function AgendaItemEditor({
           onMention={(member) => linkMember(member.id)}
           memberRefs={memberRefs}
           readOnly={readOnly}
+          ownRowsOnly={ownRowsOnly}
         />
       ) : layout ? (
         <LayoutGrid

@@ -7,9 +7,11 @@ import {
   Plus,
   Search,
   Trash2,
+  UserCheck,
   X,
 } from 'lucide-react'
 import { useData } from '@/contexts/DataContext'
+import { useOwnCallingRow } from '@/hooks/useOwnItem'
 import { Avatar } from '@/components/ui/Avatar'
 import { MemberLink } from '@/components/ui/MemberLink'
 import { MentionEditable, MentionText } from '@/components/ui/MentionText'
@@ -66,7 +68,9 @@ import {
  *    Einträgen war das die halbe Ansicht für etwas, das man ein-, zweimal
  *    anfasst.
  *  - **Oben steht ein Suchfeld.** Wer «PV» tippt, sieht die Zeilen, in denen
- *    «PV» vorkommt – in welcher Spalte auch immer.
+ *    «PV» vorkommt – in welcher Spalte auch immer. Daneben steht «Nur meine»,
+ *    sobald eine Zeile der Runde die angemeldete Person angeht; von
+ *    «Pendenzen → Meine» aus öffnet die Runde bereits so.
  *  - **Ein Name je Zeile.** In der Spalte «Name» steht genau eine Person;
  *    geht es um zwei, sind es zwei Zeilen. Mehrere Namen in einer Zeile
  *    machten aus der Tabelle eine Liste von Listen, und dann sagt keine
@@ -82,6 +86,7 @@ export function CallingChangesTables({
   onMention,
   memberRefs,
   readOnly = false,
+  ownRowsOnly = false,
 }: {
   value: CallingChanges
   /** Fehlt sie, sind die Tabellen nur zu lesen. */
@@ -91,6 +96,12 @@ export function CallingChangesTables({
   /** Verweise des Eintrags, damit Namen im Text anklickbar bleiben */
   memberRefs?: string[]
   readOnly?: boolean
+  /**
+   * Mit «Nur meine» öffnen – so, wie die Runde unter «Pendenzen → Meine»
+   * aufgeht. Es ist der Anfangszustand und keine Vorschrift: Der Knopf oben
+   * schaltet die übrigen Zeilen jederzeit wieder dazu.
+   */
+  ownRowsOnly?: boolean
 }) {
   const editable = Boolean(onChange) && !readOnly
   const { membersById, userName } = useData()
@@ -125,6 +136,32 @@ export function CallingChangesTables({
   const [search, setSearch] = useState('')
 
   /*
+   * «Nur meine» – die Zeilen, die mich angehen.
+   *
+   * Eine Runde wird zeilenweise verteilt: zwanzig Namen, und jeder in der
+   * Bischofschaft nimmt ein paar davon mit. Wer sie unter «Pendenzen → Meine»
+   * öffnet, sucht genau diese paar und nicht die ganze Runde – deshalb kommt
+   * die Ansicht von dort aus bereits eingeschaltet herein (`ownRowsOnly`).
+   *
+   * Es bleibt trotzdem ein Filter wie die beiden anderen: Er gehört dem
+   * Bildschirm und nicht den Daten, ändert nichts und lässt sich mit einem
+   * Griff wieder aufmachen – auf die ganze Runde zu schauen, ist am
+   * Sitzungstisch der Normalfall.
+   */
+  const [mineOnly, setMineOnly] = useState(ownRowsOnly)
+  const ownRow = useOwnCallingRow()
+
+  /*
+   * Wie viele Zeilen mich überhaupt angehen.
+   *
+   * Ohne eine einzige steht der Knopf nicht da und der Filter greift nicht:
+   * Eine Runde kann auch deshalb unter «Meine» stehen, weil der **Eintrag**
+   * mir zugewiesen ist – dann sind alle Zeilen meine Sache, und eine leere
+   * Tabelle wäre die falsche Auskunft.
+   */
+  const ownRows = value.members.filter(ownRow).length + value.open.filter(ownRow).length
+
+  /*
    * «Reihenfolge anpassen» – die Griffe und die Pfeile.
    *
    * Sie sind zu Beginn ausgeschaltet: Die Runde wird gelesen und
@@ -146,30 +183,33 @@ export function CallingChangesTables({
    */
   const filtering = !reordering && shown.length < CALLING_URGENCY_ORDER.length
   const query = reordering ? '' : search.trim()
+  const mine = mineOnly && ownRows > 0 && !reordering
 
   /*
    * Alle drei Farben an heisst: kein Filter – dann stehen auch die Zeilen da,
    * die noch keine Farbe haben. Sobald eine Farbe weggeklickt ist, gilt die
-   * Auswahl streng: Zu sehen ist genau, was gewählt wurde. Die Suche kommt
-   * als zweite Bedingung dazu; was dabei wegfällt, steht als Zahl unter der
-   * Tabelle – still verschwinden soll nichts.
+   * Auswahl streng: Zu sehen ist genau, was gewählt wurde. Suche und «Nur
+   * meine» kommen als weitere Bedingungen dazu; was dabei wegfällt, steht als
+   * Zahl unter der Tabelle – still verschwinden soll nichts.
    */
-  const visible = (row: CallingRowBase) => {
+  const visible = (row: CallingMemberRow | CallingOpenRow) => {
+    if (mine && !ownRow(row)) return false
     if (filtering && (row.urgency === undefined || !shown.includes(row.urgency))) return false
     if (!query) return true
-    return matchesSearch(callingRowText(row as CallingMemberRow | CallingOpenRow, nameOf), query)
+    return matchesSearch(callingRowText(row, nameOf), query)
   }
 
   /**
-   * Alles zeigen – Farben wie Suche.
+   * Alles zeigen – Farben, Suche und «Nur meine».
    *
-   * Nötig, wo eine neue Zeile entsteht: Sie ist leer und passt damit weder
-   * zu einem Farbfilter noch zu einem Suchwort. Ohne das legte man eine
-   * Zeile an, die man nicht sieht.
+   * Nötig, wo eine neue Zeile entsteht: Sie ist leer, gehört noch niemandem
+   * und passt damit zu keinem der drei Filter. Ohne das legte man eine Zeile
+   * an, die man nicht sieht.
    */
   const showAll = () => {
     setShown(CALLING_URGENCY_ORDER)
     setSearch('')
+    setMineOnly(false)
   }
 
   const patch = (next: Partial<CallingChanges>) => onChange?.({ ...value, ...next })
@@ -257,6 +297,30 @@ export function CallingChangesTables({
         )}
 
         <div className="ms-auto flex flex-wrap items-center gap-x-3 gap-y-1">
+          {/* Steht nur da, wo es etwas auszuwählen gibt: Wen die Runde nicht
+              betrifft, dem sagt ein Knopf, der die Tabelle leerte, nichts. */}
+          {!reordering && ownRows > 0 && (
+            <button
+              type="button"
+              aria-pressed={mineOnly}
+              onClick={() => setMineOnly(!mineOnly)}
+              title={
+                mineOnly
+                  ? 'Wieder die ganze Runde zeigen'
+                  : ownRows === 1
+                    ? 'Nur die eine Zeile zeigen, die mich betrifft'
+                    : `Nur die ${ownRows} Zeilen zeigen, die mich betreffen`
+              }
+              className={cn(
+                'btn-ghost btn-sm',
+                mineOnly && 'text-brand-700 dark:text-brand-300 font-medium',
+              )}
+            >
+              <UserCheck className="size-3.5" aria-hidden />
+              Nur meine
+            </button>
+          )}
+
           {editable && (
             <button
               type="button"
@@ -1135,8 +1199,8 @@ function UrgencyFilter({
   onChange: (next: CallingUrgency[]) => void
 }) {
   return (
-    <div className="flex items-center gap-1.5" role="group" aria-label="Dringlichkeit zeigen">
-      <span className="text-xs text-slate-500 dark:text-slate-400">Zeigen</span>
+    <div className="flex items-center gap-1.5" role="group" aria-label="Priorität">
+      <span className="text-xs text-slate-500 dark:text-slate-400">Priorität</span>
       {CALLING_URGENCY_ORDER.map((level) => {
         const on = value.includes(level)
         const last = on && value.length === 1

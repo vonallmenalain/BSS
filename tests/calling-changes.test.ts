@@ -8,6 +8,7 @@ import {
   callingRowText,
   emptyCallingChanges,
   isCallingChangesEmpty,
+  isOwnCallingRow,
   isOwnItem,
   MAX_CALLING_ROWS,
   moveCallingRow,
@@ -316,6 +317,54 @@ test('ohne Mitglied und ohne Runde gibt es nichts zu finden', () => {
   assert.deepEqual(callingRowsAbout(value, null), [])
   assert.deepEqual(callingRowsAbout(null, ALAIN), [])
   assert.deepEqual(callingRowsAbout(emptyCallingChanges(), ALAIN), [])
+})
+
+/* ---------------- Welche Zeile geht mich an? ---------------- */
+
+test('meine Zeile: das eigene Konto steht darunter', () => {
+  const row = { ...newCallingOpenRow(), calling: 'Sekretär', assignees: ['u1'] }
+  assert.ok(isOwnCallingRow(row, 'u1', null))
+  assert.equal(isOwnCallingRow(row, 'u2', null), false)
+})
+
+test('meine Zeile: das verknüpfte Mitglied ist genannt oder erwähnt', () => {
+  const genannt = { ...newCallingMemberRow(), memberIds: ['m1'], calling: 'PV-Lehrerin' }
+  const erwaehnt = { ...newCallingOpenRow(), candidates: 'Alain von Allmen' }
+
+  assert.ok(isOwnCallingRow(genannt, 'u1', ALAIN))
+  assert.ok(isOwnCallingRow(erwaehnt, 'u1', ALAIN))
+
+  // Ohne Verknüpfung ist ein Name im Text bloss ein Name.
+  assert.equal(isOwnCallingRow(genannt, 'u1', null), false)
+  assert.equal(isOwnCallingRow(erwaehnt, 'u1', null), false)
+})
+
+test('fremde Zeile: weder zugewiesen noch genannt', () => {
+  const row = {
+    ...newCallingMemberRow(),
+    memberIds: ['m9'],
+    ideas: 'Bruder Meier',
+    assignees: ['u9'],
+  }
+  assert.equal(isOwnCallingRow(row, 'u1', ALAIN), false)
+})
+
+test('was den Eintrag zu meinem macht, ist genau das, was «Nur meine» zeigt', () => {
+  const value = changes({
+    members: [
+      { ...newCallingMemberRow(), memberIds: ['m9'], calling: 'Lehrer' },
+      { ...newCallingMemberRow(), memberIds: ['m1'], calling: 'PV-Lehrerin' },
+    ],
+    open: [
+      { ...newCallingOpenRow(), calling: 'Sekretär', assignees: ['u1'] },
+      { ...newCallingOpenRow(), calling: 'Organist', assignees: ['u9'] },
+    ],
+  })
+
+  const meine = [...value.members, ...value.open].filter((row) => isOwnCallingRow(row, 'u1', ALAIN))
+  assert.equal(meine.length, 2)
+  // Steht eine Runde unter «Meine», bleibt aufgeklappt auch etwas stehen.
+  assert.equal(callingChangesConcern(value, 'u1', ALAIN), meine.length > 0)
 })
 
 test('«Meine Pendenzen»: Zuweisung am Eintrag oder eine Zeile darin', () => {
