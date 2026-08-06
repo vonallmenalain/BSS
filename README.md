@@ -2142,11 +2142,12 @@ Datei laufen lässt, holt den Stand von 13:59 zurück – ohne dass vorher jeman
 an eine Sicherung gedacht haben muss. Das ist die einzige Massnahme, die auch
 den Fall abdeckt, an den niemand gedacht hat.
 
-Einschalten lässt es sich nicht in der Firebase-Konsole, sondern nur über die
-Kommandozeile (oder beim Anlegen der Datenbank):
+**Wo:** in der Firebase-Konsole bei der Datenbank, Karte
+**«Wiederherstellung zu einem bestimmten Zeitpunkt»** – ein Schalter, sonst
+nichts. Dieselbe Einstellung steht in der Google-Cloud-Konsole unter
+_Firestore → Disaster recovery_ und auf der Kommandozeile:
 
 ```bash
-gcloud auth login
 gcloud firestore databases update \
   --database='(default)' --enable-pitr --project=DEINE-PROJEKT-ID
 ```
@@ -2158,14 +2159,21 @@ Kontrolle – in der Antwort muss
 gcloud firestore databases describe --database='(default)' --project=DEINE-PROJEKT-ID
 ```
 
-Dasselbe steht in der
-[Google-Cloud-Konsole](https://console.cloud.google.com/firestore/databases)
-auf der Detailseite der Datenbank in der Zeile **Point-in-time recovery**.
+**Das Fenster beginnt beim Einschalten**, nicht rückwirkend. Wie weit es
+zurückreicht, steht in der Konsole unter «Zeit der frühesten Version»: am
+ersten Tag eine Stunde, nach einer Woche die vollen sieben Tage.
 
 > **Voraussetzung:** ein Projekt mit aktivierter Abrechnung (Blaze). Für
 > PITR-Speicher gibt es keinen Gratisrahmen; verrechnet wird die
-> durchschnittliche Datenbankgrösse. Bei einer Gemeinde sind das wenige
-> Megabyte und damit Rappenbeträge im Monat.
+> **durchschnittliche Datenbankgrösse** mal dem PITR-Preis – Grössenordnung
+> 0.15 US-Dollar je GiB und Monat, je nach Region etwas mehr. Der Bestand
+> einer Gemeinde liegt im einstelligen Megabyte-Bereich; das sind Bruchteile
+> eines Rappens im Monat. Die aktuelle Grösse steht in der Firebase-Konsole
+> unter _Firestore → Nutzung_.
+
+**Was PITR nicht abdeckt:** die Konten in Firebase Authentication. Gelöscht
+wird dort ohnehin nur von Hand, und das Profil in `users` – das, was die App
+sieht – liegt in Firestore und ist damit geschützt.
 
 **Wenn der Ernstfall eintritt.** Der Zeitstempel muss auf die Minute genau
 sein und darf höchstens sieben Tage zurückliegen. Zuerst den alten Stand in
