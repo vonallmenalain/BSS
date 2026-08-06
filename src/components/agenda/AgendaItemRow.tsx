@@ -19,8 +19,15 @@ import { ConfirmDialog } from '@/components/ui/Modal'
 import { AgendaItemEditor } from '@/components/agenda/AgendaItemEditor'
 import { DeferMenu } from '@/components/agenda/DeferMenu'
 import { deleteAgendaItem, setItemStatus } from '@/services/agenda'
+import { callingRowCounts } from '@/lib/callingChanges'
 import { formatDate } from '@/lib/dates'
-import { ITEM_KIND_LABELS, lastEditedAt, toItemKind, type AgendaItem } from '@/lib/types'
+import {
+  ITEM_KIND_LABELS,
+  lastEditedAt,
+  toItemKind,
+  type AgendaItem,
+  type CallingChanges,
+} from '@/lib/types'
 
 interface Props {
   item: AgendaItem
@@ -110,6 +117,35 @@ export function AgendaItemRow({
 
   const isDone = item.status === 'done'
   const kind = toItemKind(item)
+
+  /*
+   * Eine Berufungsrunde hakt sich nicht in einem Zug ab.
+   *
+   * Sie ist ein Eintrag mit zwanzig Zeilen, die untereinander verteilt
+   * werden; erledigt wird deshalb Zeile für Zeile, im Menü rechts an jeder
+   * von ihnen. Der ganze Eintrag ist genau dann fertig, wenn keine Zeile mehr
+   * offen ist – erst dann steht der grüne Knopf da. Alles andere (ein
+   * Traktandum mit einer Beschreibung, ein Raster) ist wie bisher mit einem
+   * Griff erledigt.
+   *
+   * Wieder öffnen geht immer: Ein versehentlich abgehakter Eintrag muss
+   * zurückzuholen sein, auch wenn inzwischen wieder eine Zeile offen ist.
+   *
+   * Gezählt wird am Stand im Editor und nicht am gespeicherten: Gespeichert
+   * wird erst beim Verlassen des Eintrags, und bis dahin stünde hier «noch
+   * eine Zeile offen», nachdem man eben die letzte abgehakt hat. Beim
+   * Zuklappen fällt der Merkwert weg – dann gilt wieder, was in der Datenbank
+   * steht.
+   */
+  const [live, setLive] = useState<CallingChanges | null>(null)
+  const [liveWhileOpen, setLiveWhileOpen] = useState(expanded)
+  if (liveWhileOpen !== expanded) {
+    setLiveWhileOpen(expanded)
+    setLive(null)
+  }
+
+  const openRows = callingRowCounts(live ?? item.callingChanges).open
+  const closable = isDone || openRows === 0
 
   const toggleDone = async () => {
     if (!profile) return
@@ -297,6 +333,7 @@ export function AgendaItemRow({
             item={item}
             readOnly={readOnly}
             ownRowsOnly={ownRowsOnly}
+            onCallingChanges={setLive}
           />
 
           <ItemDates item={item} meetingDate={meetingDate} />
@@ -313,14 +350,26 @@ export function AgendaItemRow({
 
           {!readOnly && (
             <div className="mt-4 flex flex-wrap items-center gap-2">
-              <button
-                type="button"
-                className={isDone ? 'btn-secondary btn-sm' : 'btn-success btn-sm'}
-                onClick={() => void toggleDone()}
-              >
-                <Check className="size-4" aria-hidden />
-                {isDone ? 'Wieder offen' : 'Erledigt'}
-              </button>
+              {closable ? (
+                <button
+                  type="button"
+                  className={isDone ? 'btn-secondary btn-sm' : 'btn-success btn-sm'}
+                  onClick={() => void toggleDone()}
+                >
+                  <Check className="size-4" aria-hidden />
+                  {isDone ? 'Wieder offen' : 'Erledigt'}
+                </button>
+              ) : (
+                /* Eine Berufungsrunde wird zeilenweise erledigt (im Menü
+                   rechts an jeder Zeile). Der ganze Eintrag ist erst fertig,
+                   wenn keine Zeile mehr offen ist – bis dahin stünde hier ein
+                   Knopf, der mehr abhakte, als besprochen wurde. */
+                <p className="hint">
+                  {openRows === 1
+                    ? 'Noch eine Zeile offen – erledigt wird in der Runde selbst.'
+                    : `Noch ${openRows} Zeilen offen – erledigt wird in der Runde selbst.`}
+                </p>
+              )}
 
               <DeferMenu itemId={item.id} nextMeeting={nextMeeting} className="btn-sm" />
 

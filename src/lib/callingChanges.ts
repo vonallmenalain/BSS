@@ -77,6 +77,49 @@ export function isCallingChangesEmpty(changes: CallingChanges | null | undefined
   return changes.members.every(isCallingMemberRowEmpty) && changes.open.every(isCallingOpenRowEmpty)
 }
 
+/** Ist diese Zeile beschrieben? Die letzte, leere Zeile jeder Tabelle ist es nicht. */
+export function isCallingRowEmpty(row: CallingMemberRow | CallingOpenRow): boolean {
+  return 'memberIds' in row ? isCallingMemberRowEmpty(row) : isCallingOpenRowEmpty(row)
+}
+
+/**
+ * Wie viel in dieser Runde noch offen ist – und wie viel abgeschlossen.
+ *
+ * Gezählt wird, was beschrieben ist: Die leere Zeile am Ende einer Tabelle
+ * steht dort als Eingang und ist keine Arbeit. Daran hängt, ob der ganze
+ * Eintrag abgehakt werden kann – eine Berufungsrunde ist fertig, wenn keine
+ * Zeile mehr offen ist, und nicht schon dann, wenn jemand sie für fertig
+ * hält.
+ */
+export function callingRowCounts(changes: CallingChanges | null | undefined): {
+  open: number
+  done: number
+} {
+  const counts = { open: 0, done: 0 }
+  if (!changes) return counts
+  // Was aus Firestore kommt, darf kaputt sein – eine fehlende Tabelle soll
+  // nicht die halbe Seite mitreissen.
+  ;[...(changes.members ?? []), ...(changes.open ?? [])].forEach((row) => {
+    if (isCallingRowEmpty(row)) return
+    if (row.done) counts.done += 1
+    else counts.open += 1
+  })
+  return counts
+}
+
+/**
+ * Steht in dieser Runde noch etwas offen?
+ *
+ * Daran hängt der grüne Knopf «Erledigt» am ganzen Eintrag: Eine
+ * Berufungsrunde wird zeilenweise abgeschlossen, und sie als Ganzes
+ * abzuhaken, während die Hälfte noch aussteht, hiesse mehr zu erledigen, als
+ * besprochen wurde. Wieder öffnen lässt sich ein Eintrag dagegen immer – das
+ * fragt hier niemand.
+ */
+export function hasOpenCallingRows(changes: CallingChanges | null | undefined): boolean {
+  return callingRowCounts(changes).open > 0
+}
+
 /* ------------------------------------------------------------------ */
 /* Lesen und schreiben                                                 */
 /* ------------------------------------------------------------------ */
@@ -101,10 +144,13 @@ function rowsOf(value: unknown): Record<string, unknown>[] {
     .slice(0, MAX_CALLING_ROWS)
 }
 
-function base(row: Record<string, unknown>): { id: string; assignees: string[] } {
+function base(row: Record<string, unknown>): { id: string; assignees: string[]; done?: true } {
   return {
     id: typeof row.id === 'string' && row.id ? row.id : uid(),
     assignees: idList(row.assignees),
+    // Nur die abgeschlossene Zeile trägt den Schlüssel – ein `false` an jeder
+    // offenen Zeile wäre in zwanzig Zeilen zwanzigmal nichts.
+    ...(row.done === true ? { done: true as const } : {}),
   }
 }
 
@@ -166,6 +212,7 @@ export function serializeCallingChanges(changes: CallingChanges): CallingChanges
         assignees: row.assignees ?? [],
       }
       if (row.urgency) stored.urgency = row.urgency
+      if (row.done) stored.done = true
       return stored
     }),
     open: changes.open.map((row) => {
@@ -177,6 +224,7 @@ export function serializeCallingChanges(changes: CallingChanges): CallingChanges
         assignees: row.assignees ?? [],
       }
       if (row.urgency) stored.urgency = row.urgency
+      if (row.done) stored.done = true
       return stored
     }),
   }
@@ -278,6 +326,7 @@ export function callingChangesToText(
             row.calling,
             row.ideas,
             row.assignees.length > 0 ? `Zuständig: ${row.assignees.map(name).join(', ')}` : '',
+            row.done ? 'Erledigt' : '',
           ]),
         ),
       ].join('\n'),
@@ -295,6 +344,7 @@ export function callingChangesToText(
             row.candidates,
             row.next,
             row.assignees.length > 0 ? `Zuständig: ${row.assignees.map(name).join(', ')}` : '',
+            row.done ? 'Erledigt' : '',
           ]),
         ),
       ].join('\n'),
@@ -386,6 +436,9 @@ export function isOwnCallingRow(
   userId: string | null | undefined,
   member: Mention | null,
 ): boolean {
+  // Eine abgeschlossene Zeile ist keine Aufgabe mehr: Wessen letzte Zeile
+  // erledigt ist, für den fällt die ganze Runde von der Liste «Meine».
+  if (row.done) return false
   if (userId && row.assignees.includes(userId)) return true
   return member !== null && rowAbout(row, member)
 }

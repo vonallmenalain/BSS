@@ -39,6 +39,7 @@ export function AgendaItemEditor({
   item,
   readOnly = false,
   ownRowsOnly = false,
+  onCallingChanges,
 }: {
   item: AgendaItem
   readOnly?: boolean
@@ -47,6 +48,16 @@ export function AgendaItemEditor({
    * «Pendenzen → Meine» herein (siehe `CallingChangesTables`).
    */
   ownRowsOnly?: boolean
+  /**
+   * Meldet jede Änderung an der Runde nach oben – noch bevor sie gespeichert
+   * ist.
+   *
+   * Nötig für den Knopf «Erledigt» am ganzen Eintrag: Er hängt daran, ob noch
+   * eine Zeile offen ist, steht aber ausserhalb dieses Editors. Ohne die
+   * Meldung stünde dort «noch eine Zeile offen», nachdem man eben die letzte
+   * abgehakt hat – bis das automatische Speichern den Eintrag zurückmeldet.
+   */
+  onCallingChanges?: (next: CallingChanges) => void
 }) {
   const [title, setTitle] = useState(item.title)
   const [description, setDescription] = useState(item.description ?? '')
@@ -155,7 +166,10 @@ export function AgendaItemEditor({
       {callingChanges ? (
         <CallingChangesTables
           value={callingChanges}
-          onChange={setCallingChanges}
+          onChange={(next) => {
+            setCallingChanges(next)
+            onCallingChanges?.(next)
+          }}
           onMention={(member) => linkMember(member.id)}
           memberRefs={memberRefs}
           readOnly={readOnly}
@@ -188,7 +202,16 @@ export function AgendaItemEditor({
 
       {!readOnly && (
         <>
-          <AssigneePicker value={assignees} onChange={setAssignees} />
+          {/*
+            Eine Berufungsrunde trägt ihre Zuständigkeiten in den Zeilen.
+            Darunter noch einmal eine für den ganzen Eintrag zu setzen, hiesse
+            zweierlei zugleich sagen – «Alain macht das» und «Alain macht
+            Zeile 7» –, und beim Verteilen einer Runde ist immer das Zweite
+            gemeint. Was früher am Eintrag stand, bleibt gespeichert und wirkt
+            weiter; hier steht bloss keine zweite Stelle mehr, an der es sich
+            setzen liesse.
+          */}
+          {!callingChanges && <AssigneePicker value={assignees} onChange={setAssignees} />}
 
           {/* Nur melden, was zu tun ist. «Wird laufend gespeichert» stand sonst
               unter jedem Traktandum und sagte bei keinem etwas. */}

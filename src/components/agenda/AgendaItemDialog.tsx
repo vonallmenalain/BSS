@@ -6,7 +6,8 @@ import { Modal, ConfirmDialog } from '@/components/ui/Modal'
 import { AgendaItemEditor } from '@/components/agenda/AgendaItemEditor'
 import { DeferMenu } from '@/components/agenda/DeferMenu'
 import { deleteAgendaItem, setItemStatus } from '@/services/agenda'
-import { ITEM_KIND_LABELS, toItemKind, type AgendaItem } from '@/lib/types'
+import { hasOpenCallingRows } from '@/lib/callingChanges'
+import { ITEM_KIND_LABELS, toItemKind, type AgendaItem, type CallingChanges } from '@/lib/types'
 
 /**
  * Ein Traktandum oder eine Pendenz bearbeiten, ohne die Liste zu verlassen.
@@ -40,6 +41,21 @@ export function AgendaItemDialog({
 
   const kind = item ? toItemKind(item) : 'traktandum'
   const isDone = item?.status === 'done'
+
+  /*
+   * Der Stand der Runde, während darin gearbeitet wird.
+   *
+   * Gespeichert wird erst beim Verlassen des Eintrags; bis dahin wüsste der
+   * Knopf «Erledigt» nichts davon, dass eben die letzte Zeile abgehakt wurde.
+   * Beim Wechsel des Eintrags fällt der Merkwert weg.
+   */
+  const [live, setLive] = useState<CallingChanges | null>(null)
+  const [liveFor, setLiveFor] = useState(item?.id ?? null)
+  if (liveFor !== (item?.id ?? null)) {
+    setLiveFor(item?.id ?? null)
+    setLive(null)
+  }
+  const openRows = !isDone && hasOpenCallingRows(live ?? item?.callingChanges)
 
   const toggleDone = async () => {
     if (!item || !profile) return
@@ -87,18 +103,30 @@ export function AgendaItemDialog({
           <div className="space-y-4">
             {/* Der Stand gehört dem Eintrag – deshalb baut sich der Editor je
                 Eintrag neu auf. */}
-            <AgendaItemEditor key={item.id} item={item} readOnly={readOnly} />
+            <AgendaItemEditor
+              key={item.id}
+              item={item}
+              readOnly={readOnly}
+              onCallingChanges={setLive}
+            />
 
             {!readOnly && (
               <div className="flex flex-wrap items-center gap-2 border-t border-slate-200 pt-3 dark:border-slate-800">
-                <button
-                  type="button"
-                  className={isDone ? 'btn-secondary btn-sm' : 'btn-success btn-sm'}
-                  onClick={() => void toggleDone()}
-                >
-                  <Check className="size-4" aria-hidden />
-                  {isDone ? 'Wieder offen' : 'Erledigt'}
-                </button>
+                {/* Eine Berufungsrunde wird zeilenweise erledigt; als Ganzes
+                    ist sie erst fertig, wenn keine Zeile mehr offen ist
+                    (siehe `hasOpenCallingRows`). */}
+                {!openRows ? (
+                  <button
+                    type="button"
+                    className={isDone ? 'btn-secondary btn-sm' : 'btn-success btn-sm'}
+                    onClick={() => void toggleDone()}
+                  >
+                    <Check className="size-4" aria-hidden />
+                    {isDone ? 'Wieder offen' : 'Erledigt'}
+                  </button>
+                ) : (
+                  <p className="hint">Erledigt wird in der Runde selbst – Zeile für Zeile.</p>
+                )}
 
                 <DeferMenu itemId={item.id} nextMeeting={nextMeeting ?? null} className="btn-sm" />
 

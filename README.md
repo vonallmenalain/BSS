@@ -456,7 +456,28 @@ ein-, zweimal anfasst.
 
 Dass die Zuständigkeit an der **Zeile** hängt und nicht am Traktandum, liegt an
 der Runde selbst: Sie geht zwanzig Namen durch, und die verteilt man
-untereinander.
+untereinander. Deshalb steht unter einer Berufungsrunde auch **keine**
+Zuständigkeit für den ganzen Eintrag mehr: Sie sagte dasselbe ein zweites Mal
+und meinte etwas anderes. Was früher dort gesetzt wurde, bleibt gespeichert
+und wirkt weiter.
+
+**Erledigt wird zeilenweise.** Im selben kleinen Menü steht **«Erledigt»**;
+ein Griff darauf räumt die Zeile weg – die Tabelle zeigt, was noch aussteht.
+Ganz unten sammelt sie ein Knopf: **«Erledigte anzeigen · _n_ Zeilen»** holt
+sie zurück, blass und mit einem Haken statt der Farbe angeschrieben, und
+«Wieder offen» im Menü macht die Zeile zur Aufgabe zurück. Gelöscht wird dabei
+nichts; im Protokoll steht die Zeile weiterhin, dort mit dem Vermerk
+«Erledigt».
+
+Deshalb hat eine Berufungsrunde **keinen grünen Knopf «Erledigt» am ganzen
+Eintrag** – solange noch eine Zeile offen ist. An seiner Stelle steht, wie
+viele es noch sind. Erst wenn keine mehr aussteht, erscheint der Knopf: Die
+Runde ist fertig, wenn die Arbeit darin fertig ist, und nicht schon dann, wenn
+jemand sie für fertig hält. Wieder öffnen lässt sich der Eintrag jederzeit.
+
+Wessen letzte Zeile abgehakt ist, für den fällt die Runde damit auch von der
+Liste **Pendenzen → Meine** – sie ist dort ja gerade wegen dieser Zeile
+gestanden.
 
 **Die Zeilen sind so flach wie ihr Inhalt.** Ein Feld beginnt einzeilig und
 wächst mit dem Text – vorher stand jede Zeile zwei Zeilen hoch da, auch wenn
@@ -526,6 +547,11 @@ einem Griff die ganze Runde zurück. Steht sie wegen des ersten Weges dort
 vollständig: Dann ist die ganze Runde meine Sache, und eine leere Tabelle wäre
 die falsche Auskunft. Unter «Pendent», in der Sitzung und überall sonst ändert
 sich nichts.
+
+**Eine erledigte Zeile zählt nicht mehr mit.** Sie ist keine Aufgabe, und wer
+sie abhakt, hat sie hinter sich: Sind alle eigenen Zeilen einer Runde
+erledigt, verschwindet sie aus «Meine» – auch aus der Kachel «Meine
+Pendenzen». Unter «Pendent» steht sie weiter, bis die letzte Zeile fertig ist.
 
 ### Liste: Reihenfolge festlegen
 
@@ -1986,6 +2012,27 @@ Drei Dinge sieht die Teilabfrage nicht, und für alle drei gibt es einen Weg:
 | Im eigenen Fenster gelöscht          | `forgetDoc()` entfernt den Datensatz sofort aus der Liste          |
 | Auf einem anderen Gerät gelöscht     | Die Zählabfrage beim Start findet die Abweichung                   |
 | Import (löscht, oder datiert zurück) | `resyncCollections()` liest die betroffenen Sammlungen einmal ganz |
+
+**«Entfernt» heisst bei der Teilabfrage nicht «gelöscht».** Sie lautet «alles,
+was neuer ist als …», und `serverTimestamp()` steht im Moment des Schreibens
+noch nicht fest: Bis der Server bestätigt, trägt der eigene Datensatz lokal
+**kein** `updatedAt` – und was keines hat, erfüllt die Bedingung nicht.
+Firestore meldet ihn deshalb als «entfernt» und zwei Zehntelsekunden später,
+mit der Bestätigung, wieder als «neu». Für die Oberfläche war das jahrelang
+_das_ «dauernde Neuladen»: Wer in einer Berufungsrunde eine Zeile schrieb oder
+eine Zuständigkeit setzte, sah beim Speichern den ganzen Eintrag aus der Liste
+fallen und sich neu aufbauen – mitsamt Animation, verlorenem Cursor und einer
+für einen Augenblick leeren Seite.
+
+Am Datensatz selbst ist das nicht abzulesen: Die Meldung beschreibt die
+Abfrage **nach** der Änderung, und darin kommt er nicht mehr vor –
+`hasPendingWrites` ist deshalb `false`, genau wie beim wirklich gelöschten
+(am Emulator nachgemessen). Unterscheiden lässt es sich am
+**Zwischenspeicher**: Er kennt den eigenen, noch nicht bestätigten Stand.
+Steht der Datensatz dort noch, ist er bloss aus der Teilabfrage gefallen und
+bleibt in der Liste – samt dem Stand von dort, damit auch ohne Netz die eigene
+Eingabe in allen Ansichten steht. Fehlt er, ist er wirklich weg
+(`forgetIfGone()`).
 
 Fehlt trotzdem einmal etwas, holt «Einstellungen → Daten neu laden» den ganzen
 Bestand frisch. Im Alltag wird der Knopf nicht gebraucht.

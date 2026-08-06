@@ -6,6 +6,7 @@ import { useToast } from '@/contexts/ToastContext'
 import { AssigneeAvatars } from '@/components/ui/Avatar'
 import { KindBadge, StatusBadge } from '@/components/ui/Badge'
 import { setItemStatus } from '@/services/agenda'
+import { hasOpenCallingRows } from '@/lib/callingChanges'
 import { toItemKind, type AgendaItem } from '@/lib/types'
 
 interface Props {
@@ -45,6 +46,8 @@ export function AgendaItemCard({
   const toast = useToast()
 
   const isDone = item.status === 'done'
+  /** Offene Zeilen einer Berufungsrunde – dann wird hier nicht abgehakt. */
+  const openRows = !isDone && hasOpenCallingRows(item.callingChanges)
 
   const toggleDone = async () => {
     if (!profile) return
@@ -69,16 +72,22 @@ export function AgendaItemCard({
       )}
     >
       <div className="flex items-start gap-3">
-        {/* Erledigt-Schalter: die häufigste Aktion, deshalb ganz vorne */}
+        {/* Erledigt-Schalter: die häufigste Aktion, deshalb ganz vorne.
+            Eine Berufungsrunde mit offenen Zeilen lässt sich hier nicht
+            abhaken – sie wird zeilenweise erledigt (siehe
+            `hasOpenCallingRows`); der Haken sagt, warum er nicht geht. */}
         {showDoneToggle && (
           <button
             type="button"
             onClick={() => void toggleDone()}
+            disabled={openRows}
+            title={openRows ? 'Erledigt wird in der Runde selbst – Zeile für Zeile.' : undefined}
             className={cn(
               'mt-0.5 grid size-5 shrink-0 place-items-center rounded-md border-2 transition',
               isDone
                 ? 'border-emerald-600 bg-emerald-600 text-white'
                 : 'border-slate-300 hover:border-emerald-500 dark:border-slate-600',
+              openRows && 'cursor-default opacity-50 hover:border-slate-300',
             )}
             aria-label={isDone ? 'Als offen markieren' : 'Als erledigt markieren'}
             aria-pressed={isDone}

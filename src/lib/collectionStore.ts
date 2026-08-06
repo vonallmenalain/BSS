@@ -1,6 +1,8 @@
 import {
   collection,
+  doc,
   getCountFromServer,
+  getDocFromCache,
   getDocsFromCache,
   onSnapshot,
   query,
@@ -324,26 +326,10 @@ function apply(store: Store, snapshot: QuerySnapshot): void {
   snapshot.docChanges().forEach((change) => {
     if (change.type === 'removed') {
       /*
-       * Ein eigener, noch nicht bestätigter Schreibvorgang ist kein Löschen.
-       *
-       * Die Teilabfrage lautet «alles, was neuer ist als …». `serverTimestamp()`
-       * steht im Moment des Schreibens aber noch nicht fest: Bis der Server
-       * bestätigt, trägt der Datensatz lokal **kein** `updatedAt` – und was
-       * keines hat, erfüllt die Bedingung nicht. Firestore meldet ihn deshalb
-       * als «entfernt», und zwei Zehntelsekunden später, mit der Bestätigung,
-       * wieder als «neu».
-       *
-       * Für die Oberfläche hiess das: Wer ein Traktandum bearbeitet, sah es
-       * beim Speichern kurz aus der Liste fallen – der aufgeklappte Eintrag
-       * verschwand und baute sich neu auf, mitsamt Animation und verlorenem
-       * Cursor. Genau das ist das «dauernde Neuladen».
-       *
-       * Ein wirklich gelöschter Datensatz kommt nie mit `hasPendingWrites`
-       * herein: Das eigene Löschen meldet `forgetDoc()` sofort, das fremde
-       * kommt bestätigt vom Server.
+       * «Entfernt» heisst bei der Teilabfrage nicht «gelöscht» – deshalb wird
+       * hier nichts sofort weggeworfen (siehe `forgetIfGone`).
        */
-      if (change.doc.metadata.hasPendingWrites) return
-      if (store.docs.delete(change.doc.id)) changed = true
+      void forgetIfGone(store, change.doc.id)
       return
     }
     remember(
@@ -376,6 +362,76 @@ function apply(store: Store, snapshot: QuerySnapshot): void {
     store.counted = true
     void reconcile(store)
   }
+}
+
+/**
+ * Ein Datensatz ist aus der Teilabfrage gefallen – ist er wirklich weg?
+ *
+ * ## Warum die Frage überhaupt gestellt werden muss
+ *
+ * Die Teilabfrage lautet «alles, was neuer ist als …». `serverTimestamp()`
+ * steht im Moment des Schreibens aber noch nicht fest: Bis der Server
+ * bestätigt, trägt der Datensatz lokal **kein** `updatedAt` – und was keines
+ * hat, erfüllt die Bedingung nicht. Firestore meldet ihn deshalb als
+ * «entfernt», und zwei Zehntelsekunden später, mit der Bestätigung, wieder
+ * als «neu».
+ *
+ * Für die Oberfläche war das **das** «dauernde Neuladen»: Wer eine Zeile
+ * schrieb oder eine Zuständigkeit setzte, sah den ganzen Eintrag beim
+ * Speichern aus der Liste fallen und sich neu aufbauen – mitsamt Animation,
+ * verlorenem Cursor und, bei einer aufgeklappten Berufungsrunde, einer für
+ * einen Augenblick leeren Seite.
+ *
+ * ## Warum `hasPendingWrites` dafür nicht taugt
+ *
+ * Naheliegend wäre, den eigenen Schreibvorgang am Datensatz abzulesen. Er
+ * steht dort aber nicht: Die Meldung «entfernt» beschreibt die Abfrage nach
+ * der Änderung, und darin kommt der Datensatz nicht mehr vor – `metadata`
+ * meldet folglich `hasPendingWrites: false`, genau wie beim wirklich
+ * gelöschten. Am Emulator nachgemessen; beide Fälle sind daran nicht zu
+ * unterscheiden.
+ *
+ * ## Woran es sich unterscheiden lässt
+ *
+ * Am Zwischenspeicher. Er kennt den eigenen, noch nicht bestätigten Stand –
+ * ein Datensatz mit ausstehendem Schreibvorgang steht dort weiterhin, ein
+ * gelöschter nicht. Die Auskunft kostet nichts (kein Lesevorgang beim
+ * Server) und gilt auch ohne Netz.
+ *
+ * Steht er noch da, wird gleich der Stand von dort übernommen: Ohne Netz
+ * bleibt der Datensatz sonst bis zum nächsten Start auf dem Stand von vor
+ * der Änderung – die eigene Eingabe wäre in jeder anderen Ansicht nicht zu
+ * sehen. Der Wasserstand rührt sich dabei nicht (`confirmed: false`).
+ */
+async function forgetIfGone(store: Store, id: string): Promise<void> {
+  const known = store.docs.get(id)
+  if (!known) return
+
+  let mine: DocumentData | null = null
+  try {
+    const cached = await getDocFromCache(doc(db, store.name, id))
+    if (cached.exists()) mine = cached.data(ESTIMATED)
+  } catch (error) {
+    /*
+     * «unavailable» heisst: Der Zwischenspeicher kennt ihn nicht – dann ist
+     * er wirklich weg. Jede andere Störung lässt den Eintrag stehen: Einer zu
+     * viel fällt beim nächsten Abgleich auf, einer zu wenig nicht.
+     */
+    if ((error as { code?: string }).code !== 'unavailable') return
+  }
+
+  // Ist der Datensatz inzwischen bestätigt zurückgekommen, gilt dieser Stand –
+  // die Auskunft von eben ist dann überholt.
+  if (!store.started || store.docs.get(id) !== known) return
+
+  if (mine) {
+    remember(store, id, mine, false)
+    publish(store)
+    return
+  }
+
+  store.docs.delete(id)
+  publish(store)
 }
 
 /**

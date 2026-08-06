@@ -1,10 +1,13 @@
 import { useEffect, useState, type DragEvent, type ReactNode } from 'react'
 import {
   ArrowUpDown,
+  Check,
+  CheckCircle2,
   ChevronDown,
   ChevronUp,
   GripVertical,
   Plus,
+  RotateCcw,
   Search,
   Trash2,
   UserCheck,
@@ -177,6 +180,19 @@ export function CallingChangesTables({
   const reordering = editable && ordering
 
   /*
+   * Die erledigten Zeilen – weggeräumt, aber nicht weg.
+   *
+   * Eine Runde wird zeilenweise abgearbeitet: Die eine Berufung steht,
+   * während die nächste noch offen ist. Wer eine Zeile abhakt, will sie nicht
+   * mehr vor sich haben – die Tabelle soll zeigen, was noch aussteht. Ganz
+   * unten holt sie ein Knopf zurück; gelöscht wird dabei nichts, und was
+   * einmal besprochen wurde, steht weiterhin im Protokoll.
+   */
+  const [showDone, setShowDone] = useState(false)
+  const doneRows =
+    value.members.filter((row) => row.done).length + value.open.filter((row) => row.done).length
+
+  /*
    * Umgestellt wird an der **ganzen** Tabelle: Ein Ausschnitt sagt nichts
    * darüber, wo das Ausgeblendete steht. Solange umsortiert wird, gelten
    * Farbfilter und Suche deshalb nicht – und stehen auch nicht da.
@@ -193,11 +209,18 @@ export function CallingChangesTables({
    * Zahl unter der Tabelle – still verschwinden soll nichts.
    */
   const visible = (row: CallingMemberRow | CallingOpenRow) => {
+    // Das Erledigte steht für sich: Es zählt nicht als «ausgeblendet», weil
+    // es einen eigenen Knopf hat, der es zurückholt.
+    if (row.done && !showDone) return false
     if (mine && !ownRow(row)) return false
     if (filtering && (row.urgency === undefined || !shown.includes(row.urgency))) return false
     if (!query) return true
     return matchesSearch(callingRowText(row, nameOf), query)
   }
+
+  /** Wie viele Zeilen Farbfilter, Suche und «Nur meine» wegnehmen. */
+  const hiddenIn = (rows: (CallingMemberRow | CallingOpenRow)[]) =>
+    rows.filter((row) => !row.done && !visible(row)).length
 
   /**
    * Alles zeigen – Farben, Suche und «Nur meine».
@@ -358,7 +381,7 @@ export function CallingChangesTables({
         title={CALLING_TABLE_TITLES.members}
         columns={['Name', 'Berufung', 'Vorschläge']}
         editable={editable}
-        hidden={value.members.filter((row) => !visible(row)).length}
+        hidden={hiddenIn(value.members)}
         onAdd={() => {
           showAll()
           patch({ members: [...value.members, newCallingMemberRow()] })
@@ -372,6 +395,11 @@ export function CallingChangesTables({
             position={index + 1}
             onUrgency={(urgency) => changeMember(row.id, { urgency })}
             onAssignees={(assignees) => changeMember(row.id, { assignees })}
+            onDone={
+              isCallingMemberRowEmpty(row)
+                ? undefined
+                : () => changeMember(row.id, { done: !row.done })
+            }
             onRemove={
               value.members.length > 1 || !isCallingMemberRowEmpty(row)
                 ? () => patch({ members: withoutRow(value.members, row.id, newCallingMemberRow) })
@@ -444,7 +472,7 @@ export function CallingChangesTables({
         title={CALLING_TABLE_TITLES.open}
         columns={['Berufung', 'Name (Vorschläge)', 'Weiteres Vorgehen']}
         editable={editable}
-        hidden={value.open.filter((row) => !visible(row)).length}
+        hidden={hiddenIn(value.open)}
         onAdd={() => {
           showAll()
           patch({ open: [...value.open, newCallingOpenRow()] })
@@ -458,6 +486,9 @@ export function CallingChangesTables({
             position={index + 1}
             onUrgency={(urgency) => changeOpen(row.id, { urgency })}
             onAssignees={(assignees) => changeOpen(row.id, { assignees })}
+            onDone={
+              isCallingOpenRowEmpty(row) ? undefined : () => changeOpen(row.id, { done: !row.done })
+            }
             onRemove={
               value.open.length > 1 || !isCallingOpenRowEmpty(row)
                 ? () => patch({ open: withoutRow(value.open, row.id, newCallingOpenRow) })
@@ -504,6 +535,23 @@ export function CallingChangesTables({
           </RowFrame>
         ))}
       </CallingTable>
+
+      {/* Das Erledigte ganz unten – wo es nicht im Weg steht und trotzdem
+          greifbar bleibt. Ohne eine einzige abgehakte Zeile steht der Knopf
+          gar nicht erst da. */}
+      {doneRows > 0 && (
+        <button
+          type="button"
+          aria-pressed={showDone}
+          onClick={() => setShowDone(!showDone)}
+          className="btn-ghost btn-sm w-full justify-center"
+        >
+          <CheckCircle2 className="size-3.5" aria-hidden />
+          {showDone
+            ? 'Erledigte ausblenden'
+            : `Erledigte anzeigen · ${doneRows} ${doneRows === 1 ? 'Zeile' : 'Zeilen'}`}
+        </button>
+      )}
     </div>
   )
 }
@@ -650,6 +698,7 @@ function RowFrame({
   position,
   onUrgency,
   onAssignees,
+  onDone,
   onRemove,
   onMove,
   first = false,
@@ -667,6 +716,8 @@ function RowFrame({
   position: number
   onUrgency: (next: CallingUrgency | undefined) => void
   onAssignees: (next: string[]) => void
+  /** Abhaken und wieder öffnen. Fehlt er, steht in der Zeile noch nichts. */
+  onDone?: () => void
   /** Fehlt er, ist es die letzte und noch leere Zeile der Tabelle. */
   onRemove?: () => void
   /** Um eine Stelle nach oben (-1) oder unten (+1) – nur beim Umsortieren */
@@ -712,6 +763,10 @@ function RowFrame({
       className={cn(
         'rounded-lg border border-l-4 border-slate-200 p-1.5 transition dark:border-slate-800',
         row.urgency ? URGENCY_ROW[row.urgency] : 'border-l-slate-200 dark:border-l-slate-700',
+        /* Erledigt steht sie blass da – zu sehen ist sie nur, wenn jemand das
+           Erledigte ausdrücklich hervorgeholt hat, und dann soll sie sich vom
+           Offenen unterscheiden. */
+        row.done && 'opacity-60',
         dragging && 'opacity-40',
         dropTarget && 'border-brand-500 border-dashed',
       )}
@@ -764,11 +819,13 @@ function RowFrame({
                 bishopric={bishopric}
                 onUrgency={onUrgency}
                 onAssignees={onAssignees}
+                onDone={onDone}
                 onRemove={onRemove}
               />
             ) : (
-              (row.urgency || row.assignees.length > 0) && (
+              (row.done || row.urgency || row.assignees.length > 0) && (
                 <div className="flex flex-wrap items-center justify-end gap-1">
+                  {row.done && <DoneBadge />}
                   {row.urgency && (
                     <span className={cn('badge', URGENCY_BADGE[row.urgency])}>
                       {CALLING_URGENCY_LABELS[row.urgency]}
@@ -808,6 +865,7 @@ function RowMenu({
   bishopric,
   onUrgency,
   onAssignees,
+  onDone,
   onRemove,
 }: {
   row: CallingRowBase
@@ -815,6 +873,7 @@ function RowMenu({
   bishopric: AppUser[]
   onUrgency: (next: CallingUrgency | undefined) => void
   onAssignees: (next: string[]) => void
+  onDone?: () => void
   onRemove?: () => void
 }) {
   const { userName } = useData()
@@ -830,11 +889,26 @@ function RowMenu({
     return () => document.removeEventListener('keydown', onKeyDown)
   }, [open])
 
-  const label = row.urgency ? CALLING_URGENCY_LABELS[row.urgency] : 'ohne Farbe'
+  const label = row.done
+    ? 'Erledigt'
+    : row.urgency
+      ? CALLING_URGENCY_LABELS[row.urgency]
+      : 'ohne Farbe'
   const assignees = row.assignees.map(userName).join(', ')
 
   return (
-    <div className="relative">
+    /*
+     * Das Menü hängt an der **Spalte**, nicht am Knopf.
+     *
+     * Der Knopf wächst, sobald jemand zuständig wird – ein Kreis mehr, ein
+     * paar Pixel breiter. Hing das Menü an seinem rechten Rand, sprang es in
+     * dem Augenblick zur Seite, in dem man darin einen Namen anklickte. Die
+     * vierte Spalte hat dagegen ein festes Mass (`ROW_COLUMNS`), am Telefon
+     * die Breite der Zeile: Daran bleibt das Menü stehen, wo es aufgegangen
+     * ist. Ausgerichtet wird der Knopf darin wie zuvor – rechts am Telefon,
+     * links ab Tabletbreite.
+     */
+    <div className="relative flex w-full justify-end sm:justify-start">
       <button
         type="button"
         onClick={() => setOpen((value) => !value)}
@@ -844,17 +918,31 @@ function RowMenu({
         aria-label={`Zeile ${position}: Farbe und Zuständigkeit – ${label}${
           assignees ? `, ${assignees}` : ', niemand zuständig'
         }`}
-        className="btn-ghost flex items-center gap-1 px-1.5 py-1"
+        /* Feste Höhe: Der erste Kreis eines Zuständigen ist höher als Punkt
+           und Pfeil zusammen. Ohne das Mass wüchse der Knopf in dem
+           Augenblick, in dem man im offenen Menü jemanden anklickt – und das
+           Menü darunter rutschte mit. */
+        className="btn-ghost flex min-h-7 items-center gap-1 px-1.5 py-1"
       >
-        <span
-          className={cn(
-            'size-2.5 shrink-0 rounded-full',
-            row.urgency ? URGENCY_DOT[row.urgency] : 'bg-slate-300 dark:bg-slate-600',
-          )}
-          aria-hidden
-        />
+        {/* Was gesetzt ist, steht am Knopf. Bei einer abgehakten Zeile ist das
+            der Haken statt der Farbe: Wie dringend sie einmal war, ist dann
+            keine Auskunft mehr. */}
+        {row.done ? (
+          <Check className="size-3 shrink-0 text-emerald-600 dark:text-emerald-400" aria-hidden />
+        ) : (
+          <span
+            className={cn(
+              'size-2.5 shrink-0 rounded-full',
+              row.urgency ? URGENCY_DOT[row.urgency] : 'bg-slate-300 dark:bg-slate-600',
+            )}
+            aria-hidden
+          />
+        )}
         {row.assignees.slice(0, 2).map((id) => (
-          <span key={id} aria-hidden>
+          /* `flex` und nicht bloss ein `span`: Als Zeilenkasten brächte der
+             Kreis den Unterlängen-Abstand seiner Schriftzeile mit und machte
+             den Knopf zwei Pixel höher als das feste Mass. */
+          <span key={id} className="flex" aria-hidden>
             <Avatar name={userName(id)} id={id} size="xs" />
           </span>
         ))}
@@ -869,9 +957,11 @@ function RowMenu({
           {/* Fängt den Klick daneben ab – so schliesst das Menü wie überall
               in der App, ohne dass man den Knopf wieder treffen muss. */}
           <div className="fixed inset-0 z-40" onClick={() => setOpen(false)} aria-hidden />
+          {/* `top-full` statt der Stelle im Fluss: In einer Flex-Reihe stünde
+              das Menü sonst **neben** dem Knopf statt darunter. */}
           <div
             role="menu"
-            className="animate-scale-in absolute right-0 z-50 mt-1 w-56 origin-top-right space-y-2 rounded-xl border border-slate-200 bg-white p-2 shadow-lg dark:border-slate-700 dark:bg-slate-800"
+            className="animate-scale-in absolute top-full right-0 z-50 mt-1 w-56 origin-top-right space-y-2 rounded-xl border border-slate-200 bg-white p-2 shadow-lg dark:border-slate-700 dark:bg-slate-800"
           >
             <div>
               <span className="mb-1 block text-xs font-medium text-slate-500 dark:text-slate-400">
@@ -907,6 +997,32 @@ function RowMenu({
                 ))}
               </div>
             </div>
+
+            {/* Abgehakt wird zeilenweise: Die eine Berufung steht, während
+                die nächste noch offen ist. Die Zeile verschwindet danach aus
+                der Tabelle und steht unter «Erledigte anzeigen». */}
+            {onDone && (
+              <button
+                type="button"
+                onClick={() => {
+                  setOpen(false)
+                  onDone()
+                }}
+                className="flex w-full items-center gap-2 rounded-lg px-2 py-1.5 text-left text-sm text-emerald-700 transition hover:bg-emerald-50 dark:text-emerald-400 dark:hover:bg-emerald-950/40"
+              >
+                {row.done ? (
+                  <>
+                    <RotateCcw className="size-3.5" aria-hidden />
+                    Wieder offen
+                  </>
+                ) : (
+                  <>
+                    <Check className="size-3.5" aria-hidden />
+                    Erledigt
+                  </>
+                )}
+              </button>
+            )}
 
             {onRemove && (
               <button
@@ -994,8 +1110,11 @@ export function CallingRowSummary({
         </dl>
       )}
 
-      {(row.urgency || row.assignees.length > 0) && (
+      {(row.done || row.urgency || row.assignees.length > 0) && (
         <div className="mt-1.5 flex flex-wrap items-center justify-end gap-1.5">
+          {/* Was abgeschlossen ist, steht auch im Profil als abgeschlossen da –
+              sonst läse sich eine erledigte Zeile dort wie eine offene Idee. */}
+          {row.done && <DoneBadge />}
           {row.urgency && (
             <span className={cn('badge', URGENCY_BADGE[row.urgency])}>
               {CALLING_URGENCY_LABELS[row.urgency]}
@@ -1007,6 +1126,15 @@ export function CallingRowSummary({
         </div>
       )}
     </li>
+  )
+}
+
+function DoneBadge() {
+  return (
+    <span className="badge bg-emerald-100 text-emerald-900 dark:bg-emerald-950 dark:text-emerald-100">
+      <Check className="size-3" aria-hidden />
+      Erledigt
+    </span>
   )
 }
 
