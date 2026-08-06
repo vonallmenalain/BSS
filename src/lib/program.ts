@@ -1,5 +1,6 @@
 import {
   HYMN_SLOT_LABELS,
+  isTalkPlaceholder,
   TALK_KIND_LABELS,
   type HymnChoice,
   type Talk,
@@ -102,8 +103,11 @@ export function buildProgram(
       key: programKey('talk', talk.id),
       kind,
       label: TALK_KIND_LABELS[kind],
-      title: talk.memberName,
+      // Ein Platzhalter steht mit seiner Art im Ablauf, aber ohne Namen –
+      // wie ein offener Platz, nur dass er schon ein Zeugnis sein kann.
+      title: talk.memberName?.trim() ?? '',
       detail: talk.topic,
+      incomplete: isTalkPlaceholder(talk),
       talkId: talk.id,
       slot: talk.slot,
     })

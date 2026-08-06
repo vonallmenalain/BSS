@@ -1111,6 +1111,27 @@ export interface Talk extends WithId {
   updatedAt?: TS
 }
 
+/**
+ * Ein Programmpunkt ohne Namen – ein Platzhalter.
+ *
+ * Manchmal steht die Art des Punktes vor der Person fest: An diesem Sonntag
+ * soll ein Zeugnis stehen, wer es gibt, ist noch offen. Ein solcher Eintrag
+ * belegt seinen Platz im Ablauf und trägt schon Art, Dauer und Thema; der
+ * Name wird nachgetragen. Bis dahin gilt der Platz als offen – sonst
+ * verschwände er aus «_n_ offen» und niemand käme mehr darauf zurück.
+ */
+export function isTalkPlaceholder(talk: Pick<Talk, 'memberId' | 'memberName'>): boolean {
+  return !talk.memberId && !talk.memberName?.trim()
+}
+
+/** Was an einem Platzhalter steht, solange niemand eingetragen ist. */
+export const TALK_PLACEHOLDER_LABEL = 'Noch offen'
+
+/** Der Name einer Ansprache – oder «Noch offen», wenn keiner dasteht. */
+export function talkSpeakerLabel(talk: Pick<Talk, 'memberId' | 'memberName'>): string {
+  return talk.memberName?.trim() || TALK_PLACEHOLDER_LABEL
+}
+
 /* ------------------------------------------------------------------ */
 /* Berufungen                                                          */
 /* ------------------------------------------------------------------ */

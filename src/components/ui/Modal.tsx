@@ -8,6 +8,10 @@ const WIDTHS = {
   md: 'max-w-lg',
   lg: 'max-w-2xl',
   xl: 'max-w-4xl',
+  /* So breit wie die App selbst (siehe `Layout`) – für Inhalte, die neben
+     Text auch Tabellen tragen: eine Berufungsrunde in einem schmalen
+     Fenster steht in Spalten von drei Wörtern Breite. */
+  page: 'max-w-7xl',
 } as const
 
 interface ModalProps {

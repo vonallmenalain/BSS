@@ -31,6 +31,7 @@ const talksRef = collection(db, COLLECTIONS.talks)
 export interface TalkInput {
   /** Leer lassen, wenn der Name von Hand erfasst wurde (siehe `TalkSpeaker`) */
   memberId?: string
+  /** Leer heisst «Platzhalter»: der Platz steht, der Name kommt später */
   memberName: string
   date: Date
   slot: number
@@ -51,11 +52,18 @@ export interface TalkInput {
  * deshalb nur zugeordnet, wenn es ausdrücklich aus der Mitgliederliste gewählt
  * wurde; alles andere bleibt reiner Text und lässt die Auswertung «wer war
  * lange nicht dran» unberührt.
+ *
+ * `null` heisst: noch niemand. Der Punkt steht dann als Platzhalter im
+ * Programm (siehe `isTalkPlaceholder`).
  */
 export type TalkSpeaker = { member: Member } | { name: string }
 
 /** Die beiden Felder, die eine Ansprache über die sprechende Person führt. */
-export function speakerFields(speaker: TalkSpeaker): { memberId: string; memberName: string } {
+export function speakerFields(speaker: TalkSpeaker | null): {
+  memberId: string
+  memberName: string
+} {
+  if (!speaker) return { memberId: '', memberName: '' }
   if ('member' in speaker) {
     const { id, firstName, lastName } = speaker.member
     return { memberId: id, memberName: `${firstName} ${lastName}`.trim() }
@@ -105,7 +113,7 @@ export async function updateTalk(
 }
 
 /**
- * Trägt ein, wer spricht – ein Mitglied oder ein Name von Hand.
+ * Trägt ein, wer spricht – ein Mitglied, ein Name von Hand oder niemand.
  *
  * Wechselt eine zugesagte Ansprache die Person, werden beide
  * Mitgliederstatistiken neu berechnet: Sonst zählte die Ansprache weiterhin
@@ -113,8 +121,15 @@ export async function updateTalk(
  * Handgriff unter «Leitung» da – wer kurzfristig einspringt, wird dort
  * eingetragen, und die Auswertung stimmt wieder. Ohne Mitglied gibt es
  * nichts nachzuführen.
+ *
+ * `null` nimmt den Namen wieder weg, ohne den Punkt zu löschen: Art, Dauer
+ * und Thema bleiben stehen, der Platz wird zum Platzhalter. Wer den Punkt
+ * ganz loswerden will, entfernt ihn (siehe `deleteTalk`).
  */
-export async function setTalkSpeaker(id: string, speaker: TalkSpeaker): Promise<SaveOutcome> {
+export async function setTalkSpeaker(
+  id: string,
+  speaker: TalkSpeaker | null,
+): Promise<SaveOutcome> {
   const ref = doc(db, COLLECTIONS.talks, id)
   const snapshot = await getDoc(ref)
   const previous = snapshot.exists() ? (snapshot.data() as Talk) : null

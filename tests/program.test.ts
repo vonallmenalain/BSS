@@ -97,6 +97,24 @@ test('ein Eintrag ohne Mitglied steht mit seinem Namen im Ablauf', () => {
   ])
 })
 
+test('ein Platzhalter steht mit seiner Art im Ablauf – nur der Name fehlt', () => {
+  // Ein Zeugnis lässt sich vergeben, bevor feststeht, wer es gibt.
+  const platzhalter: Talk = { ...talk('z', 2, '', 'testimony'), memberId: '', memberName: '' }
+  const talks = [talk('a', 1, 'Anna'), platzhalter]
+
+  assert.deepEqual(shape(withIntermediate(), talks, 2), [
+    'Ansprache:Anna',
+    'Zwischenlied:100 – Lied',
+    'Zeugnis:?',
+  ])
+
+  const program = buildProgram(withIntermediate(), talks, hymnTitle, 2)
+  const entry = program[program.length - 1]
+  assert.equal(entry.talkId, 'z', 'Der Punkt bleibt anklickbar – der Name wird nachgetragen.')
+  assert.equal(entry.incomplete, true, 'Ohne Namen ist der Punkt unvollständig.')
+  assert.equal(program[0].incomplete, false, 'Mit Namen nicht.')
+})
+
 test('ein Zeugnis am Schluss bleibt ein Zeugnis', () => {
   const talks = [talk('a', 1, 'Anna'), talk('b', 2, 'Bea', 'testimony')]
   assert.deepEqual(shape(withIntermediate(), talks, 2), [

@@ -42,6 +42,7 @@ export {
   openTalkSlots,
   plannedTalksFor,
   sundayProgram,
+  talksWithoutConfirmation,
   wasHeld,
   type SundayProgram,
 } from '@/lib/sunday'

@@ -563,6 +563,19 @@ Ausschnitt sagt nichts darüber, wo das Ausgeblendete steht. Im Archiv
 _Erledigt_ steht die Wahl gar nicht erst zur Verfügung – was erledigt ist,
 wird nachgeschlagen und nicht mehr geordnet.
 
+**Die gelegte Reihenfolge gilt auch in der Sitzung.** Steht «Manuelle
+Sortierung», folgt ihr die Pendenzengruppe jeder Sitzung – in der
+Sitzungsansicht, im Sitzungsmodus, in der kompakten Sitzungsliste und in der
+Übersicht. Es ist dieselbe Liste, bloss auf eine Sitzung eingeschränkt; «der
+dritte Punkt» wäre keine Angabe, wenn er am Sitzungstisch ein anderer wäre.
+Die neuen Traktanden stehen unberührt davor, in ihrer eigenen Reihenfolge.
+
+Wer in der Sitzung an den Pendenzen zieht, verschiebt sie damit in der
+gemeinsamen Liste: Die Punkte dieser Sitzung tauschen ihre Plätze
+untereinander, alles Übrige bleibt liegen, wo es liegt. Ist die Liste nach
+einem Datum sortiert, bleibt es beim Bisherigen – dann hat jede Sitzung ihre
+eigene Reihenfolge.
+
 ### Bekanntmachung und Angelegenheit aus der Sitzung heraus
 
 Neben **+ Traktandum** stehen **+ Bekanntmachung** und **+ Angelegenheit**.
@@ -763,6 +776,12 @@ heisst, dass der Platz wieder frei ist, und das sagt man am deutlichsten,
 indem man den Eintrag entfernt. Wo im Bestand noch einer dieser beiden Werte
 steht, wird er nicht mehr angezeigt – der Platz gilt als frei.
 
+**Vollständig ist erst, was zugesagt ist.** Der grüne Haken am Sonntag – in der
+Übersicht wie unter «Ansprachen» – erscheint, wenn jeder Platz vergeben **und**
+jede Zusage da ist. Fehlt noch jemand, steht dort «_n_ offen»; sind alle Plätze
+besetzt, aber noch nicht alle haben zugesagt, «_n_ ohne Zusage». Sonst hiesse
+ein Sonntag vollständig, an dem noch drei Anfragen unbeantwortet sind.
+
 **Ein Name von Hand.** Am Pult steht nicht immer jemand aus der eigenen
 Gemeinde: ein besuchender Hoher Rat, die Missionare, «Zeugnisse der neuen
 Ältesten». In jedes Namensfeld einer Ansprache lässt sich deshalb schreiben,
@@ -772,6 +791,21 @@ andere, ist aber keinem Mitglied zugeordnet und bleibt in der Auswertung «wer
 war lange nicht dran» unberücksichtigt. Ein Mitglied wird ausschliesslich dann
 zugeordnet, wenn es in der Vorschlagsliste angetippt wird – getippter Text
 allein genügt dafür nie.
+
+**Ein Platzhalter.** Manchmal steht die Art des Punktes vor der Person fest: An
+diesem Sonntag soll ein Zeugnis stehen, wer es gibt, ist noch offen. Das
+Namensfeld darf deshalb leer bleiben – der Knopf heisst dann **Platzhalter
+eintragen**. Der Punkt steht mit Art, Dauer und Thema im Ablauf und trägt statt
+eines Namens **«Noch offen»**; im Programm am Pult erscheint er wie ein offener
+Platz. Der Status ist «Vorgesehen» und lässt sich nicht ändern: Angefragt wird,
+sobald jemand feststeht. Bis dahin zählt der Platz weiter unter «_n_ offen» –
+sonst käme niemand mehr darauf zurück.
+
+Nachgetragen wird der Name dort, wo der Punkt steht: unter **Ansprachen** im
+Eintrag selbst oder unter **Leitung** im Ablauf. Umgekehrt macht ein geleertes
+Namensfeld aus einem vergebenen Punkt wieder einen Platzhalter – Art, Dauer und
+Thema bleiben stehen. Weg ist er über **Entfernen** (unter «Ansprachen») bzw.
+**Programmpunkt entfernen** (unter «Leitung»).
 
 **Liederliste.** Unter **Einstellungen → Importe → Liederlisten** einlesen, dann genügt beim Erfassen
 der Musik die Nummer – der Titel erscheint automatisch. Nur die Zahl, aus dem

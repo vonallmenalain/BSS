@@ -319,6 +319,11 @@ export async function deleteAgendaItem(id: string): Promise<SaveOutcome> {
  * Sortierung für die Sitzungsansicht: zuerst die neuen Traktanden, danach die
  * Pendenzen – innerhalb der beiden Gruppen nach `order`.
  *
+ * Mit `manualPendenzen` folgt die zweite Gruppe stattdessen der von Hand
+ * gelegten Reihenfolge der Pendenzenliste (`pendenzOrder`). Es ist dieselbe
+ * Liste, bloss auf eine Sitzung eingeschränkt: Wer sie unter «Pendenzen»
+ * geordnet hat, will sie am Sitzungstisch nicht anders vorfinden.
+ *
  * Die Sitzung beginnt mit dem, was ansteht, und arbeitet danach ab, was
  * liegengeblieben ist. Umgekehrt wäre der erste Teil jeder Sitzung eine
  * Wiederholung der letzten.
@@ -328,17 +333,72 @@ export async function deleteAgendaItem(id: string): Promise<SaveOutcome> {
  * Ein Haken verschöbe die halbe Liste, und der eben mühsam einsortierte Punkt
  * wäre woanders.
  */
-export function sortForMeeting(items: AgendaItem[]): AgendaItem[] {
+export function sortForMeeting(items: AgendaItem[], manualPendenzen = false): AgendaItem[] {
   const rank = (item: AgendaItem) => (toItemKind(item) === 'traktandum' ? 0 : 1)
-  return [...items].sort((a, b) => rank(a) - rank(b) || (a.order ?? 0) - (b.order ?? 0))
+  return [...items].sort((a, b) => {
+    const group = rank(a) - rank(b)
+    if (group !== 0) return group
+    // Die Pendenzen einer Sitzung sind ein Ausschnitt der Pendenzenliste.
+    // Ist die dort von Hand gelegt, gilt sie auch hier.
+    if (manualPendenzen && rank(a) === 1) {
+      const place = pendenzPlace(a) - pendenzPlace(b)
+      if (place !== 0) return place
+    }
+    return (a.order ?? 0) - (b.order ?? 0)
+  })
+}
+
+/**
+ * Platz in der Pendenzenliste – noch nie einsortiert heisst «zuoberst».
+ *
+ * Dieselbe Auskunft wie unter «Pendenzen»: Ein Punkt ohne Position ist neu
+ * und stünde dort ebenfalls zuoberst, statt am Ende zu verschwinden.
+ */
+function pendenzPlace(item: AgendaItem): number {
+  return typeof item.pendenzOrder === 'number' ? item.pendenzOrder : -1
+}
+
+/**
+ * Die Pendenzenliste in der von Hand gelegten Reihenfolge.
+ *
+ * Bei gleichem Stand entscheidet die Position in der Sitzung – zwei Punkte
+ * ohne eigenen Platz stünden sonst beliebig zueinander.
+ */
+export function sortByPendenzOrder(items: AgendaItem[]): AgendaItem[] {
+  return [...items].sort(
+    (a, b) => pendenzPlace(a) - pendenzPlace(b) || (a.order ?? 0) - (b.order ?? 0),
+  )
+}
+
+/**
+ * Einen Ausschnitt der Pendenzenliste neu ordnen, ohne den Rest umzustellen.
+ *
+ * Eine Sitzung zeigt nur ihre eigenen Pendenzen. Schriebe man deren neue
+ * Folge als Plätze 0…n, stünde alles Übrige plötzlich dahinter – die halbe
+ * Liste wäre verschoben, weil in einer Sitzung zwei Punkte getauscht wurden.
+ * Deshalb behalten die Punkte des Ausschnitts die Plätze, die sie in der
+ * ganzen Liste belegen; neu ist nur, wer an welchem steht.
+ *
+ * `all` steht dabei in seiner jetzigen Reihenfolge (siehe
+ * `sortByPendenzOrder`); was in der Sitzung steht, aber nicht mehr offen ist,
+ * bleibt aussen vor.
+ */
+export function reorderWithinPendenzen(all: AgendaItem[], ordered: AgendaItem[]): AgendaItem[] {
+  const known = new Set(all.map((item) => item.id))
+  const queue = ordered.filter((item) => known.has(item.id))
+  const moving = new Set(queue.map((item) => item.id))
+  return all.map((item) => (moving.has(item.id) ? (queue.shift() ?? item) : item))
 }
 
 /** Die Reihenfolge der beiden Gruppen – neue Traktanden zuerst. */
 export const ITEM_KIND_ORDER: ItemKind[] = ['traktandum', 'pendenz']
 
 /** Dieselbe Liste, aufgeteilt in neue Traktanden und Pendenzen. */
-export function groupByKind(items: AgendaItem[]): Record<ItemKind, AgendaItem[]> {
-  const sorted = sortForMeeting(items)
+export function groupByKind(
+  items: AgendaItem[],
+  manualPendenzen = false,
+): Record<ItemKind, AgendaItem[]> {
+  const sorted = sortForMeeting(items, manualPendenzen)
   return {
     traktandum: sorted.filter((item) => toItemKind(item) === 'traktandum'),
     pendenz: sorted.filter((item) => toItemKind(item) === 'pendenz'),
