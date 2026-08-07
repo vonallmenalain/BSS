@@ -4,11 +4,14 @@ import { normalize } from '../lib/utils.ts'
 import { matchesGivenNames, nameKeys, sameGivenNames } from '../lib/names.ts'
 import { isoDate } from './importHistory.ts'
 import { parseDirectoryDate } from './importPaste.ts'
+import type { PastedPerson } from './importPaste.ts'
 import type { PastedCalling, PastedCallings } from './importCallings.ts'
 import type { MinisteringEntry } from './importMinistering.ts'
 import type { ParsedHistory } from './importHistory.ts'
 import type { HistoricCalling, ParsedCallingHistory } from './importCallingHistory.ts'
-import type { Calling, CallingStatus, Member, PrayerSlot } from '../lib/types.ts'
+import { MEMBER_ORGANIZATION_TAGS } from '../lib/types.ts'
+import { withTag } from '../lib/organizations.ts'
+import type { Calling, CallingStatus, Member, PrayerSlot, SinglesKind } from '../lib/types.ts'
 
 /**
  * Die Mitte der Text-Importe: gelesene Einträge einer Person zuordnen und
@@ -101,6 +104,171 @@ export function matchMemberByName(fullName: string, index: MemberIndex): MemberM
   return (
     single(candidates.filter((member) => matchesGivenNames(given, member.firstName))) ?? NO_MATCH
   )
+}
+
+/**
+ * Dieselbe Zuordnung, mit dem Geburtsdatum als Stichentscheid.
+ *
+ * Die Listen der Alleinstehenden nennen es, und in einer Gemeinde mit drei
+ * Familien desselben Namens ist es die Angabe, die den Ausschlag gibt: Wo
+ * zwei «Lauener, Lara» stünden, bleibt nach dem Geburtsdatum eine übrig.
+ * Ohne Datum oder ohne eindeutigen Treffer bleibt es beim bisherigen
+ * Ergebnis – gemeldet statt geraten.
+ */
+export function matchMemberByNameAndBirth(
+  fullName: string,
+  birthDate: string,
+  index: MemberIndex,
+): MemberMatch {
+  const byName = matchMemberByName(fullName, index)
+  if (!byName.ambiguous) return byName
+
+  const wanted = parseDirectoryDate(birthDate)
+  if (!wanted) return byName
+
+  const [rawLast] = fullName.split(',')
+  const seen = new Set<string>()
+  const candidates: Member[] = []
+  for (const key of nameKeys(rawLast)) {
+    for (const member of index.byLastName.get(key) ?? []) {
+      if (seen.has(member.id)) continue
+      seen.add(member.id)
+      candidates.push(member)
+    }
+  }
+
+  // Verglichen wird der Tag und nicht der Zeitpunkt: Das eine Datum kommt
+  // aus einem Firestore-Zeitstempel, das andere aus «14 Apr 2006».
+  const day = (date: Date) => isoDate(date.getFullYear(), date.getMonth() + 1, date.getDate())
+  const target = day(wanted)
+
+  const matching = candidates.filter((member) => {
+    const birth = member.birthDate
+    if (!birth) return false
+    const date = typeof birth === 'object' && 'toDate' in birth ? birth.toDate() : new Date(birth)
+    return day(date) === target
+  })
+
+  return single(matching) ?? byName
+}
+
+/* ------------------------------------------------------------------ */
+/* Alleinstehende: JAE und AE                                          */
+/* ------------------------------------------------------------------ */
+
+/**
+ * Was mit einer Person aus der Liste geschieht.
+ *
+ * `add` – das Schlagwort kommt dazu. `keep` – es steht bereits da, es gibt
+ * nichts zu schreiben. `skip` – die Person liess sich nicht zuordnen und
+ * wird gemeldet.
+ */
+export type SinglesAction = 'add' | 'keep' | 'skip'
+
+export interface SinglesRow {
+  person: PastedPerson
+  memberId: string | null
+  /** Der Name, wie er in der Mitgliederliste steht – zur Kontrolle */
+  memberName: string
+  action: SinglesAction
+  warnings: string[]
+}
+
+/** Wer das Schlagwort verliert, weil er nicht mehr auf der Liste steht. */
+export interface SinglesRemoval {
+  memberId: string
+  memberName: string
+  /** Die neuen Schlagwörter dieser Person – ohne das der Liste */
+  tags: string[]
+}
+
+export interface SinglesPreview {
+  kind: SinglesKind
+  /** Das Schlagwort, um das es geht – «JAE» oder «AE» */
+  tag: string
+  rows: SinglesRow[]
+  removals: SinglesRemoval[]
+  /** Die neuen Schlagwörter je zuzuordnender Person */
+  additions: { memberId: string; tags: string[] }[]
+  addCount: number
+  keepCount: number
+  skipCount: number
+}
+
+/**
+ * Was der Import der Liste bewirken würde.
+ *
+ * **Die Liste ist die vollständige Wahrheit.** Wer darauf steht, bekommt das
+ * Schlagwort; wer es trägt und nicht mehr darauf steht, verliert es. Anders
+ * ginge es nicht: Wer heiratet, verschwindet aus der Liste des LCR und sonst
+ * nirgends – ein Import, der nur ergänzte, liesse ihn für immer unter den
+ * Alleinstehenden stehen.
+ *
+ * Angerührt wird dabei nur das eine Schlagwort. Die frei vergebenen bleiben,
+ * wo sie sind, und die andere Liste ebenso: Ein Import der JAE nimmt niemandem
+ * das «AE» weg (siehe `lib/organizations`).
+ */
+export function buildSinglesPreview(
+  kind: SinglesKind,
+  people: PastedPerson[],
+  members: Member[],
+): SinglesPreview {
+  const index = buildMemberIndex(members)
+  const tag = MEMBER_ORGANIZATION_TAGS[kind]
+
+  const matched = new Set<string>()
+
+  const rows: SinglesRow[] = people.map((person) => {
+    const { member, ambiguous } = matchMemberByNameAndBirth(
+      person.fullName,
+      person.birthDate,
+      index,
+    )
+    const warnings: string[] = []
+    if (ambiguous) warnings.push('Mehrere Personen mit diesem Namen')
+    else if (!member) warnings.push('Keine passende Person in der Mitgliederliste')
+
+    if (!member) {
+      return { person, memberId: null, memberName: '', action: 'skip', warnings }
+    }
+
+    matched.add(member.id)
+    const has = (member.tags ?? []).includes(tag)
+    return {
+      person,
+      memberId: member.id,
+      memberName: `${member.lastName}, ${member.firstName}`.trim(),
+      action: has ? 'keep' : 'add',
+      warnings,
+    }
+  })
+
+  const removals: SinglesRemoval[] = members
+    .filter((member) => !matched.has(member.id) && (member.tags ?? []).includes(tag))
+    .map((member) => ({
+      memberId: member.id,
+      memberName: `${member.lastName}, ${member.firstName}`.trim(),
+      tags: withTag(member.tags, tag, false),
+    }))
+
+  const byId = new Map(members.map((member) => [member.id, member]))
+  const additions = rows
+    .filter((row) => row.action === 'add' && row.memberId)
+    .map((row) => ({
+      memberId: row.memberId as string,
+      tags: withTag(byId.get(row.memberId as string)?.tags, tag, true),
+    }))
+
+  return {
+    kind,
+    tag,
+    rows,
+    removals,
+    additions,
+    addCount: additions.length,
+    keepCount: rows.filter((row) => row.action === 'keep').length,
+    skipCount: rows.filter((row) => row.action === 'skip').length,
+  }
 }
 
 /* ------------------------------------------------------------------ */

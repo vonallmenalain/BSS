@@ -103,6 +103,8 @@ export const COLLECTIONS = {
   notes: 'notes',
   /** Wiederkehrende Bekanntmachungen – gelten für viele Sonntage zugleich */
   announcementSeries: 'announcementSeries',
+  /** Aufgaben, die zur Leitung eines Monats gehören – die Vorlagen dazu */
+  monthlyDuties: 'monthlyDuties',
   /** Putzplan der Gemeinde, Dokument-ID ist der erste Tag der Woche */
   cleaningWeeks: 'cleaningWeeks',
   /** Aktivitätenplan der Priestertumskollegien (AP) */

@@ -2,13 +2,19 @@ import { useEffect, useRef, useState, type FormEvent } from 'react'
 import { Modal } from '@/components/ui/Modal'
 import { MentionField } from '@/components/ui/MentionField'
 import { AssigneePicker } from '@/components/ui/Pickers'
+import { UserAvatar } from '@/components/ui/Avatar'
 import { LayoutGrid } from '@/components/agenda/LayoutGrid'
 import { CallingChangesTables } from '@/components/agenda/CallingChanges'
 import { useAuth } from '@/contexts/AuthContext'
+import { useData } from '@/contexts/DataContext'
 import { useToast } from '@/contexts/ToastContext'
+import { useMonthLeaders } from '@/hooks/useFirestore'
+import { useCurrentMonth } from '@/hooks/useMonthlyDuties'
 import { createAgendaItem, type AgendaItemInput } from '@/services/agenda'
+import { createMonthlyDuty } from '@/services/monthlyDuties'
 import { emptyLayout, serializeLayout } from '@/lib/layout'
 import { emptyCallingChanges, serializeCallingChanges } from '@/lib/callingChanges'
+import { formatMonthKey } from '@/lib/monthlyDuties'
 import { cn } from '@/lib/utils'
 import {
   ITEM_KIND_LABELS,
@@ -91,6 +97,14 @@ type ItemShape = 'text' | 'layout' | 'callings'
  * und **Pendenz**. Beides gehört in dieselbe nächste Sitzung – nur eben unter
  * verschiedene Überschriften: das eine ein Thema, über das gesprochen wird,
  * das andere eine Aufgabe, die jemand mitnimmt.
+ *
+ * Und bei der Pendenz ein dritter Haken: **Monatsverantwortung**. Er macht aus
+ * dem Eintrag etwas anderes – keine einmalige Aufgabe, sondern eine, die jeden
+ * Monat wiederkehrt und immer dem gehört, der den Monat führt. Gespeichert
+ * wird dann nicht die Pendenz selbst, sondern die Vorlage dazu; die Pendenz
+ * entsteht daraus Monat für Monat (siehe `lib/monthlyDuties`). Deshalb fallen
+ * mit dem Haken auch die übrigen Felder weg: Ein Raster, eine Berufungsrunde
+ * und eine Liste von Zuständigen beantworten Fragen, die hier niemand stellt.
  */
 export function AgendaItemForm({
   open,
@@ -102,10 +116,24 @@ export function AgendaItemForm({
   onSaved,
 }: Props) {
   const { profile } = useAuth()
+  const { userName } = useData()
   const toast = useToast()
   const [form, setForm] = useState<FormState>(EMPTY)
   const [kind, setKind] = useState<ItemKind>(defaultKind)
   const [saving, setSaving] = useState(false)
+
+  /*
+   * «Gehört der Monatsverantwortung» – der Haken, der alles Übrige umstellt.
+   *
+   * Er steht nur bei der Pendenz zur Wahl: Ein Traktandum ist ein Thema für
+   * eine bestimmte Sitzung, und eine Sitzung gehört keinem Monat.
+   */
+  const [monthly, setMonthly] = useState(false)
+  const isMonthly = monthly && kind === 'pendenz'
+
+  const month = useCurrentMonth()
+  const { leaders } = useMonthLeaders()
+  const leader = leaders.get(month) ?? null
 
   /*
    * Das zuletzt Gebaute überlebt den Haken.
@@ -121,6 +149,7 @@ export function AgendaItemForm({
     if (!open) return
     setForm(EMPTY)
     setKind(defaultKind)
+    setMonthly(false)
     lastLayout.current = null
     lastCallingChanges.current = null
   }, [open, defaultKind])
@@ -141,6 +170,18 @@ export function AgendaItemForm({
           next === 'callings' ? (lastCallingChanges.current ?? emptyCallingChanges()) : null,
       }
     })
+
+  /*
+   * Der Haken räumt die Gestalt weg.
+   *
+   * Eine Monatspendenz ist ein Titel und ein paar Zeilen dazu – ein Raster
+   * oder eine Berufungsrunde, die jeden Monat neu und leer dastünde, wäre
+   * keine Aufgabe, sondern ein Missverständnis.
+   */
+  const chooseMonthly = (next: boolean) => {
+    setMonthly(next)
+    if (next) setShape('text')
+  }
 
   /*
    * Ein mit «@» eingesetzter Name ist zugleich ein Verweis: Wer im Text steht,
@@ -165,6 +206,26 @@ export function AgendaItemForm({
 
     setSaving(true)
     try {
+      /*
+       * Mit dem Haken entsteht kein Eintrag, sondern eine Vorlage.
+       *
+       * Die Pendenz dazu legt die App an – für diesen Monat und für jeden
+       * weiteren, sobald ihn jemand öffnet (siehe `hooks/useMonthlyDuties`).
+       * Ab wann sie gilt, ist der laufende Monat: Was heute erfasst wird,
+       * ist heute zu tun.
+       */
+      if (isMonthly) {
+        await createMonthlyDuty(
+          { title, description: form.description, startMonth: month },
+          { id: profile.id, name: profile.displayName },
+        )
+        toast.success(`Monatspendenz erfasst – ab ${formatMonthKey(month)}.`)
+        // Kein `onSaved`: Es entstand kein Eintrag, auf den sich verweisen
+        // liesse – die Pendenz dazu legt die App gleich darauf selbst an.
+        onClose()
+        return
+      }
+
       const payload: AgendaItemInput = {
         title,
         description: form.description,
@@ -198,13 +259,17 @@ export function AgendaItemForm({
     <Modal
       open={open}
       onClose={onClose}
-      title={kind === 'pendenz' ? 'Neue Pendenz' : 'Neues Traktandum'}
+      title={
+        isMonthly ? 'Neue Monatspendenz' : kind === 'pendenz' ? 'Neue Pendenz' : 'Neues Traktandum'
+      }
       description={
-        meetingId
-          ? kind === 'pendenz'
-            ? 'Steht in der nächsten Sitzung unter den Pendenzen.'
-            : 'Steht in der nächsten Sitzung unter den Traktanden.'
-          : 'Landet im Sammelkorb und kann später einer Sitzung zugeordnet werden.'
+        isMonthly
+          ? 'Fällt jeden Monat an – bei dem, der den Monat führt.'
+          : meetingId
+            ? kind === 'pendenz'
+              ? 'Steht in der nächsten Sitzung unter den Pendenzen.'
+              : 'Steht in der nächsten Sitzung unter den Traktanden.'
+            : 'Landet im Sammelkorb und kann später einer Sitzung zugeordnet werden.'
       }
       size="lg"
       footer={
@@ -251,30 +316,69 @@ export function AgendaItemForm({
           </div>
         )}
 
+        {/* Wem die Aufgabe gehört – die Frage steht vor allen anderen: Mit
+            dem Haken fallen die Gestalt und die Zuständigen weg, und aus dem
+            Eintrag wird eine Aufgabe, die jeden Monat wiederkehrt. */}
+        {kind === 'pendenz' && (
+          <label className="flex cursor-pointer items-start gap-2 rounded-lg border border-slate-200 p-3 text-sm dark:border-slate-700">
+            <input
+              type="checkbox"
+              className="checkbox mt-0.5"
+              checked={monthly}
+              onChange={(event) => chooseMonthly(event.target.checked)}
+            />
+            <span>
+              Gehört zur Monatsverantwortung
+              <span className="block text-xs text-slate-500 dark:text-slate-400">
+                Fällt jeden Monat neu an – bei dem, der den Monat führt. Sie steht in keiner Sitzung
+                und in keinem Protokoll, sondern unter «Pendenzen → Meine».
+              </span>
+              {monthly && (
+                <span className="mt-2 flex flex-wrap items-center gap-1.5 text-xs text-slate-600 dark:text-slate-300">
+                  {formatMonthKey(month)} führt
+                  {leader ? (
+                    <>
+                      <UserAvatar userId={leader} name={userName(leader)} size="xs" />
+                      {userName(leader)}
+                    </>
+                  ) : (
+                    <span className="text-slate-500 dark:text-slate-400">
+                      noch niemand – die Pendenz wartet ohne Zuständigen, bis unter «Abendmahl →
+                      Leitung → Zuständig» jemand eingetragen ist.
+                    </span>
+                  )}
+                </span>
+              )}
+            </span>
+          </label>
+        )}
+
         {/* Die Haken stehen oben rechts, weil sie über die Gestalt des ganzen
             Fensters entscheiden und nicht über ein einzelnes Feld. Sie
             schliessen einander aus: Beide füllen die Stelle, an der sonst die
             Beschreibung steht. */}
-        <div className="flex flex-wrap justify-end gap-x-4 gap-y-2">
-          <label className="flex cursor-pointer items-center gap-2 text-sm">
-            <input
-              type="checkbox"
-              className="size-4 rounded"
-              checked={shape === 'layout'}
-              onChange={(event) => setShape(event.target.checked ? 'layout' : 'text')}
-            />
-            Variables Layout
-          </label>
-          <label className="flex cursor-pointer items-center gap-2 text-sm">
-            <input
-              type="checkbox"
-              className="size-4 rounded"
-              checked={shape === 'callings'}
-              onChange={(event) => setShape(event.target.checked ? 'callings' : 'text')}
-            />
-            Berufungsänderung
-          </label>
-        </div>
+        {!isMonthly && (
+          <div className="flex flex-wrap justify-end gap-x-4 gap-y-2">
+            <label className="flex cursor-pointer items-center gap-2 text-sm">
+              <input
+                type="checkbox"
+                className="size-4 rounded"
+                checked={shape === 'layout'}
+                onChange={(event) => setShape(event.target.checked ? 'layout' : 'text')}
+              />
+              Variables Layout
+            </label>
+            <label className="flex cursor-pointer items-center gap-2 text-sm">
+              <input
+                type="checkbox"
+                className="size-4 rounded"
+                checked={shape === 'callings'}
+                onChange={(event) => setShape(event.target.checked ? 'callings' : 'text')}
+              />
+              Berufungsänderung
+            </label>
+          </div>
+        )}
 
         <div>
           <label className="label" htmlFor="item-title">
@@ -334,7 +438,12 @@ export function AgendaItemForm({
           </div>
         )}
 
-        <AssigneePicker value={form.assignees} onChange={(next) => update('assignees', next)} />
+        {/* Wer zuständig ist, sagt bei der Monatspendenz der Monat – und
+            zwar jeden Monat neu. Eine Wahl daneben wäre eine Angabe, die
+            beim nächsten Monatswechsel nicht mehr stimmt. */}
+        {!isMonthly && (
+          <AssigneePicker value={form.assignees} onChange={(next) => update('assignees', next)} />
+        )}
       </form>
     </Modal>
   )

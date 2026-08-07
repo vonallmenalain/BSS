@@ -14,13 +14,13 @@ Abendmahlsversammlung, Berufungsverwaltung und Mitgliederdaten.
 | Bereich                   | Was die App leistet                                                                                 |
 | ------------------------- | --------------------------------------------------------------------------------------------------- |
 | **Sitzungen**             | Termin festlegen, Traktanden und Pendenzen sammeln, Sitzungsmodus zum Durchgehen, Protokoll drucken |
-| **Pendenzen**             | Was eine Sitzung überstanden hat, ohne erledigt zu werden – alles oder nur das eigene               |
+| **Pendenzen**             | Was eine Sitzung überstanden hat, ohne erledigt zu werden – alles oder nur das eigene; dazu die Aufgaben der Monatsverantwortung |
 | **Notizen**               | Was nicht an eine Sitzung gehört – für alle sichtbar, speichert von selbst                          |
 | **Putzplan**              | Die Halbjahrestabelle der Gemeinde als Wochenplan – Grundlage für die Ansage am Sonntag             |
 | **Abendmahlsversammlung** | Ganzer Ablauf pro Sonntag: Leitung, Bekanntmachungen, Angelegenheiten, Ansprachen, Musik, Gebet     |
 | **Aktivitäten AP's**      | Aktivitätenplan der Priestertumskollegien – teilbar mit Beratern, ohne Einblick in Personendaten    |
 | **Berufungen**            | Wer welche Aufgabe hat, gruppiert nach Organisation – und wer keine hat; Stand aus dem LCR          |
-| **Mitglieder**            | Stammdaten, Notizen, Suche – gefiltert nach Status, Geschlecht und Alter, sortiert wonach man will  |
+| **Mitglieder**            | Stammdaten, Notizen, Suche – gefiltert nach Status, Geschlecht, Organisation (PV, JD/AP, JAE, AE) und Alter, sortiert wonach man will |
 
 **Auf jeder Seite oben rechts «Ansicht».** Was die Darstellung betrifft –
 welcher Ausschnitt, welche Filter, welche Reihenfolge –, steht dort und
@@ -730,6 +730,66 @@ untereinander, alles Übrige bleibt liegen, wo es liegt. Ist die Liste nach
 einem Datum sortiert, bleibt es beim Bisherigen – dann hat jede Sitzung ihre
 eigene Reihenfolge.
 
+### Monatspendenzen: was zur Leitung des Monats gehört
+
+Die Bischofschaft teilt die Monate unter sich auf – einer nimmt den August,
+der nächste den September (siehe [«Wer sich um diesen Sonntag
+kümmert»](#wer-sich-um-diesen-sonntag-kümmert)). Mit dem Monat kommt jedes Mal
+dasselbe Häufchen Arbeit: Ansprachen anfragen, Gebete verteilen, den Ablauf
+beisammenhalten. Das ist keine Pendenz, die einmal anfällt und dann erledigt
+ist, sondern eine, die **jeden Monat wiederkehrt – nur bei einer anderen
+Person**.
+
+**Erfasst wird sie dort, wo man an sie denkt.** Im Fenster «+ Pendenz» steht
+unter der Wahl zwischen Traktandum und Pendenz ein Haken: **Gehört zur
+Monatsverantwortung**. Er stellt das ganze Fenster um – der Titel wird zu
+«Neue Monatspendenz», und darunter steht, wer den laufenden Monat führt. Die
+Gestaltfelder (variables Layout, Berufungsänderung) und die Liste der
+Zuständigen fallen weg: Ein Raster, das jeden Monat leer neu dastünde, wäre
+keine Aufgabe, und zuständig ist ohnehin, wer den Monat hat.
+
+Gespeichert wird damit nicht die Pendenz, sondern die **Vorlage** dazu. Die
+Pendenz entsteht daraus Monat für Monat, sobald jemand die App öffnet – mit
+dem Titel, der Beschreibung und dem Monat, für den sie gilt.
+
+|                      | Gewöhnliche Pendenz  | Monatspendenz                |
+| -------------------- | -------------------- | ---------------------------- |
+| **Zuständig**        | wer ausgewählt wurde | wer den Monat führt          |
+| **Sitzung**          | die nächste          | keine                        |
+| **Im Protokoll**     | ja                   | nein                         |
+| **Nach dem Abhaken** | erledigt             | im nächsten Monat wieder da  |
+
+**Sie steht in keiner Sitzung.** Nicht auf der Traktandenliste, nicht im
+Sitzungsmodus, nicht im gedruckten Protokoll – und «Pendenzen übernehmen»
+nimmt sie nicht mit. Sie gehört dem Monat und nicht dem Sitzungstisch; deshalb
+fehlt an ihr auch «Verschieben». Wo sie erscheint, ist die Pendenzenliste:
+unter **Meine** bei dem, der den Monat führt, und unter **Pendent** bei allen,
+mit dem Monat als Etikett («↻ August 2026»).
+
+**Wechselt die Leitung mitten im Monat, wandert die Pendenz mit.** Getauscht
+wird dabei genau eine Person – wer von Hand dazugeschrieben wurde («ich helfe
+mit»), bleibt stehen. Eine bereits abgehakte Pendenz wird nicht mehr
+angefasst: Sie gehört dem, der sie erledigt hat.
+
+**Die Liste der Vorlagen** steht hinter dem Knopf **Monatlich** oben auf der
+Pendenzenseite. Dort steht, wer den laufenden Monat führt, was jeden Monat
+anfällt und seit wann – und dort lässt sich der Wortlaut ändern (das gilt ab
+dem nächsten Monat; was schon dasteht, bleibt, wie es ist).
+
+Zum Aufhören gibt es zwei Wege, und sie meinen Verschiedenes:
+
+- **Beenden** – dieser Monat läuft noch zu Ende, danach kommt nichts mehr
+  nach. Alles Bisherige bleibt stehen, samt allem, was darin notiert wurde.
+  Das ist der Normalfall; **Weiterführen** nimmt es wieder zurück.
+- **Löschen** – nur für das, was von Anfang an ein Versehen war. Die bereits
+  entstandenen Pendenzen bleiben auch dann erhalten.
+
+> **Ohne eingetragene Zuständigkeit** entsteht die Pendenz trotzdem – sie
+> wartet dann ohne Zuständigen unter «Pendent» und findet ihre Person, sobald
+> unter «Abendmahl → Leitung → Zuständig» jemand für den Monat eingetragen
+> ist. Weicht ein einzelner Sonntag ab (Ferien, Vertretung), zählt für den
+> Monat, wer die meisten Sonntage hält.
+
 ### Bekanntmachung und Angelegenheit aus der Sitzung heraus
 
 Neben **+ Traktandum** stehen **+ Bekanntmachung** und **+ Angelegenheit**.
@@ -814,6 +874,12 @@ Namen nimmt die Zuständigkeit wieder weg.
 
 Sobald jemand eingetragen ist, steht der Name im Kopf jeder Unterseite der
 Abendmahlsversammlung, gleich neben dem Datum.
+
+Diese eine Angabe beantwortet zugleich die Frage «wer führt diesen Monat?» –
+eine zweite Liste dafür gibt es bewusst nicht. Daran hängen die
+[Monatspendenzen](#monatspendenzen-was-zur-leitung-des-monats-gehört): die
+Aufgaben, die jeden Monat anfallen und immer dem gehören, der den Monat
+führt.
 
 ### Was an diesem Sonntag stattfindet
 
@@ -1541,7 +1607,9 @@ steht unter **Ansicht** oben rechts:
 
 - **Status** – Aktiv, Inaktiv, Alle
 - **Geschlecht** – nur Männer, nur Frauen
+- **Organisation** – PV, JD/AP, JAE, AE (mehrere wählbar)
 - **Alter** – «ab», «bis», beides freilassbar
+- **Filter zurücksetzen** – nimmt alle vier Einschränkungen weg
 - **Sortierung** – Nachname, Vorname, Alter, _Ansprache zuletzt_, _Gebet
   zuletzt_; jeweils auf- und absteigend
 
@@ -1553,6 +1621,51 @@ zuerst.
 
 Die Suche steht in der Adresse, die Einstellungen im Browser: Wer ein Profil
 öffnet und zurückkommt, findet dieselbe Liste vor, die er verlassen hat.
+
+### Filter nach Organisation
+
+Vier Gruppen, und sie schliessen lückenlos aneinander an:
+
+| Gruppe     | Von                                                | Bis                                              |
+| ---------- | -------------------------------------------------- | ------------------------------------------------ |
+| **PV**     | genau 1½ Jahre                                     | 31. Dezember des Jahres, in dem das Kind 11 wird |
+| **JD / AP** | 1. Januar des Jahres, in dem jemand 12 wird       | 18. Geburtstag                                   |
+| **JAE**    | 18. Geburtstag, solange unverheiratet              | –                                                |
+| **AE**     | 36. Geburtstag, solange unverheiratet              | –                                                |
+
+**Zwei davon rechnet die App, zwei nicht.** PV und JD/AP hängen allein am
+Geburtsdatum – das steht am Mitglied, und daraus ergibt sich die Gruppe von
+selbst. Der Wechsel geschieht dabei so, wie er in der Gemeinde auch
+geschieht: Wer im laufenden Jahr elf wird, bleibt bis Silvester in der PV, und
+am 1. Januar darauf ist er bei JD/AP – nicht erst am zwölften Geburtstag.
+
+Ob jemand verheiratet ist, steht dagegen nirgends in dieser App und soll es
+auch nicht: Es ändert sich, ohne dass es jemand meldet. Deshalb kommen **JAE
+und AE aus den beiden Listen des LCR** («Einstellungen → Importe →
+Alleinstehende») und stehen danach als Schlagwort am Mitglied. Von Hand wird
+daran nichts gesetzt.
+
+> **Die Lücke zwischen zwei Importen schliesst die App selbst.** JD/AP endet
+> auf den Tag genau mit dem achtzehnten Geburtstag; die Liste wird alle paar
+> Monate aufgefrischt. Wer dazwischen achtzehn wird, gilt bis zum nächsten
+> Import als JAE – gerechnet aus dem Datum des letzten Imports, ohne dass
+> etwas geschrieben oder geraten würde. Sobald die Liste das nächste Mal
+> eingelesen ist, zählt wieder allein sie.
+
+**Mehrere Gruppen wirken als «oder», mit den übrigen Filtern als «und».** _JAE_
+und _AE_ nebeneinander ergeben beide Listen; _JAE_ zusammen mit _Frauen_ und
+_Alter 18–25_ ergibt genau die Liste, nach der am Sitzungstisch gefragt wird.
+Nichts gewählt heisst «alle» – das sagt der erste Chip, und ein Griff darauf
+stellt es wieder her.
+
+**Filter zurücksetzen** nimmt Status, Geschlecht, Organisation und Alter in
+einem Zug weg; danach steht wieder die ganze Gemeinde da. Die **Sortierung
+bleibt**: Sie schränkt nichts ein, sondern ordnet nur – wer nach dem Alter
+sortiert arbeitet, soll das danach weiterhin tun. Solange nichts eingeschränkt
+ist, steht der Knopf ausgegraut da.
+
+Im Profil steht die Gruppe als Etikett neben dem Namen, vor den frei
+vergebenen Schlagworten.
 
 ### Ansprachen und Gebete im Profil
 
@@ -1582,6 +1695,11 @@ oben neben dem Namen.
 | **Kann für Ansprachen angefragt werden** | Haken, dazu wahlweise ein «nicht anfragen bis» |
 | **Kann für Gebete angefragt werden**     | Dasselbe für das Gebet                         |
 | **Notiz** und **Schlagworte**            | Freitext zur Person                            |
+
+**JAE und AE stehen nicht im Feld «Schlagworte».** Sie kommen aus den Listen
+des LCR und werden dort auch wieder weggenommen; als Text zum Überschreiben
+stünden zwei Wahrheiten nebeneinander. Wer die übrigen Schlagworte ändert,
+lässt sie deshalb unberührt.
 
 Name, Geschlecht, Geburtsdatum, Adresse, Kontakt und Betreuung stehen
 weiterhin im Dialog, lassen sich aber nicht ändern. Sie kommen aus dem LCR und
@@ -1755,6 +1873,53 @@ Gepaart wird der Reihe nach und höchstens einmal: Wer zwei Berufungen abgibt
 und eine neue erhält, hat einen Wechsel und eine gewöhnliche Entlassung –
 welche welche ist, weiss die Quelle nicht, und geraten wird nichts. Beides
 steht in der Vorschau und lässt sich dort richtigstellen.
+
+---
+
+## Alleinstehende importieren
+
+**Einstellungen → Importe → Alleinstehende**.
+
+Ob jemand verheiratet ist, steht in dieser App nirgends – und soll es auch
+nicht: Es ändert sich, ohne dass es jemand meldet, und niemand hier möchte es
+pflegen. Das LCR weiss es und führt daraus zwei Listen: **Junger
+Alleinstehender Erwachsener** und **Alleinstehende Erwachsene**. Beide lassen
+sich markieren und kopieren; danach lässt sich die Mitgliederliste nach
+[**JAE** und **AE**](#filter-nach-organisation) filtern.
+
+**Eine Seite für beide Listen.** Sie sehen gleich aus, werden gleich gelesen
+und am selben Nachmittag geholt – zwei Unterseiten wären zweimal derselbe Weg.
+Welche der beiden eingefügt wurde, sagt der Text selbst: Die Überschrift steht
+darin, und sie wird erkannt. Die Wahl oben bleibt trotzdem stehen, denn wer
+nur die Tabelle markiert, kopiert die Überschrift nicht mit.
+
+Gelesen wird mit demselben Parser wie das Mitgliederverzeichnis – es ist
+dieselbe Tabelle des LCR, nur mit weniger Spalten. Gebraucht werden davon drei
+Angaben: Name, Geschlecht, Geburtsdatum. Anschrift, Telefon und E-Mail stehen
+ohnehin schon am Mitglied.
+
+**Zugeordnet wird über den Namen, und das Geburtsdatum entscheidet den
+Zweifelsfall.** Wo in einer Gemeinde mit drei Familien desselben Namens zwei
+Personen gleich heissen, bleibt nach dem Geburtsdatum eine übrig. Was danach
+offenbleibt, wird in der Vorschau gemeldet und übersprungen – geraten wird
+nicht.
+
+**Die Liste ist die vollständige Wahrheit.** Wer darauf steht, bekommt das
+Schlagwort; wer es trägt und nicht mehr darauf steht, verliert es. Anders
+ginge es nicht: Wer heiratet, verschwindet aus der Liste des LCR und sonst
+nirgends – ein Import, der nur ergänzte, liesse ihn für immer unter den
+Alleinstehenden stehen. Wer das Schlagwort verliert, steht vor dem Schreiben
+namentlich in der Vorschau.
+
+Angerührt wird dabei nur das eine Schlagwort: Ein Import der JAE nimmt
+niemandem das «AE» weg, und die frei vergebenen Schlagworte bleiben, wo sie
+sind. Geschrieben wird nur, was sich ändert – bei einer Liste, die alle paar
+Monate neu eingelesen wird, ist «unverändert» der Normalfall.
+
+**Der Zeitpunkt wird festgehalten.** Er steht auf der Importseite und ist mehr
+als ein Vermerk: Daran hängt, wer seither achtzehn geworden ist und deshalb
+bis zum nächsten Import als JAE gilt (siehe
+[oben](#filter-nach-organisation)).
 
 ---
 
@@ -2129,7 +2294,7 @@ nirgends.
 src/
 ├── components/
 │   ├── agenda/          Traktanden und Pendenzen: Zeile, Karte, Editor,
-│   │                    Sitzungsmodus, Erfassen, Verschieben
+│   │                    Sitzungsmodus, Erfassen, Verschieben, Monatspendenzen
 │   ├── ap/              Aktivitäten AP: Zeile, Formular, Termine erzeugen
 │   ├── sacrament/       Abendmahlsversammlung: Rahmen mit Sonntagswahl, Lied- und Personenfelder
 │   ├── ui/              Bausteine: Modal, Badges, Avatare, Auswahlfelder,
@@ -2138,9 +2303,11 @@ src/
 │   └── UpdatePrompt.tsx Hinweis auf neue Version
 ├── contexts/            Anmeldung, Stammdaten, Meldungen
 ├── hooks/               Sammlungen lesen, Weg zurück, Ansicht in der Adresse,
-│                        Bekanntmachungen eines Sonntags, lokale Einstellungen
+│                        Bekanntmachungen eines Sonntags, Monatspendenzen,
+│                        lokale Einstellungen
 ├── lib/                 Firebase-Anbindung, Sammlungsspeicher (Abgleich), Typen, Datums-,
-│                        Serien-, Programm-, Sonntags-, Vorschlags-, Word- und Hilfsfunktionen
+│                        Serien-, Monats-, Organisations-, Programm-, Sonntags-,
+│                        Vorschlags-, Word- und Hilfsfunktionen
 ├── pages/
 │   ├── sacrament/       Leitung, Bekanntmachungen, Angelegenheiten, Musik, Gebet
 │   └── …                Eine Datei pro übriger Ansicht

@@ -25,6 +25,7 @@ import {
   toTimeInput,
   fromDateTimeInput,
 } from '@/lib/dates'
+import { isDutyItem } from '@/lib/monthlyDuties'
 import { cn, matchesSearch } from '@/lib/utils'
 import { searchSnippet } from '@/lib/search'
 import { groupByKind } from '@/services/agenda'
@@ -176,7 +177,9 @@ export function Meetings() {
 
   const inScope =
     filter === 'upcoming' ? upcoming : filter === 'past' ? past : [...upcoming, ...past]
-  const unassignedCount = openItems.filter((item) => !item.meetingId).length
+  /* Ohne die Monatspendenzen: Die warten auf keine Sitzung, sondern
+     gehören dem Monat (siehe `lib/monthlyDuties`). */
+  const unassignedCount = openItems.filter((item) => !item.meetingId && !isDutyItem(item)).length
 
   /*
    * Was der Suchbegriff trifft – je Sitzung die passenden Einträge.

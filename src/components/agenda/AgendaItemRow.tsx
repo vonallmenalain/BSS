@@ -22,6 +22,7 @@ import { AuthorChip } from '@/components/agenda/AuthorChip'
 import { deleteAgendaItem, setItemStatus } from '@/services/agenda'
 import { callingRowCounts } from '@/lib/callingChanges'
 import { formatDate } from '@/lib/dates'
+import { formatMonthKey, isDutyItem } from '@/lib/monthlyDuties'
 import {
   ITEM_KIND_LABELS,
   lastEditedAt,
@@ -119,6 +120,18 @@ export function AgendaItemRow({
 
   const isDone = item.status === 'done'
   const kind = toItemKind(item)
+
+  /*
+   * Eine Aufgabe der Monatsverantwortung.
+   *
+   * Sie steht in keiner Sitzung, und deshalb fällt an ihr weg, was sich auf
+   * eine Sitzung bezieht: Verschieben hiesse, sie an einen Tisch zu legen, an
+   * den sie nicht gehört. Dafür trägt sie den Monat, für den sie gilt – ohne
+   * ihn stünde in der Liste eines Novembers eine Aufgabe, von der niemand
+   * mehr wüsste, dass sie den Oktober meint.
+   */
+  const duty = isDutyItem(item)
+  const dutyMonth = duty && item.dutyMonth ? formatMonthKey(item.dutyMonth) : null
 
   /*
    * Eine Berufungsrunde hakt sich nicht in einem Zug ab.
@@ -223,6 +236,7 @@ export function AgendaItemRow({
               {/* «Pendent» neben «Pendenz» sagt dasselbe zweimal – angeschrieben
                   wird nur, was vom Normalfall abweicht. */}
               {item.status !== 'pending' && <StatusBadge status={item.status} />}
+              {dutyMonth && <DutyBadge month={dutyMonth} />}
               {item.deferCount > 0 && (
                 <span className="badge bg-amber-100 text-amber-800 dark:bg-amber-950 dark:text-amber-200">
                   <Repeat className="size-3" aria-hidden />
@@ -257,6 +271,7 @@ export function AgendaItemRow({
                   vor dem Start der Sitzung, «Erledigt» danach. «Pendent» ist
                   der Normalfall und bleibt ungeschrieben. */}
               {item.status !== 'pending' && <StatusBadge status={item.status} />}
+              {dutyMonth && <DutyBadge month={dutyMonth} />}
               {item.deferCount > 0 && !isDone && (
                 <span
                   className="badge bg-slate-100 text-slate-500 dark:bg-slate-800 dark:text-slate-400"
@@ -370,7 +385,7 @@ export function AgendaItemRow({
                 </button>
               )}
 
-              <DeferMenu itemId={item.id} nextMeeting={nextMeeting} className="btn-sm" />
+              {!duty && <DeferMenu itemId={item.id} nextMeeting={nextMeeting} className="btn-sm" />}
 
               <button
                 type="button"
@@ -400,6 +415,25 @@ export function AgendaItemRow({
         danger
       />
     </li>
+  )
+}
+
+/**
+ * Der Monat, dem diese Pendenz gehört.
+ *
+ * Dieselbe Farbe wie das Kürzel der Zuständigen hätte sie zu einer weiteren
+ * Angabe über Personen gemacht; sie sagt aber etwas über die Zeit – deshalb
+ * das ruhige Blau der übrigen Datumsangaben.
+ */
+function DutyBadge({ month }: { month: string }) {
+  return (
+    <span
+      className="badge bg-brand-50 text-brand-700 dark:bg-brand-950 dark:text-brand-200"
+      title="Aufgabe der Monatsverantwortung – sie fällt jeden Monat neu an"
+    >
+      <Repeat className="size-3" aria-hidden />
+      {month}
+    </span>
   )
 }
 

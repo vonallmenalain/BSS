@@ -1,11 +1,12 @@
 import { useCallback, useMemo, useState, type DragEvent } from 'react'
 import { useSearchParams } from 'react-router-dom'
-import { Check, CheckCircle2, Plus, Search } from 'lucide-react'
+import { Check, CheckCircle2, Plus, Repeat, Search } from 'lucide-react'
 import { useData } from '@/contexts/DataContext'
 import { useToast } from '@/contexts/ToastContext'
 import { useDoneItems, useMeetings, useOpenItems } from '@/hooks/useFirestore'
 import { AgendaItemForm } from '@/components/agenda/AgendaItemForm'
 import { AgendaItemRow } from '@/components/agenda/AgendaItemRow'
+import { MonthlyDutiesDialog } from '@/components/agenda/MonthlyDuties'
 import { FOCUS_PARAM } from '@/components/agenda/MeetingFocus'
 import { EmptyState, SkeletonList } from '@/components/ui/Feedback'
 import { PageHeader, SegmentedControl } from '@/components/ui/Pickers'
@@ -257,6 +258,8 @@ export function Pendenzen() {
   const [detail, setDetail] = useLocalStorage<Detail>('bss:pendenzen:umfang', 'titles')
   const [search, setSearch] = useState('')
   const [formOpen, setFormOpen] = useState(false)
+  /* Die Aufgaben der Monatsverantwortung – die Vorlagen dahinter. */
+  const [dutiesOpen, setDutiesOpen] = useState(false)
   const [searchParams, setSearchParams] = useSearchParams()
 
   /**
@@ -589,6 +592,20 @@ export function Pendenzen() {
         }
         actions={
           <>
+            {/* Die wiederkehrenden Aufgaben stehen hinter einem eigenen
+                Knopf und nicht im Ansichtsmenü: Sie sind keine Einstellung
+                der Liste, sondern das, woraus ein Teil von ihr entsteht.
+                Am Telefon bleibt das Zeichen allein stehen. */}
+            <button
+              type="button"
+              className="btn-secondary"
+              onClick={() => setDutiesOpen(true)}
+              aria-label="Monatspendenzen"
+              title="Aufgaben der Monatsverantwortung"
+            >
+              <Repeat className="size-4" aria-hidden />
+              <span className="hidden sm:inline">Monatlich</span>
+            </button>
             <PendenzenMenu
               sort={sort}
               onSortChange={changeSort}
@@ -800,6 +817,8 @@ export function Pendenzen() {
         kindChoice
         defaultKind="pendenz"
       />
+
+      <MonthlyDutiesDialog open={dutiesOpen} onClose={() => setDutiesOpen(false)} />
     </>
   )
 }

@@ -1,6 +1,6 @@
 import { useEffect, useState, type ReactNode } from 'react'
 import { createPortal } from 'react-dom'
-import { ChevronDown, Minus, Plus, SlidersHorizontal, X } from 'lucide-react'
+import { ChevronDown, Minus, Plus, RotateCcw, SlidersHorizontal, X } from 'lucide-react'
 import { SegmentedControl } from '@/components/ui/Pickers'
 import { cn } from '@/lib/utils'
 
@@ -517,6 +517,42 @@ export function MenuCounter({
           </button>
         </span>
       </div>
+      {hint && <p className="hint">{hint}</p>}
+    </div>
+  )
+}
+
+/**
+ * Ein Handgriff im Menü – kein Umschalter, sondern etwas, das geschieht.
+ *
+ * Für «Filter zurücksetzen»: Ausgegraut, solange es nichts zurückzusetzen
+ * gibt. Ein Knopf, der immer bereitsteht und meist nichts tut, lässt einen
+ * jedes Mal nachsehen, ob überhaupt etwas eingeschränkt war.
+ */
+export function MenuAction({
+  label,
+  hint,
+  icon: Icon,
+  onClick,
+  disabled = false,
+}: {
+  label: string
+  hint?: string
+  icon?: typeof RotateCcw
+  onClick: () => void
+  disabled?: boolean
+}) {
+  return (
+    <div>
+      <button
+        type="button"
+        onClick={onClick}
+        disabled={disabled}
+        className="-mx-1 flex w-full items-center gap-2 rounded-lg px-2 py-2 text-left text-sm transition hover:bg-slate-100 disabled:pointer-events-none disabled:opacity-40 dark:hover:bg-slate-700"
+      >
+        {Icon && <Icon className="size-4 shrink-0 text-slate-400" aria-hidden />}
+        {label}
+      </button>
       {hint && <p className="hint">{hint}</p>}
     </div>
   )

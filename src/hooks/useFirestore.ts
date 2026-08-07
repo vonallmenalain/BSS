@@ -8,6 +8,7 @@ import {
   type StoreState,
 } from '@/lib/collectionStore'
 import { toDate } from '@/lib/dates'
+import { isDutyItem, monthLeaders } from '@/lib/monthlyDuties'
 import {
   isWithdrawnTalk,
   OPEN_STATUSES,
@@ -22,6 +23,7 @@ import {
   type Calling,
   type CleaningWeek,
   type Meeting,
+  type MonthlyDuty,
   type Note,
   type Prayer,
   type SacramentMeeting,
@@ -148,13 +150,20 @@ export function useMeetingItems(meetingId: string | undefined) {
 /**
  * Einträge ohne Sitzungszuordnung, die noch offen sind – der «Sammelkorb».
  * Genau diese werden beim Planen der nächsten Sitzung angeboten.
+ *
+ * Ohne die Monatspendenzen: Die haben ebenfalls keine Sitzung, warten aber
+ * auf keine. Sie gehören dem Monat und der Person, die ihn führt – in eine
+ * Traktandenliste übernommen wären sie an genau dem Ort, an dem sie nie
+ * stehen sollten (siehe `lib/monthlyDuties`).
  */
 export function useUnassignedItems() {
   const state = useAgendaStore()
   return useMemo(
     () => ({
       ...state,
-      data: state.data.filter((item) => !item.meetingId && OPEN_STATUSES.includes(item.status)),
+      data: state.data.filter(
+        (item) => !item.meetingId && !isDutyItem(item) && OPEN_STATUSES.includes(item.status),
+      ),
     }),
     [state],
   )
@@ -204,6 +213,17 @@ export function useCallingRounds() {
     }),
     [state],
   )
+}
+
+/**
+ * Alles, was aus einer Monatspendenz entstanden ist – in jedem Zustand.
+ *
+ * Auch das Erledigte: Gefragt wird «steht für diesen Monat schon etwas da?»,
+ * und ein abgehakter Eintrag steht da (siehe `hooks/useMonthlyDuties`).
+ */
+export function useDutyItems() {
+  const state = useAgendaStore()
+  return useMemo(() => ({ ...state, data: state.data.filter(isDutyItem) }), [state])
 }
 
 /** Traktanden für die Archiv-/Suchansicht, zuletzt geändertes zuerst. */
@@ -314,6 +334,46 @@ export function useSacramentMeetings(limitCount = 30) {
   return useMemo(
     () => ({ ...state, data: capped(byDate(state.data, 'date'), limitCount) }),
     [state, limitCount],
+  )
+}
+
+/**
+ * Wer welchen Monat führt – als Karte «2026-08» → UID.
+ *
+ * Gerechnet und nicht gespeichert: Die Angabe steht bereits an den Sonntagen
+ * («Abendmahl → Leitung → Zuständig», Haken «Für den ganzen Monat»). Eine
+ * zweite Liste daneben liefe irgendwann auseinander, und dann gäbe es zwei
+ * Antworten auf die Frage, wer den August hat.
+ *
+ * Der ganze Bestand, nicht die letzten dreissig: Die Monatspendenzen fragen
+ * nach dem laufenden Monat, und der ist im Sommer nicht unter den zuletzt
+ * bearbeiteten Sonntagen, wenn jemand gerade den Herbst plant.
+ */
+export function useMonthLeaders() {
+  const state = useSacramentStore()
+  return useMemo(() => ({ ...state, leaders: monthLeaders(state.data) }), [state])
+}
+
+/**
+ * Die Aufgaben, die zur Leitung eines Monats gehören – die Vorlagen.
+ *
+ * Die laufenden zuerst, danach die beendeten; innerhalb der beiden Gruppen
+ * die zuletzt begonnene zuoberst. So steht in der Liste vorn, was noch jeden
+ * Monat anfällt.
+ */
+export function useMonthlyDuties() {
+  const { isApproved } = useAuth()
+  const state = useCollection<MonthlyDuty>(COLLECTIONS.monthlyDuties, isApproved)
+  return useMemo(
+    () => ({
+      ...state,
+      data: [...state.data].sort(
+        (a, b) =>
+          Number(Boolean(a.endMonth)) - Number(Boolean(b.endMonth)) ||
+          String(b.startMonth).localeCompare(String(a.startMonth)),
+      ),
+    }),
+    [state],
   )
 }
 

@@ -28,6 +28,7 @@ import { useData } from '@/contexts/DataContext'
 import { useTrackLocation } from '@/hooks/useBack'
 import { useOnlineStatus, useTheme } from '@/hooks/useLocalStorage'
 import { usePendingWrites } from '@/hooks/useSync'
+import { useEnsureMonthlyDuties } from '@/hooks/useMonthlyDuties'
 import { UserAvatar } from '@/components/ui/Avatar'
 import { ROLE_LABELS } from '@/lib/types'
 import { UpdatePrompt } from '@/components/UpdatePrompt'
@@ -80,6 +81,16 @@ export function Layout() {
    * kann es auch anschreiben (siehe `hooks/useBack`).
    */
   useTrackLocation(location)
+
+  /*
+   * Die Pendenzen des laufenden Monats anlegen, falls sie noch fehlen.
+   *
+   * Hier und nicht auf der Pendenzenseite: Sie sollen dastehen, sobald
+   * jemand die App öffnet – auch für den, der bloss die Übersicht aufruft
+   * und dort seine Kachel «Meine Pendenzen» liest. Ohne Vollzugriff und
+   * ohne Verbindung geschieht nichts (siehe `hooks/useMonthlyDuties`).
+   */
+  useEnsureMonthlyDuties()
 
   // Beim Seitenwechsel das mobile Menü schliessen.
   useEffect(() => setMenuOpen(false), [location.pathname])
