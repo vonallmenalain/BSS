@@ -145,21 +145,62 @@ export const ACCESS_LEVELS: { value: AccessLevel; role: Role; label: string; hin
  * ohne Netz und vor dem ersten Schnappschuss schon stimmt.
  */
 export interface ApView {
-  mode: 'list' | 'cards'
+  /**
+   * Liste und Kacheln lesen den Plan der Reihe nach; die beiden
+   * Kalenderansichten legen ihn auf ein Raster aus Wochentagen – dort sieht
+   * man auch die Abende, an denen nichts ansteht.
+   */
+  mode: 'list' | 'cards' | 'week' | 'month'
   density: 'compact' | 'normal' | 'wide'
   /** Welcher Zeitraum – kommend, vergangen oder der ganze Plan */
   scope: 'upcoming' | 'past' | 'all'
+  /**
+   * Welche Arten der Plan zeigt – leer heisst «alle».
+   *
+   * Wer einschränkt, sucht etwas Bestimmtes: alle Klassen des Halbjahrs
+   * etwa. Ausgefallene Abende gehören dann nicht dazu – sie erklären eine
+   * Lücke im vollständigen Plan, in einer Auswahl erklären sie nichts.
+   * Deshalb stehen sie gar nicht erst zur Wahl und fallen mit der ersten
+   * Einschränkung weg (siehe `apVisibleActivities`).
+   */
+  kinds?: ApActivityKind[]
 }
 
 export const DEFAULT_AP_VIEW: ApView = {
   mode: 'list',
   density: 'normal',
   scope: 'upcoming',
+  kinds: [],
 }
 
 export const AP_VIEW_MODE_LABELS: Record<ApView['mode'], string> = {
   list: 'Liste',
   cards: 'Kacheln',
+  week: 'Kalender Woche',
+  month: 'Kalender Monat',
+}
+
+/** Ist eine der beiden Kalenderansichten gewählt? */
+export function isApCalendarMode(mode: ApView['mode']): mode is 'week' | 'month' {
+  return mode === 'week' || mode === 'month'
+}
+
+/** Die Arten, die sich einzeln an- und abwählen lassen – ohne «Fällt aus». */
+export const AP_FILTER_KINDS: ApActivityKind[] = ['activity', 'class', 'special']
+
+/**
+ * Der Plan, auf die gewählten Arten eingeschränkt.
+ *
+ * Ohne Auswahl steht alles da, ausgefallene Abende eingeschlossen. Sobald
+ * eingeschränkt wird, zählt nur noch, was ausdrücklich gewählt ist – und
+ * «Fällt aus» ist nicht wählbar (siehe `ApView.kinds`).
+ */
+export function apVisibleActivities<T extends { kind: ApActivityKind }>(
+  activities: T[],
+  kinds: ApActivityKind[] | undefined,
+): T[] {
+  if (!kinds || kinds.length === 0) return activities
+  return activities.filter((activity) => kinds.includes(activity.kind))
 }
 
 export const AP_DENSITY_LABELS: Record<ApView['density'], string> = {

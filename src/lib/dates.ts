@@ -6,6 +6,12 @@ import {
   differenceInMonths,
   startOfDay,
   endOfDay,
+  startOfWeek,
+  endOfWeek,
+  startOfMonth,
+  endOfMonth,
+  isSameMonth,
+  isSameYear,
   addDays,
   addMonths,
   addWeeks,
@@ -76,6 +82,18 @@ export function formatDayShort(value: Parameters<typeof toDate>[0]): string {
 export function formatMonth(value: Parameters<typeof toDate>[0]): string {
   const date = toDate(value)
   return date ? format(date, 'MMMM yyyy', opts) : '–'
+}
+
+/** «14. August» – ohne Jahr, für Spannen innerhalb desselben Jahres */
+export function formatDayMonth(value: Parameters<typeof toDate>[0]): string {
+  const date = toDate(value)
+  return date ? format(date, 'd. MMMM', opts) : '–'
+}
+
+/** «14. August 2026» – wie `formatDateLong`, aber ohne Wochentag */
+export function formatDayMonthYear(value: Parameters<typeof toDate>[0]): string {
+  const date = toDate(value)
+  return date ? format(date, 'd. MMMM yyyy', opts) : '–'
 }
 
 /** «Fr, 14.08.2026, 19:30» */
@@ -217,16 +235,43 @@ export function hasBirthdaySoon(birthDate: Parameters<typeof toDate>[0], days = 
   return diff >= 0 && diff <= days
 }
 
+/**
+ * Die Woche beginnt am Montag.
+ *
+ * Nicht die Voreinstellung von `date-fns` – dort beginnt sie am Sonntag.
+ * Ein Kalender, in dem das Wochenende auseinandergerissen ist, liest sich
+ * hierzulande falsch, und der Sonntag ist der Tag, auf den die Woche
+ * zuläuft.
+ */
+const WEEK_STARTS_ON = 1 as const
+
+/** Montag der Woche, in der dieses Datum liegt. */
+export function startOfCalendarWeek(value: Date): Date {
+  return startOfWeek(value, { weekStartsOn: WEEK_STARTS_ON })
+}
+
+/** Sonntag der Woche, in der dieses Datum liegt. */
+export function endOfCalendarWeek(value: Date): Date {
+  return endOfWeek(value, { weekStartsOn: WEEK_STARTS_ON })
+}
+
 export {
   addDays,
   addMonths,
   addWeeks,
   startOfDay,
   endOfDay,
+  startOfMonth,
+  endOfMonth,
   isSameDay,
+  isSameMonth,
+  isSameYear,
   differenceInCalendarDays,
   differenceInMonths,
 }
+
+/** Abgekürzte Wochentage für Kalenderköpfe, Index wie bei `WEEKDAYS`. */
+export const WEEKDAYS_SHORT = ['So', 'Mo', 'Di', 'Mi', 'Do', 'Fr', 'Sa'] as const
 
 /** Deutsche Wochentagsnamen, Index entspricht `Date.getDay()`. */
 export const WEEKDAYS = [

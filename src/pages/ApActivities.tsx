@@ -26,10 +26,11 @@ import {
   apTitle,
 } from '@/components/ap/ApActivityRow'
 import { ApActivityForm } from '@/components/ap/ApActivityForm'
+import { ApCalendar } from '@/components/ap/ApCalendar'
 import { ApScheduleDialog } from '@/components/ap/ApScheduleDialog'
 import { EmptyState, SkeletonList } from '@/components/ui/Feedback'
 import { PageHeader } from '@/components/ui/Pickers'
-import { MenuChoice, ViewMenu } from '@/components/ui/ViewMenu'
+import { MenuChips, MenuChoice, MenuDivider, ViewMenu } from '@/components/ui/ViewMenu'
 import { cn } from '@/lib/utils'
 import { differenceInCalendarDays, formatMonth, startOfDay, toDateInput } from '@/lib/dates'
 import { apActivityEnd, saveApMonth } from '@/services/apActivities'
@@ -38,9 +39,13 @@ import { fromIsoDate } from '@/services/importHistory'
 import {
   AP_ACTIVITY_KIND_LABELS,
   AP_DENSITY_LABELS,
+  AP_FILTER_KINDS,
   AP_SCOPE_LABELS,
   AP_VIEW_MODE_LABELS,
+  apVisibleActivities,
+  isApCalendarMode,
   type ApActivity,
+  type ApActivityKind,
   type ApView,
 } from '@/lib/types'
 
@@ -55,12 +60,21 @@ import {
  * stammt.
  *
  * Wie er dargestellt wird, sagt ein Knopf oben rechts: als **Liste** – ein
- * Fahrplan, von oben nach unten zu lesen – oder als **Kacheln**, die jeden
- * Termin für sich hinstellen und auf breiten Bildschirmen mehrere Wochen
- * nebeneinander zeigen. Dazu drei Abstufungen, wie viel Luft der Plan
- * bekommt, und der Zeitraum. Die Wahl bleibt: im Browser und am Konto.
+ * Fahrplan, von oben nach unten zu lesen –, als **Kacheln**, die jeden
+ * Termin für sich hinstellen, oder als **Kalender** über eine Woche oder
+ * einen ganzen Monat. Die beiden Kalenderansichten beantworten die andere
+ * Frage: nicht «was kommt?», sondern «wann ist noch nichts?» – sie zeigen
+ * auch die leeren Tage, die eine Liste stillschweigend überspringt (siehe
+ * `lib/apCalendar`). Dazu drei Abstufungen, wie viel Luft der Plan bekommt,
+ * und der Zeitraum. Die Wahl bleibt: im Browser und am Konto.
  *
- * Ausgefallene Abende bleiben stehen, zählen aber nicht als «das
+ * Ebenfalls hinter dem Knopf: **welche Arten** der Plan zeigt. Wer alle
+ * Klassen des Halbjahrs sucht, blendet die Aktivitäten weg – und mit der
+ * ersten Einschränkung fallen die ausgefallenen Abende von selbst heraus:
+ * Sie erklären eine Lücke im vollständigen Plan, in einer Auswahl erklären
+ * sie nichts.
+ *
+ * Ausgefallene Abende bleiben sonst stehen, zählen aber nicht als «das
  * Nächste»: Sie erklären eine Lücke, statt eine zu sein.
  *
  * Die Seite hat zwei Zustände, und sie sind bewusst getrennt: Der
@@ -85,11 +99,20 @@ export function ApActivities() {
   const [view, setView] = useApView()
   const scope = view.scope
   const spacing = AP_SPACING[view.density]
+  const calendar = isApCalendarMode(view.mode)
 
   const [wantsEdit, setWantsEdit] = useState(false)
   const [formOpen, setFormOpen] = useState(false)
   const [editing, setEditing] = useState<ApActivity | null>(null)
   const [scheduleOpen, setScheduleOpen] = useState(false)
+  /*
+   * Welche Woche bzw. welcher Monat im Kalender steht.
+   *
+   * Bewusst nicht in der gemerkten Ansicht: Wer die App morgen wieder
+   * aufmacht, will den laufenden Monat sehen und nicht den, in dem er
+   * zuletzt geblättert hat.
+   */
+  const [cursor, setCursor] = useState(() => startOfDay(new Date()))
 
   /* Der Modus hängt am Recht, nicht nur am Knopf: Wird das Schreibrecht
      entzogen, während die Seite offen ist, fällt sie sofort zurück. */
@@ -102,29 +125,38 @@ export function ApActivities() {
     [months],
   )
 
+  /*
+   * Der Plan, auf die gewählten Arten eingeschränkt.
+   *
+   * Die Einschränkung gilt für die ganze Seite und nicht bloss für die Liste
+   * darunter: Stünde über einem auf Klassen eingeschränkten Plan als
+   * Nächstes eine Aktivität, widerspräche die Seite sich selbst.
+   */
+  const shown = useMemo(() => apVisibleActivities(activities, view.kinds), [activities, view.kinds])
+
   /* Was kommt – ohne die abgesagten Abende. */
   const upcoming = useMemo(
     () =>
-      activities
+      shown
         .filter((activity) => apActivityEnd(activity) >= today && activity.kind !== 'cancelled')
         .sort((a, b) => a.date.localeCompare(b.date)),
-    [activities, today],
+    [shown, today],
   )
 
   const next = upcoming[0] ?? null
 
   const counts = useMemo(
     () => ({
-      upcoming: activities.filter((activity) => apActivityEnd(activity) >= today).length,
-      past: activities.filter((activity) => apActivityEnd(activity) < today).length,
-      all: activities.length,
+      upcoming: shown.filter((activity) => apActivityEnd(activity) >= today).length,
+      past: shown.filter((activity) => apActivityEnd(activity) < today).length,
+      all: shown.length,
     }),
-    [activities, today],
+    [shown, today],
   )
 
-  /* Der Plan, gefiltert und nach Monaten gruppiert. */
+  /* Der Plan, nach Zeitraum gefiltert und nach Monaten gruppiert. */
   const groups = useMemo(() => {
-    let visible = activities
+    let visible = shown
     if (scope === 'upcoming') {
       visible = visible.filter((activity) => apActivityEnd(activity) >= today)
     } else if (scope === 'past') {
@@ -143,7 +175,7 @@ export function ApActivities() {
       else byMonth.set(month, [activity])
     }
     return [...byMonth.entries()]
-  }, [activities, scope, today])
+  }, [shown, scope, today])
 
   /* Vorschlag für einen neuen Termin: der nächste freie Mittwoch bzw. Sonntag. */
   const suggestedDate = useMemo(
@@ -249,12 +281,29 @@ export function ApActivities() {
           )}
 
           {/* ---------- Der Plan ---------- */}
-          {groups.length === 0 ? (
+          {calendar ? (
+            /* Der Kalender braucht weder Zeitraum noch Monatsgruppen: Er zeigt
+               genau die Woche bzw. den Monat, in dem man gerade blättert –
+               samt der Tage, an denen nichts ansteht. */
+            <ApCalendar
+              activities={shown}
+              mode={view.mode === 'week' ? 'week' : 'month'}
+              cursor={cursor}
+              onCursor={setCursor}
+              today={today}
+              nextId={next?.id}
+              onOpen={editMode ? open : undefined}
+            />
+          ) : groups.length === 0 ? (
             <div className="card">
               <EmptyState
                 icon={CalendarDays}
                 title="Nichts gefunden"
-                description="In diesem Zeitraum steht nichts im Plan."
+                description={
+                  view.kinds?.length
+                    ? 'Mit dieser Auswahl an Arten steht in diesem Zeitraum nichts im Plan.'
+                    : 'In diesem Zeitraum steht nichts im Plan.'
+                }
               />
             </div>
           ) : (
@@ -353,18 +402,18 @@ function ApViewMenu({
   onChange: (patch: Partial<ApView>) => void
   counts: Record<ApView['scope'], number>
 }) {
+  /*
+   * Zeitraum und Abstand gehören zum fortlaufenden Plan.
+   *
+   * Im Kalender hätten sie nichts zu bestimmen: Er zeigt die Woche bzw. den
+   * Monat, in dem geblättert wird, und ein Raster hat den Abstand, den seine
+   * Zellen brauchen. Ein Umschalter, der nichts bewirkt, ist schlimmer als
+   * keiner – man dreht daran und sucht danach den Fehler.
+   */
+  const calendar = isApCalendarMode(view.mode)
+
   return (
-    <ViewMenu width="sm:w-[22rem]">
-      <MenuChoice<ApView['scope']>
-        label="Zeitraum"
-        value={view.scope}
-        onChange={(scope) => onChange({ scope })}
-        options={(Object.keys(AP_SCOPE_LABELS) as ApView['scope'][]).map((value) => ({
-          value,
-          label: AP_SCOPE_LABELS[value],
-          count: counts[value],
-        }))}
-      />
+    <ViewMenu width="sm:w-[24rem]">
       <MenuChoice<ApView['mode']>
         label="Darstellung"
         value={view.mode}
@@ -374,14 +423,46 @@ function ApViewMenu({
           label: AP_VIEW_MODE_LABELS[value],
         }))}
       />
-      <MenuChoice<ApView['density']>
-        label="Abstand"
-        value={view.density}
-        onChange={(density) => onChange({ density })}
-        options={(Object.keys(AP_DENSITY_LABELS) as ApView['density'][]).map((value) => ({
+
+      {!calendar && (
+        <>
+          <MenuChoice<ApView['scope']>
+            label="Zeitraum"
+            value={view.scope}
+            onChange={(scope) => onChange({ scope })}
+            options={(Object.keys(AP_SCOPE_LABELS) as ApView['scope'][]).map((value) => ({
+              value,
+              label: AP_SCOPE_LABELS[value],
+              count: counts[value],
+            }))}
+          />
+          <MenuChoice<ApView['density']>
+            label="Abstand"
+            value={view.density}
+            onChange={(density) => onChange({ density })}
+            options={(Object.keys(AP_DENSITY_LABELS) as ApView['density'][]).map((value) => ({
+              value,
+              label: AP_DENSITY_LABELS[value],
+            }))}
+          />
+        </>
+      )}
+
+      <MenuDivider />
+
+      <MenuChips<ApActivityKind>
+        label="Arten"
+        values={view.kinds ?? []}
+        onChange={(kinds) => onChange({ kinds })}
+        options={AP_FILTER_KINDS.map((value) => ({
           value,
-          label: AP_DENSITY_LABELS[value],
+          label: AP_ACTIVITY_KIND_LABELS[value],
         }))}
+        hint={
+          view.kinds?.length
+            ? `«${AP_ACTIVITY_KIND_LABELS.cancelled}» bleibt bei einer Auswahl aussen vor.`
+            : `Ohne Auswahl steht alles im Plan – «${AP_ACTIVITY_KIND_LABELS.cancelled}» eingeschlossen.`
+        }
       />
     </ViewMenu>
   )
