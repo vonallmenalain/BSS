@@ -164,6 +164,15 @@ export interface ApView {
    * Einschränkung weg (siehe `apVisibleActivities`).
    */
   kinds?: ApActivityKind[]
+  /**
+   * Die grosse Karte «Als Nächstes» über dem Plan.
+   *
+   * Wer den Plan überarbeitet, statt ihn zu lesen, kennt den nächsten Termin
+   * längst – dann nimmt die Karte nur die oberste Bildschirmhöhe weg. Fehlt
+   * die Angabe, steht sie da: So sah der Plan immer aus, und das ist die
+   * Antwort auf die häufigere Frage.
+   */
+  showNext?: boolean
 }
 
 export const DEFAULT_AP_VIEW: ApView = {
@@ -171,6 +180,7 @@ export const DEFAULT_AP_VIEW: ApView = {
   density: 'normal',
   scope: 'upcoming',
   kinds: [],
+  showNext: true,
 }
 
 export const AP_VIEW_MODE_LABELS: Record<ApView['mode'], string> = {

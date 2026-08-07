@@ -204,14 +204,22 @@ export function ApDetails({
   activity,
   className,
   columns = true,
+  withTime = true,
 }: {
   activity: ApActivity
   className?: string
   /** Zwei Spalten, sobald Platz ist – in einer schmalen Kachel eine */
   columns?: boolean
+  /**
+   * Die Startzeit mit aufführen.
+   *
+   * Aus: Wo die Zeit schon vor dem Titel steht – im Kalender etwa, der sich
+   * wie ein Fahrplan liest –, stünde sie hier ein zweites Mal.
+   */
+  withTime?: boolean
 }) {
   const hasAny = [
-    activity.time,
+    withTime ? activity.time : '',
     activity.location,
     activity.leader,
     activity.bishopric,
@@ -221,7 +229,7 @@ export function ApDetails({
 
   return (
     <div className={cn('grid gap-x-6 gap-y-1', columns && 'sm:grid-cols-2', className)}>
-      <Angabe label="Startzeit" value={activity.time} />
+      {withTime && <Angabe label="Startzeit" value={activity.time} />}
       <Angabe label="Treffpunkt" value={activity.location} />
       <Angabe label="Zuständig" value={activity.leader} />
       <Angabe label="Teilnahme BSS" value={activity.bishopric} />

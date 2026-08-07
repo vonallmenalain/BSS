@@ -619,24 +619,44 @@ export function PageHeader({
   subtitle,
   actions,
   hidden = false,
+  sticky = false,
 }: {
   title: string
   subtitle?: string
   actions?: React.ReactNode
   /** Titel und Untertitel nur für Bildschirmleser ausgeben */
   hidden?: boolean
+  /**
+   * Der Kopf bleibt beim Blättern stehen.
+   *
+   * Für Seiten, auf denen weit gescrollt wird und die Knöpfe unterwegs
+   * gebraucht werden – im Aktivitätenplan etwa der Wechsel der Ansicht,
+   * mitten im Dezember. Er klebt unter der Kopfzeile der App (`top-14`) und
+   * deckt den durchlaufenden Inhalt mit dem Seitenhintergrund ab; dafür
+   * greift er über das Polster des Inhaltsbereichs hinaus.
+   */
+  sticky?: boolean
 }) {
   return (
     <header
       className={cn(
-        'mb-5 flex flex-wrap items-start justify-between gap-3',
+        'flex flex-wrap justify-between',
+        // Ein bleibender Kopf ist schmaler: Er begleitet den Inhalt, statt
+        // ihn anzukündigen – und am Telefon passt so alles auf eine Zeile.
+        sticky
+          ? 'sticky top-14 z-30 -mx-4 mb-4 items-center gap-x-2 gap-y-1 border-b border-slate-200 bg-slate-50/90 px-4 py-2.5 backdrop-blur-md sm:-mx-6 sm:gap-3 sm:px-6 dark:border-slate-800 dark:bg-slate-950/90'
+          : 'mb-5 items-start gap-3',
         // Ohne sichtbaren Titel bleibt die Knopfreihe allein – dann darf sie
         // näher an den Inhalt rücken.
-        hidden && 'mb-3',
+        hidden && !sticky && 'mb-3',
       )}
     >
       <div className={cn('min-w-0', hidden && 'sr-only')}>
-        <h1 className="text-xl font-semibold tracking-tight sm:text-2xl">{title}</h1>
+        <h1
+          className={cn('font-semibold tracking-tight sm:text-2xl', sticky ? 'text-lg' : 'text-xl')}
+        >
+          {title}
+        </h1>
         {subtitle && (
           <p className="mt-0.5 text-sm text-slate-500 dark:text-slate-400">{subtitle}</p>
         )}
