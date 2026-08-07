@@ -30,6 +30,7 @@ import {
   type CallingRowMatch,
 } from '@/lib/callingChanges'
 import { prayerAvailability, talkAvailability, type Availability } from '@/lib/availability'
+import { isOrganizationTag, organizationsOf } from '@/lib/organizations'
 import { formatDate, getAge, monthsSince, toDate, toDateInput } from '@/lib/dates'
 import { cn, formatPhone, telHref } from '@/lib/utils'
 import { updateMember } from '@/services/members'
@@ -39,6 +40,8 @@ import {
   ACTIVE_CALLING_STATUSES,
   GENDER_LABELS,
   lastEditedAt,
+  MEMBER_ORGANIZATION_LABELS,
+  MEMBER_ORGANIZATION_NAMES,
   MEMBER_STATUS_LABELS,
   ORGANIZATION_LABELS,
   PRAYER_SLOT_LABELS,
@@ -53,7 +56,7 @@ import {
 
 export function MemberDetail() {
   const { memberId } = useParams<{ memberId: string }>()
-  const { membersById, loading } = useData()
+  const { membersById, settings, loading } = useData()
   const { data: talks } = useTalks(300)
   /* Wann jemand zuletzt gebetet hat, steht nicht am Mitglied, sondern in den
      Gebeten – wie in der Mitgliederliste. */
@@ -98,6 +101,27 @@ export function MemberDetail() {
   const memberCallings = useMemo(
     () => (memberId ? callingsForMember(callings, memberId) : []),
     [callings, memberId],
+  )
+
+  /*
+   * Wohin diese Person gehört – PV, JD/AP, JAE, AE.
+   *
+   * Gerechnet und nicht gepflegt: PV und JD/AP ergeben sich aus dem
+   * Geburtsdatum, JAE und AE aus den Listen des LCR (siehe
+   * `lib/organizations`). Von Hand gesetzt wird hier nichts – sonst stünden
+   * über kurz oder lang zwei Wahrheiten nebeneinander.
+   */
+  const organizations = useMemo(
+    () =>
+      member ? organizationsOf(member, new Date(), toDate(settings.singlesImportedAt?.jae)) : [],
+    [member, settings.singlesImportedAt],
+  )
+
+  /* Die frei vergebenen Schlagworte – ohne die, die eine Organisation
+     bezeichnen; die stehen als eigene Etiketten davor. */
+  const freeTags = useMemo(
+    () => (member?.tags ?? []).filter((tag) => !isOrganizationTag(tag)),
+    [member],
   )
 
   /*
@@ -246,9 +270,22 @@ export function MemberDetail() {
           </div>
         </div>
 
-        {member.tags?.length > 0 && (
+        {/* Erst die Organisation, dann die frei vergebenen Schlagworte.
+            Die Organisation sagt, wohin jemand gehört, und ist deshalb die
+            Angabe, die man zuerst sucht – die übrigen Schlagworte sind
+            Notizen und stehen ruhiger daneben. */}
+        {(organizations.length > 0 || freeTags.length > 0) && (
           <div className="mt-3 flex flex-wrap gap-1.5">
-            {member.tags.map((tag) => (
+            {organizations.map((organization) => (
+              <span
+                key={organization}
+                className="chip bg-brand-50 text-brand-700 dark:bg-brand-950 dark:text-brand-200"
+                title={MEMBER_ORGANIZATION_NAMES[organization]}
+              >
+                {MEMBER_ORGANIZATION_LABELS[organization]}
+              </span>
+            ))}
+            {freeTags.map((tag) => (
               <span
                 key={tag}
                 className="chip bg-slate-100 text-slate-600 dark:bg-slate-800 dark:text-slate-300"
@@ -726,7 +763,11 @@ export function MemberForm({
       availableForPrayers: prayer.available,
       prayerHoldUntil: prayer.available ? '' : toDateInput(prayer.until),
       notes: member.notes ?? '',
-      tags: (member.tags ?? []).join(', '),
+      // Ohne JAE und AE: Die kommen aus den Listen des LCR und stehen im
+      // Profil als eigene Etiketten. Hier stünden sie als Text zum Ändern da,
+      // und wer sie überschriebe, machte die Filterung stillschweigend falsch
+      // – bis zum nächsten Import (siehe `lib/organizations`).
+      tags: (member.tags ?? []).filter((tag) => !isOrganizationTag(tag)).join(', '),
     })
   }, [open, member])
 
@@ -765,10 +806,15 @@ export function MemberForm({
         prayerHoldUntil: prayerUntil,
 
         notes: form.notes.trim(),
-        tags: form.tags
-          .split(',')
-          .map((tag) => tag.trim())
-          .filter(Boolean),
+        // Die Schlagworte der Organisationen bleiben, wie sie sind – sie
+        // standen gar nicht erst im Feld.
+        tags: [
+          ...(member.tags ?? []).filter(isOrganizationTag),
+          ...form.tags
+            .split(',')
+            .map((tag) => tag.trim())
+            .filter((tag) => Boolean(tag) && !isOrganizationTag(tag)),
+        ],
 
         // Nur, wenn sich tatsächlich etwas geändert hat: Ein Zeitpunkt, den
         // jedes Speichern neu setzt, beantwortet die Frage «seit wann?» nicht
@@ -889,7 +935,10 @@ export function MemberForm({
             value={form.tags}
             onChange={(event) => update('tags', event.target.value)}
           />
-          <p className="hint">Mit Komma trennen.</p>
+          <p className="hint">
+            Mit Komma trennen. JAE und AE stehen nicht hier: Sie kommen aus den Listen des LCR
+            («Einstellungen › Importe › Alleinstehende»).
+          </p>
         </div>
 
         {/* Ab hier steht der Bestand des LCR: sichtbar, damit das Profil

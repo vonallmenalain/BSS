@@ -11,10 +11,11 @@ import {
 } from 'firebase/firestore'
 import { db, COLLECTIONS } from '@/lib/firebase'
 import { talkAvailability } from '@/lib/availability'
+import { matchesOrganizations } from '@/lib/organizations'
 import { getAge, monthsSince } from '@/lib/dates'
 import { compareNames, normalize, stripUndefined } from '@/lib/utils'
 import { commit, type SaveOutcome } from '@/lib/sync'
-import type { Gender, Member, MemberStatus } from '@/lib/types'
+import type { Gender, Member, MemberOrganization, MemberStatus } from '@/lib/types'
 
 const membersRef = collection(db, COLLECTIONS.members)
 
@@ -103,6 +104,21 @@ export interface MemberFilter {
   gender?: Gender | 'all'
   availableForTalks?: boolean
   tag?: string
+  /**
+   * Organisationen – leer bzw. fehlend heisst «alle».
+   *
+   * Mehrere wirken als «oder»: JAE und AE nebeneinander ergeben beide
+   * Listen und nicht ihre (leere) Schnittmenge. Mit den übrigen
+   * Einschränkungen wirkt es dagegen als «und» – siehe `lib/organizations`.
+   */
+  organizations?: MemberOrganization[]
+  /**
+   * Wann die JAE-Liste zuletzt eingelesen wurde.
+   *
+   * Daran hängt, wer seither achtzehn geworden ist und deshalb als JAE gilt,
+   * obwohl er noch auf keiner Liste steht (siehe `lib/organizations`).
+   */
+  jaeImportedAt?: Date | null
   /** Nur Mitglieder, die seit mindestens X Monaten keine Ansprache hatten */
   minMonthsSinceTalk?: number
   /**
@@ -116,12 +132,13 @@ export interface MemberFilter {
   maxAge?: number | null
 }
 
-export function filterMembers(members: Member[], filter: MemberFilter): Member[] {
+export function filterMembers(members: Member[], filter: MemberFilter, now = new Date()): Member[] {
   const hasAgeLimit = filter.minAge != null || filter.maxAge != null
 
   return members.filter((member) => {
     if (filter.status && filter.status !== 'all' && member.status !== filter.status) return false
     if (filter.gender && filter.gender !== 'all' && member.gender !== filter.gender) return false
+    if (!matchesOrganizations(member, filter.organizations, now, filter.jaeImportedAt)) return false
 
     if (hasAgeLimit) {
       const age = getAge(member.birthDate)

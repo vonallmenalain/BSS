@@ -24,6 +24,7 @@ import {
   Upload,
   UserCog,
   UserPlus,
+  Users,
 } from 'lucide-react'
 import { useAuth } from '@/contexts/AuthContext'
 import { useData } from '@/contexts/DataContext'
@@ -76,6 +77,12 @@ const IMPORTS = [
     label: 'Betreuung',
     description: 'Betreuungspartner und Betreuungsaufträge',
     icon: HeartHandshake,
+  },
+  {
+    to: '/import/alleinstehende',
+    label: 'Alleinstehende',
+    description: 'Die Listen JAE und AE – Grundlage für den Filter nach Organisation',
+    icon: Users,
   },
   {
     to: '/import/putzplan',

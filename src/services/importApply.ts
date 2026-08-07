@@ -24,7 +24,9 @@ import type {
   KnownPrayer,
   KnownTalk,
   MinisteringPreview,
+  SinglesPreview,
 } from '@/services/importMatch'
+import { saveSettings } from '@/services/settings'
 import { HELD_STATUS_QUERY } from '@/lib/types'
 import type { Calling, Prayer, Talk } from '@/lib/types'
 
@@ -331,6 +333,69 @@ export async function runMinisteringImport(
   }
 
   return { created: 0, updated, skipped: preview.skipCount }
+}
+
+/* ------------------------------------------------------------------ */
+/* Alleinstehende: JAE und AE                                          */
+/* ------------------------------------------------------------------ */
+
+export interface SinglesOutcome {
+  /** Wie viele das Schlagwort neu bekommen haben */
+  added: number
+  /** Wie vielen es weggenommen wurde, weil sie nicht mehr auf der Liste stehen */
+  removed: number
+  /** Wie viele es schon hatten – dort war nichts zu schreiben */
+  unchanged: number
+  /** Namen ohne erfasste Person */
+  skipped: number
+}
+
+/**
+ * Die Liste der Alleinstehenden schreiben – setzen und wegnehmen.
+ *
+ * Geschrieben wird nur, was sich ändert: Wer das Schlagwort schon trägt,
+ * wird nicht angefasst. Bei einer Liste, die alle drei Monate neu eingelesen
+ * wird, ist das der Normalfall – ein Import, der jedes Mal achtzig Datensätze
+ * anfasst, machte aus «zuletzt geändert» eine wertlose Angabe.
+ *
+ * Am Schluss steht der Zeitpunkt in den Einstellungen. Er ist mehr als ein
+ * Vermerk: Daran hängt, wer seither achtzehn geworden ist und deshalb bis zum
+ * nächsten Import als JAE gilt (siehe `lib/organizations`).
+ */
+export async function runSinglesImport(
+  preview: SinglesPreview,
+  onProgress?: (done: number, total: number) => void,
+): Promise<SinglesOutcome> {
+  requireOnline()
+
+  const writes = [
+    ...preview.additions.map((entry) => ({ id: entry.memberId, tags: entry.tags })),
+    ...preview.removals.map((entry) => ({ id: entry.memberId, tags: entry.tags })),
+  ]
+
+  for (let offset = 0; offset < writes.length; offset += CHUNK_SIZE) {
+    const chunk = writes.slice(offset, offset + CHUNK_SIZE)
+    const batch = writeBatch(db)
+    for (const write of chunk) {
+      batch.update(doc(db, COLLECTIONS.members, write.id), {
+        tags: write.tags,
+        updatedAt: serverTimestamp(),
+      })
+    }
+    await batch.commit()
+    onProgress?.(Math.min(offset + chunk.length, writes.length), writes.length)
+  }
+
+  await saveSettings({
+    singlesImportedAt: { [preview.kind]: Timestamp.fromDate(new Date()) },
+  })
+
+  return {
+    added: preview.additions.length,
+    removed: preview.removals.length,
+    unchanged: preview.keepCount,
+    skipped: preview.skipCount,
+  }
 }
 
 /* ------------------------------------------------------------------ */

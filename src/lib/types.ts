@@ -1145,6 +1145,54 @@ export const GENDER_SCOPE_LABELS: Record<Gender | 'all', string> = {
 }
 
 /**
+ * Die Organisationen der Gemeinde, nach denen die Mitgliederliste gefiltert
+ * werden kann.
+ *
+ * Nicht zu verwechseln mit `Organization`: Das sind die Organisationen, in
+ * denen jemand **berufen** ist – Bischofschaft, Sonntagsschule, Musik. Hier
+ * geht es um die Gruppe, zu der jemand **gehört**, und die ergibt sich aus
+ * Alter und Familienstand. Wer beides zusammenlegte, könnte die
+ * PV-Leiterin nicht mehr von den Kindern unterscheiden.
+ *
+ * Wie die Grenzen verlaufen, steht in `lib/organizations`.
+ */
+export type MemberOrganization = 'pv' | 'jdap' | 'jae' | 'ae'
+
+export const MEMBER_ORGANIZATION_LABELS: Record<MemberOrganization, string> = {
+  pv: 'PV',
+  jdap: 'JD / AP',
+  jae: 'JAE',
+  ae: 'AE',
+}
+
+/** Die ausgeschriebene Form – für Erklärungen und Tooltips. */
+export const MEMBER_ORGANIZATION_NAMES: Record<MemberOrganization, string> = {
+  pv: 'Primarvereinigung',
+  jdap: 'Junge Damen und Aaronisches Priestertum',
+  jae: 'Junge Alleinstehende Erwachsene',
+  ae: 'Alleinstehende Erwachsene',
+}
+
+/**
+ * Die Schlagwörter, unter denen JAE und AE am Mitglied stehen.
+ *
+ * Sie liegen in `tags` und nicht in einem eigenen Feld: Es ist genau das,
+ * wofür `tags` da ist – eine Zugehörigkeit, die sich weder aus dem
+ * Geburtsdatum noch aus dem Verzeichnis ergibt. Gesetzt werden sie beim
+ * Import der beiden LCR-Listen (siehe `services/importSingles`), im Profil
+ * lassen sie sich mit einem Griff nachziehen.
+ *
+ * Der Wert ist zugleich die Beschriftung – er steht so im Profil.
+ */
+export const MEMBER_ORGANIZATION_TAGS = {
+  jae: 'JAE',
+  ae: 'AE',
+} as const
+
+/** Welche der beiden Listen importiert wird. */
+export type SinglesKind = keyof typeof MEMBER_ORGANIZATION_TAGS
+
+/**
  * Was die Mitgliederliste zeigt und in welcher Reihenfolge.
  *
  * Alles davon steht hinter «Ansicht» oben rechts – so wie auf jeder anderen
@@ -1153,6 +1201,15 @@ export const GENDER_SCOPE_LABELS: Record<Gender | 'all', string> = {
 export interface MembersView {
   status: MemberStatus | 'all'
   gender: Gender | 'all'
+  /**
+   * Nach welchen Organisationen eingeschränkt wird – leer heisst «alle».
+   *
+   * Eine Mehrfachauswahl, weil «alle JAE und AE» eine gewöhnliche Frage ist
+   * und «alle, die zugleich JAE und AE sind» keine. Sie steht neben den
+   * übrigen Einschränkungen und wirkt mit ihnen zusammen: JAE **und** Frauen
+   * **und** 18 bis 25 ist die Liste, nach der man am Sitzungstisch fragt.
+   */
+  organizations: MemberOrganization[]
   /** Untere Altersgrenze in Jahren, `null` = keine */
   minAge: number | null
   /** Obere Altersgrenze in Jahren, `null` = keine */
@@ -1164,10 +1221,38 @@ export interface MembersView {
 export const DEFAULT_MEMBERS_VIEW: MembersView = {
   status: 'active',
   gender: 'all',
+  organizations: [],
   minAge: null,
   maxAge: null,
   sort: 'name',
   direction: 'asc',
+}
+
+/**
+ * Was «Filter zurücksetzen» wiederherstellt.
+ *
+ * Nicht die Vorgabe der Ansicht: Die zeigt nur die aktiven Mitglieder, und
+ * wer alle Einschränkungen wegnimmt, will alle sehen. Die Sortierung bleibt
+ * unangetastet – sie schränkt nichts ein, sondern ordnet nur, und wer nach
+ * dem Alter sortiert arbeitet, soll das nach dem Zurücksetzen weiterhin tun.
+ */
+export const MEMBERS_FILTER_RESET = {
+  status: 'all',
+  gender: 'all',
+  organizations: [],
+  minAge: null,
+  maxAge: null,
+} satisfies Partial<MembersView>
+
+/** Schränkt diese Ansicht überhaupt etwas ein? */
+export function hasMemberFilters(view: MembersView): boolean {
+  return (
+    view.status !== MEMBERS_FILTER_RESET.status ||
+    view.gender !== MEMBERS_FILTER_RESET.gender ||
+    view.organizations.length > 0 ||
+    view.minAge !== null ||
+    view.maxAge !== null
+  )
 }
 
 /* ------------------------------------------------------------------ */
@@ -1532,6 +1617,17 @@ export interface AppSettings {
   pendenzenSort: PendenzenSortState
   /** Dasselbe für das Archiv «Erledigt» – dort ohne die gelegte Reihenfolge. */
   pendenzenDoneSort: PendenzenSortState
+  /**
+   * Wann die beiden Listen der Alleinstehenden zuletzt importiert wurden.
+   *
+   * Nicht bloss fürs Protokoll: Daran hängt, wer zwischen zwei Importen als
+   * JAE gilt. Die Liste des LCR ist die Wahrheit über den Familienstand, aber
+   * sie altert – wer nach dem Import achtzehn wird, steht noch nicht darauf
+   * und fiele bis zum nächsten Mal aus jeder Gruppe heraus. Mit diesem Datum
+   * lässt sich genau das schliessen, ohne etwas zu raten und ohne etwas zu
+   * schreiben (siehe `lib/organizations`).
+   */
+  singlesImportedAt?: Partial<Record<SinglesKind, TS | null>>
   updatedAt?: TS
 }
 

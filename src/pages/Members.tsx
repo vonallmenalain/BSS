@@ -1,25 +1,37 @@
 import { useMemo } from 'react'
-import { Mail, Phone, Search, Users } from 'lucide-react'
+import { Mail, Phone, RotateCcw, Search, Users } from 'lucide-react'
 import { useData } from '@/contexts/DataContext'
 import { EmptyState, SkeletonList } from '@/components/ui/Feedback'
 import { PageHeader } from '@/components/ui/Pickers'
 import { MemberStatusBadge } from '@/components/ui/Badge'
 import { Avatar } from '@/components/ui/Avatar'
-import { MenuChoice, MenuDivider, MenuRange, MenuSort, ViewMenu } from '@/components/ui/ViewMenu'
+import {
+  MenuAction,
+  MenuChips,
+  MenuChoice,
+  MenuDivider,
+  MenuRange,
+  MenuSort,
+  ViewMenu,
+} from '@/components/ui/ViewMenu'
 import { useLocalStorage } from '@/hooks/useLocalStorage'
 import { usePrayers } from '@/hooks/useFirestore'
 import { useUrlState } from '@/hooks/useUrlState'
 import { MemberLink } from '@/components/ui/MemberLink'
-import { formatDate, getAge, monthsSince } from '@/lib/dates'
+import { formatDate, getAge, monthsSince, toDate } from '@/lib/dates'
 import { formatPhone, telHref } from '@/lib/utils'
 import { lastPrayerByMember } from '@/services/prayers'
 import { filterMembers, sortMembers, type MemberFilter } from '@/services/members'
 import {
   DEFAULT_MEMBERS_VIEW,
   GENDER_SCOPE_LABELS,
+  hasMemberFilters,
+  MEMBER_ORGANIZATION_LABELS,
   MEMBER_SORT_LABELS,
   MEMBER_STATUS_SCOPE_LABELS,
+  MEMBERS_FILTER_RESET,
   type Gender,
+  type MemberOrganization,
   type MemberSort,
   type MembersView,
   type MemberStatus,
@@ -27,7 +39,7 @@ import {
 } from '@/lib/types'
 
 export function Members() {
-  const { members, loading } = useData()
+  const { members, settings, loading } = useData()
   /* Für «Gebet zuletzt»: Wann jemand zuletzt gebetet hat, steht nicht am
      Mitglied, sondern in den Gebeten. */
   const { data: prayers } = usePrayers(600)
@@ -59,16 +71,30 @@ export function Members() {
 
   const lastPrayer = useMemo(() => lastPrayerByMember(prayers), [prayers])
 
+  /*
+   * Wann die JAE-Liste zuletzt eingelesen wurde.
+   *
+   * Wer seither achtzehn geworden ist, gilt als JAE, obwohl er noch auf
+   * keiner Liste steht – so klafft zwischen zwei Importen keine Lücke
+   * (siehe `lib/organizations`).
+   */
+  const jaeImportedAt = useMemo(
+    () => toDate(settings.singlesImportedAt?.jae),
+    [settings.singlesImportedAt],
+  )
+
   const visible = useMemo(() => {
     const filter: MemberFilter = {
       search,
       status: view.status,
       gender: view.gender,
+      organizations: view.organizations,
+      jaeImportedAt,
       minAge: view.minAge,
       maxAge: view.maxAge,
     }
     return sortMembers(filterMembers(members, filter), view.sort, view.direction, lastPrayer)
-  }, [members, search, view, lastPrayer])
+  }, [members, search, view, lastPrayer, jaeImportedAt])
 
   return (
     <>
@@ -246,12 +272,33 @@ function MembersMenu({
         ]}
       />
 
+      {/* Die Organisation als Chips und nicht als Knopfleiste: Es sind vier
+          gleichrangige Gruppen, und «JAE und AE» ist eine gewöhnliche Frage.
+          Nichts gewählt heisst «alle» – genau das sagt der erste Chip. */}
+      <MenuChips<MemberOrganization>
+        label="Organisation"
+        values={view.organizations}
+        onChange={(organizations) => patch({ organizations })}
+        options={(Object.keys(MEMBER_ORGANIZATION_LABELS) as MemberOrganization[]).map((value) => ({
+          value,
+          label: MEMBER_ORGANIZATION_LABELS[value],
+        }))}
+        hint="PV und JD/AP ergeben sich aus dem Geburtsdatum. JAE und AE kommen aus den beiden Listen des LCR – «Einstellungen › Importe › Alleinstehende»."
+      />
+
       <MenuRange
         label="Alter"
         from={view.minAge}
         to={view.maxAge}
         onChange={({ from, to }) => patch({ minAge: from, maxAge: to })}
-        hint="Beides freilassbar. Wessen Geburtsdatum fehlt, erscheint bei gesetzter Grenze nicht."
+      />
+
+      <MenuAction
+        label="Filter zurücksetzen"
+        icon={RotateCcw}
+        disabled={!hasMemberFilters(view)}
+        onClick={() => patch(MEMBERS_FILTER_RESET)}
+        hint="Status, Geschlecht, Organisation und Alter – danach steht wieder die ganze Gemeinde da. Die Sortierung bleibt."
       />
 
       <MenuDivider />
