@@ -32,6 +32,11 @@ rules_version = '2';
 // Einstellungen (für den Namen der Gemeinde in der Kopfzeile). Alles
 // Übrige bleibt ihnen verschlossen, und zwar hier und nicht erst in der
 // Oberfläche.
+//
+// Dazu kommt `calendarFeeds`: die Links, unter denen der Plan als Kalender
+// abonniert werden kann. Die erreicht nur, wer den Plan auch schreiben darf
+// – ein Link trägt die Berechtigung in sich, und wer bloss zusieht, vergibt
+// sie nicht weiter.
 
 service cloud.firestore {
   match /databases/{database}/documents {
@@ -225,6 +230,24 @@ service cloud.firestore {
     match /apMonths/{month} {
       allow read: if apAccess();
       allow write: if apWrite();
+    }
+
+    /*
+     * Die Links, unter denen der Plan als Kalender abonniert werden kann.
+     *
+     * Enger als der Plan selbst, und zwar in beide Richtungen: Ein Link ist
+     * die Berechtigung, den Plan zu sehen (er trägt sie im Token), deshalb
+     * darf ihn nur lesen und vergeben, wer den Plan auch pflegen darf.
+     * `ap_viewer` fehlt hier – wer den Kalender bloss ansieht, gibt ihn nicht
+     * weiter.
+     *
+     * Ausgeliefert wird der Feed nicht von hier, sondern von der
+     * Netlify-Function. Die arbeitet mit einem Dienstkonto und geht damit an
+     * diesen Regeln vorbei – sie ist der einzige Weg, auf dem ein Abruf ohne
+     * Anmeldung an den Plan kommt, und sie prüft dafür das Token.
+     */
+    match /calendarFeeds/{feedId} {
+      allow read, write: if apWrite();
     }
 
     /* ---------------- Einstellungen ---------------- */

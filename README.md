@@ -145,6 +145,39 @@ bischofschaft.netlify.app
 
 Fehlt das, schlägt die Anmeldung in Produktion fehl.
 
+### Dienstkonto für den Kalender-Feed
+
+Eine einzige Sache läuft serverseitig: der abonnierbare Aktivitätenplan
+unter `/api/ap.ics` (siehe [Im eigenen Kalender
+abonnieren](#im-eigenen-kalender-abonnieren)). Ein Kalenderprogramm kann sich
+nirgends anmelden, deshalb meldet sich eine Netlify-Function stellvertretend
+bei Firestore an – mit einem Dienstkonto.
+
+1. Firebase-Konsole → **Projekteinstellungen → Dienstkonten** →
+   **Neuen privaten Schlüssel generieren**. Es lädt eine JSON-Datei herunter.
+2. In Netlify unter **Site configuration → Environment variables** eine
+   Variable `FIREBASE_SERVICE_ACCOUNT` anlegen und den **ganzen Inhalt** der
+   JSON-Datei als Wert einsetzen.
+3. Neu ausrollen.
+
+Gehen dabei die Zeilenumbrüche im privaten Schlüssel verloren – das kommt
+beim Kopieren vor –, hilft die Base64-Schreibweise; die Function nimmt beide
+an:
+
+```bash
+base64 -w0 dienstkonto.json
+```
+
+> **Dieser Wert ist ein echtes Geheimnis** – anders als die
+> `VITE_FIREBASE_*`-Werte, die in jeder ausgelieferten Seite im Klartext
+> stehen. Er trägt bewusst kein `VITE_` im Namen: Nur so bleibt er aus dem
+> Browser-Bundle heraus. Er gehört nie ins Repository. Ist er einmal
+> abhandengekommen, lässt sich der Schlüssel in der Firebase-Konsole
+> zurückziehen und ein neuer erzeugen.
+
+Ohne diesen Wert läuft die App vollständig – nur die Kalender-Links
+antworten mit einer Fehlermeldung.
+
 ---
 
 ## Automatisches Ausrollen
@@ -246,6 +279,33 @@ einschliesslich Programm der Abendmahlsversammlung, Gebete, Liederliste und
 Notizen.
 
 Dieselben Tests laufen in der CI, bevor Regeln ausgerollt werden.
+
+### Den Kalender-Feed lokal prüfen
+
+Der abonnierbare Kalender läuft als Netlify-Function und lässt sich gegen den
+Emulator ausprobieren, ohne ein Dienstkonto anzulegen:
+
+```bash
+npx netlify dev
+```
+
+Dazu in der `.env` ergänzen:
+
+```
+FIRESTORE_EMULATOR_HOST=127.0.0.1:8080
+```
+
+Ist dieser Wert gesetzt, spricht die Function mit dem Emulator statt mit dem
+Produktivprojekt und braucht kein `FIREBASE_SERVICE_ACCOUNT`. Danach in der
+App einen Link anlegen (**Aktivitäten AP's → Abonnieren**) und ihn abrufen:
+
+```bash
+curl "http://localhost:8888/api/ap.ics?token=DEIN-TOKEN"
+```
+
+Ein unbekanntes oder widerrufenes Token bekommt `404`, ein gültiges den
+Kalender als `text/calendar`. In der Produktion ist die Variable nicht
+gesetzt, und dann führt kein Weg am Dienstkonto vorbei.
 
 ---
 
@@ -1240,6 +1300,51 @@ es keinen Umschalter, keine Knöpfe zum Anlegen und keine Zeile, die sich
 öffnen liesse. Durchgesetzt wird das nicht in der Oberfläche, sondern in den
 Zugriffsregeln.
 
+### Im eigenen Kalender abonnieren
+
+Der Knopf **Abonnieren** oben rechts gibt den Plan als Link heraus, den sich
+Google Calendar, Apple Kalender und Outlook einrichten können. Danach steht
+der Aktivitätenplan im eigenen Kalender neben allem anderen – und bleibt dort
+aktuell: Neue Termine erscheinen, geänderte rücken, gelöschte verschwinden.
+Niemand muss etwas exportieren, verschicken oder einlesen.
+
+**Ein Abo ist kein Export.** Der Kalender holt sich die Termine unter dem
+Link immer wieder selbst. Nur eben nicht sofort: Wann er nachschaut,
+bestimmt er selbst. Google meist alle paar Stunden, im ungünstigen Fall erst
+am nächsten Tag; das lässt sich weder erzwingen noch einstellen. Apple ist
+genügsamer – am Mac lässt sich das Intervall beim Kalender vorgeben, ab fünf
+Minuten. Wer eine kurzfristige Änderung verlässlich ankommen lassen will,
+sagt sie besser noch dazu.
+
+**Der Link ist die Berechtigung.** Ein Kalenderprogramm kann sich nirgends
+anmelden – es ruft eine Adresse ab, und was zurückkommt, zeigt es an. Deshalb
+steckt die Berechtigung im Link selbst, und deshalb ist er lang und zufällig.
+Wer ihn hat, sieht den Plan; wer ihn weitergibt, gibt den Plan weiter. Zwei
+Dinge halten den Preis dafür klein:
+
+- Der Link reicht **nur** an den Aktivitätenplan. Er ist kein Zugang zur App
+  und erst recht keiner zu den Mitgliederdaten.
+- Es gibt **mehrere** davon – je einen für die Berater, die Jugendführung
+  oder eine einzelne Person. Verschwindet ein Telefon, wird ein Link
+  widerrufen, und die übrigen bleiben.
+
+Vergeben und widerrufen darf die Links nur, wer den Plan auch **pflegen**
+darf. Ein Zugang zum blossen Ansehen sieht den Knopf nicht – auch das steht
+in den Zugriffsregeln und nicht bloss in der Oberfläche.
+
+Zu jedem Link steht in der Liste, wann er zuletzt abgerufen wurde. Das ist
+die verlässlichste Antwort auf «warum sehe ich den Kalender nicht?»: Steht
+dort **noch nie abgerufen**, hat das Kalenderprogramm den Link gar nicht
+geholt – dann liegt es am Abo und nicht an den Terminen.
+
+Wahlweise lässt sich ein Link auf einzelne Arten einschränken. «Fällt aus»
+etwa erklärt im Plan eine Lücke; im eigenen Terminkalender will man sie
+vielleicht nicht sehen.
+
+Ausgeliefert wird der Kalender von einer kleinen Netlify-Function
+(`netlify/functions/ap-ics.mts`). Was sie dafür braucht, steht unter
+[Netlify](#netlify).
+
 ---
 
 ## Notizen
@@ -1968,11 +2073,12 @@ src/
 │   └── …                Eine Datei pro übriger Ansicht
 └── services/            Schreibzugriffe und Fachlogik pro Sammlung
 
+netlify/functions/       Der abonnierbare Kalender – das einzige Serverseitige
 tests/                   Tests der Zugriffsregeln und der Import-Parser (laufen in der CI)
 .github/workflows/       Prüfen und Ausrollen der Firestore-Regeln
 firestore.rules          Zugriffsregeln (die eigentliche Absicherung)
 firestore.indexes.json   Zusammengesetzte Indizes
-netlify.toml             Build, Weiterleitungen, Header
+netlify.toml             Build, Weiterleitungen, Header, Functions
 scripts/                 Icon-Generierung
 docs/KONZEPT.md          Fachliches Konzept
 ```

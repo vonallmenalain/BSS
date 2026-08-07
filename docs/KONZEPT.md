@@ -619,6 +619,10 @@ immer dasselbe: Termin verstrichen.
 - Berufungen als Organisationsplan, Stand aus dem LCR – mit der Ansicht «ohne
   Berufung» und dem Weg von jeder Zeile zur Person
 - Einstellungen für Gemeinde, Sitzungsrhythmus und Abendmahlsversammlung
+- Aktivitätenplan der AP als abonnierbarer Kalender (`.ics`): widerrufbare
+  Links, die Google Calendar, Apple Kalender und Outlook selbstständig
+  abholen – ausgeliefert von einer Netlify-Function mit Dienstkonto, dem
+  einzigen serverseitigen Teil der App
 - PWA: installierbar, offline speichern mit Warteschlange und Konflikthinweis,
   Update-Hinweis
 - Firestore-Sicherheitsregeln und Indizes
@@ -626,7 +630,11 @@ immer dasselbe: Termin verstrichen.
 **Bewusst zurückgestellt:**
 
 - E-Mail-Erinnerungen für fällige Pendenzen (bräuchte Cloud Functions)
-- Kalender-Export der Sitzungstermine (`.ics`)
+- Kalender-Abo auch für die Sitzungstermine – der Weg dafür steht mit
+  `lib/apIcs` und der Function bereits, es fehlt nur die zweite Quelle
+- Zwei-Wege-Abgleich mit Google Calendar (bräuchte OAuth, eine Zuordnung je
+  Termin und Google-Verifizierung – und gälte nur für Google; Apple hat
+  dafür keine Schnittstelle)
 - Auswertungen über längere Zeiträume
 - Verknüpfung von App-Benutzern mit ihrem Mitgliederdatensatz (Feld ist
   vorbereitet)

@@ -3,6 +3,7 @@ import {
   ArrowRight,
   CalendarDays,
   CalendarPlus,
+  CalendarSync,
   Check,
   Eye,
   Info,
@@ -28,6 +29,7 @@ import {
 import { ApActivityForm } from '@/components/ap/ApActivityForm'
 import { ApCalendar } from '@/components/ap/ApCalendar'
 import { ApScheduleDialog } from '@/components/ap/ApScheduleDialog'
+import { ApFeedDialog } from '@/components/ap/ApFeedDialog'
 import { EmptyState, SkeletonList } from '@/components/ui/Feedback'
 import { PageHeader } from '@/components/ui/Pickers'
 import { MenuChips, MenuChoice, MenuDivider, ViewMenu } from '@/components/ui/ViewMenu'
@@ -105,6 +107,7 @@ export function ApActivities() {
   const [formOpen, setFormOpen] = useState(false)
   const [editing, setEditing] = useState<ApActivity | null>(null)
   const [scheduleOpen, setScheduleOpen] = useState(false)
+  const [feedOpen, setFeedOpen] = useState(false)
   /*
    * Welche Woche bzw. welcher Monat im Kalender steht.
    *
@@ -215,6 +218,26 @@ export function ApActivities() {
         actions={
           <>
             <ApViewMenu view={view} onChange={setView} counts={counts} />
+
+            {/*
+             * Das Abo steht neben der Ansicht und nicht im Bearbeitungsmodus:
+             * Einen Kalender einzurichten heisst nicht, den Plan zu ändern –
+             * und wer den Link weitergibt, tut das meist genau dann, wenn er
+             * den Plan gerade jemandem zeigt. Auf schmalen Bildschirmen
+             * bleibt nur das Symbol; die Kopfzeile trägt sonst vier Knöpfe.
+             */}
+            {canEditAp && (
+              <button
+                type="button"
+                className="btn-secondary"
+                onClick={() => setFeedOpen(true)}
+                title="Den Plan in Google Calendar oder Apple Kalender abonnieren"
+              >
+                <CalendarSync className="size-4" aria-hidden />
+                <span className="hidden lg:inline">Abonnieren</span>
+                <span className="sr-only lg:hidden">Kalender abonnieren</span>
+              </button>
+            )}
 
             {canEditAp &&
               (editMode ? (
@@ -365,6 +388,8 @@ export function ApActivities() {
         onClose={() => setScheduleOpen(false)}
         activities={activities}
       />
+
+      <ApFeedDialog open={feedOpen} onClose={() => setFeedOpen(false)} />
     </>
   )
 }

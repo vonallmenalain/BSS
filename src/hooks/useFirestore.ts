@@ -18,6 +18,7 @@ import {
   type AnnouncementSeries,
   type ApActivity,
   type ApMonth,
+  type CalendarFeed,
   type Calling,
   type CleaningWeek,
   type Meeting,
@@ -387,6 +388,21 @@ export function useApMonths() {
     }),
     [state],
   )
+}
+
+/**
+ * Die Links, unter denen der Plan als Kalender abonniert werden kann.
+ *
+ * Hängt an `canEditAp` und nicht an `canViewAp`: Ein Link ist die
+ * Berechtigung selbst (siehe `CalendarFeed`), und wer den Plan nur ansehen
+ * darf, vergibt sie nicht weiter. Dieselbe Grenze steht in `firestore.rules`.
+ *
+ * Zuletzt angelegte zuoberst – der eben erzeugte Link ist der, den man sucht.
+ */
+export function useCalendarFeeds() {
+  const { canEditAp } = useAuth()
+  const state = useCollection<CalendarFeed>(COLLECTIONS.calendarFeeds, canEditAp)
+  return useMemo(() => ({ ...state, data: byDate(state.data, 'createdAt') }), [state])
 }
 
 /* ------------------------------------------------------------------ */
