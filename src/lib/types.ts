@@ -145,21 +145,62 @@ export const ACCESS_LEVELS: { value: AccessLevel; role: Role; label: string; hin
  * ohne Netz und vor dem ersten Schnappschuss schon stimmt.
  */
 export interface ApView {
-  mode: 'list' | 'cards'
+  /**
+   * Liste und Kacheln lesen den Plan der Reihe nach; die beiden
+   * Kalenderansichten legen ihn auf ein Raster aus Wochentagen – dort sieht
+   * man auch die Abende, an denen nichts ansteht.
+   */
+  mode: 'list' | 'cards' | 'week' | 'month'
   density: 'compact' | 'normal' | 'wide'
   /** Welcher Zeitraum – kommend, vergangen oder der ganze Plan */
   scope: 'upcoming' | 'past' | 'all'
+  /**
+   * Welche Arten der Plan zeigt – leer heisst «alle».
+   *
+   * Wer einschränkt, sucht etwas Bestimmtes: alle Klassen des Halbjahrs
+   * etwa. Ausgefallene Abende gehören dann nicht dazu – sie erklären eine
+   * Lücke im vollständigen Plan, in einer Auswahl erklären sie nichts.
+   * Deshalb stehen sie gar nicht erst zur Wahl und fallen mit der ersten
+   * Einschränkung weg (siehe `apVisibleActivities`).
+   */
+  kinds?: ApActivityKind[]
 }
 
 export const DEFAULT_AP_VIEW: ApView = {
   mode: 'list',
   density: 'normal',
   scope: 'upcoming',
+  kinds: [],
 }
 
 export const AP_VIEW_MODE_LABELS: Record<ApView['mode'], string> = {
   list: 'Liste',
   cards: 'Kacheln',
+  week: 'Kalender Woche',
+  month: 'Kalender Monat',
+}
+
+/** Ist eine der beiden Kalenderansichten gewählt? */
+export function isApCalendarMode(mode: ApView['mode']): mode is 'week' | 'month' {
+  return mode === 'week' || mode === 'month'
+}
+
+/** Die Arten, die sich einzeln an- und abwählen lassen – ohne «Fällt aus». */
+export const AP_FILTER_KINDS: ApActivityKind[] = ['activity', 'class', 'special']
+
+/**
+ * Der Plan, auf die gewählten Arten eingeschränkt.
+ *
+ * Ohne Auswahl steht alles da, ausgefallene Abende eingeschlossen. Sobald
+ * eingeschränkt wird, zählt nur noch, was ausdrücklich gewählt ist – und
+ * «Fällt aus» ist nicht wählbar (siehe `ApView.kinds`).
+ */
+export function apVisibleActivities<T extends { kind: ApActivityKind }>(
+  activities: T[],
+  kinds: ApActivityKind[] | undefined,
+): T[] {
+  if (!kinds || kinds.length === 0) return activities
+  return activities.filter((activity) => kinds.includes(activity.kind))
 }
 
 export const AP_DENSITY_LABELS: Record<ApView['density'], string> = {
@@ -1359,23 +1400,17 @@ export interface AppSettings {
   /** Ab wie vielen Monaten ohne Gebet gilt jemand als «lange nicht dran»? */
   prayerGapMonths: number
   /**
-   * Personen ohne Konto, die eine Abendmahlsversammlung präsidieren oder
-   * leiten können.
-   *
-   * Präsidieren tut nicht immer die Bischofschaft: Ist Besuch aus der
-   * Pfahlführung da, präsidiert er. Solcher Besuch kommt wieder – deshalb
-   * steht die Liste in den Einstellungen und nicht am einzelnen Sonntag; ein
-   * Name wird einmal erfasst und ist danach an jedem Sonntag wählbar.
-   */
-  extraLeaders: string[]
-  /**
    * Eigene Gründe für die Wahl «Was findet statt?».
    *
    * Die sieben eingebauten Arten decken den Jahreslauf ab, aber nicht jeden
    * Sonderfall: eine Taufversammlung, ein Besuch der Missionspräsidentschaft,
    * ein Gemeindetag. Solche Anlässe kommen wieder – deshalb steht der Grund
    * in den Einstellungen und nicht am einzelnen Sonntag; einmal erfasst, ist
-   * er an jedem Sonntag wählbar. Genau wie bei `extraLeaders`.
+   * er an jedem Sonntag wählbar.
+   *
+   * Wer eine Versammlung präsidiert oder leitet, steht bewusst **nicht** so
+   * in den Einstellungen: Dort kommt ausser der Bischofschaft niemand
+   * regelmässig vor (siehe `LeaderField`).
    */
   customSundayKinds: CustomSundayKind[]
   /**
@@ -1420,7 +1455,6 @@ export const DEFAULT_SETTINGS: AppSettings = {
   talkGapMonths: 18,
   talkMinAge: 12,
   prayerGapMonths: 6,
-  extraLeaders: [],
   customSundayKinds: [],
   pendenzenSort: DEFAULT_PENDENZEN_SORT,
   pendenzenDoneSort: DEFAULT_PENDENZEN_DONE_SORT,
@@ -1803,7 +1837,13 @@ export interface SacramentMeeting extends WithId {
    */
   presidingName?: string | null
   conductingName?: string | null
-  /** Besuchende Führungsverantwortliche, die offiziell begrüsst werden */
+  /**
+   * Begrüssungen zu Beginn der Versammlung – eine pro Zeile.
+   *
+   * Meist besuchende Führungsverantwortliche, aber nicht nur: auch der
+   * Besuch aus einer anderen Gemeinde oder die heimgekehrte Missionarin
+   * gehören begrüsst. Zeilenumbrüche bleiben erhalten (siehe `Conducting`).
+   */
   visitors?: string
   /** Abweichende Anzahl Ansprachen nur für diesen Sonntag */
   talkSlots?: number | null

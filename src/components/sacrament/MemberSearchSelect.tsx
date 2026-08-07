@@ -1,5 +1,5 @@
 import { useMemo, useState, type ReactNode } from 'react'
-import { Search, UserPlus, X } from 'lucide-react'
+import { Pencil, Search, UserPlus, X } from 'lucide-react'
 import { useData } from '@/contexts/DataContext'
 import { Avatar } from '@/components/ui/Avatar'
 import { matchesSearch } from '@/lib/utils'
@@ -15,7 +15,8 @@ import type { Member } from '@/lib/types'
  *
  * Mit `onFreeText` lässt sich zusätzlich ein Name von Hand erfassen. Getippter
  * Text allein ordnet dabei nie ein Mitglied zu – das geschieht ausschliesslich
- * über die Vorschlagsliste.
+ * über die Vorschlagsliste. Ein so erfasster Name lässt sich über den Stift
+ * nachbessern, statt ihn löschen und neu tippen zu müssen.
  */
 export function MemberSearchSelect({
   value,
@@ -58,9 +59,18 @@ export function MemberSearchSelect({
   const { members, membersById } = useData()
   const [search, setSearch] = useState('')
   const [active, setActive] = useState(false)
+  /**
+   * Ein von Hand erfasster Name wird gerade nachgebessert.
+   *
+   * Ohne dies bliebe nur Löschen und alles neu tippen – bei «Zeugnisse der
+   * neuen Ältesten» wegen eines Tippfehlers der ganze Satz noch einmal.
+   */
+  const [editing, setEditing] = useState(false)
 
   const selected = value ? (membersById.get(value) ?? null) : null
   const manual = selected ? '' : freeText.trim()
+  /** Der bisherige Name steht im Feld und wartet auf seine Berichtigung. */
+  const renaming = editing && manual.length > 0
 
   const results = useMemo(() => {
     // Ohne Suchbegriff die vorsortierten Vorschläge, bei einer Suche aber die
@@ -86,6 +96,7 @@ export function MemberSearchSelect({
               : () => {
                   onChange(null)
                   setSearch('')
+                  setEditing(false)
                 }
           }
         />
@@ -93,19 +104,28 @@ export function MemberSearchSelect({
     )
   }
 
-  if (manual) {
+  if (manual && !editing) {
     return (
       <div>
         {label && <span className="label">{label}</span>}
         <Chosen
           name={manual}
           meta="Keinem Mitglied zugeordnet"
+          onEdit={
+            disabled || !onFreeText
+              ? undefined
+              : () => {
+                  setSearch(manual)
+                  setEditing(true)
+                }
+          }
           onClear={
             disabled
               ? undefined
               : () => {
                   onFreeText?.('')
                   setSearch('')
+                  setEditing(false)
                 }
           }
         />
@@ -120,6 +140,13 @@ export function MemberSearchSelect({
     if (!onFreeText || !term) return
     onFreeText(term)
     setSearch('')
+    setEditing(false)
+  }
+
+  /** Nachbessern abbrechen – der bisherige Name bleibt, wie er war. */
+  const keepAsWas = () => {
+    setSearch('')
+    setEditing(false)
   }
 
   return (
@@ -152,6 +179,10 @@ export function MemberSearchSelect({
           }}
           disabled={disabled}
           aria-label={label}
+          /* Beim Nachbessern steht der Cursor gleich im Namen – der Stift
+             wurde ja gedrückt, um zu tippen. Sonst nicht: Auf einer Seite
+             mit mehreren solchen Feldern zöge das erste den Fokus an sich. */
+          autoFocus={renaming}
         />
       </div>
 
@@ -164,6 +195,7 @@ export function MemberSearchSelect({
                 onClick={() => {
                   onChange(member)
                   setSearch('')
+                  setEditing(false)
                 }}
                 className="flex w-full items-center gap-2 rounded-lg px-2 py-2 text-left transition hover:bg-slate-100 dark:hover:bg-slate-800"
               >
@@ -184,10 +216,27 @@ export function MemberSearchSelect({
 
       {/* Der getippte Text allein ordnet nichts zu – erst dieser Knopf
           übernimmt ihn, und zwar ausdrücklich ohne Mitglied. */}
-      {onFreeText && !disabled && term.length > 0 && (
-        <button type="button" className="btn-secondary btn-sm mt-2" onClick={takeAsIs}>
-          <UserPlus className="size-3.5" aria-hidden />«{term}» ohne Mitglied eintragen
-        </button>
+      {onFreeText && !disabled && (term.length > 0 || renaming) && (
+        <div className="mt-2 flex flex-wrap gap-2">
+          {term.length > 0 && (
+            <button type="button" className="btn-secondary btn-sm" onClick={takeAsIs}>
+              {renaming ? (
+                <>
+                  <Pencil className="size-3.5" aria-hidden />«{term}» übernehmen
+                </>
+              ) : (
+                <>
+                  <UserPlus className="size-3.5" aria-hidden />«{term}» ohne Mitglied eintragen
+                </>
+              )}
+            </button>
+          )}
+          {renaming && (
+            <button type="button" className="btn-ghost btn-sm" onClick={keepAsWas}>
+              Abbrechen
+            </button>
+          )}
+        </div>
       )}
     </div>
   )
@@ -198,11 +247,19 @@ function Chosen({
   name,
   id,
   meta,
+  onEdit,
   onClear,
 }: {
   name: string
   id?: string
   meta?: ReactNode
+  /**
+   * Den Namen nachbessern.
+   *
+   * Nur bei von Hand erfassten Namen: Der Name eines Mitglieds gehört in die
+   * Mitgliederliste und wird hier nicht umgeschrieben.
+   */
+  onEdit?: () => void
   onClear?: () => void
 }) {
   return (
@@ -212,12 +269,24 @@ function Chosen({
         <p className="truncate text-sm font-medium">{name}</p>
         {meta && <p className="truncate text-xs text-slate-500 dark:text-slate-400">{meta}</p>}
       </div>
+      {onEdit && (
+        <button
+          type="button"
+          className="btn-ghost p-1.5"
+          onClick={onEdit}
+          aria-label="Namen bearbeiten"
+          title="Namen bearbeiten"
+        >
+          <Pencil className="size-4" aria-hidden />
+        </button>
+      )}
       {onClear && (
         <button
           type="button"
           className="btn-ghost p-1.5"
           onClick={onClear}
           aria-label="Auswahl aufheben"
+          title="Auswahl aufheben"
         >
           <X className="size-4" aria-hidden />
         </button>

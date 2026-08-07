@@ -8,6 +8,7 @@ import {
   ChevronUp,
   Clock,
   Mic,
+  Pencil,
   Phone,
   Plus,
   RotateCcw,
@@ -105,7 +106,15 @@ export function Talks() {
   const [assignFor, setAssignFor] = useState<{ date: Date; slot: number; kind: TalkKind } | null>(
     null,
   )
-  const [editTalk, setEditTalk] = useState<Talk | null>(null)
+  /**
+   * Welche Ansprache gerade bearbeitet wird – die Nummer, nicht der Eintrag.
+   *
+   * Ein Schnappschuss veraltete beim ersten Handgriff im Dialog: Wer den
+   * Namen entfernte, sah ihn trotz Meldung weiterhin stehen, bis das Fenster
+   * geschlossen und neu geöffnet wurde. Über die Nummer kommt der Eintrag
+   * laufend aus Firestore.
+   */
+  const [editTalkId, setEditTalkId] = useState<string | null>(null)
   /** Aus der Vorschlagsliste vorgewähltes Mitglied für den Zuteilungs-Dialog */
   const [presetMember, setPresetMember] = useState<Member | null>(null)
   /** Sonntag, dessen Programm gerade festgelegt wird – derselbe Dialog wie unter «Leitung» */
@@ -115,6 +124,13 @@ export function Talks() {
   const meetingByKey = useMemo(
     () => new Map(sacramentMeetings.map((meeting) => [meeting.id, meeting])),
     [sacramentMeetings],
+  )
+
+  /* Verschwindet der Eintrag – etwa weil er entfernt wurde –, schliesst sich
+     der Dialog von selbst. */
+  const editTalk = useMemo(
+    () => (editTalkId ? (talks.find((talk) => talk.id === editTalkId) ?? null) : null),
+    [talks, editTalkId],
   )
 
   /*
@@ -333,7 +349,7 @@ export function Talks() {
                       {talk ? (
                         <TalkRow
                           talk={talk}
-                          onEdit={() => setEditTalk(talk)}
+                          onEdit={() => setEditTalkId(talk.id)}
                           first={slot === 1}
                           last={slot === sunday.slots.length}
                           onMove={(delta) => void moveTalk(sunday.slots, slot, delta)}
@@ -446,11 +462,16 @@ export function Talks() {
         presetMember={presetMember}
       />
 
-      <EditTalkDialog
-        talk={editTalk}
-        suggestions={candidates.map((candidate) => candidate.member)}
-        onClose={() => setEditTalk(null)}
-      />
+      {editTalk && (
+        <EditTalkDialog
+          /* Für eine andere Ansprache baut sich der Dialog neu auf – sonst
+             blieben Art, Thema und Notiz der vorigen im Formular stehen. */
+          key={editTalk.id}
+          talk={editTalk}
+          suggestions={candidates.map((candidate) => candidate.member)}
+          onClose={() => setEditTalkId(null)}
+        />
+      )}
 
       <SundayProgramDialog
         open={Boolean(programFor)}
@@ -1054,11 +1075,25 @@ function AssignDialog({
                   Keinem Mitglied zugeordnet
                 </p>
               </div>
+              {/* Zurück ins Suchfeld, statt löschen und neu tippen. */}
+              <button
+                type="button"
+                className="btn-ghost p-1.5"
+                onClick={() => {
+                  setSearch(manual)
+                  setManual('')
+                }}
+                aria-label="Namen bearbeiten"
+                title="Namen bearbeiten"
+              >
+                <Pencil className="size-4" aria-hidden />
+              </button>
               <button
                 type="button"
                 className="btn-ghost p-1.5"
                 onClick={() => setManual('')}
                 aria-label="Auswahl aufheben"
+                title="Auswahl aufheben"
               >
                 <X className="size-4" aria-hidden />
               </button>
@@ -1260,25 +1295,29 @@ function EditTalkDialog({
   suggestions,
   onClose,
 }: {
-  talk: Talk | null
+  /**
+   * Der laufende Stand aus Firestore.
+   *
+   * Wer spricht und der Status werden sofort geschrieben; beides steht damit
+   * gleich nach dem Handgriff richtig im Dialog, statt erst beim nächsten
+   * Öffnen (siehe `changeSpeaker`).
+   */
+  talk: Talk
   /** Vorschlagsreihenfolge «wer war lange nicht dran» – wie beim Zuteilen */
   suggestions: Member[]
   onClose: () => void
 }) {
   const toast = useToast()
-  const [kind, setKind] = useState<TalkKind>('talk')
-  const [topic, setTopic] = useState('')
-  const [notes, setNotes] = useState('')
+  /*
+   * Art, Thema und Notiz stehen im Formular und werden erst beim Speichern
+   * geschrieben. Die Startwerte gelten deshalb nur beim Öffnen: Ein
+   * Schnappschuss aus Firestore – etwa der eigene, eben geänderte Name –
+   * überschriebe sonst mitten im Tippen, was noch nicht gespeichert ist.
+   */
+  const [kind, setKind] = useState<TalkKind>(talk.kind ?? 'talk')
+  const [topic, setTopic] = useState(talk.topic ?? '')
+  const [notes, setNotes] = useState(talk.notes ?? '')
   const [confirmDelete, setConfirmDelete] = useState(false)
-
-  useEffect(() => {
-    if (!talk) return
-    setKind(talk.kind ?? 'talk')
-    setTopic(talk.topic ?? '')
-    setNotes(talk.notes ?? '')
-  }, [talk])
-
-  if (!talk) return null
 
   const changeStatus = async (status: TalkStatus) => {
     try {
