@@ -610,10 +610,13 @@ export function Conducting() {
             />
           </div>
 
-          <Field label="Besuchende Führungsverantwortliche" htmlFor="lead-visitors">
-            <input
+          {/* Mehrzeilig: Begrüsst wird selten nur einer – Pfahlpräsidentschaft,
+              Hoher Rat, Besuch aus einer anderen Gemeinde stehen am Pult
+              untereinander und nicht in einer durchlaufenden Zeile. */}
+          <Field label="Begrüssungen" htmlFor="lead-visitors">
+            <textarea
               id="lead-visitors"
-              className="input"
+              className="input min-h-20 resize-y"
               value={current.visitors}
               onChange={(event) => change({ visitors: event.target.value })}
             />
@@ -629,7 +632,7 @@ export function Conducting() {
             label="Es leitet"
             value={leaderName(effective.conductingId, effective.conductingName)}
           />
-          {current.visitors.trim() && <p>{current.visitors}</p>}
+          {current.visitors.trim() && <p className="whitespace-pre-line">{current.visitors}</p>}
         </>
       ),
     },

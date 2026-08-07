@@ -1359,23 +1359,17 @@ export interface AppSettings {
   /** Ab wie vielen Monaten ohne Gebet gilt jemand als «lange nicht dran»? */
   prayerGapMonths: number
   /**
-   * Personen ohne Konto, die eine Abendmahlsversammlung präsidieren oder
-   * leiten können.
-   *
-   * Präsidieren tut nicht immer die Bischofschaft: Ist Besuch aus der
-   * Pfahlführung da, präsidiert er. Solcher Besuch kommt wieder – deshalb
-   * steht die Liste in den Einstellungen und nicht am einzelnen Sonntag; ein
-   * Name wird einmal erfasst und ist danach an jedem Sonntag wählbar.
-   */
-  extraLeaders: string[]
-  /**
    * Eigene Gründe für die Wahl «Was findet statt?».
    *
    * Die sieben eingebauten Arten decken den Jahreslauf ab, aber nicht jeden
    * Sonderfall: eine Taufversammlung, ein Besuch der Missionspräsidentschaft,
    * ein Gemeindetag. Solche Anlässe kommen wieder – deshalb steht der Grund
    * in den Einstellungen und nicht am einzelnen Sonntag; einmal erfasst, ist
-   * er an jedem Sonntag wählbar. Genau wie bei `extraLeaders`.
+   * er an jedem Sonntag wählbar.
+   *
+   * Wer eine Versammlung präsidiert oder leitet, steht bewusst **nicht** so
+   * in den Einstellungen: Dort kommt ausser der Bischofschaft niemand
+   * regelmässig vor (siehe `LeaderField`).
    */
   customSundayKinds: CustomSundayKind[]
   /**
@@ -1420,7 +1414,6 @@ export const DEFAULT_SETTINGS: AppSettings = {
   talkGapMonths: 18,
   talkMinAge: 12,
   prayerGapMonths: 6,
-  extraLeaders: [],
   customSundayKinds: [],
   pendenzenSort: DEFAULT_PENDENZEN_SORT,
   pendenzenDoneSort: DEFAULT_PENDENZEN_DONE_SORT,
@@ -1803,7 +1796,13 @@ export interface SacramentMeeting extends WithId {
    */
   presidingName?: string | null
   conductingName?: string | null
-  /** Besuchende Führungsverantwortliche, die offiziell begrüsst werden */
+  /**
+   * Begrüssungen zu Beginn der Versammlung – eine pro Zeile.
+   *
+   * Meist besuchende Führungsverantwortliche, aber nicht nur: auch der
+   * Besuch aus einer anderen Gemeinde oder die heimgekehrte Missionarin
+   * gehören begrüsst. Zeilenumbrüche bleiben erhalten (siehe `Conducting`).
+   */
   visitors?: string
   /** Abweichende Anzahl Ansprachen nur für diesen Sonntag */
   talkSlots?: number | null
