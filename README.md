@@ -300,6 +300,14 @@ Person, gespeichert wird sofort; ein Fenster dafür gibt es nicht. Bei der
 Anwesenheit sind mehrere möglich, bei den übrigen dreien genau eine, und ein
 zweiter Griff nimmt die Wahl wieder zurück.
 
+**Eine Person ist ihr Kreis** – zwei Buchstaben in ihrer Farbe, wie überall in
+der App. Der Name steht nicht daneben: In einer Reihe aus fünf Knöpfen sagte er
+dasselbe ein zweites Mal und kostete dafür die halbe Breite. Gewählt ist, wer
+einen Rand in der Betonfarbe trägt; die übrigen Kreise sind zurückgenommen,
+behalten aber ihre Farbe. Ausgeschrieben steht der Name im Tooltip, für
+Bildschirmleser und im Ausdruck. Das gilt auch dort, wo eine abgeschlossene
+Sitzung bloss noch zu lesen ist.
+
 ### Traktandum oder Pendenz
 
 Beides ist derselbe Datensatz, aber nicht dasselbe Wort:
@@ -344,7 +352,9 @@ Eintrag selbst ist das Formular:
   Gemeldet wird nur, was zu tun ist – ein fehlender Titel oder ein Schreiben,
   das nicht durchkam.
 - **Zuständig** (niemand vorausgewählt) steht unmittelbar darunter. Zur Wahl
-  stehen der Bischof, beide Ratgeber und die Sekretäre – ein Klick genügt.
+  stehen der Bischof, beide Ratgeber und die Sekretäre – ein Klick genügt. Auch
+  hier steht je Person ihr Kreis mit dem Kürzel und sonst nichts; wer gesetzt
+  ist, trägt den Rand in der Betonfarbe.
 - Sonst nichts. Bereich, betroffene Mitglieder, **Priorität**, **Erledigen
   bis**, das Kennzeichen «vertraulich» und die eigene Notizliste je Traktandum
   sind weggefallen: Was besprochen wurde, gehört in die Beschreibung.

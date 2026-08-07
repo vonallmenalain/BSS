@@ -108,28 +108,16 @@ export function AssigneeAvatars({
   userIds,
   size = 'sm',
   max = 4,
-  showNames = false,
 }: {
   userIds: string[]
   size?: keyof typeof SIZES
   max?: number
-  showNames?: boolean
 }) {
   const { userName } = useData()
   if (!userIds?.length) return null
 
   const visible = userIds.slice(0, max)
   const overflow = userIds.length - visible.length
-
-  if (showNames) {
-    return (
-      <div className="flex flex-wrap items-center gap-1.5">
-        {userIds.map((id) => (
-          <AssigneeChip key={id} userId={id} />
-        ))}
-      </div>
-    )
-  }
 
   return (
     <div className="flex items-center -space-x-1.5" title={userIds.map(userName).join(', ')}>
@@ -152,17 +140,5 @@ export function AssigneeAvatars({
         </span>
       )}
     </div>
-  )
-}
-
-/** Eine zugewiesene Person mit Namen – Chip und Kreis in derselben Farbe. */
-function AssigneeChip({ userId }: { userId: string }) {
-  const avatar = useUserAvatar(userId)
-
-  return (
-    <span className={cn('chip', colorForId(avatar.colorId))}>
-      <UserAvatar userId={userId} size="xs" className="-ml-1" />
-      {avatar.name}
-    </span>
   )
 }

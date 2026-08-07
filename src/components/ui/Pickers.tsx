@@ -1,5 +1,5 @@
 import { useMemo, useState } from 'react'
-import { Check, Search, UserPlus, X } from 'lucide-react'
+import { Search, UserPlus, X } from 'lucide-react'
 import { useData } from '@/contexts/DataContext'
 import { cn, colorForId, matchesSearch } from '@/lib/utils'
 import { Avatar, UserAvatar } from '@/components/ui/Avatar'
@@ -13,6 +13,9 @@ import { FULL_ACCESS_ROLES, type Member } from '@/lib/types'
  * Mehrfachauswahl der Bischofschaftsmitglieder.
  * Bewusst als Knopfleiste statt als Dropdown: bei fünf Personen ist jede
  * Auswahl damit ein einziger Klick – auch mitten in der Sitzung.
+ *
+ * Zur Wahl stehen die Kreise mit dem Kürzel und sonst nichts – siehe
+ * `PersonButton`.
  */
 export function AssigneePicker({
   value,
@@ -44,28 +47,17 @@ export function AssigneePicker({
   return (
     <div>
       <span className="label">{label}</span>
-      <div className="flex flex-wrap gap-2">
-        {selectable.map((user) => {
-          const selected = value.includes(user.id)
-          return (
-            <button
-              key={user.id}
-              type="button"
-              onClick={() => toggle(user.id)}
-              aria-pressed={selected}
-              className={cn(
-                'inline-flex items-center gap-2 rounded-full border py-1 pr-3 pl-1 text-sm font-medium transition',
-                selected
-                  ? 'border-brand-500 bg-brand-50 text-brand-900 dark:border-brand-500 dark:bg-brand-950 dark:text-brand-100'
-                  : 'border-slate-300 bg-white text-slate-600 hover:border-slate-400 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-300',
-              )}
-            >
-              <UserAvatar userId={user.id} name={user.displayName} size="sm" />
-              <span className="max-w-32 truncate">{user.displayName}</span>
-              {selected && <Check className="size-3.5 shrink-0" aria-hidden />}
-            </button>
-          )
-        })}
+      <div className="flex flex-wrap gap-1.5">
+        {selectable.map((user) => (
+          <PersonButton
+            key={user.id}
+            id={user.id}
+            name={user.displayName}
+            size="md"
+            selected={value.includes(user.id)}
+            onClick={() => toggle(user.id)}
+          />
+        ))}
       </div>
     </div>
   )
@@ -104,10 +96,24 @@ export function PersonChoice({
   const foreign = current !== '' && !selectable.some((user) => user.displayName === current)
 
   if (readOnly) {
+    /* Gesucht wird über alle Konten und nicht bloss über `selectable`: Wer
+       vorletztes Jahr gebetet hat, kann heute abgemeldet sein – der Kreis
+       soll trotzdem derselbe bleiben wie überall sonst. */
+    const user = users.find((entry) => entry.displayName === current)
     return (
-      <div className="flex flex-wrap items-baseline gap-x-2">
+      <div className="flex flex-wrap items-center gap-x-2">
         <span className="shrink-0 text-xs text-slate-500 dark:text-slate-400">{label}:</span>
-        <span className="text-sm">{current || '–'}</span>
+        {current ? (
+          user ? (
+            <UserAvatar userId={user.id} name={current} size="sm" />
+          ) : (
+            /* Ein von Hand erfasster Name ohne Konto – Kürzel und Farbe
+               kommen dann aus dem Namen selbst. */
+            <Avatar name={current} size="sm" />
+          )
+        ) : (
+          <span className="text-sm">–</span>
+        )}
       </div>
     )
   }
@@ -153,14 +159,22 @@ export function PeopleChoice({
   onChange: (next: string[]) => void
   readOnly?: boolean
 }) {
-  const { users, userName } = useData()
+  const { users } = useData()
   const selectable = users.filter((user) => user.active && FULL_ACCESS_ROLES.includes(user.role))
 
   if (readOnly) {
     return (
-      <div className="flex flex-wrap items-baseline gap-x-2">
+      <div className="flex flex-wrap items-center gap-x-2 gap-y-1">
         <span className="shrink-0 text-xs text-slate-500 dark:text-slate-400">{label}:</span>
-        <span className="text-sm">{value.length ? value.map(userName).join(', ') : '–'}</span>
+        {value.length ? (
+          <div className="flex flex-wrap items-center gap-1">
+            {value.map((id) => (
+              <UserAvatar key={id} userId={id} size="sm" />
+            ))}
+          </div>
+        ) : (
+          <span className="text-sm">–</span>
+        )}
       </div>
     )
   }
@@ -192,25 +206,32 @@ export function PeopleChoice({
 }
 
 /**
- * Ein Name als Knopf – nur der Vorname, der Rest steht im Tooltip.
+ * Eine Person als Knopf – ihr Kreis mit dem Kürzel, sonst nichts.
  *
- * `compact` lässt den Kreis mit den Initialen weg und schreibt bloss den
- * Vornamen: Wo eine ganze Knopfleiste an jeder Tabellenzeile steht – in der
- * Berufungsrunde –, kostet jeder Kreis Breite und sagt dasselbe wie der Name
- * daneben. Der volle Name steht weiterhin im Tooltip und für Bildschirmleser.
+ * Die Bischofschaft sind fünf Personen, und jede trägt in der ganzen App
+ * dasselbe Zeichen: zwei Buchstaben in ihrer Farbe. Wer die Runde einmal
+ * gelesen hat, erkennt sie daran schneller als am Namen – und der Name
+ * daneben sagte in einer Reihe aus fünf Knöpfen dasselbe ein zweites Mal und
+ * kostete dafür die halbe Breite. Ausgeschrieben steht er im Tooltip und für
+ * Bildschirmleser.
+ *
+ * Gewählt heisst: Rand in der Betonfarbe. Ungewählte Kreise sind
+ * zurückgenommen, statt die Farbe zu verlieren – auch grau wären sie noch ein
+ * zweites Zeichen für dieselbe Person.
  */
 export function PersonButton({
   id,
   name,
   selected,
   onClick,
-  compact = false,
+  size = 'sm',
 }: {
   id: string
   name: string
   selected: boolean
   onClick: () => void
-  compact?: boolean
+  /** `md` dort, wo die Reihe für sich steht – etwa unter «Zuständig». */
+  size?: 'xs' | 'sm' | 'md'
 }) {
   return (
     <button
@@ -220,15 +241,13 @@ export function PersonButton({
       title={name}
       aria-label={name}
       className={cn(
-        'inline-flex items-center rounded-full border font-medium transition',
-        compact ? 'gap-1 px-2 py-0.5 text-[11px]' : 'gap-1.5 py-0.5 pr-2.5 pl-0.5 text-xs',
+        'inline-flex rounded-full border-2 p-0.5 transition',
         selected
-          ? 'border-brand-500 bg-brand-50 text-brand-900 dark:border-brand-500 dark:bg-brand-950 dark:text-brand-100'
-          : 'border-slate-300 bg-white text-slate-600 hover:border-slate-400 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-300',
+          ? 'border-brand-500'
+          : 'border-transparent opacity-55 hover:border-slate-300 hover:opacity-100 dark:hover:border-slate-600',
       )}
     >
-      {!compact && <UserAvatar userId={id} name={name} size="xs" />}
-      <span className="max-w-28 truncate">{name.split(' ')[0]}</span>
+      <UserAvatar userId={id} name={name} size={size} />
     </button>
   )
 }

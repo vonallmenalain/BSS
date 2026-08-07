@@ -253,7 +253,7 @@ function FieldBody({
   onMention?: (member: Member) => void
   onChange: (patch: Partial<LayoutField>) => void
 }) {
-  const { users, userName, membersById } = useData()
+  const { users, membersById } = useData()
   const ids = field.ids ?? []
 
   switch (field.kind) {
@@ -285,13 +285,12 @@ function FieldBody({
         (user) => user.active && FULL_ACCESS_ROLES.includes(user.role),
       )
       if (!editable) {
+        // Nur die Kreise – dieselbe Schreibweise wie im Knopf daneben und
+        // überall sonst, wo jemand zuständig ist.
         return (
           <ChipRow empty="Niemand">
             {ids.map((id) => (
-              <span key={id} className="chip bg-slate-100 pl-0.5 dark:bg-slate-800">
-                <UserAvatar userId={id} size="xs" />
-                {userName(id)}
-              </span>
+              <UserAvatar key={id} userId={id} size="sm" />
             ))}
           </ChipRow>
         )

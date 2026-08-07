@@ -1025,7 +1025,6 @@ function RowMenu({
                     key={user.id}
                     id={user.id}
                     name={user.displayName}
-                    compact
                     selected={row.assignees.includes(user.id)}
                     onClick={() =>
                       onAssignees(
@@ -1179,14 +1178,9 @@ function DoneBadge() {
   )
 }
 
+/** Wer zuständig ist, steht als Kreis mit dem Kürzel da – wie überall sonst. */
 function AssigneeChip({ id }: { id: string }) {
-  const { userName } = useData()
-  return (
-    <span className="chip bg-slate-100 pl-0.5 dark:bg-slate-800">
-      <UserAvatar userId={id} size="xs" />
-      {userName(id)}
-    </span>
-  )
+  return <UserAvatar userId={id} size="xs" />
 }
 
 /**
