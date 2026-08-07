@@ -65,8 +65,9 @@ import {
  * einen ganzen Monat. Die beiden Kalenderansichten beantworten die andere
  * Frage: nicht «was kommt?», sondern «wann ist noch nichts?» – sie zeigen
  * auch die leeren Tage, die eine Liste stillschweigend überspringt (siehe
- * `lib/apCalendar`). Dazu drei Abstufungen, wie viel Luft der Plan bekommt,
- * und der Zeitraum. Die Wahl bleibt: im Browser und am Konto.
+ * `lib/apCalendar`). Ein Griff auf einen Tag öffnet ihn samt allem, was an
+ * ihm ansteht. Dazu drei Abstufungen, wie viel Luft der Plan bekommt, und
+ * der Zeitraum. Die Wahl bleibt: im Browser und am Konto.
  *
  * Ebenfalls hinter dem Knopf: **welche Arten** der Plan zeigt. Wer alle
  * Klassen des Halbjahrs sucht, blendet die Aktivitäten weg – und mit der
@@ -450,6 +451,8 @@ function ApViewMenu({
 
       <MenuDivider />
 
+      {/* Ohne Erklärtext: Die Chips zeigen selbst, was gewählt ist, und was
+          mit «Fällt aus» geschieht, sieht man am Plan darunter. */}
       <MenuChips<ApActivityKind>
         label="Arten"
         values={view.kinds ?? []}
@@ -458,11 +461,6 @@ function ApViewMenu({
           value,
           label: AP_ACTIVITY_KIND_LABELS[value],
         }))}
-        hint={
-          view.kinds?.length
-            ? `«${AP_ACTIVITY_KIND_LABELS.cancelled}» bleibt bei einer Auswahl aussen vor.`
-            : `Ohne Auswahl steht alles im Plan – «${AP_ACTIVITY_KIND_LABELS.cancelled}» eingeschlossen.`
-        }
       />
     </ViewMenu>
   )
