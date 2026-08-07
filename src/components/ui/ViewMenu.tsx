@@ -1,7 +1,33 @@
 import { useEffect, useState, type ReactNode } from 'react'
+import { createPortal } from 'react-dom'
 import { ChevronDown, Minus, Plus, SlidersHorizontal, X } from 'lucide-react'
 import { SegmentedControl } from '@/components/ui/Pickers'
 import { cn } from '@/lib/utils'
+
+/** Ab dieser Breite hängt das Menü am Knopf – Tailwinds `sm`. */
+const WIDE = '(min-width: 40rem)'
+
+/**
+ * Breiter Bildschirm oder nicht – als Zustand, nicht bloss als CSS-Klasse.
+ *
+ * Die beiden Darstellungen unterscheiden sich nicht nur im Aussehen: Das
+ * Blatt von unten liegt am Bildschirm, das Menü am Knopf. Wohin es im
+ * Dokument gehört, lässt sich nicht mit einer Klasse sagen (siehe
+ * `ViewMenu`) – deshalb wird gefragt statt bloss gestaltet.
+ */
+function useWideScreen(): boolean {
+  const [wide, setWide] = useState(() => window.matchMedia(WIDE).matches)
+
+  useEffect(() => {
+    const media = window.matchMedia(WIDE)
+    const update = () => setWide(media.matches)
+    update()
+    media.addEventListener('change', update)
+    return () => media.removeEventListener('change', update)
+  }, [])
+
+  return wide
+}
 
 /* ------------------------------------------------------------------ */
 /* Zwei Knöpfe, überall dieselben                                      */
@@ -54,6 +80,15 @@ export function AddButton({
  *
  * Die Breite gilt deshalb erst ab dem Tablet und wird mit dem Vorsatz `sm:`
  * angegeben (`sm:w-80`): Am Telefon bestimmt sie der Bildschirm.
+ *
+ * **Das Blatt hängt am Dokument, nicht am Knopf.** Ein Blatt am Bildschirm
+ * darf sich auf nichts über ihm verlassen: Steht der Knopf in einem Kopf, der
+ * beim Blättern stehen bleibt, so wird dieser Kopf durch seine
+ * Stapelreihenfolge – und erst recht durch einen Weichzeichner – zum
+ * Bezugsrahmen für alles Feststehende darin. Das Blatt klebte dann unter dem
+ * Kopf statt am unteren Rand und lag hinter der Leiste am Fuss. Deshalb wird
+ * es wie ein Dialog ans Ende des Dokuments gehängt; das Menü am Knopf bleibt,
+ * wo es hingehört – beim Knopf.
  */
 export function ViewMenu({
   label = 'Ansicht',
@@ -66,6 +101,7 @@ export function ViewMenu({
   children: ReactNode
 }) {
   const [open, setOpen] = useState(false)
+  const wide = useWideScreen()
 
   /* Die Escape-Taste schliesst, egal wo der Fokus gerade steht. */
   useEffect(() => {
@@ -76,6 +112,47 @@ export function ViewMenu({
     document.addEventListener('keydown', onKeyDown)
     return () => document.removeEventListener('keydown', onKeyDown)
   }, [open])
+
+  const panel = (
+    <>
+      {/* Am Telefon verdunkelt der Hintergrund und macht das Blatt zum
+          Vordergrund; ab dem Tablet fängt er bloss den Klick daneben ab. */}
+      <div
+        className="animate-fade-in fixed inset-0 z-40 bg-slate-900/40 sm:bg-transparent"
+        onClick={() => setOpen(false)}
+        aria-hidden
+      />
+      <div
+        role="menu"
+        className={cn(
+          'z-50 space-y-3 overflow-y-auto overscroll-contain bg-white dark:bg-slate-800',
+          // Telefon: ein Blatt von unten, über die ganze Breite.
+          'animate-slide-up fixed inset-x-0 bottom-0 max-h-[80dvh] rounded-t-2xl border-t border-slate-200 p-4',
+          'pb-[calc(env(safe-area-inset-bottom)+1.25rem)] dark:border-slate-700',
+          // Ab dem Tablet: das gewohnte Menü unter dem Knopf.
+          'sm:animate-scale-in sm:absolute sm:inset-x-auto sm:right-0 sm:bottom-auto sm:mt-1',
+          'sm:max-h-[70vh] sm:origin-top-right sm:rounded-xl sm:border sm:p-3 sm:pb-3 sm:shadow-lg',
+          width,
+        )}
+      >
+        {/* Nur am Telefon: Das Blatt sagt, wozu es gehört, und lässt sich
+            ohne Zielen wieder schliessen. */}
+        <div className="flex items-center justify-between sm:hidden">
+          <span className="text-sm font-semibold">{label}</span>
+          <button
+            type="button"
+            className="btn-ghost -mr-1.5 p-2"
+            onClick={() => setOpen(false)}
+            aria-label={`${label} schliessen`}
+          >
+            <X className="size-5" aria-hidden />
+          </button>
+        </div>
+
+        {children}
+      </div>
+    </>
+  )
 
   return (
     <div className="relative">
@@ -91,46 +168,7 @@ export function ViewMenu({
         <ChevronDown className={cn('size-3 transition', open && 'rotate-180')} aria-hidden />
       </button>
 
-      {open && (
-        <>
-          {/* Am Telefon verdunkelt der Hintergrund und macht das Blatt zum
-              Vordergrund; ab dem Tablet fängt er bloss den Klick daneben ab. */}
-          <div
-            className="animate-fade-in fixed inset-0 z-40 bg-slate-900/40 sm:bg-transparent"
-            onClick={() => setOpen(false)}
-            aria-hidden
-          />
-          <div
-            role="menu"
-            className={cn(
-              'z-50 space-y-3 overflow-y-auto overscroll-contain bg-white dark:bg-slate-800',
-              // Telefon: ein Blatt von unten, über die ganze Breite.
-              'animate-slide-up fixed inset-x-0 bottom-0 max-h-[80dvh] rounded-t-2xl border-t border-slate-200 p-4',
-              'pb-[calc(env(safe-area-inset-bottom)+1.25rem)] dark:border-slate-700',
-              // Ab dem Tablet: das gewohnte Menü unter dem Knopf.
-              'sm:animate-scale-in sm:absolute sm:inset-x-auto sm:right-0 sm:bottom-auto sm:mt-1',
-              'sm:max-h-[70vh] sm:origin-top-right sm:rounded-xl sm:border sm:p-3 sm:pb-3 sm:shadow-lg',
-              width,
-            )}
-          >
-            {/* Nur am Telefon: Das Blatt sagt, wozu es gehört, und lässt sich
-                ohne Zielen wieder schliessen. */}
-            <div className="flex items-center justify-between sm:hidden">
-              <span className="text-sm font-semibold">{label}</span>
-              <button
-                type="button"
-                className="btn-ghost -mr-1.5 p-2"
-                onClick={() => setOpen(false)}
-                aria-label={`${label} schliessen`}
-              >
-                <X className="size-5" aria-hidden />
-              </button>
-            </div>
-
-            {children}
-          </div>
-        </>
-      )}
+      {open && (wide ? panel : createPortal(panel, document.body))}
     </div>
   )
 }

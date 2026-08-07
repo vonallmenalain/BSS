@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState, type FormEvent } from 'react'
 import { Link, useSearchParams, useNavigate } from 'react-router-dom'
-import { CalendarDays, Plus, MapPin, Clock } from 'lucide-react'
+import { CalendarDays, Plus, MapPin, Clock, Search, X } from 'lucide-react'
 import { useAuth } from '@/contexts/AuthContext'
 import { useData } from '@/contexts/DataContext'
 import { useAllItems, useMeetings, useOpenItems } from '@/hooks/useFirestore'
@@ -11,7 +11,8 @@ import { Modal } from '@/components/ui/Modal'
 import { MeetingStatusBadge } from '@/components/ui/Badge'
 import { EmptyState, SkeletonList } from '@/components/ui/Feedback'
 import { AssigneePicker, PageHeader } from '@/components/ui/Pickers'
-import { AddButton, MenuChoice, MenuToggle, ViewMenu } from '@/components/ui/ViewMenu'
+import { AddButton, MenuChoice, MenuDivider, MenuToggle, ViewMenu } from '@/components/ui/ViewMenu'
+import { Highlight } from '@/components/ui/Highlight'
 import { AgendaItemPreview } from '@/components/agenda/AgendaItemPreview'
 import { AgendaItemDialog } from '@/components/agenda/AgendaItemDialog'
 import {
@@ -22,7 +23,8 @@ import {
   toTimeInput,
   fromDateTimeInput,
 } from '@/lib/dates'
-import { cn } from '@/lib/utils'
+import { cn, matchesSearch } from '@/lib/utils'
+import { searchSnippet } from '@/lib/search'
 import { groupByKind } from '@/services/agenda'
 import { createMeeting, suggestNextMeetingDate } from '@/services/meetings'
 import {
@@ -53,6 +55,12 @@ import {
  * Wunsch, die Pendenzen. Je Gruppe lässt sich sagen, ob die Titel genügen oder
  * der ganze Eintrag zu lesen sein soll. Damit wird die Liste zum Programm
  * mehrerer Sitzungen, ohne dass man eine nach der anderen öffnen muss.
+ *
+ * Ebenfalls hinter dem Knopf: ein **Suchfeld**. Eingeblendet durchsucht es
+ * die angezeigten Sitzungen samt ihren Traktanden und Pendenzen und zeigt
+ * nur noch, worin etwas gefunden wurde – die Sitzung, darunter die Einträge,
+ * und im Text die Fundstelle selbst hervorgehoben. Damit ist auf einen Blick
+ * zu sehen, wo die Suche angeschlagen hat, statt bloss dass sie es tat.
  */
 export function Meetings() {
   const { profile } = useAuth()
@@ -83,9 +91,15 @@ export function Meetings() {
   const compact = view.mode === 'compact'
   const patch = (changes: Partial<MeetingsView>) => setView({ ...view, ...changes })
 
-  /* Die Traktanden aller Sitzungen – nur für die kompakte Ansicht gelesen.
-     In der Terminliste wären es Hunderte Datensätze für nichts. */
-  const { data: allItems } = useAllItems(800, compact)
+  /** Der eingegebene Suchbegriff – gilt für den Besuch, nicht für das Gerät. */
+  const [query, setQuery] = useState('')
+  const term = view.search ? query.trim() : ''
+  const searching = term.length > 0
+
+  /* Die Traktanden aller Sitzungen – für die kompakte Ansicht und für die
+     Suche. In der blossen Terminliste wären es Hunderte Datensätze für
+     nichts. */
+  const { data: allItems } = useAllItems(800, compact || Boolean(view.search))
 
   /*
    * Der Eintrag im Fenster wird aus dem Bestand nachgeschlagen, nicht
@@ -148,9 +162,46 @@ export function Meetings() {
     return next ?? null
   }, [meetings])
 
-  const visible =
+  const inScope =
     filter === 'upcoming' ? upcoming : filter === 'past' ? past : [...upcoming, ...past]
   const unassignedCount = openItems.filter((item) => !item.meetingId).length
+
+  /*
+   * Was der Suchbegriff trifft – je Sitzung die passenden Einträge.
+   *
+   * Getroffen ist eine Sitzung auch dann, wenn bloss ihr Titel oder ihr Ort
+   * passt: Wer «Burgdorf» sucht, meint die Sitzungen dort und nicht ein
+   * Traktandum, in dem der Ort zufällig vorkommt. Sie steht dann ohne
+   * Einträge da – gefunden wurde ja die Sitzung selbst.
+   *
+   * Gesucht wird mit `matchesSearch` wie überall in der App; hervorgehoben
+   * wird danach, was sich im ursprünglichen Text wiederfindet.
+   */
+  const found = useMemo(() => {
+    if (!searching) return null
+
+    const hits = new Map<string, AgendaItem[]>()
+    for (const item of allItems) {
+      if (!item.meetingId) continue
+      if (!matchesSearch(`${item.title} ${item.description ?? ''}`, term)) continue
+      const list = hits.get(item.meetingId)
+      if (list) list.push(item)
+      else hits.set(item.meetingId, [item])
+    }
+
+    const meetingsHit = inScope.filter(
+      (meeting) =>
+        hits.has(meeting.id) || matchesSearch(`${meeting.title} ${meeting.location ?? ''}`, term),
+    )
+
+    return {
+      meetings: meetingsHit,
+      items: hits,
+      count: meetingsHit.reduce((sum, meeting) => sum + (hits.get(meeting.id)?.length ?? 0), 0),
+    }
+  }, [searching, term, allItems, inScope])
+
+  const visible = found ? found.meetings : inScope
 
   /*
    * In der kompakten Ansicht wird nur ein Ausschnitt gezeichnet.
@@ -163,15 +214,15 @@ export function Meetings() {
    * Zurückgesetzt wird beim Zeichnen und nicht in einem Effekt: Sonst stünde
    * für einen Durchgang der alte Ausschnitt an der neuen Liste.
    */
-  const pageSize = compact ? 20 : visible.length
-  const listKey = `${filter}|${view.mode}`
+  const pageSize = compact || searching ? 20 : visible.length
+  const listKey = `${filter}|${view.mode}|${term}`
   const [shown, setShown] = useState(pageSize)
   const [shownFor, setShownFor] = useState(listKey)
   if (shownFor !== listKey) {
     setShownFor(listKey)
     setShown(pageSize)
   }
-  const page = compact ? visible.slice(0, shown) : visible
+  const page = compact || searching ? visible.slice(0, shown) : visible
   const rest = visible.length - page.length
 
   return (
@@ -182,13 +233,59 @@ export function Meetings() {
           <>
             <MeetingsMenu
               view={view}
-              onChange={patch}
+              onChange={(changes) => {
+                // Ein ausgeblendetes Suchfeld darf nicht weiterfiltern.
+                if (changes.search === false) setQuery('')
+                patch(changes)
+              }}
               counts={{ upcoming: upcoming.length, past: past.length, all: meetings.length }}
             />
             <AddButton label="Sitzung planen" onClick={() => setFormOpen(true)} />
           </>
         }
       />
+
+      {view.search && (
+        <div className="mb-4">
+          <div className="relative">
+            <Search
+              className="pointer-events-none absolute top-1/2 left-3 size-4 -translate-y-1/2 text-slate-400"
+              aria-hidden
+            />
+            <input
+              type="search"
+              className="input pl-9"
+              placeholder="Sitzungen, Traktanden und Pendenzen durchsuchen"
+              aria-label="Sitzungen durchsuchen"
+              value={query}
+              /* Kein Fokus von selbst: Das Feld bleibt eingeblendet, und an
+                 einem Telefon führe jeder Besuch der Seite die Tastatur mit. */
+              onChange={(event) => setQuery(event.target.value)}
+            />
+            {query && (
+              <button
+                type="button"
+                className="btn-ghost absolute top-1/2 right-1.5 -translate-y-1/2 p-1.5"
+                onClick={() => setQuery('')}
+                aria-label="Suche leeren"
+              >
+                <X className="size-4" aria-hidden />
+              </button>
+            )}
+          </div>
+          {found && (
+            <p className="hint">
+              {found.meetings.length === 0
+                ? 'Nichts gefunden.'
+                : `${found.meetings.length} ${found.meetings.length === 1 ? 'Sitzung' : 'Sitzungen'}${
+                    found.count > 0
+                      ? ` · ${found.count} ${found.count === 1 ? 'Eintrag' : 'Einträge'}`
+                      : ''
+                  }`}
+            </p>
+          )}
+        </div>
+      )}
 
       {unassignedCount > 0 && (
         <div className="mb-4 rounded-lg border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-900 dark:border-amber-800 dark:bg-amber-950 dark:text-amber-100">
@@ -202,23 +299,33 @@ export function Meetings() {
         <SkeletonList rows={3} />
       ) : visible.length === 0 ? (
         <div className="card">
-          <EmptyState
-            icon={CalendarDays}
-            title={filter === 'past' ? 'Noch keine vergangenen Sitzungen' : 'Keine Sitzung geplant'}
-            description={
-              filter === 'past'
-                ? 'Abgeschlossene Sitzungen erscheinen hier als Protokoll.'
-                : 'Lege den nächsten Termin fest.'
-            }
-            action={
-              filter !== 'past' && (
-                <button type="button" className="btn-primary" onClick={() => setFormOpen(true)}>
-                  <Plus className="size-4" aria-hidden />
-                  Sitzung planen
-                </button>
-              )
-            }
-          />
+          {searching ? (
+            <EmptyState
+              icon={Search}
+              title="Nichts gefunden"
+              description={`Zu «${term}» steht in den angezeigten Sitzungen nichts. Vielleicht hilft ein anderer Zeitraum – gesucht wird nur, was die Ansicht zeigt.`}
+            />
+          ) : (
+            <EmptyState
+              icon={CalendarDays}
+              title={
+                filter === 'past' ? 'Noch keine vergangenen Sitzungen' : 'Keine Sitzung geplant'
+              }
+              description={
+                filter === 'past'
+                  ? 'Abgeschlossene Sitzungen erscheinen hier als Protokoll.'
+                  : 'Lege den nächsten Termin fest.'
+              }
+              action={
+                filter !== 'past' && (
+                  <button type="button" className="btn-primary" onClick={() => setFormOpen(true)}>
+                    <Plus className="size-4" aria-hidden />
+                    Sitzung planen
+                  </button>
+                )
+              }
+            />
+          )}
         </div>
       ) : (
         <>
@@ -228,9 +335,16 @@ export function Meetings() {
                 key={meeting.id}
                 meeting={meeting}
                 openCount={itemCounts.get(meeting.id) ?? 0}
-                items={compact ? (itemsByMeeting.get(meeting.id) ?? []) : undefined}
+                items={
+                  found
+                    ? (found.items.get(meeting.id) ?? [])
+                    : compact
+                      ? (itemsByMeeting.get(meeting.id) ?? [])
+                      : undefined
+                }
                 manualPendenzen={manualPendenzen}
                 view={view}
+                term={term}
                 onOpenItem={setOpenItem}
               />
             ))}
@@ -274,6 +388,7 @@ function MeetingRow({
   items,
   manualPendenzen,
   view,
+  term,
   onOpenItem,
 }: {
   meeting: Meeting
@@ -283,15 +398,32 @@ function MeetingRow({
   /** Steht die Pendenzenliste von Hand, folgt ihr auch die Sitzung */
   manualPendenzen: boolean
   view: MeetingsView
+  /**
+   * Der Suchbegriff – leer, solange nicht gesucht wird.
+   *
+   * Gesetzt heisst: In `items` stehen die Fundstellen und sonst nichts, und
+   * die Sitzung zeigt sie unabhängig von der gewählten Sitzungsansicht. Wer
+   * sucht, will das Gefundene sehen und nicht erst die Ansicht umstellen.
+   */
+  term?: string
   onOpenItem: (item: AgendaItem) => void
 }) {
   const date = toDate(meeting.date)
   const isToday = date?.toDateString() === new Date().toDateString()
+  const searching = Boolean(term)
 
-  const groups = useMemo(
+  const grouped = useMemo(
     () => (items ? groupByKind(items, manualPendenzen) : null),
     [items, manualPendenzen],
   )
+
+  /* Beim Suchen bleibt der Block weg, wenn nur die Sitzung selbst passt:
+     «Noch nichts traktandiert» wäre dort keine Auskunft, sondern ein
+     Missverständnis. */
+  const groups =
+    grouped && searching && grouped.traktandum.length + grouped.pendenz.length === 0
+      ? null
+      : grouped
 
   return (
     <li className={groups ? 'card overflow-hidden' : undefined}>
@@ -318,7 +450,9 @@ function MeetingRow({
 
         <div className="min-w-0 flex-1">
           <div className="flex flex-wrap items-center gap-2">
-            <h3 className="truncate text-sm font-medium">{meeting.title}</h3>
+            <h3 className="truncate text-sm font-medium">
+              {term ? <Highlight text={meeting.title} term={term} /> : meeting.title}
+            </h3>
             <MeetingStatusBadge status={meeting.status} />
           </div>
           <p className="mt-0.5 flex flex-wrap items-center gap-x-3 gap-y-0.5 text-xs text-slate-500 dark:text-slate-400">
@@ -329,7 +463,7 @@ function MeetingRow({
             {meeting.location && (
               <span className="inline-flex items-center gap-1">
                 <MapPin className="size-3" aria-hidden />
-                {meeting.location}
+                {term ? <Highlight text={meeting.location} term={term} /> : meeting.location}
               </span>
             )}
           </p>
@@ -344,19 +478,28 @@ function MeetingRow({
 
       {groups && (
         <div className="space-y-4 border-t border-slate-200 px-4 py-3 dark:border-slate-800">
-          <ItemGroup
-            title={ITEM_KIND_PLURAL.traktandum}
-            items={groups.traktandum}
-            detail={view.agendaDetail}
-            empty="Noch nichts traktandiert."
-            onOpen={onOpenItem}
-          />
-          {view.showPendenzen && (
+          {/* Beim Suchen stehen beide Gruppen da – aber nur mit dem, was
+              gefunden wurde, und als Titelliste: Ein Suchergebnis will
+              überflogen werden. Der Schalter für die Pendenzen gilt der
+              Übersicht und nicht der Suche; eine gefundene Pendenz zu
+              verschweigen, wäre die falsche Antwort. */}
+          {(!searching || groups.traktandum.length > 0) && (
+            <ItemGroup
+              title={ITEM_KIND_PLURAL.traktandum}
+              items={groups.traktandum}
+              detail={searching ? 'titles' : view.agendaDetail}
+              empty="Noch nichts traktandiert."
+              term={term}
+              onOpen={onOpenItem}
+            />
+          )}
+          {(searching ? groups.pendenz.length > 0 : view.showPendenzen) && (
             <ItemGroup
               title={ITEM_KIND_PLURAL.pendenz}
               items={groups.pendenz}
-              detail={view.pendenzenDetail}
+              detail={searching ? 'titles' : view.pendenzenDetail}
               empty="Keine Pendenzen."
+              term={term}
               onOpen={onOpenItem}
             />
           )}
@@ -378,12 +521,15 @@ function ItemGroup({
   items,
   detail,
   empty,
+  term,
   onOpen,
 }: {
   title: string
   items: AgendaItem[]
   detail: MeetingDetailLevel
   empty: string
+  /** Suchbegriff – hebt die Fundstellen hervor und zeigt sie im Text */
+  term?: string
   /** Ein Griff auf den Eintrag öffnet ihn zum Bearbeiten */
   onOpen: (item: AgendaItem) => void
 }) {
@@ -401,16 +547,30 @@ function ItemGroup({
           {items.map((item, index) => (
             <li key={item.id} className="flex items-baseline gap-2 text-sm">
               <span className="tabular shrink-0 text-xs text-slate-400">{index + 1}.</span>
-              <button
-                type="button"
-                onClick={() => onOpen(item)}
-                className={cn(
-                  'min-w-0 rounded text-left transition hover:underline',
-                  item.status === 'done' && 'text-slate-500 line-through dark:text-slate-500',
-                )}
-              >
-                {item.title || <span className="text-slate-400">Ohne Titel</span>}
-              </button>
+              <span className="min-w-0">
+                <button
+                  type="button"
+                  onClick={() => onOpen(item)}
+                  className={cn(
+                    'min-w-0 rounded text-left transition hover:underline',
+                    item.status === 'done' && 'text-slate-500 line-through dark:text-slate-500',
+                  )}
+                >
+                  {item.title ? (
+                    term ? (
+                      <Highlight text={item.title} term={term} />
+                    ) : (
+                      item.title
+                    )
+                  ) : (
+                    <span className="text-slate-400">Ohne Titel</span>
+                  )}
+                </button>
+                {/* Steckt der Treffer in der Beschreibung, wäre der Titel
+                    allein rätselhaft: Man sähe den Eintrag, aber nicht,
+                    warum er dasteht. Der Ausschnitt bringt die Stelle her. */}
+                <ItemSnippet item={item} term={term} />
+              </span>
             </li>
           ))}
         </ol>
@@ -449,6 +609,25 @@ function ItemGroup({
   )
 }
 
+/**
+ * Die Stelle aus der Beschreibung, an der die Suche angeschlagen hat.
+ *
+ * Nur wenn der Titel sie nicht schon zeigt: Steht der Begriff im Titel, ist
+ * die Frage «wo?» bereits beantwortet, und der Ausschnitt wäre bloss eine
+ * zweite Zeile.
+ */
+function ItemSnippet({ item, term }: { item: AgendaItem; term?: string }) {
+  const text = item.description?.trim() ?? ''
+  if (!term || !text) return null
+  if (!matchesSearch(text, term) || matchesSearch(item.title, term)) return null
+
+  return (
+    <span className="mt-0.5 block text-xs text-slate-500 dark:text-slate-400">
+      <Highlight text={searchSnippet(text, term)} term={term} />
+    </span>
+  )
+}
+
 /* ------------------------------------------------------------------ */
 /* Ansicht anpassen                                                    */
 /* ------------------------------------------------------------------ */
@@ -471,6 +650,16 @@ function MeetingsMenu({
 }) {
   return (
     <ViewMenu width="sm:w-80">
+      {/* Zuoberst, weil es die Liste am stärksten verändert: Eingeblendet und
+          ausgefüllt steht dort nur noch, was gefunden wurde. */}
+      <MenuToggle
+        label="Suchfeld anzeigen"
+        checked={Boolean(view.search)}
+        onChange={(search) => onChange({ search })}
+      />
+
+      <MenuDivider />
+
       <MenuChoice<MeetingScope>
         label="Zeitraum"
         value={view.scope}

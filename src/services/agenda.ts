@@ -13,7 +13,7 @@ import {
   writeBatch,
   arrayUnion,
 } from 'firebase/firestore'
-import { db, COLLECTIONS } from '@/lib/firebase'
+import { auth, db, COLLECTIONS } from '@/lib/firebase'
 import { forgetDoc } from '@/lib/collectionStore'
 import { stripUndefined, uid } from '@/lib/utils'
 import { commit, type SaveOutcome } from '@/lib/sync'
@@ -96,6 +96,7 @@ export async function createAgendaItem(input: AgendaItemInput, actor: Actor): Pr
       updatedAt: serverTimestamp(),
       editedAt: serverTimestamp(),
       createdBy: actor.id,
+      editedBy: actor.id,
       completedAt: null,
       completedBy: null,
     }),
@@ -127,9 +128,20 @@ export async function updateAgendaItem(
  * dreimal an eine andere Stelle gezogen wurde, ist deswegen nicht bearbeitet
  * worden – stünde nur `updatedAt` da, sprängen beim Sortieren nach
  * «Bearbeitungsdatum» lauter unveränderte Punkte nach oben.
+ *
+ * Dazu, wer es war. Das Konto kommt hier aus der Anmeldung und nicht als
+ * Übergabe von aussen: Jede Änderung soll den Namen tragen, und ein
+ * Aufrufer, der ihn zu übergeben vergisst, hinterliesse eine Lücke im
+ * einzigen Feld, das die Frage «wer war das?» beantwortet. Ohne Anmeldung
+ * wird gar nicht geschrieben – dann bleibt das Feld, wie es war.
  */
 function touch(): Record<string, unknown> {
-  return { updatedAt: serverTimestamp(), editedAt: serverTimestamp() }
+  const uid = auth.currentUser?.uid
+  return {
+    updatedAt: serverTimestamp(),
+    editedAt: serverTimestamp(),
+    ...(uid ? { editedBy: uid } : {}),
+  }
 }
 
 /** Status ändern und den Wechsel im Verlauf festhalten. */
