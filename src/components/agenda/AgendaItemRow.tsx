@@ -18,6 +18,7 @@ import { StatusBadge } from '@/components/ui/Badge'
 import { ConfirmDialog } from '@/components/ui/Modal'
 import { AgendaItemEditor } from '@/components/agenda/AgendaItemEditor'
 import { DeferMenu } from '@/components/agenda/DeferMenu'
+import { AuthorChip, ItemAuthors } from '@/components/agenda/ItemAuthors'
 import { deleteAgendaItem, setItemStatus } from '@/services/agenda'
 import { callingRowCounts } from '@/lib/callingChanges'
 import { formatDate } from '@/lib/dates'
@@ -27,6 +28,7 @@ import {
   toItemKind,
   type AgendaItem,
   type CallingChanges,
+  type TS,
 } from '@/lib/types'
 
 interface Props {
@@ -275,6 +277,10 @@ export function AgendaItemRow({
         </button>
 
         <div className="flex shrink-0 items-center gap-1">
+          {/* Zugeklappt genügt das Kürzel: Wer die Liste durchgeht, sieht
+              damit, von wem der Punkt kommt, ohne ihn zu öffnen. Aufgeklappt
+              steht es bei den Daten, wo es hingehört (siehe `ItemDates`). */}
+          {!expanded && <ItemAuthors item={item} className="mr-1" />}
           {!expanded && <AssigneeAvatars userIds={item.assignees ?? []} />}
 
           {onMove && (
@@ -429,21 +435,41 @@ function ItemDates({
       ? meetingDate?.(item.firstMeetingId)
       : undefined
 
-  const entries: [string, string][] = []
-  if (next) entries.push(['Nächste Sitzung', next])
-  if (item.createdAt) entries.push(['Erfasst', formatDate(item.createdAt)])
-  if (first) entries.push(['Ursprünglich', first])
+  /*
+   * Wer dahintersteht, gehört zum Datum und nicht in eine eigene Zeile:
+   * «Erfasst 12.03.2026 AR» ist eine Angabe. Der volle Name und die Uhrzeit
+   * stehen im Tooltip des Kürzels (siehe `ItemAuthors`).
+   */
+  const entries: { label: string; value: string; by?: string; at?: TS }[] = []
+  if (next) entries.push({ label: 'Nächste Sitzung', value: next })
+  if (item.createdAt)
+    entries.push({
+      label: 'Erfasst',
+      value: formatDate(item.createdAt),
+      by: item.createdBy,
+      at: item.createdAt,
+    })
+  if (first) entries.push({ label: 'Ursprünglich', value: first })
   const edited = lastEditedAt(item)
-  if (edited) entries.push(['Zuletzt bearbeitet', formatDate(edited)])
+  if (edited)
+    entries.push({
+      label: 'Zuletzt bearbeitet',
+      value: formatDate(edited),
+      by: item.editedBy,
+      at: edited,
+    })
 
   if (entries.length === 0) return null
 
   return (
     <dl className="mt-3 flex flex-wrap gap-x-4 gap-y-1 text-xs text-slate-500 dark:text-slate-400">
-      {entries.map(([label, value]) => (
-        <div key={label} className="flex items-baseline gap-1.5">
+      {entries.map(({ label, value, by, at }) => (
+        <div key={label} className="flex items-center gap-1.5">
           <dt>{label}</dt>
-          <dd className="tabular font-medium text-slate-600 dark:text-slate-300">{value}</dd>
+          <dd className="tabular flex items-center gap-1.5 font-medium text-slate-600 dark:text-slate-300">
+            {value}
+            {by && <AuthorChip userId={by} label={label} date={at} />}
+          </dd>
         </div>
       ))}
     </dl>
