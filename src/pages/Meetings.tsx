@@ -1,5 +1,7 @@
 import { useEffect, useMemo, useState, type FormEvent } from 'react'
 import { Link, useSearchParams, useNavigate } from 'react-router-dom'
+import { FOCUS_PARAM } from '@/components/agenda/MeetingFocus'
+import { useUrlState } from '@/hooks/useUrlState'
 import { CalendarDays, Plus, MapPin, Clock, Search, X } from 'lucide-react'
 import { useAuth } from '@/contexts/AuthContext'
 import { useData } from '@/contexts/DataContext'
@@ -91,15 +93,25 @@ export function Meetings() {
   const compact = view.mode === 'compact'
   const patch = (changes: Partial<MeetingsView>) => setView({ ...view, ...changes })
 
-  /** Der eingegebene Suchbegriff – gilt für den Besuch, nicht für das Gerät. */
-  const [query, setQuery] = useState('')
-  const term = view.search ? query.trim() : ''
+  /*
+   * Der Suchbegriff steht in der Adresse.
+   *
+   * Nur so führt «Zurück» wirklich zur Suche zurück: Wer aus einem Treffer in
+   * die Sitzung springt und umkehrt, findet dieselbe Liste vor, mit
+   * demselben Wort im Feld (siehe `hooks/useUrlState` und `hooks/useBack`).
+   * Ein Zustand in der Komponente wäre mit dem Seitenwechsel weg.
+   */
+  const [query, setQuery] = useUrlState<string>('suche', '')
+  const term = query.trim()
   const searching = term.length > 0
+  /* Ein geteilter Link bringt seine Suche mit – dann steht das Feld da,
+     auch wenn es auf diesem Gerät ausgeblendet war. */
+  const searchOpen = Boolean(view.search) || searching
 
   /* Die Traktanden aller Sitzungen – für die kompakte Ansicht und für die
      Suche. In der blossen Terminliste wären es Hunderte Datensätze für
      nichts. */
-  const { data: allItems } = useAllItems(800, compact || Boolean(view.search))
+  const { data: allItems } = useAllItems(800, compact || searchOpen)
 
   /*
    * Der Eintrag im Fenster wird aus dem Bestand nachgeschlagen, nicht
@@ -245,7 +257,7 @@ export function Meetings() {
         }
       />
 
-      {view.search && (
+      {searchOpen && (
         <div className="mb-4">
           <div className="relative">
             <Search
@@ -548,24 +560,7 @@ function ItemGroup({
             <li key={item.id} className="flex items-baseline gap-2 text-sm">
               <span className="tabular shrink-0 text-xs text-slate-400">{index + 1}.</span>
               <span className="min-w-0">
-                <button
-                  type="button"
-                  onClick={() => onOpen(item)}
-                  className={cn(
-                    'min-w-0 rounded text-left transition hover:underline',
-                    item.status === 'done' && 'text-slate-500 line-through dark:text-slate-500',
-                  )}
-                >
-                  {item.title ? (
-                    term ? (
-                      <Highlight text={item.title} term={term} />
-                    ) : (
-                      item.title
-                    )
-                  ) : (
-                    <span className="text-slate-400">Ohne Titel</span>
-                  )}
-                </button>
+                <ItemTitle item={item} term={term} onOpen={onOpen} />
                 {/* Steckt der Treffer in der Beschreibung, wäre der Titel
                     allein rätselhaft: Man sähe den Eintrag, aber nicht,
                     warum er dasteht. Der Ausschnitt bringt die Stelle her. */}
@@ -606,6 +601,58 @@ function ItemGroup({
         </ul>
       )}
     </section>
+  )
+}
+
+/**
+ * Der Titel eines Eintrags in der Gruppe – als Knopf oder als Verweis.
+ *
+ * Ohne Suche öffnet ein Griff den Eintrag an Ort und Stelle: Wer die
+ * Sitzungsliste als Programm durchgeht, will nicht bei jedem Punkt die Seite
+ * wechseln.
+ *
+ * Beim Suchen ist es umgekehrt. Man hat etwas gesucht und gefunden und will
+ * dorthin, wo es steht – in die Sitzung, mit dem Punkt aufgeklappt. Deshalb
+ * ein echter Verweis und kein Knopf: Er trägt seine Adresse, lässt sich in
+ * einem neuen Tab öffnen, und der Schritt zurück führt an die Suche zurück,
+ * die in der Adresse steht (siehe `FOCUS_PARAM` und `hooks/useUrlState`).
+ */
+function ItemTitle({
+  item,
+  term,
+  onOpen,
+}: {
+  item: AgendaItem
+  term?: string
+  onOpen: (item: AgendaItem) => void
+}) {
+  const className = cn(
+    'min-w-0 rounded text-left transition hover:underline',
+    item.status === 'done' && 'text-slate-500 line-through dark:text-slate-500',
+  )
+
+  const label = item.title ? (
+    term ? (
+      <Highlight text={item.title} term={term} />
+    ) : (
+      item.title
+    )
+  ) : (
+    <span className="text-slate-400">Ohne Titel</span>
+  )
+
+  if (term && item.meetingId) {
+    return (
+      <Link to={`/sitzungen/${item.meetingId}?${FOCUS_PARAM}=${item.id}`} className={className}>
+        {label}
+      </Link>
+    )
+  }
+
+  return (
+    <button type="button" onClick={() => onOpen(item)} className={className}>
+      {label}
+    </button>
   )
 }
 

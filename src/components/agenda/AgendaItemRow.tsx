@@ -18,7 +18,7 @@ import { StatusBadge } from '@/components/ui/Badge'
 import { ConfirmDialog } from '@/components/ui/Modal'
 import { AgendaItemEditor } from '@/components/agenda/AgendaItemEditor'
 import { DeferMenu } from '@/components/agenda/DeferMenu'
-import { AuthorChip, ItemAuthors } from '@/components/agenda/ItemAuthors'
+import { AuthorChip } from '@/components/agenda/AuthorChip'
 import { deleteAgendaItem, setItemStatus } from '@/services/agenda'
 import { callingRowCounts } from '@/lib/callingChanges'
 import { formatDate } from '@/lib/dates'
@@ -277,10 +277,10 @@ export function AgendaItemRow({
         </button>
 
         <div className="flex shrink-0 items-center gap-1">
-          {/* Zugeklappt genügt das Kürzel: Wer die Liste durchgeht, sieht
-              damit, von wem der Punkt kommt, ohne ihn zu öffnen. Aufgeklappt
-              steht es bei den Daten, wo es hingehört (siehe `ItemDates`). */}
-          {!expanded && <ItemAuthors item={item} className="mr-1" />}
+          {/* In der Liste steht das Kürzel der Zuständigen und sonst keines:
+              Beim Durchgehen zählt, wer etwas zu tun hat. Wer den Punkt
+              erfasst und wer zuletzt daran gearbeitet hat, steht aufgeklappt
+              bei den Daten (siehe `ItemDates`). */}
           {!expanded && <AssigneeAvatars userIds={item.assignees ?? []} />}
 
           {onMove && (

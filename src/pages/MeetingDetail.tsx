@@ -20,6 +20,7 @@ import { useAuth } from '@/contexts/AuthContext'
 import { useData } from '@/contexts/DataContext'
 import { useToast } from '@/contexts/ToastContext'
 import { useLocalStorage } from '@/hooks/useLocalStorage'
+import { useBack } from '@/hooks/useBack'
 import {
   useMeeting,
   useMeetingItems,
@@ -95,6 +96,16 @@ export function MeetingDetail() {
   // Die gewählte Ansicht überlebt den Ausflug auf eine Mitgliederseite –
   // sonst käme man aus dem «Zurück» in einer anderen Ansicht heraus, als man
   // sie verlassen hat.
+  /*
+   * Zurück führt einen Schritt im Verlauf und nicht stur auf die Liste.
+   *
+   * Wer aus einem Suchtreffer hierhergekommen ist, will zur Suche zurück –
+   * mit dem Wort, das er getippt hat. Ein fester Verweis auf `/sitzungen`
+   * warf es weg; `useBack()` bringt die vorige Adresse samt allem, was in
+   * ihr steht (siehe `hooks/useBack`).
+   */
+  const back = useBack({ to: '/sitzungen', label: 'Sitzungen' })
+
   const [view, setView] = useLocalStorage<ViewMode>('bss:sitzung:ansicht', 'focus')
   const [searchParams, setSearchParams] = useSearchParams()
   const [formOpen, setFormOpen] = useState(false)
@@ -249,11 +260,18 @@ export function MeetingDetail() {
       {/* ---------- Kopf ---------- */}
       <div className="no-print mb-4">
         <Link
-          to="/sitzungen"
+          to={back.to}
+          onClick={(event) => {
+            // Mittelklick und «in neuem Tab öffnen» sollen weiterhin die
+            // Adresse benutzen – abgefangen wird nur der gewöhnliche Klick.
+            if (event.metaKey || event.ctrlKey || event.shiftKey || event.button !== 0) return
+            event.preventDefault()
+            back.go()
+          }}
           className="mb-2 inline-flex items-center gap-1 text-sm text-slate-500 hover:underline dark:text-slate-400"
         >
           <ArrowLeft className="size-4" aria-hidden />
-          Sitzungen
+          {back.label}
         </Link>
 
         <div className="flex flex-wrap items-start justify-between gap-3">
