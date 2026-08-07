@@ -235,19 +235,23 @@ export function ApActivities() {
              * und wer den Link weitergibt, tut das meist genau dann, wenn er
              * den Plan gerade jemandem zeigt. Auf schmalen Bildschirmen
              * bleibt nur das Symbol; die Kopfzeile trägt sonst vier Knöpfe.
+             *
+             * Der Knopf steht allen offen, die den Plan sehen – auch den
+             * Konten ohne Schreibrecht. Sie kommen dahinter zur Liste der
+             * bestehenden Links und kopieren sich einen; anlegen und
+             * widerrufen bleibt der Verwaltung vorbehalten (siehe
+             * `ApFeedDialog`).
              */}
-            {canEditAp && (
-              <button
-                type="button"
-                className="btn-secondary"
-                onClick={() => setFeedOpen(true)}
-                title="Den Plan in Google Calendar oder Apple Kalender abonnieren"
-              >
-                <CalendarSync className="size-4" aria-hidden />
-                <span className="hidden lg:inline">Abonnieren</span>
-                <span className="sr-only lg:hidden">Kalender abonnieren</span>
-              </button>
-            )}
+            <button
+              type="button"
+              className="btn-secondary"
+              onClick={() => setFeedOpen(true)}
+              title="Den Plan in Google Calendar oder Apple Kalender abonnieren"
+            >
+              <CalendarSync className="size-4" aria-hidden />
+              <span className="hidden lg:inline">Abonnieren</span>
+              <span className="sr-only lg:hidden">Kalender abonnieren</span>
+            </button>
 
             {canEditAp &&
               (editMode ? (

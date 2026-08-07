@@ -47,6 +47,14 @@ import {
  * und deshalb lässt sich jeder einzeln widerrufen, ohne allen anderen den
  * Kalender wegzunehmen.
  *
+ * Der Dialog hat deshalb zwei Gesichter, und `canEditAp` entscheidet welches.
+ * **Mit Schreibrecht** ist er eine Verwaltung: anlegen, widerrufen, löschen,
+ * und zu jedem Link, wann er zuletzt abgerufen wurde. **Ohne** bleibt genau
+ * das übrig, wofür ein Berater ihn öffnet – die Liste der gültigen Links und
+ * daneben der Knopf zum Kopieren. Widerrufene fehlen dort ganz: Sie erzählen
+ * der Verwaltung etwas, dem Kopierenden bieten sie nur die Gelegenheit, den
+ * falschen zu erwischen.
+ *
  * Wann ein Kalenderprogramm den Link holt, bestimmt es selbst – Google meist
  * alle paar Stunden. Der Dialog sagt das nicht mehr dazu: Es steht nur der
  * Wortlaut hier und im README, damit die Frage beantwortet ist, wenn sie
@@ -55,9 +63,18 @@ import {
  * beantwortet dieselbe Frage später ohnehin genauer.
  */
 export function ApFeedDialog({ open, onClose }: { open: boolean; onClose: () => void }) {
-  const { profile } = useAuth()
+  const { profile, canEditAp } = useAuth()
   const toast = useToast()
-  const { data: feeds, loading } = useCalendarFeeds()
+  const { data: all, loading } = useCalendarFeeds()
+
+  /*
+   * Wer nur zusieht, sieht nur die Links, die auch funktionieren.
+   *
+   * Ein widerrufener Link steht in der Verwaltung bewusst weiter da – er
+   * erzählt, dass es ihn gab. Wer bloss einen Kalender einrichten will, hätte
+   * davon nichts als die Gelegenheit, den falschen zu kopieren.
+   */
+  const feeds = canEditAp ? all : all.filter((feed) => feed.active)
 
   const [label, setLabel] = useState('')
   const [kinds, setKinds] = useState<ApActivityKind[]>([])
@@ -109,7 +126,11 @@ export function ApFeedDialog({ open, onClose }: { open: boolean; onClose: () => 
       open={open}
       onClose={onClose}
       title="Kalender abonnieren"
-      description="Den Aktivitätenplan in Google Calendar, Apple Kalender oder Outlook einbinden"
+      description={
+        canEditAp
+          ? 'Den Aktivitätenplan in Google Calendar, Apple Kalender oder Outlook einbinden'
+          : 'Den Link kopieren und im eigenen Kalender einrichten'
+      }
       size="lg"
       footer={
         <button type="button" className="btn-secondary" onClick={onClose}>
@@ -121,74 +142,78 @@ export function ApFeedDialog({ open, onClose }: { open: boolean; onClose: () => 
         {fresh && <FreshLink token={fresh} />}
 
         {/* ---------- Neuen Link anlegen ---------- */}
-        <section className="space-y-3 rounded-xl border border-slate-200 p-4 dark:border-slate-700">
-          <h3 className="text-sm font-semibold">Neuen Link anlegen</h3>
+        {canEditAp && (
+          <section className="space-y-3 rounded-xl border border-slate-200 p-4 dark:border-slate-700">
+            <h3 className="text-sm font-semibold">Neuen Link anlegen</h3>
 
-          <div>
-            <label className="label" htmlFor="feed-label">
-              Wofür ist der Link?
-            </label>
-            <input
-              id="feed-label"
-              className="input"
-              value={label}
-              onChange={(event) => setLabel(event.target.value)}
-              placeholder="Berater, Jugendführung, Bruder Müller …"
-              maxLength={80}
-            />
-            <p className="hint">
-              Nur zur Unterscheidung in dieser Liste. So lässt sich später einer widerrufen, ohne
-              allen anderen den Kalender wegzunehmen.
-            </p>
-          </div>
-
-          <fieldset>
-            <legend className="label">Was im Kalender erscheint</legend>
-            <div className="flex flex-wrap gap-2">
-              {AP_FEED_KINDS.map((kind) => {
-                const active = kinds.length === 0 || kinds.includes(kind)
-                return (
-                  <button
-                    key={kind}
-                    type="button"
-                    onClick={() => toggle(kind)}
-                    aria-pressed={active}
-                    className={
-                      active
-                        ? 'chip border border-brand-600 bg-brand-600 text-white'
-                        : 'chip border border-slate-300 text-slate-600 dark:border-slate-600 dark:text-slate-300'
-                    }
-                  >
-                    {active && <Check className="size-3.5" aria-hidden />}
-                    {AP_ACTIVITY_KIND_LABELS[kind]}
-                  </button>
-                )
-              })}
+            <div>
+              <label className="label" htmlFor="feed-label">
+                Wer bekommt den Link?
+              </label>
+              <input
+                id="feed-label"
+                className="input"
+                value={label}
+                onChange={(event) => setLabel(event.target.value)}
+                placeholder="Berater, Jugendführung, Bruder Müller …"
+                maxLength={80}
+              />
+              <p className="hint">
+                Besser nach der Person oder der Gruppe benennen als nach dem Inhalt: Nur so lässt
+                sich später einer widerrufen, ohne allen anderen den Kalender wegzunehmen.
+              </p>
             </div>
-            <p className="hint">
-              Ohne Auswahl steht alles im Kalender. «Fällt aus» erklärt im Plan eine Lücke – im
-              eigenen Terminkalender will man sie vielleicht nicht sehen.
-            </p>
-          </fieldset>
 
-          <button
-            type="button"
-            className="btn-primary w-full sm:w-auto"
-            onClick={() => void create()}
-            disabled={busy}
-          >
-            {busy ? (
-              <Loader2 className="size-4 animate-spin" aria-hidden />
-            ) : (
-              <Plus className="size-4" aria-hidden />
-            )}
-            Link anlegen
-          </button>
-        </section>
+            <fieldset>
+              <legend className="label">Was im Kalender erscheint</legend>
+              <div className="flex flex-wrap gap-2">
+                {AP_FEED_KINDS.map((kind) => {
+                  const active = kinds.length === 0 || kinds.includes(kind)
+                  return (
+                    <button
+                      key={kind}
+                      type="button"
+                      onClick={() => toggle(kind)}
+                      aria-pressed={active}
+                      className={
+                        active
+                          ? 'chip border border-brand-600 bg-brand-600 text-white'
+                          : 'chip border border-slate-300 text-slate-600 dark:border-slate-600 dark:text-slate-300'
+                      }
+                    >
+                      {active && <Check className="size-3.5" aria-hidden />}
+                      {AP_ACTIVITY_KIND_LABELS[kind]}
+                    </button>
+                  )
+                })}
+              </div>
+              <p className="hint">
+                Ohne Auswahl steht alles im Kalender. «Fällt aus» erklärt im Plan eine Lücke – im
+                eigenen Terminkalender will man sie vielleicht nicht sehen.
+              </p>
+            </fieldset>
+
+            <button
+              type="button"
+              className="btn-primary w-full sm:w-auto"
+              onClick={() => void create()}
+              disabled={busy}
+            >
+              {busy ? (
+                <Loader2 className="size-4 animate-spin" aria-hidden />
+              ) : (
+                <Plus className="size-4" aria-hidden />
+              )}
+              Link anlegen
+            </button>
+          </section>
+        )}
 
         {/* ---------- Bestehende Links ---------- */}
         <section className="space-y-3">
-          <h3 className="text-sm font-semibold">Vergebene Links</h3>
+          <h3 className="text-sm font-semibold">
+            {canEditAp ? 'Vergebene Links' : 'Verfügbare Links'}
+          </h3>
 
           {loading && feeds.length === 0 ? (
             <p className="hint">Wird geladen …</p>
@@ -197,13 +222,17 @@ export function ApFeedDialog({ open, onClose }: { open: boolean; onClose: () => 
               <EmptyState
                 icon={Link2}
                 title="Noch kein Link vergeben"
-                description="Lege oben einen an. Wer ihn einrichtet, hat den Plan von da an im eigenen Kalender."
+                description={
+                  canEditAp
+                    ? 'Lege oben einen an. Wer ihn einrichtet, hat den Plan von da an im eigenen Kalender.'
+                    : 'Sobald die Bischofschaft einen Link vergeben hat, steht er hier zum Kopieren bereit.'
+                }
               />
             </div>
           ) : (
             <ul className="space-y-3">
               {feeds.map((feed) => (
-                <FeedRow key={feed.id} feed={feed} />
+                <FeedRow key={feed.id} feed={feed} canManage={canEditAp} />
               ))}
             </ul>
           )}
@@ -283,7 +312,14 @@ function LinkRow({ token }: { token: string }) {
   )
 }
 
-function FeedRow({ feed }: { feed: CalendarFeed }) {
+/**
+ * Ein Link in der Liste.
+ *
+ * `canManage` entscheidet, ob daneben die Knöpfe zum Widerrufen und Löschen
+ * stehen. Ohne sie bleibt die Zeile, was ein Nur-Ansicht-Konto braucht: die
+ * Beschriftung, was der Link zeigt, und die Adresse zum Kopieren.
+ */
+function FeedRow({ feed, canManage }: { feed: CalendarFeed; canManage: boolean }) {
   const toast = useToast()
   const [busy, setBusy] = useState(false)
 
@@ -325,53 +361,65 @@ function FeedRow({ feed }: { feed: CalendarFeed }) {
             {kinds.length > 0
               ? `Nur ${kinds.map((kind) => AP_ACTIVITY_KIND_LABELS[kind]).join(', ')}`
               : 'Der ganze Plan'}
-            {' · '}
             {/*
              * Der letzte Abruf ist die einzige verlässliche Antwort auf
              * «warum sehe ich den Kalender nicht?»: Steht hier nichts, hat
              * das Kalenderprogramm den Link nie geholt – dann liegt es am
              * Abo und nicht an den Terminen.
+             *
+             * Für ein Nur-Ansicht-Konto ist das keine Auskunft, sondern eine
+             * Verwirrung: Der Wert gilt dem Link, nicht dem eigenen Kalender,
+             * und stünde auf «vor 2 Stunden», während der eigene noch leer
+             * ist. Deshalb nur in der Verwaltung.
              */}
-            {feed.lastFetchedAt
-              ? `zuletzt abgerufen ${formatRelative(feed.lastFetchedAt)}`
-              : 'noch nie abgerufen'}
+            {canManage &&
+              ` · ${
+                feed.lastFetchedAt
+                  ? `zuletzt abgerufen ${formatRelative(feed.lastFetchedAt)}`
+                  : 'noch nie abgerufen'
+              }`}
           </p>
         </div>
 
-        <div className="flex shrink-0 gap-1">
-          {feed.active ? (
-            <button
-              type="button"
-              className="btn-ghost btn-sm"
-              disabled={busy}
-              onClick={() =>
-                void run(
-                  () => updateCalendarFeed(feed.id, { active: false }),
-                  'Link widerrufen. Der Kalender bleibt bei den Empfängern stehen, füllt sich aber nicht mehr.',
-                )
-              }
-            >
-              <Ban className="size-3.5" aria-hidden />
-              Widerrufen
+        {canManage && (
+          <div className="flex shrink-0 gap-1">
+            {feed.active ? (
+              <button
+                type="button"
+                className="btn-ghost btn-sm"
+                disabled={busy}
+                onClick={() =>
+                  void run(
+                    () => updateCalendarFeed(feed.id, { active: false }),
+                    'Link widerrufen. Der Kalender bleibt bei den Empfängern stehen, füllt sich aber nicht mehr.',
+                  )
+                }
+              >
+                <Ban className="size-3.5" aria-hidden />
+                Widerrufen
+              </button>
+            ) : (
+              <button
+                type="button"
+                className="btn-ghost btn-sm"
+                disabled={busy}
+                onClick={() =>
+                  void run(
+                    () => updateCalendarFeed(feed.id, { active: true }),
+                    'Link wieder gültig.',
+                  )
+                }
+              >
+                <RotateCcw className="size-3.5" aria-hidden />
+                Wieder gültig
+              </button>
+            )}
+            <button type="button" className="btn-ghost btn-sm" disabled={busy} onClick={remove}>
+              <Trash2 className="size-3.5 text-rose-600" aria-hidden />
+              <span className="sr-only">Löschen</span>
             </button>
-          ) : (
-            <button
-              type="button"
-              className="btn-ghost btn-sm"
-              disabled={busy}
-              onClick={() =>
-                void run(() => updateCalendarFeed(feed.id, { active: true }), 'Link wieder gültig.')
-              }
-            >
-              <RotateCcw className="size-3.5" aria-hidden />
-              Wieder gültig
-            </button>
-          )}
-          <button type="button" className="btn-ghost btn-sm" disabled={busy} onClick={remove}>
-            <Trash2 className="size-3.5 text-rose-600" aria-hidden />
-            <span className="sr-only">Löschen</span>
-          </button>
-        </div>
+          </div>
+        )}
       </div>
 
       {feed.active && <LinkRow token={feed.token} />}

@@ -393,15 +393,16 @@ export function useApMonths() {
 /**
  * Die Links, unter denen der Plan als Kalender abonniert werden kann.
  *
- * Hängt an `canEditAp` und nicht an `canViewAp`: Ein Link ist die
- * Berechtigung selbst (siehe `CalendarFeed`), und wer den Plan nur ansehen
- * darf, vergibt sie nicht weiter. Dieselbe Grenze steht in `firestore.rules`.
+ * Hängt an `canViewAp` wie der Plan selbst: Wer ihn sieht, darf ihn sich
+ * auch in den eigenen Kalender holen und braucht dafür den Link. Anlegen und
+ * widerrufen bleibt dem Schreibrecht vorbehalten – das entscheidet nicht
+ * dieser Hook, sondern `firestore.rules`.
  *
  * Zuletzt angelegte zuoberst – der eben erzeugte Link ist der, den man sucht.
  */
 export function useCalendarFeeds() {
-  const { canEditAp } = useAuth()
-  const state = useCollection<CalendarFeed>(COLLECTIONS.calendarFeeds, canEditAp)
+  const { canViewAp } = useAuth()
+  const state = useCollection<CalendarFeed>(COLLECTIONS.calendarFeeds, canViewAp)
   return useMemo(() => ({ ...state, data: byDate(state.data, 'createdAt') }), [state])
 }
 
