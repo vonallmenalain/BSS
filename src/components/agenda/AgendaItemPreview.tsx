@@ -5,7 +5,6 @@ import { StatusBadge } from '@/components/ui/Badge'
 import { MentionText } from '@/components/ui/MentionText'
 import { LayoutGrid } from '@/components/agenda/LayoutGrid'
 import { CallingChangesTables } from '@/components/agenda/CallingChanges'
-import { ItemAuthors } from '@/components/agenda/ItemAuthors'
 import { normalizeLayout } from '@/lib/layout'
 import { normalizeCallingChanges } from '@/lib/callingChanges'
 import { cn } from '@/lib/utils'
@@ -58,9 +57,6 @@ export function AgendaItemPreview({
           <MentionText text={item.title} memberRefs={item.memberRefs} placeholder="Ohne Titel" />
         </h4>
         <span className="flex shrink-0 items-center gap-1.5">
-          {/* Wer den Punkt eingereicht und wer zuletzt daran gearbeitet hat –
-              als Kürzel neben den Zuständigen, mit der Auskunft im Tooltip. */}
-          <ItemAuthors item={item} />
           {item.status !== 'pending' && <StatusBadge status={item.status} />}
           {item.deferCount > 0 && !isDone && (
             <span
