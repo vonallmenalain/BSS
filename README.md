@@ -1242,13 +1242,6 @@ Alles Übrige – Lager, Tempelbesuche, Pfahlanlässe, ein Samstag – ist ein
 besonderer Anlass und kann an jedem beliebigen Tag stehen, ein- oder
 mehrtägig.
 
-Die Klasse ist die einzige Art mit einer festen Stunde, und die App kennt
-sie: Eine neu angelegte Klasse steht auf 11:00, und eine, bei der nichts
-erfasst ist, wird trotzdem um 11:00 gezeigt – im Plan wie im Kalender. Wann
-ein Mittwochabend beginnt, weiss die App dagegen nicht; dort bleibt das Feld
-leer, solange niemand eine Zeit einträgt. Wer eine Klasse ausnahmsweise
-verschiebt, trägt die Zeit am Termin ein – die gilt dann vor der üblichen.
-
 Die vier Arten färben Rand und Symbol der Zeile und sind auf einen Blick
 unterscheidbar: Aktivität (blau), AP-Klasse (violett), besonderer Anlass
 (gelb), fällt aus (grau, durchgestrichen). Ein ausgefallener Abend bleibt bewusst **im Plan
@@ -1257,6 +1250,29 @@ füllen muss; steht «FHV – keine Aktivität» da, ist die Frage beantwortet.
 
 Ein Termin ohne Titel heisst «Noch offen» und ist genau das – ein Abend, der
 noch zu planen ist. Auch das ist Absicht: Was fehlt, soll man sehen.
+
+### Von wann bis wann
+
+Jeder Termin trägt eine Zeitspanne – **von** und **bis**, beides von Hand
+eingetragen. Das ist die Angabe, die im Excel-Plan fehlte, und sie
+beantwortet die Frage, die ein Kalender sonst raten muss: wie lange der
+Abend geht. Steht sie da, steht der Termin im abonnierten Kalender genau so
+lange; bleibt sie leer, sagt der Plan nur, wann es losgeht – und das ist
+ehrlicher als eine erfundene Länge.
+
+Die **AP-Klasse** ist die einzige Art mit einer festen Stunde, und die App
+kennt sie: Eine neu angelegte Klasse steht auf **11 bis 12 Uhr**, und eine,
+bei der nichts erfasst ist, wird trotzdem so gezeigt – im Plan wie im
+Kalender. Wer sie ausnahmsweise verschiebt, trägt die Zeit am Termin ein;
+erfasst gilt vor üblich, und ihre Stunde nimmt sie mit. Wann ein
+Mittwochabend beginnt und wie lange er dauert, weiss die App dagegen nicht;
+dort bleiben die Felder leer, solange niemand etwas einträgt.
+
+Bei einem **mehrtägigen** Anlass gehört der Beginn zum ersten und das Ende
+zum letzten Tag: Das Lager geht von Freitag 18:00 bis Sonntag 14:00. Im
+Kalender bleibt es trotzdem ein ganztägiger Balken über alle drei Tage – ein
+Block von Freitagabend bis Sonntagmittag sähe aus, als wäre der Samstag
+frei. Die beiden Zeiten stehen dort in der Beschreibung.
 
 ### Ansehen und bearbeiten
 
@@ -1270,9 +1286,10 @@ zwei Zustände, und sie sind sauber getrennt:
 
   Jeder Termin bekommt dabei so viel Platz, wie er braucht: oben das Datum
   und der **ganze Titel** – er wird nie abgeschnitten und bricht lieber um –,
-  darunter **Startzeit, Treffpunkt, Zuständig, Teilnahme BSS, Teilnahme
+  darunter **Zeit, Treffpunkt, Zuständig, Teilnahme BSS, Teilnahme
   Berater** und die Bemerkung, jede Angabe mit ihrer Beschriftung und nur,
-  wenn sie ausgefüllt ist. **Zuständig** steht bei jeder Art von Termin –
+  wenn sie ausgefüllt ist. Die Zeit steht als Spanne da – «11:00 – 12:00» –,
+  und wo kein Ende erfasst ist, als blosse **Startzeit**. **Zuständig** steht bei jeder Art von Termin –
   wer eine Aktivität organisiert, ist die Auskunft, die im Plan gesucht wird.
   Wer das Kollegium des Monats führt, steht daneben über der Gruppe.
 
@@ -1296,16 +1313,20 @@ zweites Mal drücken und füllt dann nur die Lücken.
 ### Einen Termin ändern
 
 Im Bearbeitungsmodus öffnet jede Zeile alle Felder der bisherigen Tabelle:
-Datum (auf Wunsch mehrtägig), Uhrzeit, Art, Aktivität bzw. Klasse,
-Treffpunkt, Zuständig, Teilnahme Bischofschaft, Teilnahme Berater und die
-Bemerkung. Die Personenfelder sind Freitext wie in der Tabelle – die
+Datum (auf Wunsch mehrtägig), **Uhrzeit von – bis**, Art, Aktivität bzw.
+Klasse, Treffpunkt, Zuständig, Teilnahme Bischofschaft, Teilnahme Berater
+und die Bemerkung. Die Personenfelder sind Freitext wie in der Tabelle – die
 Vorschlagsliste kommt aus dem, was schon im Plan steht, und hält die
 Schreibweise einheitlich.
 
-Die **Uhrzeit** füllt sich selbst, sobald **AP-Klasse** gewählt ist: 11:00,
-die Stunde der Klasse. Wer die Art wieder wechselt, ohne sie angefasst zu
-haben, wird sie ebenso wieder los – am Mittwochabend stünde sonst eine Zeit,
-die niemand eingetragen hat.
+Die **Uhrzeit** ist eine Spanne aus zwei Feldern, und beide dürfen leer
+bleiben – ein Termin, dessen Ende niemand kennt, soll keines vortäuschen.
+Nur ein Ende ohne Beginn geht nicht, und ein Ende vor dem Beginn ebenso
+wenig; beides sagt der Dialog beim Speichern. Bei **AP-Klasse** füllen sich
+die beiden Felder selbst – 11:00 bis 12:00, und bei verschobenem Beginn eine
+Stunde ab dort. Wer die Art wieder wechselt, ohne sie angefasst zu haben,
+wird sie ebenso wieder los: Am Mittwochabend stünde sonst eine Zeit, die
+niemand eingetragen hat.
 
 Welches Kollegium einen Monat führt, steht neben der Monatsüberschrift
 («März 2026 · Leitung Diakone») und lässt sich dort direkt ändern.
@@ -1338,14 +1359,12 @@ genügsamer – am Mac lässt sich das Intervall beim Kalender vorgeben, ab fün
 Minuten. Wer eine kurzfristige Änderung verlässlich ankommen lassen will,
 sagt sie besser noch dazu.
 
-**Wie lange ein Termin dauert.** Der Plan hält nur den Beginn fest, ein
-Kalender braucht aber auch ein Ende – sonst zeichnet er einen Strich statt
-eines Blocks. Die **AP-Klasse** steht deshalb von **11 bis 12 Uhr**: Das ist
-keine Annahme, sondern ihre Stunde. Alles Übrige mit einer Uhrzeit bekommt
-anderthalb Stunden, die übliche Länge eines Mittwochabends. Und was gar
-keine Zeit trägt – ein Lager, ein noch offener Abend –, steht als
-ganztägiger Balken über dem Tag; eine erfundene Stunde wäre schlechter als
-gar keine.
+**Wie lange ein Termin dauert.** So lange, wie am Termin steht: Beginn und
+Ende gehen unverändert in den Kalender, und die **AP-Klasse** steht von **11
+bis 12 Uhr** (siehe [Von wann bis wann](#von-wann-bis-wann)). Nur wo das
+Ende fehlt, wird geschätzt – dann anderthalb Stunden, die übliche Länge
+eines Mittwochabends. Und was gar keine Zeit trägt, steht als ganztägiger
+Balken über dem Tag; eine erfundene Stunde wäre schlechter als gar keine.
 
 **Der Link ist die Berechtigung.** Ein Kalenderprogramm kann sich nirgends
 anmelden – es ruft eine Adresse ab, und was zurückkommt, zeigt es an. Deshalb

@@ -1,4 +1,4 @@
-import { AP_CLASS_DURATION_MINUTES, apStartTime, type ApActivityKind } from './types.ts'
+import { apEndTime, apStartTime, type ApActivityKind } from './types.ts'
 
 /**
  * Der Aktivitätenplan als abonnierbarer Kalender (`.ics`, RFC 5545).
@@ -34,15 +34,15 @@ import { AP_CLASS_DURATION_MINUTES, apStartTime, type ApActivityKind } from './t
 export const AP_TIMEZONE = 'Europe/Zurich'
 
 /**
- * Wie lange ein Termin mit Uhrzeit dauert.
+ * Wie lange ein Termin dauert, dessen Ende niemand erfasst hat.
  *
- * Der Plan kennt nur den Beginn – eine Aktivität endet, wenn sie zu Ende ist.
- * Ein Kalender braucht dennoch eine Länge, sonst zeichnet er einen Strich
- * statt eines Blocks. Anderthalb Stunden sind die übliche Länge eines
- * Mittwochabends; wer es genauer braucht, ändert diesen Wert.
+ * Am Termin stehen Beginn **und** Ende, und dann rechnet der Kalender nicht,
+ * sondern liest ab. Nur wo das Ende fehlt, bleibt es beim Schätzen: Ein
+ * Kalender braucht eine Länge, sonst zeichnet er einen Strich statt eines
+ * Blocks. Anderthalb Stunden sind die übliche Länge eines Mittwochabends.
  *
- * Die AP-Klasse ist davon ausgenommen: Sie dauert nicht «ungefähr so lange»,
- * sondern genau ihre Stunde – siehe `AP_CLASS_DURATION_MINUTES`.
+ * Der Wert ist damit ein Notnagel und keine Voreinstellung – wer die Länge
+ * eines Termins wissen will, trägt sie ein.
  */
 export const AP_DEFAULT_DURATION_MINUTES = 90
 
@@ -63,8 +63,10 @@ export interface IcsActivity {
   date: string
   /** Letzter Tag bei mehrtägigen Anlässen */
   endDate?: string | null
-  /** «19:30» – leer, wenn die übliche Zeit gilt */
+  /** Beginn, «19:30» – leer, wenn die übliche Zeit gilt */
   time?: string
+  /** Ende, «21:00» – leer, wenn der Plan es nicht weiss */
+  endTime?: string
   kind: ApActivityKind
   title: string
   location?: string
@@ -93,10 +95,9 @@ export interface IcsOptions {
   /** Führendes Kollegium je Monat: «2026-03» → «Leitung Diakone» */
   leadership?: Map<string, string>
   /**
-   * Länge eines Termins mit Uhrzeit, in Minuten.
+   * Länge eines Termins ohne erfasstes Ende, in Minuten.
    *
-   * Gilt für alles, dessen Länge der Plan nicht kennt. Die AP-Klasse behält
-   * ihre Stunde – die ist keine Schätzung, die sich vorgeben liesse.
+   * Wo am Termin ein Ende steht, gilt dieses – dort ist nichts zu schätzen.
    */
   durationMinutes?: number
 }
@@ -246,11 +247,13 @@ function description(activity: IcsActivity, leadership: string | undefined): str
 
   /*
    * Ein mehrtägiger Anlass steht als ganztägiger Balken im Kalender, auch
-   * wenn eine Uhrzeit erfasst ist – wann ein Lager endet, weiss der Plan
-   * nicht. Die Zeit geht deshalb nicht verloren, sie wandert hierher.
+   * wenn Uhrzeiten erfasst sind: Ein Lager über drei Tage ist kein Block von
+   * Freitagabend bis Sonntagmittag, sondern belegt das ganze Wochenende. Die
+   * Zeiten gehen deshalb nicht verloren, sie wandern hierher.
    */
-  if (isMultiDay(activity) && parseIcsTime(activity.time)) {
-    add('Beginn', activity.time)
+  if (isMultiDay(activity)) {
+    if (parseIcsTime(activity.time)) add('Beginn', activity.time)
+    if (parseIcsTime(activity.endTime)) add('Ende', activity.endTime)
   }
 
   add('Zuständig AP', activity.leader)
@@ -266,17 +269,29 @@ function isMultiDay(activity: IcsActivity): boolean {
   return Boolean(activity.endDate && activity.endDate !== activity.date)
 }
 
+/** «11:00» → «110000», die Schreibweise einer Uhrzeit im Format. */
+function icsClock(time: { hour: number; minute: number }): string {
+  return `${String(time.hour).padStart(2, '0')}${String(time.minute).padStart(2, '0')}00`
+}
+
 /**
- * Wie lange der Termin im Kalender steht.
+ * Wann der Termin endet – und ob überhaupt etwas dazu bekannt ist.
  *
- * Für die Klasse ist das keine Annahme, sondern die Sache selbst: Sie geht
- * von 11 bis 12. Bei allem Übrigen kennt der Plan nur den Beginn, und dann
- * bleibt es bei der üblichen Länge – ein Block, der ungefähr stimmt, statt
- * eines Strichs, der gar nichts sagt.
+ * Steht am Termin ein Ende, gilt das. Ein Ende, das nicht **nach** dem
+ * Beginn liegt, gilt nicht: «19:30 bis 19:30» wäre ein Termin ohne Dauer,
+ * «21:00 bis 09:00» einer, der rückwärts läuft. Der Plan kennt keine Termine
+ * über Mitternacht – was so aussieht, ist ein Vertipper, und dann ist die
+ * übliche Länge die ehrlichere Antwort als ein Block über den halben Tag.
  */
-function duration(activity: IcsActivity, options: IcsOptions): number {
-  if (activity.kind === 'class') return AP_CLASS_DURATION_MINUTES
-  return options.durationMinutes ?? AP_DEFAULT_DURATION_MINUTES
+function endOf(
+  activity: IcsActivity,
+  start: { hour: number; minute: number },
+): { hour: number; minute: number } | null {
+  const end = parseIcsTime(apEndTime(activity))
+  if (!end) return null
+
+  const minutes = (value: { hour: number; minute: number }) => value.hour * 60 + value.minute
+  return minutes(end) > minutes(start) ? end : null
 }
 
 /* ------------------------------------------------------------------ */
@@ -303,9 +318,20 @@ function event(activity: IcsActivity, options: IcsOptions): string[] {
     lines.push(`DTSTART;VALUE=DATE:${icsDay(activity.date)}`)
     lines.push(`DTEND;VALUE=DATE:${icsDay(nextDayKey(last))}`)
   } else {
-    const clock = `${String(time.hour).padStart(2, '0')}${String(time.minute).padStart(2, '0')}00`
-    lines.push(`DTSTART;TZID=${AP_TIMEZONE}:${icsDay(activity.date)}T${clock}`)
-    lines.push(`DURATION:PT${duration(activity, options)}M`)
+    lines.push(`DTSTART;TZID=${AP_TIMEZONE}:${icsDay(activity.date)}T${icsClock(time)}`)
+
+    /*
+     * Steht am Termin ein Ende, steht es auch im Kalender – dann ist die
+     * Länge abgelesen und nicht geschätzt. Fehlt es, bleibt es bei der
+     * üblichen Länge; als `DURATION`, damit einem Kalender die Herkunft
+     * nicht als Uhrzeit erscheint, die jemand eingetragen hätte.
+     */
+    const end = endOf(activity, time)
+    if (end) {
+      lines.push(`DTEND;TZID=${AP_TIMEZONE}:${icsDay(activity.date)}T${icsClock(end)}`)
+    } else {
+      lines.push(`DURATION:PT${options.durationMinutes ?? AP_DEFAULT_DURATION_MINUTES}M`)
+    }
   }
 
   /*

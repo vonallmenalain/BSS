@@ -7,7 +7,13 @@ import {
   apCalendarStep,
   apCalendarTitle,
 } from '../src/lib/apCalendar.ts'
-import { apVisibleActivities } from '../src/lib/types.ts'
+import {
+  apEndTime,
+  apStartTime,
+  apTimeLabel,
+  apTimePlus,
+  apVisibleActivities,
+} from '../src/lib/types.ts'
 import type { ApActivity } from '../src/lib/types.ts'
 
 /*
@@ -159,4 +165,52 @@ test('ohne Auswahl steht alles im Plan, mit Auswahl fällt «Fällt aus» weg', 
     apVisibleActivities(plan, ['class']).map((entry) => entry.id),
     ['k'],
   )
+})
+
+/* ------------------------------------------------------------------ */
+/* Von – bis                                                           */
+/* ------------------------------------------------------------------ */
+
+test('erfasst ist erfasst – Beginn und Ende stehen am Termin', () => {
+  const abend = activity({ date: '2026-07-01', time: '19:30', endTime: '21:00' })
+
+  assert.equal(apStartTime(abend), '19:30')
+  assert.equal(apEndTime(abend), '21:00')
+  assert.equal(apTimeLabel(abend), '19:30 – 21:00')
+})
+
+test('ohne Ende steht nur der Beginn da – ein Strich ins Leere sagt nichts', () => {
+  const abend = activity({ date: '2026-07-01', time: '19:30' })
+
+  assert.equal(apEndTime(abend), '')
+  assert.equal(apTimeLabel(abend), '19:30')
+})
+
+test('ohne jede Zeit bleibt es dabei', () => {
+  const lager = activity({ date: '2026-07-01', kind: 'special' })
+
+  assert.equal(apStartTime(lager), '')
+  assert.equal(apEndTime(lager), '')
+  assert.equal(apTimeLabel(lager), '')
+})
+
+test('die Klasse bringt ihre Stunde mit – auch verschoben', () => {
+  const klasse = activity({ date: '2026-07-12', kind: 'class' })
+  const frueh = activity({ date: '2026-07-12', kind: 'class', time: '09:15' })
+  const kurz = activity({ date: '2026-07-12', kind: 'class', endTime: '11:45' })
+
+  assert.equal(apTimeLabel(klasse), '11:00 – 12:00')
+  assert.equal(apTimeLabel(frueh), '09:15 – 10:15')
+  // Was erfasst ist, gilt vor dem Üblichen.
+  assert.equal(apTimeLabel(kurz), '11:00 – 11:45')
+})
+
+test('eine Uhrzeit weiterstellen – und was dabei keine Uhrzeit ergibt', () => {
+  assert.equal(apTimePlus('11:00', 60), '12:00')
+  assert.equal(apTimePlus('19:45', 90), '21:15')
+  assert.equal(apTimePlus('09:00', 0), '09:00')
+  // Über Mitternacht wird nicht gerechnet, und aus Unlesbarem wird nichts.
+  assert.equal(apTimePlus('23:30', 60), '')
+  assert.equal(apTimePlus('nach Absprache', 60), '')
+  assert.equal(apTimePlus('', 60), '')
 })

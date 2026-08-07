@@ -34,7 +34,10 @@ import type { ApActivity, ApActivityKind } from '@/lib/types'
 export interface ApActivityInput {
   date: string
   endDate: string | null
+  /** Beginn, «19:30» */
   time: string
+  /** Ende, «21:00» – leer, solange niemand es einträgt */
+  endTime: string
   kind: ApActivityKind
   title: string
   location: string
@@ -49,6 +52,7 @@ export const EMPTY_AP_ACTIVITY: ApActivityInput = {
   date: '',
   endDate: null,
   time: '',
+  endTime: '',
   kind: 'activity',
   title: '',
   location: '',
@@ -107,7 +111,7 @@ const CHUNK_SIZE = 400
 
 /** Legt eine Reihe von Terminen an – für das erzeugte Grundgerüst. */
 export async function createApActivities(
-  entries: Pick<ApActivityInput, 'date' | 'kind' | 'title' | 'time'>[],
+  entries: Pick<ApActivityInput, 'date' | 'kind' | 'title' | 'time' | 'endTime'>[],
   userId?: string | null,
 ): Promise<number> {
   requireOnline()
@@ -193,6 +197,7 @@ export async function importApPlan(
         date: activity.date,
         endDate: activity.endDate,
         time: '',
+        endTime: '',
         kind: activity.kind,
         title: activity.title,
         location: activity.location,

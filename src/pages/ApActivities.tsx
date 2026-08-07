@@ -44,7 +44,7 @@ import {
   AP_FILTER_KINDS,
   AP_SCOPE_LABELS,
   AP_VIEW_MODE_LABELS,
-  apStartTime,
+  apTimeLabel,
   apVisibleActivities,
   isApCalendarMode,
   type ApActivity,
@@ -570,7 +570,7 @@ function NextCard({
   const Icon = style.icon
   const days = differenceInCalendarDays(fromIsoDate(activity.date), startOfDay(fromIsoDate(today)))
   const running = activity.date <= today && apActivityEnd(activity) >= today
-  const start = apStartTime(activity)
+  const time = apTimeLabel(activity)
 
   const content = (
     <>
@@ -592,7 +592,7 @@ function NextCard({
 
       <p className="mt-3 text-sm font-medium text-slate-500 dark:text-slate-400">
         {apDateLabel(activity)}
-        {start && <span className="tabular"> · {start} Uhr</span>}
+        {time && <span className="tabular"> · {time} Uhr</span>}
       </p>
 
       <h2

@@ -256,10 +256,12 @@ test('die Klasse bringt ihre Zeit mit, der Mittwoch nicht', () => {
   // Die Klasse ist immer von 11 bis 12 – das steht am Termin.
   for (const entry of entries.filter((candidate) => candidate.kind === 'class')) {
     assert.equal(entry.time, '11:00')
+    assert.equal(entry.endTime, '12:00')
   }
-  // Wann ein Mittwochabend beginnt, weiss der Takt nicht.
+  // Wann ein Mittwochabend beginnt und wie lange er geht, weiss der Takt nicht.
   for (const entry of entries.filter((candidate) => candidate.kind !== 'class')) {
     assert.equal(entry.time, '')
+    assert.equal(entry.endTime, '')
   }
 })
 

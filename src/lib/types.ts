@@ -2119,6 +2119,59 @@ export function apStartTime(activity: Pick<ApActivity, 'kind' | 'time'>): string
 }
 
 /**
+ * Wann ein Termin endet – das erfasste Ende oder das übliche.
+ *
+ * Das Ende ist die Angabe, die dem Plan früher fehlte: Ein Kalender braucht
+ * sie, sonst muss er die Länge raten. Erfasst wird sie am Termin, von Hand
+ * und für jede Art – nur die Klasse bringt sie mit, weil sie ihre Stunde
+ * dauert, ganz gleich wann sie beginnt.
+ *
+ * Bleibt sie leer, ist das keine Lücke, sondern eine Auskunft: Der Plan
+ * weiss nicht, wie lange dieser Abend geht.
+ */
+export function apEndTime(activity: Pick<ApActivity, 'kind' | 'time' | 'endTime'>): string {
+  const own = (activity.endTime ?? '').trim()
+  if (own) return own
+  if (activity.kind !== 'class') return ''
+  return apTimePlus(apStartTime(activity), AP_CLASS_DURATION_MINUTES)
+}
+
+/**
+ * Eine Uhrzeit um Minuten weiterstellen – «11:00» plus 60 wird «12:00».
+ *
+ * Gerechnet wird in Minuten seit Mitternacht und nicht mit einem `Date`: Es
+ * geht um zwei Uhrzeiten am selben Tag, und die kennen weder Datum noch
+ * Zeitzone. Was sich nicht als Zeit lesen lässt, bleibt, wie es ist – und
+ * über Mitternacht hinaus wird nicht gerechnet: Eine Klasse, die um 23:30
+ * begänne, ist keine Angabe, die man geradebiegt.
+ */
+export function apTimePlus(time: string, minutes: number): string {
+  const match = /^\s*(\d{1,2})[:.](\d{2})/.exec(time)
+  if (!match) return ''
+
+  const total = Number(match[1]) * 60 + Number(match[2]) + minutes
+  if (total >= 24 * 60) return ''
+
+  const hour = Math.floor(total / 60)
+  const minute = total % 60
+  return `${String(hour).padStart(2, '0')}:${String(minute).padStart(2, '0')}`
+}
+
+/**
+ * Die Zeit eines Termins als Text: «11:00 – 12:00», «19:30» oder gar nichts.
+ *
+ * Ein Termin ohne Ende zeigt nur seinen Beginn. Ein Strich ins Leere – «19:30
+ * –» – sähe aus, als fehlte etwas beim Anzeigen; es fehlt aber im Plan.
+ */
+export function apTimeLabel(activity: Pick<ApActivity, 'kind' | 'time' | 'endTime'>): string {
+  const start = apStartTime(activity)
+  if (!start) return ''
+
+  const end = apEndTime(activity)
+  return end ? `${start} – ${end}` : start
+}
+
+/**
  * Ein Eintrag im Aktivitätenplan der Priestertumskollegien.
  *
  * Die Felder sind die Spalten des bisherigen Excel-Plans, und sie bleiben
@@ -2137,8 +2190,15 @@ export interface ApActivity extends WithId {
   date: string
   /** Letzter Tag bei mehrtägigen Anlässen, sonst `null` */
   endDate?: string | null
-  /** «19:30» – leer, wenn die übliche Zeit gilt */
+  /** Beginn, «19:30» – leer, wenn die übliche Zeit gilt */
   time?: string
+  /**
+   * Ende, «21:00» – leer, wenn der Plan es nicht weiss.
+   *
+   * Bei einem mehrtägigen Anlass die Uhrzeit am letzten Tag: Ein Lager geht
+   * von Freitag 18:00 bis Sonntag 14:00.
+   */
+  endTime?: string
   kind: ApActivityKind
   /** «Bouldern», «Kleine Entscheidungen – grosse Konsequenzen» */
   title: string
