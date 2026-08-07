@@ -388,6 +388,15 @@ export interface MeetingsView {
   showPendenzen: boolean
   agendaDetail: MeetingDetailLevel
   pendenzenDetail: MeetingDetailLevel
+  /**
+   * Ein Suchfeld über der Liste.
+   *
+   * Ausgeblendet, solange es nicht gebraucht wird: Gesucht wird selten, und
+   * ein Feld, das immer dasteht, nimmt der Liste die oberste Zeile. Wer es
+   * einblendet, durchsucht damit die angezeigten Sitzungen samt ihren
+   * Traktanden und Pendenzen.
+   */
+  search?: boolean
 }
 
 export const DEFAULT_MEETINGS_VIEW: MeetingsView = {
@@ -396,6 +405,7 @@ export const DEFAULT_MEETINGS_VIEW: MeetingsView = {
   showPendenzen: true,
   agendaDetail: 'titles',
   pendenzenDetail: 'titles',
+  search: false,
 }
 
 export interface AppUser extends WithId {

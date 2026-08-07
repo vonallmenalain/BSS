@@ -634,6 +634,11 @@ export function PageHeader({
    * mitten im Dezember. Er klebt unter der Kopfzeile der App (`top-14`) und
    * deckt den durchlaufenden Inhalt mit dem Seitenhintergrund ab; dafür
    * greift er über das Polster des Inhaltsbereichs hinaus.
+   *
+   * Deckend und ohne Weichzeichner, anders als die Kopfzeile der App: Ein
+   * Weichzeichner macht das Element zum Bezugsrahmen für alles Feststehende
+   * darin – das Ansichtsmenü in diesem Kopf hätte sich danach am Kopf
+   * ausgerichtet statt am Bildschirm.
    */
   sticky?: boolean
 }) {
@@ -644,7 +649,7 @@ export function PageHeader({
         // Ein bleibender Kopf ist schmaler: Er begleitet den Inhalt, statt
         // ihn anzukündigen – und am Telefon passt so alles auf eine Zeile.
         sticky
-          ? 'sticky top-14 z-30 -mx-4 mb-4 items-center gap-x-2 gap-y-1 border-b border-slate-200 bg-slate-50/90 px-4 py-2.5 backdrop-blur-md sm:-mx-6 sm:gap-3 sm:px-6 dark:border-slate-800 dark:bg-slate-950/90'
+          ? 'sticky top-14 z-30 -mx-4 mb-4 items-center gap-x-2 gap-y-1 border-b border-slate-200 bg-slate-50 px-4 py-2.5 sm:-mx-6 sm:gap-3 sm:px-6 dark:border-slate-800 dark:bg-slate-950'
           : 'mb-5 items-start gap-3',
         // Ohne sichtbaren Titel bleibt die Knopfreihe allein – dann darf sie
         // näher an den Inhalt rücken.
