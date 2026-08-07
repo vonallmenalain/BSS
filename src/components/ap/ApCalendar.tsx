@@ -310,11 +310,16 @@ function MonthEntry({
 /**
  * Ein Tag der Woche über die ganze Breite.
  *
- * Oben der Tag, darunter, was an ihm ansteht – so, wie die Woche am Telefon
- * schon immer stand, nur mit dem Platz eines breiten Bildschirms: Zeit und
- * Titel in Lesegrösse, darunter Treffpunkt und Zuständigkeit. Mehr gehört
- * nicht in eine Übersicht; alles Weitere steht im Fenster, das ein Griff auf
- * den Tag öffnet.
+ * Oben der Tag, darunter, was an ihm ansteht – Zeit und Titel in Lesegrösse
+ * und darunter die Angaben aus der Tabelle, jede mit ihrer Beschriftung.
+ * «Gemeindehaus · Carden» sparte zwar Platz, liess aber offen, was welches
+ * ist; «Treffpunkt: Gemeindehaus» beantwortet die Frage, ohne dass man den
+ * Tag dafür öffnen muss.
+ *
+ * Wie viele Angaben nebeneinander stehen, entscheidet die Zeile selbst und
+ * nicht das Fenster: Mit Seitenleiste bleibt davon deutlich weniger übrig.
+ * Am Telefon stehen sie deshalb untereinander, auf einem breiten Bildschirm
+ * zu dritt in einer Reihe.
  */
 function WeekRow({
   day,
@@ -361,7 +366,7 @@ function WeekRow({
   )
 
   const shell = cn(
-    'card block w-full p-3 text-left',
+    '@container card block w-full p-3 text-left',
     isToday && 'border-brand-300 dark:border-brand-800',
     !busy && 'opacity-70',
   )
@@ -380,7 +385,7 @@ function WeekRow({
   )
 }
 
-/** Ein Termin in der Wochenzeile – Zeit, Titel und die zwei nächstliegenden Angaben. */
+/** Ein Termin in der Wochenzeile – Zeit, Titel und die Angaben mit Beschriftung. */
 function WeekEntry({
   activity,
   dayKey,
@@ -394,9 +399,6 @@ function WeekEntry({
   const cancelled = activity.kind === 'cancelled'
   const continued = activity.date !== dayKey
   const time = activity.time?.trim() ?? ''
-
-  /* Wo und wer – beim Überfliegen die beiden Fragen nach dem Titel. */
-  const summary = [activity.location?.trim(), activity.leader?.trim()].filter(Boolean).join(' · ')
 
   return (
     <span className="flex items-start gap-2">
@@ -425,8 +427,16 @@ function WeekEntry({
             </span>
           )}
         </span>
-        {summary && !continued && (
-          <span className="block text-xs text-slate-500 dark:text-slate-400">{summary}</span>
+        {/* An den Folgetagen nicht noch einmal: Treffpunkt und Zuständigkeit
+            stehen am ersten Tag, und dreimal dasselbe ist keine Angabe. Die
+            Startzeit fehlt hier – sie steht schon vor dem Titel. */}
+        {!continued && (
+          <ApDetails
+            activity={activity}
+            withTime={false}
+            columns={false}
+            className="mt-0.5 text-xs text-slate-500 @md:grid-cols-2 @4xl:grid-cols-3 dark:text-slate-400"
+          />
         )}
       </span>
     </span>

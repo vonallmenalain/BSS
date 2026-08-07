@@ -30,7 +30,7 @@ import { ApCalendar } from '@/components/ap/ApCalendar'
 import { ApScheduleDialog } from '@/components/ap/ApScheduleDialog'
 import { EmptyState, SkeletonList } from '@/components/ui/Feedback'
 import { PageHeader } from '@/components/ui/Pickers'
-import { MenuChips, MenuChoice, MenuDivider, ViewMenu } from '@/components/ui/ViewMenu'
+import { MenuChips, MenuChoice, MenuDivider, MenuToggle, ViewMenu } from '@/components/ui/ViewMenu'
 import { cn } from '@/lib/utils'
 import { differenceInCalendarDays, formatMonth, startOfDay, toDateInput } from '@/lib/dates'
 import { apActivityEnd, saveApMonth } from '@/services/apActivities'
@@ -73,7 +73,12 @@ import {
  * Klassen des Halbjahrs sucht, blendet die Aktivitäten weg – und mit der
  * ersten Einschränkung fallen die ausgefallenen Abende von selbst heraus:
  * Sie erklären eine Lücke im vollständigen Plan, in einer Auswahl erklären
- * sie nichts.
+ * sie nichts. Und ein Schalter für die grosse Karte: Wer den Plan
+ * überarbeitet, statt ihn zu lesen, kennt den nächsten Termin längst.
+ *
+ * Der Seitenkopf bleibt beim Blättern stehen. Der Plan geht über Monate,
+ * und die Knöpfe werden unterwegs gebraucht – am Telefon sind sie deshalb
+ * bis auf «Ansicht» nur Symbole und bleiben mit dem Titel auf einer Zeile.
  *
  * Ausgefallene Abende bleiben sonst stehen, zählen aber nicht als «das
  * Nächste»: Sie erklären eine Lücke, statt eine zu sein.
@@ -208,7 +213,11 @@ export function ApActivities() {
 
   return (
     <>
+      {/* Der Kopf bleibt stehen: Der Plan geht über Monate, und wer im
+          Dezember die Ansicht wechseln oder einen Termin anlegen will, soll
+          dafür nicht erst wieder nach oben blättern. */}
       <PageHeader
+        sticky
         title="Aktivitäten AP’s"
         subtitle={
           editMode ? 'Bearbeitungsmodus – ein Klick auf einen Termin öffnet ihn' : undefined
@@ -220,27 +229,51 @@ export function ApActivities() {
             {canEditAp &&
               (editMode ? (
                 <>
-                  <button type="button" className="btn-secondary" onClick={leaveEditMode}>
+                  {/* Die Beschriftungen weichen am Telefon: Sonst rutscht die
+                      Knopfreihe unter den Titel, und der Kopf, der ohnehin
+                      stehen bleibt, nimmt zwei Zeilen weg. */}
+                  <button
+                    type="button"
+                    className="btn-secondary"
+                    onClick={leaveEditMode}
+                    aria-label="Ansichtsmodus"
+                    title="Ansichtsmodus"
+                  >
                     <Eye className="size-4" aria-hidden />
-                    Ansichtsmodus
+                    <span className="hidden sm:inline">Ansichtsmodus</span>
                   </button>
                   <button
                     type="button"
                     className="btn-secondary"
                     onClick={() => setScheduleOpen(true)}
+                    aria-label="Termine erzeugen"
+                    title="Termine erzeugen"
                   >
                     <CalendarPlus className="size-4" aria-hidden />
                     <span className="hidden sm:inline">Termine erzeugen</span>
                   </button>
-                  <button type="button" className="btn-primary" onClick={() => open(null)}>
+                  <button
+                    type="button"
+                    className="btn-primary"
+                    onClick={() => open(null)}
+                    aria-label="Termin"
+                    title="Termin"
+                  >
                     <Plus className="size-4" aria-hidden />
                     <span className="hidden sm:inline">Termin</span>
                   </button>
                 </>
               ) : (
-                <button type="button" className="btn-secondary" onClick={() => setWantsEdit(true)}>
+                /* Nur der Stift: Er steht in der App überall für «bearbeiten»,
+                   und die Beschriftung war das längste Wort im Kopf. */
+                <button
+                  type="button"
+                  className="btn-secondary"
+                  onClick={() => setWantsEdit(true)}
+                  aria-label="Bearbeitungsmodus"
+                  title="Bearbeitungsmodus"
+                >
                   <Pencil className="size-4" aria-hidden />
-                  Bearbeitungsmodus
                 </button>
               ))}
           </>
@@ -272,7 +305,7 @@ export function ApActivities() {
       ) : (
         <>
           {/* ---------- Was als Nächstes kommt ---------- */}
-          {next && (
+          {next && view.showNext !== false && (
             <NextCard
               activity={next}
               today={today}
@@ -461,6 +494,15 @@ function ApViewMenu({
           value,
           label: AP_ACTIVITY_KIND_LABELS[value],
         }))}
+      />
+
+      <MenuDivider />
+
+      {/* Fehlt die Angabe, steht die Karte da – so sah der Plan immer aus. */}
+      <MenuToggle
+        label="Nächste Aktivität anzeigen"
+        checked={view.showNext !== false}
+        onChange={(showNext) => onChange({ showNext })}
       />
     </ViewMenu>
   )
