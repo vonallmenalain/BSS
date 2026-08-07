@@ -244,6 +244,25 @@ test('legt die Klasse am 2. und 4. Sonntag an', () => {
   )
 })
 
+test('die Klasse bringt ihre Zeit mit, der Mittwoch nicht', () => {
+  const entries = generateApSchedule({
+    from: '2026-01-01',
+    to: '2026-01-31',
+    activities: true,
+    classes: true,
+    fhv: true,
+  })
+
+  // Die Klasse ist immer von 11 bis 12 – das steht am Termin.
+  for (const entry of entries.filter((candidate) => candidate.kind === 'class')) {
+    assert.equal(entry.time, '11:00')
+  }
+  // Wann ein Mittwochabend beginnt, weiss der Takt nicht.
+  for (const entry of entries.filter((candidate) => candidate.kind !== 'class')) {
+    assert.equal(entry.time, '')
+  }
+})
+
 test('lässt Tage aus, an denen schon etwas im Plan steht', () => {
   const entries = generateApSchedule(
     { from: '2026-01-01', to: '2026-01-31', activities: true, classes: false, fhv: false },

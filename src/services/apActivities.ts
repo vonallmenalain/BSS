@@ -107,7 +107,7 @@ const CHUNK_SIZE = 400
 
 /** Legt eine Reihe von Terminen an – für das erzeugte Grundgerüst. */
 export async function createApActivities(
-  entries: Pick<ApActivityInput, 'date' | 'kind' | 'title'>[],
+  entries: Pick<ApActivityInput, 'date' | 'kind' | 'title' | 'time'>[],
   userId?: string | null,
 ): Promise<number> {
   requireOnline()

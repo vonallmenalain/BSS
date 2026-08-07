@@ -1236,11 +1236,18 @@ Der Plan hat einen festen Rhythmus, und die App kennt ihn:
 - **jeden Mittwochabend** eine Aktivität,
 - **ausser am 3. Mittwoch im Monat** – dann ist FHV, und die AP-Aktivität
   fällt aus,
-- **am 2. und 4. Sonntag** die AP-Klasse.
+- **am 2. und 4. Sonntag** die AP-Klasse, **immer von 11 bis 12 Uhr**.
 
 Alles Übrige – Lager, Tempelbesuche, Pfahlanlässe, ein Samstag – ist ein
 besonderer Anlass und kann an jedem beliebigen Tag stehen, ein- oder
 mehrtägig.
+
+Die Klasse ist die einzige Art mit einer festen Stunde, und die App kennt
+sie: Eine neu angelegte Klasse steht auf 11:00, und eine, bei der nichts
+erfasst ist, wird trotzdem um 11:00 gezeigt – im Plan wie im Kalender. Wann
+ein Mittwochabend beginnt, weiss die App dagegen nicht; dort bleibt das Feld
+leer, solange niemand eine Zeit einträgt. Wer eine Klasse ausnahmsweise
+verschiebt, trägt die Zeit am Termin ein – die gilt dann vor der üblichen.
 
 Die vier Arten färben Rand und Symbol der Zeile und sind auf einen Blick
 unterscheidbar: Aktivität (blau), AP-Klasse (violett), besonderer Anlass
@@ -1295,6 +1302,11 @@ Bemerkung. Die Personenfelder sind Freitext wie in der Tabelle – die
 Vorschlagsliste kommt aus dem, was schon im Plan steht, und hält die
 Schreibweise einheitlich.
 
+Die **Uhrzeit** füllt sich selbst, sobald **AP-Klasse** gewählt ist: 11:00,
+die Stunde der Klasse. Wer die Art wieder wechselt, ohne sie angefasst zu
+haben, wird sie ebenso wieder los – am Mittwochabend stünde sonst eine Zeit,
+die niemand eingetragen hat.
+
 Welches Kollegium einen Monat führt, steht neben der Monatsüberschrift
 («März 2026 · Leitung Diakone») und lässt sich dort direkt ändern.
 
@@ -1325,6 +1337,15 @@ am nächsten Tag; das lässt sich weder erzwingen noch einstellen. Apple ist
 genügsamer – am Mac lässt sich das Intervall beim Kalender vorgeben, ab fünf
 Minuten. Wer eine kurzfristige Änderung verlässlich ankommen lassen will,
 sagt sie besser noch dazu.
+
+**Wie lange ein Termin dauert.** Der Plan hält nur den Beginn fest, ein
+Kalender braucht aber auch ein Ende – sonst zeichnet er einen Strich statt
+eines Blocks. Die **AP-Klasse** steht deshalb von **11 bis 12 Uhr**: Das ist
+keine Annahme, sondern ihre Stunde. Alles Übrige mit einer Uhrzeit bekommt
+anderthalb Stunden, die übliche Länge eines Mittwochabends. Und was gar
+keine Zeit trägt – ein Lager, ein noch offener Abend –, steht als
+ganztägiger Balken über dem Tag; eine erfundene Stunde wäre schlechter als
+gar keine.
 
 **Der Link ist die Berechtigung.** Ein Kalenderprogramm kann sich nirgends
 anmelden – es ruft eine Adresse ab, und was zurückkommt, zeigt es an. Deshalb

@@ -12,7 +12,13 @@ import {
   saveApActivity,
   type ApActivityInput,
 } from '@/services/apActivities'
-import { AP_ACTIVITY_KIND_LABELS, type ApActivity, type ApActivityKind } from '@/lib/types'
+import {
+  AP_ACTIVITY_KIND_LABELS,
+  AP_CLASS_TIME,
+  apStartTime,
+  type ApActivity,
+  type ApActivityKind,
+} from '@/lib/types'
 
 /**
  * Einen Termin erfassen oder ändern.
@@ -39,7 +45,10 @@ function toInput(activity: ApActivity): ApActivityInput {
   return {
     date: activity.date,
     endDate: activity.endDate ?? null,
-    time: activity.time ?? '',
+    /* Die übliche Zeit steht im Feld und nicht bloss dahinter: Eine Klasse
+       aus früheren Zeiten – ohne Zeitangabe angelegt – zeigt hier ihre
+       11:00, so wie sie im Plan und im Kalender steht. */
+    time: apStartTime(activity),
     kind: activity.kind,
     title: activity.title ?? '',
     location: activity.location ?? '',
@@ -99,6 +108,22 @@ export function ApActivityForm({
   const update = <K extends keyof ApActivityInput>(key: K, value: ApActivityInput[K]) =>
     setForm((current) => ({ ...current, [key]: value }))
 
+  /**
+   * Die Art wechseln – und mit ihr die Uhrzeit, wo sie feststeht.
+   *
+   * Die Klasse ist immer von 11 bis 12; wer sie anlegt, soll die Zeit nicht
+   * jedes Mal eintippen. Umgekehrt bleibt eine eingetragene Zeit unangetastet
+   * – nur die eben gesetzte 11:00 verschwindet wieder, wenn doch keine Klasse
+   * daraus wird. Sonst stünde am Mittwochabend eine Zeit, die niemand wollte.
+   */
+  const updateKind = (kind: ApActivityKind) =>
+    setForm((current) => {
+      const time = current.time.trim()
+      if (kind === 'class') return { ...current, kind, time: time || AP_CLASS_TIME }
+      if (current.kind === 'class' && time === AP_CLASS_TIME) return { ...current, kind, time: '' }
+      return { ...current, kind }
+    })
+
   const submit = async (event: FormEvent) => {
     event.preventDefault()
     if (!form.date) {
@@ -154,7 +179,7 @@ export function ApActivityForm({
         {activity ? (
           <dl className="space-y-3 text-sm">
             <ReadOnlyRow label="Art" value={AP_ACTIVITY_KIND_LABELS[activity.kind]} />
-            <ReadOnlyRow label="Uhrzeit" value={activity.time ?? ''} />
+            <ReadOnlyRow label="Uhrzeit" value={apStartTime(activity)} />
             <ReadOnlyRow label="Treffpunkt" value={activity.location ?? ''} />
             <ReadOnlyRow label="Zuständig" value={activity.leader ?? ''} />
             <ReadOnlyRow label="Teilnahme Bischofschaft" value={activity.bishopric ?? ''} />
@@ -226,7 +251,11 @@ export function ApActivityForm({
                 value={form.time}
                 onChange={(event) => update('time', event.target.value)}
               />
-              <p className="hint">Nur, wenn es nicht die übliche Zeit ist.</p>
+              <p className="hint">
+                {form.kind === 'class'
+                  ? 'Die Klasse ist immer von 11 bis 12 Uhr.'
+                  : 'Nur, wenn es nicht die übliche Zeit ist.'}
+              </p>
             </div>
             <div>
               <span className="label">Mehrtägig</span>
@@ -265,7 +294,7 @@ export function ApActivityForm({
             <span className="label">Art</span>
             <SegmentedControl<ApActivityKind>
               value={form.kind}
-              onChange={(kind) => update('kind', kind)}
+              onChange={updateKind}
               options={KIND_OPTIONS}
               size="sm"
             />

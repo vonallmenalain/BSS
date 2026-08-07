@@ -13,7 +13,7 @@ import {
   type ApCalendarDay,
   type ApCalendarMode,
 } from '@/lib/apCalendar'
-import { AP_ACTIVITY_KIND_LABELS, type ApActivity } from '@/lib/types'
+import { AP_ACTIVITY_KIND_LABELS, apStartTime, type ApActivity } from '@/lib/types'
 
 /**
  * Der Aktivitätenplan als Kalender.
@@ -270,7 +270,7 @@ function MonthEntry({
   const cancelled = activity.kind === 'cancelled'
   const continued = activity.date !== dayKey
   const muted = cancelled || continued
-  const time = activity.time?.trim() ?? ''
+  const time = apStartTime(activity)
 
   return (
     <span className={cn('block rounded', highlight && 'bg-brand-50 dark:bg-brand-950/60')}>
@@ -398,7 +398,7 @@ function WeekEntry({
   const style = AP_KIND_STYLES[activity.kind]
   const cancelled = activity.kind === 'cancelled'
   const continued = activity.date !== dayKey
-  const time = activity.time?.trim() ?? ''
+  const time = apStartTime(activity)
 
   return (
     <span className="flex items-start gap-2">

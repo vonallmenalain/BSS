@@ -2086,6 +2086,39 @@ export const AP_ACTIVITY_KIND_LABELS: Record<ApActivityKind, string> = {
 }
 
 /**
+ * Wann die AP-Klasse ist: immer von 11 bis 12 Uhr.
+ *
+ * Die einzige Art im Plan mit einer festen Stunde. Der Mittwochabend
+ * beginnt mal um 19:00 und mal um 19:30, ein Lager hat gar keine Zeit –
+ * die Klasse aber liegt am Sonntag zwischen den Versammlungen und dauert
+ * genau eine Lektion. Das steht deshalb hier und nicht an jedem einzelnen
+ * Termin: Eine neu angelegte Klasse bringt die Zeit mit, und eine, die
+ * ohne Zeitangabe im Plan steht, wird trotzdem an ihrer Stunde gezeigt
+ * (siehe `apStartTime`).
+ *
+ * Wer eine Klasse ausnahmsweise verschiebt, trägt die Zeit am Termin ein –
+ * die gilt dann vor dieser hier.
+ */
+export const AP_CLASS_TIME = '11:00'
+
+/** Wie lange die AP-Klasse dauert – die Stunde von 11 bis 12. */
+export const AP_CLASS_DURATION_MINUTES = 60
+
+/**
+ * Wann ein Termin beginnt – die erfasste Zeit oder die übliche.
+ *
+ * Das Zeitfeld ist bewusst meistens leer: Es steht dort nur, was von der
+ * üblichen Zeit abweicht. Für die Klasse ist die übliche Zeit bekannt, für
+ * alles Übrige nicht – ein Mittwochabend ohne Zeitangabe bekommt deshalb
+ * keine erfundene Stunde, sondern bleibt ohne.
+ */
+export function apStartTime(activity: Pick<ApActivity, 'kind' | 'time'>): string {
+  const own = (activity.time ?? '').trim()
+  if (own) return own
+  return activity.kind === 'class' ? AP_CLASS_TIME : ''
+}
+
+/**
  * Ein Eintrag im Aktivitätenplan der Priestertumskollegien.
  *
  * Die Felder sind die Spalten des bisherigen Excel-Plans, und sie bleiben

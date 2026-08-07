@@ -205,6 +205,60 @@ test('die Dauer lässt sich vorgeben', () => {
   assert.ok(lines.includes('DURATION:PT120M'))
 })
 
+/* ------------------------------------------------------------------ */
+/* Die Klasse – immer von 11 bis 12                                    */
+/* ------------------------------------------------------------------ */
+
+test('die Klasse steht von 11 bis 12, auch ohne Zeitangabe am Termin', () => {
+  // Der 11. Januar 2026 ist der 2. Sonntag.
+  const lines = linesOf(build([activity({ date: '2026-01-11', kind: 'class', title: 'Glaube' })]))
+
+  assert.ok(lines.includes(`DTSTART;TZID=${AP_TIMEZONE}:20260111T110000`))
+  assert.ok(lines.includes('DURATION:PT60M'))
+  // Kein ganztägiger Balken mehr – die Stunde steht fest.
+  assert.equal(
+    lines.some((line) => line.startsWith('DTSTART;VALUE=DATE')),
+    false,
+  )
+  assert.ok(lines.includes('TRANSP:OPAQUE'))
+})
+
+test('eine verschobene Klasse behält ihre Zeit und dauert doch ihre Stunde', () => {
+  const lines = linesOf(
+    build([activity({ date: '2026-01-11', kind: 'class', time: '09:00', title: 'Glaube' })]),
+  )
+
+  assert.ok(lines.includes(`DTSTART;TZID=${AP_TIMEZONE}:20260111T090000`))
+  assert.ok(lines.includes('DURATION:PT60M'))
+})
+
+test('eine vorgegebene Dauer gilt der Klasse nicht – sie ist eine Stunde', () => {
+  const lines = linesOf(
+    build([activity({ date: '2026-01-11', kind: 'class', title: 'Glaube' })], {
+      durationMinutes: 120,
+    }),
+  )
+
+  assert.ok(lines.includes('DURATION:PT60M'))
+})
+
+test('die feste Stunde gilt der Klasse und keiner anderen Art', () => {
+  const lines = linesOf(
+    build([
+      activity({ date: '2026-01-07', id: 'mittwoch' }),
+      activity({ date: '2026-01-10', id: 'lager', kind: 'special', title: 'Lager' }),
+      activity({ date: '2026-01-21', id: 'fhv', kind: 'cancelled', title: 'FHV' }),
+    ]),
+  )
+
+  // Ohne Zeitangabe bleibt alles Übrige ganztägig – «11:00» wäre geraten.
+  assert.equal(lines.filter((line) => line.startsWith('DTSTART;VALUE=DATE')).length, 3)
+  assert.equal(
+    lines.some((line) => line.startsWith('DTSTART;TZID')),
+    false,
+  )
+})
+
 test('ein mehrtägiger Anlass reicht bis zum Tag nach dem letzten – nicht bis zum letzten', () => {
   // Das Lager vom Freitag bis zum Sonntag: DTEND ist der Montag.
   const lines = linesOf(

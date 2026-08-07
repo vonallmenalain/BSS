@@ -1,4 +1,4 @@
-import type { ApActivityKind } from './types.ts'
+import { AP_CLASS_DURATION_MINUTES, apStartTime, type ApActivityKind } from './types.ts'
 
 /**
  * Der Aktivitätenplan als abonnierbarer Kalender (`.ics`, RFC 5545).
@@ -40,6 +40,9 @@ export const AP_TIMEZONE = 'Europe/Zurich'
  * Ein Kalender braucht dennoch eine Länge, sonst zeichnet er einen Strich
  * statt eines Blocks. Anderthalb Stunden sind die übliche Länge eines
  * Mittwochabends; wer es genauer braucht, ändert diesen Wert.
+ *
+ * Die AP-Klasse ist davon ausgenommen: Sie dauert nicht «ungefähr so lange»,
+ * sondern genau ihre Stunde – siehe `AP_CLASS_DURATION_MINUTES`.
  */
 export const AP_DEFAULT_DURATION_MINUTES = 90
 
@@ -89,7 +92,12 @@ export interface IcsOptions {
   description?: string
   /** Führendes Kollegium je Monat: «2026-03» → «Leitung Diakone» */
   leadership?: Map<string, string>
-  /** Länge eines Termins mit Uhrzeit, in Minuten */
+  /**
+   * Länge eines Termins mit Uhrzeit, in Minuten.
+   *
+   * Gilt für alles, dessen Länge der Plan nicht kennt. Die AP-Klasse behält
+   * ihre Stunde – die ist keine Schätzung, die sich vorgeben liesse.
+   */
   durationMinutes?: number
 }
 
@@ -258,13 +266,26 @@ function isMultiDay(activity: IcsActivity): boolean {
   return Boolean(activity.endDate && activity.endDate !== activity.date)
 }
 
+/**
+ * Wie lange der Termin im Kalender steht.
+ *
+ * Für die Klasse ist das keine Annahme, sondern die Sache selbst: Sie geht
+ * von 11 bis 12. Bei allem Übrigen kennt der Plan nur den Beginn, und dann
+ * bleibt es bei der üblichen Länge – ein Block, der ungefähr stimmt, statt
+ * eines Strichs, der gar nichts sagt.
+ */
+function duration(activity: IcsActivity, options: IcsOptions): number {
+  if (activity.kind === 'class') return AP_CLASS_DURATION_MINUTES
+  return options.durationMinutes ?? AP_DEFAULT_DURATION_MINUTES
+}
+
 /* ------------------------------------------------------------------ */
 /* Ein Termin                                                          */
 /* ------------------------------------------------------------------ */
 
 function event(activity: IcsActivity, options: IcsOptions): string[] {
   const stamp = icsStamp(options.now)
-  const time = parseIcsTime(activity.time)
+  const time = parseIcsTime(apStartTime(activity))
   const multiDay = isMultiDay(activity)
 
   const lines = ['BEGIN:VEVENT', `UID:${activity.id}@${options.domain}`, `DTSTAMP:${stamp}`]
@@ -273,10 +294,10 @@ function event(activity: IcsActivity, options: IcsOptions): string[] {
     /*
      * Ganztägig – und `DTEND` ist der Tag **danach**.
      *
-     * Ein Termin ohne Uhrzeit bekommt bewusst keine erfundene: Wann die
-     * «übliche Zeit» ist, unterscheidet sich zwischen Mittwochaktivität und
-     * Klasse am Sonntag, und der Plan hält es nirgends fest. Ein Balken über
-     * dem Tag sagt die Wahrheit, «19:30» wäre geraten.
+     * Ein Termin ohne Uhrzeit bekommt bewusst keine erfundene: Wann der
+     * Mittwochabend beginnt, hält der Plan nirgends fest. Ein Balken über
+     * dem Tag sagt die Wahrheit, «19:30» wäre geraten. Die Klasse ist die
+     * Ausnahme – ihre Stunde steht fest und kommt aus `apStartTime`.
      */
     const last = multiDay ? (activity.endDate ?? activity.date) : activity.date
     lines.push(`DTSTART;VALUE=DATE:${icsDay(activity.date)}`)
@@ -284,7 +305,7 @@ function event(activity: IcsActivity, options: IcsOptions): string[] {
   } else {
     const clock = `${String(time.hour).padStart(2, '0')}${String(time.minute).padStart(2, '0')}00`
     lines.push(`DTSTART;TZID=${AP_TIMEZONE}:${icsDay(activity.date)}T${clock}`)
-    lines.push(`DURATION:PT${options.durationMinutes ?? AP_DEFAULT_DURATION_MINUTES}M`)
+    lines.push(`DURATION:PT${duration(activity, options)}M`)
   }
 
   /*
