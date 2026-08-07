@@ -2165,15 +2165,23 @@ export interface ApMonth extends WithId {
  * es mehrere davon, je einen für die Berater, die Jugendführung oder eine
  * einzelne Person. Verschwindet ein Telefon, verschwindet ein Link, und die
  * übrigen bleiben.
+ *
+ * Deshalb benennt ein Link, **wer** ihn bekommen hat, und nicht, was er
+ * zeigt: Ein Link «Nur Aktivitäten», den sich acht Leute teilen, lässt sich
+ * nicht widerrufen, ohne allen achten den Kalender zu nehmen. Was er zeigt,
+ * sagt `kinds`.
  */
 export interface CalendarFeed extends WithId {
   /**
    * Das Geheimnis in der URL.
    *
-   * Steht im Klartext in der Datenbank – lesen darf die Sammlung ohnehin nur,
-   * wer den Link auch vergeben darf (siehe `firestore.rules`). Als Hashwert
-   * liesse er sich nach dem Anlegen nie mehr anzeigen, und «den Link noch
-   * einmal kopieren» ist genau das, was man ein halbes Jahr später braucht.
+   * Steht im Klartext in der Datenbank, und das ist die Voraussetzung dafür,
+   * dass sich ein Link später noch einmal kopieren lässt – genau das braucht
+   * man ein halbes Jahr danach, beim neuen Telefon. Als Hashwert wäre er nach
+   * dem Anlegen ein für alle Mal weg.
+   *
+   * Lesen darf ihn jeder, der den Plan sieht; anlegen und widerrufen nur, wer
+   * den Plan auch pflegen darf (siehe `firestore.rules`).
    */
   token: string
   /** Wofür der Link gedacht ist – «Berater», «Jugendführung», «Familie Müller» */

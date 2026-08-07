@@ -1338,14 +1338,37 @@ Dinge halten den Preis dafür klein:
   oder eine einzelne Person. Verschwindet ein Telefon, wird ein Link
   widerrufen, und die übrigen bleiben.
 
-Vergeben und widerrufen darf die Links nur, wer den Plan auch **pflegen**
-darf. Ein Zugang zum blossen Ansehen sieht den Knopf nicht – auch das steht
-in den Zugriffsregeln und nicht bloss in der Oberfläche.
+> Deshalb einen Link nach der **Person oder Gruppe** benennen, die ihn
+> bekommt, und nicht nach seinem Inhalt. Ein Link «Nur Aktivitäten», den
+> sich acht Leute teilen, lässt sich nicht widerrufen, ohne allen achten den
+> Kalender zu nehmen – und damit wäre der Widerruf-Knopf wertlos. Was ein
+> Link zeigt, sagt die Auswahl der Arten daneben.
 
-Zu jedem Link steht in der Liste, wann er zuletzt abgerufen wurde. Das ist
-die verlässlichste Antwort auf «warum sehe ich den Kalender nicht?»: Steht
-dort **noch nie abgerufen**, hat das Kalenderprogramm den Link gar nicht
-geholt – dann liegt es am Abo und nicht an den Terminen.
+**Wer was darf.** Den Knopf **Abonnieren** sieht jeder, der den Plan sieht –
+auch ein Zugang zum blossen Ansehen. Dahinter unterscheidet sich, was er
+zeigt:
+
+| | Ansehen | Pflegen |
+|---|---|---|
+| Bestehende Links sehen und kopieren | ✓ | ✓ |
+| Widerrufene Links sehen | – | ✓ |
+| Link anlegen, widerrufen, löschen | – | ✓ |
+
+So holt sich ein Berater den Link selbst, wenn er ein neues Telefon hat,
+ohne dafür jemanden fragen zu müssen – ausstellen kann er aber keinen.
+Durchgesetzt wird das in den Zugriffsregeln und nicht bloss in der
+Oberfläche.
+
+Das ist eine Abwägung: Wer den Link lesen kann, kann ihn weitergeben. Nur
+sieht ein solches Konto den ganzen Plan ohnehin schon; neu ist allein, dass
+es dauerhaften, sich selbst nachführenden Zugang verschenken könnte. Bei
+einem Plan aus Vornamen und Anlässen wiegt das leichter als der tägliche
+Umweg über die Bischofschaft.
+
+In der Verwaltung steht zu jedem Link, wann er zuletzt abgerufen wurde. Das
+ist die verlässlichste Antwort auf «warum sehe ich den Kalender nicht?»:
+Steht dort **noch nie abgerufen**, hat das Kalenderprogramm den Link gar
+nicht geholt – dann liegt es am Abo und nicht an den Terminen.
 
 Wahlweise lässt sich ein Link auf einzelne Arten einschränken. «Fällt aus»
 etwa erklärt im Plan eine Lücke; im eigenen Terminkalender will man sie

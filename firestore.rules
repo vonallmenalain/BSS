@@ -34,9 +34,9 @@ rules_version = '2';
 // Oberfläche.
 //
 // Dazu kommt `calendarFeeds`: die Links, unter denen der Plan als Kalender
-// abonniert werden kann. Die erreicht nur, wer den Plan auch schreiben darf
-// – ein Link trägt die Berechtigung in sich, und wer bloss zusieht, vergibt
-// sie nicht weiter.
+// abonniert werden kann. Lesen dürfen sie beide AP-Rollen – wer den Plan
+// sieht, darf ihn sich auch in den eigenen Kalender holen. Vergeben und
+// widerrufen darf sie nur, wer den Plan auch pflegen darf.
 
 service cloud.firestore {
   match /databases/{database}/documents {
@@ -235,11 +235,18 @@ service cloud.firestore {
     /*
      * Die Links, unter denen der Plan als Kalender abonniert werden kann.
      *
-     * Enger als der Plan selbst, und zwar in beide Richtungen: Ein Link ist
-     * die Berechtigung, den Plan zu sehen (er trägt sie im Token), deshalb
-     * darf ihn nur lesen und vergeben, wer den Plan auch pflegen darf.
-     * `ap_viewer` fehlt hier – wer den Kalender bloss ansieht, gibt ihn nicht
-     * weiter.
+     * Lesen darf sie jeder, der den Plan sieht – auch `ap_viewer`. Das ist
+     * eine Abwägung und keine Nachlässigkeit: Ein Link trägt die
+     * Berechtigung im Token, wer ihn liest, kann ihn also weitergeben. Nur
+     * sieht ein solches Konto den ganzen Plan ohnehin schon; neu wäre allein,
+     * dass es dauerhaften, sich selbst nachführenden Zugang verschenken
+     * könnte. Bei einem Aktivitätenplan, der Vornamen und Anlässe enthält,
+     * wiegt das leichter als der tägliche Umweg, für jeden neuen Zugang
+     * jemanden aus der Bischofschaft zu fragen.
+     *
+     * Vergeben, widerrufen und löschen darf sie weiterhin nur, wer den Plan
+     * auch pflegen darf. Wer bloss zusieht, kopiert einen bestehenden Link –
+     * er legt keinen an und nimmt keinen weg.
      *
      * Ausgeliefert wird der Feed nicht von hier, sondern von der
      * Netlify-Function. Die arbeitet mit einem Dienstkonto und geht damit an
@@ -247,7 +254,8 @@ service cloud.firestore {
      * Anmeldung an den Plan kommt, und sie prüft dafür das Token.
      */
     match /calendarFeeds/{feedId} {
-      allow read, write: if apWrite();
+      allow read: if apAccess();
+      allow write: if apWrite();
     }
 
     /* ---------------- Einstellungen ---------------- */

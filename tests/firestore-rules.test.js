@@ -493,12 +493,13 @@ describe('Aktivitäten AP', () => {
   })
 
   /*
-   * Die Kalender-Abos sind enger geschützt als der Plan selbst.
+   * Bei den Kalender-Abos verläuft die Grenze zwischen Lesen und Schreiben.
    *
-   * Ein Abo-Link trägt die Berechtigung in sich – wer ihn liest, kann den
-   * ganzen Plan an beliebig viele Leute weitergeben, an den Regeln vorbei.
-   * Deshalb reicht «darf den Kalender ansehen» hier nicht: Es braucht
-   * dasselbe Recht, das auch zum Ändern des Plans berechtigt.
+   * Lesen darf beides, was den Plan sieht: Wer ihn ansehen darf, darf ihn
+   * sich auch in den eigenen Kalender holen, und dafür braucht er den Link.
+   * Vergeben, widerrufen und löschen bleibt dem Schreibrecht – ein Link
+   * trägt die Berechtigung im Token, und wer bloss zusieht, soll keine neuen
+   * ausstellen und keine bestehenden abschalten können.
    */
   describe('Kalender-Abos', () => {
     it('lässt die schreibende AP-Rolle Links lesen und vergeben', async () => {
@@ -517,10 +518,13 @@ describe('Aktivitäten AP', () => {
       await assertSucceeds(deleteDoc(doc(asApEditor(), 'calendarFeeds', 'abo-neu')))
     })
 
-    it('hält die nur lesende AP-Rolle von den Links fern', async () => {
-      // Auch das Lesen: Der Link ist das Geheimnis, nicht bloss ein Verweis.
-      await assertFails(getDocs(collection(asApViewer(), 'calendarFeeds')))
-      await assertFails(getDoc(doc(asApViewer(), 'calendarFeeds', 'abo-berater')))
+    it('lässt die nur lesende AP-Rolle bestehende Links lesen', async () => {
+      // Damit sie sich einen kopieren und im eigenen Kalender einrichten kann.
+      await assertSucceeds(getDocs(collection(asApViewer(), 'calendarFeeds')))
+      await assertSucceeds(getDoc(doc(asApViewer(), 'calendarFeeds', 'abo-berater')))
+    })
+
+    it('lässt die nur lesende AP-Rolle keine Links ausstellen oder abschalten', async () => {
       await assertFails(
         setDoc(doc(asApViewer(), 'calendarFeeds', 'versuch'), {
           token: 'selbst-gemacht',
@@ -530,6 +534,10 @@ describe('Aktivitäten AP', () => {
       )
       await assertFails(
         updateDoc(doc(asApViewer(), 'calendarFeeds', 'abo-berater'), { active: false }),
+      )
+      // Auch nicht bloss umbenennen – Schreiben ist Schreiben.
+      await assertFails(
+        updateDoc(doc(asApViewer(), 'calendarFeeds', 'abo-berater'), { label: 'Meiner' }),
       )
       await assertFails(deleteDoc(doc(asApViewer(), 'calendarFeeds', 'abo-berater')))
     })
@@ -548,7 +556,7 @@ describe('Aktivitäten AP', () => {
       await assertFails(getDoc(doc(asAnonymous(), 'calendarFeeds', 'abo-berater')))
     })
 
-    it('lässt niemanden ein Token über eine Abfrage erraten', async () => {
+    it('lässt Nichtangemeldete kein Token über eine Abfrage erraten', async () => {
       // Der Weg, den die Function geht – aber ohne Dienstkonto verschlossen.
       await assertFails(
         getDocs(
@@ -557,7 +565,7 @@ describe('Aktivitäten AP', () => {
       )
       await assertFails(
         getDocs(
-          query(collection(asApViewer(), 'calendarFeeds'), where('token', '==', 'geheimes-token')),
+          query(collection(asPending(), 'calendarFeeds'), where('token', '==', 'geheimes-token')),
         ),
       )
     })
