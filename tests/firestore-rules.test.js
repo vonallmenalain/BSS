@@ -127,6 +127,13 @@ async function seed() {
       source: 'manual',
     })
 
+    await setDoc(doc(db, 'monthlyDuties', 'monatspendenz-1'), {
+      title: 'Ansprachen für den Monat anfragen',
+      description: '',
+      startMonth: '2026-01',
+      endMonth: null,
+    })
+
     await setDoc(doc(db, 'cleaningWeeks', '2026-06-29'), {
       startDate: '2026-06-29',
       endDate: '2026-07-04',
@@ -283,6 +290,18 @@ describe('Alle Rollen sehen denselben Bestand', () => {
     await assertFails(getDocs(collection(asPending(), 'announcementSeries')))
     await assertFails(setDoc(doc(asPending(), 'announcementSeries', 'serie-2'), { text: 'x' }))
     await assertFails(getDocs(collection(asAnonymous(), 'announcementSeries')))
+  })
+
+  it('lässt jede Rolle die Monatspendenzen führen – und wartende Konten nicht', async () => {
+    // Die Vorlage gilt für jeden Monat und für jede Person, die einen
+    // führt; sie gehört wie die Pendenzen selbst der ganzen Bischofschaft.
+    await assertSucceeds(getDoc(doc(asSecretary(), 'monthlyDuties', 'monatspendenz-1')))
+    await assertSucceeds(
+      updateDoc(doc(asCounselor2(), 'monthlyDuties', 'monatspendenz-1'), { endMonth: '2026-09' }),
+    )
+    await assertFails(getDocs(collection(asPending(), 'monthlyDuties')))
+    await assertFails(setDoc(doc(asPending(), 'monthlyDuties', 'versuch'), { title: 'x' }))
+    await assertFails(getDocs(collection(asAnonymous(), 'monthlyDuties')))
   })
 
   it('lässt jede Rolle den Putzplan führen – und wartende Konten nicht', async () => {
@@ -484,6 +503,7 @@ describe('Aktivitäten AP', () => {
       await assertFails(getDocs(collection(as(), 'callings')))
       await assertFails(getDocs(collection(as(), 'notes')))
       await assertFails(getDocs(collection(as(), 'cleaningWeeks')))
+      await assertFails(getDocs(collection(as(), 'monthlyDuties')))
       await assertFails(getDocs(collection(as(), 'meetings')))
       // Die Benutzerliste bleibt zu – das eigene Profil bleibt lesbar.
       await assertFails(getDocs(collection(as(), 'users')))

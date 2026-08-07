@@ -14,7 +14,7 @@ Abendmahlsversammlung, Berufungsverwaltung und Mitgliederdaten.
 | Bereich                   | Was die App leistet                                                                                 |
 | ------------------------- | --------------------------------------------------------------------------------------------------- |
 | **Sitzungen**             | Termin festlegen, Traktanden und Pendenzen sammeln, Sitzungsmodus zum Durchgehen, Protokoll drucken |
-| **Pendenzen**             | Was eine Sitzung überstanden hat, ohne erledigt zu werden – alles oder nur das eigene               |
+| **Pendenzen**             | Was eine Sitzung überstanden hat, ohne erledigt zu werden – alles oder nur das eigene; dazu die Aufgaben der Monatsverantwortung |
 | **Notizen**               | Was nicht an eine Sitzung gehört – für alle sichtbar, speichert von selbst                          |
 | **Putzplan**              | Die Halbjahrestabelle der Gemeinde als Wochenplan – Grundlage für die Ansage am Sonntag             |
 | **Abendmahlsversammlung** | Ganzer Ablauf pro Sonntag: Leitung, Bekanntmachungen, Angelegenheiten, Ansprachen, Musik, Gebet     |
@@ -730,6 +730,66 @@ untereinander, alles Übrige bleibt liegen, wo es liegt. Ist die Liste nach
 einem Datum sortiert, bleibt es beim Bisherigen – dann hat jede Sitzung ihre
 eigene Reihenfolge.
 
+### Monatspendenzen: was zur Leitung des Monats gehört
+
+Die Bischofschaft teilt die Monate unter sich auf – einer nimmt den August,
+der nächste den September (siehe [«Wer sich um diesen Sonntag
+kümmert»](#wer-sich-um-diesen-sonntag-kümmert)). Mit dem Monat kommt jedes Mal
+dasselbe Häufchen Arbeit: Ansprachen anfragen, Gebete verteilen, den Ablauf
+beisammenhalten. Das ist keine Pendenz, die einmal anfällt und dann erledigt
+ist, sondern eine, die **jeden Monat wiederkehrt – nur bei einer anderen
+Person**.
+
+**Erfasst wird sie dort, wo man an sie denkt.** Im Fenster «+ Pendenz» steht
+unter der Wahl zwischen Traktandum und Pendenz ein Haken: **Gehört zur
+Monatsverantwortung**. Er stellt das ganze Fenster um – der Titel wird zu
+«Neue Monatspendenz», und darunter steht, wer den laufenden Monat führt. Die
+Gestaltfelder (variables Layout, Berufungsänderung) und die Liste der
+Zuständigen fallen weg: Ein Raster, das jeden Monat leer neu dastünde, wäre
+keine Aufgabe, und zuständig ist ohnehin, wer den Monat hat.
+
+Gespeichert wird damit nicht die Pendenz, sondern die **Vorlage** dazu. Die
+Pendenz entsteht daraus Monat für Monat, sobald jemand die App öffnet – mit
+dem Titel, der Beschreibung und dem Monat, für den sie gilt.
+
+|                      | Gewöhnliche Pendenz  | Monatspendenz                |
+| -------------------- | -------------------- | ---------------------------- |
+| **Zuständig**        | wer ausgewählt wurde | wer den Monat führt          |
+| **Sitzung**          | die nächste          | keine                        |
+| **Im Protokoll**     | ja                   | nein                         |
+| **Nach dem Abhaken** | erledigt             | im nächsten Monat wieder da  |
+
+**Sie steht in keiner Sitzung.** Nicht auf der Traktandenliste, nicht im
+Sitzungsmodus, nicht im gedruckten Protokoll – und «Pendenzen übernehmen»
+nimmt sie nicht mit. Sie gehört dem Monat und nicht dem Sitzungstisch; deshalb
+fehlt an ihr auch «Verschieben». Wo sie erscheint, ist die Pendenzenliste:
+unter **Meine** bei dem, der den Monat führt, und unter **Pendent** bei allen,
+mit dem Monat als Etikett («↻ August 2026»).
+
+**Wechselt die Leitung mitten im Monat, wandert die Pendenz mit.** Getauscht
+wird dabei genau eine Person – wer von Hand dazugeschrieben wurde («ich helfe
+mit»), bleibt stehen. Eine bereits abgehakte Pendenz wird nicht mehr
+angefasst: Sie gehört dem, der sie erledigt hat.
+
+**Die Liste der Vorlagen** steht hinter dem Knopf **Monatlich** oben auf der
+Pendenzenseite. Dort steht, wer den laufenden Monat führt, was jeden Monat
+anfällt und seit wann – und dort lässt sich der Wortlaut ändern (das gilt ab
+dem nächsten Monat; was schon dasteht, bleibt, wie es ist).
+
+Zum Aufhören gibt es zwei Wege, und sie meinen Verschiedenes:
+
+- **Beenden** – dieser Monat läuft noch zu Ende, danach kommt nichts mehr
+  nach. Alles Bisherige bleibt stehen, samt allem, was darin notiert wurde.
+  Das ist der Normalfall; **Weiterführen** nimmt es wieder zurück.
+- **Löschen** – nur für das, was von Anfang an ein Versehen war. Die bereits
+  entstandenen Pendenzen bleiben auch dann erhalten.
+
+> **Ohne eingetragene Zuständigkeit** entsteht die Pendenz trotzdem – sie
+> wartet dann ohne Zuständigen unter «Pendent» und findet ihre Person, sobald
+> unter «Abendmahl → Leitung → Zuständig» jemand für den Monat eingetragen
+> ist. Weicht ein einzelner Sonntag ab (Ferien, Vertretung), zählt für den
+> Monat, wer die meisten Sonntage hält.
+
 ### Bekanntmachung und Angelegenheit aus der Sitzung heraus
 
 Neben **+ Traktandum** stehen **+ Bekanntmachung** und **+ Angelegenheit**.
@@ -814,6 +874,12 @@ Namen nimmt die Zuständigkeit wieder weg.
 
 Sobald jemand eingetragen ist, steht der Name im Kopf jeder Unterseite der
 Abendmahlsversammlung, gleich neben dem Datum.
+
+Diese eine Angabe beantwortet zugleich die Frage «wer führt diesen Monat?» –
+eine zweite Liste dafür gibt es bewusst nicht. Daran hängen die
+[Monatspendenzen](#monatspendenzen-was-zur-leitung-des-monats-gehört): die
+Aufgaben, die jeden Monat anfallen und immer dem gehören, der den Monat
+führt.
 
 ### Was an diesem Sonntag stattfindet
 
@@ -2129,7 +2195,7 @@ nirgends.
 src/
 ├── components/
 │   ├── agenda/          Traktanden und Pendenzen: Zeile, Karte, Editor,
-│   │                    Sitzungsmodus, Erfassen, Verschieben
+│   │                    Sitzungsmodus, Erfassen, Verschieben, Monatspendenzen
 │   ├── ap/              Aktivitäten AP: Zeile, Formular, Termine erzeugen
 │   ├── sacrament/       Abendmahlsversammlung: Rahmen mit Sonntagswahl, Lied- und Personenfelder
 │   ├── ui/              Bausteine: Modal, Badges, Avatare, Auswahlfelder,
@@ -2138,9 +2204,11 @@ src/
 │   └── UpdatePrompt.tsx Hinweis auf neue Version
 ├── contexts/            Anmeldung, Stammdaten, Meldungen
 ├── hooks/               Sammlungen lesen, Weg zurück, Ansicht in der Adresse,
-│                        Bekanntmachungen eines Sonntags, lokale Einstellungen
+│                        Bekanntmachungen eines Sonntags, Monatspendenzen,
+│                        lokale Einstellungen
 ├── lib/                 Firebase-Anbindung, Sammlungsspeicher (Abgleich), Typen, Datums-,
-│                        Serien-, Programm-, Sonntags-, Vorschlags-, Word- und Hilfsfunktionen
+│                        Serien-, Monats-, Programm-, Sonntags-, Vorschlags-, Word- und
+│                        Hilfsfunktionen
 ├── pages/
 │   ├── sacrament/       Leitung, Bekanntmachungen, Angelegenheiten, Musik, Gebet
 │   └── …                Eine Datei pro übriger Ansicht

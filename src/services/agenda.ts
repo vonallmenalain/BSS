@@ -15,6 +15,7 @@ import {
 } from 'firebase/firestore'
 import { auth, db, COLLECTIONS } from '@/lib/firebase'
 import { forgetDoc } from '@/lib/collectionStore'
+import { isDutyItem } from '@/lib/monthlyDuties'
 import { stripUndefined, uid } from '@/lib/utils'
 import { commit, type SaveOutcome } from '@/lib/sync'
 import type {
@@ -306,8 +307,19 @@ export async function carryOverOpenItems(meetingId: string, actor: Actor): Promi
   if (snapshot.empty) return 0
 
   const batch = writeBatch(db)
-  snapshot.docs.forEach((item, index) => {
+  let taken = 0
+  snapshot.docs.forEach((item) => {
     const data = item.data() as AgendaItem
+    /*
+     * Monatspendenzen bleiben liegen.
+     *
+     * Sie haben ebenfalls keine Sitzung, warten aber auf keine: Sie gehören
+     * dem Monat und der Person, die ihn führt. In die Traktandenliste
+     * übernommen stünden sie an genau dem Ort, an dem sie nie stehen sollten
+     * (siehe `lib/monthlyDuties`).
+     */
+    if (isDutyItem(data)) return
+    const index = taken++
     batch.update(item.ref, {
       meetingId,
       kind: toItemKind(data),
@@ -317,8 +329,9 @@ export async function carryOverOpenItems(meetingId: string, actor: Actor): Promi
       ...touch(),
     })
   })
+  if (taken === 0) return 0
   await commit(batch.commit())
-  return snapshot.size
+  return taken
 }
 
 export async function deleteAgendaItem(id: string): Promise<SaveOutcome> {

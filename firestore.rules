@@ -165,6 +165,15 @@ service cloud.firestore {
       allow read, write: if approved();
     }
 
+    /*
+     * Die Aufgaben, die zur Leitung eines Monats gehören – die Vorlagen,
+     * aus denen Monat für Monat eine Pendenz entsteht. Sie gehören der
+     * ganzen Bischofschaft wie die Pendenzen selbst.
+     */
+    match /monthlyDuties/{dutyId} {
+      allow read, write: if approved();
+    }
+
     /* ---------------- Mitglieder ---------------- */
 
     match /members/{memberId} {

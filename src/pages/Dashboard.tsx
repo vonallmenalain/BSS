@@ -53,6 +53,7 @@ import {
   startOfDay,
   upcomingWeekdays,
 } from '@/lib/dates'
+import { isDutyItem } from '@/lib/monthlyDuties'
 import { cn } from '@/lib/utils'
 import { sortForMeeting, sortForPendenzen } from '@/services/agenda'
 import { apActivityEnd } from '@/services/apActivities'
@@ -159,7 +160,9 @@ export function Dashboard() {
     [openItems, nextMeeting?.id, manualPendenzen],
   )
 
-  const unassignedCount = pendenzen.filter((item) => !item.meetingId).length
+  /* Ohne die Monatspendenzen: Die warten auf keine Sitzung, sondern
+     gehören dem Monat (siehe `lib/monthlyDuties`). */
+  const unassignedCount = pendenzen.filter((item) => !item.meetingId && !isDutyItem(item)).length
 
   /* Ansprachen: die nächsten Sonntage und ihre Lücken ---------------- */
   const talkGaps = useMemo(() => {

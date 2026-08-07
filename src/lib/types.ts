@@ -870,6 +870,29 @@ export interface AgendaItem extends WithId {
   editedBy?: string
   completedAt?: TS | null
   completedBy?: string | null
+
+  /* ---------------- Monatsverantwortung ---------------- */
+
+  /**
+   * Aus welcher Monatspendenz dieser Eintrag entstanden ist.
+   *
+   * Gesetzt heisst: Der Eintrag gehört nicht jemandem persönlich, sondern
+   * dem Monat – und damit der Person, die ihn führt. Er steht in keiner
+   * Sitzung, wird beim Planen nicht mitgenommen und im Protokoll nicht
+   * gedruckt (siehe `lib/monthlyDuties`).
+   */
+  dutyId?: string | null
+  /** Für welchen Monat er gilt – «2026-08». */
+  dutyMonth?: string | null
+  /**
+   * Wer den Monat führte, als der Eintrag zuletzt zugewiesen wurde.
+   *
+   * Nicht dasselbe wie `assignees`: Wechselt die Leitung mitten im Monat,
+   * tritt die neue Person an die Stelle der alten – wer von Hand
+   * dazugeschrieben wurde, bleibt stehen. Ohne dieses Feld wäre nicht zu
+   * unterscheiden, welcher der Zuständigen der Monatsleitung entstammt.
+   */
+  dutyLeaderId?: string | null
 }
 
 /**
@@ -929,6 +952,51 @@ export function normalizePendenzenSort(
     field: value.field && value.field in PENDENZEN_SORT_LABELS ? value.field : fallback.field,
     dir: value.dir === 'asc' || value.dir === 'desc' ? value.dir : fallback.dir,
   }
+}
+
+/* ------------------------------------------------------------------ */
+/* Monatsverantwortung                                                 */
+/* ------------------------------------------------------------------ */
+
+/**
+ * Eine Aufgabe, die zur Leitung des Monats gehört.
+ *
+ * Die Bischofschaft teilt die Monate unter sich auf – einer nimmt den
+ * August, der nächste den September –, und mit dem Monat kommt immer
+ * dasselbe Häufchen Arbeit: Ansprachen anfragen, Gebete verteilen, den
+ * Ablauf beisammenhalten. Das ist keine Pendenz, die einmal anfällt und
+ * dann erledigt ist, sondern eine, die jeden Monat wiederkehrt – nur eben
+ * bei einer anderen Person.
+ *
+ * Deshalb steht hier die **Vorlage** und nicht die Aufgabe selbst. Aus ihr
+ * entsteht Monat für Monat eine gewöhnliche Pendenz, zugewiesen an den, der
+ * den Monat führt (siehe `lib/monthlyDuties` und `services/monthlyDuties`).
+ * Wer den Wortlaut ändert, ändert ihn für die kommenden Monate; die
+ * Pendenzen, die schon dastehen, bleiben, wie sie sind – dort ist womöglich
+ * bereits etwas dazugeschrieben worden.
+ *
+ * Das Gegenstück zur wiederkehrenden Bekanntmachung (`AnnouncementSeries`),
+ * mit einem Unterschied: Eine Bekanntmachung wird bei jedem Aufruf
+ * dazugerechnet, eine Pendenz dagegen wirklich angelegt. Sie wird
+ * abgehakt, bearbeitet und trägt einen Verlauf – das alles braucht einen
+ * Datensatz, an dem es stehen kann.
+ */
+export interface MonthlyDuty extends WithId {
+  title: string
+  description?: string
+  /** Ab welchem Monat sie anfällt, «2026-08». */
+  startMonth: string
+  /**
+   * Bis und mit welchem Monat – `null` heisst: läuft weiter.
+   *
+   * Beendet wird eine Aufgabe und nicht gelöscht: Die Pendenzen der
+   * vergangenen Monate bleiben stehen, samt allem, was in ihnen notiert
+   * wurde. Gelöscht wird nur, was von Anfang an ein Versehen war.
+   */
+  endMonth?: string | null
+  createdAt?: TS
+  updatedAt?: TS
+  createdBy?: string
 }
 
 /* ------------------------------------------------------------------ */
