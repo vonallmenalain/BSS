@@ -5,6 +5,8 @@ import { formatDateLong, formatDayShort, formatDateShort } from '@/lib/dates'
 import { fromIsoDate } from '@/services/importHistory'
 import {
   AP_ACTIVITY_KIND_LABELS,
+  apEndTime,
+  apTimeLabel,
   type ApActivity,
   type ApActivityKind,
   type ApView,
@@ -218,8 +220,13 @@ export function ApDetails({
    */
   withTime?: boolean
 }) {
+  /* Die übliche Zeit zählt mit: Bei der Klasse steht «11:00 – 12:00» auch
+     dann da, wenn am Termin nichts erfasst ist. Steht kein Ende im Plan,
+     bleibt es beim Beginn – und die Beschriftung sagt es. */
+  const time = apTimeLabel(activity)
+
   const hasAny = [
-    withTime ? activity.time : '',
+    withTime ? time : '',
     activity.location,
     activity.leader,
     activity.bishopric,
@@ -229,7 +236,7 @@ export function ApDetails({
 
   return (
     <div className={cn('grid gap-x-6 gap-y-1', columns && 'sm:grid-cols-2', className)}>
-      {withTime && <Angabe label="Startzeit" value={activity.time} />}
+      {withTime && <Angabe label={apEndTime(activity) ? 'Zeit' : 'Startzeit'} value={time} />}
       <Angabe label="Treffpunkt" value={activity.location} />
       <Angabe label="Zuständig" value={activity.leader} />
       <Angabe label="Teilnahme BSS" value={activity.bishopric} />

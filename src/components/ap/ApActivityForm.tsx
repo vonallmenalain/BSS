@@ -12,7 +12,15 @@ import {
   saveApActivity,
   type ApActivityInput,
 } from '@/services/apActivities'
-import { AP_ACTIVITY_KIND_LABELS, type ApActivity, type ApActivityKind } from '@/lib/types'
+import {
+  AP_ACTIVITY_KIND_LABELS,
+  AP_CLASS_TIME,
+  apEndTime,
+  apStartTime,
+  apTimeLabel,
+  type ApActivity,
+  type ApActivityKind,
+} from '@/lib/types'
 
 /**
  * Einen Termin erfassen oder ändern.
@@ -39,7 +47,11 @@ function toInput(activity: ApActivity): ApActivityInput {
   return {
     date: activity.date,
     endDate: activity.endDate ?? null,
-    time: activity.time ?? '',
+    /* Die übliche Zeit steht im Feld und nicht bloss dahinter: Eine Klasse
+       aus früheren Zeiten – ohne Zeitangabe angelegt – zeigt hier ihre
+       11 bis 12 Uhr, so wie sie im Plan und im Kalender steht. */
+    time: apStartTime(activity),
+    endTime: apEndTime(activity),
     kind: activity.kind,
     title: activity.title ?? '',
     location: activity.location ?? '',
@@ -99,6 +111,37 @@ export function ApActivityForm({
   const update = <K extends keyof ApActivityInput>(key: K, value: ApActivityInput[K]) =>
     setForm((current) => ({ ...current, [key]: value }))
 
+  /**
+   * Die Art wechseln – und mit ihr die Uhrzeit, wo sie feststeht.
+   *
+   * Die Klasse dauert ihre Stunde und beginnt um 11; wer sie anlegt, soll das
+   * nicht jedes Mal eintippen. Ein eingetragener Beginn bleibt dabei stehen –
+   * dann füllt sich nur das Ende, eine Stunde später.
+   *
+   * Umgekehrt verschwindet nur, was der Dialog selbst gesetzt hat: Wird aus
+   * der Klasse doch ein Mittwochabend, stünde dort sonst eine Zeit, die
+   * niemand eingetragen hat.
+   */
+  const updateKind = (kind: ApActivityKind) =>
+    setForm((current) => {
+      if (kind === 'class') {
+        const time = current.time.trim() || AP_CLASS_TIME
+        return {
+          ...current,
+          kind,
+          time,
+          endTime: current.endTime.trim() || apEndTime({ kind, time }),
+        }
+      }
+
+      const untouched =
+        current.kind === 'class' &&
+        current.time.trim() === AP_CLASS_TIME &&
+        current.endTime.trim() === apEndTime({ kind: 'class', time: AP_CLASS_TIME })
+
+      return untouched ? { ...current, kind, time: '', endTime: '' } : { ...current, kind }
+    })
+
   const submit = async (event: FormEvent) => {
     event.preventDefault()
     if (!form.date) {
@@ -109,6 +152,16 @@ export function ApActivityForm({
       toast.error('Der letzte Tag liegt vor dem ersten.')
       return
     }
+    if (form.endTime.trim() && !form.time.trim()) {
+      toast.error('Ohne Beginn kein Ende – bitte gib auch die Startzeit an.')
+      return
+    }
+    /* Bei einem Lager gehört das Ende zum letzten Tag – dass es «vor» dem
+       Beginn liegt, ist dort der Normalfall (Freitag 18:00 bis Sonntag 14:00). */
+    if (!multiDay && form.endTime.trim() && form.endTime.trim() <= form.time.trim()) {
+      toast.error('Das Ende liegt vor dem Beginn.')
+      return
+    }
 
     setSaving(true)
     try {
@@ -117,6 +170,8 @@ export function ApActivityForm({
         {
           ...form,
           endDate: multiDay ? form.endDate || null : null,
+          time: form.time.trim(),
+          endTime: form.endTime.trim(),
           title: form.title.trim(),
           location: form.location.trim(),
           leader: form.leader.trim(),
@@ -154,7 +209,7 @@ export function ApActivityForm({
         {activity ? (
           <dl className="space-y-3 text-sm">
             <ReadOnlyRow label="Art" value={AP_ACTIVITY_KIND_LABELS[activity.kind]} />
-            <ReadOnlyRow label="Uhrzeit" value={activity.time ?? ''} />
+            <ReadOnlyRow label="Uhrzeit" value={apTimeLabel(activity)} />
             <ReadOnlyRow label="Treffpunkt" value={activity.location ?? ''} />
             <ReadOnlyRow label="Zuständig" value={activity.leader ?? ''} />
             <ReadOnlyRow label="Teilnahme Bischofschaft" value={activity.bishopric ?? ''} />
@@ -201,7 +256,11 @@ export function ApActivityForm({
         }
       >
         <form id="ap-form" onSubmit={submit} className="space-y-4">
-          <div className="grid gap-4 sm:grid-cols-3">
+          {/* Zwei Spalten statt drei: Die Uhrzeit sind jetzt zwei Felder und
+              braucht die Breite. Datum und Uhrzeit stehen oben, darunter der
+              Schalter für mehrtägig und – wenn er gesetzt ist – der letzte
+              Tag. Am Telefon steht alles untereinander. */}
+          <div className="grid gap-4 sm:grid-cols-2">
             <div>
               <label className="label" htmlFor="ap-date">
                 Datum
@@ -216,17 +275,43 @@ export function ApActivityForm({
               />
             </div>
             <div>
-              <label className="label" htmlFor="ap-time">
-                Uhrzeit
-              </label>
-              <input
-                id="ap-time"
-                type="time"
-                className="input"
-                value={form.time}
-                onChange={(event) => update('time', event.target.value)}
-              />
-              <p className="hint">Nur, wenn es nicht die übliche Zeit ist.</p>
+              <span className="label">Uhrzeit von – bis</span>
+              {/* Zwei Felder, ein Gedanke: Der Strich dazwischen sagt, dass es
+                  eine Spanne ist, und spart zwei Beschriftungen, für die in
+                  der Zeile ohnehin kein Platz wäre. Für Vorlesegeräte steht
+                  sie in `aria-label`.
+
+                  `min-w-0`, damit die Felder mitschrumpfen: Ein Zeitfeld
+                  bringt eine eigene Mindestbreite mit und schöbe die Zeile
+                  sonst über den Rand hinaus. */}
+              <div className="flex items-center gap-1.5">
+                <input
+                  id="ap-time"
+                  type="time"
+                  className="input min-w-0"
+                  aria-label="Beginn"
+                  value={form.time}
+                  onChange={(event) => update('time', event.target.value)}
+                />
+                <span className="shrink-0 text-slate-400 dark:text-slate-500" aria-hidden>
+                  –
+                </span>
+                <input
+                  id="ap-end-time"
+                  type="time"
+                  className="input min-w-0"
+                  aria-label="Ende"
+                  value={form.endTime}
+                  onChange={(event) => update('endTime', event.target.value)}
+                />
+              </div>
+              <p className="hint">
+                {form.kind === 'class'
+                  ? 'Die Klasse ist immer von 11 bis 12 Uhr.'
+                  : multiDay
+                    ? 'Beginn am ersten, Ende am letzten Tag.'
+                    : 'Mit Ende steht der Termin im Kalender genau so lange.'}
+              </p>
             </div>
             <div>
               <span className="label">Mehrtägig</span>
@@ -243,29 +328,31 @@ export function ApActivityForm({
                 Lager, Wochenende …
               </label>
             </div>
-          </div>
 
-          {multiDay && (
-            <div className="sm:max-w-[calc(33%-0.5rem)]">
-              <label className="label" htmlFor="ap-end">
-                Letzter Tag
-              </label>
-              <input
-                id="ap-end"
-                type="date"
-                className="input"
-                value={form.endDate ?? ''}
-                min={form.date}
-                onChange={(event) => update('endDate', event.target.value)}
-              />
-            </div>
-          )}
+            {/* Der letzte Tag steht neben dem Schalter, der ihn hervorbringt:
+                Wer «mehrtägig» ankreuzt, sucht ihn als Nächstes. */}
+            {multiDay && (
+              <div>
+                <label className="label" htmlFor="ap-end">
+                  Letzter Tag
+                </label>
+                <input
+                  id="ap-end"
+                  type="date"
+                  className="input"
+                  value={form.endDate ?? ''}
+                  min={form.date}
+                  onChange={(event) => update('endDate', event.target.value)}
+                />
+              </div>
+            )}
+          </div>
 
           <div>
             <span className="label">Art</span>
             <SegmentedControl<ApActivityKind>
               value={form.kind}
-              onChange={(kind) => update('kind', kind)}
+              onChange={updateKind}
               options={KIND_OPTIONS}
               size="sm"
             />

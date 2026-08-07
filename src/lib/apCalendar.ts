@@ -14,7 +14,7 @@ import {
   startOfMonth,
   toDateInput,
 } from './dates.ts'
-import type { ApActivity } from './types.ts'
+import { apStartTime, type ApActivity } from './types.ts'
 
 /**
  * Der Aktivitätenplan als Kalender – eine Woche oder ein ganzer Monat.
@@ -62,13 +62,17 @@ function endKey(activity: Pick<ApActivity, 'date' | 'endDate'>): string {
 /**
  * Innerhalb eines Tages nach Startzeit, dann nach Titel.
  *
- * Termine ohne Zeit stehen zuoberst: Für sie gilt die übliche Zeit, und die
- * ist die frühe. Ein Lager ohne Zeitangabe hinter der Klasse um 09:00 zu
- * finden, wäre die falsche Reihenfolge.
+ * Gerechnet wird mit der Zeit, die auch angezeigt wird – bei der Klasse also
+ * mit ihren 11:00, selbst wenn am Termin nichts erfasst ist. Sonst stünde sie
+ * über einem Anlass, der um 09:00 beginnt.
+ *
+ * Termine, für die auch das keine Zeit ergibt, stehen zuoberst: Für sie gilt
+ * die übliche Zeit, und die ist die frühe. Ein Lager ohne Zeitangabe hinter
+ * der Klasse zu finden, wäre die falsche Reihenfolge.
  */
 function byTime(a: ApActivity, b: ApActivity): number {
-  const timeA = a.time?.trim() ?? ''
-  const timeB = b.time?.trim() ?? ''
+  const timeA = apStartTime(a)
+  const timeB = apStartTime(b)
   if (timeA !== timeB) return timeA.localeCompare(timeB)
   return a.title.localeCompare(b.title)
 }

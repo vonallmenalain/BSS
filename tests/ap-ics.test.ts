@@ -189,7 +189,7 @@ test('ohne Uhrzeit wird der Termin ganztägig, DTEND ist der Folgetag', () => {
   assert.ok(lines.includes('DTEND;VALUE=DATE:20260108'))
 })
 
-test('mit Uhrzeit trägt der Termin die Zeitzone und eine Dauer', () => {
+test('ohne Ende bekommt der Termin die übliche Länge', () => {
   const lines = linesOf(build([activity({ date: '2026-01-07', time: '19:30' })]))
 
   assert.ok(lines.includes(`DTSTART;TZID=${AP_TIMEZONE}:20260107T193000`))
@@ -197,12 +197,116 @@ test('mit Uhrzeit trägt der Termin die Zeitzone und eine Dauer', () => {
   assert.ok(lines.includes('TRANSP:OPAQUE'))
 })
 
-test('die Dauer lässt sich vorgeben', () => {
+test('die übliche Länge lässt sich vorgeben', () => {
   const lines = linesOf(
     build([activity({ date: '2026-01-07', time: '19:30' })], { durationMinutes: 120 }),
   )
 
   assert.ok(lines.includes('DURATION:PT120M'))
+})
+
+/* ------------------------------------------------------------------ */
+/* Von – bis                                                           */
+/* ------------------------------------------------------------------ */
+
+test('mit Ende steht der Termin genau so lange – nichts wird geschätzt', () => {
+  const lines = linesOf(
+    build([activity({ date: '2026-01-07', time: '19:30', endTime: '21:00' })], {
+      durationMinutes: 120,
+    }),
+  )
+
+  assert.ok(lines.includes(`DTSTART;TZID=${AP_TIMEZONE}:20260107T193000`))
+  assert.ok(lines.includes(`DTEND;TZID=${AP_TIMEZONE}:20260107T210000`))
+  // Entweder das eine oder das andere: Beides zusammen wäre ungültig.
+  assert.equal(
+    lines.some((line) => line.startsWith('DURATION:')),
+    false,
+  )
+})
+
+test('ein Ende, das nicht nach dem Beginn liegt, zählt nicht', () => {
+  for (const endTime of ['19:30', '09:00']) {
+    const lines = linesOf(build([activity({ date: '2026-01-07', time: '19:30', endTime })]))
+
+    assert.equal(
+      lines.some((line) => line.startsWith('DTEND;TZID')),
+      false,
+      `«${endTime}» hätte kein DTEND ergeben dürfen`,
+    )
+    assert.ok(lines.includes('DURATION:PT90M'))
+  }
+})
+
+test('ein Ende ohne Beginn macht aus dem Termin keinen Zeitpunkt', () => {
+  const lines = linesOf(build([activity({ date: '2026-01-07', endTime: '21:00' })]))
+
+  assert.ok(lines.includes('DTSTART;VALUE=DATE:20260107'))
+  assert.ok(lines.includes('DTEND;VALUE=DATE:20260108'))
+})
+
+/* ------------------------------------------------------------------ */
+/* Die Klasse – immer von 11 bis 12                                    */
+/* ------------------------------------------------------------------ */
+
+test('die Klasse steht von 11 bis 12, auch ohne Zeitangabe am Termin', () => {
+  // Der 11. Januar 2026 ist der 2. Sonntag.
+  const lines = linesOf(build([activity({ date: '2026-01-11', kind: 'class', title: 'Glaube' })]))
+
+  assert.ok(lines.includes(`DTSTART;TZID=${AP_TIMEZONE}:20260111T110000`))
+  assert.ok(lines.includes(`DTEND;TZID=${AP_TIMEZONE}:20260111T120000`))
+  // Kein ganztägiger Balken mehr – die Stunde steht fest.
+  assert.equal(
+    lines.some((line) => line.startsWith('DTSTART;VALUE=DATE')),
+    false,
+  )
+  assert.ok(lines.includes('TRANSP:OPAQUE'))
+})
+
+test('eine verschobene Klasse dauert ihre Stunde ab dem eingetragenen Beginn', () => {
+  const lines = linesOf(
+    build([activity({ date: '2026-01-11', kind: 'class', time: '09:00', title: 'Glaube' })]),
+  )
+
+  assert.ok(lines.includes(`DTSTART;TZID=${AP_TIMEZONE}:20260111T090000`))
+  assert.ok(lines.includes(`DTEND;TZID=${AP_TIMEZONE}:20260111T100000`))
+})
+
+test('ein eingetragenes Ende gilt auch bei der Klasse', () => {
+  const lines = linesOf(
+    build([
+      activity({ date: '2026-01-11', kind: 'class', time: '11:00', endTime: '11:45', title: 'K' }),
+    ]),
+  )
+
+  assert.ok(lines.includes(`DTEND;TZID=${AP_TIMEZONE}:20260111T114500`))
+})
+
+test('die übliche Länge gilt der Klasse nicht – sie ist eine Stunde', () => {
+  const lines = linesOf(
+    build([activity({ date: '2026-01-11', kind: 'class', title: 'Glaube' })], {
+      durationMinutes: 120,
+    }),
+  )
+
+  assert.ok(lines.includes(`DTEND;TZID=${AP_TIMEZONE}:20260111T120000`))
+})
+
+test('die feste Stunde gilt der Klasse und keiner anderen Art', () => {
+  const lines = linesOf(
+    build([
+      activity({ date: '2026-01-07', id: 'mittwoch' }),
+      activity({ date: '2026-01-10', id: 'lager', kind: 'special', title: 'Lager' }),
+      activity({ date: '2026-01-21', id: 'fhv', kind: 'cancelled', title: 'FHV' }),
+    ]),
+  )
+
+  // Ohne Zeitangabe bleibt alles Übrige ganztägig – «11:00» wäre geraten.
+  assert.equal(lines.filter((line) => line.startsWith('DTSTART;VALUE=DATE')).length, 3)
+  assert.equal(
+    lines.some((line) => line.startsWith('DTSTART;TZID')),
+    false,
+  )
 })
 
 test('ein mehrtägiger Anlass reicht bis zum Tag nach dem letzten – nicht bis zum letzten', () => {
@@ -215,14 +319,25 @@ test('ein mehrtägiger Anlass reicht bis zum Tag nach dem letzten – nicht bis 
   assert.ok(lines.includes('DTEND;VALUE=DATE:20260803'))
 })
 
-test('ein mehrtägiger Anlass bleibt ganztägig, die Uhrzeit wandert in den Text', () => {
+test('ein mehrtägiger Anlass bleibt ganztägig, die Uhrzeiten wandern in den Text', () => {
+  // Das Lager von Freitag 18:00 bis Sonntag 14:00.
   const ics = unfold(
-    build([activity({ date: '2026-07-31', endDate: '2026-08-02', time: '18:00', title: 'Lager' })]),
+    build([
+      activity({
+        date: '2026-07-31',
+        endDate: '2026-08-02',
+        time: '18:00',
+        endTime: '14:00',
+        title: 'Lager',
+      }),
+    ]),
   )
 
   assert.ok(ics.includes('DTSTART;VALUE=DATE:20260731'))
   assert.equal(ics.includes('DTSTART;TZID'), false)
+  assert.equal(ics.includes('DTEND;TZID'), false)
   assert.ok(ics.includes('Beginn: 18:00'))
+  assert.ok(ics.includes('Ende: 14:00'))
 })
 
 test('endDate gleich date zählt als ein Tag', () => {

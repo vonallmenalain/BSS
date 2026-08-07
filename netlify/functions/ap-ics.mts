@@ -441,6 +441,7 @@ export default async function handler(request: Request): Promise<Response> {
           date: text(document, 'date'),
           endDate: text(document, 'endDate') || null,
           time: text(document, 'time'),
+          endTime: text(document, 'endTime'),
           kind: (text(document, 'kind') || 'activity') as IcsActivity['kind'],
           title: text(document, 'title'),
           location: text(document, 'location'),

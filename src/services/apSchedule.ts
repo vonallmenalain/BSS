@@ -1,7 +1,12 @@
 // Mit Dateiendung, damit sich das Modul auch ohne Bundler ausführen lässt
 // (`node --test`). Vite und TypeScript lösen das genauso auf.
 import { isoDate } from './importHistory.ts'
-import type { ApActivityKind } from '../lib/types.ts'
+import {
+  AP_CLASS_DURATION_MINUTES,
+  AP_CLASS_TIME,
+  apTimePlus,
+  type ApActivityKind,
+} from '../lib/types.ts'
 
 /**
  * Das Grundgerüst eines Aktivitätenplans erzeugen.
@@ -11,7 +16,7 @@ import type { ApActivityKind } from '../lib/types.ts'
  *  - **jeden Mittwochabend** eine Aktivität,
  *  - **ausser am 3. Mittwoch im Monat** – dann ist FHV, und die
  *    AP-Aktivität fällt aus,
- *  - **am 2. und 4. Sonntag** die AP-Klasse.
+ *  - **am 2. und 4. Sonntag** die AP-Klasse, immer von 11 bis 12 Uhr.
  *
  * Diese Termine von Hand einzutragen, wäre die halbe Jahresplanung: gut
  * siebzig Zeilen, in denen nichts steht als das Datum. Deshalb legt die
@@ -43,6 +48,15 @@ export interface ApScheduleEntry {
   date: string
   kind: ApActivityKind
   title: string
+  /**
+   * «11:00» bis «12:00» bei der Klasse, sonst beides leer.
+   *
+   * Wann ein Mittwochabend beginnt und wie lange er geht, weiss der Takt
+   * nicht – die Klasse aber ist immer von 11 bis 12, und das steht dann auch
+   * am Termin. Wer sie ausnahmsweise verschiebt, ändert zwei Felder.
+   */
+  time: string
+  endTime: string
 }
 
 /** Wochentage, an denen etwas stattfindet – `Date.getDay()`. */
@@ -92,12 +106,20 @@ export function generateApSchedule(
 
       if (weekday === WEDNESDAY) {
         if (week === FHV_WEEK) {
-          if (options.fhv) entries.push({ date, kind: 'cancelled', title: FHV_TITLE })
+          if (options.fhv) {
+            entries.push({ date, kind: 'cancelled', title: FHV_TITLE, time: '', endTime: '' })
+          }
         } else if (options.activities) {
-          entries.push({ date, kind: 'activity', title: '' })
+          entries.push({ date, kind: 'activity', title: '', time: '', endTime: '' })
         }
       } else if (weekday === SUNDAY && CLASS_WEEKS.includes(week) && options.classes) {
-        entries.push({ date, kind: 'class', title: '' })
+        entries.push({
+          date,
+          kind: 'class',
+          title: '',
+          time: AP_CLASS_TIME,
+          endTime: apTimePlus(AP_CLASS_TIME, AP_CLASS_DURATION_MINUTES),
+        })
       }
     }
 
