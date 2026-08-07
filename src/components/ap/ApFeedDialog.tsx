@@ -47,10 +47,12 @@ import {
  * und deshalb lässt sich jeder einzeln widerrufen, ohne allen anderen den
  * Kalender wegzunehmen.
  *
- * Die eine Erwartung, die der Dialog geraderücken muss, steht deshalb gross
- * darin: **Google bestimmt selbst, wann es den Link holt.** Meist ein paar
- * Stunden, im ungünstigen Fall länger. Das lässt sich von hier aus nicht
- * erzwingen, und wer es nicht weiss, hält das Abo für kaputt.
+ * Wann ein Kalenderprogramm den Link holt, bestimmt es selbst – Google meist
+ * alle paar Stunden. Der Dialog sagt das nicht mehr dazu: Es steht nur der
+ * Wortlaut hier und im README, damit die Frage beantwortet ist, wenn sie
+ * einmal aufkommt. Wer den Link einrichtet, will ihn einrichten und nicht
+ * erst einen Abschnitt lesen; und «zuletzt abgerufen» in der Liste
+ * beantwortet dieselbe Frage später ohnehin genauer.
  */
 export function ApFeedDialog({ open, onClose }: { open: boolean; onClose: () => void }) {
   const { profile } = useAuth()
@@ -116,8 +118,6 @@ export function ApFeedDialog({ open, onClose }: { open: boolean; onClose: () => 
       }
     >
       <div className="space-y-6">
-        <HowItWorks />
-
         {fresh && <FreshLink token={fresh} />}
 
         {/* ---------- Neuen Link anlegen ---------- */}
@@ -218,24 +218,6 @@ export function ApFeedDialog({ open, onClose }: { open: boolean; onClose: () => 
 /* ------------------------------------------------------------------ */
 /* Bausteine                                                           */
 /* ------------------------------------------------------------------ */
-
-function HowItWorks() {
-  return (
-    <div className="rounded-xl bg-slate-50 p-4 text-sm dark:bg-slate-800/60">
-      <p>
-        Ein Abo ist kein Export: Der Kalender holt sich die Termine unter dem Link immer wieder
-        selbst. Neue Termine erscheinen, geänderte rücken, gelöschte verschwinden – niemand muss
-        etwas verschicken oder einlesen.
-      </p>
-      <p className="mt-2">
-        <strong>Nur nicht sofort.</strong> Wann der Kalender nachschaut, bestimmt er selbst: Google
-        meist alle paar Stunden, im ungünstigen Fall erst am nächsten Tag. Apple lässt sich das
-        Intervall am Mac vorgeben, ab fünf Minuten. Wer eine Änderung heute noch braucht, sagt sie
-        besser dazu.
-      </p>
-    </div>
-  )
-}
 
 /** Der eben angelegte Link – gross, weil man genau ihn gerade sucht. */
 function FreshLink({ token }: { token: string }) {
