@@ -199,6 +199,16 @@ export function isApCalendarMode(mode: ApView['mode']): mode is 'week' | 'month'
 export const AP_FILTER_KINDS: ApActivityKind[] = ['activity', 'class', 'special']
 
 /**
+ * Die Arten, die ein Kalender-Abo zeigen kann – hier **mit** «Fällt aus».
+ *
+ * Anders als in der Ansicht: Dort erklärt ein ausgefallener Abend eine Lücke
+ * im Plan und gehört deshalb immer dazu. Ein Kalender ist kein Plan, sondern
+ * ein Terminkalender – wer den seinen nicht mit abgesagten Abenden füllen
+ * will, soll sie abwählen können.
+ */
+export const AP_FEED_KINDS: ApActivityKind[] = ['activity', 'class', 'special', 'cancelled']
+
+/**
  * Der Plan, auf die gewählten Arten eingeschränkt.
  *
  * Ohne Auswahl steht alles da, ausgefallene Abende eingeschlossen. Sobald
@@ -2130,4 +2140,61 @@ export interface ApMonth extends WithId {
   /** «Leitung Lehrer» */
   leadership: string
   updatedAt?: TS
+}
+
+/* ------------------------------------------------------------------ */
+/* Kalender-Abos                                                       */
+/* ------------------------------------------------------------------ */
+
+/**
+ * Ein Link, unter dem der Aktivitätenplan als Kalender abrufbar ist.
+ *
+ * Damit lässt sich der Plan in Google Calendar, Apple Kalender oder Outlook
+ * abonnieren: Die Programme holen die Datei von sich aus immer wieder und
+ * zeigen so den Stand aus der App, ohne dass jemand etwas exportiert.
+ *
+ * Der Link **ist** die Berechtigung, und das ist eine bewusste Entscheidung:
+ * Google und Apple können sich nirgends anmelden – sie rufen eine URL ab,
+ * sonst nichts. Deshalb steckt die Berechtigung im Token, und deshalb ist es
+ * lang genug, um nicht erraten zu werden. Wer den Link hat, sieht den Plan;
+ * wer ihn weitergibt, gibt den Plan weiter.
+ *
+ * Zwei Dinge halten den Preis dafür klein. Erstens reicht der Link **nur**
+ * an den Aktivitätenplan: Er ist kein Zugang zur App und erst recht keiner
+ * zu Personendaten. Zweitens lässt er sich einzeln widerrufen – deshalb gibt
+ * es mehrere davon, je einen für die Berater, die Jugendführung oder eine
+ * einzelne Person. Verschwindet ein Telefon, verschwindet ein Link, und die
+ * übrigen bleiben.
+ */
+export interface CalendarFeed extends WithId {
+  /**
+   * Das Geheimnis in der URL.
+   *
+   * Steht im Klartext in der Datenbank – lesen darf die Sammlung ohnehin nur,
+   * wer den Link auch vergeben darf (siehe `firestore.rules`). Als Hashwert
+   * liesse er sich nach dem Anlegen nie mehr anzeigen, und «den Link noch
+   * einmal kopieren» ist genau das, was man ein halbes Jahr später braucht.
+   */
+  token: string
+  /** Wofür der Link gedacht ist – «Berater», «Jugendführung», «Familie Müller» */
+  label: string
+  /**
+   * Welche Arten der Kalender zeigt. Leer oder fehlend heisst: alle.
+   *
+   * Dieselbe Auswahl wie in der Ansicht der Seite. Wer die ausgefallenen
+   * Abende nicht im Kalender haben will, nimmt sie hier heraus.
+   */
+  kinds?: ApActivityKind[]
+  /** Ein widerrufener Link bleibt stehen, liefert aber nichts mehr aus. */
+  active: boolean
+  createdAt?: TS
+  createdById?: string | null
+  /**
+   * Wann der Link zuletzt abgerufen wurde.
+   *
+   * Die einzige verlässliche Antwort auf «warum sehe ich den Kalender
+   * nicht?»: Steht hier nichts, hat Google den Link nie geholt – dann liegt
+   * es am Abo und nicht an den Terminen.
+   */
+  lastFetchedAt?: TS
 }

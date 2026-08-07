@@ -109,4 +109,6 @@ export const COLLECTIONS = {
   apActivities: 'apActivities',
   /** Führendes Kollegium je Monat, Dokument-ID ist «yyyy-MM» */
   apMonths: 'apMonths',
+  /** Links, unter denen der Aktivitätenplan als Kalender abonniert werden kann */
+  calendarFeeds: 'calendarFeeds',
 } as const

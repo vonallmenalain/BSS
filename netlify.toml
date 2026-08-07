@@ -6,6 +6,23 @@
   NODE_VERSION = "22"
   NPM_FLAGS = "--no-audit --no-fund"
 
+# Serverseitiges gibt es genau an einer Stelle: den Kalender-Feed
+# (`netlify/functions/ap-ics.mts`). Er teilt sich den ICS-Bau mit der App –
+# esbuild löst den Import aus `src/lib` beim Bündeln auf.
+[functions]
+  directory = "netlify/functions"
+  node_bundler = "esbuild"
+
+# Der Aktivitätenplan als abonnierbarer Kalender.
+#
+# Muss VOR dem SPA-Fallback stehen: Umleitungen werden der Reihe nach geprüft,
+# und die Regel darunter fängt sonst auch diese Adresse ab – ein
+# Kalenderprogramm bekäme HTML statt Terminen.
+[[redirects]]
+  from = "/api/ap.ics"
+  to = "/.netlify/functions/ap-ics"
+  status = 200
+
 # SPA-Fallback: alle Routen an index.html, damit React Router die URL übernimmt.
 [[redirects]]
   from = "/*"

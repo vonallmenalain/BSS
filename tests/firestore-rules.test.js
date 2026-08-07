@@ -151,6 +151,13 @@ async function seed() {
       leadership: 'Leitung Lehrer',
     })
 
+    await setDoc(doc(db, 'calendarFeeds', 'abo-berater'), {
+      token: 'geheimes-token',
+      label: 'Berater',
+      kinds: [],
+      active: true,
+    })
+
     await setDoc(doc(db, 'settings', 'app'), { wardName: 'Burgdorf' })
   })
 }
@@ -483,6 +490,77 @@ describe('Aktivitäten AP', () => {
       await assertFails(getDoc(doc(as(), 'users', BISHOP)))
     }
     await assertSucceeds(getDoc(doc(asApEditor(), 'users', AP_EDITOR)))
+  })
+
+  /*
+   * Die Kalender-Abos sind enger geschützt als der Plan selbst.
+   *
+   * Ein Abo-Link trägt die Berechtigung in sich – wer ihn liest, kann den
+   * ganzen Plan an beliebig viele Leute weitergeben, an den Regeln vorbei.
+   * Deshalb reicht «darf den Kalender ansehen» hier nicht: Es braucht
+   * dasselbe Recht, das auch zum Ändern des Plans berechtigt.
+   */
+  describe('Kalender-Abos', () => {
+    it('lässt die schreibende AP-Rolle Links lesen und vergeben', async () => {
+      await assertSucceeds(getDocs(collection(asApEditor(), 'calendarFeeds')))
+      await assertSucceeds(
+        setDoc(doc(asApEditor(), 'calendarFeeds', 'abo-neu'), {
+          token: 'noch-ein-token',
+          label: 'Jugendführung',
+          kinds: ['special'],
+          active: true,
+        }),
+      )
+      await assertSucceeds(
+        updateDoc(doc(asApEditor(), 'calendarFeeds', 'abo-neu'), { active: false }),
+      )
+      await assertSucceeds(deleteDoc(doc(asApEditor(), 'calendarFeeds', 'abo-neu')))
+    })
+
+    it('hält die nur lesende AP-Rolle von den Links fern', async () => {
+      // Auch das Lesen: Der Link ist das Geheimnis, nicht bloss ein Verweis.
+      await assertFails(getDocs(collection(asApViewer(), 'calendarFeeds')))
+      await assertFails(getDoc(doc(asApViewer(), 'calendarFeeds', 'abo-berater')))
+      await assertFails(
+        setDoc(doc(asApViewer(), 'calendarFeeds', 'versuch'), {
+          token: 'selbst-gemacht',
+          label: 'Versuch',
+          active: true,
+        }),
+      )
+      await assertFails(
+        updateDoc(doc(asApViewer(), 'calendarFeeds', 'abo-berater'), { active: false }),
+      )
+      await assertFails(deleteDoc(doc(asApViewer(), 'calendarFeeds', 'abo-berater')))
+    })
+
+    it('lässt den Vollzugriff die Links ebenfalls führen', async () => {
+      await assertSucceeds(getDocs(collection(asBishop(), 'calendarFeeds')))
+      await assertSucceeds(
+        updateDoc(doc(asSecretary(), 'calendarFeeds', 'abo-berater'), { label: 'Berater AP' }),
+      )
+    })
+
+    it('gibt wartenden und angemeldeten Fremden gar nichts', async () => {
+      await assertFails(getDocs(collection(asPending(), 'calendarFeeds')))
+      await assertFails(getDoc(doc(asPending(), 'calendarFeeds', 'abo-berater')))
+      await assertFails(getDocs(collection(asAnonymous(), 'calendarFeeds')))
+      await assertFails(getDoc(doc(asAnonymous(), 'calendarFeeds', 'abo-berater')))
+    })
+
+    it('lässt niemanden ein Token über eine Abfrage erraten', async () => {
+      // Der Weg, den die Function geht – aber ohne Dienstkonto verschlossen.
+      await assertFails(
+        getDocs(
+          query(collection(asAnonymous(), 'calendarFeeds'), where('token', '==', 'geheimes-token')),
+        ),
+      )
+      await assertFails(
+        getDocs(
+          query(collection(asApViewer(), 'calendarFeeds'), where('token', '==', 'geheimes-token')),
+        ),
+      )
+    })
   })
 
   it('lässt die AP-Rollen die Einstellungen lesen, aber nicht ändern', async () => {
