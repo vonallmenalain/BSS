@@ -17,7 +17,6 @@ import {
 } from '@/services/monthlyDuties'
 import { dutyIsRunning, formatMonthKey } from '@/lib/monthlyDuties'
 import type { MonthlyDuty } from '@/lib/types'
-import { plainText } from '@/lib/textFormat'
 
 /**
  * Die Aufgaben, die zur Leitung eines Monats gehören – an einem Ort.
@@ -197,7 +196,7 @@ function DutyRow({ duty, month }: { duty: MonthlyDuty; month: string }) {
           <p className="text-sm font-medium">{duty.title}</p>
           {duty.description && (
             <p className="mt-0.5 text-sm whitespace-pre-wrap text-slate-600 dark:text-slate-300">
-              {plainText(duty.description)}
+              {duty.description}
             </p>
           )}
           <p className="hint">

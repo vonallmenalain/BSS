@@ -43,7 +43,6 @@ import { PeopleChoice, PersonChoice, SegmentedControl } from '@/components/ui/Pi
 import { MeetingForm } from '@/pages/Meetings'
 import { callingChangesToText } from '@/lib/callingChanges'
 import { formatDateLong, formatDateShort, formatTime, toDate } from '@/lib/dates'
-import { plainText } from '@/lib/textFormat'
 import {
   assignToMeeting,
   carryOverOpenItems,
@@ -915,7 +914,7 @@ function PrintProtocol({
                     {index + 1}. {item.title}
                     {item.status === 'done' && ' ✓'}
                   </p>
-                  {item.description && <p className="text-sm">{plainText(item.description)}</p>}
+                  {item.description && <p className="text-sm">{item.description}</p>}
                   {/* Eine Berufungsrunde hat keine Beschreibung – ohne das
                       stünde im Protokoll nur ihr Titel. */}
                   {item.callingChanges && (
