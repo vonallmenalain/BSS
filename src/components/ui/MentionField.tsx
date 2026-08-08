@@ -8,6 +8,7 @@ import {
   type KeyboardEvent,
 } from 'react'
 import { useData } from '@/contexts/DataContext'
+import { useFormatTarget } from '@/hooks/useFormatTarget'
 import { Avatar } from '@/components/ui/Avatar'
 import { cn, matchesSearch } from '@/lib/utils'
 import { findMentionTrigger, type MentionTrigger } from '@/lib/mention'
@@ -96,6 +97,15 @@ export function MentionField({
   const fieldRef = useRef<HTMLInputElement | HTMLTextAreaElement>(null)
   const [trigger, setTrigger] = useState<MentionTrigger | null>(null)
   const [active, setActive] = useState(0)
+
+  /*
+   * Das Feld meldet sich beim Formatierungsmenü an.
+   *
+   * Es steht oben rechts an der Karte und nicht am Feld – siehe
+   * `components/ui/FormatMenu`. Ein Feld, an dem gar kein Menü hängt (das
+   * Formular zum Erfassen etwa), meldet sich trotzdem an; das kostet nichts.
+   */
+  useFormatTarget(fieldRef, { onChange, onCaret, multiline })
 
   /*
    * Anwählen und den Cursor setzen – noch bevor gezeichnet wird.

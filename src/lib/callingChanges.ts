@@ -1,4 +1,5 @@
 import { splitMentions, type Mention } from './mention.ts'
+import { plainText } from './textFormat.ts'
 import { uid } from './utils.ts'
 import type {
   AgendaItem,
@@ -371,10 +372,12 @@ export function callingRowText(
     'memberIds' in row
       ? [row.memberIds.map(name).join(' '), row.calling, row.ideas]
       : [row.calling, row.candidates, row.next]
-  return [...fields, row.assignees.map(name).join(' ')]
-    .map((part) => part.trim())
-    .filter(Boolean)
-    .join(' ')
+  return plainText(
+    [...fields, row.assignees.map(name).join(' ')]
+      .map((part) => part.trim())
+      .filter(Boolean)
+      .join(' '),
+  )
 }
 
 /**
@@ -429,7 +432,7 @@ export function callingChangesToText(
     )
   }
 
-  return blocks.join('\n\n')
+  return plainText(blocks.join('\n\n'))
 }
 
 /* ------------------------------------------------------------------ */
@@ -460,8 +463,10 @@ export type CallingRowMatch =
  * erwähnt sein – eine offene Aufgabe ist niemand.
  */
 function rowAbout(row: CallingMemberRow | CallingOpenRow, member: Mention): boolean {
+  // Gesucht wird im Text, nicht im Geschriebenen: Ein Name, dessen Vorname
+  // eingefärbt ist, ist immer noch derselbe Name.
   const named = (value: string) =>
-    splitMentions(value, [member]).some((part) => part.memberId !== undefined)
+    splitMentions(plainText(value), [member]).some((part) => part.memberId !== undefined)
 
   return 'memberIds' in row
     ? row.memberIds.includes(member.id) || named(row.calling) || named(row.ideas)

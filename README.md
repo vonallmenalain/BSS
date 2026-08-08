@@ -38,6 +38,12 @@ farbig und anklickbar und führt zur Person – und «Zurück» wieder genau zu
 dem Punkt, den man gerade gelesen hat. Passt niemand aus der Liste, bleibt
 schlicht stehen, was getippt wurde.
 
+**Ein A oben rechts zeichnet Text aus.** Aufzählung, Schriftfarbe,
+Hintergrundfarbe – drei Handgriffe, an der aufgeklappten Pendenz neben dem
+Pfeil zum Zuklappen und in der Notiz neben dem Kreuz. Mehr braucht eine
+Sitzungs-App nicht, und der Text bleibt darunter ein Text (siehe
+[Text auszeichnen](#text-auszeichnen)).
+
 **Importe stehen gesammelt unter «Einstellungen → Importe»** und nirgends
 sonst. Ein Import ersetzt ganze Bereiche; ein Knopf dafür neben der Arbeit am
 einzelnen Eintrag lädt zu Unfällen ein.
@@ -818,6 +824,50 @@ Der Weg zurück führt nicht in die Mitgliederliste, sondern genau zu dem Punkt,
 den man gerade gelesen hat; die Adresse merkt sich dafür den offenen Eintrag
 (`…/sitzungen/<id>?traktandum=<id>`).
 
+### Text auszeichnen
+
+Am aufgeklappten Eintrag steht oben rechts, neben dem Pfeil zum Zuklappen,
+ein **A mit einem kleinen Pfeil**. Dahinter liegen drei Handgriffe – mehr
+nicht:
+
+- **Aufzählung.** Aus den Zeilen, die die Auswahl berührt, wird eine Liste;
+  ohne Auswahl gilt die Zeile mit dem Cursor. Derselbe Griff nimmt sie wieder
+  weg, sobald alle berührten Zeilen eine sind.
+- **Schriftfarbe** – rot, orange, grün, blau, violett, grau.
+- **Hintergrundfarbe** – der Leuchtstift: gelb, grün, blau, rosa, grau.
+
+Für die Farben wird zuerst markiert, was anders aussehen soll; die Aufzählung
+kommt auch ohne aus. Der erste Kreis in jeder Reihe nimmt die Farbe wieder
+weg, und zwar nur die eine – wer den gelben Hintergrund entfernt, behält die
+rote Schrift.
+
+**Der Cursor bleibt, wo er ist.** Ein Griff ins Menü nimmt dem Textfeld den
+Fokus nicht weg: Die Markierung steht nach dem Färben noch da, und man
+schreibt weiter, ohne neu hineinzuklicken. Das Menü bleibt dabei offen – wer
+gleich die nächste Stelle markieren will, kann das tun, und die Kreise zeigen
+danach, was dort gilt.
+
+**Die Aufzählung ist keine neue Schreibweise, sondern die alte.** Wer eine
+Zeile mit `-` beginnt, hat immer schon eine Liste geschrieben; sie wird jetzt
+bloss als solche gezeigt – mit Aufzählungszeichen und hängendem Einzug, statt
+mit einem Strich, unter dem die zweite Zeile wieder am Rand beginnt. Zwei
+Leerzeichen mehr am Anfang rücken eine Stufe tiefer (`•`, `◦`, `▪`). Alles,
+was je in diesem Stil geschrieben wurde, sieht damit rückwirkend richtig aus.
+
+Gespeichert wird nichts als HTML: Die Farben stehen als kurze Markierung im
+Text selbst (`{{rot|dringend}}`, `{{/gelb|dringend}}`, `{{rot/gelb|…}}`, siehe
+[`src/lib/textFormat.ts`](src/lib/textFormat.ts)). Das ist derselbe Weg, den
+Erwähnungen und Verweise gehen – und er hält den Text zu einem Text. Suche,
+Protokoll und Sicherung sehen weiterhin die blossen Worte; eine Markierung mit
+einer Farbe, die die App nicht kennt, bleibt als Text stehen, statt den Satz
+zu verschlucken.
+
+Ausgezeichnet wird, wo etwas ausgeschrieben steht: die Beschreibung eines
+Traktandums, die Felder eines variablen Layouts, die Zellen einer
+Berufungsrunde, der Text einer Notiz. **Titel bleiben Titel** – sie stehen in
+jeder Liste, jeder Rückfrage und jedem Protokoll noch einmal, und dort zählt
+das Wort und nicht die Farbe.
+
 ### Der Weg zurück
 
 Das gilt überall: **Zurück führt einen Schritt zurück, nicht zwei.** Wer unter
@@ -1492,10 +1542,10 @@ Ausgeliefert wird der Kalender von einer kleinen Netlify-Function
 
 Für alles, was nicht an einer Sitzung, einem Mitglied oder einem Sonntag
 hängt: der Gedanke aus einem Telefonat, eine Liste zum Mitdenken, der Entwurf
-einer Ansage. Eine Notiz hat einen Titel und einen Text – mehr nicht. Keine
-Farben, kein Anheften, keine Checklisten: Wer eine Aufgabe festhalten will,
-legt eine Pendenz an; sie kann terminiert und zugewiesen werden und taucht in
-der nächsten Sitzung wieder auf.
+einer Ansage. Eine Notiz hat einen Titel und einen Text – mehr nicht. Kein
+Anheften, keine Schlagwörter, keine Checklisten: Wer eine Aufgabe festhalten
+will, legt eine Pendenz an; sie kann terminiert und zugewiesen werden und
+taucht in der nächsten Sitzung wieder auf.
 
 Jede Notiz gehört der ganzen Bischofschaft. Es gibt keine private Notiz und
 darum auch keinen Schalter dafür – wie bei allem Übrigen in dieser App sehen
@@ -1509,6 +1559,12 @@ wieder schliesst, hinterlässt keine leere Zeile in der Liste.
 **Verweise** im Text – `https://…`, `www.…` und E-Mail-Adressen – sind
 anklickbar, sobald das Feld verlassen wird. Ein Griff in den Text macht daraus
 wieder das Eingabefeld.
+
+**Auszeichnen.** Im Bearbeitungsmodus steht oben rechts neben dem Kreuz
+dasselbe Menü wie an einer Pendenz: Aufzählung, Schriftfarbe,
+Hintergrundfarbe (siehe [Text auszeichnen](#text-auszeichnen)). Beim Lesen
+steht dort wieder der Stift – dann gibt es nichts zu formatieren. Was
+ausgezeichnet ist, sieht man auch in der Übersicht.
 
 Über **Ansicht** lässt sich einstellen, ob die Notizen als Liste oder als
 Kacheln erscheinen und wie viel jede von sich zeigt (klein, komprimiert,

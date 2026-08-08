@@ -1,17 +1,29 @@
-import { useEffect, useLayoutEffect, useMemo, useRef, useState, type ReactNode } from 'react'
+import {
+  Fragment,
+  useEffect,
+  useLayoutEffect,
+  useMemo,
+  useRef,
+  useState,
+  type ReactNode,
+} from 'react'
 import { ChevronDown, ChevronUp, NotebookPen, Pencil, Plus, Search } from 'lucide-react'
 import { useAuth } from '@/contexts/AuthContext'
 import { useData } from '@/contexts/DataContext'
 import { useToast } from '@/contexts/ToastContext'
 import { useNotes } from '@/hooks/useFirestore'
 import { useAutosave, saveStateLabel } from '@/hooks/useAutosave'
+import { useFormatTarget } from '@/hooks/useFormatTarget'
 import { useLocalStorage } from '@/hooks/useLocalStorage'
 import { EmptyState, SkeletonList } from '@/components/ui/Feedback'
+import { FormatMenu } from '@/components/ui/FormatMenu'
 import { ConfirmDialog, Modal } from '@/components/ui/Modal'
 import { PageHeader, SegmentedControl } from '@/components/ui/Pickers'
+import { Pieces, RichLines } from '@/components/ui/RichText'
 import { AddButton, MenuChoice, ViewMenu } from '@/components/ui/ViewMenu'
 import { formatDateTime, toDate } from '@/lib/dates'
 import { splitLinks } from '@/lib/links'
+import { plainText, richLines } from '@/lib/textFormat'
 import { cn, matchesSearch } from '@/lib/utils'
 import { createNote, deleteNote, saveNoteOrder, updateNote } from '@/services/notes'
 import { lastEditedAt, type Note } from '@/lib/types'
@@ -103,8 +115,10 @@ export function Notes() {
   const [open, setOpen] = useState<Note | 'neu' | null>(null)
 
   const visible = useMemo(() => {
+    // Gesucht wird im Text, nicht in seinen Auszeichnungen: «rot» soll nicht
+    // jede Notiz finden, in der etwas rot geschrieben steht.
     const gefunden = search.trim()
-      ? notes.filter((note) => matchesSearch(`${note.title} ${note.body}`, search))
+      ? notes.filter((note) => matchesSearch(`${note.title} ${plainText(note.body)}`, search))
       : notes
 
     /*
@@ -386,29 +400,42 @@ function NoteCard({
 }
 
 /**
- * Text, in dem Verweise anklickbar sind.
+ * Text, in dem Verweise anklickbar sind – und Auszeichnungen sichtbar.
  *
  * `pointer-events-auto` und `z-10`, weil in der Übersicht die ganze Karte eine
  * Fläche zum Öffnen ist: Der Text lässt Griffe durch, der Verweis fängt seinen
  * eigenen ab. `stopPropagation` hält ausserdem die darunterliegende Fläche
  * davon ab, gleich noch die Notiz zu öffnen.
+ *
+ * Aufzählung, Schriftfarbe und Hintergrund kommen aus `lib/textFormat` und
+ * liegen über derselben Zerlegung – genau wie bei den Erwähnungen in einem
+ * Traktandum (siehe `MentionText`).
  */
 function LinkedText({ text }: { text: string }): ReactNode {
-  return splitLinks(text).map((teil, index) =>
-    teil.href ? (
-      <a
-        key={index}
-        href={teil.href}
-        target="_blank"
-        rel="noopener noreferrer"
-        onClick={(event) => event.stopPropagation()}
-        className="text-brand-700 dark:text-brand-300 pointer-events-auto relative z-10 break-words underline underline-offset-2"
-      >
-        {teil.text}
-      </a>
-    ) : (
-      <span key={index}>{teil.text}</span>
-    ),
+  const lines = useMemo(() => richLines(text, splitLinks), [text])
+
+  return (
+    <RichLines
+      lines={lines}
+      render={(gruppe, index) =>
+        gruppe.href ? (
+          <a
+            key={index}
+            href={gruppe.href}
+            target="_blank"
+            rel="noopener noreferrer"
+            onClick={(event) => event.stopPropagation()}
+            className="text-brand-700 dark:text-brand-300 pointer-events-auto relative z-10 break-words underline underline-offset-2"
+          >
+            <Pieces pieces={gruppe.pieces} />
+          </a>
+        ) : (
+          <Fragment key={index}>
+            <Pieces pieces={gruppe.pieces} />
+          </Fragment>
+        )
+      }
+    />
   )
 }
 
@@ -542,7 +569,12 @@ function NoteEditor({ note, onClose }: { note: Note | null; onClose: () => void 
         }
         size={breite}
         headerActions={
-          !bearbeitet && (
+          bearbeitet ? (
+            /* Beim Schreiben steht hier, was den Text betrifft – neben dem
+               Kreuz, wo sonst der Stift steht. Beim Lesen gibt es nichts zu
+               formatieren, dann ist der Stift wieder an der Reihe. */
+            <FormatMenu className="-my-1" />
+          ) : (
             <button
               type="button"
               onClick={() => setBearbeitet(true)}
@@ -668,6 +700,9 @@ function GrowingTextarea({
   moveCursorToEnd?: boolean
 }) {
   const field = useRef<HTMLTextAreaElement>(null)
+
+  // Hier wird das Menü oben rechts wirksam – siehe `components/ui/FormatMenu`.
+  useFormatTarget(field, { onChange, multiline: true })
 
   useLayoutEffect(() => {
     const element = field.current

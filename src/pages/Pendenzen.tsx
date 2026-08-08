@@ -20,6 +20,7 @@ import { formatDateLong, formatDateShort, toDate, toDateInput } from '@/lib/date
 import { callingChangesToText } from '@/lib/callingChanges'
 import { layoutToText } from '@/lib/layout'
 import { cn, matchesSearch } from '@/lib/utils'
+import { plainText } from '@/lib/textFormat'
 import {
   DEFAULT_PENDENZEN_DONE_SORT,
   lastEditedAt,
@@ -408,7 +409,7 @@ export function Pendenzen() {
       }
       return [
         item.title,
-        item.description,
+        plainText(item.description),
         // Wer statt einer Beschreibung ein Raster gebaut hat oder eine
         // Berufungsrunde führt, soll sie trotzdem wiederfinden – gesucht wird
         // im ganzen Eintrag.

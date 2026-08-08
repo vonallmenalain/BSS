@@ -1,3 +1,4 @@
+import { plainText } from './textFormat.ts'
 import { uid } from './utils.ts'
 import type { ItemLayout, LayoutField, LayoutFieldKind } from './types.ts'
 
@@ -378,6 +379,9 @@ export function serializeLayout(layout: ItemLayout): ItemLayout {
  *
  * Zeilenweise, Felder mit Tabulator getrennt, wie man eine Tabelle abtippen
  * würde. Personen stehen mit Namen da, sofern der Aufrufer sie auflösen kann.
+ *
+ * Auszeichnungen fallen weg (`plainText`): Weder die Suche noch das Papier
+ * haben etwas davon, dass ein Wort gelb hinterlegt war.
  */
 export function layoutToText(
   layout: ItemLayout,
@@ -386,7 +390,7 @@ export function layoutToText(
   const grid = layoutGrid(layout)
   const byId = new Map(layout.fields.map((field) => [field.id, field]))
 
-  return grid
+  const text = grid
     .map((row, rowIndex) =>
       row
         // Ein hohes Feld steht nur in der Zeile, in der es beginnt.
@@ -400,6 +404,8 @@ export function layoutToText(
     )
     .filter((line) => line !== '')
     .join('\n')
+
+  return plainText(text)
 }
 
 /** Ein einzelnes Feld als Text – die Beschriftung bleibt weg. */
