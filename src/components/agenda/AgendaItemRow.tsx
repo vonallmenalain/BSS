@@ -1,4 +1,4 @@
-import { useRef, useState, type DragEvent } from 'react'
+import { useState, type DragEvent } from 'react'
 import { Link } from 'react-router-dom'
 import {
   ArrowRight,
@@ -15,7 +15,6 @@ import { useAuth } from '@/contexts/AuthContext'
 import { useToast } from '@/contexts/ToastContext'
 import { AssigneeAvatars } from '@/components/ui/Avatar'
 import { StatusBadge } from '@/components/ui/Badge'
-import { FormatMenu } from '@/components/ui/FormatMenu'
 import { ConfirmDialog } from '@/components/ui/Modal'
 import { AgendaItemEditor } from '@/components/agenda/AgendaItemEditor'
 import { DeferMenu } from '@/components/agenda/DeferMenu'
@@ -118,10 +117,6 @@ export function AgendaItemRow({
   const { profile } = useAuth()
   const toast = useToast()
   const [confirmDelete, setConfirmDelete] = useState(false)
-  /* Die Grenze für das Formatierungsmenü: Es formatiert nur, was in dieser
-     Zeile geschrieben wird – und nicht das, was zuletzt irgendwo sonst auf
-     der Seite offen war. */
-  const rowRef = useRef<HTMLLIElement>(null)
 
   const isDone = item.status === 'done'
   const kind = toItemKind(item)
@@ -191,7 +186,6 @@ export function AgendaItemRow({
 
   return (
     <li
-      ref={rowRef}
       // Gezogen wird nur die zugeklappte Zeile: Im aufgeklappten Zustand wird
       // geschrieben, und ein Text, den man markieren will, darf nicht davonfliegen.
       draggable={Boolean(onDragStart) && !expanded}
@@ -332,11 +326,6 @@ export function AgendaItemRow({
               </button>
             </span>
           )}
-
-          {/* Auszeichnen lässt sich nur, was auch geschrieben werden kann –
-              deshalb steht das Menü am aufgeklappten Eintrag. Zugeklappt
-              stünde es über einem Text, an den man gar nicht herankommt. */}
-          {expanded && !readOnly && <FormatMenu scope={rowRef} />}
 
           <button
             type="button"
