@@ -1,10 +1,12 @@
-import { useLayoutEffect, useMemo, useRef, useState, type ReactNode } from 'react'
+import { Fragment, useLayoutEffect, useMemo, useRef, useState, type ReactNode } from 'react'
 import { Link, useLocation } from 'react-router-dom'
 import { useData } from '@/contexts/DataContext'
 import { Avatar } from '@/components/ui/Avatar'
 import { MentionField } from '@/components/ui/MentionField'
+import { Pieces, RichLines } from '@/components/ui/RichText'
 import { cn } from '@/lib/utils'
 import { splitMentions, type Mention } from '@/lib/mention'
+import { richLines } from '@/lib/textFormat'
 import {
   caretOf,
   holdWriting,
@@ -34,6 +36,11 @@ import type { Member } from '@/lib/types'
  * Der Verweis nimmt mit, woher er kommt. So führt das «Zurück» auf der
  * Mitgliederseite nicht in die Mitgliederliste, sondern genau zu dem
  * Traktandum, das man gerade gelesen hat.
+ *
+ * Über den Erwähnungen liegt die Auszeichnung: Aufzählung, Schriftfarbe,
+ * Hintergrund (`lib/textFormat`). Beide arbeiten auf demselben einfachen
+ * Text und wissen nichts voneinander – die Erwähnung sucht Namen, die
+ * Auszeichnung schneidet nach Farbe, und zusammengesetzt wird beim Zeichnen.
  */
 export function MentionText({
   text,
@@ -50,12 +57,12 @@ export function MentionText({
   const { membersById } = useData()
   const location = useLocation()
 
-  const parts = useMemo(() => {
+  const lines = useMemo(() => {
     const mentions: Mention[] = (memberRefs ?? [])
       .map((id) => membersById.get(id))
       .filter((member): member is Member => member !== undefined)
       .map((member) => ({ id: member.id, name: `${member.firstName} ${member.lastName}` }))
-    return splitMentions(text, mentions)
+    return richLines(text, (line) => splitMentions(line, mentions))
   }, [text, memberRefs, membersById])
 
   if (!text) {
@@ -66,26 +73,35 @@ export function MentionText({
 
   return (
     <span className={className}>
-      {parts.map((part, index) =>
-        part.memberId ? (
-          <Link
-            key={index}
-            to={`/mitglieder/${part.memberId}`}
-            state={{ from, fromLabel: 'Traktandum' }}
-            onClick={(event) => event.stopPropagation()}
-            className="inline-flex items-center gap-1 align-middle font-medium transition hover:underline"
-          >
-            {/* Für Bildschirmleser steht der Name gleich daneben – der Kreis
-                wiederholte ihn bloss. */}
-            <span aria-hidden>
-              <Avatar name={part.text} id={part.memberId} size="xs" />
-            </span>
-            {part.text}
-          </Link>
-        ) : (
-          <span key={index}>{part.text}</span>
-        ),
-      )}
+      <RichLines
+        lines={lines}
+        render={(group, index) =>
+          group.memberId ? (
+            <Link
+              key={index}
+              to={`/mitglieder/${group.memberId}`}
+              state={{ from, fromLabel: 'Traktandum' }}
+              onClick={(event) => event.stopPropagation()}
+              className="inline-flex items-center gap-1 align-middle font-medium transition hover:underline"
+            >
+              {/* Für Bildschirmleser steht der Name gleich daneben – der Kreis
+                  wiederholte ihn bloss. */}
+              <span aria-hidden>
+                <Avatar
+                  name={group.pieces.map((piece) => piece.text).join('')}
+                  id={group.memberId}
+                  size="xs"
+                />
+              </span>
+              <Pieces pieces={group.pieces} />
+            </Link>
+          ) : (
+            <Fragment key={index}>
+              <Pieces pieces={group.pieces} />
+            </Fragment>
+          )
+        }
+      />
     </span>
   )
 }

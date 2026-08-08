@@ -7,6 +7,7 @@ import { AssigneeAvatars } from '@/components/ui/Avatar'
 import { KindBadge, StatusBadge } from '@/components/ui/Badge'
 import { setItemStatus } from '@/services/agenda'
 import { hasOpenCallingRows } from '@/lib/callingChanges'
+import { plainText } from '@/lib/textFormat'
 import { toItemKind, type AgendaItem } from '@/lib/types'
 
 interface Props {
@@ -111,9 +112,12 @@ export function AgendaItemCard({
               {item.title}
             </h3>
 
+            {/* Zwei Zeilen Vorschau, und die ohne Auszeichnung: Sie steht in
+                einem Knopf, in dem ein Verweis nichts zu suchen hat, und ein
+                halber gelber Balken sagt hier nichts. */}
             {!compact && item.description && (
               <p className="mt-1 line-clamp-2 text-sm text-slate-500 dark:text-slate-400">
-                {item.description}
+                {plainText(item.description)}
               </p>
             )}
           </button>

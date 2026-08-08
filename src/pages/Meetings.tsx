@@ -28,6 +28,7 @@ import {
 import { isDutyItem } from '@/lib/monthlyDuties'
 import { cn, matchesSearch } from '@/lib/utils'
 import { searchSnippet } from '@/lib/search'
+import { plainText } from '@/lib/textFormat'
 import { groupByKind } from '@/services/agenda'
 import { createMeeting, suggestNextMeetingDate } from '@/services/meetings'
 import {
@@ -198,7 +199,7 @@ export function Meetings() {
     const hits = new Map<string, AgendaItem[]>()
     for (const item of allItems) {
       if (!item.meetingId) continue
-      if (!matchesSearch(`${item.title} ${item.description ?? ''}`, term)) continue
+      if (!matchesSearch(`${item.title} ${plainText(item.description)}`, term)) continue
       const list = hits.get(item.meetingId)
       if (list) list.push(item)
       else hits.set(item.meetingId, [item])
@@ -667,7 +668,7 @@ function ItemTitle({
  * zweite Zeile.
  */
 function ItemSnippet({ item, term }: { item: AgendaItem; term?: string }) {
-  const text = item.description?.trim() ?? ''
+  const text = plainText(item.description).trim()
   if (!term || !text) return null
   if (!matchesSearch(text, term) || matchesSearch(item.title, term)) return null
 
