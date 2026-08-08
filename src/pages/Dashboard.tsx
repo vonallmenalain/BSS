@@ -367,33 +367,46 @@ export function Dashboard() {
         </div>
         <ul className="divide-list -mx-1">
           {talkGaps.slice(0, view.talkSundays).map((gap) => (
-            <li
-              key={gap.date.toISOString()}
-              className="flex items-center justify-between px-1 py-2 text-sm"
-            >
-              <span>{formatDateShort(gap.date)}</span>
-              {!gap.program.plansTalks ? (
-                /* Zeugnisversammlung, Konferenz, Darbietung der Kinder:
-                   Hier fehlt nichts – hier ist nichts vorgesehen. */
-                <span className="badge bg-slate-100 text-slate-600 dark:bg-slate-800 dark:text-slate-300">
-                  {gap.program.label}
-                </span>
-              ) : gap.open > 0 ? (
-                <span className="badge bg-amber-100 text-amber-800 dark:bg-amber-950 dark:text-amber-200">
-                  {gap.open} offen
-                </span>
-              ) : gap.pending > 0 ? (
-                /* Alle Plätze besetzt, aber noch nicht alle haben zugesagt –
-                   vollständig ist der Sonntag damit noch nicht. */
-                <span className="badge bg-amber-100 text-amber-800 dark:bg-amber-950 dark:text-amber-200">
-                  {gap.pending} ohne Zusage
-                </span>
-              ) : (
-                <span className="badge bg-emerald-100 text-emerald-800 dark:bg-emerald-950 dark:text-emerald-200">
-                  <CheckCircle2 className="size-3" aria-hidden />
-                  Vollständig
-                </span>
-              )}
+            <li key={gap.date.toISOString()}>
+              {/*
+               * Die ganze Zeile führt zu diesem Sonntag – das Datum links wie
+               * der Vermerk rechts, denn beide beantworten dieselbe Frage:
+               * «Was ist an diesem Sonntag noch zu tun?» Der Sonntag steht
+               * dafür in der Adresse und steht drüben im Programm zuoberst
+               * (siehe `components/sacrament/SacramentLayout`).
+               *
+               * Unterstrichen wird nur das Datum, wie bei den Geburtstagen:
+               * Der Zeiger darf irgendwo auf der Zeile stehen – ein Strich
+               * unter einem farbigen Vermerk sähe dagegen nach Fehler aus.
+               */}
+              <Link
+                to={`/abendmahl/ansprachen?sonntag=${sacramentDocId(gap.date)}`}
+                className="group flex items-center justify-between px-1 py-2 text-sm"
+              >
+                <span className="group-hover:underline">{formatDateShort(gap.date)}</span>
+                {!gap.program.plansTalks ? (
+                  /* Zeugnisversammlung, Konferenz, Darbietung der Kinder:
+                     Hier fehlt nichts – hier ist nichts vorgesehen. */
+                  <span className="badge bg-slate-100 text-slate-600 dark:bg-slate-800 dark:text-slate-300">
+                    {gap.program.label}
+                  </span>
+                ) : gap.open > 0 ? (
+                  <span className="badge bg-amber-100 text-amber-800 dark:bg-amber-950 dark:text-amber-200">
+                    {gap.open} offen
+                  </span>
+                ) : gap.pending > 0 ? (
+                  /* Alle Plätze besetzt, aber noch nicht alle haben zugesagt –
+                     vollständig ist der Sonntag damit noch nicht. */
+                  <span className="badge bg-amber-100 text-amber-800 dark:bg-amber-950 dark:text-amber-200">
+                    {gap.pending} ohne Zusage
+                  </span>
+                ) : (
+                  <span className="badge bg-emerald-100 text-emerald-800 dark:bg-emerald-950 dark:text-emerald-200">
+                    <CheckCircle2 className="size-3" aria-hidden />
+                    Vollständig
+                  </span>
+                )}
+              </Link>
             </li>
           ))}
         </ul>
