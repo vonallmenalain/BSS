@@ -88,10 +88,10 @@ function weekOfMonth(day: number): number {
 /**
  * Alle Sonntage eines Monats – «2026-11» → fünf Tage.
  *
- * Grundlage für die Themen der Klasse: «Für eine starke Jugend» ordnet
- * seine Lektionen dem Fastsonntag, dem zweiten, dem dritten und dem
- * letzten Sonntag zu – gezählt wird über alle Sonntage des Monats, nicht
- * über die Klassentermine (siehe `services/importApTopics`).
+ * Grundlage für die Themen der Klasse: Die vier Lektionen aus «Für eine
+ * starke Jugend» gehen der Reihe nach an den ersten bis vierten Sonntag –
+ * gezählt wird über alle Sonntage des Monats, nicht über die
+ * Klassentermine (siehe `services/importApTopics`).
  */
 export function sundaysOfMonth(month: string): string[] {
   const [year, index] = month.split('-').map(Number)
