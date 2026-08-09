@@ -14,7 +14,7 @@ import {
   startOfMonth,
   toDateInput,
 } from './dates.ts'
-import { apStartTime, type ApActivity } from './types.ts'
+import { apLastDay, apStartTime, type ApActivity } from './types.ts'
 
 /**
  * Der Aktivitätenplan als Kalender – eine Woche oder ein ganzer Monat.
@@ -52,11 +52,6 @@ export interface ApCalendarWeek {
   /** Der Montag als «2026-07-06» */
   key: string
   days: ApCalendarDay[]
-}
-
-/** Letzter Tag eines Termins – mehrtägige Anlässe tragen `endDate`. */
-function endKey(activity: Pick<ApActivity, 'date' | 'endDate'>): string {
-  return activity.endDate || activity.date
 }
 
 /**
@@ -108,7 +103,7 @@ export function apCalendarGrid(
         date: day,
         inRange: mode === 'week' || isSameMonth(day, cursor),
         activities: activities
-          .filter((activity) => activity.date <= key && endKey(activity) >= key)
+          .filter((activity) => activity.date <= key && apLastDay(activity) >= key)
           .sort(byTime),
       })
       day = addDays(day, 1)

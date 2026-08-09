@@ -236,22 +236,11 @@ export async function importApPlan(
 /* Auswerten                                                           */
 /* ------------------------------------------------------------------ */
 
-/** Ein Eintrag gilt bis zum Ende seines letzten Tages als «kommend». */
-export function apActivityEnd(activity: Pick<ApActivity, 'date' | 'endDate'>): string {
-  return activity.endDate || activity.date
-}
-
-/**
- * Die nächsten Termine, ausgefallene ausgenommen.
- *
- * Ein abgesagter Mittwoch gehört in den Plan, aber nicht in die Antwort auf
- * «was kommt als Nächstes» – sonst stünde dort «keine Aktivität».
+/*
+ * Ob ein Termin kommt, läuft oder vorbei ist, steht in `lib/types`
+ * (`apActivityPhase`): Es hängt an der Uhrzeit und nicht bloss am Tag, und
+ * die Uhrzeiten eines Termins werden ohnehin dort ausgewertet.
  */
-export function upcomingApActivities(activities: ApActivity[], todayKey: string): ApActivity[] {
-  return activities
-    .filter((activity) => apActivityEnd(activity) >= todayKey && activity.kind !== 'cancelled')
-    .sort((a, b) => a.date.localeCompare(b.date))
-}
 
 /** Alle Termine eines Monats – «2026-03». */
 export function apActivitiesOfMonth(activities: ApActivity[], month: string): ApActivity[] {

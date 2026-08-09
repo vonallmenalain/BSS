@@ -1340,6 +1340,30 @@ Kalender bleibt es trotzdem ein ganztägiger Balken über alle drei Tage – ein
 Block von Freitagabend bis Sonntagmittag sähe aus, als wäre der Samstag
 frei. Die beiden Zeiten stehen dort in der Beschreibung.
 
+### Wann ein Termin vorbei ist
+
+Die erfasste Zeit ist nicht bloss eine Angabe zum Lesen – an ihr hängt, was
+die App als «kommend» ausgibt. Gerechnet wird deshalb **auf die Minute** und
+nicht auf den Tag:
+
+| Wann                     | Was dasteht                                        |
+| ------------------------ | -------------------------------------------------- |
+| vor dem Beginn           | «Heute», «Morgen», «In 5 Tagen»                    |
+| zwischen Beginn und Ende | «Läuft»                                            |
+| nach dem Ende            | nichts mehr – der Termin rückt unter **Vergangen** |
+
+Die AP-Klasse von 11 bis 12 Uhr ist damit **um 12 Uhr** vorbei: Sie
+verschwindet aus «Als Nächstes», aus dem Zeitraum «Kommend» und aus der
+Kachel auf der Übersicht, und an ihre Stelle rückt der nächste Termin.
+Vorher stand sie den ganzen Tag als «läuft» da und hielt den Platz besetzt.
+Beide Seiten zählen dafür minütlich weiter – niemand muss neu laden.
+
+Wo **keine Zeit** erfasst ist, bleibt es beim Tag: Ein Termin ohne Ende
+läuft bis Mitternacht, und ein Termin ohne jede Zeitangabe steht den ganzen
+Tag als «Heute» da, ohne zu behaupten, er laufe bereits – der Plan weiss ja
+nicht, wann er losgeht. Ein **mehrtägiger** Anlass läuft dazwischen
+durchgehend, auch am Samstagmorgen, an dem nichts angeschrieben ist.
+
 ### Ansehen und bearbeiten
 
 Der Plan wird hundertmal öfter gelesen als geändert. Deshalb hat die Seite

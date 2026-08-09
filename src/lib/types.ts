@@ -2335,6 +2335,86 @@ export function apTimeLabel(activity: Pick<ApActivity, 'kind' | 'time' | 'endTim
   return end ? `${start} – ${end}` : start
 }
 
+/* ------------------------------------------------------------------ */
+/* Kommt, läuft, war                                                   */
+/* ------------------------------------------------------------------ */
+
+/**
+ * Das Tagesende als Uhrzeit, mit der sich vergleichen lässt.
+ *
+ * «24:00» steht auf keiner Uhr, sortiert sich aber hinter jede Zeit des
+ * Tages – und genau das wird dort gebraucht, wo der Plan keine Zeit kennt:
+ * Ein Termin ohne erfasstes Ende ist am Ende seines Tages vorbei, keine
+ * Minute früher.
+ */
+const AP_END_OF_DAY = '24:00'
+
+/** Der letzte Tag eines Termins – mehrtägige Anlässe tragen `endDate`. */
+export function apLastDay(activity: Pick<ApActivity, 'date' | 'endDate'>): string {
+  return activity.endDate || activity.date
+}
+
+/** Alles, was es braucht, um einen Termin in die Zeit einzuordnen. */
+type ApWhen = Pick<ApActivity, 'date' | 'endDate' | 'kind' | 'time' | 'endTime'>
+
+/**
+ * Wann ein Termin beginnt – als vergleichbarer Zeitpunkt «2026-07-12T11:00».
+ *
+ * Tag und Uhrzeit stehen am Termin getrennt und beide als Text. Zusammen
+ * ergeben sie einen Zeitpunkt, der sich mit `<` und `>=` vergleichen lässt,
+ * ohne `Date` und ohne Zeitzone – so rechnet der Plan überall.
+ *
+ * Ohne erfasste Zeit steht dort das Tagesende, und das ist kein Kniff,
+ * sondern die ehrliche Auskunft: Der Plan weiss nicht, wann dieser Abend
+ * losgeht, und behauptet deshalb den ganzen Tag über nicht, er laufe
+ * bereits. Bei einem mehrtägigen Anlass trifft dieselbe Regel das Richtige –
+ * ab dem zweiten Tag läuft er, ganz gleich, wann er am ersten begonnen hat.
+ */
+export function apStartsAt(activity: ApWhen): string {
+  return `${activity.date}T${apStartTime(activity) || AP_END_OF_DAY}`
+}
+
+/**
+ * Wann ein Termin vorbei ist – «2026-07-12T12:00».
+ *
+ * Die Uhrzeit gehört zum letzten Tag: Das Lager geht von Freitag bis Sonntag
+ * 14:00. Ist kein Ende erfasst, gilt der Termin bis Mitternacht – der Plan
+ * weiss nicht, wie lange der Abend geht, und schneidet ihn nicht ab.
+ */
+export function apEndsAt(activity: ApWhen): string {
+  return `${apLastDay(activity)}T${apEndTime(activity) || AP_END_OF_DAY}`
+}
+
+/**
+ * Wo ein Termin gegenüber «jetzt» steht.
+ *
+ * Die Frage entscheidet mehr als eine Beschriftung: Was vorbei ist, gehört
+ * nicht mehr unter «Als Nächstes», nicht mehr in den Zeitraum «Kommend» und
+ * auf der Übersicht nicht mehr in die Kachel. Gerechnet wird deshalb auf die
+ * Minute genau und nicht auf den Tag: Die AP-Klasse ist um 12 Uhr zu Ende,
+ * und um 15:50 als «läuft» dazustehen, wäre sichtbar falsch.
+ */
+export type ApActivityPhase = 'upcoming' | 'running' | 'past'
+
+export function apActivityPhase(activity: ApWhen, now: string): ApActivityPhase {
+  if (now >= apEndsAt(activity)) return 'past'
+  if (now >= apStartsAt(activity)) return 'running'
+  return 'upcoming'
+}
+
+/**
+ * «Jetzt» in derselben Schreibweise wie ein Termin – «2026-08-09T15:50».
+ *
+ * Von Hand zusammengesetzt und nicht über `lib/dates` geholt: `lib/types`
+ * kommt ohne das Firebase-SDK aus, und daran hängt die Netlify-Function, die
+ * den Kalender ausliefert (siehe `lib/apIcs`).
+ */
+export function apMoment(now: Date): string {
+  const pad = (value: number) => String(value).padStart(2, '0')
+  const day = `${now.getFullYear()}-${pad(now.getMonth() + 1)}-${pad(now.getDate())}`
+  return `${day}T${pad(now.getHours())}:${pad(now.getMinutes())}`
+}
+
 /**
  * Ein Eintrag im Aktivitätenplan der Priestertumskollegien.
  *
