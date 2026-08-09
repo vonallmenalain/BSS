@@ -32,9 +32,9 @@ import { apClassHours } from '@/lib/types'
  *
  * Seit September 2026 ist die Klasse wöchentlich, und ihre Themen sind
  * vorgegeben: «Für eine starke Jugend» gibt für jeden Monat vier Lektionen
- * heraus – Fastsonntag, zweiter, dritter und letzter Sonntag. Sie von Hand
- * abzutippen hiesse, jeden Monat viermal denselben Satz aus dem Browser in
- * den Plan zu übertragen.
+ * heraus – für den ersten bis vierten Sonntag. Sie von Hand abzutippen
+ * hiesse, jeden Monat viermal denselben Satz aus dem Browser in den Plan zu
+ * übertragen.
  *
  * Der Import macht daraus einen Handgriff: Seite kopieren, einfügen,
  * Vorschau prüfen, übernehmen. Er ist damit der einzige Import, der
@@ -44,8 +44,8 @@ import { apClassHours } from '@/lib/types'
  * **Er legt die Klassen gleich mit an.** Wer im September beginnt, hat für
  * die kommenden Sonntage noch gar keine Termine – und einer, der stattfindet
  * und ein Thema hat, fehlt sonst zweimal. Sonntage, für die das Heft kein
- * Thema vorsieht – der vierte in einem Monat mit fünf –, entstehen ebenso,
- * nur eben mit «Thema noch offen».
+ * Thema vorsieht – der fünfte in einem Monat, der einen hat –, entstehen
+ * ebenso, nur eben mit «Thema noch offen».
  */
 
 type Step = 'source' | 'preview' | 'done'
@@ -193,10 +193,10 @@ export function ImportApTopics() {
           hint={
             <ImportHint title="Was beim Import passiert">
               <p>
-                Die vier Lektionen gehen an den Fastsonntag, den zweiten, den dritten und den
-                letzten Sonntag des Monats – so, wie das Heft sie benennt. Für den vierten Sonntag
-                gilt die Lektion der <strong>Kollegien des Aaronischen Priestertums</strong>, nicht
-                die der Jungen Damen.
+                Die vier Lektionen gehen der Reihe nach an den <strong>ersten bis vierten</strong>{' '}
+                Sonntag des Monats. Hat ein Monat fünf, bleibt der letzte vorerst frei. Für die
+                vierte Lektion gilt die Fassung der{' '}
+                <strong>Kollegien des Aaronischen Priestertums</strong>, nicht die der Jungen Damen.
               </p>
               <p className="mt-2">
                 Sonntage, an denen noch keine Klasse im Plan steht, werden angelegt – mit der festen

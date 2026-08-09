@@ -7,9 +7,9 @@ import { apClassSundays, sundaysOfMonth } from './apSchedule.ts'
  *
  * Seit dem Wechsel auf die wöchentliche Klasse sind die Themen nicht mehr
  * frei: Die Kirche gibt für jeden Monat vier Lektionen heraus – eine für
- * den Fastsonntag, eine für den zweiten, eine für den dritten und eine für
- * den letzten Sonntag. Sie stehen als Seite im Netz, herunterladen lässt
- * sich nichts, kopieren schon. Genau das liest dieser Import.
+ * den Fastsonntag und je eine für den zweiten, dritten und vierten Sonntag.
+ * Sie stehen als Seite im Netz, herunterladen lässt sich nichts, kopieren
+ * schon. Genau das liest dieser Import.
  *
  * **Die Adresse ist der Schlüssel, nicht der Text.** Beim Kopieren aus dem
  * Browser kommen die Verweise mit:
@@ -38,18 +38,25 @@ import { apClassSundays, sundaysOfMonth } from './apSchedule.ts'
  * `node --test` direkt ausführen lässt.
  */
 
-/** Welcher Sonntag im Monat – so ordnet «Für eine starke Jugend» seine Lektionen. */
-export type ApLessonSlot = 'fast' | 'second' | 'third' | 'last'
+/**
+ * Welcher Sonntag im Monat – so ordnet «Für eine starke Jugend» seine
+ * Lektionen.
+ *
+ * Die vierte heisst im Heft «Letzter Sonntag» und in der Adresse
+ * `04-fourth-sunday`. Hier gilt die Zählung: Sie kommt auf den **vierten**
+ * Sonntag, und ein fünfter bleibt frei (siehe `apTopicRows`).
+ */
+export type ApLessonSlot = 'fast' | 'second' | 'third' | 'fourth'
 
 export const AP_LESSON_SLOT_LABELS: Record<ApLessonSlot, string> = {
   fast: 'Fastensonntag',
   second: 'Zweiter Sonntag',
   third: 'Dritter Sonntag',
-  last: 'Letzter Sonntag',
+  fourth: 'Vierter Sonntag',
 }
 
 /** Die Reihenfolge, in der die Lektionen im Monat stehen. */
-export const AP_LESSON_SLOTS: ApLessonSlot[] = ['fast', 'second', 'third', 'last']
+export const AP_LESSON_SLOTS: ApLessonSlot[] = ['fast', 'second', 'third', 'fourth']
 
 export interface ParsedApLesson {
   slot: ApLessonSlot
@@ -83,7 +90,7 @@ const SLOT_OF_STEP: Record<string, ApLessonSlot> = {
   '01': 'fast',
   '02': 'second',
   '03': 'third',
-  '04': 'last',
+  '04': 'fourth',
 }
 
 const MONTHS = [
@@ -267,12 +274,17 @@ export interface ApTopicRow {
 /**
  * Welche Lektion an welchem Sonntag.
  *
- * Gezählt wird über die Sonntage des Monats: der erste ist der
- * Fastsonntag, dann der zweite und der dritte – und die vierte Lektion
- * gehört dem **letzten**, so wie sie auf der Seite heisst. In einem Monat
- * mit fünf Sonntagen bleibt deshalb der vierte ohne Thema; die Kirche gibt
- * für ihn keines heraus, und ein erfundenes wäre schlechter als «Thema noch
- * offen».
+ * Gezählt wird vom Monatsanfang her: Der erste Sonntag bekommt die erste
+ * Lektion, der zweite die zweite und so weiter bis zur vierten. **Ein
+ * fünfter Sonntag bleibt frei** – die Kirche gibt für ihn nichts heraus,
+ * und «Thema noch offen» ist ehrlicher als ein Thema, das jemand eine Woche
+ * zu früh oder zu spät behandelt.
+ *
+ * Das Heft nennt die vierte Lektion «Letzter Sonntag», die Adresse dagegen
+ * `04-fourth-sunday`. In vier von fünf Monaten ist das dasselbe; wo es das
+ * nicht ist, folgt der Plan der Zählung und nicht dem Wort – so bleiben die
+ * vier Lektionen in der Reihenfolge beieinander, in der sie aufeinander
+ * aufbauen, und die Lücke fällt ans Monatsende.
  *
  * Zurück kommen nur die Sonntage, an denen tatsächlich Klasse ist – bis
  * August 2026 also der 2. und der 4., danach alle.
@@ -282,13 +294,10 @@ export function apTopicRows(parsed: ParsedApTopics): ApTopicRow[] {
   const topics = new Map(parsed.lessons.map((lesson) => [lesson.slot, lesson.topic]))
 
   const slotOfDate = new Map<string, ApLessonSlot>()
-  if (sundays.length > 0) {
-    slotOfDate.set(sundays[0], 'fast')
-    if (sundays[1]) slotOfDate.set(sundays[1], 'second')
-    if (sundays[2]) slotOfDate.set(sundays[2], 'third')
-    // Zuletzt, damit «letzter» gewinnt, falls ein Monat je vier Sonntage hat.
-    slotOfDate.set(sundays[sundays.length - 1], 'last')
-  }
+  AP_LESSON_SLOTS.forEach((slot, index) => {
+    const date = sundays[index]
+    if (date) slotOfDate.set(date, slot)
+  })
 
   return apClassSundays(parsed.month).map((date) => {
     const slot = slotOfDate.get(date) ?? null

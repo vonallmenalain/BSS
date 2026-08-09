@@ -74,7 +74,7 @@ test('aus der Monatsseite werden Monat, Thema und vier Lektionen', () => {
     },
     { slot: 'second', topic: 'Erfahre mehr über die Wiederherstellung des Priestertums' },
     { slot: 'third', topic: 'Erfahre mehr über Priestertumsschlüssel' },
-    { slot: 'last', topic: 'Ein Sohn Gottes werden, der seine Bündnisse hält' },
+    { slot: 'fourth', topic: 'Ein Sohn Gottes werden, der seine Bündnisse hält' },
   ])
 })
 
@@ -166,7 +166,7 @@ test('die vier Lektionen landen auf den vier Sonntagen im September', () => {
   )
   assert.deepEqual(
     rows.map((row) => row.slot),
-    ['fast', 'second', 'third', 'last'],
+    ['fast', 'second', 'third', 'fourth'],
   )
   assert.equal(
     rows[0].topic,
@@ -175,9 +175,9 @@ test('die vier Lektionen landen auf den vier Sonntagen im September', () => {
   assert.equal(rows[3].topic, 'Ein Sohn Gottes werden, der seine Bündnisse hält')
 })
 
-test('in einem Monat mit fünf Sonntagen bleibt der vierte offen', () => {
-  // November 2026: 1., 8., 15., 22. und 29. – die vierte Lektion gehört dem
-  // letzten Sonntag, so wie das Heft sie nennt.
+test('in einem Monat mit fünf Sonntagen bleibt der fünfte offen', () => {
+  // November 2026: 1., 8., 15., 22. und 29. – gezählt wird vom Monatsanfang,
+  // die vierte Lektion gehört also dem 22. und nicht dem 29.
   const november = parsePastedApTopics(SEPTEMBER.replace(/\/2026\/09\//g, '/2026/11/'))!
   const rows = apTopicRows(november)
 
@@ -187,10 +187,10 @@ test('in einem Monat mit fünf Sonntagen bleibt der vierte offen', () => {
   )
   assert.deepEqual(
     rows.map((row) => row.slot),
-    ['fast', 'second', 'third', null, 'last'],
+    ['fast', 'second', 'third', 'fourth', null],
   )
-  assert.equal(rows[3].topic, '')
-  assert.equal(rows[4].topic, 'Ein Sohn Gottes werden, der seine Bündnisse hält')
+  assert.equal(rows[3].topic, 'Ein Sohn Gottes werden, der seine Bündnisse hält')
+  assert.equal(rows[4].topic, '')
 })
 
 test('vor September 2026 gibt es nur am 2. und 4. Sonntag eine Klasse', () => {
@@ -204,11 +204,11 @@ test('vor September 2026 gibt es nur am 2. und 4. Sonntag eine Klasse', () => {
   )
   assert.deepEqual(
     rows.map((row) => row.slot),
-    ['second', 'last'],
+    ['second', 'fourth'],
   )
 })
 
 test('jede Lektion hat eine Beschriftung für die Vorschau', () => {
   assert.equal(AP_LESSON_SLOT_LABELS.fast, 'Fastensonntag')
-  assert.equal(AP_LESSON_SLOT_LABELS.last, 'Letzter Sonntag')
+  assert.equal(AP_LESSON_SLOT_LABELS.fourth, 'Vierter Sonntag')
 })

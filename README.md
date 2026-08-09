@@ -1421,11 +1421,10 @@ sie, statt dass jemand sie abtippt: **Einstellungen → Importe → Themen
 AP-Klasse**, Monatsseite einfügen, fertig. Wie das im Einzelnen geht, steht
 unter [Themen der AP-Klasse importieren](#themen-der-ap-klasse-importieren).
 
-Die vier Lektionen verteilen sich auf den Fastsonntag, den zweiten, den
-dritten und den **letzten** Sonntag des Monats – so, wie das Heft sie
-benennt. Hat ein Monat fünf Sonntage, bleibt der vierte deshalb ohne
-vorgegebenes Thema; die Klasse findet statt, und im Plan steht «Thema noch
-offen», bis jemand eines einträgt.
+Die vier Lektionen verteilen sich der Reihe nach auf den **ersten bis
+vierten** Sonntag des Monats. Hat ein Monat fünf, bleibt der **letzte**
+vorerst ohne vorgegebenes Thema; die Klasse findet statt, und im Plan steht
+«Thema noch offen», bis jemand eines einträgt.
 
 ### Einen Termin ändern
 
@@ -2233,18 +2232,24 @@ Von den drei Zeilen derselben Lektion gilt die mit der Nummer: Sie ist der
 Titel, Rubrik und Beschreibung sind es nicht. Die Nummer selbst fällt weg,
 denn der wievielte Sonntag es ist, steht im Plan schon im Datum.
 
-| Lektion              | Kommt auf                     |
-| -------------------- | ----------------------------- |
-| 1 – Fastensonntag    | den 1. Sonntag des Monats     |
-| 2 – Zweiter Sonntag  | den 2. Sonntag                |
-| 3 – Dritter Sonntag  | den 3. Sonntag                |
-| 4 – Letzter Sonntag  | den **letzten** Sonntag       |
+| Lektion             | Kommt auf                 |
+| ------------------- | ------------------------- |
+| 1 – Fastensonntag   | den 1. Sonntag des Monats |
+| 2 – Zweiter Sonntag | den 2. Sonntag            |
+| 3 – Dritter Sonntag | den 3. Sonntag            |
+| 4 – Vierter Sonntag | den 4. Sonntag            |
+
+**Ein fünfter Sonntag bleibt frei.** Das Heft nennt die vierte Lektion
+«Letzter Sonntag», die Adresse dagegen `04-fourth-sunday`; in vier von fünf
+Monaten ist das dasselbe. Wo es das nicht ist, folgt der Plan der Zählung
+und nicht dem Wort – so bleiben die vier Lektionen in der Reihenfolge
+beieinander, in der sie aufeinander aufbauen, und die Lücke fällt ans
+Monatsende. Dort steht dann «Thema noch offen», und wer mag, trägt selbst
+etwas ein.
 
 Für die vierte Lektion gilt die Fassung der **Kollegien des Aaronischen
 Priestertums** (`04b`) und nicht die der Jungen Damen (`04a`) – auf der
-Seite steht die der Jungen Damen zuerst. Hat ein Monat fünf Sonntage, geht
-der vierte leer aus: Das Heft sieht für ihn nichts vor, und ein erfundenes
-Thema wäre schlechter als «Thema noch offen».
+Seite steht die der Jungen Damen zuerst.
 
 **Der Import legt die Klassen gleich mit an.** Wer im September beginnt,
 hat für die kommenden Sonntage noch gar keine Termine – ein Sonntag, an dem
