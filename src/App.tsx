@@ -45,6 +45,9 @@ const ImportCleaning = lazy(() =>
 const ImportApActivities = lazy(() =>
   import('@/pages/ImportApActivities').then((m) => ({ default: m.ImportApActivities })),
 )
+const ImportApTopics = lazy(() =>
+  import('@/pages/ImportApTopics').then((m) => ({ default: m.ImportApTopics })),
+)
 const ImportMinutes = lazy(() =>
   import('@/pages/ImportMinutes').then((m) => ({ default: m.ImportMinutes })),
 )
@@ -300,6 +303,14 @@ export default function App() {
                       element={
                         <Suspense fallback={<LoadingScreen />}>
                           <ImportApActivities />
+                        </Suspense>
+                      }
+                    />
+                    <Route
+                      path="import/ap-themen"
+                      element={
+                        <Suspense fallback={<LoadingScreen />}>
+                          <ImportApTopics />
                         </Suspense>
                       }
                     />

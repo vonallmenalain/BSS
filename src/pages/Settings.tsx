@@ -12,6 +12,7 @@ import {
   ClipboardList,
   DatabaseBackup,
   Download,
+  GraduationCap,
   HeartHandshake,
   History,
   Loader2,
@@ -95,6 +96,12 @@ const IMPORTS = [
     label: 'Aktivitäten AP',
     description: 'Der bisherige Jahresplan der Priestertumskollegien als Kalender',
     icon: CalendarDays,
+  },
+  {
+    to: '/import/ap-themen',
+    label: 'Themen AP-Klasse',
+    description: 'Die Lektionen eines Monats aus «Für eine starke Jugend» – jeden Monat neu',
+    icon: GraduationCap,
   },
   {
     to: '/import/sitzungen',

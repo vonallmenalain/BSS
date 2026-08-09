@@ -2250,7 +2250,7 @@ export const AP_ACTIVITY_KIND_LABELS: Record<ApActivityKind, string> = {
 }
 
 /**
- * Wann die AP-Klasse ist: immer von 11 bis 12 Uhr.
+ * Wann die AP-Klasse ist – und ab wann sie anders ist.
  *
  * Die einzige Art im Plan mit einer festen Stunde. Der Mittwochabend
  * beginnt mal um 19:00 und mal um 19:30, ein Lager hat gar keine Zeit –
@@ -2260,13 +2260,41 @@ export const AP_ACTIVITY_KIND_LABELS: Record<ApActivityKind, string> = {
  * ohne Zeitangabe im Plan steht, wird trotzdem an ihrer Stunde gezeigt
  * (siehe `apStartTime`).
  *
+ * **Ab September 2026 ändert sich der Takt**: Die Klasse ist nicht mehr am
+ * 2. und 4., sondern an **jedem** Sonntag – und dafür kürzer, von 11:35
+ * bis 12:00. Das alte Mass bleibt trotzdem stehen: Ein Plan reicht Jahre
+ * zurück, und eine Klasse vom März 2026 war von 11 bis 12. Welche Stunde
+ * gilt, entscheidet deshalb das Datum und nicht der heutige Tag.
+ *
  * Wer eine Klasse ausnahmsweise verschiebt, trägt die Zeit am Termin ein –
- * die gilt dann vor dieser hier.
+ * die gilt dann vor der üblichen, und die übliche Dauer hängt sich daran.
  */
-export const AP_CLASS_TIME = '11:00'
+export const AP_CLASS_WEEKLY_FROM = '2026-09-01'
 
-/** Wie lange die AP-Klasse dauert – die Stunde von 11 bis 12. */
+/** Bis August 2026: am 2. und 4. Sonntag, von 11 bis 12 Uhr. */
+export const AP_CLASS_TIME = '11:00'
 export const AP_CLASS_DURATION_MINUTES = 60
+
+/** Ab September 2026: jeden Sonntag, von 11:35 bis 12:00. */
+export const AP_CLASS_TIME_WEEKLY = '11:35'
+export const AP_CLASS_DURATION_MINUTES_WEEKLY = 25
+
+/** Wie lange eine Klasse an diesem Tag üblicherweise dauert. */
+export function apClassDuration(date: string): number {
+  return date >= AP_CLASS_WEEKLY_FROM ? AP_CLASS_DURATION_MINUTES_WEEKLY : AP_CLASS_DURATION_MINUTES
+}
+
+/**
+ * Die übliche Stunde der Klasse an einem bestimmten Tag – «11:35» bis «12:00».
+ *
+ * Eine Stelle für beide Zeiten: Wer eine Klasse anlegt, den Plan erzeugt
+ * oder die Themen einliest, fragt hier nach und muss den Stichtag nicht
+ * kennen.
+ */
+export function apClassHours(date: string): { start: string; end: string } {
+  const start = date >= AP_CLASS_WEEKLY_FROM ? AP_CLASS_TIME_WEEKLY : AP_CLASS_TIME
+  return { start, end: apTimePlus(start, apClassDuration(date)) }
+}
 
 /**
  * Wann ein Termin beginnt – die erfasste Zeit oder die übliche.
@@ -2276,10 +2304,10 @@ export const AP_CLASS_DURATION_MINUTES = 60
  * alles Übrige nicht – ein Mittwochabend ohne Zeitangabe bekommt deshalb
  * keine erfundene Stunde, sondern bleibt ohne.
  */
-export function apStartTime(activity: Pick<ApActivity, 'kind' | 'time'>): string {
+export function apStartTime(activity: Pick<ApActivity, 'date' | 'kind' | 'time'>): string {
   const own = (activity.time ?? '').trim()
   if (own) return own
-  return activity.kind === 'class' ? AP_CLASS_TIME : ''
+  return activity.kind === 'class' ? apClassHours(activity.date).start : ''
 }
 
 /**
@@ -2287,17 +2315,19 @@ export function apStartTime(activity: Pick<ApActivity, 'kind' | 'time'>): string
  *
  * Das Ende ist die Angabe, die dem Plan früher fehlte: Ein Kalender braucht
  * sie, sonst muss er die Länge raten. Erfasst wird sie am Termin, von Hand
- * und für jede Art – nur die Klasse bringt sie mit, weil sie ihre Stunde
+ * und für jede Art – nur die Klasse bringt sie mit, weil sie ihre Lektion
  * dauert, ganz gleich wann sie beginnt.
  *
  * Bleibt sie leer, ist das keine Lücke, sondern eine Auskunft: Der Plan
  * weiss nicht, wie lange dieser Abend geht.
  */
-export function apEndTime(activity: Pick<ApActivity, 'kind' | 'time' | 'endTime'>): string {
+export function apEndTime(
+  activity: Pick<ApActivity, 'date' | 'kind' | 'time' | 'endTime'>,
+): string {
   const own = (activity.endTime ?? '').trim()
   if (own) return own
   if (activity.kind !== 'class') return ''
-  return apTimePlus(apStartTime(activity), AP_CLASS_DURATION_MINUTES)
+  return apTimePlus(apStartTime(activity), apClassDuration(activity.date))
 }
 
 /**
@@ -2327,7 +2357,9 @@ export function apTimePlus(time: string, minutes: number): string {
  * Ein Termin ohne Ende zeigt nur seinen Beginn. Ein Strich ins Leere – «19:30
  * –» – sähe aus, als fehlte etwas beim Anzeigen; es fehlt aber im Plan.
  */
-export function apTimeLabel(activity: Pick<ApActivity, 'kind' | 'time' | 'endTime'>): string {
+export function apTimeLabel(
+  activity: Pick<ApActivity, 'date' | 'kind' | 'time' | 'endTime'>,
+): string {
   const start = apStartTime(activity)
   if (!start) return ''
 

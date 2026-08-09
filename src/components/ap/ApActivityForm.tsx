@@ -14,7 +14,7 @@ import {
 } from '@/services/apActivities'
 import {
   AP_ACTIVITY_KIND_LABELS,
-  AP_CLASS_TIME,
+  apClassHours,
   apEndTime,
   apStartTime,
   apTimeLabel,
@@ -114,9 +114,10 @@ export function ApActivityForm({
   /**
    * Die Art wechseln – und mit ihr die Uhrzeit, wo sie feststeht.
    *
-   * Die Klasse dauert ihre Stunde und beginnt um 11; wer sie anlegt, soll das
-   * nicht jedes Mal eintippen. Ein eingetragener Beginn bleibt dabei stehen –
-   * dann füllt sich nur das Ende, eine Stunde später.
+   * Die Klasse hat ihre feste Stunde; wer sie anlegt, soll das nicht jedes
+   * Mal eintippen. Welche Stunde das ist, sagt das Datum: bis August 2026
+   * von 11 bis 12, seither von 11:35 bis 12:00. Ein eingetragener Beginn
+   * bleibt dabei stehen – dann füllt sich nur das Ende.
    *
    * Umgekehrt verschwindet nur, was der Dialog selbst gesetzt hat: Wird aus
    * der Klasse doch ein Mittwochabend, stünde dort sonst eine Zeit, die
@@ -124,20 +125,22 @@ export function ApActivityForm({
    */
   const updateKind = (kind: ApActivityKind) =>
     setForm((current) => {
+      const usual = apClassHours(current.date)
+
       if (kind === 'class') {
-        const time = current.time.trim() || AP_CLASS_TIME
+        const time = current.time.trim() || usual.start
         return {
           ...current,
           kind,
           time,
-          endTime: current.endTime.trim() || apEndTime({ kind, time }),
+          endTime: current.endTime.trim() || apEndTime({ date: current.date, kind, time }),
         }
       }
 
       const untouched =
         current.kind === 'class' &&
-        current.time.trim() === AP_CLASS_TIME &&
-        current.endTime.trim() === apEndTime({ kind: 'class', time: AP_CLASS_TIME })
+        current.time.trim() === usual.start &&
+        current.endTime.trim() === usual.end
 
       return untouched ? { ...current, kind, time: '', endTime: '' } : { ...current, kind }
     })
@@ -307,7 +310,9 @@ export function ApActivityForm({
               </div>
               <p className="hint">
                 {form.kind === 'class'
-                  ? 'Die Klasse ist immer von 11 bis 12 Uhr.'
+                  ? `Die Klasse ist immer von ${apClassHours(form.date).start} bis ${
+                      apClassHours(form.date).end
+                    } Uhr.`
                   : multiDay
                     ? 'Beginn am ersten, Ende am letzten Tag.'
                     : 'Mit Ende steht der Termin im Kalender genau so lange.'}
