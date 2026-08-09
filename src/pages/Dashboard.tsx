@@ -24,6 +24,7 @@ import {
   useTalks,
 } from '@/hooks/useFirestore'
 import { useLocalStorage } from '@/hooks/useLocalStorage'
+import { useNow } from '@/hooks/useNow'
 import { useOwnItem } from '@/hooks/useOwnItem'
 import { MemberLink } from '@/components/ui/MemberLink'
 import { AgendaItemCard } from '@/components/agenda/AgendaItemCard'
@@ -48,7 +49,6 @@ import {
   formatTime,
   hasBirthdaySoon,
   toDate,
-  toDateInput,
   differenceInCalendarDays,
   startOfDay,
   upcomingWeekdays,
@@ -56,7 +56,6 @@ import {
 import { isDutyItem } from '@/lib/monthlyDuties'
 import { cn } from '@/lib/utils'
 import { sortForMeeting, sortForPendenzen } from '@/services/agenda'
-import { apActivityEnd } from '@/services/apActivities'
 import {
   openTalkSlots,
   sacramentDocId,
@@ -66,6 +65,8 @@ import {
 } from '@/services/sacrament'
 import {
   AP_ACTIVITY_KIND_LABELS,
+  apActivityPhase,
+  apMoment,
   DASHBOARD_AREA_LABELS,
   DASHBOARD_TILE_LABELS,
   DEFAULT_DASHBOARD_VIEW,
@@ -100,6 +101,7 @@ export function Dashboard() {
   const { data: talks } = useTalks(100)
   const { data: sacramentMeetings } = useSacramentMeetings(20)
   const { data: apActivities } = useApActivities()
+  const now = useNow()
   const [formOpen, setFormOpen] = useState(false)
 
   const [storedView, setView] = useLocalStorage<DashboardView>(
@@ -186,14 +188,23 @@ export function Dashboard() {
 
   const openTalkCount = talkGaps.reduce((sum, gap) => sum + gap.open, 0)
 
-  /* Aktivitätenplan: die nächsten Termine, ohne die abgesagten Abende. */
+  /*
+   * Aktivitätenplan: die nächsten Termine, ohne die abgesagten Abende.
+   *
+   * Vorbei ist ein Termin nach seiner Endzeit und nicht erst um Mitternacht
+   * (siehe `apActivityPhase`). Die AP-Klasse von 11 bis 12 Uhr steht deshalb
+   * am Nachmittag nicht mehr da – und weil `useNow` minütlich weiterzählt,
+   * verschwindet sie von selbst, ohne dass die Seite neu geladen wird.
+   */
   const nextApActivities = useMemo(() => {
-    const today = toDateInput(new Date())
+    const moment = apMoment(new Date(now))
     return apActivities
-      .filter((activity) => apActivityEnd(activity) >= today && activity.kind !== 'cancelled')
+      .filter(
+        (activity) => apActivityPhase(activity, moment) !== 'past' && activity.kind !== 'cancelled',
+      )
       .sort((a, b) => a.date.localeCompare(b.date))
       .slice(0, view.apActivities)
-  }, [apActivities, view.apActivities])
+  }, [apActivities, view.apActivities, now])
 
   /* Geburtstage ------------------------------------------------------ */
   const birthdays = useMemo(

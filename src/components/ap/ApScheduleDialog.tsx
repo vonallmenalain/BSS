@@ -13,9 +13,13 @@ import type { ApActivity } from '@/lib/types'
  *
  * Die Jahresplanung besteht zum grössten Teil aus Terminen, an denen
  * nichts weiter steht als das Datum: Mittwoch für Mittwoch, dazwischen die
- * Klassen am 2. und 4. Sonntag. Die von Hand zu erfassen, wäre eine
- * Fleissarbeit ohne Erkenntnis – also erzeugt die App sie, und was an
- * einem Abend stattfindet, kommt später dazu.
+ * Klassen am Sonntag. Die von Hand zu erfassen, wäre eine Fleissarbeit ohne
+ * Erkenntnis – also erzeugt die App sie, und was an einem Abend
+ * stattfindet, kommt später dazu.
+ *
+ * Die Themen der Klasse kommen nicht von hier: Sie stehen monatlich in «Für
+ * eine starke Jugend» und werden eingelesen (**Einstellungen › Importe ›
+ * Themen AP-Klasse**). Bis dahin steht «Thema noch offen» im Plan.
  *
  * Tage, an denen schon etwas im Plan steht, bleiben unangetastet. Der
  * Knopf lässt sich deshalb gefahrlos ein zweites Mal drücken: Er füllt
@@ -145,7 +149,8 @@ export function ApScheduleDialog({
           <Choice
             checked={options.classes}
             onChange={(next) => update('classes', next)}
-            label="AP-Klasse am 2. und 4. Sonntag"
+            label="AP-Klasse an den Sonntagen"
+            hint="Ab September 2026 jeden Sonntag von 11:35 bis 12:00 – davor am 2. und 4. von 11 bis 12."
             count={counts.class}
           />
           <Choice

@@ -8,7 +8,9 @@ import {
   apCalendarTitle,
 } from '../src/lib/apCalendar.ts'
 import {
+  apActivityPhase,
   apEndTime,
+  apMoment,
   apStartTime,
   apTimeLabel,
   apTimePlus,
@@ -203,6 +205,78 @@ test('die Klasse bringt ihre Stunde mit – auch verschoben', () => {
   assert.equal(apTimeLabel(frueh), '09:15 – 10:15')
   // Was erfasst ist, gilt vor dem Üblichen.
   assert.equal(apTimeLabel(kurz), '11:00 – 11:45')
+})
+
+/* ------------------------------------------------------------------ */
+/* Kommt, läuft, war                                                   */
+/* ------------------------------------------------------------------ */
+
+test('die Klasse ist um zwölf vorbei und nicht erst um Mitternacht', () => {
+  // Der Fall aus dem Gemeindealltag: Klasse von 11 bis 12, Blick um 15:50.
+  const klasse = activity({ date: '2026-07-12', kind: 'class' })
+
+  assert.equal(apActivityPhase(klasse, '2026-07-12T09:00'), 'upcoming')
+  assert.equal(apActivityPhase(klasse, '2026-07-12T11:00'), 'running')
+  assert.equal(apActivityPhase(klasse, '2026-07-12T11:59'), 'running')
+  assert.equal(apActivityPhase(klasse, '2026-07-12T12:00'), 'past')
+  assert.equal(apActivityPhase(klasse, '2026-07-12T15:50'), 'past')
+})
+
+test('ein erfasstes Ende gilt vor der üblichen Stunde', () => {
+  const abend = activity({ date: '2026-07-01', time: '19:30', endTime: '21:00' })
+
+  assert.equal(apActivityPhase(abend, '2026-07-01T19:29'), 'upcoming')
+  assert.equal(apActivityPhase(abend, '2026-07-01T20:15'), 'running')
+  assert.equal(apActivityPhase(abend, '2026-07-01T21:00'), 'past')
+})
+
+test('ohne Ende läuft der Abend bis Mitternacht', () => {
+  const abend = activity({ date: '2026-07-01', time: '19:30' })
+
+  assert.equal(apActivityPhase(abend, '2026-07-01T19:30'), 'running')
+  assert.equal(apActivityPhase(abend, '2026-07-01T23:59'), 'running')
+  assert.equal(apActivityPhase(abend, '2026-07-02T00:00'), 'past')
+})
+
+test('ohne jede Zeit behauptet der Plan nicht, es laufe schon', () => {
+  const abend = activity({ date: '2026-07-01' })
+
+  // Den ganzen Tag «heute», nie «läuft» – wann er beginnt, weiss niemand.
+  assert.equal(apActivityPhase(abend, '2026-07-01T00:00'), 'upcoming')
+  assert.equal(apActivityPhase(abend, '2026-07-01T20:00'), 'upcoming')
+  assert.equal(apActivityPhase(abend, '2026-07-02T00:00'), 'past')
+})
+
+test('ein mehrtägiger Anlass läuft über seine Tage hinweg', () => {
+  // Lager von Freitag 18:00 bis Sonntag 14:00.
+  const lager = activity({
+    date: '2026-07-10',
+    endDate: '2026-07-12',
+    time: '18:00',
+    endTime: '14:00',
+    kind: 'special',
+  })
+
+  assert.equal(apActivityPhase(lager, '2026-07-10T17:59'), 'upcoming')
+  assert.equal(apActivityPhase(lager, '2026-07-10T18:00'), 'running')
+  // Am Samstag läuft es, obwohl 10:00 vor der Anfangszeit 18:00 liegt.
+  assert.equal(apActivityPhase(lager, '2026-07-11T10:00'), 'running')
+  assert.equal(apActivityPhase(lager, '2026-07-12T13:59'), 'running')
+  assert.equal(apActivityPhase(lager, '2026-07-12T14:00'), 'past')
+})
+
+test('ein mehrtägiger Anlass ohne Zeiten läuft ab dem zweiten Tag', () => {
+  const lager = activity({ date: '2026-07-10', endDate: '2026-07-12', kind: 'special' })
+
+  assert.equal(apActivityPhase(lager, '2026-07-10T08:00'), 'upcoming')
+  assert.equal(apActivityPhase(lager, '2026-07-11T08:00'), 'running')
+  assert.equal(apActivityPhase(lager, '2026-07-12T23:59'), 'running')
+  assert.equal(apActivityPhase(lager, '2026-07-13T00:00'), 'past')
+})
+
+test('«jetzt» wird gleich geschrieben wie ein Termin', () => {
+  assert.equal(apMoment(new Date(2026, 6, 12, 15, 50)), '2026-07-12T15:50')
+  assert.equal(apMoment(new Date(2026, 0, 3, 9, 5)), '2026-01-03T09:05')
 })
 
 test('eine Uhrzeit weiterstellen – und was dabei keine Uhrzeit ergibt', () => {

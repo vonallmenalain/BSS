@@ -1302,7 +1302,15 @@ Der Plan hat einen festen Rhythmus, und die App kennt ihn:
 - **jeden Mittwochabend** eine Aktivität,
 - **ausser am 3. Mittwoch im Monat** – dann ist FHV, und die AP-Aktivität
   fällt aus,
-- **am 2. und 4. Sonntag** die AP-Klasse, **immer von 11 bis 12 Uhr**.
+- **jeden Sonntag** die AP-Klasse, **von 11:35 bis 12:00 Uhr**.
+
+**Der Sonntag hat im September 2026 gewechselt.** Bis August war die Klasse
+am 2. und 4. Sonntag und dauerte von 11 bis 12 Uhr; seit dem 1. September
+2026 ist sie wöchentlich und dafür kürzer. Beides steht nebeneinander im
+Code, und welches gilt, entscheidet das Datum des Termins – ein Plan reicht
+Jahre zurück, und eine Klasse vom März 2026 war nun einmal eine Stunde
+lang. Wer den Plan erzeugt, einen Termin anlegt oder die Themen einliest,
+bekommt automatisch die Stunde, die an diesem Tag gilt.
 
 Alles Übrige – Lager, Tempelbesuche, Pfahlanlässe, ein Samstag – ist ein
 besonderer Anlass und kann an jedem beliebigen Tag stehen, ein- oder
@@ -1327,18 +1335,44 @@ lange; bleibt sie leer, sagt der Plan nur, wann es losgeht – und das ist
 ehrlicher als eine erfundene Länge.
 
 Die **AP-Klasse** ist die einzige Art mit einer festen Stunde, und die App
-kennt sie: Eine neu angelegte Klasse steht auf **11 bis 12 Uhr**, und eine,
-bei der nichts erfasst ist, wird trotzdem so gezeigt – im Plan wie im
-Kalender. Wer sie ausnahmsweise verschiebt, trägt die Zeit am Termin ein;
-erfasst gilt vor üblich, und ihre Stunde nimmt sie mit. Wann ein
-Mittwochabend beginnt und wie lange er dauert, weiss die App dagegen nicht;
-dort bleiben die Felder leer, solange niemand etwas einträgt.
+kennt sie: Eine neu angelegte Klasse steht auf **11:35 bis 12:00** – vor
+September 2026 auf 11 bis 12 –, und eine, bei der nichts erfasst ist, wird
+trotzdem so gezeigt, im Plan wie im Kalender. Wer sie ausnahmsweise
+verschiebt, trägt die Zeit am Termin ein; erfasst gilt vor üblich, und ihre
+Länge nimmt sie mit: Eine Klasse ab 09:15 endet heute um 09:40, früher hätte
+sie bis 10:15 gedauert. Wann ein Mittwochabend beginnt und wie lange er
+dauert, weiss die App dagegen nicht; dort bleiben die Felder leer, solange
+niemand etwas einträgt.
 
 Bei einem **mehrtägigen** Anlass gehört der Beginn zum ersten und das Ende
 zum letzten Tag: Das Lager geht von Freitag 18:00 bis Sonntag 14:00. Im
 Kalender bleibt es trotzdem ein ganztägiger Balken über alle drei Tage – ein
 Block von Freitagabend bis Sonntagmittag sähe aus, als wäre der Samstag
 frei. Die beiden Zeiten stehen dort in der Beschreibung.
+
+### Wann ein Termin vorbei ist
+
+Die erfasste Zeit ist nicht bloss eine Angabe zum Lesen – an ihr hängt, was
+die App als «kommend» ausgibt. Gerechnet wird deshalb **auf die Minute** und
+nicht auf den Tag:
+
+| Wann                     | Was dasteht                                        |
+| ------------------------ | -------------------------------------------------- |
+| vor dem Beginn           | «Heute», «Morgen», «In 5 Tagen»                    |
+| zwischen Beginn und Ende | «Läuft»                                            |
+| nach dem Ende            | nichts mehr – der Termin rückt unter **Vergangen** |
+
+Die AP-Klasse von 11 bis 12 Uhr ist damit **um 12 Uhr** vorbei: Sie
+verschwindet aus «Als Nächstes», aus dem Zeitraum «Kommend» und aus der
+Kachel auf der Übersicht, und an ihre Stelle rückt der nächste Termin.
+Vorher stand sie den ganzen Tag als «läuft» da und hielt den Platz besetzt.
+Beide Seiten zählen dafür minütlich weiter – niemand muss neu laden.
+
+Wo **keine Zeit** erfasst ist, bleibt es beim Tag: Ein Termin ohne Ende
+läuft bis Mitternacht, und ein Termin ohne jede Zeitangabe steht den ganzen
+Tag als «Heute» da, ohne zu behaupten, er laufe bereits – der Plan weiss ja
+nicht, wann er losgeht. Ein **mehrtägiger** Anlass läuft dazwischen
+durchgehend, auch am Samstagmorgen, an dem nichts angeschrieben ist.
 
 ### Ansehen und bearbeiten
 
@@ -1375,6 +1409,23 @@ Der Knopf **Termine erzeugen** legt den Takt für einen Zeitraum an – etwa das
 kommende Jahr –, ohne Titel, als Gerüst. Tage, an denen bereits etwas im Plan
 steht, bleiben unangetastet; der Knopf lässt sich deshalb gefahrlos ein
 zweites Mal drücken und füllt dann nur die Lücken.
+
+Die Klassen entstehen dabei mit ihrer Stunde, aber ohne Thema – im Plan
+steht «Thema noch offen», bis der Import sie füllt.
+
+### Die Themen der Klasse
+
+**Was in der Klasse behandelt wird, ist vorgegeben.** «Für eine starke
+Jugend» gibt für jeden Monat vier Lektionen heraus, und der Plan übernimmt
+sie, statt dass jemand sie abtippt: **Einstellungen → Importe → Themen
+AP-Klasse**, Monatsseite einfügen, fertig. Wie das im Einzelnen geht, steht
+unter [Themen der AP-Klasse importieren](#themen-der-ap-klasse-importieren).
+
+Die vier Lektionen verteilen sich auf den Fastsonntag, den zweiten, den
+dritten und den **letzten** Sonntag des Monats – so, wie das Heft sie
+benennt. Hat ein Monat fünf Sonntage, bleibt der vierte deshalb ohne
+vorgegebenes Thema; die Klasse findet statt, und im Plan steht «Thema noch
+offen», bis jemand eines einträgt.
 
 ### Einen Termin ändern
 
@@ -2151,6 +2202,68 @@ aber kein lesbares Datum – die werden übersprungen und gemeldet.
 standardmässig an: Die Tabelle **ist** der Plan, und ein zweiter Anlauf nach
 einer Korrektur soll nicht jeden Termin doppelt hinterlassen. Ohne den Haken
 kommen die Zeilen zum Bestehenden dazu – sinnvoll nur für einen Nachtrag.
+
+---
+
+## Themen der AP-Klasse importieren
+
+**Einstellungen → Importe → Themen AP-Klasse** – der einzige Import, der
+**jeden Monat** gebraucht wird.
+
+Seit die AP-Klasse wöchentlich ist, sind ihre Themen vorgegeben: «Für eine
+starke Jugend» gibt je Monat vier Lektionen heraus. Sie stehen als Seite im
+Netz, herunterladen lässt sich nichts – kopieren schon. Auf
+`churchofjesuschrist.org` das Heft für den gewünschten Monat öffnen, die
+ganze Seite markieren (Strg bzw. Cmd + A), kopieren, einfügen. Menü,
+Artikel und Fusszeile dürfen mitkommen; gelesen wird nur der Abschnitt
+«Lektionen am Sonntag».
+
+**Die Adresse ist der Schlüssel, nicht der Text.** Beim Kopieren kommen die
+Verweise mit, und in ihnen steckt alles Nötige:
+
+```
+[Zweiter Sonntag](…/ftsoy/2026/09/fsy-lessons/02-second-sunday?lang=deu)
+[2. Erfahre mehr über die Wiederherstellung des Priestertums](…/02-second-sunday…)
+[Studienhilfen für den zweiten Sonntag im September](…/02-second-sunday…)
+```
+
+Der Monat steht in der Adresse, die Lektion in ihrer Ziffer – das braucht
+kein Deutsch und hält, wenn die Rubriken im nächsten Monat anders heissen.
+Von den drei Zeilen derselben Lektion gilt die mit der Nummer: Sie ist der
+Titel, Rubrik und Beschreibung sind es nicht. Die Nummer selbst fällt weg,
+denn der wievielte Sonntag es ist, steht im Plan schon im Datum.
+
+| Lektion              | Kommt auf                     |
+| -------------------- | ----------------------------- |
+| 1 – Fastensonntag    | den 1. Sonntag des Monats     |
+| 2 – Zweiter Sonntag  | den 2. Sonntag                |
+| 3 – Dritter Sonntag  | den 3. Sonntag                |
+| 4 – Letzter Sonntag  | den **letzten** Sonntag       |
+
+Für die vierte Lektion gilt die Fassung der **Kollegien des Aaronischen
+Priestertums** (`04b`) und nicht die der Jungen Damen (`04a`) – auf der
+Seite steht die der Jungen Damen zuerst. Hat ein Monat fünf Sonntage, geht
+der vierte leer aus: Das Heft sieht für ihn nichts vor, und ein erfundenes
+Thema wäre schlechter als «Thema noch offen».
+
+**Der Import legt die Klassen gleich mit an.** Wer im September beginnt,
+hat für die kommenden Sonntage noch gar keine Termine – ein Sonntag, an dem
+Klasse ist und für den ein Thema feststeht, soll nicht zweimal von Hand
+erfasst werden müssen. Steht die Klasse dagegen schon im Plan, bleibt alles
+daran stehen: Zeit, Treffpunkt, Zuständigkeit; geändert wird nur der Titel,
+und nur dort, wo das Heft ein Thema vorgibt. Ein selbst eingetragenes Thema
+an einem Sonntag ohne Vorgabe überschreibt der Import also nicht.
+
+Die Vorschau zeigt jeden Sonntag mit seiner Lektion, dem Thema und dem, was
+daraus wird – «wird angelegt», «wird gesetzt», «bleibt». Wo ein Thema
+ersetzt wird, steht das bisherige durchgestrichen daneben. Darüber die
+Zählung und, falls eine Lektion in diesem Monat auf keinen Klassensonntag
+passt, ein Hinweis darauf.
+
+Kopiert ein Browser die Seite ohne Verweise, greift der zweite Weg: die
+Zeilen, die mit «1.» bis «4.» beginnen, und der Monat aus der Überschrift.
+Bei der Vier gilt dann die zweite – erst steht die Lektion der Jungen
+Damen, danach die der Kollegien.
 
 ---
 

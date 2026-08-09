@@ -4,6 +4,7 @@ import {
   Award,
   Brush,
   CalendarDays,
+  GraduationCap,
   HeartHandshake,
   History,
   Music,
@@ -26,6 +27,11 @@ import { cn } from '@/lib/utils'
  * hier, weil man sie hier sucht – und stehen hinten, weil sie nach der
  * Einrichtung niemanden mehr beschäftigen. Der Putzplan kommt zweimal im
  * Jahr und steht dazwischen.
+ *
+ * Die Ausnahme sind die Themen der AP-Klasse: Sie kommen **jeden Monat**
+ * neu heraus und sind damit der einzige Import, der zum Betrieb gehört und
+ * nicht zum Einrichten. Sie stehen deshalb gleich neben dem Jahresplan der
+ * Aktivitäten, zu dem sie gehören.
  */
 const TABS = [
   { to: '/import', label: 'Mitglieder', icon: ClipboardList },
@@ -34,6 +40,7 @@ const TABS = [
   { to: '/import/alleinstehende', label: 'Alleinstehende', icon: Users },
   { to: '/import/putzplan', label: 'Putzplan', icon: Brush },
   { to: '/import/aktivitaeten', label: 'Aktivitäten AP', icon: CalendarDays },
+  { to: '/import/ap-themen', label: 'Themen AP-Klasse', icon: GraduationCap },
   { to: '/import/sitzungen', label: 'Sitzungen', icon: NotebookPen },
   { to: '/import/verlauf', label: 'Verlauf', icon: History },
   { to: '/import/lieder', label: 'Lieder', icon: Music },

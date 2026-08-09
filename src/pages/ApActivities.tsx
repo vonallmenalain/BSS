@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react'
+import { useCallback, useMemo, useState } from 'react'
 import {
   ArrowRight,
   CalendarDays,
@@ -35,7 +35,7 @@ import { PageHeader } from '@/components/ui/Pickers'
 import { MenuChips, MenuChoice, MenuDivider, MenuToggle, ViewMenu } from '@/components/ui/ViewMenu'
 import { cn } from '@/lib/utils'
 import { differenceInCalendarDays, formatMonth, startOfDay, toDateInput } from '@/lib/dates'
-import { apActivityEnd, saveApMonth } from '@/services/apActivities'
+import { saveApMonth } from '@/services/apActivities'
 import { nextFreeApDate } from '@/services/apSchedule'
 import { fromIsoDate } from '@/services/importHistory'
 import {
@@ -44,6 +44,8 @@ import {
   AP_FILTER_KINDS,
   AP_SCOPE_LABELS,
   AP_VIEW_MODE_LABELS,
+  apActivityPhase,
+  apMoment,
   apTimeLabel,
   apVisibleActivities,
   isApCalendarMode,
@@ -103,7 +105,10 @@ export function ApActivities() {
   const { canEditAp } = useAuth()
   const { data: activities, loading } = useApActivities()
   const { data: months } = useApMonths()
-  const now = useNow(300_000)
+  /* Minütlich: Ob ein Termin noch läuft, entscheidet sich an seiner Endzeit –
+     die Klasse ist um 12:00 vorbei, und die Karte oben soll das sehen, ohne
+     dass jemand die Seite neu lädt. */
+  const now = useNow()
 
   const [view, setView] = useApView()
   const scope = view.scope
@@ -129,6 +134,14 @@ export function ApActivities() {
   const editMode = canEditAp && wantsEdit
 
   const today = useMemo(() => toDateInput(new Date(now)), [now])
+  /* Derselbe Augenblick auf die Minute genau – «2026-08-09T15:50». */
+  const moment = useMemo(() => apMoment(new Date(now)), [now])
+
+  /** Vorbei heisst vorbei: nach der Endzeit, nicht erst um Mitternacht. */
+  const isPast = useCallback(
+    (activity: ApActivity) => apActivityPhase(activity, moment) === 'past',
+    [moment],
+  )
 
   const leadershipOf = useMemo(
     () => new Map(months.map((month) => [month.month, month.leadership])),
@@ -148,29 +161,29 @@ export function ApActivities() {
   const upcoming = useMemo(
     () =>
       shown
-        .filter((activity) => apActivityEnd(activity) >= today && activity.kind !== 'cancelled')
+        .filter((activity) => !isPast(activity) && activity.kind !== 'cancelled')
         .sort((a, b) => a.date.localeCompare(b.date)),
-    [shown, today],
+    [shown, isPast],
   )
 
   const next = upcoming[0] ?? null
 
   const counts = useMemo(
     () => ({
-      upcoming: shown.filter((activity) => apActivityEnd(activity) >= today).length,
-      past: shown.filter((activity) => apActivityEnd(activity) < today).length,
+      upcoming: shown.filter((activity) => !isPast(activity)).length,
+      past: shown.filter(isPast).length,
       all: shown.length,
     }),
-    [shown, today],
+    [shown, isPast],
   )
 
   /* Der Plan, nach Zeitraum gefiltert und nach Monaten gruppiert. */
   const groups = useMemo(() => {
     let visible = shown
     if (scope === 'upcoming') {
-      visible = visible.filter((activity) => apActivityEnd(activity) >= today)
+      visible = visible.filter((activity) => !isPast(activity))
     } else if (scope === 'past') {
-      visible = visible.filter((activity) => apActivityEnd(activity) < today)
+      visible = visible.filter(isPast)
     }
 
     const sorted = [...visible].sort((a, b) => a.date.localeCompare(b.date))
@@ -185,7 +198,7 @@ export function ApActivities() {
       else byMonth.set(month, [activity])
     }
     return [...byMonth.entries()]
-  }, [shown, scope, today])
+  }, [shown, scope, isPast])
 
   /* Vorschlag für einen neuen Termin: der nächste freie Mittwoch bzw. Sonntag. */
   const suggestedDate = useMemo(
@@ -337,6 +350,7 @@ export function ApActivities() {
             <NextCard
               activity={next}
               today={today}
+              running={apActivityPhase(next, moment) === 'running'}
               leadership={leadershipOf.get(next.date.slice(0, 7)) ?? ''}
               onOpen={editMode ? () => open(next) : undefined}
             />
@@ -385,7 +399,7 @@ export function ApActivities() {
                           activity={activity}
                           onOpen={editMode ? () => open(activity) : undefined}
                           highlight={activity.id === next?.id}
-                          past={apActivityEnd(activity) < today}
+                          past={isPast(activity)}
                           density={view.density}
                         />
                       ))}
@@ -398,7 +412,7 @@ export function ApActivities() {
                           activity={activity}
                           onOpen={editMode ? () => open(activity) : undefined}
                           highlight={activity.id === next?.id}
-                          past={apActivityEnd(activity) < today}
+                          past={isPast(activity)}
                           density={view.density}
                         />
                       ))}
@@ -557,11 +571,20 @@ function ApViewMenu({
 function NextCard({
   activity,
   today,
+  running,
   leadership,
   onOpen,
 }: {
   activity: ApActivity
   today: string
+  /**
+   * Der Termin hat begonnen und ist noch nicht vorbei.
+   *
+   * Entschieden wird das draussen und auf die Minute genau (siehe
+   * `apActivityPhase`): «Läuft» steht nur da, solange es stimmt – vorher
+   * steht «Heute», nachher ist der Termin gar nicht mehr der nächste.
+   */
+  running: boolean
   /** Welches Kollegium den Monat führt – «Leitung Lehrer» */
   leadership: string
   onOpen?: () => void
@@ -569,7 +592,6 @@ function NextCard({
   const style = AP_KIND_STYLES[activity.kind]
   const Icon = style.icon
   const days = differenceInCalendarDays(fromIsoDate(activity.date), startOfDay(fromIsoDate(today)))
-  const running = activity.date <= today && apActivityEnd(activity) >= today
   const time = apTimeLabel(activity)
 
   const content = (

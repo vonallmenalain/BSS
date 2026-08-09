@@ -14,8 +14,8 @@ import {
 import { db, COLLECTIONS } from '@/lib/firebase'
 import { forgetDoc, resyncCollections } from '@/lib/collectionStore'
 import { commit, requireOnline, type SaveOutcome } from '@/lib/sync'
+import { apClassHours, type ApActivity, type ApActivityKind } from '@/lib/types'
 import type { ParsedApActivity, ParsedApMonth } from '@/services/importApActivities'
-import type { ApActivity, ApActivityKind } from '@/lib/types'
 
 /*
  * Der Aktivitätenplan der AP in Firestore.
@@ -233,25 +233,92 @@ export async function importApPlan(
 }
 
 /* ------------------------------------------------------------------ */
-/* Auswerten                                                           */
+/* Themen der AP-Klasse                                                */
 /* ------------------------------------------------------------------ */
 
-/** Ein Eintrag gilt bis zum Ende seines letzten Tages als «kommend». */
-export function apActivityEnd(activity: Pick<ApActivity, 'date' | 'endDate'>): string {
-  return activity.endDate || activity.date
+/** Eine Klasse, wie der Themen-Import sie schreiben will. */
+export interface ApTopicWrite {
+  /** «2026-09-06» */
+  date: string
+  /** Das Thema – leer bleibt «Thema noch offen» */
+  title: string
+  /** Die bestehende Klasse an diesem Sonntag, sonst `null` */
+  id: string | null
+}
+
+export interface ApTopicImportResult {
+  created: number
+  updated: number
 }
 
 /**
- * Die nächsten Termine, ausgefallene ausgenommen.
+ * Die Themen eines Monats in den Plan schreiben.
  *
- * Ein abgesagter Mittwoch gehört in den Plan, aber nicht in die Antwort auf
- * «was kommt als Nächstes» – sonst stünde dort «keine Aktivität».
+ * Zwei Fälle, und der zweite ist beim Umstieg der übliche: Steht der
+ * Sonntag schon als Klasse im Plan, bekommt er sein Thema – geändert wird
+ * nur der Titel, denn eine verschobene Zeit oder ein erfasster Treffpunkt
+ * gehören dem Termin und nicht dem Heft. Steht er noch nicht da, legt der
+ * Import ihn an, samt der Stunde, die an diesem Tag üblich ist.
+ *
+ * Ein Sonntag ohne vorgegebenes Thema wird trotzdem angelegt: Die Klasse
+ * findet statt, nur das Thema fehlt noch – und genau das sagt «Thema noch
+ * offen» im Plan. Ein bestehender Titel wird davon nicht überschrieben; wer
+ * von Hand etwas eingetragen hat, behält es.
  */
-export function upcomingApActivities(activities: ApActivity[], todayKey: string): ApActivity[] {
-  return activities
-    .filter((activity) => apActivityEnd(activity) >= todayKey && activity.kind !== 'cancelled')
-    .sort((a, b) => a.date.localeCompare(b.date))
+export async function importApTopics(
+  rows: ApTopicWrite[],
+  userId?: string | null,
+): Promise<ApTopicImportResult> {
+  requireOnline()
+
+  let created = 0
+  let updated = 0
+
+  for (let offset = 0; offset < rows.length; offset += CHUNK_SIZE) {
+    const batch = writeBatch(db)
+
+    for (const row of rows.slice(offset, offset + CHUNK_SIZE)) {
+      if (row.id) {
+        if (!row.title) continue
+        batch.update(doc(db, COLLECTIONS.apActivities, row.id), {
+          title: row.title,
+          updatedAt: serverTimestamp(),
+          updatedById: userId ?? null,
+        })
+        updated++
+      } else {
+        const hours = apClassHours(row.date)
+        batch.set(doc(collection(db, COLLECTIONS.apActivities)), {
+          ...EMPTY_AP_ACTIVITY,
+          date: row.date,
+          kind: 'class',
+          title: row.title,
+          time: hours.start,
+          endTime: hours.end,
+          createdAt: serverTimestamp(),
+          updatedAt: serverTimestamp(),
+          createdById: userId ?? null,
+          updatedById: userId ?? null,
+        })
+        created++
+      }
+    }
+
+    await batch.commit()
+  }
+
+  return { created, updated }
 }
+
+/* ------------------------------------------------------------------ */
+/* Auswerten                                                           */
+/* ------------------------------------------------------------------ */
+
+/*
+ * Ob ein Termin kommt, läuft oder vorbei ist, steht in `lib/types`
+ * (`apActivityPhase`): Es hängt an der Uhrzeit und nicht bloss am Tag, und
+ * die Uhrzeiten eines Termins werden ohnehin dort ausgewertet.
+ */
 
 /** Alle Termine eines Monats – «2026-03». */
 export function apActivitiesOfMonth(activities: ApActivity[], month: string): ApActivity[] {
