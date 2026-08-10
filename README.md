@@ -1585,6 +1585,21 @@ LCR, also Präsident, Ratgeber, dann die übrigen. Was ausserhalb der Einheit
 liegt (Pfahl, Seminar, Institut, Mission), steht in einer eigenen Sparte am
 Ende.
 
+**Unterkapitel wie im LCR.** Innerhalb einer Organisation steht nicht eine
+Liste von sechsundzwanzig Namen, sondern die Einteilung, die das LCR führt: in
+der PV _PV-Präsidentschaft_, _Musik_, _Tapfere 10_, _Tapfere 8_, _WDR 6/7_,
+_Sonnenstrahlen_, _Kindergarten_, _PV-Aktivitäten_; im Ältestenkollegium
+_Präsidentschaft_, _Lehrkräfte_, _Betreuung_, _Aktivitäten_, _Dienst am
+Nächsten_ – und so in jeder Organisation. Die Reihenfolge ist die der Quelle,
+die Präsidentschaft steht also zuoberst und nicht unter «P».
+
+Das ist der einzige Ort, an dem steht, wer welche Klasse unterrichtet: Die
+Bezeichnung «PV-Lehrer(in)» sagt es nicht, «Sonnenstrahlen» schon. Wo das LCR
+keine Einteilung führt – die Bischofschaft und die Gemeindemissionare stehen
+dort ungeteilt, und aus der übernommenen Berufungshistorie kommt gar keine
+mit –, stehen die Berufungen ohne Überschrift an ihrer Stelle statt unter
+einer erfundenen.
+
 **Gelesen, nicht geschrieben.** Es gibt keinen Knopf für eine neue Berufung,
 kein Bearbeiten und kein Löschen. Der ganze Bestand kommt aus dem LCR und wird
 dort gepflegt; erfasst wird er unter **Einstellungen → Importe → Berufungen**,
@@ -1626,11 +1641,11 @@ stillschweigend zu übergehen.
 | **Alter**        | Aufsteigend heisst: die Jüngsten zuerst                                |
 | **Bestätigung**  | Nach dem Datum der Bestätigung – wer am längsten dient, steht zuoberst |
 
-Nur **Organisation** hält die Liste in Sparten; jede andere Ordnung macht daraus
-eine einzige. Anders ginge es nicht – «alle nach Alter» hat keine Antwort,
-solange die Sparten dazwischenstehen. Dafür steht in der flachen Liste die
-Organisation bei jedem Eintrag, damit unterwegs nicht verloren geht, wohin eine
-Berufung gehört.
+Nur **Organisation** hält die Liste in Sparten und Unterkapitel; jede andere
+Ordnung macht daraus eine einzige Liste. Anders ginge es nicht – «alle nach
+Alter» hat keine Antwort, solange die Sparten dazwischenstehen. Dafür stehen in
+der flachen Liste Organisation und Unterkapitel bei jedem Eintrag, damit
+unterwegs nicht verloren geht, wohin eine Berufung gehört.
 
 **Ohne Berufung** beantwortet die Frage, die vor jeder neuen Berufung steht.
 Sie beantwortet sie ehrlich: In der Liste steht die ganze Gemeinde, Kinder
@@ -1641,8 +1656,9 @@ War da schon einmal etwas, und wie lange ist es her?
 
 **Ein Griff auf eine Zeile führt zur Person.** Was die Seite sonst noch
 beantworten könnte – seit wann, wie oft, was davor –, steht im Profil, und
-«Zurück» führt von dort wieder hierher. Die Suche greift auf Name, Position
-und Organisation zu, in der Ansicht «Ohne Berufung» auf den Namen.
+«Zurück» führt von dort wieder hierher. Die Suche greift auf Name, Position,
+Organisation und Unterkapitel zu – «Sonnenstrahlen» findet die Lehrerinnen
+dieser Klasse –, in der Ansicht «Ohne Berufung» auf den Namen.
 
 ---
 
@@ -1863,6 +1879,14 @@ Person sind die auswärtigen als solche gekennzeichnet.
 Bestehende Berufungen werden über Person, Rolle, Organisation und Bereich
 erkannt und aktualisiert. Offene Berufungen («Berufung offen») werden gezählt,
 aber nicht geschrieben.
+
+**Die Unterkapitel kommen mit.** Die Seite «Organisationen» gliedert jede
+Organisation weiter – die PV in _PV-Präsidentschaft_, _Musik_, _Tapfere 10_,
+_Sonnenstrahlen_ …, das Ältestenkollegium in _Präsidentschaft_, _Lehrkräfte_,
+_Betreuung_ … Diese Überschriften werden mitgelesen und stehen in der Vorschau
+neben der Organisation; in der Berufungsliste gliedern sie danach die Sparte
+(siehe [Berufungen](#berufungen)). Wer die Klasse wechselt, behält denselben
+Eintrag – das Unterkapitel gehört zur Berufung und nicht zu ihrer Kennung.
 
 **Betreuung.** Die Seite _Betreuungsaufträge_ mit allen Organisationen und
 allen Personen anzeigen lassen, dann kopieren. Pro Person entstehen zwei

@@ -162,7 +162,9 @@ export function Callings() {
     if (!search.trim()) return base
     return base.filter((calling) =>
       matchesSearch(
-        `${calling.memberName} ${calling.position} ${ORGANIZATION_LABELS[calling.organization]}`,
+        // Das Unterkapitel zählt mit: «Sonnenstrahlen» ist der Name, unter
+        // dem in der PV nach einer Lehrerin gesucht wird – nicht «PV-Lehrer».
+        `${calling.memberName} ${calling.position} ${ORGANIZATION_LABELS[calling.organization]} ${calling.group ?? ''}`,
         search,
       ),
     )
@@ -290,6 +292,7 @@ export function Callings() {
               key={organization}
               title={ORGANIZATION_LABELS[organization]}
               entries={sortCallings(entries)}
+              subgroups
             />
           ))}
 
@@ -347,47 +350,89 @@ function CallingSection({
   hint,
   entries,
   showOrganization = false,
+  subgroups = false,
 }: {
   title: string
   hint?: string
   entries: Calling[]
   /** In der flachen Liste: die Organisation bei jedem Eintrag mitschreiben */
   showOrganization?: boolean
+  /** Nach Unterkapiteln aufteilen, so wie das LCR die Organisation führt */
+  subgroups?: boolean
 }) {
+  const parts = subgroups ? splitByGroup(entries) : [{ title: '', entries }]
+
   return (
     <section>
       <h2 className="text-xs font-semibold tracking-wide text-slate-500 uppercase dark:text-slate-400">
         {title} ({entries.length})
       </h2>
       {hint && <p className="hint mb-2">{hint}</p>}
-      <ul className={cn('card divide-list overflow-hidden', !hint && 'mt-2')}>
-        {entries.map((calling) => (
-          <li key={calling.id}>
-            {/* Der Griff auf eine Zeile führt zur Person: Was die App hier
-                beantworten kann, ist «wer ist das?» – und das steht im
-                Profil, mitsamt allem, was diese Person sonst noch tut. */}
-            <MemberLink
-              memberId={calling.memberId}
-              label={FROM_LABEL}
-              className="group flex w-full items-center gap-3 px-4 py-3 text-left transition hover:bg-slate-50 dark:hover:bg-slate-800/60"
-            >
-              <Avatar name={calling.memberName} id={calling.memberId} size="md" />
-              <div className="min-w-0 flex-1">
-                <p className="truncate text-sm font-medium">{calling.position}</p>
-                <p className="truncate text-xs text-slate-500 dark:text-slate-400">
-                  <span className="group-hover:underline">{calling.memberName}</span>
-                  {showOrganization && ` · ${ORGANIZATION_LABELS[calling.organization]}`}
-                  {callingPeriod(calling) && ` · ${callingPeriod(calling)}`}
-                </p>
-              </div>
-              <CallingStatusBadge status={calling.status} />
-              <ChevronRight className="size-4 shrink-0 text-slate-300" aria-hidden />
-            </MemberLink>
-          </li>
+      <div className={cn('space-y-3', !hint && 'mt-2')}>
+        {parts.map((part) => (
+          <div key={part.title || '—'}>
+            {part.title && (
+              <h3 className="mb-1.5 flex items-baseline gap-2 px-1 text-sm font-medium text-slate-700 dark:text-slate-300">
+                {part.title}
+                <span className="tabular text-xs text-slate-400">{part.entries.length}</span>
+              </h3>
+            )}
+            <ul className="card divide-list overflow-hidden">
+              {part.entries.map((calling) => (
+                <li key={calling.id}>
+                  {/* Der Griff auf eine Zeile führt zur Person: Was die App hier
+                      beantworten kann, ist «wer ist das?» – und das steht im
+                      Profil, mitsamt allem, was diese Person sonst noch tut. */}
+                  <MemberLink
+                    memberId={calling.memberId}
+                    label={FROM_LABEL}
+                    className="group flex w-full items-center gap-3 px-4 py-3 text-left transition hover:bg-slate-50 dark:hover:bg-slate-800/60"
+                  >
+                    <Avatar name={calling.memberName} id={calling.memberId} size="md" />
+                    <div className="min-w-0 flex-1">
+                      <p className="truncate text-sm font-medium">{calling.position}</p>
+                      <p className="truncate text-xs text-slate-500 dark:text-slate-400">
+                        <span className="group-hover:underline">{calling.memberName}</span>
+                        {showOrganization && ` · ${ORGANIZATION_LABELS[calling.organization]}`}
+                        {showOrganization && calling.group && ` · ${calling.group}`}
+                        {callingPeriod(calling) && ` · ${callingPeriod(calling)}`}
+                      </p>
+                    </div>
+                    <CallingStatusBadge status={calling.status} />
+                    <ChevronRight className="size-4 shrink-0 text-slate-300" aria-hidden />
+                  </MemberLink>
+                </li>
+              ))}
+            </ul>
+          </div>
         ))}
-      </ul>
+      </div>
     </section>
   )
+}
+
+/**
+ * Die Unterkapitel einer Organisation – so, wie das LCR sie führt.
+ *
+ * Dort steht die PV nicht als eine Liste von sechsundzwanzig Namen, sondern
+ * als Präsidentschaft, Musik, Tapfere 10, Sonnenstrahlen, Kindergarten …
+ * Diese Einteilung ist die Arbeitsteilung der Organisation: Ohne sie
+ * beantwortet die Seite «wer ist in der PV», aber nicht «wer unterrichtet
+ * die Sonnenstrahlen» – und das ist die Frage, die man am Sonntag hat.
+ *
+ * Die Reihenfolge ist die der Quelle. Die Einträge kommen bereits so
+ * geordnet an (siehe `compareByImportOrder`), und das erste Auftreten legt
+ * die Stelle des Kapitels fest – die Präsidentschaft steht damit oben, wie
+ * im LCR, und nicht unter «P».
+ *
+ * Berufungen ohne Unterkapitel stehen ohne Überschrift an ihrer Stelle
+ * statt unter einer erfundenen: Bischofschaft und Gemeindemissionare führt
+ * das LCR ungeteilt, und aus der Berufungshistorie kommt gar keine
+ * Einteilung mit.
+ */
+function splitByGroup(entries: Calling[]): { title: string; entries: Calling[] }[] {
+  const sections = groupBy(entries, (calling) => calling.group?.trim() ?? '')
+  return [...sections].map(([title, items]) => ({ title, entries: items }))
 }
 
 /* ------------------------------------------------------------------ */
