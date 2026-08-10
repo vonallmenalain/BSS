@@ -1,6 +1,6 @@
 import { useMemo } from 'react'
 
-import { Award, ChevronRight, Search, Users } from 'lucide-react'
+import { Award, ChevronRight, RotateCcw, Search, Users } from 'lucide-react'
 import { useData } from '@/contexts/DataContext'
 import { useLocalStorage } from '@/hooks/useLocalStorage'
 import { useUrlState } from '@/hooks/useUrlState'
@@ -10,10 +10,25 @@ import { EmptyState, SkeletonList } from '@/components/ui/Feedback'
 import { PageHeader } from '@/components/ui/Pickers'
 import { CallingStatusBadge, MemberStatusBadge } from '@/components/ui/Badge'
 import { Avatar } from '@/components/ui/Avatar'
-import { MenuChoice, MenuDivider, MenuRange, MenuSort, ViewMenu } from '@/components/ui/ViewMenu'
+import {
+  MenuAction,
+  MenuChoice,
+  MenuDivider,
+  MenuRange,
+  MenuSelect,
+  MenuSort,
+  ViewMenu,
+} from '@/components/ui/ViewMenu'
 import { getAge, toDate } from '@/lib/dates'
 import { cn, compareNames, groupBy, matchesSearch } from '@/lib/utils'
-import { activeCallings, callingPeriod, isWardCalling } from '@/services/callings'
+import {
+  activeCallings,
+  callingPeriod,
+  isWardCalling,
+  matchesOrganizationScope,
+  organizationChoices,
+  type OrganizationChoice,
+} from '@/services/callings'
 import { filterMembers, sortMembers, type MemberSortKey } from '@/services/members'
 import {
   CALLING_AUDIENCE_LABELS,
@@ -22,8 +37,10 @@ import {
   DEFAULT_CALLINGS_VIEW,
   GENDER_SCOPE_LABELS,
   ORGANIZATION_LABELS,
+  hasCallingFilters,
   type Calling,
   type CallingAudience,
+  type CallingOrganizationScope,
   type CallingScope,
   type CallingSort,
   type CallingsView,
@@ -105,9 +122,33 @@ export function Callings() {
     }
   }, [membersById, view.audience, view.gender, view.minAge, view.maxAge])
 
-  const pool = useMemo(
+  /** Was die Personengruppe hergibt – noch ohne Wahl einer Sparte. */
+  const byPerson = useMemo(
     () => callings.filter((calling) => personFilter(calling.memberId)),
     [callings, personFilter],
+  )
+
+  /*
+   * Woraus das Auswahlfeld schöpft: der gewählte Ausschnitt, aber ohne die
+   * Einschränkung auf eine Sparte.
+   *
+   * Sonst zählte die Auswahl sich selbst – neben «PV (26)» stünde bei jeder
+   * anderen Organisation eine Null, und man käme nicht mehr weg von der PV,
+   * ohne vorher «Alle» zu wählen.
+   */
+  const organizationOptions = useMemo(() => {
+    const inScope =
+      scope === 'active'
+        ? activeCallings(byPerson)
+        : scope === 'released'
+          ? byPerson.filter(isReleased)
+          : byPerson
+    return organizationChoices(inScope, view.organization)
+  }, [byPerson, scope, view.organization])
+
+  const pool = useMemo(
+    () => byPerson.filter((calling) => matchesOrganizationScope(calling, view.organization)),
+    [byPerson, view.organization],
   )
 
   const running = useMemo(() => activeCallings(pool), [pool])
@@ -120,6 +161,10 @@ export function Callings() {
    * Gruppe: Wer eine Berufung hat, hat sie auch dann, wenn seine Berufung
    * gerade ausgeblendet ist. Berufungen ausserhalb der Einheit – Pfahl,
    * Seminar, Institut – zählen mit; auch sie sind eine Aufgabe.
+   *
+   * Die Wahl einer Sparte wirkt hier deshalb nicht: «Ohne Berufung und nur
+   * die PV» hat keine Antwort – wer keine Berufung hat, steht in keiner
+   * Organisation.
    */
   const withoutCalling = useMemo(() => {
     const busy = new Set(activeCallings(callings).map((calling) => calling.memberId))
@@ -247,7 +292,22 @@ export function Callings() {
           zwei Stände nebeneinander zu führen – und der eine wäre falsch. */}
       <PageHeader
         title="Berufungen"
-        actions={<CallingsMenu view={view} counts={counts} onChange={setView} />}
+        actions={
+          <CallingsMenu
+            view={view}
+            counts={counts}
+            organizations={organizationOptions}
+            /* Die Suche gehört zum Bild: «Alle Filter entfernen» soll die
+               ganze Liste zeigen und nicht den Ausschnitt, den ein vergessenes
+               Suchwort davon übrig lässt. */
+            searching={Boolean(search.trim())}
+            onChange={setView}
+            onReset={() => {
+              setView(DEFAULT_CALLINGS_VIEW)
+              setSearch('')
+            }}
+          />
+        }
       />
 
       <div className="relative mb-4">
@@ -297,7 +357,14 @@ export function Callings() {
           ))}
 
           {outsideUnit.length > 0 && (
-            <div className="border-t border-slate-200 pt-5 dark:border-slate-700">
+            /* Die Linie trennt vom Organisationsplan darüber. Ist auf «nur
+               ausserhalb der Einheit» eingeschränkt, steht nichts darüber –
+               dann wäre sie ein Strich ohne Anlass. */
+            <div
+              className={cn(
+                byOrganization.length > 0 && 'border-t border-slate-200 pt-5 dark:border-slate-700',
+              )}
+            >
               <CallingSection
                 title="Ausserhalb der Einheit"
                 hint="Pfahl, Seminar, Institut und Mission – nicht Teil des Organisationsplans der Gemeinde."
@@ -566,11 +633,19 @@ function releasedAt(calling: Calling): number {
 function CallingsMenu({
   view,
   counts,
+  organizations,
+  searching,
   onChange,
+  onReset,
 }: {
   view: CallingsView
   counts: { active: number; without: number; released: number; all: number }
+  /** Die wählbaren Sparten mit ihren Zahlen – siehe `organizationChoices` */
+  organizations: OrganizationChoice[]
+  /** Ob ein Suchwort im Feld steht – es gehört zu dem, was zurückgesetzt wird */
+  searching: boolean
   onChange: (next: CallingsView) => void
+  onReset: () => void
 }) {
   const patch = (changes: Partial<CallingsView>) => onChange({ ...view, ...changes })
 
@@ -585,6 +660,20 @@ function CallingsMenu({
           label: CALLING_SCOPE_LABELS[value],
           count: counts[value],
         }))}
+      />
+
+      {/* Eine Sparte nach der anderen – aufgeklappt und nicht als Knopfleiste:
+          Es sind ein Dutzend, und man wählt jeweils eine davon. */}
+      <MenuSelect<CallingOrganizationScope>
+        label="Organisation"
+        value={view.organization}
+        onChange={(organization) => patch({ organization })}
+        options={organizations}
+        hint={
+          view.scope === 'without'
+            ? 'Gilt nicht für «Ohne Berufung» – wer keine Berufung hat, steht in keiner Organisation.'
+            : 'Sparten ohne Berufung im gewählten Ausschnitt stehen nicht zur Wahl.'
+        }
       />
 
       <MenuChoice<CallingAudience>
@@ -627,6 +716,18 @@ function CallingsMenu({
           value,
           label: CALLING_SORT_LABELS[value],
         }))}
+      />
+
+      <MenuDivider />
+
+      {/* Steht zuunterst, weil es alles darüber betrifft – auch die
+          Sortierung. Ausgegraut, solange die Vorgabe ohnehin gilt. */}
+      <MenuAction
+        label="Alle Filter entfernen"
+        icon={RotateCcw}
+        disabled={!hasCallingFilters(view) && !searching}
+        onClick={onReset}
+        hint="Zurück zur Standardansicht: Aktuell, alle Mitglieder, alle Organisationen, jedes Geschlecht, kein Alter, nach Organisation sortiert – und die Suche geleert."
       />
     </ViewMenu>
   )
