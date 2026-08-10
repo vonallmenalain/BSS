@@ -74,9 +74,19 @@ const JUNK = new Set([
   'lebt ausserhalb der einheit',
   'berufungen',
   'mitglieder',
-  'betreuung',
   'bei der berufung neuer fuhrungsverantwortlicher kann es bis zu 24 stunden dauern, bis die anderungen in allen damit verbundenen systemen angezeigt werden.',
 ])
+
+/**
+ * «Betreuung» steht auf der Seite zweimal – und meint zweierlei.
+ *
+ * Einmal als dritter Reiter der Leiste unter jeder Organisation
+ * («Berufungen | Mitglieder | Betreuung»), einmal im Ältestenkollegium und
+ * in der FHV als Überschrift einer eigenen Untergruppe. Deshalb steht das
+ * Wort nicht bei den weggeworfenen Seitenelementen: Es wird nach seiner
+ * Stellung entschieden (siehe `isGroupHeading`).
+ */
+const NAV_TAB = 'betreuung'
 
 /** «Anzahl: 12» schliesst eine Tabelle ab. */
 const COUNT_LINE = /^anzahl: ?\d+/
@@ -122,7 +132,11 @@ const ORGANIZATIONS: [RegExp, Organization][] = [
   [/^bischofschaft$/, 'bishopric'],
   [/^altestenkollegium$/, 'elders_quorum'],
   [/^frauenhilfsvereinigung$/, 'relief_society'],
-  [/aaronischen priestertums/, 'young_men'],
+  // Am Anfang verankert: «Präsidentschaft des Aaronischen Priestertums» und
+  // «Zusätzliche Berufungen in Kollegien des Aaronischen Priestertums» sind
+  // Untergruppen und keine Organisation. Ungebunden verschlänge das Muster
+  // sie – und mit ihnen ihre Überschrift.
+  [/^(die )?kollegien des aaronischen priestertums/, 'young_men'],
   [/^junge damen$/, 'young_women'],
   [/^sonntagsschule$/, 'sunday_school'],
   [/^primarvereinigung$/, 'primary'],
@@ -148,6 +162,23 @@ function matchOrganization(line: string): Organization | null {
     if (pattern.test(key)) return organization
   }
   return null
+}
+
+/**
+ * Ist die Zeile die Überschrift einer Untergruppe?
+ *
+ * Zwischen den Tabellen steht dreierlei: die Überschrift der Untergruppe,
+ * Erläuterungen wie «Diese Klasse vereinigt: Tapfere 9, Tapfere 10.» – die
+ * enden mit einem Punkt – und die Reiterleiste der Organisation.
+ *
+ * Der Reiter «Betreuung» steht mitten zwischen Organisation und
+ * Untergruppe, die gleichnamige Überschrift dagegen unmittelbar vor der
+ * Tabelle. Genau daran lassen sich die beiden auseinanderhalten.
+ */
+function isGroupHeading(line: string, next: string | undefined): boolean {
+  if (line.trim().endsWith('.')) return false
+  if (fold(line) !== NAV_TAB) return true
+  return next !== undefined && TABLE_HEAD.test(fold(next))
 }
 
 /* ------------------------------------------------------------------ */
@@ -246,7 +277,13 @@ function parseOrganizationPage(lines: string[]): PastedCallings {
       position,
       organization,
       organizationLabel,
-      group,
+      /*
+       * «Übrige» fasst mehrere Überschriften des LCR zusammen – «Junger
+       * Alleinstehender Erwachsener» und «Sonstige Berufungen». Steht keine
+       * Untergruppe darüber, tritt die Überschrift an deren Stelle; sonst
+       * bliebe von der Herkunft nichts als das Sammelwort.
+       */
+      group: group || (organization === 'other' ? organizationLabel : ''),
       sustained,
       setApart,
       custom: wasCustom,
@@ -255,7 +292,7 @@ function parseOrganizationPage(lines: string[]): PastedCallings {
     })
   }
 
-  for (const line of lines) {
+  for (const [index, line] of lines.entries()) {
     const key = fold(line)
 
     if (TABLE_HEAD.test(key)) {
@@ -287,13 +324,14 @@ function parseOrganizationPage(lines: string[]): PastedCallings {
         organization = matched
         organizationLabel = line.trim()
         group = ''
-      } else if (!line.trim().endsWith('.')) {
-        // Erläuterungen wie «Diese Klasse vereinigt: Tapfere 9, Tapfere 10.»
-        // stehen zwischen Überschrift und Tabelle – sie sind keine Gruppe.
+      } else if (isGroupHeading(line, lines[index + 1])) {
         group = line.trim()
         if (organizationLabel && fold(organizationLabel) === 'sonstige berufungen') {
           const sub = SUB_ORGANIZATIONS.find(([pattern]) => pattern.test(fold(line)))
           organization = sub ? sub[1] : 'other'
+          // Wird die Untergruppe selbst zur Organisation, sagt deren Name
+          // schon alles: «Musik › Musik» wäre eine Wiederholung.
+          if (sub) group = ''
         }
       }
       continue

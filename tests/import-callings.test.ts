@@ -161,6 +161,184 @@ test('deckt auch eine Organisation ab, in der jede Berufung offen ist', () => {
   assert.equal(parsed.vacant, 1)
 })
 
+/* ------------------------------------------------------------------ */
+/* Unterkapitel                                                        */
+/* ------------------------------------------------------------------ */
+
+/*
+ * Das LCR führt jede Organisation in Unterkapiteln: die PV als
+ * Präsidentschaft, Musik, Tapfere 10, Sonnenstrahlen … Diese Einteilung ist
+ * die Arbeitsteilung der Organisation, und sie ist der einzige Ort, an dem
+ * steht, wer welche Klasse unterrichtet – die Bezeichnung «PV-Lehrer(in)»
+ * sagt es nicht.
+ */
+
+test('gliedert die PV in ihre Unterkapitel, in der Reihenfolge der Quelle', () => {
+  const parsed = parsePastedCallings(
+    [
+      'Primarvereinigung',
+      // Die Reiterleiste der Organisation – keine Untergruppe.
+      'Berufungen',
+      'Mitglieder',
+      'PV-Präsidentschaft',
+      'Berufung\tName\tBestätigt\tEingesetzt',
+      'PV-Präsidentin',
+      'Cadonau, Rita',
+      '9 Feb 2025',
+      'Anzahl: 1',
+      'Berufung hinzufügen',
+      'Musik',
+      'Berufung\tName\tBestätigt\tEingesetzt',
+      'PV-Musikbeauftragte',
+      'Egger, Nadja Vera',
+      '6 Jul 2025',
+      'Anzahl: 1',
+      'Berufung hinzufügen',
+      'Tapfere 10',
+      // Erläuterung zwischen Überschrift und Tabelle – keine Untergruppe.
+      'Diese Klasse vereinigt: Tapfere 9, Tapfere 10.',
+      'Berufung\tName\tBestätigt\tEingesetzt',
+      'PV-Lehrer(in)',
+      'Frei, Lukas',
+      '8 Okt 2023',
+      'Anzahl: 1',
+    ].join('\n'),
+  )
+
+  assert.deepEqual(
+    parsed.callings.map((c) => [c.order, c.organization, c.group]),
+    [
+      [0, 'primary', 'PV-Präsidentschaft'],
+      [1, 'primary', 'Musik'],
+      [2, 'primary', 'Tapfere 10'],
+    ],
+  )
+})
+
+test('liest «Betreuung» als Unterkapitel, nicht als Reiter der Organisation', () => {
+  // Das Wort steht zweimal auf der Seite: als dritter Reiter unter der
+  // Überschrift der Organisation und im Ältestenkollegium wie in der FHV als
+  // Überschrift einer eigenen Untergruppe.
+  const parsed = parsePastedCallings(
+    [
+      'Ältestenkollegium',
+      'Berufungen',
+      'Mitglieder',
+      'Betreuung',
+      'Präsidentschaft des Ältestenkollegiums',
+      'Berufung\tName\tBestätigt\tEingesetzt',
+      'Präsident des Ältestenkollegiums',
+      'Amsler, Peter Daniel',
+      '5 Jan 2025',
+      'Anzahl: 1',
+      'Berufung hinzufügen',
+      'Betreuung',
+      'Berufung\tName\tBestätigt\tEingesetzt',
+      'Ältestenkollegiumssekretär für Betreuung',
+      'Brunner, Simon',
+      '17 Mär 2024',
+      'Anzahl: 1',
+    ].join('\n'),
+  )
+
+  assert.deepEqual(
+    parsed.callings.map((c) => [c.position, c.group]),
+    [
+      ['Präsident des Ältestenkollegiums', 'Präsidentschaft des Ältestenkollegiums'],
+      ['Ältestenkollegiumssekretär für Betreuung', 'Betreuung'],
+    ],
+  )
+})
+
+test('hält die Überschrift des Aaronischen Priestertums von seinen Unterkapiteln getrennt', () => {
+  // «Präsidentschaft des Aaronischen Priestertums» ist eine Untergruppe und
+  // keine Organisation – sonst verlöre sie ihre Überschrift.
+  const parsed = parsePastedCallings(
+    [
+      'Die Kollegien des Aaronischen Priestertums (AP)',
+      'Berufungen',
+      'Mitglieder',
+      'Betreuung',
+      'Präsidentschaft des Aaronischen Priestertums',
+      'Berufung\tName\tBestätigt\tEingesetzt',
+      'Bischof',
+      'Amsler, Peter Daniel',
+      '6 Nov 2022',
+      'Anzahl: 1',
+      'Berufung hinzufügen',
+      'Zusätzliche Berufungen in Kollegien des Aaronischen Priestertums',
+      'Berufung\tName\tBestätigt\tEingesetzt',
+      'Spezialist für Kollegien des Aaronischen Priestertums',
+      'Brunner, Simon',
+      '3 Jul 2022',
+      'Anzahl: 1',
+    ].join('\n'),
+  )
+
+  assert.deepEqual(parsed.organizations, ['young_men'])
+  assert.deepEqual(
+    parsed.callings.map((c) => [c.organization, c.group]),
+    [
+      ['young_men', 'Präsidentschaft des Aaronischen Priestertums'],
+      ['young_men', 'Zusätzliche Berufungen in Kollegien des Aaronischen Priestertums'],
+    ],
+  )
+})
+
+test('nennt das Unterkapitel nicht zweimal, wenn es zur Organisation wird', () => {
+  // Unter «Sonstige Berufungen» ergibt «Musik» eine eigene Organisation.
+  // Ihr Name steht dann schon in der Überschrift der Sparte.
+  const parsed = parsePastedCallings(
+    [
+      'Sonstige Berufungen',
+      'Einrichtungen',
+      'Berufung\tName\tBestätigt\tEingesetzt',
+      'Gebäudebeauftragter',
+      'Amsler, Peter Daniel',
+      '31 Mai 2026',
+      'Anzahl: 1',
+      'Berufung hinzufügen',
+      'Musik',
+      'Berufung\tName\tBestätigt\tEingesetzt',
+      'Organist',
+      'Brunner, Simon',
+      '7 Feb 2015',
+      'Anzahl: 1',
+    ].join('\n'),
+  )
+
+  assert.deepEqual(
+    parsed.callings.map((c) => [c.organization, c.group]),
+    [
+      ['other', 'Einrichtungen'],
+      ['music', ''],
+    ],
+  )
+})
+
+test('setzt bei «Übrige» die Überschrift des LCR an die Stelle des Unterkapitels', () => {
+  // «Junger Alleinstehender Erwachsener» und «Sonstige Berufungen» landen
+  // beide unter «Übrige». Ohne Untergruppe bliebe von der Herkunft nichts
+  // als das Sammelwort.
+  const parsed = parsePastedCallings(
+    [
+      'Junger Alleinstehender Erwachsener',
+      'Berufungen',
+      'Mitglieder',
+      'Berufung\tName\tBestätigt\tEingesetzt',
+      'Gruppenverantwortliche für JAE',
+      'Cadonau, Rita',
+      '5 Jul 2026',
+      'Anzahl: 1',
+    ].join('\n'),
+  )
+
+  assert.deepEqual(
+    parsed.callings.map((c) => [c.organization, c.group]),
+    [['other', 'Junger Alleinstehender Erwachsener']],
+  )
+})
+
 test('liest die Seite «ausserhalb der Einheit»', () => {
   const parsed = parsePastedCallings(OUT_OF_UNIT_PAGE)
 

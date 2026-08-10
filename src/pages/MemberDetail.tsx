@@ -1116,7 +1116,10 @@ function CallingList({ callings }: { callings: Calling[] }) {
             </span>
           ) : (
             <span className="text-slate-500 dark:text-slate-400">
+              {/* Das Unterkapitel des LCR steht dabei: «PV-Lehrer(in)» sagt
+                  noch nicht, welche Klasse – «Sonnenstrahlen» schon. */}
               {ORGANIZATION_LABELS[calling.organization]}
+              {calling.group && ` · ${calling.group}`}
             </span>
           )}
           <CallingStatusBadge status={calling.status} />
