@@ -1617,6 +1617,18 @@ Was in der App entstünde, wäre beim nächsten Import ohnehin wieder weg:
 | **Entlassen**     | Abgegebene Berufungen, mit Zeitraum                                 |
 | **Alle**          | Beides zusammen, einschliesslich der übernommenen Berufungshistorie |
 
+**Eine einzelne Organisation**, gleich darunter zum Aufklappen: _Alle
+Organisationen_, _Bischofschaft_, _Ältestenkollegium_, _PV
+(Primarvereinigung)_ … und zuunterst _Ausserhalb der Einheit_. Damit steht die
+PV für sich allein da – mit ihren Unterkapiteln, so wie das LCR sie führt.
+
+Zur Wahl stehen nur Sparten, in denen der gewählte Ausschnitt auch etwas
+hergibt; die Zahl dahinter sagt vorher, wie viel. «Ausserhalb der Einheit»
+steht neben den Organisationen und nicht darin: Eine Pfahlberufung trägt zwar
+auch eine Organisation, gehört aber nicht zum Organisationsplan der Gemeinde –
+wer «Sonntagsschule» wählt, meint die eigene. Auf **Ohne Berufung** wirkt die
+Wahl nicht: Wer keine Berufung hat, steht in keiner Organisation.
+
 Im selben Menü steht der **Kreis**: _Alle Mitglieder / Nur Aktive_. Er gilt für
 alle vier Ausschnitte: Wer inaktiv ist, verschwindet damit samt seinen
 Berufungen aus der Liste. Wer im Mitgliederverzeichnis gar nicht (mehr) steht,
@@ -1646,6 +1658,14 @@ Ordnung macht daraus eine einzige Liste. Anders ginge es nicht – «alle nach
 Alter» hat keine Antwort, solange die Sparten dazwischenstehen. Dafür stehen in
 der flachen Liste Organisation und Unterkapitel bei jedem Eintrag, damit
 unterwegs nicht verloren geht, wohin eine Berufung gehört.
+
+**Alle Filter entfernen** steht zuunterst im Menü und nimmt alles darüber
+zurück – Ausschnitt, Organisation, Kreis, Geschlecht, Alter, Sortierung und
+das Suchwort. Danach steht wieder die Standardansicht da: _Aktuell_, alle
+Mitglieder, alle Organisationen, jedes Geschlecht, keine Altersgrenze, nach
+Organisation sortiert. Solange ohnehin die Vorgabe gilt, ist der Knopf
+ausgegraut: Einer, der immer bereitsteht und meist nichts tut, lässt einen
+jedes Mal nachsehen, ob überhaupt etwas eingeschränkt war.
 
 **Ohne Berufung** beantwortet die Frage, die vor jeder neuen Berufung steht.
 Sie beantwortet sie ehrlich: In der Liste steht die ganze Gemeinde, Kinder

@@ -230,6 +230,45 @@ export function MenuChoice<T extends string>({
 }
 
 /**
+ * Eine Auswahl zum Aufklappen – für Filter mit vielen Werten, von denen
+ * jeweils genau einer gilt.
+ *
+ * Als Knopfleiste wären dreizehn Organisationen eine Wand aus Chips, in der
+ * man die gesuchte erst suchen muss; aufgeklappt ist es eine Zeile. Die Zahl
+ * dahinter sagt, was einen erwartet, bevor man wählt.
+ */
+export function MenuSelect<T extends string>({
+  label,
+  hint,
+  value,
+  onChange,
+  options,
+}: {
+  label: string
+  hint?: string
+  value: T
+  onChange: (next: T) => void
+  options: { value: T; label: string; count?: number }[]
+}) {
+  return (
+    <MenuSection label={label} hint={hint}>
+      <select
+        className="input"
+        value={value}
+        onChange={(event) => onChange(event.target.value as T)}
+        aria-label={label}
+      >
+        {options.map((option) => (
+          <option key={option.value} value={option.value}>
+            {option.count === undefined ? option.label : `${option.label} (${option.count})`}
+          </option>
+        ))}
+      </select>
+    </MenuSection>
+  )
+}
+
+/**
  * Mehrfachauswahl als Reihe von Chips – für Filter mit vielen gleichrangigen
  * Werten, etwa Jahrzahlen.
  *

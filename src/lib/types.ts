@@ -1519,6 +1519,23 @@ export const CALLING_AUDIENCE_LABELS: Record<CallingAudience, string> = {
 }
 
 /**
+ * Auf welche Sparte die Liste eingeschränkt ist – «nur die PV».
+ *
+ * «Ausserhalb der Einheit» steht neben den Organisationen und nicht darin.
+ * Auch diese Berufungen tragen eine Organisation, gehören aber nicht zum
+ * Organisationsplan der Gemeinde: Der Sonntagsschulpräsident des Pfahls ist
+ * nicht der Sonntagsschulpräsident der Gemeinde.
+ */
+export type CallingOrganizationScope = 'all' | Organization | 'out_of_unit'
+
+/** Die Reihenfolge zählt: Sie ist die des Auswahlfelds. */
+export const CALLING_ORGANIZATION_SCOPE_LABELS: Record<CallingOrganizationScope, string> = {
+  all: 'Alle Organisationen',
+  ...ORGANIZATION_LABELS,
+  out_of_unit: 'Ausserhalb der Einheit',
+}
+
+/**
  * Wonach die Berufungen geordnet sind.
  *
  * «Organisation» ist die Vorgabe und die einzige Ordnung, die den
@@ -1540,6 +1557,7 @@ export const CALLING_SORT_LABELS: Record<CallingSort, string> = {
 export interface CallingsView {
   scope: CallingScope
   audience: CallingAudience
+  organization: CallingOrganizationScope
   gender: Gender | 'all'
   minAge: number | null
   maxAge: number | null
@@ -1550,11 +1568,27 @@ export interface CallingsView {
 export const DEFAULT_CALLINGS_VIEW: CallingsView = {
   scope: 'active',
   audience: 'all',
+  organization: 'all',
   gender: 'all',
   minAge: null,
   maxAge: null,
   sort: 'organization',
   direction: 'asc',
+}
+
+/**
+ * Weicht die Ansicht überhaupt von der Vorgabe ab?
+ *
+ * Gefragt wird über alle Felder statt über eine Aufzählung von Hand: Was
+ * später dazukommt, ist damit von selbst mitgezählt – und ein Knopf «Alle
+ * Filter entfernen», der eine Einschränkung übersieht, wäre schlimmer als
+ * keiner. Alle Felder der Ansicht sind einfache Werte; ein Vergleich mit
+ * `!==` genügt.
+ */
+export function hasCallingFilters(view: CallingsView): boolean {
+  return (Object.keys(DEFAULT_CALLINGS_VIEW) as (keyof CallingsView)[]).some(
+    (key) => view[key] !== DEFAULT_CALLINGS_VIEW[key],
+  )
 }
 
 /* ------------------------------------------------------------------ */
