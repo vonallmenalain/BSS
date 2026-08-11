@@ -1,31 +1,21 @@
 import { useEffect, useRef, useState } from 'react'
 import { Link, useLocation } from 'react-router-dom'
 import {
-  Award,
-  Brush,
   Building2,
   CalendarCog,
-  CalendarDays,
   Check,
   ChevronDown,
   ChevronRight,
-  ClipboardList,
   DatabaseBackup,
   Download,
-  GraduationCap,
-  HeartHandshake,
-  History,
   Loader2,
   Mic,
-  Music,
-  NotebookPen,
   RefreshCw,
   ShieldCheck,
   Trash2,
   Upload,
   UserCog,
   UserPlus,
-  Users,
 } from 'lucide-react'
 import { useAuth } from '@/contexts/AuthContext'
 import { useData } from '@/contexts/DataContext'
@@ -41,6 +31,12 @@ import { BACKUP_COLLECTIONS, createBackup, downloadBackup } from '@/services/bac
 import { saveSettings } from '@/services/settings'
 import { deleteUserProfile, setUserActive, setUserRole, updateUserProfile } from '@/services/users'
 import { formatRelative } from '@/lib/dates'
+import {
+  ADMIN_IMPORTS,
+  ADMIN_IMPORT_LABEL,
+  EVERYDAY_IMPORTS,
+  type ImportEntry,
+} from '@/lib/imports'
 import { cn } from '@/lib/utils'
 import {
   ACCESS_LEVELS,
@@ -52,76 +48,6 @@ import {
   type AppUser,
   type Role,
 } from '@/lib/types'
-
-/**
- * Alles, was sich von aussen übernehmen lässt – der einzige Weg dorthin.
- *
- * Die Reihenfolge ist die des Einrichtens: Zuerst die Mitglieder, denn
- * Berufungen und Betreuung ordnen ihre Einträge erfassten Personen zu.
- * Danach, was jeweils zu seiner Zeit anfällt.
- */
-const IMPORTS = [
-  {
-    to: '/import',
-    label: 'Mitglieder',
-    description: 'Mitgliederverzeichnis aus dem LCR – Grundlage für alles Übrige',
-    icon: ClipboardList,
-  },
-  {
-    to: '/import/berufungen',
-    label: 'Berufungen',
-    description: 'Organisationen, Berufungen ausserhalb der Einheit und die Berufungshistorie',
-    icon: Award,
-  },
-  {
-    to: '/import/betreuung',
-    label: 'Betreuung',
-    description: 'Betreuungspartner und Betreuungsaufträge',
-    icon: HeartHandshake,
-  },
-  {
-    to: '/import/alleinstehende',
-    label: 'Alleinstehende',
-    description: 'Die Listen JAE und AE – Grundlage für den Filter nach Organisation',
-    icon: Users,
-  },
-  {
-    to: '/import/putzplan',
-    label: 'Putzplan',
-    description: 'Die Excel-Tabelle der Gemeinde als Wochenplan',
-    icon: Brush,
-  },
-  {
-    to: '/import/aktivitaeten',
-    label: 'Aktivitäten AP',
-    description: 'Der bisherige Jahresplan der Priestertumskollegien als Kalender',
-    icon: CalendarDays,
-  },
-  {
-    to: '/import/ap-themen',
-    label: 'Themen AP-Klasse',
-    description: 'Die Lektionen eines Monats aus «Für eine starke Jugend» – jeden Monat neu',
-    icon: GraduationCap,
-  },
-  {
-    to: '/import/sitzungen',
-    label: 'Sitzungen',
-    description: 'Die bisherigen Protokolle als Sitzungsgeschichte und offene Pendenzen',
-    icon: NotebookPen,
-  },
-  {
-    to: '/import/verlauf',
-    label: 'Verlauf',
-    description: 'Frühere Ansprachen und Gebete – einmalig beim Einrichten',
-    icon: History,
-  },
-  {
-    to: '/import/lieder',
-    label: 'Liederlisten',
-    description: 'Damit beim Erfassen der Musik die Liednummer genügt',
-    icon: Music,
-  },
-]
 
 export function Settings() {
   const { profile, isAdmin } = useAuth()
@@ -597,10 +523,16 @@ function SyncSection() {
  * Die Liste der Importe – zugeklappt, bis jemand sie braucht.
  *
  * Ein Import ist der seltenste Handgriff der App: einmal beim Einrichten,
- * danach höchstens zweimal im Jahr. Acht Einträge dafür dauerhaft offen zu
- * lassen, macht die Einstellungen länger, als sie sein müssen.
+ * danach höchstens zweimal im Jahr. Die ganze Liste dafür dauerhaft offen
+ * zu lassen, macht die Einstellungen länger, als sie sein müssen.
+ *
+ * Die Admin-Importe stehen in einem eigenen Block darunter und erscheinen
+ * allein im Administrator-Konto (siehe `lib/imports`): Sie haben den
+ * Bestand beim Einrichten einmal gefüllt und werden seither nicht mehr
+ * gebraucht.
  */
 function ImportSection() {
+  const { isAdmin } = useAuth()
   const [open, setOpen] = useState(false)
 
   return (
@@ -625,27 +557,54 @@ function ImportSection() {
       </h2>
 
       {open && (
-        <ul className="divide-list mt-2">
-          {IMPORTS.map((entry) => (
-            <li key={entry.to}>
-              <Link
-                to={entry.to}
-                className="-mx-2 flex items-center gap-3 rounded-lg px-2 py-3 transition hover:bg-slate-50 dark:hover:bg-slate-800/60"
-              >
-                <entry.icon className="size-4 shrink-0 text-slate-400" aria-hidden />
-                <span className="min-w-0 flex-1">
-                  <span className="block text-sm font-medium">{entry.label}</span>
-                  <span className="block text-xs text-slate-500 dark:text-slate-400">
-                    {entry.description}
-                  </span>
-                </span>
-                <ChevronRight className="size-4 shrink-0 text-slate-300" aria-hidden />
-              </Link>
-            </li>
-          ))}
-        </ul>
+        <>
+          <ul className="divide-list mt-2">
+            {EVERYDAY_IMPORTS.map((entry) => (
+              <ImportLink key={entry.to} entry={entry} />
+            ))}
+          </ul>
+
+          {isAdmin && (
+            <div className="mt-5 border-t border-slate-200 pt-4 dark:border-slate-700">
+              <h3 className="flex items-center gap-2 text-sm font-semibold">
+                <ShieldCheck className="size-4 text-slate-400" aria-hidden />
+                {ADMIN_IMPORT_LABEL}
+              </h3>
+              <p className="hint mt-1">
+                Einmalig beim Einrichten der App gebraucht und seither nicht mehr. Sie stehen allein
+                im Administrator-Konto – im Alltag der Bischofschaft wären es Handgriffe, die
+                niemand mehr tut.
+              </p>
+              <ul className="divide-list mt-2">
+                {ADMIN_IMPORTS.map((entry) => (
+                  <ImportLink key={entry.to} entry={entry} />
+                ))}
+              </ul>
+            </div>
+          )}
+        </>
       )}
     </section>
+  )
+}
+
+function ImportLink({ entry }: { entry: ImportEntry }) {
+  return (
+    <li>
+      <Link
+        to={entry.to}
+        className="-mx-2 flex items-center gap-3 rounded-lg px-2 py-3 transition hover:bg-slate-50 dark:hover:bg-slate-800/60"
+      >
+        <entry.icon className="size-4 shrink-0 text-slate-400" aria-hidden />
+        <span className="min-w-0 flex-1">
+          <span className="block text-sm font-medium">{entry.label}</span>
+          <span className="block text-xs text-slate-500 dark:text-slate-400">
+            {entry.description}
+          </span>
+        </span>
+        <ChevronRight className="size-4 shrink-0 text-slate-300" aria-hidden />
+      </Link>
+    </li>
   )
 }
 
