@@ -6,6 +6,7 @@ import {
   Check,
   ChevronDown,
   ChevronRight,
+  ClipboardList,
   DatabaseBackup,
   Download,
   Loader2,
@@ -481,8 +482,48 @@ export function Settings() {
         {isAdmin && <BackupSection />}
 
         <SyncSection />
+
+        {/* Zuunterst und allein für den Administrator: Das Protokoll gehört
+            zum Verwalten der App und nicht zur Arbeit damit. */}
+        {isAdmin && <AccessLogSection />}
       </div>
     </>
+  )
+}
+
+/* ------------------------------------------------------------------ */
+/* Zugriffsprotokoll                                                   */
+/* ------------------------------------------------------------------ */
+
+/**
+ * Der Einstieg zum Protokoll – nur im Administrator-Konto.
+ *
+ * Als eigener Abschnitt und nicht als Zeile in der Benutzerverwaltung
+ * darüber: Dort wird Zugriff **vergeben**, hier steht, was daraus geworden
+ * ist. Beides gehört zusammen, aber nicht ineinander – und die Liste der
+ * Konten wäre der falsche Ort für eine Seite, die es einmal im Quartal zu
+ * öffnen lohnt.
+ *
+ * Die Sperre ist das nicht: Die Seite selbst prüft es noch einmal (siehe
+ * `App`), und die Zugriffsregeln geben einem anderen Konto ohnehin keine
+ * einzige Zeile heraus.
+ */
+function AccessLogSection() {
+  return (
+    <section className="card p-5">
+      <h2 className="mb-1 flex items-center gap-2 text-sm font-semibold">
+        <ClipboardList className="size-4 text-slate-400" aria-hidden />
+        Zugriffe
+      </h2>
+      <p className="hint mb-4">
+        Wer war wann in der App, von wo aus – und wer hat was geändert. Sichtbar allein in diesem
+        Konto.
+      </p>
+      <Link to="/zugriffe" className="btn-secondary">
+        <ClipboardList className="size-4" aria-hidden />
+        Protokoll öffnen
+      </Link>
+    </section>
   )
 }
 

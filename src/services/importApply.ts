@@ -8,7 +8,7 @@ import {
   writeBatch,
   Timestamp,
   type DocumentReference,
-} from 'firebase/firestore'
+} from '@/lib/db'
 import { db, COLLECTIONS } from '@/lib/firebase'
 import { toDate } from '@/lib/dates'
 import { requireOnline } from '@/lib/sync'

@@ -5,7 +5,7 @@ import {
   serverTimestamp,
   setDoc,
   Timestamp,
-} from 'firebase/firestore'
+} from '@/lib/db'
 import { db, COLLECTIONS } from '@/lib/firebase'
 import { toDate, toDateInput, weekdaysInMonth } from '@/lib/dates'
 import { stripUndefined, uid } from '@/lib/utils'

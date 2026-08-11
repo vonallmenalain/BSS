@@ -3,6 +3,7 @@ import { BrowserRouter, Routes, Route, Navigate, Outlet } from 'react-router-dom
 import { AuthProvider, useAuth } from '@/contexts/AuthContext'
 import { DataProvider } from '@/contexts/DataContext'
 import { ToastProvider } from '@/contexts/ToastContext'
+import { useAccessLog } from '@/hooks/useAccessLog'
 import { Layout } from '@/components/Layout'
 import { ErrorBoundary } from '@/components/ErrorBoundary'
 import { LoadingScreen } from '@/components/ui/Feedback'
@@ -24,6 +25,7 @@ const Cleaning = lazy(() => import('@/pages/Cleaning').then((m) => ({ default: m
 const Talks = lazy(() => import('@/pages/Talks').then((m) => ({ default: m.Talks })))
 const Callings = lazy(() => import('@/pages/Callings').then((m) => ({ default: m.Callings })))
 const Settings = lazy(() => import('@/pages/Settings').then((m) => ({ default: m.Settings })))
+const AccessLog = lazy(() => import('@/pages/AccessLog').then((m) => ({ default: m.AccessLog })))
 const ImportMembers = lazy(() =>
   import('@/pages/ImportMembers').then((m) => ({ default: m.ImportMembers })),
 )
@@ -89,6 +91,14 @@ const Prayers = lazy(() =>
 function RequireAuth({ children }: { children: ReactNode }) {
   const { firebaseUser, loading, isApproved, canViewAp } = useAuth()
 
+  /*
+   * Hier und nicht tiefer: Diese Stelle sieht jedes angemeldete Konto, auch
+   * eines, das noch auf die Freigabe wartet. Dass jemand sich anmeldet und
+   * wieder geht, ohne je etwas zu sehen, gehört ins Protokoll – es ist die
+   * Zeile, wegen der man es aufschlägt.
+   */
+  useAccessLog()
+
   if (loading) return <LoadingScreen label="Anmeldung wird geprüft …" />
   if (!firebaseUser) return <Navigate to="/anmelden" replace />
   if (!isApproved && !canViewAp) return <PendingApproval />
@@ -110,21 +120,31 @@ function RequireFullAccess() {
 }
 
 /**
- * Die Admin-Importe – die Handgriffe, die es nur beim Einrichten brauchte.
+ * Was allein dem Administrator-Konto gehört.
  *
- * Welche das sind, steht in `lib/imports` (`adminOnly`); die Routen weiter
- * unten sind dieselben, `tests/imports.test.ts` hält beides zusammen. Ohne
- * diese Weiche wären sie zwar nirgends mehr verlinkt, aber über ein
- * Lesezeichen weiterhin zu erreichen – und ein Import ist der eine
- * Handgriff, der einen ganzen Bestand ersetzen kann.
+ * Zwei Dinge, und sie sind verschieden streng.
  *
- * Eine Sperre ist es nicht: Schreiben dürfte jedes Konto mit Vollzugriff
- * (siehe `firestore.rules`), denn dieselben Daten entstehen im Alltag von
- * Hand. Es hält bloss die Vergangenheit aus dem Weg.
+ * Die **Admin-Importe** – die Handgriffe, die es nur beim Einrichten
+ * brauchte. Welche das sind, steht in `lib/imports` (`adminOnly`); die Routen
+ * weiter unten sind dieselben, `tests/imports.test.ts` hält beides zusammen.
+ * Ohne diese Weiche wären sie zwar nirgends mehr verlinkt, aber über ein
+ * Lesezeichen weiterhin zu erreichen – und ein Import ist der eine Handgriff,
+ * der einen ganzen Bestand ersetzen kann. Eine Sperre ist es nicht: Schreiben
+ * dürfte jedes Konto mit Vollzugriff (siehe `firestore.rules`), denn dieselben
+ * Daten entstehen im Alltag von Hand. Es hält bloss die Vergangenheit aus dem
+ * Weg.
+ *
+ * Das **Zugriffsprotokoll** dagegen ist wirklich gesperrt, und zwar in den
+ * Zugriffsregeln: Wer die Adresse aufriefe, bekäme auch ohne diese Weiche
+ * keine Zeile zu sehen. Sie erspart bloss die leere Seite mit der
+ * Fehlermeldung.
+ *
+ * `to` sagt, wohin es stattdessen geht – bei den Importen zum gewöhnlichen
+ * Import, beim Protokoll zur Übersicht.
  */
-function RequireAdmin() {
+function RequireAdmin({ to }: { to: string }) {
   const { isAdmin } = useAuth()
-  if (!isAdmin) return <Navigate to="/import" replace />
+  if (!isAdmin) return <Navigate to={to} replace />
   return <Outlet />
 }
 
@@ -334,10 +354,25 @@ export default function App() {
                       }
                     />
 
+                    {/* ---------- Zugriffsprotokoll ----------
+                        Wer wann da war und was sich geändert hat – allein für
+                        das Administrator-Konto, erreichbar zuunterst in den
+                        Einstellungen. */}
+                    <Route element={<RequireAdmin to="/" />}>
+                      <Route
+                        path="zugriffe"
+                        element={
+                          <Suspense fallback={<LoadingScreen />}>
+                            <AccessLog />
+                          </Suspense>
+                        }
+                      />
+                    </Route>
+
                     {/* ---------- Admin-Importe ----------
                         Einmalig beim Einrichten gebraucht; sichtbar und
                         erreichbar allein für das Administrator-Konto. */}
-                    <Route element={<RequireAdmin />}>
+                    <Route element={<RequireAdmin to="/import" />}>
                       <Route
                         path="import/aktivitaeten"
                         element={

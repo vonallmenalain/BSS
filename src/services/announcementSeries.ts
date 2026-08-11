@@ -1,4 +1,4 @@
-import { collection, deleteDoc, doc, serverTimestamp, setDoc, updateDoc } from 'firebase/firestore'
+import { collection, deleteDoc, doc, serverTimestamp, setDoc, updateDoc } from '@/lib/db'
 import { db, COLLECTIONS } from '@/lib/firebase'
 import { forgetDoc } from '@/lib/collectionStore'
 import { commit, type SaveOutcome } from '@/lib/sync'

@@ -472,6 +472,105 @@ export interface AppUser extends WithId {
 }
 
 /* ------------------------------------------------------------------ */
+/* Zugriffsprotokoll                                                   */
+/* ------------------------------------------------------------------ */
+
+/**
+ * Das Protokoll darüber, wer die App benutzt – und was dabei geschieht.
+ *
+ * Beides steht in **einer** Sammlung (`accessLog`), unterschieden durch
+ * `kind`. Der Grund ist die Ansicht: Aufgeklappt zeigt sie einen einzigen
+ * Zeitstrahl je Konto, in dem ein Besuch und die Änderungen daraus
+ * beieinanderstehen – «um 20:14 gekommen, um 20:16 die Traktandenliste
+ * umgestellt». Zwei Sammlungen wären zwei Abfragen und zwei Regelblöcke für
+ * dieselbe Frage.
+ *
+ * Lesen darf das Protokoll ausschliesslich das Administrator-Konto; schreiben
+ * darf jedes angemeldete Konto, aber nur Einträge über sich selbst. Beides
+ * steht in `firestore.rules` und wird dort durchgesetzt, nicht hier.
+ *
+ * Es ist ein Protokoll und keine Beweissicherung: Geschrieben wird aus dem
+ * Browser heraus, also von genau dem Gerät, über das es Auskunft gibt. Wer
+ * die App mit abgeschaltetem JavaScript oder direkt über die
+ * Firestore-Schnittstelle benutzte, käme darin nicht vor. Für die Frage, wer
+ * die App wie oft benutzt und wer woran gearbeitet hat, reicht das; für den
+ * Nachweis gegenüber jemandem, der sie zu umgehen versucht, nicht.
+ */
+export type LogKind = 'session' | 'change'
+
+/** Ein Besuch oder eine Änderung – die gemeinsamen Felder. */
+interface LogEntryBase extends WithId {
+  kind: LogKind
+  /** Firebase-Auth-UID; bleibt lesbar, auch wenn das Profil später verschwindet. */
+  uid: string
+  /*
+   * Name und Adresse werden **mitgeschrieben** statt nachgeschlagen.
+   *
+   * Ein gelöschtes Konto liesse sich sonst nicht mehr benennen – und
+   * ausgerechnet dessen Spur will man im Zweifel lesen können.
+   */
+  email: string
+  displayName: string
+  /** Beginn des Besuchs bzw. Zeitpunkt der Änderung */
+  at: TS
+}
+
+/** Ein Besuch: von der ersten bis zur letzten Regung in derselben Sitzung. */
+export interface SessionEntry extends LogEntryBase {
+  kind: 'session'
+  /** Zuletzt gesehen – wächst, solange die Sitzung läuft. */
+  endedAt?: TS | null
+  /** Wie viele Ansichten in diesem Besuch geöffnet wurden */
+  views: number
+  /** «iPhone · Safari» – aus der Browserkennung gelesen */
+  device?: string
+  /** Als App installiert (statt im Browser-Tab)? */
+  standalone?: boolean
+  /** Ortsangabe aus dem Netz des Zugriffs, sofern verfügbar */
+  city?: string
+  region?: string
+  country?: string
+  countryCode?: string
+  /** Zeitzone des Geräts – die Ortsangabe, die immer da ist */
+  timezone?: string
+  ip?: string
+}
+
+export type ChangeOp = 'create' | 'update' | 'delete'
+
+export const CHANGE_OP_LABELS: Record<ChangeOp, string> = {
+  create: 'angelegt',
+  update: 'geändert',
+  delete: 'gelöscht',
+}
+
+/** Eine Änderung am Datenbestand. */
+export interface ChangeEntry extends LogEntryBase {
+  kind: 'change'
+  /** Zu welchem Besuch sie gehört – verbindet Zeitstrahl und Zeile. */
+  sessionId?: string | null
+  /** Name der Firestore-Sammlung, z. B. «agendaItems» */
+  collectionId: string
+  op: ChangeOp
+  docId?: string
+  /** Woran gearbeitet wurde, in Worten: «Budget 2027» */
+  label?: string
+  /** Welche Felder sich geändert haben, bereits übersetzt */
+  fields?: string[]
+  /**
+   * Wie viele Datensätze zusammengefasst sind.
+   *
+   * Ein Import schreibt Hunderte Datensätze in wenigen Sekunden. Jeden davon
+   * einzeln festzuhalten machte das Protokoll unlesbar und teuer; sie werden
+   * deshalb zu einer Zeile zusammengezogen (siehe `lib/audit`). Fehlt das
+   * Feld oder steht 1 darin, ist es eine einzelne Änderung.
+   */
+  count?: number
+}
+
+export type LogEntry = SessionEntry | ChangeEntry
+
+/* ------------------------------------------------------------------ */
 /* Sitzungen                                                           */
 /* ------------------------------------------------------------------ */
 

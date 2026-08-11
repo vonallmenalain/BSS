@@ -1,4 +1,4 @@
-import { collection, doc, getDocs, serverTimestamp, setDoc, writeBatch } from 'firebase/firestore'
+import { collection, doc, getDocs, serverTimestamp, setDoc, writeBatch } from '@/lib/db'
 import { db, COLLECTIONS } from '@/lib/firebase'
 import { resyncCollections } from '@/lib/collectionStore'
 import { normalize } from '@/lib/utils'

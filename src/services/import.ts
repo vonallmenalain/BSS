@@ -1,4 +1,4 @@
-import { collection, doc, serverTimestamp, writeBatch, Timestamp } from 'firebase/firestore'
+import { collection, doc, serverTimestamp, writeBatch, Timestamp } from '@/lib/db'
 import Papa from 'papaparse'
 // Nur der Browser-Einstiegspunkt ist hier korrekt – die Node-Variante würde
 // Server-APIs erwarten, die es im Bundle nicht gibt. `readSheet` liefert die

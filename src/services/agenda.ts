@@ -12,7 +12,7 @@ import {
   where,
   writeBatch,
   arrayUnion,
-} from 'firebase/firestore'
+} from '@/lib/db'
 import { auth, db, COLLECTIONS } from '@/lib/firebase'
 import { forgetDoc } from '@/lib/collectionStore'
 import { isDutyItem } from '@/lib/monthlyDuties'

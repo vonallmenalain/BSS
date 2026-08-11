@@ -8,7 +8,7 @@ import {
   where,
   writeBatch,
   Timestamp,
-} from 'firebase/firestore'
+} from '@/lib/db'
 import { db, COLLECTIONS } from '@/lib/firebase'
 import { talkAvailability } from '@/lib/availability'
 import { matchesOrganizations } from '@/lib/organizations'

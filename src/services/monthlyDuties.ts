@@ -2,11 +2,12 @@ import {
   collection,
   deleteDoc,
   doc,
+  noteWrite,
   runTransaction,
   serverTimestamp,
   setDoc,
   updateDoc,
-} from 'firebase/firestore'
+} from '@/lib/db'
 import { db, COLLECTIONS } from '@/lib/firebase'
 import { forgetDoc } from '@/lib/collectionStore'
 import { commit, type SaveOutcome } from '@/lib/sync'
@@ -159,6 +160,15 @@ export async function applyDutyActions(
   for (const action of actions) {
     if (action.kind === 'reassign') {
       const ref = doc(db, COLLECTIONS.agendaItems, action.itemId)
+      /*
+       * Das Zugriffsprotokoll wird hier von Hand bedient (siehe `lib/db`).
+       * Eine Transaktion kann ohne Wirkung enden – der Eintrag ist weg oder
+       * längst erledigt –, und ihre Rückruffunktion läuft bei einem
+       * Zusammenstoss ein zweites Mal. Gemeldet wird deshalb erst danach und
+       * nur, wenn wirklich geschrieben wurde.
+       */
+      let applied: Record<string, unknown> | null = null
+
       await runTransaction(db, async (transaction) => {
         const existing = await transaction.get(ref)
         // Weg oder inzwischen erledigt: Dann gehört die Aufgabe dem, der sie
@@ -168,7 +178,7 @@ export async function applyDutyActions(
         if (current.status === 'done') return
         // Gerechnet wird noch einmal, und zwar auf dem Stand des Servers:
         // Wer seither von Hand dazugeschrieben wurde, soll stehen bleiben.
-        transaction.update(ref, {
+        applied = {
           assignees: dutyAssignees(current.assignees, current.dutyLeaderId, action.leader),
           dutyLeaderId: action.leader,
           // Kein `editedAt`: Ein Wechsel der Monatsleitung ist keine
@@ -176,8 +186,11 @@ export async function applyDutyActions(
           // «Bearbeitungsdatum» sortierten Liste an den Anfang (siehe
           // `services/agenda`).
           updatedAt: serverTimestamp(),
-        })
+        }
+        transaction.update(ref, applied)
       })
+
+      if (applied) noteWrite(ref, 'update', applied)
       continue
     }
 
@@ -185,52 +198,59 @@ export async function applyDutyActions(
     const author = actor(duty.createdBy)
     const ref = doc(db, COLLECTIONS.agendaItems, dutyItemId(duty.id, month))
 
+    const pendenz = {
+      title: duty.title,
+      description: duty.description ?? '',
+      /*
+       * Keine Sitzung, und zwar dauerhaft.
+       *
+       * Eine Monatspendenz gehört dem Monat und nicht dem Sitzungstisch:
+       * Sie steht nicht auf der Traktandenliste, wird beim Planen der
+       * nächsten Sitzung nicht mitgenommen und im Protokoll nicht
+       * gedruckt. Wo sie erscheint, ist die Pendenzenliste – unter
+       * «Meine» bei dem, der den Monat führt.
+       */
+      meetingId: null,
+      firstMeetingId: null,
+      order: Date.now(),
+      kind: 'pendenz' satisfies ItemKind,
+      status: 'pending' satisfies ItemStatus,
+      assignees: leader ? [leader] : [],
+      memberRefs: [],
+      layout: null,
+      callingChanges: null,
+      deferCount: 0,
+      dutyId: duty.id,
+      dutyMonth: month,
+      dutyLeaderId: leader,
+      history: [
+        {
+          id: uid(),
+          action: `Monatspendenz für ${formatMonthKey(month)}`,
+          authorId: author.id,
+          authorName: author.name,
+          createdAt: new Date().toISOString(),
+        },
+      ],
+      createdAt: serverTimestamp(),
+      updatedAt: serverTimestamp(),
+      editedAt: serverTimestamp(),
+      createdBy: author.id,
+      editedBy: author.id,
+      completedAt: null,
+      completedBy: null,
+    }
+
+    let created = false
+
     await runTransaction(db, async (transaction) => {
       const existing = await transaction.get(ref)
       if (existing.exists()) return
 
-      transaction.set(ref, {
-        title: duty.title,
-        description: duty.description ?? '',
-        /*
-         * Keine Sitzung, und zwar dauerhaft.
-         *
-         * Eine Monatspendenz gehört dem Monat und nicht dem Sitzungstisch:
-         * Sie steht nicht auf der Traktandenliste, wird beim Planen der
-         * nächsten Sitzung nicht mitgenommen und im Protokoll nicht
-         * gedruckt. Wo sie erscheint, ist die Pendenzenliste – unter
-         * «Meine» bei dem, der den Monat führt.
-         */
-        meetingId: null,
-        firstMeetingId: null,
-        order: Date.now(),
-        kind: 'pendenz' satisfies ItemKind,
-        status: 'pending' satisfies ItemStatus,
-        assignees: leader ? [leader] : [],
-        memberRefs: [],
-        layout: null,
-        callingChanges: null,
-        deferCount: 0,
-        dutyId: duty.id,
-        dutyMonth: month,
-        dutyLeaderId: leader,
-        history: [
-          {
-            id: uid(),
-            action: `Monatspendenz für ${formatMonthKey(month)}`,
-            authorId: author.id,
-            authorName: author.name,
-            createdAt: new Date().toISOString(),
-          },
-        ],
-        createdAt: serverTimestamp(),
-        updatedAt: serverTimestamp(),
-        editedAt: serverTimestamp(),
-        createdBy: author.id,
-        editedBy: author.id,
-        completedAt: null,
-        completedBy: null,
-      })
+      created = true
+      transaction.set(ref, pendenz)
     })
+
+    if (created) noteWrite(ref, 'create', pendenz)
   }
 }
