@@ -3,9 +3,18 @@ import { CalendarPlus, Loader2 } from 'lucide-react'
 import { useAuth } from '@/contexts/AuthContext'
 import { useToast } from '@/contexts/ToastContext'
 import { Modal } from '@/components/ui/Modal'
-import { toDateInput } from '@/lib/dates'
+import { formatDate, toDateInput } from '@/lib/dates'
+import { SCHOOL_HOLIDAYS_UNTIL } from '@/lib/schoolHolidays'
 import { createApActivities } from '@/services/apActivities'
-import { FHV_TITLE, generateApSchedule, type ApScheduleOptions } from '@/services/apSchedule'
+import { fromIsoDate } from '@/services/importHistory'
+import {
+  CONFERENCE_TITLE,
+  FHV_TITLE,
+  HOLIDAY_TITLE,
+  generateApSchedule,
+  type ApScheduleOptions,
+  type ApScheduleReason,
+} from '@/services/apSchedule'
 import type { ApActivity } from '@/lib/types'
 
 /**
@@ -16,6 +25,11 @@ import type { ApActivity } from '@/lib/types'
  * Klassen am Sonntag. Die von Hand zu erfassen, wäre eine Fleissarbeit ohne
  * Erkenntnis – also erzeugt die App sie, und was an einem Abend
  * stattfindet, kommt später dazu.
+ *
+ * Dazu die drei Abende, an denen **nichts** stattfindet: die FHV am 3.
+ * Mittwoch, die Schulferien und die Generalkonferenz. Sie stehen als «fällt
+ * aus» im Plan, weil ein fehlendes Datum wie eine offene Aufgabe aussieht
+ * und ein erklärter Ausfall wie eine Antwort.
  *
  * Die Themen der Klasse kommen nicht von hier: Sie stehen monatlich in «Für
  * eine starke Jugend» und werden eingelesen (**Einstellungen › Importe ›
@@ -52,14 +66,20 @@ export function ApScheduleDialog({
 
   const entries = useMemo(() => generateApSchedule(options, taken), [options, taken])
 
-  const counts = useMemo(
-    () => ({
-      activity: entries.filter((entry) => entry.kind === 'activity').length,
-      class: entries.filter((entry) => entry.kind === 'class').length,
-      cancelled: entries.filter((entry) => entry.kind === 'cancelled').length,
-    }),
-    [entries],
-  )
+  /** Je Regel eine Zahl – drei Ausfälle sehen im Plan gleich aus. */
+  const counts = useMemo(() => {
+    const byReason = {} as Record<ApScheduleReason, number>
+    for (const entry of entries) byReason[entry.reason] = (byReason[entry.reason] ?? 0) + 1
+    return byReason
+  }, [entries])
+
+  /**
+   * Reicht der Ferienplan über den Zeitraum hinaus?
+   *
+   * Ein Plan, der bis 2031 erzeugt wird, bekäme ab 2029 lautlos keine
+   * Ferien mehr – und niemand würde es merken. Also steht es da.
+   */
+  const beyondHolidays = options.holidays && options.to > SCHOOL_HOLIDAYS_UNTIL
 
   const update = <K extends keyof ApScheduleOptions>(key: K, value: ApScheduleOptions[K]) =>
     setOptions((current) => ({ ...current, [key]: value }))
@@ -68,7 +88,17 @@ export function ApScheduleDialog({
     if (entries.length === 0) return
     setBusy(true)
     try {
-      const count = await createApActivities(entries, profile?.id ?? null)
+      // Ohne `reason`: Der Grund gehört dem Dialog, nicht dem Termin.
+      const count = await createApActivities(
+        entries.map(({ date, kind, title, time, endTime }) => ({
+          date,
+          kind,
+          title,
+          time,
+          endTime,
+        })),
+        profile?.id ?? null,
+      )
       toast.success(`${count} ${count === 1 ? 'Termin' : 'Termine'} angelegt.`)
       onClose()
     } catch (error) {
@@ -143,24 +173,50 @@ export function ApScheduleDialog({
             checked={options.activities}
             onChange={(next) => update('activities', next)}
             label="Aktivität an jedem Mittwoch"
-            hint="Ohne den 3. Mittwoch im Monat – dann ist FHV."
-            count={counts.activity}
+            hint="Ohne den 3. Mittwoch im Monat und ohne die Schulferien."
+            count={counts.activity ?? 0}
           />
           <Choice
             checked={options.classes}
             onChange={(next) => update('classes', next)}
             label="AP-Klasse an den Sonntagen"
             hint="Ab September 2026 jeden Sonntag von 11:35 bis 12:00 – davor am 2. und 4. von 11 bis 12."
-            count={counts.class}
+            count={counts.class ?? 0}
           />
+        </fieldset>
+
+        <fieldset className="space-y-2">
+          <legend className="label">Wann nichts stattfindet</legend>
+
           <Choice
             checked={options.fhv}
             onChange={(next) => update('fhv', next)}
             label={`«${FHV_TITLE}» am 3. Mittwoch`}
             hint="Steht als «fällt aus» im Plan, damit die Lücke erklärt ist."
-            count={counts.cancelled}
+            count={counts.fhv ?? 0}
+          />
+          <Choice
+            checked={options.holidays}
+            onChange={(next) => update('holidays', next)}
+            label={`«${HOLIDAY_TITLE}» in den Ferien`}
+            hint="An jedem Mittwoch der Schulferien – auch am 3., die Ferien gehen der FHV vor. Die AP-Klasse am Sonntag bleibt."
+            count={counts.holiday ?? 0}
+          />
+          <Choice
+            checked={options.conference}
+            onChange={(next) => update('conference', next)}
+            label={`«${CONFERENCE_TITLE}» am 1. Sonntag im April und Oktober`}
+            hint="An diesem Wochenende ist Generalkonferenz – in der Gemeinde findet nichts statt."
+            count={counts.conference ?? 0}
           />
         </fieldset>
+
+        {beyondHolidays && (
+          <p className="hint">
+            Der Ferienplan von Burgdorf ist bis zum {formatDate(fromIsoDate(SCHOOL_HOLIDAYS_UNTIL))}{' '}
+            erfasst – danach werden keine Ferien eingetragen.
+          </p>
+        )}
 
         <p className="hint">
           Tage, an denen bereits etwas im Plan steht, bleiben unverändert – auch bei einem zweiten
@@ -186,6 +242,8 @@ function defaults(): ApScheduleOptions {
     activities: true,
     classes: true,
     fhv: true,
+    holidays: true,
+    conference: true,
   }
 }
 
