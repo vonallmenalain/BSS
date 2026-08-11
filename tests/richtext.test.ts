@@ -57,6 +57,12 @@ test('Rundreise: serialisieren, einlesen, Projektion bleibt gleich', () => {
     blocks: [
       { runs: [{ t: 'Hallo ' }, { t: 'Welt', b: true, color: 'red' }] },
       { runs: [{ t: 'kursiv', i: true }, { t: ' und ' }, { t: 'unterstrichen', u: true }] },
+      {
+        runs: [
+          { t: 'gross', size: 'xl' },
+          { t: ' klein', size: 's' },
+        ],
+      },
       { list: 1, runs: [{ t: 'Punkt', bg: 'yellow', who: 'uid-1' }] },
     ],
   })
@@ -83,7 +89,7 @@ test('parseRichJson: Unbekanntes im Kleinen fällt weg, im Grossen alles', () =>
   const fremdeFarbe = parseRichJson(
     JSON.stringify({
       v: 1,
-      blocks: [{ runs: [{ t: 'Hi', color: 'neon', bg: 'yellow', x: 1 }] }],
+      blocks: [{ runs: [{ t: 'Hi', color: 'neon', bg: 'yellow', size: '99', x: 1 }] }],
     }),
   )
   assert.ok(fremdeFarbe)

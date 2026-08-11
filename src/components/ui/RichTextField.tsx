@@ -51,6 +51,7 @@ import {
 } from '@/lib/richtext'
 import {
   docFromDom,
+  needsNormalize,
   renderDocInto,
   selectionOffsets,
   setSelectionOffsets,
@@ -291,6 +292,14 @@ export function RichTextField({
     report()
   }
 
+  /*
+   * Läuft gerade eine Zeicheneingabe über mehrere Tasten (IME, Diktat,
+   * Autokorrektur), darf das Feld nicht unter der Eingabe neu gezeichnet
+   * werden – das risse die Komposition ab. Aufgeräumt wird dann, sobald
+   * sie abgeschlossen ist.
+   */
+  const composing = useRef(false)
+
   const handleInput = () => {
     const root = rootRef.current
     if (!root) return
@@ -298,7 +307,7 @@ export function RichTextField({
 
     // «- » am Zeilenanfang wird zur Aufzählung – die zwei Zeichen waren
     // Befehl, nicht Text (siehe `autoListBlock`).
-    if (!singleLine) {
+    if (!singleLine && !composing.current) {
       const sel = selectionOffsets(root)
       if (sel && sel.start === sel.end) {
         const auto = autoListBlock(doc, sel.start)
@@ -307,6 +316,21 @@ export function RichTextField({
           return
         }
       }
+    }
+
+    /*
+     * Hat der Browser fremdes Markup eingesetzt – Chromes «wiederbelebter»
+     * Tippstil nach dem Löschen formatierten Texts, das B/I/U einer
+     * Auswahlleiste –, wird das Feld sofort aus dem Modell neu gezeichnet,
+     * den Cursor an derselben Stelle. Der Parser hat solches Markup nicht
+     * gelesen (siehe `lib/richdom`); neu Getipptes ist damit schlicht
+     * unformatiert, statt eine geratene Farbe zu tragen.
+     */
+    if (!composing.current && needsNormalize(root)) {
+      const sel = selectionOffsets(root)
+      const caretNow = sel ?? { start: editTextOf(doc).length, end: editTextOf(doc).length }
+      applyDoc(doc, caretNow.start, caretNow.end)
+      return
     }
 
     emit(doc)
@@ -333,6 +357,7 @@ export function RichTextField({
   const toggleBold = () => applyInline('b', (marks) => (marks.b ? null : true))
   const toggleItalic = () => applyInline('i', (marks) => (marks.i ? null : true))
   const toggleUnderline = () => applyInline('u', (marks) => (marks.u ? null : true))
+  const setSize = (key: string | null) => applyInline('size', () => key)
   const setColor = (key: string | null) => applyInline('color', () => key)
   const setBg = (key: string | null) => applyInline('bg', () => key)
   const setWho = (uid: string | null) => applyInline('who', () => uid)
@@ -554,6 +579,13 @@ export function RichTextField({
         className={cn('rt-editor break-words whitespace-pre-wrap', !bare && 'input', className)}
         style={minHeight ? { minHeight } : undefined}
         onInput={handleInput}
+        onCompositionStart={() => {
+          composing.current = true
+        }}
+        onCompositionEnd={() => {
+          composing.current = false
+          handleInput()
+        }}
         onKeyDown={handleKeyDown}
         onPaste={handlePaste}
         // Hineingezogenes käme als fremdes HTML – dafür gilt dasselbe wie
@@ -635,6 +667,36 @@ export function RichTextField({
                 label="Unterstrichen"
                 active={menu.marks.u === true}
                 onClick={toggleUnderline}
+              />
+            </div>
+
+            <MenuLabel>Textgrösse</MenuLabel>
+            {/* Vier feste Stufen, kein freies Mass – siehe `TEXT_SIZES`. Das
+                «A» zeigt die Stufe; nochmaliges Antippen stellt auf Normal. */}
+            <div className="flex items-end gap-1 pb-1">
+              <SizeButton
+                label="Klein"
+                sample="text-xs"
+                active={menu.marks.size === 's'}
+                onClick={() => setSize(menu.marks.size === 's' ? null : 's')}
+              />
+              <SizeButton
+                label="Normal"
+                sample="text-sm"
+                active={!menu.marks.size}
+                onClick={() => setSize(null)}
+              />
+              <SizeButton
+                label="Gross"
+                sample="text-base"
+                active={menu.marks.size === 'l'}
+                onClick={() => setSize(menu.marks.size === 'l' ? null : 'l')}
+              />
+              <SizeButton
+                label="Sehr gross"
+                sample="text-lg"
+                active={menu.marks.size === 'xl'}
+                onClick={() => setSize(menu.marks.size === 'xl' ? null : 'xl')}
               />
             </div>
 
@@ -801,6 +863,44 @@ function MenuRow({
       <span className="flex w-5 justify-center text-slate-500 dark:text-slate-400">{icon}</span>
       <span className="min-w-0 flex-1 truncate">{label}</span>
       {active && <Check className="text-brand-600 dark:text-brand-300 size-4" aria-hidden />}
+    </button>
+  )
+}
+
+/**
+ * Eine Grössenstufe – ein «A» in ebendieser Grösse, der Name als Beschriftung.
+ * Die Schlüssel dahinter stehen in `TEXT_SIZES` (`lib/richtext`).
+ */
+function SizeButton({
+  label,
+  sample,
+  active,
+  onClick,
+}: {
+  label: string
+  /** Klasse für die Grösse des «A» im Knopf */
+  sample: string
+  active: boolean
+  onClick: () => void
+}) {
+  return (
+    <button
+      type="button"
+      onMouseDown={(event) => event.preventDefault()}
+      onClick={onClick}
+      aria-label={`Textgrösse ${label}`}
+      aria-pressed={active}
+      title={label}
+      className={cn(
+        'flex flex-1 items-end justify-center rounded-lg px-1 pt-0.5 pb-1 leading-none transition',
+        active
+          ? 'bg-brand-100 text-brand-700 dark:bg-brand-900 dark:text-brand-200'
+          : 'text-slate-600 hover:bg-slate-100 dark:text-slate-300 dark:hover:bg-slate-700/60',
+      )}
+    >
+      <span className={cn('font-medium', sample)} aria-hidden>
+        A
+      </span>
     </button>
   )
 }

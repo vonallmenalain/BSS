@@ -46,6 +46,8 @@ export interface RichMarks {
   i?: true
   /** Unterstrichen */
   u?: true
+  /** Textgrösse – ein Schlüssel aus `TEXT_SIZES`; fehlt: normal */
+  size?: string
   /** Textfarbe – ein Schlüssel aus `TEXT_COLORS` */
   color?: string
   /** Hintergrundfarbe – ein Schlüssel aus `BG_COLORS` */
@@ -165,6 +167,33 @@ const TEXT_COLOR_CLASSES = new Map(TEXT_COLORS.map((color) => [color.key, color.
 const BG_COLOR_CLASSES = new Map(BG_COLORS.map((color) => [color.key, color.class]))
 
 /**
+ * Feste Grössenstufen statt freier Zahlen.
+ *
+ * Drei Stufen neben «Normal» genügen: eine zum Zurücknehmen und zwei zum
+ * Vergrössern – etwa wenn am Sitzungstisch eine lange Pendenz aus etwas
+ * Abstand lesbar sein soll. Eine freie Eingabe (8–100) ergäbe in jedem
+ * Eintrag eine andere Typografie, und niemand fände zweimal dieselbe.
+ *
+ * Die Werte sind in `em`, also **relativ zur Grundgrösse des Feldes**:
+ * «Gross» in einer Beschreibung (klein gesetzt) und «Gross» in einer Notiz
+ * bleiben im selben Verhältnis zu ihrer Umgebung, statt auf eine absolute
+ * Pixelzahl zu springen.
+ */
+export interface SizeStep {
+  key: string
+  label: string
+  class: string
+}
+
+export const TEXT_SIZES: SizeStep[] = [
+  { key: 's', label: 'Klein', class: 'text-[0.85em]' },
+  { key: 'l', label: 'Gross', class: 'text-[1.25em]' },
+  { key: 'xl', label: 'Sehr gross', class: 'text-[1.5em]' },
+]
+
+const TEXT_SIZE_CLASSES = new Map(TEXT_SIZES.map((size) => [size.key, size.class]))
+
+/**
  * Die Unterstreichung eines zugeordneten Textstücks – im Farbton der Person.
  *
  * Dieselbe Reihenfolge wie die Avatar-Farben in `lib/utils`, angesprochen
@@ -226,6 +255,10 @@ export function markClasses(marks: RichMarks): string {
   if (marks.b) classes.push('font-bold')
   if (marks.i) classes.push('italic')
   if (marks.u) classes.push('underline')
+  if (marks.size) {
+    const cls = TEXT_SIZE_CLASSES.get(marks.size)
+    if (cls) classes.push(cls)
+  }
   if (marks.color) {
     const cls = TEXT_COLOR_CLASSES.get(marks.color)
     if (cls) classes.push(cls)
@@ -247,6 +280,7 @@ export function marksOf(run: RichMarks): RichMarks {
   if (run.b) marks.b = true
   if (run.i) marks.i = true
   if (run.u) marks.u = true
+  if (run.size) marks.size = run.size
   if (run.color) marks.color = run.color
   if (run.bg) marks.bg = run.bg
   if (run.who) marks.who = run.who
@@ -258,6 +292,7 @@ export function sameMarks(a: RichMarks, b: RichMarks): boolean {
     (a.b ?? false) === (b.b ?? false) &&
     (a.i ?? false) === (b.i ?? false) &&
     (a.u ?? false) === (b.u ?? false) &&
+    (a.size ?? '') === (b.size ?? '') &&
     (a.color ?? '') === (b.color ?? '') &&
     (a.bg ?? '') === (b.bg ?? '') &&
     (a.who ?? '') === (b.who ?? '')
@@ -265,7 +300,9 @@ export function sameMarks(a: RichMarks, b: RichMarks): boolean {
 }
 
 export function hasMarks(marks: RichMarks): boolean {
-  return Boolean(marks.b || marks.i || marks.u || marks.color || marks.bg || marks.who)
+  return Boolean(
+    marks.b || marks.i || marks.u || marks.size || marks.color || marks.bg || marks.who,
+  )
 }
 
 /* ------------------------------------------------------------------ */
@@ -284,6 +321,7 @@ export function encodeMarks(marks: RichMarks): string {
   if (marks.b) parts.push('b')
   if (marks.i) parts.push('i')
   if (marks.u) parts.push('u')
+  if (marks.size) parts.push(`size:${marks.size}`)
   if (marks.color) parts.push(`color:${marks.color}`)
   if (marks.bg) parts.push(`bg:${marks.bg}`)
   if (marks.who) parts.push(`who:${marks.who}`)
@@ -296,6 +334,7 @@ export function decodeMarks(value: string): RichMarks {
     if (part === 'b') marks.b = true
     else if (part === 'i') marks.i = true
     else if (part === 'u') marks.u = true
+    else if (part.startsWith('size:')) marks.size = part.slice(5)
     else if (part.startsWith('color:')) marks.color = part.slice(6)
     else if (part.startsWith('bg:')) marks.bg = part.slice(3)
     else if (part.startsWith('who:')) marks.who = part.slice(4)
@@ -399,6 +438,7 @@ export function serializeDoc(doc: RichDoc): string {
       if (run.b) out.b = true
       if (run.i) out.i = true
       if (run.u) out.u = true
+      if (run.size) out.size = run.size
       if (run.color) out.color = run.color
       if (run.bg) out.bg = run.bg
       if (run.who) out.who = run.who
@@ -441,7 +481,7 @@ export function parseRichJson(json: string): RichDoc | null {
 
     for (const rawRun of rawRuns) {
       if (!rawRun || typeof rawRun !== 'object') return null
-      const { t, b, i, u, color, bg, who } = rawRun as Record<string, unknown>
+      const { t, b, i, u, size, color, bg, who } = rawRun as Record<string, unknown>
       if (typeof t !== 'string') return null
       if (++runCount > LIMITS.runs) return null
 
@@ -449,6 +489,7 @@ export function parseRichJson(json: string): RichDoc | null {
       if (b === true) run.b = true
       if (i === true) run.i = true
       if (u === true) run.u = true
+      if (typeof size === 'string' && TEXT_SIZE_CLASSES.has(size)) run.size = size
       if (typeof color === 'string' && TEXT_COLOR_CLASSES.has(color)) run.color = color
       if (typeof bg === 'string' && BG_COLOR_CLASSES.has(bg)) run.bg = bg
       if (typeof who === 'string' && who !== '' && who.length <= LIMITS.who) run.who = who
@@ -604,7 +645,7 @@ function runsSlice(runs: RichRun[], from: number, to: number): RichRun[] {
   return out
 }
 
-export type MarkKey = 'b' | 'i' | 'u' | 'color' | 'bg' | 'who'
+export type MarkKey = 'b' | 'i' | 'u' | 'size' | 'color' | 'bg' | 'who'
 
 function withMark(run: RichRun, key: MarkKey, value: true | string | null): RichRun {
   const next: RichRun = { t: run.t, ...marksOf(run) }
