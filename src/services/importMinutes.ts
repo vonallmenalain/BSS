@@ -7,7 +7,7 @@ import {
   writeBatch,
   Timestamp,
   type WriteBatch,
-} from 'firebase/firestore'
+} from '@/lib/db'
 import { db, COLLECTIONS } from '@/lib/firebase'
 import { resyncCollections } from '@/lib/collectionStore'
 import { requireOnline } from '@/lib/sync'

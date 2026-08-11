@@ -149,6 +149,50 @@ service cloud.firestore {
       allow delete: if isAdmin();
     }
 
+    /* ---------------- Zugriffsprotokoll ---------------- */
+
+    /*
+     * Wer war wann da, und was hat sich dabei geändert.
+     *
+     * Die Sammlung ist das Gegenstück zur Benutzerverwaltung darüber: Dort
+     * wird Zugriff vergeben, hier steht, was daraus geworden ist. Lesen darf
+     * sie deshalb dieselbe Stelle – das Administrator-Konto und sonst
+     * niemand. Für die Bischofschaft wäre es die Anwesenheitsliste ihrer
+     * Kolleginnen und Kollegen, und dafür gibt es keinen Anlass.
+     *
+     * Geschrieben wird aus dem Browser jedes Kontos, denn nur dort ist
+     * bekannt, was gerade geschieht. Daraus folgen die beiden Bedingungen
+     * unten: Ein Eintrag muss auf das schreibende Konto lauten (`uid` und
+     * E-Mail aus dem Token), sonst könnte jemand eine fremde Spur legen.
+     * Und einmal geschrieben, bleibt er stehen – `delete` hat allein der
+     * Administrator, damit er alte Einträge wegräumen kann.
+     *
+     * Fortgeschrieben werden darf genau eine Sache: der laufende Besuch.
+     * Er hält fest, wie lange jemand da war und wie viele Ansichten er
+     * geöffnet hat, und beides steht erst am Ende fest. Ein
+     * Änderungseintrag dagegen ist mit dem Schreiben fertig; `kind` bleibt
+     * deshalb unverändert, sonst liesse sich eine Änderung nachträglich in
+     * einen Besuch verwandeln und damit überschreiben.
+     */
+    match /accessLog/{entryId} {
+      allow read: if isAdmin();
+
+      allow create: if signedIn()
+        && request.resource.data.uid == request.auth.uid
+        && request.resource.data.email == request.auth.token.email
+        && request.resource.data.kind in ['session', 'change'];
+
+      allow update: if signedIn()
+        && resource.data.kind == 'session'
+        && resource.data.uid == request.auth.uid
+        && unchanged('kind')
+        && unchanged('uid')
+        && unchanged('email')
+        && unchanged('at');
+
+      allow delete: if isAdmin();
+    }
+
     /* ---------------- Sitzungen ---------------- */
 
     match /meetings/{meetingId} {

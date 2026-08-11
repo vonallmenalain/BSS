@@ -113,4 +113,6 @@ export const COLLECTIONS = {
   apMonths: 'apMonths',
   /** Links, unter denen der Aktivitätenplan als Kalender abonniert werden kann */
   calendarFeeds: 'calendarFeeds',
+  /** Wer wann da war und was sich dabei geändert hat – liest nur der Administrator */
+  accessLog: 'accessLog',
 } as const

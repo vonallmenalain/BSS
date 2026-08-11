@@ -6,9 +6,10 @@
   NODE_VERSION = "22"
   NPM_FLAGS = "--no-audit --no-fund"
 
-# Serverseitiges gibt es genau an einer Stelle: den Kalender-Feed
-# (`netlify/functions/ap-ics.mts`). Er teilt sich den ICS-Bau mit der App –
-# esbuild löst den Import aus `src/lib` beim Bündeln auf.
+# Serverseitiges gibt es an zwei Stellen: den Kalender-Feed
+# (`netlify/functions/ap-ics.mts`) – er teilt sich den ICS-Bau mit der App,
+# esbuild löst den Import aus `src/lib` beim Bündeln auf – und die Auskunft
+# über den Ort eines Zugriffs (`whereami.mts`) für das Zugriffsprotokoll.
 [functions]
   directory = "netlify/functions"
   node_bundler = "esbuild"
@@ -21,6 +22,14 @@
 [[redirects]]
   from = "/api/ap.ics"
   to = "/.netlify/functions/ap-ics"
+  status = 200
+
+# Von wo aus jemand zugreift – für das Zugriffsprotokoll unter «Einstellungen».
+# Muss wie oben VOR dem SPA-Fallback stehen, sonst bekäme die App HTML zurück,
+# wo sie eine Ortsangabe erwartet.
+[[redirects]]
+  from = "/api/standort"
+  to = "/.netlify/functions/whereami"
   status = 200
 
 # SPA-Fallback: alle Routen an index.html, damit React Router die URL übernimmt.

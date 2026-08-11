@@ -166,6 +166,29 @@ async function seed() {
     })
 
     await setDoc(doc(db, 'settings', 'app'), { wardName: 'Burgdorf' })
+
+    // Zugriffsprotokoll: ein Besuch und eine Änderung des Sekretärs.
+    await setDoc(doc(db, 'accessLog', 'besuch-sekretaer'), {
+      kind: 'session',
+      uid: SECRETARY,
+      email: `${SECRETARY}@example.ch`,
+      displayName: 'Sekretär',
+      at: new Date('2026-08-11T19:00:00Z'),
+      endedAt: new Date('2026-08-11T19:30:00Z'),
+      views: 3,
+    })
+    await setDoc(doc(db, 'accessLog', 'aenderung-sekretaer'), {
+      kind: 'change',
+      uid: SECRETARY,
+      email: `${SECRETARY}@example.ch`,
+      displayName: 'Sekretär',
+      at: new Date('2026-08-11T19:05:00Z'),
+      collectionId: 'agendaItems',
+      op: 'update',
+      label: 'Jugendlager Budget',
+      fields: ['Titel'],
+      count: 1,
+    })
   })
 }
 
@@ -617,5 +640,118 @@ describe('Aktivitäten AP', () => {
     await assertFails(updateDoc(doc(asApViewer(), 'users', AP_VIEWER), { role: 'ap_editor' }))
     // Auch nicht bei jemand anderem.
     await assertFails(updateDoc(doc(asApEditor(), 'users', PENDING), { role: 'secretary' }))
+  })
+})
+
+/* ------------------------------------------------------------------ */
+
+/*
+ * Das Zugriffsprotokoll.
+ *
+ * Es hat als einzige Sammlung eine Regel, die es sonst nirgends gibt: Jedes
+ * angemeldete Konto darf hineinschreiben – auch ein wartendes, denn dass
+ * jemand sich anmeldet und nichts zu sehen bekommt, ist die interessanteste
+ * Zeile darin. Lesen darf dafür nur der Administrator, und niemand darf einen
+ * Eintrag auf einen fremden Namen legen oder einen bestehenden umschreiben.
+ *
+ * Die Konten hier tragen ihre E-Mail im Token: Die Regel vergleicht sie mit
+ * der im Eintrag, damit sich niemand fremde Spuren ausdenken kann.
+ */
+describe('Zugriffsprotokoll', () => {
+  const withEmail = (uid) =>
+    testEnv.authenticatedContext(uid, { email: `${uid}@example.ch` }).firestore()
+
+  const entry = (uid, extra = {}) => ({
+    kind: 'session',
+    uid,
+    email: `${uid}@example.ch`,
+    displayName: 'Wer auch immer',
+    at: new Date('2026-08-12T08:00:00Z'),
+    endedAt: new Date('2026-08-12T08:00:00Z'),
+    views: 1,
+    ...extra,
+  })
+
+  it('lässt allein den Administrator das Protokoll lesen', async () => {
+    await assertSucceeds(getDocs(collection(asBishop(), 'accessLog')))
+    await assertSucceeds(getDoc(doc(asBishop(), 'accessLog', 'besuch-sekretaer')))
+  })
+
+  it('gibt es niemandem sonst – auch nicht der übrigen Bischofschaft', async () => {
+    for (const as of [asCounselor1, asCounselor2, asSecretary, asApEditor, asApViewer]) {
+      await assertFails(getDocs(collection(as(), 'accessLog')))
+      await assertFails(getDoc(doc(as(), 'accessLog', 'besuch-sekretaer')))
+    }
+    await assertFails(getDocs(collection(asPending(), 'accessLog')))
+    await assertFails(getDocs(collection(asAnonymous(), 'accessLog')))
+  })
+
+  it('lässt jedes angemeldete Konto seinen eigenen Zugriff festhalten', async () => {
+    await assertSucceeds(
+      setDoc(doc(withEmail(SECRETARY), 'accessLog', 'neu-sekretaer'), entry(SECRETARY)),
+    )
+    // Auch ein wartendes Konto: Es sieht nichts, aber es war da.
+    await assertSucceeds(
+      setDoc(doc(withEmail(PENDING), 'accessLog', 'neu-wartend'), entry(PENDING)),
+    )
+  })
+
+  it('lässt Nichtangemeldete gar nichts schreiben', async () => {
+    await assertFails(
+      setDoc(doc(asAnonymous(), 'accessLog', 'neu-anonym'), entry('irgendwer')),
+    )
+  })
+
+  it('hindert jeden daran, einen Eintrag auf einen fremden Namen zu legen', async () => {
+    // Fremde UID …
+    await assertFails(
+      setDoc(doc(withEmail(SECRETARY), 'accessLog', 'gefaelscht-1'), entry(BISHOP)),
+    )
+    // … und die eigene UID mit fremder Adresse.
+    await assertFails(
+      setDoc(
+        doc(withEmail(SECRETARY), 'accessLog', 'gefaelscht-2'),
+        entry(SECRETARY, { email: 'bischof@example.ch' }),
+      ),
+    )
+  })
+
+  it('lässt den eigenen laufenden Besuch fortschreiben', async () => {
+    await assertSucceeds(
+      updateDoc(doc(withEmail(SECRETARY), 'accessLog', 'besuch-sekretaer'), {
+        endedAt: new Date('2026-08-11T19:45:00Z'),
+        views: 8,
+        city: 'Burgdorf',
+      }),
+    )
+  })
+
+  it('lässt niemanden den Besuch eines anderen anfassen', async () => {
+    await assertFails(
+      updateDoc(doc(withEmail(COUNSELOR1), 'accessLog', 'besuch-sekretaer'), { views: 99 }),
+    )
+  })
+
+  it('lässt einen Besuch nicht auf ein anderes Konto oder einen anderen Beginn umschreiben', async () => {
+    const ref = () => doc(withEmail(SECRETARY), 'accessLog', 'besuch-sekretaer')
+    await assertFails(updateDoc(ref(), { uid: BISHOP }))
+    await assertFails(updateDoc(ref(), { email: 'bischof@example.ch' }))
+    await assertFails(updateDoc(ref(), { at: new Date('2020-01-01T00:00:00Z') }))
+    // Auch nicht in eine Änderung verwandeln, um sie danach zu überschreiben.
+    await assertFails(updateDoc(ref(), { kind: 'change' }))
+  })
+
+  it('lässt eine festgehaltene Änderung nicht nachträglich umschreiben', async () => {
+    await assertFails(
+      updateDoc(doc(withEmail(SECRETARY), 'accessLog', 'aenderung-sekretaer'), {
+        label: 'Etwas ganz anderes',
+      }),
+    )
+  })
+
+  it('lässt allein den Administrator aufräumen', async () => {
+    await assertFails(deleteDoc(doc(withEmail(SECRETARY), 'accessLog', 'aenderung-sekretaer')))
+    await assertFails(deleteDoc(doc(withEmail(BISHOP), 'accessLog', 'aenderung-sekretaer')))
+    await assertSucceeds(deleteDoc(doc(asBishop(), 'accessLog', 'aenderung-sekretaer')))
   })
 })

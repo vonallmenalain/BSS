@@ -543,6 +543,19 @@ export function forgetDoc(name: string, id: string): void {
 }
 
 /**
+ * Nachsehen, was von einem Datensatz bereits geladen ist.
+ *
+ * Für das Zugriffsprotokoll: Eine Änderung schreibt nur, was sich ändert –
+ * der Titel steht meist nicht dabei. Der geladene Bestand kennt ihn, und ihn
+ * hier nachzuschlagen kostet weder einen Lesevorgang noch eine Netzrunde.
+ * Kennt der Speicher den Datensatz nicht (weil die Sammlung in dieser Sitzung
+ * gar nicht gebraucht wurde), bleibt die Zeile eben ohne Titel.
+ */
+export function peekDoc(name: string, id: string): Record<string, unknown> | null {
+  return (stores.get(name)?.docs.get(id) as Record<string, unknown> | undefined) ?? null
+}
+
+/**
  * Alles vergessen und die Horcher abmelden – beim Abmelden.
  *
  * Ohne das liefen die Abfragen des abgemeldeten Kontos weiter und schlügen

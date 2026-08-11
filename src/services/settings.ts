@@ -1,4 +1,4 @@
-import { doc, serverTimestamp, setDoc } from 'firebase/firestore'
+import { doc, serverTimestamp, setDoc } from '@/lib/db'
 import { db, COLLECTIONS } from '@/lib/firebase'
 import { commit, type SaveOutcome } from '@/lib/sync'
 import { normalizeSettings, type AppSettings } from '@/lib/types'

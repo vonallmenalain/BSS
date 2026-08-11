@@ -13,7 +13,7 @@ import {
   where,
   writeBatch,
   Timestamp,
-} from 'firebase/firestore'
+} from '@/lib/db'
 import { db, COLLECTIONS } from '@/lib/firebase'
 import { forgetDoc } from '@/lib/collectionStore'
 import { toDate } from '@/lib/dates'

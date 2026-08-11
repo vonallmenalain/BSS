@@ -21,8 +21,18 @@ const app = readFileSync(new URL('../src/App.tsx', import.meta.url), 'utf8')
 /** Die Adressen aller Import-Routen, in der Reihenfolge der Datei. */
 const routes = [...app.matchAll(/path="(import[^"]*)"/g)].map((match) => `/${match[1]}`)
 
-/** Alles ab der Weiche – dort und nur dort stehen die Admin-Importe. */
-const guarded = app.slice(app.indexOf('<Route element={<RequireAdmin />}>'))
+/**
+ * Alles ab der Weiche – dort und nur dort stehen die Admin-Importe.
+ *
+ * Die Weiche steht inzwischen mehr als einmal in der Datei (auch vor dem
+ * Zugriffsprotokoll), deshalb wird sie samt Ziel gesucht. Und wird sie gar
+ * nicht gefunden, bleibt hier ein leerer Text: `slice(-1)` gäbe sonst das
+ * letzte Zeichen zurück, und die Prüfung darunter meldete «nicht geschützt»
+ * statt «Weiche verschwunden».
+ */
+const GUARD = '<Route element={<RequireAdmin to="/import" />}>'
+const guardedAt = app.indexOf(GUARD)
+const guarded = guardedAt === -1 ? '' : app.slice(guardedAt)
 
 test('jeder Import hat eine Route – und jede Route einen Import', () => {
   assert.deepEqual(new Set(routes), new Set(IMPORTS.map((entry) => entry.to)))

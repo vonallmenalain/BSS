@@ -1,4 +1,6 @@
-import { doc, serverTimestamp, updateDoc, deleteDoc } from 'firebase/firestore'
+import { doc, serverTimestamp, updateDoc, deleteDoc } from '@/lib/db'
+// Am Protokoll vorbei – warum, steht bei `saveApView`.
+import { updateDoc as fbUpdateDoc } from 'firebase/firestore'
 import { db, COLLECTIONS } from '@/lib/firebase'
 import { forgetDoc } from '@/lib/collectionStore'
 import { getInitials } from '@/lib/utils'
@@ -55,10 +57,17 @@ export async function updateUserProfile(
  * Auch Konten ohne Vollzugriff dürfen das: Die Zugriffsregeln erlauben
  * jedem, sein eigenes Profil zu ändern, solange Rolle und Aktivstatus
  * unangetastet bleiben.
+ *
+ * Als einziger Schreibvorgang dieser Datei geht er unmittelbar an Firestore
+ * und nicht über `lib/db` – er kommt also **nicht** ins Zugriffsprotokoll.
+ * Das ist Absicht: Wer im Aktivitätenplan zwischen Liste, Kacheln und
+ * Kalender hin- und herschaltet, ändert nichts am Bestand der Gemeinde,
+ * sondern nur, was er selbst sieht. Im Protokoll stünde davon eine Zeile je
+ * Klick – und begrübe darunter die Änderungen, wegen derer man es aufschlägt.
  */
 export async function saveApView(userId: string, view: ApView): Promise<SaveOutcome> {
   return commit(
-    updateDoc(doc(db, COLLECTIONS.users, userId), {
+    fbUpdateDoc(doc(db, COLLECTIONS.users, userId), {
       apView: view,
       updatedAt: serverTimestamp(),
     }),

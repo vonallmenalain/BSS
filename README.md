@@ -44,6 +44,12 @@ einzelnen Eintrag lädt zu Unfällen ein. Was nur beim Einrichten gebraucht
 wurde, steht dort abgesetzt als **[Admin-Importe](#admin-importe)** und
 erscheint allein im Administrator-Konto.
 
+**Zuunterst in den Einstellungen steht [«Zugriffe»](#zugriffe)** – wer wann in
+der App war, von wo aus, und wer was geändert hat. Eine Zeile je Konto, die
+Einzelheiten erst beim Ausklappen. Auch das sieht allein das
+Administrator-Konto, und zwar nicht bloss in der Oberfläche: Die
+Zugriffsregeln geben jedem anderen Konto keine einzige Zeile heraus.
+
 ---
 
 ## Technik
@@ -149,11 +155,18 @@ Fehlt das, schlägt die Anmeldung in Produktion fehl.
 
 ### Dienstkonto für den Kalender-Feed
 
-Eine einzige Sache läuft serverseitig: der abonnierbare Aktivitätenplan
-unter `/api/ap.ics` (siehe [Im eigenen Kalender
-abonnieren](#im-eigenen-kalender-abonnieren)). Ein Kalenderprogramm kann sich
-nirgends anmelden, deshalb meldet sich eine Netlify-Function stellvertretend
-bei Firestore an – mit einem Dienstkonto.
+Serverseitiges gibt es an zwei Stellen, und nur die erste braucht eine
+Einrichtung.
+
+Die eine ist der abonnierbare Aktivitätenplan unter `/api/ap.ics` (siehe [Im
+eigenen Kalender abonnieren](#im-eigenen-kalender-abonnieren)). Ein
+Kalenderprogramm kann sich nirgends anmelden, deshalb meldet sich eine
+Netlify-Function stellvertretend bei Firestore an – mit einem Dienstkonto.
+
+Die andere ist `/api/standort` für das [Zugriffsprotokoll](#zugriffe): Sie
+gibt dem Browser zurück, von wo aus er gerade zugreift. Sie liest die Angaben
+aus den Kopfzeilen, die Netlify ohnehin mitschickt, kennt weder Firestore noch
+ein Geheimnis und ist deshalb ohne Zutun einsatzbereit.
 
 1. Firebase-Konsole → **Projekteinstellungen → Dienstkonten** →
    **Neuen privaten Schlüssel generieren**. Es lädt eine JSON-Datei herunter.
@@ -2546,6 +2559,133 @@ nirgends.
 
 ---
 
+## Zugriffe
+
+**Einstellungen → Zugriffe**, zuunterst und **allein im
+[Administrator-Konto](#rollen)**. Die Seite beantwortet zwei Fragen, die sonst
+niemand beantworten könnte: Wird die App überhaupt benutzt, und von wem? Und
+wenn etwas anders ist als gestern – wer hat es geändert?
+
+### Eine Zeile je Konto
+
+Ein Protokoll ist von Natur aus eine sehr lange Liste, und in dieser Form
+beantwortet es keine der beiden Fragen: Man sähe tausend Zeilen und wüsste
+hinterher nicht, ob jemand fehlt. Deshalb steht **eine Zeile je Konto**, und
+darin das, was man im Vorbeigehen wissen will – wann zuletzt, wie oft, wie
+viel geändert, von wo, mit welchem Gerät. Daneben eine Reihe schmaler Balken:
+die Zugriffe der letzten vierzehn Tage. Sie sagt, was eine einzelne Zahl nicht
+sagen kann – ob jemand täglich kurz hereinschaut oder einmal im Monat eine
+Stunde arbeitet.
+
+Aufgeführt sind **alle registrierten Konten**, auch die ohne einen einzigen
+Eintrag. «War noch nie da» ist eine Antwort, und zwar oft die interessante.
+Wer noch nie da war, steht am Ende der Liste – ausser man sortiert nach Namen.
+Konten, deren Profil inzwischen gelöscht wurde, bleiben mit dem Namen stehen,
+der beim Zugriff galt, und tragen den Vermerk «ehemalig».
+
+Sortiert wird nach letztem Zugriff, Anzahl Zugriffen, Änderungen, Verweildauer
+oder Namen; der Zeitraum reicht von sieben Tagen bis zu einem Jahr.
+
+**Erst das Ausklappen zeigt die Einzelheiten**: ein Zeitstrahl, nach Tagen
+gebündelt, mit den Uhrzeiten jedes Besuchs, seiner Dauer, Gerät, Ort und
+IP-Adresse – und dazwischen, an der Stelle, an der sie geschah, jede Änderung
+mit Bereich, Titel und den Feldern, die anders sind. Drei Knöpfe schränken auf
+**Zugriffe** oder **Änderungen** ein.
+
+### Was ein Zugriff ist
+
+Ein **Besuch**, kein Seitenaufruf. Wer eine halbe Stunde nichts tut und dann
+weitermacht, war zweimal da; wer zwischendurch die Ansicht wechselt oder das
+Telefon weglegt und wieder aufnimmt, war einmal da. Sonst zählte ein
+Nachmittag mit der App vierzigmal, und die Zahl in der Übersicht sagte nichts
+mehr.
+
+Ein Besuch übersteht das Neuladen der Seite und den Wechsel zwischen App und
+Startbildschirm: Seine Kennung liegt im Browser, nicht im Speicher der
+laufenden Seite. Geschrieben wird einmal beim Beginn und danach höchstens alle
+fünf Minuten – und nur, wenn seither überhaupt etwas geschehen ist. Eine App,
+die auf dem Küchentisch offen liegt, schreibt nichts.
+
+Protokolliert wird **jedes angemeldete Konto**, auch eines, das noch auf die
+Freigabe wartet und nichts zu sehen bekommt. Gerade das ist eine Zeile, wegen
+der man ein solches Protokoll aufschlägt.
+
+### Woher der Ort kommt
+
+Aus der IP-Adresse, zugeordnet von Netlify beim Abruf von `/api/standort`
+(`netlify/functions/whereami.mts`). Der Browser könnte das nicht: Er kennt
+seine eigene Adresse nicht, und nach dem Standort zu fragen hiesse, jedem
+Konto bei jedem Start einen Systemdialog vorzusetzen.
+
+Die Angabe ist **ungefähr**. Sie zeigt, wo der Anschluss registriert ist –
+über ein Mobilnetz kann das weit danebenliegen, hinter einem VPN im falschen
+Land. Sie taugt für «wie sonst?» und nicht für mehr. Fehlt sie ganz, steht die
+Zeitzone des Geräts da; die kommt vom Gerät selbst und ist immer vorhanden.
+
+Beim Entwickeln mit `npm run dev` gibt es diese Adresse nicht. Der Abruf
+scheitert dann still, und bei «Ort» steht nichts.
+
+### Wie die Änderungen hereinkommen
+
+An **einer** Stelle: `src/lib/db.ts`. Alle Dienste in `src/services` holen
+ihre Firestore-Schreibfunktionen dort statt unmittelbar bei
+`firebase/firestore`; sie verhalten sich genau gleich und melden nebenbei, was
+sie geschrieben haben. Die Alternative wäre, in jedem Dienst eine
+Protokollzeile mitzuschreiben – zwei Dutzend Dateien, in denen sie beim
+nächsten neuen Handgriff fehlte.
+
+Was in derselben Sammlung und auf dieselbe Weise geschieht, wird
+**zusammengefasst**: Ein Handgriff in der App ist selten ein einzelner
+Schreibvorgang – eine umsortierte Traktandenliste schreibt jede verschobene
+Zeile, ein Mitgliederimport Hunderte Datensätze. Im Protokoll steht dann «312
+× Mitglieder geändert» statt 312-mal dasselbe. Was einzeln bleibt, bleibt
+einzeln, mit Titel und geänderten Feldern.
+
+Nicht darüber laufen zwei Dinge, jedes mit Absicht: die **Anmeldung**, die bei
+jedem Start den Zeitpunkt ins eigene Profil schreibt – das stünde sonst in
+jeder zweiten Zeile und verdeckte, worum es geht –, und das **Protokoll
+selbst**, das sich sonst in einer Endlosschleife protokollierte.
+
+### Was das Protokoll nicht ist
+
+Eine Beweissicherung. Aufgeschrieben wird aus der App heraus, also von genau
+dem Gerät, über das es Auskunft gibt. Wer die Firestore-Schnittstelle
+unmittelbar bediente, käme darin nicht vor. Für «wer hat woran gearbeitet?»
+genügt das; für «kann mir das jemand verheimlichen?» nicht. Genau so steht es
+auch auf der Seite – ein Protokoll, das mehr verspricht, als es hält, ist
+schlimmer als keines.
+
+### Aufräumen
+
+Ein Protokoll, das nie endet, ist irgendwann kein Protokoll mehr, sondern eine
+Sammlung über das Verhalten von Leuten, die nichts davon haben. Zuunterst auf
+der Seite steht deshalb **Protokoll aufräumen**: Es löscht alles, was älter
+ist als 90, 180 oder 365 Tage. Löschen darf ausschliesslich das
+Administrator-Konto – auch das eigene Konto kann seine Spur nicht wegräumen.
+
+### Wer was darf
+
+Alles steht in der Sammlung `accessLog`, und die Zugriffsregeln sind für sie
+strenger als für jede andere:
+
+| | |
+| --- | --- |
+| **Lesen** | nur das Administrator-Konto – auch die übrige Bischofschaft nicht |
+| **Anlegen** | jedes angemeldete Konto, aber nur Einträge auf die eigene UID **und** die eigene E-Mail aus dem Anmelde-Token |
+| **Ändern** | nur der eigene laufende Besuch (Ende, Ansichten, Ort); UID, E-Mail, Art und Beginn bleiben unveränderlich, und eine festgehaltene Änderung lässt sich gar nicht mehr anfassen |
+| **Löschen** | nur das Administrator-Konto |
+
+Durchgesetzt wird das in `firestore.rules` und nicht in der Oberfläche;
+`npm run test:rules` prüft jede Zeile dieser Tabelle in beide Richtungen. Die
+Route `/zugriffe` steht zusätzlich hinter einer Weiche in `App.tsx` – das ist
+aber keine Sperre, sondern erspart einem anderen Konto bloss die leere Seite
+mit der Fehlermeldung.
+
+In der [Sicherung](#sicherung) ist das Protokoll **nicht** enthalten: Es
+gehört zum Betrieb der App und nicht zum Bestand der Gemeinde.
+
+---
+
 ## Projektstruktur
 
 ```
@@ -2562,16 +2702,18 @@ src/
 ├── contexts/            Anmeldung, Stammdaten, Meldungen
 ├── hooks/               Sammlungen lesen, Weg zurück, Ansicht in der Adresse,
 │                        Bekanntmachungen eines Sonntags, Monatspendenzen,
-│                        lokale Einstellungen
-├── lib/                 Firebase-Anbindung, Sammlungsspeicher (Abgleich), Typen, Liste der
-│                        Importe, Datums-, Serien-, Monats-, Organisations-, Programm-,
-│                        Sonntags-, Vorschlags-, Word- und Hilfsfunktionen, Ferienplan Burgdorf
+│                        Zugriffe festhalten, lokale Einstellungen
+├── lib/                 Firebase-Anbindung, Sammlungsspeicher (Abgleich), Schreibzugriffe
+│                        mit Protokoll (db, audit), Typen, Liste der Importe, Datums-,
+│                        Serien-, Monats-, Organisations-, Programm-, Sonntags-,
+│                        Vorschlags-, Word- und Hilfsfunktionen, Ferienplan Burgdorf
 ├── pages/
 │   ├── sacrament/       Leitung, Bekanntmachungen, Angelegenheiten, Musik, Gebet
 │   └── …                Eine Datei pro übriger Ansicht
 └── services/            Schreibzugriffe und Fachlogik pro Sammlung
 
-netlify/functions/       Der abonnierbare Kalender – das einzige Serverseitige
+netlify/functions/       Das Serverseitige: der abonnierbare Kalender und die
+                         Ortsangabe fürs Zugriffsprotokoll
 tests/                   Tests der Zugriffsregeln und der Import-Parser (laufen in der CI)
 .github/workflows/       Prüfen und Ausrollen der Firestore-Regeln
 firestore.rules          Zugriffsregeln (die eigentliche Absicherung)
