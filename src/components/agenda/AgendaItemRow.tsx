@@ -16,6 +16,7 @@ import { useToast } from '@/contexts/ToastContext'
 import { AssigneeAvatars } from '@/components/ui/Avatar'
 import { StatusBadge } from '@/components/ui/Badge'
 import { ConfirmDialog } from '@/components/ui/Modal'
+import { RichText } from '@/components/ui/RichText'
 import { AgendaItemEditor } from '@/components/agenda/AgendaItemEditor'
 import { DeferMenu } from '@/components/agenda/DeferMenu'
 import { AuthorChip } from '@/components/agenda/AuthorChip'
@@ -255,7 +256,7 @@ export function AgendaItemRow({
                   isDone && 'text-slate-500 line-through dark:text-slate-500',
                 )}
               >
-                {item.title || <span className="text-slate-400">Ohne Titel</span>}
+                <RichText text={item.title} rich={item.titleRich} placeholder="Ohne Titel" />
               </span>
             </span>
           )}

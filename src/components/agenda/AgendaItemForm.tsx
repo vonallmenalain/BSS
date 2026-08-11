@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState, type FormEvent } from 'react'
 import { Modal } from '@/components/ui/Modal'
 import { MentionField } from '@/components/ui/MentionField'
+import { RichTextField } from '@/components/ui/RichTextField'
 import { AssigneePicker } from '@/components/ui/Pickers'
 import { UserAvatar } from '@/components/ui/Avatar'
 import { LayoutGrid } from '@/components/agenda/LayoutGrid'
@@ -15,6 +16,7 @@ import { createMonthlyDuty } from '@/services/monthlyDuties'
 import { emptyLayout, serializeLayout } from '@/lib/layout'
 import { emptyCallingChanges, serializeCallingChanges } from '@/lib/callingChanges'
 import { formatMonthKey } from '@/lib/monthlyDuties'
+import { richValueOf, type RichValue } from '@/lib/richtext'
 import { cn } from '@/lib/utils'
 import {
   ITEM_KIND_LABELS,
@@ -48,7 +50,8 @@ interface Props {
 
 interface FormState {
   title: string
-  description: string
+  /** Text samt Formatierung daneben – siehe `lib/richtext` */
+  description: RichValue
   assignees: string[]
   memberRefs: string[]
   /** Gesetzt heisst: variables Layout statt Beschreibung */
@@ -59,7 +62,7 @@ interface FormState {
 
 const EMPTY: FormState = {
   title: '',
-  description: '',
+  description: richValueOf('', null),
   assignees: [],
   memberRefs: [],
   layout: null,
@@ -215,8 +218,10 @@ export function AgendaItemForm({
        * ist heute zu tun.
        */
       if (isMonthly) {
+        // Die Vorlage bleibt reiner Text: Aus ihr entsteht Monat für Monat
+        // eine frische Pendenz, und die wird dort formatiert, wo sie liegt.
         await createMonthlyDuty(
-          { title, description: form.description, startMonth: month },
+          { title, description: form.description.text, startMonth: month },
           { id: profile.id, name: profile.displayName },
         )
         toast.success(`Monatspendenz erfasst – ab ${formatMonthKey(month)}.`)
@@ -228,7 +233,8 @@ export function AgendaItemForm({
 
       const payload: AgendaItemInput = {
         title,
-        description: form.description,
+        description: form.description.text,
+        descriptionRich: form.description.rich,
         assignees: form.assignees,
         memberRefs: form.memberRefs,
         // Eine Pendenz ist von Anfang an pendent – «Neu» meint das Traktandum,
@@ -426,14 +432,15 @@ export function AgendaItemForm({
             <label className="label" htmlFor="item-description">
               Beschreibung
             </label>
-            <MentionField
+            <RichTextField
               id="item-description"
-              multiline
-              className="min-h-24 resize-y"
+              // Die Beschriftung darüber erreicht ein `contentEditable` nicht
+              // über `htmlFor` – für Bildschirmleser steht sie noch einmal hier.
+              aria-label="Beschreibung"
+              className="min-h-24"
               value={form.description}
               onChange={(next) => update('description', next)}
               onMention={(member) => linkMember(member.id)}
-              rows={3}
             />
           </div>
         )}

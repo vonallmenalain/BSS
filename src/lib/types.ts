@@ -893,6 +893,18 @@ export interface AgendaItem extends WithId {
   title: string
   description?: string
 
+  /**
+   * Formatierung zu Titel und Beschreibung – als JSON **neben** dem Text
+   * (siehe `lib/richtext`), wie die Erwähnungen neben dem Text stehen.
+   *
+   * Der Text bleibt das führende Feld: Suche, Protokoll und Export lesen
+   * ihn unverändert. Passt das Formatfeld nicht mehr zum Text – etwa weil
+   * eine ältere Fassung nur den Text geschrieben hat –, wird es beim
+   * Anzeigen stillschweigend übergangen. `null` heisst: nichts formatiert.
+   */
+  titleRich?: string | null
+  descriptionRich?: string | null
+
   /** Sitzung, in der das Traktandum behandelt wird (null = Sammelkorb / später) */
   meetingId: string | null
   /** Position innerhalb der Sitzung – bestimmt die Reihenfolge im Sitzungsmodus */
@@ -2374,6 +2386,12 @@ export interface CleaningWeek extends WithId {
 export interface Note extends WithId {
   title: string
   body: string
+  /**
+   * Formatierung zu Titel und Text – als JSON neben dem Text, `null` heisst
+   * unformatiert. Siehe `AgendaItem.titleRich` und `lib/richtext`.
+   */
+  titleRich?: string | null
+  bodyRich?: string | null
   /**
    * Platz in der selbst gewählten Reihenfolge – kleiner heisst weiter oben.
    *

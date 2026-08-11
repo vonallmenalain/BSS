@@ -18,6 +18,12 @@ const notesRef = collection(db, COLLECTIONS.notes)
 export interface NoteInput {
   title: string
   body: string
+  /**
+   * Formatierung zu Titel und Text – als JSON neben dem Text, `null` heisst
+   * unformatiert (siehe `lib/richtext`). Der Text bleibt das führende Feld.
+   */
+  titleRich?: string | null
+  bodyRich?: string | null
 }
 
 /**
@@ -36,6 +42,8 @@ export async function createNote(
     setDoc(ref, {
       title: input.title.trim(),
       body: input.body,
+      titleRich: input.titleRich ?? null,
+      bodyRich: input.bodyRich ?? null,
       createdById: authorId,
       updatedById: authorId,
       createdAt: serverTimestamp(),
@@ -55,6 +63,8 @@ export async function updateNote(
     updateDoc(doc(db, COLLECTIONS.notes, id), {
       title: input.title.trim(),
       body: input.body,
+      titleRich: input.titleRich ?? null,
+      bodyRich: input.bodyRich ?? null,
       updatedById: authorId,
       updatedAt: serverTimestamp(),
       editedAt: serverTimestamp(),

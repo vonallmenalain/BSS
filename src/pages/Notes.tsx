@@ -1,4 +1,4 @@
-import { useEffect, useLayoutEffect, useMemo, useRef, useState, type ReactNode } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import { ChevronDown, ChevronUp, NotebookPen, Pencil, Plus, Search } from 'lucide-react'
 import { useAuth } from '@/contexts/AuthContext'
 import { useData } from '@/contexts/DataContext'
@@ -10,8 +10,10 @@ import { EmptyState, SkeletonList } from '@/components/ui/Feedback'
 import { ConfirmDialog, Modal } from '@/components/ui/Modal'
 import { PageHeader, SegmentedControl } from '@/components/ui/Pickers'
 import { AddButton, MenuChoice, ViewMenu } from '@/components/ui/ViewMenu'
+import { RichText } from '@/components/ui/RichText'
+import { RichTextField } from '@/components/ui/RichTextField'
 import { formatDateTime, toDate } from '@/lib/dates'
-import { splitLinks } from '@/lib/links'
+import { richValueOf, trimRichValue, type RichValue } from '@/lib/richtext'
 import { cn, matchesSearch } from '@/lib/utils'
 import { createNote, deleteNote, saveNoteOrder, updateNote } from '@/services/notes'
 import { lastEditedAt, type Note } from '@/lib/types'
@@ -333,7 +335,7 @@ function NoteCard({
           Pfeile zum Umsortieren fangen sie ab. */}
       <span className="pointer-events-none relative flex w-full items-start gap-2">
         <span className="min-w-0 flex-1 font-medium">
-          {note.title || <span className="text-slate-400">Ohne Titel</span>}
+          <RichText text={note.title} rich={note.titleRich} placeholder="Ohne Titel" />
         </span>
         <span
           className={cn(
@@ -372,43 +374,19 @@ function NoteCard({
       </span>
 
       {note.body && (
-        <span
+        // Die Karte lässt Griffe zum Öffnen-Knopf durch (`pointer-events-none`);
+        // ein Verweis im Text fängt seinen eigenen ab – das regelt die
+        // Verweis-Darstellung in `RichText` selbst.
+        <div
           className={cn(
             'pointer-events-none relative mt-1 text-sm whitespace-pre-wrap text-slate-600 dark:text-slate-300',
             regel.textZeilen,
           )}
         >
-          <LinkedText text={note.body} />
-        </span>
+          <RichText text={note.body} rich={note.bodyRich} linkify />
+        </div>
       )}
     </div>
-  )
-}
-
-/**
- * Text, in dem Verweise anklickbar sind.
- *
- * `pointer-events-auto` und `z-10`, weil in der Übersicht die ganze Karte eine
- * Fläche zum Öffnen ist: Der Text lässt Griffe durch, der Verweis fängt seinen
- * eigenen ab. `stopPropagation` hält ausserdem die darunterliegende Fläche
- * davon ab, gleich noch die Notiz zu öffnen.
- */
-function LinkedText({ text }: { text: string }): ReactNode {
-  return splitLinks(text).map((teil, index) =>
-    teil.href ? (
-      <a
-        key={index}
-        href={teil.href}
-        target="_blank"
-        rel="noopener noreferrer"
-        onClick={(event) => event.stopPropagation()}
-        className="text-brand-700 dark:text-brand-300 pointer-events-auto relative z-10 break-words underline underline-offset-2"
-      >
-        {teil.text}
-      </a>
-    ) : (
-      <span key={index}>{teil.text}</span>
-    ),
   )
 }
 
@@ -439,8 +417,9 @@ function NoteEditor({ note, onClose }: { note: Note | null; onClose: () => void 
   const { profile } = useAuth()
   const toast = useToast()
 
-  const [title, setTitle] = useState(note?.title ?? '')
-  const [body, setBody] = useState(note?.body ?? '')
+  // Text samt Formatierung daneben – siehe `lib/richtext`.
+  const [title, setTitle] = useState<RichValue>(() => richValueOf(note?.title, note?.titleRich))
+  const [body, setBody] = useState<RichValue>(() => richValueOf(note?.body, note?.bodyRich))
   /*
    * Ob gleich geschrieben wird, entscheidet sich beim Öffnen – nicht mitten im
    * Tippen. Aus dem laufenden Text abgeleitet, kippte der Wert mit dem ersten
@@ -469,22 +448,42 @@ function NoteEditor({ note, onClose }: { note: Note | null; onClose: () => void 
    * kommentarlos überschreiben – stattdessen bleibt sie als eigene Notiz
    * «(Konfliktkopie)» erhalten, und ein Hinweis sagt das.
    */
-  const baseline = useRef({ title: note?.title ?? '', body: note?.body ?? '' })
+  const baseline = useRef({
+    title: note?.title ?? '',
+    titleRich: note?.titleRich ?? null,
+    body: note?.body ?? '',
+    bodyRich: note?.bodyRich ?? null,
+  })
   const live = useRef(note)
   useEffect(() => {
     live.current = note
   })
 
-  const leer = title.trim() === '' && body.trim() === ''
+  const leer = title.text.trim() === '' && body.text.trim() === ''
 
   const autosave = useAutosave(
     { title, body },
     async (entwurf) => {
-      const geschrieben = { title: entwurf.title.trim(), body: entwurf.body }
+      // Beschnitten wird das Paar aus Text und Formatfeld gemeinsam – wie es
+      // auch der Dienst speichert.
+      const titel = trimRichValue(entwurf.title)
+      const geschrieben = {
+        title: titel.text,
+        titleRich: titel.rich,
+        body: entwurf.body.text,
+        bodyRich: entwurf.body.rich,
+      }
 
       if (idRef.current) {
         const fremd = live.current
-        const fremdStand = fremd ? { title: fremd.title ?? '', body: fremd.body ?? '' } : null
+        const fremdStand = fremd
+          ? {
+              title: fremd.title ?? '',
+              titleRich: fremd.titleRich ?? null,
+              body: fremd.body ?? '',
+              bodyRich: fremd.bodyRich ?? null,
+            }
+          : null
         const konflikt =
           fremdStand !== null &&
           JSON.stringify(fremdStand) !== JSON.stringify(baseline.current) &&
@@ -493,7 +492,11 @@ function NoteEditor({ note, onClose }: { note: Note | null; onClose: () => void 
           await createNote(
             {
               title: `${fremdStand.title || 'Ohne Titel'} (Konfliktkopie)`,
+              // Der Zusatz macht den Titel zu einem anderen Text – die alte
+              // Titelformatierung passte nicht mehr dazu.
+              titleRich: null,
               body: fremdStand.body,
+              bodyRich: fremdStand.bodyRich,
             },
             fremd?.updatedById ?? null,
           )
@@ -501,18 +504,20 @@ function NoteEditor({ note, onClose }: { note: Note | null; onClose: () => void 
             'Diese Notiz wurde gleichzeitig von jemand anderem geändert. Die andere Fassung liegt jetzt als «Konfliktkopie» in der Liste.',
           )
         }
-        await updateNote(idRef.current, entwurf, profile?.id ?? null)
+        await updateNote(idRef.current, geschrieben, profile?.id ?? null)
         baseline.current = geschrieben
         return
       }
-      const { id } = await createNote(entwurf, profile?.id ?? null)
+      const { id } = await createNote(geschrieben, profile?.id ?? null)
       idRef.current = id
       setSavedId(id)
       baseline.current = geschrieben
     },
     // Eine leere Notiz wird nicht angelegt, eine geleerte behält ihren
     // letzten Stand.
-    { savable: (entwurf) => entwurf.title.trim() !== '' || entwurf.body.trim() !== '' },
+    {
+      savable: (entwurf) => entwurf.title.text.trim() !== '' || entwurf.body.text.trim() !== '',
+    },
   )
 
   const remove = async () => {
@@ -580,16 +585,19 @@ function NoteEditor({ note, onClose }: { note: Note | null; onClose: () => void 
         }
       >
         {bearbeitet ? (
-          <input
+          <RichTextField
+            id="note-title"
             value={title}
-            onChange={(event) => setTitle(event.target.value)}
+            onChange={setTitle}
             placeholder="Titel"
             aria-label="Titel"
-            className="w-full bg-transparent text-lg font-semibold outline-none"
+            singleLine
+            bare
+            className="w-full text-lg font-semibold outline-none"
           />
         ) : (
           <h3 className="text-lg font-semibold">
-            {title || <span className="text-slate-400">Ohne Titel</span>}
+            <RichText text={title.text} rich={title.rich} placeholder="Ohne Titel" />
           </h3>
         )}
 
@@ -618,7 +626,7 @@ function NoteEditor({ note, onClose }: { note: Note | null; onClose: () => void 
 
 /**
  * Der Text einer Notiz – zum Lesen mit anklickbaren Verweisen, zum Schreiben
- * ein Textfeld.
+ * das formatierbare Feld.
  *
  * In einem Textfeld ist ein Verweis nur Text; anklickbar wird er erst, wenn er
  * als Verweis gezeichnet ist. Deshalb steht im Ansichtsmodus der gelesene Text
@@ -627,6 +635,10 @@ function NoteEditor({ note, onClose }: { note: Note | null; onClose: () => void 
  * Früher genügte ein Griff in den Text. Das war ein Griff zu wenig: Wer eine
  * Notiz bloss nachschlagen wollte, landete beim ersten Antippen im
  * Schreibmodus und verschob mit dem Daumen, was er lesen wollte.
+ *
+ * Das Feld wächst mit dem Text von selbst (es ist keine `textarea` mit fester
+ * Zeilenzahl mehr); erst wenn das Fenster an den Bildschirmrand stösst,
+ * bekommt der Inhalt eine Bildlaufleiste.
  */
 function NoteText({
   value,
@@ -634,70 +646,33 @@ function NoteText({
   bearbeitet,
   moveCursorToEnd,
 }: {
-  value: string
-  onChange: (value: string) => void
+  value: RichValue
+  onChange: (value: RichValue) => void
   bearbeitet: boolean
   moveCursorToEnd?: boolean
 }) {
   if (bearbeitet) {
-    return <GrowingTextarea value={value} onChange={onChange} moveCursorToEnd={moveCursorToEnd} />
+    return (
+      <RichTextField
+        id="note-body"
+        value={value}
+        onChange={onChange}
+        placeholder="Text …"
+        aria-label="Text"
+        bare
+        // Wer aus dem Lesen ins Schreiben wechselt, will weiterschreiben und
+        // nicht vorne beginnen – der Cursor gehört ans Ende.
+        autoFocus={moveCursorToEnd}
+        // Eine Mindesthöhe, damit auch die leere Notiz eine Fläche hat, die
+        // man mit dem Daumen trifft.
+        className="mt-3 min-h-40 w-full outline-none"
+      />
+    )
   }
 
   return (
     <div className="mt-3 min-h-40 w-full break-words whitespace-pre-wrap">
-      {value ? <LinkedText text={value} /> : <span className="text-slate-400">Ohne Text</span>}
+      <RichText text={value.text} rich={value.rich} linkify placeholder="Ohne Text" />
     </div>
-  )
-}
-
-/**
- * Das Textfeld wächst mit dem Text.
- *
- * Ein Feld mit fester Zeilenzahl scrollt in sich selbst, während das Fenster
- * darüber noch Platz hätte – man schriebe durch ein Guckloch. So wächst
- * stattdessen das Feld, und erst wenn das Fenster an den Bildschirmrand
- * stösst, bekommt der Inhalt eine Bildlaufleiste.
- */
-function GrowingTextarea({
-  value,
-  onChange,
-  moveCursorToEnd,
-}: {
-  value: string
-  onChange: (value: string) => void
-  moveCursorToEnd?: boolean
-}) {
-  const field = useRef<HTMLTextAreaElement>(null)
-
-  useLayoutEffect(() => {
-    const element = field.current
-    if (!element) return
-    // Erst zurücksetzen: Sonst misst scrollHeight die bisherige Höhe mit, und
-    // das Feld wächst zwar, schrumpft beim Löschen aber nie wieder.
-    element.style.height = 'auto'
-    element.style.height = `${element.scrollHeight}px`
-  }, [value])
-
-  // Wer aus dem Lesen ins Schreiben wechselt, will weiterschreiben und nicht
-  // vorne beginnen – der Cursor gehört ans Ende.
-  useLayoutEffect(() => {
-    if (!moveCursorToEnd) return
-    const element = field.current
-    if (!element) return
-    element.focus()
-    element.setSelectionRange(element.value.length, element.value.length)
-  }, [moveCursorToEnd])
-
-  return (
-    <textarea
-      ref={field}
-      value={value}
-      onChange={(event) => onChange(event.target.value)}
-      placeholder="Text …"
-      aria-label="Text"
-      // Eine Mindesthöhe, damit auch die leere Notiz eine Fläche hat, die man
-      // mit dem Daumen trifft.
-      className="mt-3 min-h-40 w-full resize-none overflow-hidden bg-transparent outline-none"
-    />
   )
 }

@@ -37,6 +37,7 @@ import {
   QuickBusinessDialog,
 } from '@/components/sacrament/QuickSundayEntry'
 import { MeetingStatusBadge } from '@/components/ui/Badge'
+import { RichText } from '@/components/ui/RichText'
 import { ConfirmDialog, Modal } from '@/components/ui/Modal'
 import { EmptyState, LoadingScreen } from '@/components/ui/Feedback'
 import { PeopleChoice, PersonChoice, SegmentedControl } from '@/components/ui/Pickers'
@@ -911,10 +912,18 @@ function PrintProtocol({
               {groups[kind].map((item, index) => (
                 <li key={item.id}>
                   <p className="font-semibold">
-                    {index + 1}. {item.title}
+                    {index + 1}. <RichText text={item.title} rich={item.titleRich} />
                     {item.status === 'done' && ' ✓'}
                   </p>
-                  {item.description && <p className="text-sm">{item.description}</p>}
+                  {item.description && (
+                    // Auch auf Papier mit Fett, Farben und Aufzählungen –
+                    // deshalb kein `<p>`: Eine Liste ist ein Block.
+                    <RichText
+                      text={item.description}
+                      rich={item.descriptionRich}
+                      className="block text-sm"
+                    />
+                  )}
                   {/* Eine Berufungsrunde hat keine Beschreibung – ohne das
                       stünde im Protokoll nur ihr Titel. */}
                   {item.callingChanges && (

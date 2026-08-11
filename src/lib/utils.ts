@@ -60,13 +60,23 @@ const AVATAR_COLORS = [
   'bg-orange-100 text-orange-800 dark:bg-orange-950 dark:text-orange-200',
 ]
 
-export function colorForId(id: string): string {
+/**
+ * Der Platz in der Farbreihe – dieselbe Rechnung für alles, was zu einer
+ * Person gehört: den Kreis mit den Initialen und die Unterstreichung eines
+ * ihr zugeordneten Textstücks (siehe `lib/richtext`). So trägt eine Person
+ * überall denselben Farbton.
+ */
+export function colorIndexForId(id: string): number {
   let hash = 0
   for (let i = 0; i < id.length; i++) {
     hash = (hash << 5) - hash + id.charCodeAt(i)
     hash |= 0
   }
-  return AVATAR_COLORS[Math.abs(hash) % AVATAR_COLORS.length]
+  return Math.abs(hash) % AVATAR_COLORS.length
+}
+
+export function colorForId(id: string): string {
+  return AVATAR_COLORS[colorIndexForId(id)]
 }
 
 /** Text auf eine Maximallänge kürzen, ohne Wörter zu zerschneiden. */
