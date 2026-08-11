@@ -2,7 +2,7 @@ import { useMemo } from 'react'
 import { Repeat } from 'lucide-react'
 import { AssigneeAvatars } from '@/components/ui/Avatar'
 import { StatusBadge } from '@/components/ui/Badge'
-import { MentionText } from '@/components/ui/MentionText'
+import { RichText } from '@/components/ui/RichText'
 import { LayoutGrid } from '@/components/agenda/LayoutGrid'
 import { CallingChangesTables } from '@/components/agenda/CallingChanges'
 import { normalizeLayout } from '@/lib/layout'
@@ -54,7 +54,12 @@ export function AgendaItemPreview({
             isDone && 'text-slate-500 line-through dark:text-slate-500',
           )}
         >
-          <MentionText text={item.title} memberRefs={item.memberRefs} placeholder="Ohne Titel" />
+          <RichText
+            text={item.title}
+            rich={item.titleRich}
+            memberRefs={item.memberRefs}
+            placeholder="Ohne Titel"
+          />
         </h4>
         <span className="flex shrink-0 items-center gap-1.5">
           {item.status !== 'pending' && <StatusBadge status={item.status} />}
@@ -81,14 +86,17 @@ export function AgendaItemPreview({
         </div>
       ) : (
         item.description?.trim() && (
-          <p
+          // Kein `<p>` mehr: Eine formatierte Beschreibung kann Aufzählungen
+          // tragen, und Blockelemente gehören nicht in einen Absatz.
+          <RichText
+            text={item.description}
+            rich={item.descriptionRich}
+            memberRefs={item.memberRefs}
             className={cn(
-              'mt-1 text-sm whitespace-pre-wrap text-slate-600 dark:text-slate-300',
+              'mt-1 block text-sm text-slate-600 dark:text-slate-300',
               position !== undefined && 'pl-6',
             )}
-          >
-            <MentionText text={item.description} memberRefs={item.memberRefs} />
-          </p>
+          />
         )
       )}
     </div>

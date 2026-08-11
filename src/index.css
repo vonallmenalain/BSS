@@ -206,6 +206,40 @@
   }
 }
 
+/* --- Formatierter Text ----------------------------------------------
+   Traktanden, Pendenzen und Notizen können Fett, Farben und Aufzählungen
+   tragen (siehe `lib/richtext`). Hier steht nur, was sich nicht als Klasse
+   am einzelnen Element sagen lässt: die Listenzeichen je Ebene – im
+   bearbeitbaren Feld (`.rt-editor`) und im gelesenen Text (`.richtext`)
+   dieselben – und der Platzhalter des Feldes. */
+@layer components {
+  .rt-editor ul,
+  .richtext ul {
+    list-style-type: disc;
+    padding-inline-start: 1.5rem;
+  }
+  .rt-editor ul ul,
+  .richtext ul ul {
+    list-style-type: circle;
+    padding-inline-start: 1.25rem;
+  }
+  .rt-editor ul ul ul,
+  .richtext ul ul ul {
+    list-style-type: square;
+  }
+
+  /* Der Platzhalter, solange nichts geschrieben ist. Er schwebt ohne Höhe
+     über der ersten Zeile (float), damit er jeden Innenabstand mitmacht –
+     das Feld eines Titels ist gerahmt, das einer Notiz nackt. */
+  .rt-editor[data-rt-empty]::before {
+    content: attr(data-placeholder);
+    float: left;
+    height: 0;
+    pointer-events: none;
+    @apply text-slate-400 dark:text-slate-500;
+  }
+}
+
 @layer utilities {
   /* Sichere Bereiche auf iPhones mit Notch */
   .pb-safe {

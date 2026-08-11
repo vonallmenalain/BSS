@@ -38,6 +38,8 @@ export interface Actor {
 export interface AgendaItemInput {
   title: string
   description?: string
+  /** Formatierung zur Beschreibung – siehe `lib/richtext`; `null` heisst keine */
+  descriptionRich?: string | null
   meetingId?: string | null
   status?: ItemStatus
   assignees?: string[]
@@ -79,7 +81,17 @@ export async function createAgendaItem(input: AgendaItemInput, actor: Actor): Pr
   await commit(
     setDoc(docRef, {
       title: input.title.trim(),
-      description: input.description?.trim() ?? '',
+      /*
+       * Mit Formatfeld wird der Text unangetastet übernommen: Beide stammen
+       * aus demselben Editor, und ein `trim()` nur am Text liesse die beiden
+       * auseinanderlaufen – die Formatierung fiele beim Anzeigen weg.
+       */
+      description:
+        input.descriptionRich != null
+          ? (input.description ?? '')
+          : (input.description?.trim() ?? ''),
+      descriptionRich: input.descriptionRich ?? null,
+      titleRich: null,
       meetingId: input.meetingId ?? null,
       firstMeetingId: input.meetingId ?? null,
       order: input.order ?? Date.now(),

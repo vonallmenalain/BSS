@@ -5,6 +5,7 @@ import { useAuth } from '@/contexts/AuthContext'
 import { useToast } from '@/contexts/ToastContext'
 import { AssigneeAvatars } from '@/components/ui/Avatar'
 import { KindBadge, StatusBadge } from '@/components/ui/Badge'
+import { RichText } from '@/components/ui/RichText'
 import { setItemStatus } from '@/services/agenda'
 import { hasOpenCallingRows } from '@/lib/callingChanges'
 import { toItemKind, type AgendaItem } from '@/lib/types'
@@ -108,13 +109,15 @@ export function AgendaItemCard({
                 isDone && 'text-slate-500 line-through dark:text-slate-500',
               )}
             >
-              {item.title}
+              <RichText text={item.title} rich={item.titleRich} />
             </h3>
 
             {!compact && item.description && (
-              <p className="mt-1 line-clamp-2 text-sm text-slate-500 dark:text-slate-400">
-                {item.description}
-              </p>
+              <RichText
+                text={item.description}
+                rich={item.descriptionRich}
+                className="mt-1 line-clamp-2 block text-sm text-slate-500 dark:text-slate-400"
+              />
             )}
           </button>
 

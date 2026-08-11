@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from 'react'
 import { useAutosave } from '@/hooks/useAutosave'
-import { MentionEditable } from '@/components/ui/MentionText'
+import { RichEditable } from '@/components/ui/RichText'
 import { AssigneePicker } from '@/components/ui/Pickers'
 import { LayoutGrid } from '@/components/agenda/LayoutGrid'
 import { CallingChangesTables } from '@/components/agenda/CallingChanges'
@@ -11,6 +11,7 @@ import {
   normalizeCallingChanges,
   serializeCallingChanges,
 } from '@/lib/callingChanges'
+import { richValueOf, trimRichValue, type RichValue } from '@/lib/richtext'
 import type { AgendaItem, CallingChanges, ItemLayout } from '@/lib/types'
 
 /**
@@ -63,8 +64,15 @@ export function AgendaItemEditor({
    */
   onCallingChanges?: (next: CallingChanges) => void
 }) {
-  const [title, setTitle] = useState(item.title)
-  const [description, setDescription] = useState(item.description ?? '')
+  /*
+   * Titel und Beschreibung sind ein Paar aus Text und Formatfeld
+   * (`RichValue`, siehe `lib/richtext`): Der Text bleibt das führende Feld,
+   * die Formatierung steht daneben und wird zusammen mit ihm gespeichert.
+   */
+  const [title, setTitle] = useState<RichValue>(() => richValueOf(item.title, item.titleRich))
+  const [description, setDescription] = useState<RichValue>(() =>
+    richValueOf(item.description, item.descriptionRich),
+  )
   const [assignees, setAssignees] = useState<string[]>(item.assignees ?? [])
   const [memberRefs, setMemberRefs] = useState<string[]>(item.memberRefs ?? [])
 
@@ -92,8 +100,8 @@ export function AgendaItemEditor({
    * gerade jemand anders umformuliert.
    */
   const baseline = useRef({
-    title: item.title,
-    description: item.description ?? '',
+    title: richValueOf(item.title, item.titleRich),
+    description: richValueOf(item.description, item.descriptionRich),
     assignees: item.assignees ?? [],
     memberRefs: item.memberRefs ?? [],
     layout: item.layout ? normalizeLayout(item.layout) : null,
@@ -114,8 +122,17 @@ export function AgendaItemEditor({
       const differs = (a: unknown, b: unknown) => JSON.stringify(a) !== JSON.stringify(b)
 
       const patch: Partial<Omit<AgendaItem, 'id'>> = {}
-      if (draft.title.trim() !== base.title) patch.title = draft.title.trim()
-      if (draft.description !== base.description) patch.description = draft.description
+      // Beschnitten wird das Paar, nicht der Text allein – sonst passte das
+      // Formatfeld nicht mehr zum gespeicherten Titel.
+      const titleDraft = trimRichValue(draft.title)
+      if (differs(titleDraft, base.title)) {
+        patch.title = titleDraft.text
+        patch.titleRich = titleDraft.rich
+      }
+      if (differs(draft.description, base.description)) {
+        patch.description = draft.description.text
+        patch.descriptionRich = draft.description.rich
+      }
       if (differs(draft.assignees, base.assignees)) patch.assignees = draft.assignees
       if (differs(draft.memberRefs, base.memberRefs)) patch.memberRefs = draft.memberRefs
       if (differs(draft.layout, base.layout)) {
@@ -143,7 +160,7 @@ export function AgendaItemEditor({
       await updateAgendaItem(item.id, patch)
 
       baseline.current = {
-        title: draft.title.trim(),
+        title: titleDraft,
         description: draft.description,
         assignees: draft.assignees,
         memberRefs: draft.memberRefs,
@@ -162,7 +179,7 @@ export function AgendaItemEditor({
     {
       // Ein Eintrag ohne Titel wäre in jeder Liste eine leere Zeile. Wer den
       // Titel löscht, um ihn neu zu schreiben, behält so lange den alten.
-      savable: (draft) => draft.title.trim() !== '',
+      savable: (draft) => draft.title.text.trim() !== '',
       /*
        * Nicht mitten im Schreiben speichern.
        *
@@ -189,7 +206,7 @@ export function AgendaItemEditor({
     setMemberRefs((current) => (current.includes(memberId) ? current : [...current, memberId]))
 
   const hinweis =
-    title.trim() === ''
+    title.text.trim() === ''
       ? 'Titel ausfüllen'
       : autosave.state === 'fehler'
         ? 'Nicht gespeichert – die Änderung wird erneut versucht.'
@@ -212,7 +229,7 @@ export function AgendaItemEditor({
         autosave.flush()
       }}
     >
-      <MentionEditable
+      <RichEditable
         id={`item-title-${item.id}`}
         label="Titel"
         value={title}
@@ -223,7 +240,6 @@ export function AgendaItemEditor({
         // Steht nur da, solange nichts geschrieben ist – sonst wäre die Fläche,
         // in die man greift, unsichtbar. Bewusst der Feldname, kein Beispiel.
         placeholder="Titel"
-        maxLength={200}
         // Gelesen und geschrieben sitzt der Text im selben Kasten – sonst
         // ruckte er beim ersten Antippen um die Breite eines Rahmens zur Seite.
         className="text-lg font-semibold text-balance sm:text-xl"
@@ -251,7 +267,7 @@ export function AgendaItemEditor({
           readOnly={readOnly}
         />
       ) : (
-        <MentionEditable
+        <RichEditable
           id={`item-description-${item.id}`}
           label="Beschreibung"
           value={description}
@@ -259,11 +275,10 @@ export function AgendaItemEditor({
           onMention={(member) => linkMember(member.id)}
           memberRefs={memberRefs}
           multiline
-          rows={3}
           readOnly={readOnly}
           placeholder="Beschreibung"
           className="min-h-16 text-sm text-slate-600 dark:text-slate-300"
-          fieldClassName="min-h-20 resize-y text-sm"
+          fieldClassName="min-h-20 text-sm"
         />
       )}
 
