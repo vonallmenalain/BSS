@@ -42,6 +42,10 @@ import { colorIndexForId } from './utils.ts'
 export interface RichMarks {
   /** Fett */
   b?: true
+  /** Kursiv */
+  i?: true
+  /** Unterstrichen */
+  u?: true
   /** Textfarbe – ein Schlüssel aus `TEXT_COLORS` */
   color?: string
   /** Hintergrundfarbe – ein Schlüssel aus `BG_COLORS` */
@@ -164,8 +168,11 @@ const BG_COLOR_CLASSES = new Map(BG_COLORS.map((color) => [color.key, color.clas
  * Die Unterstreichung eines zugeordneten Textstücks – im Farbton der Person.
  *
  * Dieselbe Reihenfolge wie die Avatar-Farben in `lib/utils`, angesprochen
- * über denselben `colorIndexForId`: Wer im Kreis mit den Initialen grün ist,
- * ist es auch unter seinem Textstück.
+ * über denselben Index: Der Farbton folgt dem **verknüpften Mitglied**
+ * (`useUserAvatar` in `components/ui/Avatar`), nicht der Konto-UID – wer im
+ * Kreis mit den Initialen violett ist, ist es auch unter seinem Textstück.
+ * Wo eine Zuordnung gezeichnet wird, rechnet der Aufrufer deshalb zuerst die
+ * `colorId` der Person aus und holt hier die Klassen zum Farbton.
  */
 const WHO_DECORATIONS = [
   'decoration-sky-500 dark:decoration-sky-400',
@@ -178,19 +185,45 @@ const WHO_DECORATIONS = [
   'decoration-orange-500 dark:decoration-orange-400',
 ]
 
-export function whoDecoration(uid: string): string {
-  return WHO_DECORATIONS[colorIndexForId(uid)]
+/** Der Platz in der Farbreihe zu einer `colorId` – siehe `colorIndexForId`. */
+export function whoHueOf(colorId: string): number {
+  return colorIndexForId(colorId)
+}
+
+/** Die Unterstreichungs-Klassen zu einem Farbton (0–7). */
+export function whoDecorationClass(hue: number): string {
+  return WHO_DECORATIONS[hue] ?? WHO_DECORATIONS[0]
+}
+
+/**
+ * Die Klasse, über die der Initialen-Kreis im Editor seinen Farbton bekommt.
+ *
+ * Der Kreis ist dort ein `::before` (siehe `index.css`) – Teil der
+ * Darstellung, nicht des Textes – und ein Pseudoelement lässt sich nur über
+ * eine Klasse am Träger einfärben.
+ */
+export function whoBadgeClass(hue: number): string {
+  return `rt-who-hue-${hue}`
+}
+
+/** Alle Klassen einer gezeichneten Zuordnung – Unterstreichung samt Kreis. */
+export function whoClasses(colorId: string): string {
+  const hue = whoHueOf(colorId)
+  return `rt-who ${whoBadgeClass(hue)} underline decoration-dotted decoration-2 underline-offset-2 ${whoDecorationClass(hue)}`
 }
 
 /**
  * Die Klassen zu einem Satz Marken – für Editor und Lesedarstellung dieselben.
  *
- * `withWho: false` lässt die Unterstreichung weg; die Lesedarstellung zeichnet
- * die Zuordnung um eine ganze Gruppe von Läufen, nicht um jeden einzelnen.
+ * Die Zuordnung (`who`) fehlt hier bewusst: Sie wird um eine ganze Gruppe
+ * von Läufen gezeichnet (`whoClasses`), nicht um jeden einzelnen – sonst
+ * stünde nach jedem Farbwechsel mitten im Satz ein neuer Kreis.
  */
-export function markClasses(marks: RichMarks, options?: { withWho?: boolean }): string {
+export function markClasses(marks: RichMarks): string {
   const classes: string[] = []
   if (marks.b) classes.push('font-semibold')
+  if (marks.i) classes.push('italic')
+  if (marks.u) classes.push('underline')
   if (marks.color) {
     const cls = TEXT_COLOR_CLASSES.get(marks.color)
     if (cls) classes.push(cls)
@@ -198,12 +231,6 @@ export function markClasses(marks: RichMarks, options?: { withWho?: boolean }): 
   if (marks.bg) {
     const cls = BG_COLOR_CLASSES.get(marks.bg)
     if (cls) classes.push('rounded-[3px]', cls)
-  }
-  if (marks.who && options?.withWho !== false) {
-    classes.push(
-      'underline decoration-dotted decoration-2 underline-offset-2',
-      whoDecoration(marks.who),
-    )
   }
   return classes.join(' ')
 }
@@ -216,6 +243,8 @@ export function markClasses(marks: RichMarks, options?: { withWho?: boolean }): 
 export function marksOf(run: RichMarks): RichMarks {
   const marks: RichMarks = {}
   if (run.b) marks.b = true
+  if (run.i) marks.i = true
+  if (run.u) marks.u = true
   if (run.color) marks.color = run.color
   if (run.bg) marks.bg = run.bg
   if (run.who) marks.who = run.who
@@ -225,6 +254,8 @@ export function marksOf(run: RichMarks): RichMarks {
 export function sameMarks(a: RichMarks, b: RichMarks): boolean {
   return (
     (a.b ?? false) === (b.b ?? false) &&
+    (a.i ?? false) === (b.i ?? false) &&
+    (a.u ?? false) === (b.u ?? false) &&
     (a.color ?? '') === (b.color ?? '') &&
     (a.bg ?? '') === (b.bg ?? '') &&
     (a.who ?? '') === (b.who ?? '')
@@ -232,7 +263,7 @@ export function sameMarks(a: RichMarks, b: RichMarks): boolean {
 }
 
 export function hasMarks(marks: RichMarks): boolean {
-  return Boolean(marks.b || marks.color || marks.bg || marks.who)
+  return Boolean(marks.b || marks.i || marks.u || marks.color || marks.bg || marks.who)
 }
 
 /* ------------------------------------------------------------------ */
@@ -249,6 +280,8 @@ export function hasMarks(marks: RichMarks): boolean {
 export function encodeMarks(marks: RichMarks): string {
   const parts: string[] = []
   if (marks.b) parts.push('b')
+  if (marks.i) parts.push('i')
+  if (marks.u) parts.push('u')
   if (marks.color) parts.push(`color:${marks.color}`)
   if (marks.bg) parts.push(`bg:${marks.bg}`)
   if (marks.who) parts.push(`who:${marks.who}`)
@@ -259,6 +292,8 @@ export function decodeMarks(value: string): RichMarks {
   const marks: RichMarks = {}
   for (const part of value.split(';')) {
     if (part === 'b') marks.b = true
+    else if (part === 'i') marks.i = true
+    else if (part === 'u') marks.u = true
     else if (part.startsWith('color:')) marks.color = part.slice(6)
     else if (part.startsWith('bg:')) marks.bg = part.slice(3)
     else if (part.startsWith('who:')) marks.who = part.slice(4)
@@ -360,6 +395,8 @@ export function serializeDoc(doc: RichDoc): string {
     const runs = block.runs.map((run) => {
       const out: Record<string, unknown> = { t: run.t }
       if (run.b) out.b = true
+      if (run.i) out.i = true
+      if (run.u) out.u = true
       if (run.color) out.color = run.color
       if (run.bg) out.bg = run.bg
       if (run.who) out.who = run.who
@@ -402,12 +439,14 @@ export function parseRichJson(json: string): RichDoc | null {
 
     for (const rawRun of rawRuns) {
       if (!rawRun || typeof rawRun !== 'object') return null
-      const { t, b, color, bg, who } = rawRun as Record<string, unknown>
+      const { t, b, i, u, color, bg, who } = rawRun as Record<string, unknown>
       if (typeof t !== 'string') return null
       if (++runCount > LIMITS.runs) return null
 
       const run: RichRun = { t }
       if (b === true) run.b = true
+      if (i === true) run.i = true
+      if (u === true) run.u = true
       if (typeof color === 'string' && TEXT_COLOR_CLASSES.has(color)) run.color = color
       if (typeof bg === 'string' && BG_COLOR_CLASSES.has(bg)) run.bg = bg
       if (typeof who === 'string' && who !== '' && who.length <= LIMITS.who) run.who = who
@@ -563,12 +602,12 @@ function runsSlice(runs: RichRun[], from: number, to: number): RichRun[] {
   return out
 }
 
-export type MarkKey = 'b' | 'color' | 'bg' | 'who'
+export type MarkKey = 'b' | 'i' | 'u' | 'color' | 'bg' | 'who'
 
 function withMark(run: RichRun, key: MarkKey, value: true | string | null): RichRun {
   const next: RichRun = { t: run.t, ...marksOf(run) }
   if (value === null) delete next[key]
-  else if (key === 'b') next.b = true
+  else if (key === 'b' || key === 'i' || key === 'u') next[key] = true
   else next[key] = value as string
   return next
 }
@@ -778,6 +817,34 @@ export function replaceRange(
     ...doc.blocks.slice(endIndex + 1),
   ]
   return { doc: normalizeDoc({ blocks }), caret: from + clean.length }
+}
+
+/**
+ * «- » am Zeilenanfang startet eine Aufzählung – wie man es aus anderen
+ * Editoren im Griff hat.
+ *
+ * Geprüft wird nach jeder Eingabe: Steht der Cursor unmittelbar hinter
+ * einem «- », mit dem ein gewöhnlicher Absatz beginnt, wird der Absatz zum
+ * Listenpunkt und die beiden Zeichen verschwinden – sie waren Befehl, nicht
+ * Text. Wer die Liste nicht wollte, schaltet sie im Formatmenü wieder aus.
+ *
+ * `null` heisst: kein Fall für die Verwandlung – die Eingabe bleibt, wie
+ * sie ist.
+ */
+export function autoListBlock(doc: RichDoc, caret: number): { doc: RichDoc; caret: number } | null {
+  const positions = blockPositions(doc)
+  for (let index = 0; index < doc.blocks.length; index++) {
+    const block = doc.blocks[index]
+    const { start, end } = positions[index]
+    if (caret < start || caret > end) continue
+    if (block.list) return null
+    if (caret - start !== 2 || !blockText(block).startsWith('- ')) return null
+
+    const runs = runsSlice(block.runs, 2, Number.POSITIVE_INFINITY)
+    const blocks = doc.blocks.map((entry, at) => (at === index ? { list: 1, runs } : entry))
+    return { doc: normalizeDoc({ blocks }), caret: start }
+  }
+  return null
 }
 
 /**

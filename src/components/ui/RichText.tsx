@@ -1,7 +1,7 @@
 import { Fragment, useLayoutEffect, useMemo, useRef, useState, type ReactNode } from 'react'
 import { Link, useLocation } from 'react-router-dom'
 import { useData } from '@/contexts/DataContext'
-import { Avatar } from '@/components/ui/Avatar'
+import { Avatar, useUserAvatar } from '@/components/ui/Avatar'
 import { RichTextField } from '@/components/ui/RichTextField'
 import { cn } from '@/lib/utils'
 import { splitMentions, type Mention } from '@/lib/mention'
@@ -14,7 +14,8 @@ import {
   markClasses,
   marksOf,
   richDocFor,
-  whoDecoration,
+  whoDecorationClass,
+  whoHueOf,
   type RichBlock,
   type RichRun,
   type RichValue,
@@ -131,20 +132,25 @@ function renderRuns(runs: RichRun[], decorate: Decorator, keyBase: string): Reac
   })
 }
 
-/** Eine zugeordnete Passage: Kreis der Person, Unterstreichung in ihrem Ton. */
+/**
+ * Eine zugeordnete Passage: Kreis der Person, Unterstreichung in ihrem Ton.
+ *
+ * Kürzel und Farbton kommen vom verknüpften Mitglied (`useUserAvatar`) –
+ * dieselbe Ableitung wie bei jedem Kreis in der App, und dieselbe, mit der
+ * auch der Editor zeichnet (`lib/richdom`).
+ */
 function WhoSpan({ uid, children }: { uid: string; children: ReactNode }) {
-  const { usersById } = useData()
-  const name = usersById.get(uid)?.displayName ?? 'Unbekannt'
+  const avatar = useUserAvatar(uid)
   return (
     <span
       className={cn(
         'underline decoration-dotted decoration-2 underline-offset-2',
-        whoDecoration(uid),
+        whoDecorationClass(whoHueOf(avatar.colorId)),
       )}
-      title={`Zugeordnet: ${name}`}
+      title={`Zugeordnet: ${avatar.name}`}
     >
       <span aria-hidden className="mr-0.5 inline-flex align-middle">
-        <Avatar name={name} id={uid} size="xs" />
+        <Avatar name={avatar.name} id={avatar.colorId} initials={avatar.initials} size="xs" />
       </span>
       {children}
     </span>

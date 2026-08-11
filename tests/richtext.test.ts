@@ -3,6 +3,7 @@ import { test } from 'node:test'
 
 import {
   applyMark,
+  autoListBlock,
   changeIndent,
   clearMarks,
   docFromPlain,
@@ -55,6 +56,7 @@ test('Rundreise: serialisieren, einlesen, Projektion bleibt gleich', () => {
   const value = doc({
     blocks: [
       { runs: [{ t: 'Hallo ' }, { t: 'Welt', b: true, color: 'red' }] },
+      { runs: [{ t: 'kursiv', i: true }, { t: ' und ' }, { t: 'unterstrichen', u: true }] },
       { list: 1, runs: [{ t: 'Punkt', bg: 'yellow', who: 'uid-1' }] },
     ],
   })
@@ -179,6 +181,24 @@ test('trimRichValue: beschneidet Text und Formatfeld gemeinsam', () => {
 
   // Ohne Formatfeld bleibt es beim gewohnten trim().
   assert.deepEqual(trimRichValue({ text: '  x ', rich: null }), { text: 'x', rich: null })
+})
+
+test('autoListBlock: «- » am Zeilenanfang wird zum Listenpunkt', () => {
+  // «- Milch», Cursor hinter dem Leerschlag (Zeile 2, Stelle 5+2).
+  const base = docFromPlain('Kopf\n- Milch')
+  const auto = autoListBlock(base, 7)
+  assert.ok(auto)
+  assert.equal(editTextOf(auto.doc), 'Kopf\nMilch')
+  assert.equal(auto.doc.blocks[1].list, 1)
+  assert.equal(auto.caret, 5)
+
+  // Nur unmittelbar hinter dem «- »: mitten im Wort oder am Ende nicht.
+  assert.equal(autoListBlock(base, 9), null)
+  // Nur am Zeilenanfang eines Absatzes – nicht in einer bestehenden Liste.
+  const list = doc({ blocks: [{ list: 1, runs: [{ t: '- x' }] }] })
+  assert.equal(autoListBlock(list, 2), null)
+  // Ohne «- » kein Fall.
+  assert.equal(autoListBlock(docFromPlain('ab'), 2), null)
 })
 
 test('wordRangeAt: findet das Wort unter dem Cursor', () => {

@@ -16,18 +16,21 @@ import {
   Check,
   IndentDecrease,
   IndentIncrease,
+  Italic,
   List,
   RemoveFormatting,
   Type,
+  Underline,
 } from 'lucide-react'
 import { useData } from '@/contexts/DataContext'
-import { Avatar } from '@/components/ui/Avatar'
-import { cn, matchesSearch } from '@/lib/utils'
+import { Avatar, UserAvatar } from '@/components/ui/Avatar'
+import { cn, getInitials, matchesSearch } from '@/lib/utils'
 import { findMentionTrigger, type MentionTrigger } from '@/lib/mention'
 import {
   BG_COLORS,
   TEXT_COLORS,
   applyMark,
+  autoListBlock,
   changeIndent,
   clearMarks,
   docOfValue,
@@ -44,7 +47,13 @@ import {
   type RichMarks,
   type RichValue,
 } from '@/lib/richtext'
-import { docFromDom, renderDocInto, selectionOffsets, setSelectionOffsets } from '@/lib/richdom'
+import {
+  docFromDom,
+  renderDocInto,
+  selectionOffsets,
+  setSelectionOffsets,
+  type WhoBadgeFor,
+} from '@/lib/richdom'
 import { FULL_ACCESS_ROLES, type Member } from '@/lib/types'
 
 /**
@@ -117,12 +126,30 @@ export function RichTextField({
   wrapperClassName?: string
   'aria-label'?: string
 }) {
-  const { members, users } = useData()
+  const { members, users, usersById, membersById } = useData()
   const listId = useId()
   const rootRef = useRef<HTMLDivElement>(null)
   const docRef = useRef<RichDoc>(docOfValue(value))
   /** Der zuletzt selbst gemeldete Stand – nur Fremdes baut das Feld neu auf. */
   const emitted = useRef<string | null>(null)
+
+  /*
+   * Kürzel und Farbton einer zugeordneten Person – dieselbe Ableitung wie
+   * beim Kreis mit den Initialen (`useUserAvatar`): vom verknüpften
+   * Mitglied, sobald unter «Rollen» eines eingetragen ist. So trägt Alain
+   * auch hier sein «AA» in Rot und Aaron sein «AR» in Violett.
+   */
+  const whoBadge = useCallback<WhoBadgeFor>(
+    (uid) => {
+      const user = usersById.get(uid)
+      const member = user?.memberId ? membersById.get(user.memberId) : undefined
+      const name = member
+        ? `${member.firstName} ${member.lastName}`
+        : (user?.displayName ?? 'Unbekannt')
+      return { initials: getInitials(name), colorId: member?.id ?? uid }
+    },
+    [usersById, membersById],
+  )
 
   const [trigger, setTrigger] = useState<MentionTrigger | null>(null)
   const [active, setActive] = useState(0)
@@ -159,7 +186,7 @@ export function RichTextField({
     emitted.current = sig
     const doc = docOfValue(value)
     docRef.current = doc
-    renderDocInto(root, doc, { singleLine })
+    renderDocInto(root, doc, { singleLine, whoBadge })
     updateEmpty(root, doc)
   })
 
@@ -241,15 +268,6 @@ export function RichTextField({
     return () => document.removeEventListener('selectionchange', handler)
   }, [report])
 
-  const handleInput = () => {
-    const root = rootRef.current
-    if (!root) return
-    const doc = docFromDom(root)
-    emit(doc)
-    updateEmpty(root, doc)
-    report()
-  }
-
   /**
    * Ein eigener Handgriff: Modell rechnen, Feld neu aufbauen, Cursor zurück.
    */
@@ -257,11 +275,34 @@ export function RichTextField({
     const root = rootRef.current
     if (!root) return
     const normal = normalizeDoc(doc)
-    renderDocInto(root, normal, { singleLine })
+    renderDocInto(root, normal, { singleLine, whoBadge })
     setSelectionOffsets(root, start, end)
     emit(normal)
     updateEmpty(root, normal)
     if (menuOpenRef.current) setMenu(menuStateNow())
+    report()
+  }
+
+  const handleInput = () => {
+    const root = rootRef.current
+    if (!root) return
+    const doc = docFromDom(root)
+
+    // «- » am Zeilenanfang wird zur Aufzählung – die zwei Zeichen waren
+    // Befehl, nicht Text (siehe `autoListBlock`).
+    if (!singleLine) {
+      const sel = selectionOffsets(root)
+      if (sel && sel.start === sel.end) {
+        const auto = autoListBlock(doc, sel.start)
+        if (auto) {
+          applyDoc(auto.doc, auto.caret, auto.caret)
+          return
+        }
+      }
+    }
+
+    emit(doc)
+    updateEmpty(root, doc)
     report()
   }
 
@@ -282,6 +323,8 @@ export function RichTextField({
   }
 
   const toggleBold = () => applyInline('b', (marks) => (marks.b ? null : true))
+  const toggleItalic = () => applyInline('i', (marks) => (marks.i ? null : true))
+  const toggleUnderline = () => applyInline('u', (marks) => (marks.u ? null : true))
   const setColor = (key: string | null) => applyInline('color', () => key)
   const setBg = (key: string | null) => applyInline('bg', () => key)
   const setWho = (uid: string | null) => applyInline('who', () => uid)
@@ -363,16 +406,22 @@ export function RichTextField({
       return
     }
 
+    // Die drei Klassiker selbst übernehmen – der Browser soll kein eigenes
+    // Markup einsetzen, das am Modell vorbeiginge.
     const meta = event.metaKey || event.ctrlKey
     if (meta && (event.key === 'b' || event.key === 'B')) {
       event.preventDefault()
       toggleBold()
       return
     }
-    // Kursiv und Unterstrichen gibt es hier nicht – der Browser soll kein
-    // Markup einsetzen, das beim Speichern wieder wegfiele.
-    if (meta && ['i', 'I', 'u', 'U'].includes(event.key)) {
+    if (meta && (event.key === 'i' || event.key === 'I')) {
       event.preventDefault()
+      toggleItalic()
+      return
+    }
+    if (meta && (event.key === 'u' || event.key === 'U')) {
+      event.preventDefault()
+      toggleUnderline()
       return
     }
 
@@ -462,8 +511,15 @@ export function RichTextField({
         }}
       />
 
-      {/* Der Griff zum Formatieren – klein am Rand, nur solange geschrieben wird. */}
-      {(focused || menuOpen || autoFocus) && (
+      {/*
+        Der Griff zum Formatieren – klein in der oberen Ecke des Feldes, und
+        nur in dem Feld, in dem gerade geschrieben wird: Stehen Titel und
+        Text zugleich im Schreibmodus (Notizfenster), zeigte sonst jedes
+        Feld seinen eigenen Knopf. Der Griff auf den Knopf nimmt dem Feld
+        den Fokus nicht weg (`onMouseDown`), deshalb bleibt er beim Klicken
+        stehen.
+      */}
+      {(focused || menuOpen) && (
         <button
           type="button"
           onMouseDown={keepFocus}
@@ -472,7 +528,7 @@ export function RichTextField({
           aria-expanded={menuOpen}
           title="Formatieren"
           className={cn(
-            'absolute -top-3 right-2 z-10 rounded-full border p-1.5 shadow-sm transition',
+            'absolute top-1.5 right-1.5 z-10 rounded-full border p-1.5 shadow-sm transition',
             menuOpen
               ? 'border-brand-300 bg-brand-50 text-brand-700 dark:border-brand-700 dark:bg-brand-900 dark:text-brand-200'
               : 'border-slate-200 bg-white text-slate-500 hover:text-slate-700 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-400 dark:hover:text-slate-200',
@@ -483,9 +539,16 @@ export function RichTextField({
       )}
 
       {menuOpen && (
+        /*
+         * Das Menü scrollt für sich: eine eigene Obergrenze samt
+         * `overscroll-contain`, damit ein Rollen darin nicht auf das Fenster
+         * dahinter durchschlägt – sonst wanderte beim Blättern im Menü der
+         * Text weg, den man gerade formatiert. Und breit genug (`w-72`),
+         * dass alle Farbpunkte innerhalb des Randes stehen.
+         */
         <div
           onMouseDown={keepFocus}
-          className="absolute top-5 right-2 z-30 w-64 rounded-xl border border-slate-200 bg-white p-2 shadow-lg dark:border-slate-700 dark:bg-slate-800"
+          className="absolute top-10 right-1.5 z-30 max-h-80 w-72 overflow-y-auto overscroll-contain rounded-xl border border-slate-200 bg-white p-2 shadow-lg dark:border-slate-700 dark:bg-slate-800"
         >
           <MenuRow
             icon={<Bold className="size-4" aria-hidden />}
@@ -494,9 +557,23 @@ export function RichTextField({
             active={menu.marks.b === true}
             onClick={toggleBold}
           />
+          <MenuRow
+            icon={<Italic className="size-4" aria-hidden />}
+            label="Kursiv"
+            hint="Ctrl+I"
+            active={menu.marks.i === true}
+            onClick={toggleItalic}
+          />
+          <MenuRow
+            icon={<Underline className="size-4" aria-hidden />}
+            label="Unterstrichen"
+            hint="Ctrl+U"
+            active={menu.marks.u === true}
+            onClick={toggleUnderline}
+          />
 
           <MenuLabel>Textfarbe</MenuLabel>
-          <div className="flex items-center gap-1 px-2 pb-1.5">
+          <div className="flex flex-wrap items-center gap-0.5 px-2 pb-1.5">
             {TEXT_COLORS.map((color) => (
               <ColorDot
                 key={color.key}
@@ -510,7 +587,7 @@ export function RichTextField({
           </div>
 
           <MenuLabel>Hintergrund</MenuLabel>
-          <div className="flex items-center gap-1 px-2 pb-1.5">
+          <div className="flex flex-wrap items-center gap-0.5 px-2 pb-1.5">
             {BG_COLORS.map((color) => (
               <ColorDot
                 key={color.key}
@@ -564,7 +641,9 @@ export function RichTextField({
               {assignable.map((user) => (
                 <MenuRow
                   key={user.id}
-                  icon={<Avatar name={user.displayName} id={user.id} size="xs" />}
+                  // Der Kreis des Kontos – Kürzel und Farbe vom verknüpften
+                  // Mitglied, wie überall sonst in der App.
+                  icon={<UserAvatar userId={user.id} size="xs" />}
                   label={user.displayName}
                   active={menu.marks.who === user.id}
                   onClick={() => setWho(menu.marks.who === user.id ? null : user.id)}
@@ -694,11 +773,11 @@ function ColorDot({
       aria-pressed={active}
       title={label}
       className={cn(
-        'flex size-7 shrink-0 items-center justify-center rounded-full transition hover:bg-slate-100 dark:hover:bg-slate-700/60',
+        'flex size-6 shrink-0 items-center justify-center rounded-full transition hover:bg-slate-100 dark:hover:bg-slate-700/60',
         active && 'ring-brand-500 ring-2 ring-offset-1 dark:ring-offset-slate-800',
       )}
     >
-      <span className={cn('size-4 rounded-full', dotClass)} aria-hidden />
+      <span className={cn('size-3.5 rounded-full', dotClass)} aria-hidden />
     </button>
   )
 }
@@ -711,9 +790,9 @@ function ClearDot({ label, onClick }: { label: string; onClick: () => void }) {
       onClick={onClick}
       aria-label={label}
       title={label}
-      className="flex size-7 shrink-0 items-center justify-center rounded-full text-slate-400 transition hover:bg-slate-100 hover:text-slate-600 dark:hover:bg-slate-700/60 dark:hover:text-slate-300"
+      className="flex size-6 shrink-0 items-center justify-center rounded-full text-slate-400 transition hover:bg-slate-100 hover:text-slate-600 dark:hover:bg-slate-700/60 dark:hover:text-slate-300"
     >
-      <Ban className="size-4" aria-hidden />
+      <Ban className="size-3.5" aria-hidden />
     </button>
   )
 }
