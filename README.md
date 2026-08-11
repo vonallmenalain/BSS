@@ -40,7 +40,9 @@ schlicht stehen, was getippt wurde.
 
 **Importe stehen gesammelt unter «Einstellungen → Importe»** und nirgends
 sonst. Ein Import ersetzt ganze Bereiche; ein Knopf dafür neben der Arbeit am
-einzelnen Eintrag lädt zu Unfällen ein.
+einzelnen Eintrag lädt zu Unfällen ein. Was nur beim Einrichten gebraucht
+wurde, steht dort abgesetzt als **[Admin-Importe](#admin-importe)** und
+erscheint allein im Administrator-Konto.
 
 ---
 
@@ -1044,8 +1046,8 @@ Namensfeld aus einem vergebenen Punkt wieder einen Platzhalter – Art, Dauer un
 Thema bleiben stehen. Weg ist er über **Entfernen** (unter «Ansprachen») bzw.
 **Programmpunkt entfernen** (unter «Leitung»).
 
-**Liederliste.** Unter **Einstellungen → Importe → Liederlisten** einlesen, dann genügt beim Erfassen
-der Musik die Nummer – der Titel erscheint automatisch. Nur die Zahl, aus dem
+**Liederliste.** Unter **Einstellungen → Importe → [Admin-Importe](#admin-importe) → Liederlisten**
+einlesen, dann genügt beim Erfassen der Musik die Nummer – der Titel erscheint automatisch. Nur die Zahl, aus dem
 PV-Liederbuch mit dem Kürzel davor: **«PV 6»**; es zählt wie das Gesangbuch ab
 1, ohne das Kürzel wäre nicht zu sagen, welches gemeint ist. Doppelnummern
 behalten ihren Buchstaben: «PV 18a». Eine Nummer, die nicht in der Liste steht,
@@ -1840,6 +1842,38 @@ Speichern erneuert, beantwortete die Frage «seit wann?» nicht mehr.
 
 ---
 
+## Admin-Importe
+
+Vier Importe haben den Bestand beim Umstieg ein einziges Mal gefüllt und
+werden seither nicht mehr gebraucht:
+
+| Import             | Was er einmal getan hat                                    |
+| ------------------ | ---------------------------------------------------------- |
+| **Aktivitäten AP** | den bisherigen Jahresplan der Priestertumskollegien geholt  |
+| **Sitzungen**      | vier Jahre Protokolle als Sitzungsgeschichte nachgetragen   |
+| **Verlauf**        | Ansprachen und Gebete aus der bisherigen Tabelle übernommen |
+| **Liederlisten**   | die drei Gesangbücher eingelesen                            |
+
+Sie stehen deshalb für sich: in der Registerleiste über den Importseiten
+hinter einem Strich, in den Einstellungen in einem eigenen Block – und
+sichtbar allein für das Administrator-Konto (siehe [Rollen](#rollen)). Wer
+die App im Alltag benutzt, sieht nur noch die sechs Importe, die tatsächlich
+wiederkehren: Mitglieder, Berufungen, Betreuung, Alleinstehende, Putzplan
+und die Themen der AP-Klasse.
+
+Entfernt sind sie nicht – beim Einrichten der nächsten Gemeinde brauchte es
+sie wieder. Auch ihre Adressen bestehen weiter; für jedes andere Konto
+führen sie zurück auf «Mitglieder importieren».
+
+**Eine Sperre ist das nicht.** Die Zugriffsregeln kennen die Unterscheidung
+nicht: Wer Vollzugriff hat, darf diese Sammlungen weiterhin schreiben – und
+muss es auch, denn dieselben Daten entstehen im Alltag von Hand. Die
+Trennung räumt die Oberfläche auf und hält vier Gelegenheiten aus dem Weg,
+versehentlich einen gepflegten Bestand zu ersetzen. Wo eine echte Grenze
+verläuft, steht unter [Rollen](#rollen).
+
+---
+
 ## Mitgliederliste importieren
 
 **Einstellungen → Importe → Mitglieder**.
@@ -2139,7 +2173,8 @@ sich «Früher» aufklappen, mit Zeitraum je Eintrag.
 
 ## Bisherige Protokolle übernehmen
 
-**Einstellungen → Importe → Sitzungen**, einmalig beim Umstieg.
+**Einstellungen → Importe → [Admin-Importe](#admin-importe) → Sitzungen**,
+einmalig beim Umstieg.
 
 Vier Jahre Bischofschaftssitzungen stehen in einem einzigen Word-Dokument:
 je Sitzung eine Tabelle, die neuste zuoberst, in der ersten Zeile das Datum
@@ -2187,7 +2222,8 @@ was zum Lesen des XML nötig ist (`lib/docx.ts`).
 
 ## Verlauf aus der bisherigen Excel-Tabelle
 
-**Einstellungen → Importe → Verlauf**, einmalig.
+**Einstellungen → Importe → [Admin-Importe](#admin-importe) → Verlauf**,
+einmalig.
 
 Ohne Verlauf beginnt die App bei null: Sie hielte alle für gleich lange nicht
 dran und bräuchte Jahre, bis die Vorschlagslisten wieder etwas taugen. Der
@@ -2251,7 +2287,8 @@ sie sich nach dem Import auf der Seite **Putzplan** einzeln richtigstellen.
 
 ## Aktivitäten AP importieren
 
-**Einstellungen → Importe → Aktivitäten AP**, einmalig beim Umstieg.
+**Einstellungen → Importe → [Admin-Importe](#admin-importe) → Aktivitäten
+AP**, einmalig beim Umstieg.
 
 Den bisherigen Jahresplan als `.xlsx` oder `.csv` einlesen, per Auswahl oder
 Drag-and-drop. Gelesen wird das erste Arbeitsblatt: eine Kopfzeile mit
@@ -2362,7 +2399,8 @@ Damen, danach die der Kollegien.
 
 ## Liederlisten importieren
 
-**Einstellungen → Importe → Liederlisten**, einmalig – einmal je Buch.
+**Einstellungen → Importe → [Admin-Importe](#admin-importe) →
+Liederlisten**, einmalig – einmal je Buch.
 
 Zur Auswahl stehen drei Bücher:
 
@@ -2433,6 +2471,12 @@ rechtfertigt, haben sie aber nicht.
 Wozu dann überhaupt Rollen mit Vollzugriff? Sie halten fest, wer welche
 Aufgabe hat – etwa wer die Abendmahlsversammlung leitet oder präsidiert – und
 sie steuern die Freigabe neuer Konten.
+
+Daneben steht das **Administrator-Konto**. Es ist keine Rolle, sondern eine
+einzelne Anmelde-E-Mail (`ADMIN_EMAIL` in `src/lib/types.ts`, dieselbe
+Adresse in `firestore.rules`): Es schaltet als Einziges neue Konten frei und
+vergibt Rollen, lädt die [Sicherung](#sicherung) herunter und sieht die
+[Admin-Importe](#admin-importe).
 
 Durchgesetzt wird die Trennung in `firestore.rules` und nicht erst in der
 Oberfläche: Ein AP-Zugang erreicht genau zwei Sammlungen (`apActivities`,
@@ -2511,9 +2555,9 @@ src/
 ├── hooks/               Sammlungen lesen, Weg zurück, Ansicht in der Adresse,
 │                        Bekanntmachungen eines Sonntags, Monatspendenzen,
 │                        lokale Einstellungen
-├── lib/                 Firebase-Anbindung, Sammlungsspeicher (Abgleich), Typen, Datums-,
-│                        Serien-, Monats-, Organisations-, Programm-, Sonntags-,
-│                        Vorschlags-, Word- und Hilfsfunktionen, Ferienplan Burgdorf
+├── lib/                 Firebase-Anbindung, Sammlungsspeicher (Abgleich), Typen, Liste der
+│                        Importe, Datums-, Serien-, Monats-, Organisations-, Programm-,
+│                        Sonntags-, Vorschlags-, Word- und Hilfsfunktionen, Ferienplan Burgdorf
 ├── pages/
 │   ├── sacrament/       Leitung, Bekanntmachungen, Angelegenheiten, Musik, Gebet
 │   └── …                Eine Datei pro übriger Ansicht

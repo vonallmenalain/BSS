@@ -109,6 +109,25 @@ function RequireFullAccess() {
   return <Outlet />
 }
 
+/**
+ * Die Admin-Importe – die Handgriffe, die es nur beim Einrichten brauchte.
+ *
+ * Welche das sind, steht in `lib/imports` (`adminOnly`); die Routen weiter
+ * unten sind dieselben, `tests/imports.test.ts` hält beides zusammen. Ohne
+ * diese Weiche wären sie zwar nirgends mehr verlinkt, aber über ein
+ * Lesezeichen weiterhin zu erreichen – und ein Import ist der eine
+ * Handgriff, der einen ganzen Bestand ersetzen kann.
+ *
+ * Eine Sperre ist es nicht: Schreiben dürfte jedes Konto mit Vollzugriff
+ * (siehe `firestore.rules`), denn dieselben Daten entstehen im Alltag von
+ * Hand. Es hält bloss die Vergangenheit aus dem Weg.
+ */
+function RequireAdmin() {
+  const { isAdmin } = useAuth()
+  if (!isAdmin) return <Navigate to="/import" replace />
+  return <Outlet />
+}
+
 function LoginRoute() {
   const { firebaseUser, loading } = useAuth()
   if (loading) return <LoadingScreen />
@@ -299,26 +318,10 @@ export default function App() {
                       }
                     />
                     <Route
-                      path="import/aktivitaeten"
-                      element={
-                        <Suspense fallback={<LoadingScreen />}>
-                          <ImportApActivities />
-                        </Suspense>
-                      }
-                    />
-                    <Route
                       path="import/ap-themen"
                       element={
                         <Suspense fallback={<LoadingScreen />}>
                           <ImportApTopics />
-                        </Suspense>
-                      }
-                    />
-                    <Route
-                      path="import/sitzungen"
-                      element={
-                        <Suspense fallback={<LoadingScreen />}>
-                          <ImportMinutes />
                         </Suspense>
                       }
                     />
@@ -330,22 +333,44 @@ export default function App() {
                         </Suspense>
                       }
                     />
-                    <Route
-                      path="import/verlauf"
-                      element={
-                        <Suspense fallback={<LoadingScreen />}>
-                          <ImportHistory />
-                        </Suspense>
-                      }
-                    />
-                    <Route
-                      path="import/lieder"
-                      element={
-                        <Suspense fallback={<LoadingScreen />}>
-                          <ImportHymns />
-                        </Suspense>
-                      }
-                    />
+
+                    {/* ---------- Admin-Importe ----------
+                        Einmalig beim Einrichten gebraucht; sichtbar und
+                        erreichbar allein für das Administrator-Konto. */}
+                    <Route element={<RequireAdmin />}>
+                      <Route
+                        path="import/aktivitaeten"
+                        element={
+                          <Suspense fallback={<LoadingScreen />}>
+                            <ImportApActivities />
+                          </Suspense>
+                        }
+                      />
+                      <Route
+                        path="import/sitzungen"
+                        element={
+                          <Suspense fallback={<LoadingScreen />}>
+                            <ImportMinutes />
+                          </Suspense>
+                        }
+                      />
+                      <Route
+                        path="import/verlauf"
+                        element={
+                          <Suspense fallback={<LoadingScreen />}>
+                            <ImportHistory />
+                          </Suspense>
+                        }
+                      />
+                      <Route
+                        path="import/lieder"
+                        element={
+                          <Suspense fallback={<LoadingScreen />}>
+                            <ImportHymns />
+                          </Suspense>
+                        }
+                      />
+                    </Route>
                   </Route>
 
                   <Route path="*" element={<Navigate to="/" replace />} />
