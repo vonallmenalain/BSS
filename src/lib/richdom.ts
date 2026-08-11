@@ -6,6 +6,7 @@ import {
   markClasses,
   marksOf,
   normalizeDoc,
+  whoClasses,
   type RichBlock,
   type RichDoc,
   type RichMarks,
@@ -121,14 +122,23 @@ function inlineMarks(el: HTMLElement, marks: RichMarks): RichMarks {
 
   const tag = el.tagName
   if ((tag === 'B' || tag === 'STRONG') && !next.b) next = { ...next, b: true }
+  if ((tag === 'I' || tag === 'EM') && !next.i) next = { ...next, i: true }
+  if (tag === 'U' && !next.u) next = { ...next, u: true }
 
-  const weight = el.style?.fontWeight ?? ''
-  if (weight) {
-    const bold = weight === 'bold' || weight === 'bolder' || Number(weight) >= 600
-    if (bold && !next.b) next = { ...next, b: true }
-    else if (!bold && next.b) {
-      const { b: _b, ...rest } = next
-      next = rest
+  const style = el.style
+  if (style) {
+    const weight = style.fontWeight ?? ''
+    if (weight) {
+      const bold = weight === 'bold' || weight === 'bolder' || Number(weight) >= 600
+      if (bold && !next.b) next = { ...next, b: true }
+      else if (!bold && next.b) {
+        const { b: _b, ...rest } = next
+        next = rest
+      }
+    }
+    if (style.fontStyle === 'italic' && !next.i) next = { ...next, i: true }
+    if ((style.textDecorationLine || style.textDecoration || '').includes('underline') && !next.u) {
+      next = { ...next, u: true }
     }
   }
   return next
@@ -374,20 +384,71 @@ export function setSelectionOffsets(root: HTMLElement, start: number, end: numbe
 /* Modell → DOM                                                        */
 /* ------------------------------------------------------------------ */
 
-function runNodes(runs: RichRun[]): Node[] {
-  return runs.map((run) => {
-    const marks = marksOf(run)
-    if (!hasMarks(marks)) return document.createTextNode(run.t)
-    const span = document.createElement('span')
-    span.className = markClasses(marks)
-    span.setAttribute('data-rt', encodeMarks(marks))
-    span.textContent = run.t
-    return span
-  })
+/**
+ * Woher Kürzel und Farbton einer zugeordneten Person kommen.
+ *
+ * Dieselbe Ableitung wie beim Kreis mit den Initialen (`useUserAvatar`):
+ * vom verknüpften Mitglied, sobald eines eingetragen ist. Der Editor kennt
+ * die Benutzerliste nicht – der Aufrufer gibt sie ihm als Funktion mit.
+ */
+export type WhoBadgeFor = (uid: string) => { initials: string; colorId: string }
+
+function markedSpan(text: string, marks: RichMarks): HTMLElement {
+  const span = document.createElement('span')
+  span.className = markClasses(marks)
+  span.setAttribute('data-rt', encodeMarks(marks))
+  span.textContent = text
+  return span
 }
 
-function fillBlock(el: HTMLElement, block: RichBlock): void {
-  const nodes = runNodes(block.runs)
+/**
+ * Läufe eines Blocks – zusammenhängend Zugeordnetes bekommt **einen** Träger.
+ *
+ * Der Träger zeichnet die gepunktete Unterstreichung im Farbton der Person
+ * und davor den Kreis mit ihren Initialen – als `::before` (siehe
+ * `index.css`), nicht als Kindelement: Ein Pseudoelement ist reine
+ * Darstellung, der Cursor kann nicht hineingeraten, Kopieren und die
+ * Cursor-Rechnung sehen es nicht. So ist die Zuordnung auch **beim
+ * Schreiben** zu sehen, ohne dass im Text etwas steht.
+ */
+function runNodes(runs: RichRun[], whoBadge?: WhoBadgeFor): Node[] {
+  const nodes: Node[] = []
+  let index = 0
+  while (index < runs.length) {
+    const run = runs[index]
+    if (!run.who) {
+      const marks = marksOf(run)
+      nodes.push(hasMarks(marks) ? markedSpan(run.t, marks) : document.createTextNode(run.t))
+      index++
+      continue
+    }
+
+    const uid = run.who
+    const group: RichRun[] = []
+    while (index < runs.length && runs[index].who === uid) {
+      group.push(runs[index])
+      index++
+    }
+
+    const badge = whoBadge?.(uid)
+    const wrapper = document.createElement('span')
+    wrapper.className = whoClasses(badge?.colorId ?? uid)
+    wrapper.setAttribute('data-rt', encodeMarks({ who: uid }))
+    wrapper.setAttribute('data-rt-initials', badge?.initials ?? '?')
+    for (const entry of group) {
+      const marks = marksOf(entry)
+      delete marks.who
+      wrapper.appendChild(
+        hasMarks(marks) ? markedSpan(entry.t, marks) : document.createTextNode(entry.t),
+      )
+    }
+    nodes.push(wrapper)
+  }
+  return nodes
+}
+
+function fillBlock(el: HTMLElement, block: RichBlock, whoBadge?: WhoBadgeFor): void {
+  const nodes = runNodes(block.runs, whoBadge)
   // Eine leere Zeile braucht ein <br>, sonst hätte der Cursor keine Höhe.
   if (nodes.length === 0) el.appendChild(document.createElement('br'))
   else el.append(...nodes)
@@ -404,15 +465,16 @@ function fillBlock(el: HTMLElement, block: RichBlock): void {
 export function renderDocInto(
   root: HTMLElement,
   doc: RichDoc,
-  options?: { singleLine?: boolean },
+  options?: { singleLine?: boolean; whoBadge?: WhoBadgeFor },
 ): void {
   const normal = normalizeDoc(doc)
   const single =
     options?.singleLine === true && normal.blocks.length === 1 && !normal.blocks[0].list
+  const whoBadge = options?.whoBadge
 
   const nodes: Node[] = []
   if (single) {
-    nodes.push(...runNodes(normal.blocks[0].runs))
+    nodes.push(...runNodes(normal.blocks[0].runs, whoBadge))
   } else {
     // Offene Listen je Ebene – Ebene 2 hängt in der letzten <li> von Ebene 1.
     const stack: HTMLElement[] = []
@@ -421,7 +483,7 @@ export function renderDocInto(
       if (level === 0) {
         stack.length = 0
         const div = document.createElement('div')
-        fillBlock(div, block)
+        fillBlock(div, block, whoBadge)
         nodes.push(div)
         continue
       }
@@ -438,7 +500,7 @@ export function renderDocInto(
         stack.push(ul)
       }
       const li = document.createElement('li')
-      fillBlock(li, block)
+      fillBlock(li, block, whoBadge)
       stack[stack.length - 1].appendChild(li)
     }
   }

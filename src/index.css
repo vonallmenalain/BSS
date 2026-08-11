@@ -238,6 +238,60 @@
     pointer-events: none;
     @apply text-slate-400 dark:text-slate-500;
   }
+
+  /* Der Kreis mit den Initialen vor einem zugeordneten Textstück.
+
+     Ein `::before` und kein Kindelement – mit Bedacht: So steht der Kreis
+     auch im **bearbeitbaren** Feld, ohne je Teil des Textes zu sein. Der
+     Cursor kann nicht hineingeraten, Auswahl und Kopieren übergehen ihn,
+     und die Cursor-Rechnung (`lib/richdom`) muss nichts von ihm wissen.
+     Als atomarer Inline-Kasten (inline-flex) erbt er auch die gepunktete
+     Unterstreichung des Trägers nicht.
+
+     Die Initialen liefert `data-rt-initials`, den Farbton eine der acht
+     Klassen darunter – dieselben Farbpaare und dieselbe Reihenfolge wie die
+     Avatar-Farben in `lib/utils`, angesprochen über den Farbplatz des
+     verknüpften Mitglieds (siehe `whoClasses` in `lib/richtext`). */
+  .rt-who::before {
+    content: attr(data-rt-initials);
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 1.25rem;
+    height: 1.25rem;
+    margin-right: 0.125rem;
+    border-radius: 9999px;
+    font-size: 10px;
+    font-weight: 600;
+    font-style: normal;
+    vertical-align: text-bottom;
+    user-select: none;
+    -webkit-user-select: none;
+  }
+  .rt-who-hue-0::before {
+    @apply bg-sky-100 text-sky-800 dark:bg-sky-950 dark:text-sky-200;
+  }
+  .rt-who-hue-1::before {
+    @apply bg-emerald-100 text-emerald-800 dark:bg-emerald-950 dark:text-emerald-200;
+  }
+  .rt-who-hue-2::before {
+    @apply bg-amber-100 text-amber-800 dark:bg-amber-950 dark:text-amber-200;
+  }
+  .rt-who-hue-3::before {
+    @apply bg-violet-100 text-violet-800 dark:bg-violet-950 dark:text-violet-200;
+  }
+  .rt-who-hue-4::before {
+    @apply bg-rose-100 text-rose-800 dark:bg-rose-950 dark:text-rose-200;
+  }
+  .rt-who-hue-5::before {
+    @apply bg-teal-100 text-teal-800 dark:bg-teal-950 dark:text-teal-200;
+  }
+  .rt-who-hue-6::before {
+    @apply bg-indigo-100 text-indigo-800 dark:bg-indigo-950 dark:text-indigo-200;
+  }
+  .rt-who-hue-7::before {
+    @apply bg-orange-100 text-orange-800 dark:bg-orange-950 dark:text-orange-200;
+  }
 }
 
 @layer utilities {

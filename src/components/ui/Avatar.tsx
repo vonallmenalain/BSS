@@ -58,8 +58,12 @@ export function Avatar({
  *
  * Ohne Verknüpfung – und für die AP-Zugänge, die das Verzeichnis gar nicht
  * lesen dürfen – bleibt der Anmeldename die einzige Quelle.
+ *
+ * Exportiert, weil dieselbe Ableitung auch ausserhalb eines Kreises gilt:
+ * Die Zuordnung eines Textstücks (`lib/richtext`) trägt Kürzel und Farbton
+ * der Person – und zwar dieselben wie ihr Kreis überall sonst.
  */
-function useUserAvatar(userId: string, fallbackName?: string) {
+export function useUserAvatar(userId: string, fallbackName?: string) {
   const { usersById, membersById } = useData()
   const user = usersById.get(userId)
   const member = user?.memberId ? membersById.get(user.memberId) : undefined
