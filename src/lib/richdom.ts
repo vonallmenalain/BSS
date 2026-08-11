@@ -114,34 +114,36 @@ function brBreaks(br: HTMLElement, root: HTMLElement): boolean {
   return false
 }
 
-/** Marken, die ein Inline-Element beiträgt – `data-rt` zuerst, dann Browserwerk. */
+/**
+ * Marken, die ein Inline-Element beiträgt – ausschliesslich aus `data-rt`.
+ *
+ * Früher las der Parser auch `<b>`-Tags und Inline-Styles mit. Das war gut
+ * gemeint und schlecht beraten: Nach dem Löschen formatierten Texts schreibt
+ * Chrome neuen Text mit einem «wiederbelebten» Tippstil weiter – ein Span
+ * mit kopierter Farbe und Unterstreichung, das nie durch unsere Hände ging.
+ * Wer solches Markup halb liest, macht Geratenes zu gespeicherten Marken;
+ * wer es ganz ignoriert, behält das Modell als einzige Wahrheit. Was der
+ * Browser hineinschmuggelt, erkennt `needsNormalize`, und das Feld wird
+ * gleich darauf sauber aus dem Modell neu gezeichnet.
+ */
 function inlineMarks(el: HTMLElement, marks: RichMarks): RichMarks {
-  let next = marks
   const data = el.getAttribute('data-rt')
-  if (data) next = { ...next, ...decodeMarks(data) }
+  return data ? { ...marks, ...decodeMarks(data) } : marks
+}
 
-  const tag = el.tagName
-  if ((tag === 'B' || tag === 'STRONG') && !next.b) next = { ...next, b: true }
-  if ((tag === 'I' || tag === 'EM') && !next.i) next = { ...next, i: true }
-  if (tag === 'U' && !next.u) next = { ...next, u: true }
+/**
+ * Fremdes Markup im Feld – alles, was nicht aus `renderDocInto` stammt.
+ *
+ * Unser eigenes Zeichnen erzeugt genau: `div`, `ul`, `li`, `br`, Textknoten
+ * und `span` **mit** `data-rt` – nie Inline-Styles, nie `<b>` und Konsorten.
+ * Taucht anderes auf (der wiederbelebte Tippstil nach dem Löschen, das
+ * B/I/U der iOS-Auswahlleiste), stimmt die Anzeige nicht mehr mit dem
+ * Modell überein und das Feld gehört neu gezeichnet.
+ */
+const FOREIGN_MARKUP = '[style],font,b,strong,i,em,u,span:not([data-rt])'
 
-  const style = el.style
-  if (style) {
-    const weight = style.fontWeight ?? ''
-    if (weight) {
-      const bold = weight === 'bold' || weight === 'bolder' || Number(weight) >= 600
-      if (bold && !next.b) next = { ...next, b: true }
-      else if (!bold && next.b) {
-        const { b: _b, ...rest } = next
-        next = rest
-      }
-    }
-    if (style.fontStyle === 'italic' && !next.i) next = { ...next, i: true }
-    if ((style.textDecorationLine || style.textDecoration || '').includes('underline') && !next.u) {
-      next = { ...next, u: true }
-    }
-  }
-  return next
+export function needsNormalize(root: HTMLElement): boolean {
+  return root.querySelector(FOREIGN_MARKUP) !== null
 }
 
 /**
