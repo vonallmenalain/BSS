@@ -7,9 +7,11 @@ import {
   useRef,
   useState,
   type ClipboardEvent,
+  type ComponentType,
   type KeyboardEvent,
   type ReactNode,
 } from 'react'
+import { createPortal } from 'react-dom'
 import {
   Ban,
   Bold,
@@ -156,6 +158,12 @@ export function RichTextField({
   const [menuOpen, setMenuOpen] = useState(false)
   const menuOpenRef = useRef(false)
   const [menu, setMenu] = useState<MenuState>(EMPTY_MENU)
+  const buttonRef = useRef<HTMLButtonElement>(null)
+  const panelRef = useRef<HTMLDivElement>(null)
+  /** Wo das Menü am Bildschirm steht – am Knopf ausgerichtet (siehe unten). */
+  const [menuPos, setMenuPos] = useState<{ top: number; right: number; maxHeight: number } | null>(
+    null,
+  )
   /*
    * Der Format-Knopf steht nur am Feld, in dem geschrieben wird: Im
    * Notizfenster sind Titel und Text zugleich bearbeitbar, und zwei Knöpfe
@@ -461,12 +469,64 @@ export function RichTextField({
     menuOpenRef.current = false
   }
 
+  /**
+   * Das Menü am Knopf ausrichten – als festes Element am Bildschirm.
+   *
+   * Es hängt bewusst **nicht** im Feld: Dort läge es innerhalb des
+   * Rollbereichs eines Fensters, würde von dessen Fusszeile verdeckt und
+   * machte den Inhalt höher – das Notizfeld bekäme eine Bildlaufleiste,
+   * bloss weil ein Menü offen ist. Deshalb wird es wie das «Ansicht»-Menü
+   * ans Ende des Dokuments gehängt (`createPortal`) und hier am Knopf
+   * ausgerichtet; die Höhe endet am unteren Bildschirmrand, darüber hinaus
+   * rollt es in sich.
+   */
+  const placeMenu = useCallback(() => {
+    const button = buttonRef.current
+    if (!button || !button.isConnected) {
+      setMenuOpen(false)
+      menuOpenRef.current = false
+      return
+    }
+    const rect = button.getBoundingClientRect()
+    const top = rect.bottom + 6
+    setMenuPos({
+      top,
+      right: Math.max(8, window.innerWidth - rect.right),
+      maxHeight: Math.max(160, Math.min(340, window.innerHeight - top - 12)),
+    })
+  }, [])
+
   const toggleMenu = () => {
     const next = !menuOpenRef.current
     menuOpenRef.current = next
-    if (next) setMenu(menuStateNow())
+    if (next) {
+      setMenu(menuStateNow())
+      placeMenu()
+    }
     setMenuOpen(next)
   }
+
+  // Rollt oder verändert sich die Seite hinter dem offenen Menü, folgt es
+  // seinem Knopf – nur das Rollen im Menü selbst ist keine Bewegung der Seite.
+  useEffect(() => {
+    if (!menuOpen) return
+    const follow = (event: Event) => {
+      if (
+        event.target instanceof Node &&
+        panelRef.current &&
+        panelRef.current.contains(event.target)
+      ) {
+        return
+      }
+      placeMenu()
+    }
+    window.addEventListener('resize', follow)
+    document.addEventListener('scroll', follow, true)
+    return () => {
+      window.removeEventListener('resize', follow)
+      document.removeEventListener('scroll', follow, true)
+    }
+  }, [menuOpen, placeMenu])
 
   // Wer im Menü etwas anklickt, soll die Auswahl im Feld behalten – deshalb
   // nimmt das ganze Menü den Fokus gar nicht erst an.
@@ -521,6 +581,7 @@ export function RichTextField({
       */}
       {(focused || menuOpen) && (
         <button
+          ref={buttonRef}
           type="button"
           onMouseDown={keepFocus}
           onClick={toggleMenu}
@@ -538,141 +599,147 @@ export function RichTextField({
         </button>
       )}
 
-      {menuOpen && (
+      {menuOpen &&
+        menuPos &&
         /*
-         * Das Menü scrollt für sich: eine eigene Obergrenze samt
-         * `overscroll-contain`, damit ein Rollen darin nicht auf das Fenster
-         * dahinter durchschlägt – sonst wanderte beim Blättern im Menü der
-         * Text weg, den man gerade formatiert. Und breit genug (`w-72`),
-         * dass alle Farbpunkte innerhalb des Randes stehen.
+         * Das Menü hängt am Dokument, nicht im Feld (siehe `placeMenu`), und
+         * rollt für sich (`overscroll-contain`) – ein Blättern darin bewegt
+         * weder das Feld noch das Fenster dahinter. Breit genug (`w-72`),
+         * dass alle Farbpunkte innerhalb des Randes stehen; über dem
+         * Fenster (`z-[60]`), damit keine Fusszeile es verdeckt.
          */
-        <div
-          onMouseDown={keepFocus}
-          className="absolute top-10 right-1.5 z-30 max-h-80 w-72 overflow-y-auto overscroll-contain rounded-xl border border-slate-200 bg-white p-2 shadow-lg dark:border-slate-700 dark:bg-slate-800"
-        >
-          <MenuRow
-            icon={<Bold className="size-4" aria-hidden />}
-            label="Fett"
-            hint="Ctrl+B"
-            active={menu.marks.b === true}
-            onClick={toggleBold}
-          />
-          <MenuRow
-            icon={<Italic className="size-4" aria-hidden />}
-            label="Kursiv"
-            hint="Ctrl+I"
-            active={menu.marks.i === true}
-            onClick={toggleItalic}
-          />
-          <MenuRow
-            icon={<Underline className="size-4" aria-hidden />}
-            label="Unterstrichen"
-            hint="Ctrl+U"
-            active={menu.marks.u === true}
-            onClick={toggleUnderline}
-          />
-
-          <MenuLabel>Textfarbe</MenuLabel>
-          <div className="flex flex-wrap items-center gap-0.5 px-2 pb-1.5">
-            {TEXT_COLORS.map((color) => (
-              <ColorDot
-                key={color.key}
-                label={color.label}
-                dotClass={color.dot}
-                active={menu.marks.color === color.key}
-                onClick={() => setColor(menu.marks.color === color.key ? null : color.key)}
+        createPortal(
+          <div
+            ref={panelRef}
+            onMouseDown={keepFocus}
+            style={{ top: menuPos.top, right: menuPos.right, maxHeight: menuPos.maxHeight }}
+            className="fixed z-[60] w-72 overflow-y-auto overscroll-contain rounded-xl border border-slate-200 bg-white p-2 shadow-lg dark:border-slate-700 dark:bg-slate-800"
+          >
+            {/* Die drei Klassiker nebeneinander – eine Zeile statt drei. Die
+                Tastenkürzel (Ctrl+B/I/U) gelten weiterhin, nur unbeschriftet. */}
+            <div className="flex gap-1 pb-1">
+              <IconToggle
+                icon={Bold}
+                label="Fett"
+                active={menu.marks.b === true}
+                onClick={toggleBold}
               />
-            ))}
-            <ClearDot label="Keine Textfarbe" onClick={() => setColor(null)} />
-          </div>
-
-          <MenuLabel>Hintergrund</MenuLabel>
-          <div className="flex flex-wrap items-center gap-0.5 px-2 pb-1.5">
-            {BG_COLORS.map((color) => (
-              <ColorDot
-                key={color.key}
-                label={color.label}
-                dotClass={color.dot}
-                active={menu.marks.bg === color.key}
-                onClick={() => setBg(menu.marks.bg === color.key ? null : color.key)}
+              <IconToggle
+                icon={Italic}
+                label="Kursiv"
+                active={menu.marks.i === true}
+                onClick={toggleItalic}
               />
-            ))}
-            <ClearDot label="Kein Hintergrund" onClick={() => setBg(null)} />
-          </div>
-
-          {!singleLine && (
-            <>
-              <Divider />
-              <MenuRow
-                icon={<List className="size-4" aria-hidden />}
-                label="Aufzählung"
-                active={menu.list.active}
-                onClick={doToggleList}
+              <IconToggle
+                icon={Underline}
+                label="Unterstrichen"
+                active={menu.marks.u === true}
+                onClick={toggleUnderline}
               />
-              <div className="flex gap-1 px-1 pb-1">
-                <button
-                  type="button"
-                  onMouseDown={keepFocus}
-                  onClick={() => doIndent(1)}
-                  disabled={!menu.list.active}
-                  className="btn-ghost flex-1 justify-center gap-1.5 px-2 py-1.5 text-xs disabled:opacity-40"
-                >
-                  <IndentIncrease className="size-4" aria-hidden />
-                  Einrücken
-                </button>
-                <button
-                  type="button"
-                  onMouseDown={keepFocus}
-                  onClick={() => doIndent(-1)}
-                  disabled={!menu.list.active}
-                  className="btn-ghost flex-1 justify-center gap-1.5 px-2 py-1.5 text-xs disabled:opacity-40"
-                >
-                  <IndentDecrease className="size-4" aria-hidden />
-                  Ausrücken
-                </button>
-              </div>
-            </>
-          )}
+            </div>
 
-          {assignable.length > 0 && (
-            <>
-              <Divider />
-              <MenuLabel>Person zuordnen</MenuLabel>
-              {assignable.map((user) => (
-                <MenuRow
-                  key={user.id}
-                  // Der Kreis des Kontos – Kürzel und Farbe vom verknüpften
-                  // Mitglied, wie überall sonst in der App.
-                  icon={<UserAvatar userId={user.id} size="xs" />}
-                  label={user.displayName}
-                  active={menu.marks.who === user.id}
-                  onClick={() => setWho(menu.marks.who === user.id ? null : user.id)}
+            <MenuLabel>Textfarbe</MenuLabel>
+            <div className="flex flex-wrap items-center gap-0.5 px-2 pb-1.5">
+              {TEXT_COLORS.map((color) => (
+                <ColorDot
+                  key={color.key}
+                  label={color.label}
+                  dotClass={color.dot}
+                  active={menu.marks.color === color.key}
+                  onClick={() => setColor(menu.marks.color === color.key ? null : color.key)}
                 />
               ))}
-              {menu.marks.who && (
-                <MenuRow
-                  icon={<Ban className="size-4" aria-hidden />}
-                  label="Zuordnung entfernen"
-                  onClick={() => setWho(null)}
+              <ClearDot label="Keine Textfarbe" onClick={() => setColor(null)} />
+            </div>
+
+            <MenuLabel>Hintergrund</MenuLabel>
+            <div className="flex flex-wrap items-center gap-0.5 px-2 pb-1.5">
+              {BG_COLORS.map((color) => (
+                <ColorDot
+                  key={color.key}
+                  label={color.label}
+                  dotClass={color.dot}
+                  active={menu.marks.bg === color.key}
+                  onClick={() => setBg(menu.marks.bg === color.key ? null : color.key)}
                 />
-              )}
-            </>
-          )}
+              ))}
+              <ClearDot label="Kein Hintergrund" onClick={() => setBg(null)} />
+            </div>
 
-          <Divider />
-          <MenuRow
-            icon={<RemoveFormatting className="size-4" aria-hidden />}
-            label="Formatierung entfernen"
-            onClick={doClear}
-          />
+            {!singleLine && (
+              <>
+                <Divider />
+                <MenuRow
+                  icon={<List className="size-4" aria-hidden />}
+                  label="Aufzählung"
+                  active={menu.list.active}
+                  onClick={doToggleList}
+                />
+                <div className="flex gap-1 px-1 pb-1">
+                  <button
+                    type="button"
+                    onMouseDown={keepFocus}
+                    onClick={() => doIndent(1)}
+                    disabled={!menu.list.active}
+                    className="btn-ghost flex-1 justify-center gap-1.5 px-2 py-1.5 text-xs disabled:opacity-40"
+                  >
+                    <IndentIncrease className="size-4" aria-hidden />
+                    Einrücken
+                  </button>
+                  <button
+                    type="button"
+                    onMouseDown={keepFocus}
+                    onClick={() => doIndent(-1)}
+                    disabled={!menu.list.active}
+                    className="btn-ghost flex-1 justify-center gap-1.5 px-2 py-1.5 text-xs disabled:opacity-40"
+                  >
+                    <IndentDecrease className="size-4" aria-hidden />
+                    Ausrücken
+                  </button>
+                </div>
+              </>
+            )}
 
-          {!menu.hasSelection && (
-            <p className="px-2 pt-1 pb-0.5 text-[11px] text-slate-400 dark:text-slate-500">
-              Ohne Auswahl wirkt alles auf das Wort unter dem Cursor.
-            </p>
-          )}
-        </div>
-      )}
+            {assignable.length > 0 && (
+              <>
+                <Divider />
+                <MenuLabel>Person zuordnen</MenuLabel>
+                {assignable.map((user) => (
+                  <MenuRow
+                    key={user.id}
+                    // Der Kreis des Kontos – Kürzel und Farbe vom verknüpften
+                    // Mitglied, wie überall sonst in der App.
+                    icon={<UserAvatar userId={user.id} size="xs" />}
+                    label={user.displayName}
+                    active={menu.marks.who === user.id}
+                    onClick={() => setWho(menu.marks.who === user.id ? null : user.id)}
+                  />
+                ))}
+                {menu.marks.who && (
+                  <MenuRow
+                    icon={<Ban className="size-4" aria-hidden />}
+                    label="Zuordnung entfernen"
+                    onClick={() => setWho(null)}
+                  />
+                )}
+              </>
+            )}
+
+            <Divider />
+            <MenuRow
+              icon={<RemoveFormatting className="size-4" aria-hidden />}
+              label="Formatierung entfernen"
+              onClick={doClear}
+            />
+
+            {!menu.hasSelection && (
+              <p className="px-2 pt-1 pb-0.5 text-[11px] text-slate-400 dark:text-slate-500">
+                Ohne Auswahl wirkt alles auf das Wort unter dem Cursor.
+              </p>
+            )}
+          </div>,
+          document.body,
+        )}
 
       {trigger && results.length > 0 && (
         <ul
@@ -716,13 +783,11 @@ export function RichTextField({
 function MenuRow({
   icon,
   label,
-  hint,
   active = false,
   onClick,
 }: {
   icon: ReactNode
   label: string
-  hint?: string
   active?: boolean
   onClick: () => void
 }) {
@@ -735,8 +800,39 @@ function MenuRow({
     >
       <span className="flex w-5 justify-center text-slate-500 dark:text-slate-400">{icon}</span>
       <span className="min-w-0 flex-1 truncate">{label}</span>
-      {hint && !active && <span className="text-[10px] text-slate-400">{hint}</span>}
       {active && <Check className="text-brand-600 dark:text-brand-300 size-4" aria-hidden />}
+    </button>
+  )
+}
+
+/** Ein Knopf der B/I/U-Zeile – nur das Zeichen, der Name als Beschriftung. */
+function IconToggle({
+  icon: Icon,
+  label,
+  active,
+  onClick,
+}: {
+  icon: ComponentType<{ className?: string; 'aria-hidden'?: boolean }>
+  label: string
+  active: boolean
+  onClick: () => void
+}) {
+  return (
+    <button
+      type="button"
+      onMouseDown={(event) => event.preventDefault()}
+      onClick={onClick}
+      aria-label={label}
+      aria-pressed={active}
+      title={label}
+      className={cn(
+        'flex flex-1 items-center justify-center rounded-lg py-1.5 transition',
+        active
+          ? 'bg-brand-100 text-brand-700 dark:bg-brand-900 dark:text-brand-200'
+          : 'text-slate-600 hover:bg-slate-100 dark:text-slate-300 dark:hover:bg-slate-700/60',
+      )}
+    >
+      <Icon className="size-4" aria-hidden />
     </button>
   )
 }

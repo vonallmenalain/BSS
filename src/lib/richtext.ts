@@ -221,7 +221,9 @@ export function whoClasses(colorId: string): string {
  */
 export function markClasses(marks: RichMarks): string {
   const classes: string[] = []
-  if (marks.b) classes.push('font-semibold')
+  // Volles Fett (700), nicht halbfett: Titel stehen ohnehin halbfett da,
+  // und «Fett» soll auch dort sichtbar etwas tun.
+  if (marks.b) classes.push('font-bold')
   if (marks.i) classes.push('italic')
   if (marks.u) classes.push('underline')
   if (marks.color) {
