@@ -147,7 +147,7 @@ export function ImportSingles() {
             title="Liste einfügen"
             description={
               <>
-                Im LCR unter <strong>Organisationen</strong> die Liste{' '}
+                Im LCR unter <strong>Berichte, Mitgliederberichte</strong> die Liste{' '}
                 <strong>{MEMBER_ORGANIZATION_NAMES[kind]}</strong> öffnen, die Seite markieren (Strg
                 bzw. Cmd + A), kopieren und hier einfügen.
               </>

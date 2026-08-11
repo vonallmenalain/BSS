@@ -264,14 +264,16 @@ function PastedCallings({ source, picker }: { source: CallingSource; picker: Rea
           description={
             source === 'organizations' ? (
               <>
-                Im LCR <strong>Organisationen</strong> öffnen, die Seite markieren (Strg bzw. Cmd +
+                Im LCR <strong>Berufungen</strong>, eine Organisation wählen, nach{' '}
+                <strong>Alle Organisationen</strong> filtern, die Seite markieren (Strg bzw. Cmd +
                 A), kopieren und hier einfügen.
               </>
             ) : (
               <>
-                Im LCR <strong>Berufungen ausserhalb der Einheit</strong> öffnen, die Seite
-                markieren (Strg bzw. Cmd + A), kopieren und hier einfügen. Diese Berufungen zählen
-                für die Person, erscheinen aber nicht im Organisationsplan der Gemeinde.
+                Im LCR <strong>Berichte, Berufungen, Berufungen ausserhalb der Einheit</strong>{' '}
+                öffnen, die Seite markieren (Strg bzw. Cmd + A), kopieren und hier einfügen. Diese
+                Berufungen zählen für die Person, erscheinen aber nicht im Organisationsplan der
+                Gemeinde.
               </>
             )
           }
