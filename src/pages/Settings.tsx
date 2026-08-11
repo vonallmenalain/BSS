@@ -43,6 +43,7 @@ import {
   AP_ONLY_ROLES,
   ASSIGNABLE_ROLES,
   ROLE_LABELS,
+  roleRank,
   type AccessLevel,
   type AppSettings,
   type AppUser,
@@ -127,6 +128,20 @@ export function Settings() {
   }
 
   const pendingUsers = users.filter((user) => user.role === 'pending')
+
+  /*
+   * Die Liste folgt der Rolle und nicht dem Alphabet: zuerst die
+   * Bischofschaft mit Vollzugriff, dann die beiden AP-Zugänge – bearbeiten
+   * vor ansehen. So steht beieinander, was dieselben Rechte hat.
+   *
+   * `users` kommt bereits nach Namen sortiert (siehe `DataContext`), und
+   * weil `sort` gleichrangige Einträge in ihrer Reihenfolge belässt, bleibt
+   * es innerhalb einer Rolle alphabetisch. Sortiert wird die Kopie aus dem
+   * Filter, nicht die Liste des Kontexts.
+   */
+  const teamUsers = users
+    .filter((user) => user.role !== 'pending')
+    .sort((a, b) => roleRank(a.role) - roleRank(b.role))
 
   /*
    * Mit «#benutzer» in der Adresse gleich zu den Registrierungen scrollen.
@@ -441,16 +456,14 @@ export function Settings() {
           )}
 
           <ul className="divide-list">
-            {users
-              .filter((user) => user.role !== 'pending')
-              .map((user) => (
-                <UserRow
-                  key={user.id}
-                  user={user}
-                  isSelf={user.id === profile?.id}
-                  canManage={isAdmin}
-                />
-              ))}
+            {teamUsers.map((user) => (
+              <UserRow
+                key={user.id}
+                user={user}
+                isSelf={user.id === profile?.id}
+                canManage={isAdmin}
+              />
+            ))}
           </ul>
         </section>
 

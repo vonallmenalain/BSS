@@ -2499,6 +2499,14 @@ auf **Freischalten** wirkt sofort; **Ablehnen** entfernt das Profil wieder.
 Freischalten darf jedes Konto mit Vollzugriff, nicht nur der Bischof. Die
 Zugriffsstufe lässt sich später jederzeit in der Liste darunter ändern.
 
+Diese Liste steht **nach Rollen** und nicht nach Namen: zuoberst die
+Bischofschaft mit Vollzugriff – Bischof, 1. und 2. Ratgeber, Finanzsekretär,
+Sekretär –, darunter die Konten, die den AP-Kalender bearbeiten dürfen, und
+zuunterst jene, die ihn nur ansehen. Innerhalb derselben Rolle bleibt es
+alphabetisch. So steht beieinander, was dieselben Rechte hat, statt dass sich
+ein AP-Zugang zwischen die Bischofschaft schiebt, nur weil sein Name mit A
+beginnt.
+
 Jede und jeder kann die **eigene Rolle** anpassen, unter
 **Einstellungen → Mein Profil** oder in der Liste unter **Benutzer und
 Rollen**. Wer beim Einrichten versehentlich als Bischof angelegt wurde, trägt
