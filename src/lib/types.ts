@@ -97,6 +97,40 @@ export const AP_ACCESS_ROLES: Role[] = [...FULL_ACCESS_ROLES, ...AP_ONLY_ROLES]
 export const AP_WRITE_ROLES: Role[] = [...FULL_ACCESS_ROLES, 'ap_editor']
 
 /**
+ * Die Reihenfolge der Konten in der Benutzerverwaltung.
+ *
+ * Nach Namen sortiert stünde ein AP-Zugang mitten in der Bischofschaft,
+ * obwohl beide grundverschiedene Dinge zu sehen bekommen. Nach der Rolle
+ * sortiert beantwortet die Liste die Frage, mit der man sie aufschlägt –
+ * «wer sieht was?»: zuerst die Bischofschaft mit Vollzugriff, dann wer den
+ * AP-Kalender bearbeiten darf, zuletzt wer ihn nur ansieht.
+ */
+export const ROLE_ORDER: Role[] = [
+  'bishop',
+  'counselor1',
+  'counselor2',
+  // Die alte Sammelrolle steht bei den Ratgebern, wo sie hingehört.
+  'counselor',
+  'executive_secretary',
+  'secretary',
+  'ap_editor',
+  'ap_viewer',
+  'pending',
+]
+
+/**
+ * Rang einer Rolle für die Sortierung.
+ *
+ * Eine Rolle, die es hier nicht mehr gibt, kommt ans Ende und nicht an den
+ * Anfang: `indexOf` gäbe dafür -1 zurück, und ein alter Datensatz führte
+ * dann die Liste an.
+ */
+export function roleRank(role: Role): number {
+  const index = ROLE_ORDER.indexOf(role)
+  return index === -1 ? ROLE_ORDER.length : index
+}
+
+/**
  * Das Administrator-Konto – verwaltet als Einziges Benutzer und Rollen.
  *
  * Erkannt wird es an der Anmelde-E-Mail (dem Token), nicht am frei
