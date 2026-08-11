@@ -1302,7 +1302,25 @@ Der Plan hat einen festen Rhythmus, und die App kennt ihn:
 - **jeden Mittwochabend** eine Aktivität,
 - **ausser am 3. Mittwoch im Monat** – dann ist FHV, und die AP-Aktivität
   fällt aus,
-- **jeden Sonntag** die AP-Klasse, **von 11:35 bis 12:00 Uhr**.
+- **ausser in den Schulferien** – dann ist die halbe Klasse weg, und es
+  findet nichts statt,
+- **jeden Sonntag** die AP-Klasse, **von 11:35 bis 12:00 Uhr**,
+- **ausser am 1. Sonntag im April und im Oktober** – dann ist
+  Generalkonferenz, und in der Gemeinde findet nichts statt.
+
+**Die Schulferien gehen der FHV vor.** Fällt der 3. Mittwoch in die Ferien,
+steht dort «Schulferien Burgdorf – keine Aktivität» und nicht die FHV: Beide
+erklären dieselbe Lücke, und die Ferien sind der Grund, den man sucht. Am
+**Sonntag** ändern die Ferien nichts – die AP-Klasse findet auch in den
+Sommerferien statt.
+
+Der Ferienplan der Schulen Burgdorf steht in `lib/schoolHolidays.ts`,
+Schuljahr für Schuljahr mit dem ersten und dem letzten Ferientag. Er gilt
+für die ganze Stadt und ändert sich nie – eine Tabelle in den Einstellungen
+wäre ein Formular, das niemand ausfüllt. Erfasst ist er zurzeit bis zu den
+**Sommerferien 2029**; wer darüber hinaus plant, wird im Dialog «Termine
+erzeugen» darauf hingewiesen. Nachtragen heisst: eine Zeile ergänzen, aus
+dem [Ferienplan der Schule Burgdorf](https://www.schuleburgdorf.ch/ferienplan).
 
 **Der Sonntag hat im September 2026 gewechselt.** Bis August war die Klasse
 am 2. und 4. Sonntag und dauerte von 11 bis 12 Uhr; seit dem 1. September
@@ -1320,7 +1338,9 @@ Die vier Arten färben Rand und Symbol der Zeile und sind auf einen Blick
 unterscheidbar: Aktivität (blau), AP-Klasse (violett), besonderer Anlass
 (gelb), fällt aus (grau, durchgestrichen). Ein ausgefallener Abend bleibt bewusst **im Plan
 stehen**: Ein fehlendes Datum sieht aus wie eine Lücke, die noch jemand
-füllen muss; steht «FHV – keine Aktivität» da, ist die Frage beantwortet.
+füllen muss; steht «FHV – keine Aktivität», «Schulferien Burgdorf – keine
+Aktivität» oder «Generalkonferenz – keine Klasse» da, ist die Frage
+beantwortet.
 
 Ein Termin ohne Titel heisst «Noch offen» und ist genau das – ein Abend, der
 noch zu planen ist. Auch das ist Absicht: Was fehlt, soll man sehen.
@@ -1410,8 +1430,27 @@ kommende Jahr –, ohne Titel, als Gerüst. Tage, an denen bereits etwas im Plan
 steht, bleiben unangetastet; der Knopf lässt sich deshalb gefahrlos ein
 zweites Mal drücken und füllt dann nur die Lücken.
 
+Fünf Schalter, jeder mit der Zahl daneben, die er anlegen würde. **Was
+angelegt wird:**
+
+- **Aktivität an jedem Mittwoch** – ohne den 3. Mittwoch und ohne die
+  Schulferien,
+- **AP-Klasse an den Sonntagen** – mit ihrer Stunde, ohne die beiden
+  Konferenzsonntage.
+
+**Wann nichts stattfindet** – die drei erklärten Lücken, jede als «fällt
+aus» im Plan:
+
+- **«FHV – keine Aktivität»** am 3. Mittwoch im Monat,
+- **«Schulferien Burgdorf – keine Aktivität»** an jedem Mittwoch der Ferien,
+  auch am 3.,
+- **«Generalkonferenz – keine Klasse»** am 1. Sonntag im April und im
+  Oktober.
+
 Die Klassen entstehen dabei mit ihrer Stunde, aber ohne Thema – im Plan
-steht «Thema noch offen», bis der Import sie füllt.
+steht «Thema noch offen», bis der Import sie füllt. An den beiden
+Konferenzsonntagen entsteht gar keine Klasse; auch der Themen-Import lässt
+diesen Sonntag dann aus.
 
 ### Die Themen der Klasse
 
@@ -2283,6 +2322,11 @@ denn der wievielte Sonntag es ist, steht im Plan schon im Datum.
 | 3 – Dritter Sonntag | den 3. Sonntag            |
 | 4 – Vierter Sonntag | den 4. Sonntag            |
 
+**Im April und im Oktober fällt die erste Lektion aus.** An diesem Sonntag
+ist Generalkonferenz, es findet keine Klasse statt – der Import legt dort
+also keinen Termin an und meldet die Lektion oben als eine, die auf keinen
+Klassensonntag passt.
+
 **Ein fünfter Sonntag bleibt frei.** Das Heft nennt die vierte Lektion
 «Letzter Sonntag», die Adresse dagegen `04-fourth-sunday`; in vier von fünf
 Monaten ist das dasselbe. Wo es das nicht ist, folgt der Plan der Zählung
@@ -2469,7 +2513,7 @@ src/
 │                        lokale Einstellungen
 ├── lib/                 Firebase-Anbindung, Sammlungsspeicher (Abgleich), Typen, Datums-,
 │                        Serien-, Monats-, Organisations-, Programm-, Sonntags-,
-│                        Vorschlags-, Word- und Hilfsfunktionen
+│                        Vorschlags-, Word- und Hilfsfunktionen, Ferienplan Burgdorf
 ├── pages/
 │   ├── sacrament/       Leitung, Bekanntmachungen, Angelegenheiten, Musik, Gebet
 │   └── …                Eine Datei pro übriger Ansicht
