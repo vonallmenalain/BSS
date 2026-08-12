@@ -6,10 +6,12 @@
   NODE_VERSION = "22"
   NPM_FLAGS = "--no-audit --no-fund"
 
-# Serverseitiges gibt es an zwei Stellen: den Kalender-Feed
+# Serverseitiges gibt es an drei Stellen: den Kalender-Feed
 # (`netlify/functions/ap-ics.mts`) – er teilt sich den ICS-Bau mit der App,
-# esbuild löst den Import aus `src/lib` beim Bündeln auf – und die Auskunft
-# über den Ort eines Zugriffs (`whereami.mts`) für das Zugriffsprotokoll.
+# esbuild löst den Import aus `src/lib` beim Bündeln auf –, die Auskunft
+# über den Ort eines Zugriffs (`whereami.mts`) für das Zugriffsprotokoll
+# und den Versand der Benachrichtigungen (`benachrichtigungen.mts`), der
+# alle 15 Minuten nachschaut, ob für jemanden etwas ansteht.
 [functions]
   directory = "netlify/functions"
   node_bundler = "esbuild"
@@ -62,9 +64,9 @@
   [headers.values]
     Cache-Control = "public, max-age=0, must-revalidate"
 
-# Dasselbe für den Service Worker der Montags-Erinnerung («Impuls»).
+# Dasselbe für den Service Worker der Benachrichtigungen.
 [[headers]]
-  for = "/impuls-push-sw.js"
+  for = "/push-sw.js"
   [headers.values]
     Cache-Control = "public, max-age=0, must-revalidate"
 

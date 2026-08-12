@@ -1,6 +1,6 @@
 import { deleteToken, getMessaging, getToken, isSupported } from 'firebase/messaging'
 // Am Protokoll vorbei – dieselbe Abwägung wie bei `saveApView`: Ob ein Gerät
-// die Erinnerung mag, ändert nichts am Bestand der Gemeinde.
+// Nachrichten empfängt, ändert nichts am Bestand der Gemeinde.
 import {
   deleteDoc as fbDeleteDoc,
   doc as fbDoc,
@@ -10,26 +10,28 @@ import {
 import { app, db, COLLECTIONS } from '@/lib/firebase'
 
 /*
- * Die Montags-Erinnerung: einschalten, ausschalten, Stand kennen.
+ * Das Gerät an- und abmelden: Erlaubnis, Adresse, Stand.
  *
  * Ein eigener Service Worker mit eigenem Geltungsbereich nimmt die
- * Zustellung entgegen (`public/impuls-push-sw.js`); die Geräte-Adresse
- * (das FCM-Token) wandert nach `impulsePushTokens`, wo die geplante
- * Netlify-Function sie montags abholt. Das Token ist zugleich die
- * Dokument-ID – ein Gerät, ein Dokument, und das Ausschalten findet
- * seines wieder.
+ * Zustellung entgegen (`public/push-sw.js`); die Geräte-Adresse (das
+ * FCM-Token) wandert nach `pushTokens`, wo die geplante Netlify-Function
+ * sie abholt. Das Token ist zugleich die Dokument-ID – ein Gerät, ein
+ * Dokument, und das Abmelden findet seines wieder.
  *
- * Der Schalter gilt **je Gerät**, nicht je Konto: Wer die Erinnerung auf
- * dem Telefon mag und am Laptop nicht, bekommt genau das. Der Stand dafür
- * liegt im Browser (localStorage), nicht in Firestore.
+ * Die Zweiteilung ist Absicht: **Ob** dieses Gerät Nachrichten empfängt,
+ * steht hier und gilt je Browser – die Erlaubnis lässt sich gar nicht
+ * anders vergeben. **Was** und **wann** verschickt wird, steht in
+ * `notificationSettings` und gilt für die Person. Wer auf dem Telefon
+ * Nachrichten mag und am Laptop nicht, bekommt genau das, ohne seine
+ * Einstellungen doppelt pflegen zu müssen.
  */
 
-const TOKEN_KEY = 'impuls-push-token'
-const SW_URL = '/impuls-push-sw.js'
-const SW_SCOPE = '/impuls-push/'
+const TOKEN_KEY = 'bss-push-token'
+const SW_URL = '/push-sw.js'
+const SW_SCOPE = '/push/'
 
 /** Ist der öffentliche VAPID-Schlüssel hinterlegt (`VITE_FIREBASE_VAPID_KEY`)? */
-export function impulsePushConfigured(): boolean {
+export function pushConfigured(): boolean {
   return Boolean(import.meta.env.VITE_FIREBASE_VAPID_KEY)
 }
 
@@ -39,13 +41,13 @@ export function impulsePushConfigured(): boolean {
  * Auf dem iPhone erst, wenn die App installiert ist («Zum Home-Bildschirm») –
  * im Safari-Tab fehlt die Schnittstelle, und genau das meldet diese Prüfung.
  */
-export async function impulsePushSupported(): Promise<boolean> {
+export async function pushSupported(): Promise<boolean> {
   if (typeof Notification === 'undefined' || !('serviceWorker' in navigator)) return false
   return isSupported().catch(() => false)
 }
 
-/** Hat dieses Gerät die Erinnerung eingeschaltet? */
-export function impulsePushEnabled(): boolean {
+/** Empfängt dieses Gerät Nachrichten? */
+export function pushEnabled(): boolean {
   try {
     return Boolean(localStorage.getItem(TOKEN_KEY))
   } catch {
@@ -53,13 +55,18 @@ export function impulsePushEnabled(): boolean {
   }
 }
 
+/** Hat der Browser Mitteilungen für diese App ausdrücklich verweigert? */
+export function pushDenied(): boolean {
+  return typeof Notification !== 'undefined' && Notification.permission === 'denied'
+}
+
 /**
- * Einschalten: Erlaubnis erfragen, Adresse holen, hinterlegen.
+ * Anmelden: Erlaubnis erfragen, Adresse holen, hinterlegen.
  *
  * `denied` heisst, der Browser hat die Erlaubnis verweigert – dann hilft
  * nur der Weg über die Browser-Einstellungen, und die Karte sagt das.
  */
-export async function enableImpulsePush(user: { uid: string }): Promise<'granted' | 'denied'> {
+export async function enablePush(user: { uid: string }): Promise<'granted' | 'denied'> {
   const permission = await Notification.requestPermission()
   if (permission !== 'granted') return 'denied'
 
@@ -71,7 +78,7 @@ export async function enableImpulsePush(user: { uid: string }): Promise<'granted
   })
 
   await fbSetDoc(
-    fbDoc(db, COLLECTIONS.impulsePushTokens, token),
+    fbDoc(db, COLLECTIONS.pushTokens, token),
     { uid: user.uid, token, createdAt: serverTimestamp(), updatedAt: serverTimestamp() },
     { merge: true },
   )
@@ -79,8 +86,8 @@ export async function enableImpulsePush(user: { uid: string }): Promise<'granted
   return 'granted'
 }
 
-/** Ausschalten: Adresse zurückgeben und das Dokument wegräumen. */
-export async function disableImpulsePush(): Promise<void> {
+/** Abmelden: Adresse zurückgeben und das Dokument wegräumen. */
+export async function disablePush(): Promise<void> {
   const token = localStorage.getItem(TOKEN_KEY)
   localStorage.removeItem(TOKEN_KEY)
 
@@ -88,12 +95,12 @@ export async function disableImpulsePush(): Promise<void> {
     await deleteToken(getMessaging(app))
   } catch (error) {
     // Ein Token, das sich nicht zurückgeben lässt, ist meist schon weg.
-    console.warn('[impuls-push] Token konnte nicht zurückgegeben werden:', error)
+    console.warn('[push] Token konnte nicht zurückgegeben werden:', error)
   }
 
   if (token) {
-    await fbDeleteDoc(fbDoc(db, COLLECTIONS.impulsePushTokens, token)).catch((error) =>
-      console.warn('[impuls-push] Adresse konnte nicht entfernt werden:', error),
+    await fbDeleteDoc(fbDoc(db, COLLECTIONS.pushTokens, token)).catch((error) =>
+      console.warn('[push] Adresse konnte nicht entfernt werden:', error),
     )
   }
 }

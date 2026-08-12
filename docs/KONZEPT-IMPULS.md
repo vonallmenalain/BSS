@@ -7,8 +7,10 @@ Startpaket, Wochenziel, Tages-Challenge, Serie, Abzeichen und
 Gruppenleiste, der endliche Impuls-Feed mit «Amen» und Favoriten, die
 Frage der Woche mit Antworten, Vornamen und Moderation, die Mitmach-Ecke
 samt stillem Erinnerungspunkt in der Navigation – und die
-Montags-Erinnerung als Web-Push (siehe 5.7; braucht den öffentlichen
-VAPID-Schlüssel als `VITE_FIREBASE_VAPID_KEY` bei Netlify). Das Konzept
+Wochenerinnerung als Web-Push (siehe 5.7; braucht den öffentlichen
+VAPID-Schlüssel als `VITE_FIREBASE_VAPID_KEY` bei Netlify). Die
+Erinnerung ist inzwischen Teil der allgemeinen Benachrichtigungen der
+App – einstellbar im Benutzermenü, mit frei wählbarem Takt. Das Konzept
 ist damit vollständig umgesetzt. Der Bereich heisst «Impuls».
 
 ---
@@ -341,20 +343,23 @@ Der Bereich soll abholen, ohne zu nerven – in dieser Reihenfolge:
    solange die Woche noch nicht angeschaut ist – dieselbe stille Sprache
    wie beim Update-Hinweis. Er hängt an `lastSeenWeek` im
    Fortschrittsdokument und verschwindet mit dem ersten Blick.
-3. **Push aufs Telefon** *(umgesetzt)*: die **Montags-Erinnerung**. Eine
-   geplante Netlify-Function (`impuls-push.mts`, montags 06:00 UTC)
-   schaut nach, ob die neue Woche bereiten Inhalt hat, und schickt nur
-   dann über Cloud Messaging eine kurze Nachricht an die Geräte, die den
-   Schalter gesetzt haben – eine leere Woche bleibt still. Der Schalter
-   («Montags-Erinnerung» auf der Bereichsseite) gilt **je Gerät** und
-   ist jederzeit abschaltbar; abgelaufene Geräte-Adressen räumt der Lauf
-   selbst weg. Eingerichtet wird mit dem **öffentlichen** VAPID-Schlüssel
-   (`VITE_FIREBASE_VAPID_KEY`, Firebase-Konsole → Cloud Messaging →
-   Web-Push-Zertifikate; kein Geheimnis, gehört ins Browser-Bundle) –
-   versendet wird über das Dienstkonto (`FIREBASE_SERVICE_ACCOUNT`), der
-   private Teil bleibt bei Firebase. Auf dem iPhone erreicht Web-Push
-   nur die installierte PWA; die Karte sagt genau das, statt still zu
-   scheitern.
+3. **Push aufs Telefon** *(umgesetzt)*: die **Wochenerinnerung**, seit
+   dem Ausbau der Benachrichtigungen Teil eines gemeinsamen Versands
+   (`netlify/functions/benachrichtigungen.mts`, alle 15 Minuten). Der
+   Lauf schaut nach, wer die Erinnerung eingeschaltet hat und wessen
+   Zeitpunkt erreicht ist, prüft, ob die Woche bereiten Inhalt hat, und
+   schickt nur dann eine kurze Nachricht – eine leere Woche bleibt still.
+   **Wann** erinnert wird, stellt jede Person selbst ein (täglich oder
+   wöchentlich, Wochentag und Uhrzeit in Schweizer Zeit; Standard ist
+   Montag, 08:00); **ob** ein Gerät empfängt, entscheidet das Gerät. Beides
+   steht im Benutzermenü unter «Benachrichtigungen». Abgelaufene
+   Geräte-Adressen räumt der Lauf selbst weg. Eingerichtet wird mit dem
+   **öffentlichen** VAPID-Schlüssel (`VITE_FIREBASE_VAPID_KEY`,
+   Firebase-Konsole → Cloud Messaging → Web-Push-Zertifikate; kein
+   Geheimnis, gehört ins Browser-Bundle) – versendet wird über das
+   Dienstkonto (`FIREBASE_SERVICE_ACCOUNT`), der private Teil bleibt bei
+   Firebase. Auf dem iPhone erreicht Web-Push nur die installierte PWA;
+   der Dialog sagt genau das, statt still zu scheitern.
 
 ---
 

@@ -3050,3 +3050,67 @@ export interface ImpulseProgress extends WithId {
   createdAt?: TS
   updatedAt?: TS
 }
+
+/* ------------------------------------------------------------------ */
+/* Benachrichtigungen                                                  */
+/* ------------------------------------------------------------------ */
+
+/**
+ * Wie oft eine Erinnerung kommt.
+ *
+ * Mehr Takte gibt es bewusst nicht: Eine Erinnerung, die man selbst
+ * bestellt hat, soll vorhersehbar sein – täglich oder wöchentlich, zur
+ * gewählten Zeit. Alles Feinere wäre eine Einstellung, die man einmal
+ * vornimmt und danach nicht mehr versteht.
+ */
+export type NotificationMode = 'daily' | 'weekly'
+
+export interface NotificationSchedule {
+  mode: NotificationMode
+  /** 1 = Montag … 7 = Sonntag. Zählt nur bei `weekly`. */
+  weekday: number
+  /**
+   * Uhrzeit «HH:MM» in **Schweizer Zeit**, in halben Stunden.
+   *
+   * Bewusst nicht in UTC: Wer «acht Uhr» einstellt, meint acht Uhr am
+   * Frühstückstisch – im Sommer wie im Winter. Die Umrechnung macht der
+   * Versand (siehe `lib/notifications`), die Zeitumstellung geht damit
+   * spurlos vorbei.
+   */
+  time: string
+}
+
+/**
+ * Was jemand benachrichtigt bekommen möchte – ein Dokument je Konto,
+ * die UID ist die ID.
+ *
+ * Getrennt von den Geräte-Adressen (`pushTokens`), und das ist Absicht:
+ * **Ob** ein Gerät Nachrichten empfängt, entscheidet das Gerät (die
+ * Erlaubnis gilt je Browser); **was** und **wann** verschickt wird,
+ * entscheidet die Person – einmal, für alle ihre Geräte.
+ *
+ * Die Felder ohne Schalter führt der Versand selbst (`…SentAt`,
+ * `meetingsNotified`); die Zugriffsregeln verriegeln sie gegen den
+ * Client, damit sich niemand versehentlich eine Nachricht doppelt holt.
+ */
+export interface NotificationSettings extends WithId {
+  uid: string
+  /** Der Wochenimpuls – Takt und Zeit frei wählbar. */
+  impuls: NotificationSchedule & { on: boolean }
+  /**
+   * Wenn jemand anderes ein Traktandum anlegt.
+   *
+   * Nur für Vollzugriff, gebündelt und mit Mindestabstand – fünf
+   * Traktanden in fünf Minuten sind eine Nachricht, nicht fünf.
+   */
+  agenda: { on: boolean }
+  /** Eine Stunde vor der Sitzung, mit Anzahl Traktanden und Pendenzen. */
+  meeting: { on: boolean }
+  /** Vom Versand geführt: wann zuletzt gesendet wurde. */
+  impulsSentAt?: TS | null
+  agendaSentAt?: TS | null
+  /** Vom Versand geführt: Sitzungen, für die schon erinnert wurde. */
+  meetingsNotified?: string[]
+  createdAt?: TS
+  updatedAt?: TS
+}

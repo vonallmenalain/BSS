@@ -2712,8 +2712,9 @@ src/
 │   └── …                Eine Datei pro übriger Ansicht
 └── services/            Schreibzugriffe und Fachlogik pro Sammlung
 
-netlify/functions/       Das Serverseitige: der abonnierbare Kalender und die
-                         Ortsangabe fürs Zugriffsprotokoll
+netlify/functions/       Das Serverseitige: der abonnierbare Kalender, die
+                         Ortsangabe fürs Zugriffsprotokoll und der Versand
+                         der Benachrichtigungen
 tests/                   Tests der Zugriffsregeln und der Import-Parser (laufen in der CI)
 .github/workflows/       Prüfen und Ausrollen der Firestore-Regeln
 firestore.rules          Zugriffsregeln (die eigentliche Absicherung)
@@ -2744,6 +2745,60 @@ Pendenzen und Notizen.
 > übernimmt die Lage erst mit der nächsten Aktualisierung des Startsymbols –
 > sofort geht es, indem man sie einmal entfernt und neu zum Startbildschirm
 > hinzufügt.
+
+---
+
+## Benachrichtigungen
+
+Erreichbar über das Kürzel oben rechts → **«Benachrichtigungen»**. Alles an
+einem Ort, und der Aufbau folgt der einen Frage, die sich sonst niemand
+beantworten kann – «warum kommt bei mir nichts an?»:
+
+**Zuoberst das Gerät.** Die Erlaubnis für Mitteilungen vergibt der Browser,
+nicht das Konto. Wer sie auf dem Telefon will und am Laptop nicht, meldet
+genau dort an. Auf dem iPhone geht Web-Push erst, wenn die App installiert
+ist; steht sie nur im Safari-Tab, sagt der Dialog das, statt still zu
+scheitern.
+
+**Darunter, was verschickt wird.** Das gilt fürs Konto und damit für alle
+Geräte:
+
+| Anlass | Für wen | Was drinsteht |
+| ------------------------------ | ---------------- | -------------------------------------------- |
+| Die neue Woche im **Impuls** | Zugang «Impuls» | Takt frei wählbar: täglich oder wöchentlich, Wochentag und Uhrzeit (Standard Montag, 08:00). Eine Woche ohne Inhalt bleibt still. |
+| **Neues Traktandum** | Vollzugriff | «Josh hat ein neues Traktandum angelegt.» |
+| **Eine Stunde vor der Sitzung** | Vollzugriff | Titel, Zeit, Anzahl Traktanden und Pendenzen |
+
+Standardmässig ist alles aus – eine Benachrichtigung soll man bestellen
+müssen, nicht abbestellen.
+
+Zwei Vorkehrungen halten die Traktanden-Meldung erträglich: Was man **selbst**
+anlegt, meldet sich nie, und zwischen zwei Meldungen liegen mindestens
+**30 Minuten**. Fünf Traktanden an einem Abend ergeben eine Nachricht mit der
+Zahl fünf, nicht fünf Nachrichten.
+
+### Wie es technisch läuft
+
+Ein einziger geplanter Lauf besorgt alles: `netlify/functions/benachrichtigungen.mts`,
+alle 15 Minuten. Er liest die Einstellungen (`notificationSettings`, ein
+Dokument je Konto), die Geräte-Adressen (`pushTokens`, ein Dokument je Gerät)
+und entscheidet je Person, ob etwas fällig ist. Gerechnet wird in **Schweizer
+Zeit**: Wer «08:00» einstellt, meint acht Uhr am Frühstückstisch, im Sommer wie
+im Winter – die Zeitumstellung geht spurlos vorbei.
+
+Dass nichts doppelt ankommt, sichern drei Marken im Einstellungsdokument
+(`impulsSentAt`, `agendaSentAt`, `meetingsNotified`). Sie gehören dem Versand;
+die Zugriffsregeln verriegeln sie gegen den Client, denn wer sie zurückstellen
+könnte, liesse sich dieselbe Nachricht beliebig oft schicken. Fällt ein Lauf
+aus, wird eine fällige Erinnerung noch **zwei Stunden** lang nachgereicht –
+danach wäre sie nicht mehr richtig, sondern nur noch spät.
+
+Die Zustellung nimmt ein eigener, schlanker Service Worker entgegen
+(`public/push-sw.js`) – mit eigenem Geltungsbereich `/push/`, damit er dem
+Service Worker der PWA nicht in die Quere kommt. Eingerichtet wird das Ganze
+mit dem **öffentlichen** VAPID-Schlüssel in `VITE_FIREBASE_VAPID_KEY` (siehe
+`.env.example`); versendet wird über das Dienstkonto in
+`FIREBASE_SERVICE_ACCOUNT`, der private Teil bleibt bei Firebase.
 
 ---
 

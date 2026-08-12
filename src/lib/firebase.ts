@@ -123,8 +123,10 @@ export const COLLECTIONS = {
   impulseComments: 'impulseComments',
   /** Einreichungen aus der Mitmach-Ecke – die Redaktion prüft und übernimmt */
   impulseSubmissions: 'impulseSubmissions',
-  /** Geräte-Adressen der Montags-Erinnerung, Dokument-ID ist das Token */
-  impulsePushTokens: 'impulsePushTokens',
+  /** Geräte-Adressen für Benachrichtigungen, Dokument-ID ist das Token */
+  pushTokens: 'pushTokens',
+  /** Was jemand benachrichtigt bekommen will, Dokument-ID ist die UID */
+  notificationSettings: 'notificationSettings',
   /** Wer wann da war und was sich dabei geändert hat – liest nur der Administrator */
   accessLog: 'accessLog',
 } as const
