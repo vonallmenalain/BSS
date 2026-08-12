@@ -24,6 +24,7 @@ import {
   type Calling,
   type CleaningWeek,
   type ImpulseAnswer,
+  type ImpulseComment,
   type ImpulseItem,
   type ImpulseProgress,
   type Meeting,
@@ -530,6 +531,13 @@ export function useImpulseProgress() {
     () => ({ ...state, byUid: new Map(state.data.map((progress) => [progress.uid, progress])) }),
     [state],
   )
+}
+
+/** Beiträge zur Frage der Woche – die ältesten zuerst, wie ein Gespräch. */
+export function useImpulseComments() {
+  const { canViewImpulse } = useAuth()
+  const state = useCollection<ImpulseComment>(COLLECTIONS.impulseComments, canViewImpulse)
+  return useMemo(() => ({ ...state, data: byDate(state.data, 'createdAt', 'asc') }), [state])
 }
 
 /* ------------------------------------------------------------------ */

@@ -2807,13 +2807,14 @@ export interface CalendarFeed extends WithId {
  * Stand liegt am eigenen Fortschrittsdokument (`ImpulseProgress`), nicht
  * am Inhalt.
  */
-export type ImpulseKind = 'impuls' | 'quiz' | 'wochenziel' | 'tageschallenge' | 'feed'
+export type ImpulseKind = 'impuls' | 'quiz' | 'wochenziel' | 'tageschallenge' | 'frage' | 'feed'
 
 export const IMPULSE_KIND_LABELS: Record<ImpulseKind, string> = {
   impuls: 'Wochenimpuls',
   quiz: 'Quizfrage',
   wochenziel: 'Wochenziel',
   tageschallenge: 'Tages-Challenge',
+  frage: 'Frage der Woche',
   feed: 'Feed-Karte',
 }
 
@@ -2928,6 +2929,31 @@ export interface ImpulseAnswer extends WithId {
   updatedAt?: TS
 }
 
+/**
+ * Ein Beitrag zur Frage der Woche.
+ *
+ * Die Dokument-ID ist `{itemId}_{uid}` – eine Antwort pro Person und
+ * Frage, wie beim Quiz. Anders als dort darf die eigene nachgebessert
+ * werden: Sie ist ein persönliches Wort, kein Versuch. Sichtbar werden die
+ * Antworten der anderen erst nach der eigenen (Entscheid Nr. 3) – das
+ * setzt die Ansicht durch; wer mit Entwicklerwerkzeugen vorbeischaut,
+ * liest nur, was er nach einem ehrlichen Satz ohnehin sähe.
+ *
+ * `hidden` ist die Moderation: Ein ausgeblendeter Beitrag bleibt stehen,
+ * erscheint aber nur noch der Redaktion. Amen und Melden liegen wie beim
+ * Feed am eigenen Fortschrittsdokument, nicht am Beitrag.
+ */
+export interface ImpulseComment extends WithId {
+  itemId: string
+  uid: string
+  firstName: string
+  text: string
+  /** Ausgeblendet durch die Redaktion – nur sie sieht und schaltet es. */
+  hidden: boolean
+  createdAt?: TS
+  updatedAt?: TS
+}
+
 /** Der Stand einer Person in einer Woche – was sie selbst abgehakt hat. */
 export interface ImpulseWeekProgress {
   /** Wochenziel geschafft – Selbstauskunft, umhakbar. */
@@ -2965,6 +2991,14 @@ export interface ImpulseProgress extends WithId {
   amens?: string[]
   /** Gemerkte Karten – die eigene Favoritensammlung, als Inhalts-IDs. */
   favorites?: string[]
+  /**
+   * Gemeldete Beiträge – IDs aus `impulseComments`.
+   *
+   * Auch das Melden liegt am eigenen Dokument: Es braucht kein
+   * Schreibrecht am fremden Beitrag, und die Redaktion sieht, wer etwas
+   * gemeldet hat.
+   */
+  reports?: string[]
   createdAt?: TS
   updatedAt?: TS
 }

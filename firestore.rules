@@ -433,6 +433,38 @@ service cloud.firestore {
       allow delete: if impulseWrite();
     }
 
+    /*
+     * Beiträge zur Frage der Woche.
+     *
+     * Eine Antwort pro Person und Frage – die Dokument-ID trägt beides,
+     * wie bei den Quizantworten. Anders als dort darf die eigene
+     * nachgebessert werden: Sie ist ein persönliches Wort, kein Versuch.
+     * Was dabei tabu bleibt: Konto, Frage und das Moderations-Feld –
+     * ausblenden und wieder zeigen kann allein die Redaktion, und ein
+     * Beitrag kann nicht schon ausgeblendet zur Welt kommen, um der
+     * Moderation zuvorzukommen. Dass die Antworten der anderen erst nach
+     * der eigenen erscheinen, setzt die Ansicht durch – wer daran vorbei
+     * liest, liest nur, was er nach einem ehrlichen Satz ohnehin sähe.
+     */
+    match /impulseComments/{commentId} {
+      allow read: if impulseAccess();
+
+      allow create: if impulseAccess()
+        && commentId == request.resource.data.itemId + '_' + request.auth.uid
+        && request.resource.data.uid == request.auth.uid
+        && request.resource.data.hidden == false;
+
+      allow update: if impulseWrite()
+        || (impulseAccess()
+          && resource.data.uid == request.auth.uid
+          && unchanged('uid')
+          && unchanged('itemId')
+          && unchanged('hidden'));
+
+      allow delete: if impulseWrite()
+        || (impulseAccess() && resource.data.uid == request.auth.uid);
+    }
+
     /* ---------------- Einstellungen ---------------- */
 
     // Lesen darf auch, wer nur den AP-Kalender sieht: Der Name der Gemeinde

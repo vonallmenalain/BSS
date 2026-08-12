@@ -7,6 +7,7 @@ import {
   Eye,
   LayoutList,
   Lightbulb,
+  MessagesSquare,
   Plus,
   Repeat,
   Search,
@@ -15,7 +16,7 @@ import {
 import { useAuth } from '@/contexts/AuthContext'
 import { useToast } from '@/contexts/ToastContext'
 import { useNow } from '@/hooks/useNow'
-import { useImpulseAnswers, useImpulseItems } from '@/hooks/useFirestore'
+import { useImpulseAnswers, useImpulseComments, useImpulseItems } from '@/hooks/useFirestore'
 import { PageHeader } from '@/components/ui/Pickers'
 import { ImpulseItemForm } from '@/components/impulse/ImpulseItemForm'
 import { ImpulseWeekPreview } from '@/components/impulse/ImpulseWeekPreview'
@@ -54,6 +55,7 @@ export function ImpulsRedaktion() {
   const now = useNow()
   const itemsState = useImpulseItems()
   const answersState = useImpulseAnswers()
+  const commentsState = useImpulseComments()
   const todayKey = impulseWeekKey(now)
 
   /* Die laufende Woche und die nächsten sieben – dazu alles, was noch
@@ -133,7 +135,8 @@ export function ImpulsRedaktion() {
     }
   }
 
-  /* Antworten je Frage – für die Zahl an der Zeile und fürs Miträumen. */
+  /* Antworten und Beiträge je Inhalt – für die Zahl an der Zeile und
+     fürs Miträumen beim Löschen. */
   const answersByItem = useMemo(() => {
     const map = new Map<string, string[]>()
     for (const answer of answersState.data) {
@@ -144,7 +147,18 @@ export function ImpulsRedaktion() {
     return map
   }, [answersState.data])
 
-  const answerCount = (item: ImpulseItem) => answersByItem.get(item.id)?.length ?? 0
+  const commentsByItem = useMemo(() => {
+    const map = new Map<string, string[]>()
+    for (const comment of commentsState.data) {
+      const list = map.get(comment.itemId) ?? []
+      list.push(comment.id)
+      map.set(comment.itemId, list)
+    }
+    return map
+  }, [commentsState.data])
+
+  const answerCount = (item: ImpulseItem) =>
+    (answersByItem.get(item.id)?.length ?? 0) + (commentsByItem.get(item.id)?.length ?? 0)
 
   return (
     <>
@@ -169,10 +183,10 @@ export function ImpulsRedaktion() {
               Startpaket: vier Wochen aus den Schriften
             </h2>
             <p className="hint mt-1 mb-3">
-              Je Woche ein Impuls, ein Wochenziel, eine Quizfrage, eine Tages-Challenge und
-              drei Feed-Karten – 1 Nephi 3:7, das Haus auf dem Felsen, Lehre und Bündnisse
-              6:36 und Almas Samenkorn, dazu Auswahl-, Emoji-, Reihenfolge- und Suchfrage.
-              Alles «bereit»:
+              Je Woche ein Impuls, ein Wochenziel, eine Quizfrage, eine Tages-Challenge, eine
+              Frage der Woche und drei Feed-Karten – 1 Nephi 3:7, das Haus auf dem Felsen,
+              Lehre und Bündnisse 6:36 und Almas Samenkorn, dazu Auswahl-, Emoji-,
+              Reihenfolge- und Suchfrage. Alles «bereit»:
               Die laufende Woche erscheint sofort, drei weitere warten auf ihren Montag.
               Eingespielt wird nur, was noch fehlt ({starterPlans.length}{' '}
               {starterPlans.length === 1 ? 'Inhalt' : 'Inhalte'}); Vorhandenes und belegte
@@ -320,6 +334,7 @@ export function ImpulsRedaktion() {
           initial={editor.initial}
           weekChoices={weekChoices}
           answerIds={editor.itemId ? (answersByItem.get(editor.itemId) ?? []) : []}
+          commentIds={editor.itemId ? (commentsByItem.get(editor.itemId) ?? []) : []}
           todayKey={todayKey}
         />
       )}
@@ -345,6 +360,7 @@ const KIND_ICONS = {
   quiz: Search,
   wochenziel: CheckCircle2,
   tageschallenge: Repeat,
+  frage: MessagesSquare,
   feed: LayoutList,
 } as const
 
@@ -405,7 +421,7 @@ function SlotCell({
             </span>
             <span className="hint block">
               {item.status === 'draft' ? 'Entwurf – erscheint nicht' : 'Bereit'}
-              {item.kind === 'quiz' && answerCount(item) > 0 && (
+              {(item.kind === 'quiz' || item.kind === 'frage') && answerCount(item) > 0 && (
                 <>
                   {' · '}
                   {answerCount(item)} {answerCount(item) === 1 ? 'Antwort' : 'Antworten'}
@@ -455,7 +471,7 @@ function ItemRow({
           {IMPULSE_KIND_LABELS[item.kind]}
           {showWeek && item.week && <> · {formatWeekRange(item.week)}</>}
           {item.status === 'draft' && ' · Entwurf'}
-          {item.kind === 'quiz' && answerCount > 0 && (
+          {(item.kind === 'quiz' || item.kind === 'frage') && answerCount > 0 && (
             <>
               {' · '}
               {answerCount} {answerCount === 1 ? 'Antwort' : 'Antworten'}

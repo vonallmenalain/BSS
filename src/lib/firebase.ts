@@ -119,6 +119,8 @@ export const COLLECTIONS = {
   impulseAnswers: 'impulseAnswers',
   /** Persönlicher Stand im Bereich «Impuls» (Ziel, Tage), Dokument-ID ist die UID */
   impulseProgress: 'impulseProgress',
+  /** Beiträge zur Frage der Woche, Dokument-ID ist «{itemId}_{uid}» */
+  impulseComments: 'impulseComments',
   /** Wer wann da war und was sich dabei geändert hat – liest nur der Administrator */
   accessLog: 'accessLog',
 } as const

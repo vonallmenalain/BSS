@@ -3,10 +3,16 @@ import { Link } from 'react-router-dom'
 import { Bookmark, Check, Inbox, LayoutList, Pencil } from 'lucide-react'
 import { useAuth } from '@/contexts/AuthContext'
 import { useNow } from '@/hooks/useNow'
-import { useImpulseAnswers, useImpulseItems, useImpulseProgress } from '@/hooks/useFirestore'
+import {
+  useImpulseAnswers,
+  useImpulseComments,
+  useImpulseItems,
+  useImpulseProgress,
+} from '@/hooks/useFirestore'
 import { PageHeader } from '@/components/ui/Pickers'
 import { ImpulseCard, QuizCard, SourceLink } from '@/components/impulse/ImpulseCards'
 import { ImpulseFeed } from '@/components/impulse/ImpulseFeed'
+import { ImpulseQuestionCard } from '@/components/impulse/ImpulseQuestionCard'
 import {
   ChallengeCard,
   GoalCard,
@@ -44,6 +50,7 @@ export function Impuls() {
   const itemsState = useImpulseItems()
   const answersState = useImpulseAnswers()
   const progressState = useImpulseProgress()
+  const commentsState = useImpulseComments()
 
   const todayKey = impulseWeekKey(now)
   const visible = visibleImpulseItems(itemsState.data, todayKey)
@@ -82,17 +89,20 @@ export function Impuls() {
   const itemsById = new Map(itemsState.data.map((item) => [item.id, item]))
   const weekOfItem = (itemId: string) => itemsById.get(itemId)?.week ?? null
   const myAnswers = answersState.data.filter((answer) => answer.uid === uid)
-  const participated = participatedWeeks(myProgress, myAnswers, weekOfItem)
+  const myComments = commentsState.data.filter((comment) => comment.uid === uid)
+  // Antworten und Beiträge zählen gleichermassen als Beteiligung.
+  const participated = participatedWeeks(myProgress, [...myAnswers, ...myComments], weekOfItem)
   const streak = computeStreak(participated, todayKey)
   const badges = earnedImpulseBadges({
     participated,
     bestStreak: streak.best,
     quizAnswers: myAnswers.length,
+    comments: myComments.length,
     weeks: myProgress?.weeks,
   })
   const participants = weekParticipants(
     progressState.data,
-    answersState.data,
+    [...answersState.data, ...commentsState.data],
     weekOfItem,
     todayKey,
   )
@@ -100,6 +110,7 @@ export function Impuls() {
   const total = new Set([
     ...progressState.data.map((progress) => progress.uid),
     ...answersState.data.map((answer) => answer.uid),
+    ...commentsState.data.map((comment) => comment.uid),
   ]).size
 
   const myWeek = (week: string): ImpulseWeekProgress => myProgress?.weeks?.[week] ?? {}
@@ -163,6 +174,15 @@ export function Impuls() {
                     item={item}
                     week={todayKey}
                     days={myWeek(todayKey).days ?? []}
+                  />
+                )
+              case 'frage':
+                return (
+                  <ImpulseQuestionCard
+                    key={item.id}
+                    item={item}
+                    comments={commentsState.data.filter((comment) => comment.itemId === item.id)}
+                    progressDocs={progressState.data}
                   />
                 )
               default:
@@ -229,6 +249,23 @@ export function Impuls() {
                             item={item}
                             label="Tages-Challenge"
                             note={count > 0 ? `${count} von 7 Tagen` : null}
+                          />
+                        )
+                      }
+                      case 'frage': {
+                        const count = commentsState.data.filter(
+                          (comment) => comment.itemId === item.id && !comment.hidden,
+                        ).length
+                        return (
+                          <PastTask
+                            key={item.id}
+                            item={item}
+                            label={`Frage der Woche · ${count} ${count === 1 ? 'Antwort' : 'Antworten'}`}
+                            note={
+                              myComments.some((comment) => comment.itemId === item.id)
+                                ? 'mitgeredet'
+                                : null
+                            }
                           />
                         )
                       }

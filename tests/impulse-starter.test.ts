@@ -11,12 +11,12 @@ import { planStarterItems, STARTER_WEEKS } from '../src/lib/impulseStarter.ts'
  * und dass ein späterer Lauf nur nachholt, was fehlt.
  */
 
-test('Startpaket: vier Wochen, je Impuls, Ziel, Frage, Tages-Challenge und drei Feed-Karten', () => {
+test('Startpaket: vier Wochen, je Impuls, Ziel, Quiz, Tages-Challenge, Wochenfrage und drei Feed-Karten', () => {
   assert.equal(STARTER_WEEKS.length, 4)
   const plans = planStarterItems([], '2026-W33')
-  assert.equal(plans.length, 28)
+  assert.equal(plans.length, 32)
   for (let week = 1; week <= 4; week += 1) {
-    for (const kind of ['impuls', 'wochenziel', 'quiz', 'tageschallenge']) {
+    for (const kind of ['impuls', 'wochenziel', 'quiz', 'tageschallenge', 'frage']) {
       assert.ok(
         plans.some((plan) => plan.id === `starter-w${week}-${kind}`),
         `starter-w${week}-${kind} fehlt`,
@@ -40,10 +40,10 @@ test('Startpaket: belegt die laufende und die nächsten drei Wochen', () => {
   assert.deepEqual(
     [...byWeek.entries()].sort(),
     [
-      ['2026-W33', 7],
-      ['2026-W34', 7],
-      ['2026-W35', 7],
-      ['2026-W36', 7],
+      ['2026-W33', 8],
+      ['2026-W34', 8],
+      ['2026-W35', 8],
+      ['2026-W36', 8],
     ],
   )
   // Auch über die Jahresgrenze hinweg – 2026 hat 53 Wochen.
@@ -135,11 +135,14 @@ test('Startpaket: was schon da ist, wird nicht noch einmal geplant', () => {
     )
   }
   const plans = planStarterItems(existing, '2026-W33')
-  assert.equal(plans.length, 20)
+  assert.equal(plans.length, 24)
   assert.ok(
     plans.every(
       (plan) =>
-        plan.kind === 'wochenziel' || plan.kind === 'tageschallenge' || plan.kind === 'feed',
+        plan.kind === 'wochenziel' ||
+        plan.kind === 'tageschallenge' ||
+        plan.kind === 'frage' ||
+        plan.kind === 'feed',
     ),
   )
   // Und wer alles hat, bekommt nichts angeboten.

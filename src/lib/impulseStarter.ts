@@ -39,6 +39,8 @@ export interface StarterWeek {
   quiz: StarterContent
   wochenziel: StarterContent
   tageschallenge: StarterContent
+  /** Die offene Frage der Woche – Antworten mit Vornamen. */
+  frage: StarterContent
   /** Der Feed der Woche, in Lesereihenfolge – endlich, wie das Konzept will. */
   feed: StarterContent[]
 }
@@ -90,6 +92,10 @@ export const STARTER_WEEKS: StarterWeek[] = [
       title: 'Lies jeden Tag einen Vers',
       body: 'Einer genügt – morgens im Bus oder abends im Bett.',
       source: { label: 'Buch Mormon', url: `${SCRIPTURES}/bofm?lang=deu` },
+    },
+    frage: {
+      title: 'Was hilft dir, Ja zu sagen, wenn ein Auftrag zu gross wirkt?',
+      body: 'Zwei, drei Sätze genügen – dein Beispiel hilft den anderen.',
     },
     feed: [
       {
@@ -158,6 +164,10 @@ export const STARTER_WEEKS: StarterWeek[] = [
     tageschallenge: {
       title: 'Bete jeden Morgen kurz',
       body: 'Ein Satz zählt. Der Tag beginnt anders, wenn er so beginnt.',
+    },
+    frage: {
+      title: 'Was gehört für dich zu einem Fundament auf Fels – ganz konkret im Alltag?',
+      body: '',
     },
     feed: [
       {
@@ -230,6 +240,10 @@ export const STARTER_WEEKS: StarterWeek[] = [
       title: 'Ein Satz am Abend: Wo hast du heute Gott gespürt?',
       body: 'Ein Notizbuch oder die Notizen-App genügt.',
     },
+    frage: {
+      title: 'Welcher Gedanke oder Vers hilft dir gegen Angst und Zweifel?',
+      body: '',
+    },
     feed: [
       {
         title:
@@ -293,6 +307,10 @@ export const STARTER_WEEKS: StarterWeek[] = [
       body: 'Sieben Tage, sieben Verse – das Kapitel trägt dich durch die Woche.',
       source: { label: 'Alma 32', url: `${SCRIPTURES}/bofm/alma/32?lang=deu` },
     },
+    frage: {
+      title: 'Wo hast du erlebt, dass aus einem kleinen Samenkorn des Glaubens etwas gewachsen ist?',
+      body: 'Ein kleines Erlebnis zählt genauso wie ein grosses.',
+    },
     feed: [
       {
         title: '«Ihr empfangt keinen Zeugen, ehe euer Glaube nicht geprüft ist.»',
@@ -335,6 +353,7 @@ const STARTER_KINDS: Exclude<ImpulseKind, 'feed'>[] = [
   'wochenziel',
   'quiz',
   'tageschallenge',
+  'frage',
 ]
 
 /**
