@@ -781,6 +781,108 @@ describe('Impuls', () => {
       await assertSucceeds(deleteDoc(doc(asBishop(), 'impulseProgress', IMPULSE_AP)))
     })
   })
+
+  /*
+   * Die Frage der Woche: eine Antwort pro Person, auf den eigenen Namen,
+   * nachbesserbar – und moderierbar allein durch die Redaktion. Dass die
+   * Antworten der anderen erst nach der eigenen erscheinen, setzt die
+   * Ansicht durch, nicht diese Regeln.
+   */
+  describe('Frage der Woche', () => {
+    const comment = (uid, extra = {}) => ({
+      itemId: 'frage-woche-1',
+      uid,
+      firstName: 'Levin',
+      text: 'Beten hilft mir am meisten.',
+      hidden: false,
+      ...extra,
+    })
+
+    it('ein Beitrag auf den eigenen Namen – und nachbessern erlaubt', async () => {
+      await assertSucceeds(
+        setDoc(
+          doc(asImpulseAp(), 'impulseComments', `frage-woche-1_${IMPULSE_AP}`),
+          comment(IMPULSE_AP),
+        ),
+      )
+      await assertSucceeds(
+        updateDoc(doc(asImpulseAp(), 'impulseComments', `frage-woche-1_${IMPULSE_AP}`), {
+          text: 'Beten – und die Schriften.',
+        }),
+      )
+    })
+
+    it('kein Beitrag auf fremden Namen, unter fremder ID oder schon ausgeblendet', async () => {
+      await assertFails(
+        setDoc(doc(asImpulseAp(), 'impulseComments', 'frage-woche-1_uid-fremd'), comment(IMPULSE_AP)),
+      )
+      await assertFails(
+        setDoc(
+          doc(asImpulseAp(), 'impulseComments', `frage-woche-2_${IMPULSE_AP}`),
+          comment(BISHOP, { itemId: 'frage-woche-2' }),
+        ),
+      )
+      // «Schon ausgeblendet anlegen» wäre der Trick, der Moderation
+      // zuvorzukommen – die Regel lässt ihn nicht zu.
+      await assertFails(
+        setDoc(
+          doc(asImpulseAp(), 'impulseComments', `frage-woche-2_${IMPULSE_AP}`),
+          comment(IMPULSE_AP, { itemId: 'frage-woche-2', hidden: true }),
+        ),
+      )
+    })
+
+    it('ausblenden und wieder zeigen kann allein die Redaktion', async () => {
+      await assertFails(
+        updateDoc(doc(asImpulseAp(), 'impulseComments', `frage-woche-1_${IMPULSE_AP}`), {
+          hidden: true,
+        }),
+      )
+      await assertSucceeds(
+        updateDoc(doc(asBishop(), 'impulseComments', `frage-woche-1_${IMPULSE_AP}`), {
+          hidden: true,
+        }),
+      )
+      await assertSucceeds(
+        updateDoc(doc(asBishop(), 'impulseComments', `frage-woche-1_${IMPULSE_AP}`), {
+          hidden: false,
+        }),
+      )
+    })
+
+    it('fremde Beiträge bleiben fremd – auch mit Schalter', async () => {
+      await testEnv.withSecurityRulesDisabled(async (context) => {
+        await setDoc(
+          doc(context.firestore(), 'impulseComments', 'frage-woche-1_uid-zweiter'),
+          comment('uid-zweiter', { firstName: 'Dario' }),
+        )
+      })
+      await assertFails(
+        updateDoc(doc(asImpulseAp(), 'impulseComments', 'frage-woche-1_uid-zweiter'), {
+          text: 'Umgeschrieben',
+        }),
+      )
+      await assertFails(
+        deleteDoc(doc(asImpulseAp(), 'impulseComments', 'frage-woche-1_uid-zweiter')),
+      )
+    })
+
+    it('löschen: den eigenen Beitrag selbst, fremde die Redaktion', async () => {
+      await assertSucceeds(
+        deleteDoc(doc(asImpulseAp(), 'impulseComments', `frage-woche-1_${IMPULSE_AP}`)),
+      )
+      await assertSucceeds(
+        deleteDoc(doc(asBishop(), 'impulseComments', 'frage-woche-1_uid-zweiter')),
+      )
+    })
+
+    it('ohne Schalter kein Blick auf die Beiträge', async () => {
+      await assertSucceeds(getDocs(collection(asImpulseAp(), 'impulseComments')))
+      await assertFails(getDocs(collection(asSecretary(), 'impulseComments')))
+      await assertFails(getDocs(collection(asPending(), 'impulseComments')))
+      await assertFails(getDocs(collection(asAnonymous(), 'impulseComments')))
+    })
+  })
 })
 
 /* ------------------------------------------------------------------ */

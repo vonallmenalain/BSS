@@ -321,6 +321,7 @@ test('earnedImpulseBadges: Meilensteine, einmal erreicht, bleiben', () => {
     participated: new Set(['2026-W33']),
     bestStreak: 4,
     quizAnswers: 10,
+    comments: 1,
     weeks: {
       '2026-W32': {
         days: [
@@ -337,7 +338,7 @@ test('earnedImpulseBadges: Meilensteine, einmal erreicht, bleiben', () => {
   })
   assert.deepEqual(
     earned.map((badge) => badge.id),
-    ['dabei', 'volle-woche', 'vier-wochen', 'zehn-fragen'],
+    ['dabei', 'mitgeredet', 'volle-woche', 'vier-wochen', 'zehn-fragen'],
   )
 })
 

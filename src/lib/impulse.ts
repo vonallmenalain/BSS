@@ -91,6 +91,7 @@ export const IMPULSE_KIND_ORDER: ImpulseKind[] = [
   'wochenziel',
   'quiz',
   'tageschallenge',
+  'frage',
   'feed',
 ]
 
@@ -152,7 +153,9 @@ export function readyProblems(item: {
 }): string[] {
   const problems: string[] = []
   if (!item.title.trim())
-    problems.push(item.kind === 'quiz' ? 'Die Frage fehlt.' : 'Der Titel fehlt.')
+    problems.push(
+      item.kind === 'quiz' || item.kind === 'frage' ? 'Die Frage fehlt.' : 'Der Titel fehlt.',
+    )
   const sourceRequired = item.kind === 'impuls' || item.kind === 'quiz'
   if (sourceRequired && !item.source?.label.trim()) problems.push('Die Quelle fehlt.')
 
@@ -279,6 +282,11 @@ export interface ImpulseBadge {
 export const IMPULSE_BADGES: ImpulseBadge[] = [
   { id: 'dabei', label: 'Dabei!', hint: 'Die erste Woche mitgemacht.' },
   {
+    id: 'mitgeredet',
+    label: 'Mitgeredet',
+    hint: 'Zum ersten Mal auf die Frage der Woche geantwortet.',
+  },
+  {
     id: 'volle-woche',
     label: 'Volle Woche',
     hint: 'Eine Tages-Challenge an allen sieben Tagen abgehakt.',
@@ -292,6 +300,8 @@ export function earnedImpulseBadges(input: {
   participated: ReadonlySet<string>
   bestStreak: number
   quizAnswers: number
+  /** Beiträge zur Frage der Woche. */
+  comments?: number
   weeks: Record<string, { days?: string[] }> | undefined
 }): ImpulseBadge[] {
   const fullWeek = Object.values(input.weeks ?? {}).some(
@@ -299,6 +309,7 @@ export function earnedImpulseBadges(input: {
   )
   const earned = new Set<string>()
   if (input.participated.size > 0) earned.add('dabei')
+  if ((input.comments ?? 0) > 0) earned.add('mitgeredet')
   if (fullWeek) earned.add('volle-woche')
   if (input.bestStreak >= 4) earned.add('vier-wochen')
   if (input.bestStreak >= 8) earned.add('acht-wochen')
@@ -315,7 +326,8 @@ export function earnedImpulseBadges(input: {
  */
 export function weekParticipants(
   progressDocs: ImpulseProgress[],
-  answers: ImpulseAnswer[],
+  /** Antworten und Beiträge – beides trägt Konto, Vorname und Inhalt. */
+  answers: Pick<ImpulseAnswer, 'itemId' | 'uid' | 'firstName'>[],
   weekOfItem: (itemId: string) => string | null,
   week: string,
 ): { uid: string; firstName: string }[] {

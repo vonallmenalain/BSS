@@ -137,25 +137,93 @@ export async function saveImpulseItem(
 }
 
 /**
- * Einen Inhalt entfernen – mitsamt seinen Antworten.
+ * Einen Inhalt entfernen – mitsamt seinen Antworten und Beiträgen.
  *
- * Die Antworten kommen vom Aufrufer: Der hat den Bestand ohnehin abonniert,
- * und so funktioniert das Löschen auch ohne Verbindung. Eine verwaiste
- * Antwort wäre kein Schaden, nur Unordnung.
+ * Beides kommt vom Aufrufer: Der hat den Bestand ohnehin abonniert, und so
+ * funktioniert das Löschen auch ohne Verbindung. Ein verwaister Rest wäre
+ * kein Schaden, nur Unordnung.
  */
 export async function deleteImpulseItem(
   id: string,
   answerIds: string[] = [],
+  commentIds: string[] = [],
 ): Promise<SaveOutcome> {
   const outcome = await commit(
     Promise.all([
       deleteDoc(doc(db, COLLECTIONS.impulseItems, id)),
       ...answerIds.map((answerId) => deleteDoc(doc(db, COLLECTIONS.impulseAnswers, answerId))),
+      ...commentIds.map((commentId) =>
+        deleteDoc(doc(db, COLLECTIONS.impulseComments, commentId)),
+      ),
     ]),
   )
   forgetDoc(COLLECTIONS.impulseItems, id)
   for (const answerId of answerIds) forgetDoc(COLLECTIONS.impulseAnswers, answerId)
+  for (const commentId of commentIds) forgetDoc(COLLECTIONS.impulseComments, commentId)
   return outcome
+}
+
+/**
+ * Die eigene Antwort zur Frage der Woche – anlegen oder nachbessern.
+ *
+ * Dieselbe Dokument-ID wie bei den Quizantworten: eine pro Person und
+ * Frage. Anders als dort ist Nachbessern erlaubt – ein persönliches Wort
+ * darf reifen.
+ */
+export async function saveImpulseComment(
+  item: ImpulseItem,
+  user: { uid: string; displayName: string },
+  text: string,
+  isNew: boolean,
+): Promise<SaveOutcome> {
+  const ref = doc(db, COLLECTIONS.impulseComments, impulseAnswerId(item.id, user.uid))
+  if (!isNew) {
+    return commit(updateDoc(ref, { text: text.trim(), updatedAt: serverTimestamp() }))
+  }
+  return commit(
+    setDoc(ref, {
+      itemId: item.id,
+      uid: user.uid,
+      firstName: impulseFirstName(user.displayName),
+      text: text.trim(),
+      hidden: false,
+      createdAt: serverTimestamp(),
+      updatedAt: serverTimestamp(),
+    }),
+  )
+}
+
+/** Moderation: einen Beitrag ausblenden – oder wieder zeigen. */
+export async function setImpulseCommentHidden(
+  commentId: string,
+  hidden: boolean,
+): Promise<SaveOutcome> {
+  return commit(
+    updateDoc(doc(db, COLLECTIONS.impulseComments, commentId), {
+      hidden,
+      updatedAt: serverTimestamp(),
+    }),
+  )
+}
+
+/** Einen Beitrag melden – oder die Meldung zurücknehmen. */
+export async function setImpulseReport(
+  user: { uid: string; displayName: string },
+  commentId: string,
+  on: boolean,
+): Promise<SaveOutcome> {
+  return commit(
+    setDoc(
+      doc(db, COLLECTIONS.impulseProgress, user.uid),
+      {
+        uid: user.uid,
+        firstName: impulseFirstName(user.displayName),
+        reports: on ? arrayUnion(commentId) : arrayRemove(commentId),
+        updatedAt: serverTimestamp(),
+      },
+      { merge: true },
+    ),
+  )
 }
 
 /**

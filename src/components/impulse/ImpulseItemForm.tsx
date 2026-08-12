@@ -37,6 +37,7 @@ export function ImpulseItemForm({
   initial,
   weekChoices,
   answerIds,
+  commentIds = [],
   todayKey,
 }: {
   open: boolean
@@ -46,8 +47,10 @@ export function ImpulseItemForm({
   initial: ImpulseItemInput
   /** Die Wochen, die zur Wahl stehen – die laufende zuerst. */
   weekChoices: string[]
-  /** Antworten auf diese Frage – beim Löschen werden sie mitgeräumt. */
+  /** Quizantworten zu diesem Inhalt – beim Löschen werden sie mitgeräumt. */
   answerIds: string[]
+  /** Beiträge zur Frage der Woche – ebenso. */
+  commentIds?: string[]
   todayKey: string
 }) {
   const { profile } = useAuth()
@@ -121,7 +124,7 @@ export function ImpulseItemForm({
   const remove = async () => {
     if (!itemId) return
     try {
-      const outcome = await deleteImpulseItem(itemId, answerIds)
+      const outcome = await deleteImpulseItem(itemId, answerIds, commentIds)
       toast.saved('Inhalt entfernt.', outcome)
       onClose()
     } catch (error) {
@@ -129,6 +132,8 @@ export function ImpulseItemForm({
       toast.error('Der Inhalt konnte nicht entfernt werden.')
     }
   }
+
+  const attachedCount = answerIds.length + commentIds.length
 
   return (
     <Modal
@@ -211,7 +216,7 @@ export function ImpulseItemForm({
 
         <div>
           <label className="label" htmlFor="impulse-title">
-            {input.kind === 'quiz'
+            {input.kind === 'quiz' || input.kind === 'frage'
               ? 'Frage'
               : input.kind === 'impuls'
                 ? 'Titel'
@@ -227,13 +232,15 @@ export function ImpulseItemForm({
             placeholder={
               input.kind === 'quiz'
                 ? 'Wie heisst der Hund, von dem in der Ansprache erzählt wird?'
-                : input.kind === 'wochenziel'
-                  ? 'Lies diese Woche ein Kapitel im Buch Mormon'
-                  : input.kind === 'tageschallenge'
-                    ? 'Lies jeden Tag einen Vers'
-                    : input.kind === 'feed'
-                      ? '«Blickt in jedem Gedanken auf mich …»'
-                      : 'Kraft aus den Schriften'
+                : input.kind === 'frage'
+                  ? 'Welche Schriftstelle hat dir diese Woche geholfen – und warum?'
+                  : input.kind === 'wochenziel'
+                    ? 'Lies diese Woche ein Kapitel im Buch Mormon'
+                    : input.kind === 'tageschallenge'
+                      ? 'Lies jeden Tag einen Vers'
+                      : input.kind === 'feed'
+                        ? '«Blickt in jedem Gedanken auf mich …»'
+                        : 'Kraft aus den Schriften'
             }
           />
         </div>
@@ -443,11 +450,11 @@ export function ImpulseItemForm({
         onConfirm={() => void remove()}
         title="Inhalt entfernen?"
         message={
-          answerIds.length > 0 ? (
+          attachedCount > 0 ? (
             <>
               «{input.title || 'Ohne Titel'}» wird gelöscht – mitsamt{' '}
-              {answerIds.length === 1 ? 'der einen Antwort' : `den ${answerIds.length} Antworten`},
-              die dazu abgegeben wurden.
+              {attachedCount === 1 ? 'der einen Antwort' : `den ${attachedCount} Antworten`}, die
+              dazu abgegeben wurden.
             </>
           ) : (
             <>«{input.title || 'Ohne Titel'}» wird gelöscht.</>

@@ -1,6 +1,7 @@
 import { Inbox } from 'lucide-react'
 import { Modal } from '@/components/ui/Modal'
 import { ImpulseCard, QuizCard } from '@/components/impulse/ImpulseCards'
+import { ImpulseQuestionCard } from '@/components/impulse/ImpulseQuestionCard'
 import { ChallengeCard, GoalCard } from '@/components/impulse/ImpulseProgressCards'
 import { formatWeekRange } from '@/lib/impulse'
 import type { ImpulseItem } from '@/lib/types'
@@ -54,6 +55,16 @@ export function ImpulseWeekPreview({
                 return <GoalCard key={item.id} item={item} week={week} done={false} preview />
               case 'tageschallenge':
                 return <ChallengeCard key={item.id} item={item} week={week} days={[]} preview />
+              case 'frage':
+                return (
+                  <ImpulseQuestionCard
+                    key={item.id}
+                    item={item}
+                    comments={[]}
+                    progressDocs={[]}
+                    preview
+                  />
+                )
               default:
                 return <ImpulseCard key={item.id} item={item} />
             }

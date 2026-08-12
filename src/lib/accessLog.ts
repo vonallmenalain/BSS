@@ -47,6 +47,7 @@ export const AREA_LABELS: Record<string, string> = {
   impulseItems: 'Impuls',
   impulseAnswers: 'Impuls · Antworten',
   impulseProgress: 'Impuls · Fortschritt',
+  impulseComments: 'Impuls · Frage der Woche',
   settings: 'Einstellungen',
 }
 
