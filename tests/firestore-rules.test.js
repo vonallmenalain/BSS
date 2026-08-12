@@ -615,6 +615,7 @@ describe('Impuls', () => {
       await assertFails(getDocs(collection(as(), 'impulseItems')))
       await assertFails(getDoc(doc(as(), 'impulseItems', 'impuls-woche')))
       await assertFails(getDocs(collection(as(), 'impulseAnswers')))
+      await assertFails(getDocs(collection(as(), 'impulseProgress')))
     }
     await assertFails(getDocs(collection(asPending(), 'impulseItems')))
     await assertFails(getDocs(collection(asAnonymous(), 'impulseItems')))
@@ -726,6 +727,58 @@ describe('Impuls', () => {
       await assertSucceeds(
         deleteDoc(doc(asBishop(), 'impulseAnswers', `frage-1_${IMPULSE_AP}`)),
       )
+    })
+  })
+
+  /*
+   * Der persönliche Fortschritt: Wochenziel und Tages-Challenge sind
+   * Selbstauskunft – niemand hakt für jemand anderen ab. Anders als bei
+   * den Antworten darf umgehakt werden: Ein Versehen beim Ziel ist kein
+   * Quizversuch.
+   */
+  describe('Fortschritt', () => {
+    it('schreibt jede Person nur für sich selbst – und darf umhaken', async () => {
+      await assertSucceeds(
+        setDoc(doc(asImpulseAp(), 'impulseProgress', IMPULSE_AP), {
+          uid: IMPULSE_AP,
+          firstName: 'Levin',
+          weeks: { '2026-W33': { goal: true, days: ['2026-08-12'] } },
+        }),
+      )
+      await assertSucceeds(
+        setDoc(
+          doc(asImpulseAp(), 'impulseProgress', IMPULSE_AP),
+          { uid: IMPULSE_AP, weeks: { '2026-W33': { goal: false } } },
+          { merge: true },
+        ),
+      )
+    })
+
+    it('niemand hakt für jemand anderen ab', async () => {
+      // Fremde Dokument-ID …
+      await assertFails(
+        setDoc(doc(asImpulseAp(), 'impulseProgress', BISHOP), {
+          uid: BISHOP,
+          firstName: 'Fremd',
+        }),
+      )
+      // … und die eigene ID mit fremder UID im Datensatz.
+      await assertFails(
+        setDoc(doc(asImpulseAp(), 'impulseProgress', IMPULSE_AP), {
+          uid: BISHOP,
+          firstName: 'Fremd',
+        }),
+      )
+    })
+
+    it('lesen dürfen alle im Bereich – die Gruppenleiste lebt davon', async () => {
+      await assertSucceeds(getDocs(collection(asImpulseAp(), 'impulseProgress')))
+      await assertSucceeds(getDoc(doc(asBishop(), 'impulseProgress', IMPULSE_AP)))
+    })
+
+    it('wegräumen darf allein die Redaktion', async () => {
+      await assertFails(deleteDoc(doc(asImpulseAp(), 'impulseProgress', IMPULSE_AP)))
+      await assertSucceeds(deleteDoc(doc(asBishop(), 'impulseProgress', IMPULSE_AP)))
     })
   })
 })

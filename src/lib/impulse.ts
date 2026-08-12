@@ -1,6 +1,13 @@
-import { addDays, getISOWeek, getISOWeekYear, startOfISOWeek } from 'date-fns'
+import { addDays, format, getISOWeek, getISOWeekYear, startOfISOWeek } from 'date-fns'
 import { formatDayMonth, formatDayMonthYear } from './dates.ts'
-import type { ImpulseItem, ImpulseKind, ImpulseQuiz, ImpulseSource } from './types.ts'
+import type {
+  ImpulseAnswer,
+  ImpulseItem,
+  ImpulseKind,
+  ImpulseProgress,
+  ImpulseQuiz,
+  ImpulseSource,
+} from './types.ts'
 
 /*
  * Die Wochenrechnung des Bereichs «Impuls» (docs/KONZEPT-IMPULS.md).
@@ -74,8 +81,12 @@ export function upcomingWeekKeys(from: Date | number, count: number): string[] {
   return keys
 }
 
-/** Impuls vor Quiz – die Lesereihenfolge innerhalb einer Woche. */
-export const IMPULSE_KIND_ORDER: ImpulseKind[] = ['impuls', 'quiz']
+/**
+ * Die Lesereihenfolge innerhalb einer Woche – wie im Konzept: zuerst der
+ * Impuls, dann das Ziel mit dem Haken, dann die Frage, zuletzt die
+ * tägliche Kleinigkeit.
+ */
+export const IMPULSE_KIND_ORDER: ImpulseKind[] = ['impuls', 'wochenziel', 'quiz', 'tageschallenge']
 
 export function impulseKindRank(kind: ImpulseKind): number {
   const index = IMPULSE_KIND_ORDER.indexOf(kind)
@@ -113,8 +124,11 @@ export function impulseAnswerId(itemId: string, uid: string): string {
  *
  * Leer heisst: nichts – er kann veröffentlicht werden. Die Redaktion sieht
  * die Liste im Formular; gespeichert wird ein unfertiger Inhalt trotzdem,
- * bloss als Entwurf. Die Quelle ist Pflicht: Der Bereich lebt von
- * offiziellem Material, und der Sprung zur Quelle ist sein Ziel.
+ * bloss als Entwurf. Beim Impuls und bei der Quizfrage ist die Quelle
+ * Pflicht: Der Bereich lebt von offiziellem Material, und der Sprung zur
+ * Quelle ist sein Ziel. Wochenziel und Tages-Challenge sind Aufgaben,
+ * kein Material – «Bete jeden Abend» hat keine Fundstelle; eine Quelle
+ * darf trotzdem dranstehen und wird dann gezeigt.
  */
 export function readyProblems(item: {
   kind: ImpulseKind
@@ -125,7 +139,8 @@ export function readyProblems(item: {
   const problems: string[] = []
   if (!item.title.trim())
     problems.push(item.kind === 'quiz' ? 'Die Frage fehlt.' : 'Der Titel fehlt.')
-  if (!item.source?.label.trim()) problems.push('Die Quelle fehlt.')
+  const sourceRequired = item.kind === 'impuls' || item.kind === 'quiz'
+  if (sourceRequired && !item.source?.label.trim()) problems.push('Die Quelle fehlt.')
 
   if (item.kind === 'quiz') {
     const quiz = item.quiz
@@ -146,4 +161,162 @@ export function readyProblems(item: {
   }
 
   return problems
+}
+
+/* ------------------------------------------------------------------ */
+/* Beteiligung, Serie und Abzeichen                                    */
+/* ------------------------------------------------------------------ */
+
+/** Die sieben Tage einer Woche als «2026-08-10», Montag zuerst. */
+export function weekDays(key: string): string[] {
+  const start = weekStart(key)
+  if (!start) return []
+  return Array.from({ length: 7 }, (_, index) => format(addDays(start, index), 'yyyy-MM-dd'))
+}
+
+/** Der Kalendermonat, in dem die Woche beginnt – «2026-08». */
+export function monthOfWeek(key: string): string | null {
+  const start = weekStart(key)
+  return start ? format(start, 'yyyy-MM') : null
+}
+
+/**
+ * In welchen Wochen jemand dabei war.
+ *
+ * Dabei heisst: Wochenziel abgehakt, mindestens ein Tag der
+ * Tages-Challenge – oder eine Quizfrage beantwortet. Die Antworten
+ * liegen in ihrer eigenen Sammlung und werden hier über den Inhalt der
+ * Woche zugeordnet (`weekOfItem`); nichts davon steht doppelt im
+ * Fortschrittsdokument.
+ */
+export function participatedWeeks(
+  progress: Pick<ImpulseProgress, 'weeks'> | null | undefined,
+  answers: Pick<ImpulseAnswer, 'itemId'>[],
+  weekOfItem: (itemId: string) => string | null,
+): Set<string> {
+  const weeks = new Set<string>()
+  for (const [week, state] of Object.entries(progress?.weeks ?? {})) {
+    if (state?.goal === true || (state?.days?.length ?? 0) > 0) weeks.add(week)
+  }
+  for (const answer of answers) {
+    const week = weekOfItem(answer.itemId)
+    if (week) weeks.add(week)
+  }
+  return weeks
+}
+
+/**
+ * Die Serie: Wochen in Folge mit Beteiligung – mit eingebauter Milde.
+ *
+ * Pro Kalendermonat verzeiht eine **Jokerwoche** eine verpasste Woche
+ * (Lager, Prüfungen, Ferien); erst die zweite verpasste Woche im selben
+ * Monat reisst die Serie. Der Joker überbrückt, zählt aber nicht mit –
+ * die Serie ist die Zahl der Wochen, in denen jemand wirklich dabei war.
+ * Die **laufende** Woche ist neutral, solange sie nicht abgehakt ist:
+ * Sie läuft ja noch, und eine Serie, die am Montagmorgen auf null fiele,
+ * wäre keine Milde, sondern ein Fehler.
+ */
+export function computeStreak(
+  participated: ReadonlySet<string>,
+  todayKey: string,
+): { current: number; best: number } {
+  const past = [...participated].filter((week) => week <= todayKey).sort()
+  if (past.length === 0) return { current: 0, best: 0 }
+
+  let run = 0
+  let best = 0
+  const jokerMonths = new Set<string>()
+
+  let cursor: string | null = past[0]
+  let guard = 0
+  while (cursor && cursor <= todayKey && guard < 600) {
+    guard += 1
+    if (participated.has(cursor)) {
+      run += 1
+      if (run > best) best = run
+    } else if (cursor !== todayKey) {
+      const month = monthOfWeek(cursor)
+      if (!month || jokerMonths.has(month)) {
+        run = 0
+      } else {
+        jokerMonths.add(month)
+      }
+    }
+    cursor = weekKeyOffset(cursor, 1)
+  }
+
+  return { current: run, best }
+}
+
+/**
+ * Die Abzeichen – Meilensteine statt Punkte.
+ *
+ * Ein Abzeichen erzählt, **was** jemand getan hat, nicht wie viel. Einmal
+ * erreicht, bleibt es: Gerechnet wird über die ganze Geschichte (beste
+ * Serie, alle Antworten), nicht über den heutigen Stand.
+ */
+export interface ImpulseBadge {
+  id: string
+  label: string
+  hint: string
+}
+
+export const IMPULSE_BADGES: ImpulseBadge[] = [
+  { id: 'dabei', label: 'Dabei!', hint: 'Die erste Woche mitgemacht.' },
+  {
+    id: 'volle-woche',
+    label: 'Volle Woche',
+    hint: 'Eine Tages-Challenge an allen sieben Tagen abgehakt.',
+  },
+  { id: 'vier-wochen', label: '4 Wochen in Folge', hint: 'Vier Wochen am Stück dabei.' },
+  { id: 'acht-wochen', label: '8 Wochen in Folge', hint: 'Acht Wochen am Stück dabei.' },
+  { id: 'zehn-fragen', label: '10 Fragen', hint: 'Zehn Quizfragen beantwortet.' },
+]
+
+export function earnedImpulseBadges(input: {
+  participated: ReadonlySet<string>
+  bestStreak: number
+  quizAnswers: number
+  weeks: Record<string, { days?: string[] }> | undefined
+}): ImpulseBadge[] {
+  const fullWeek = Object.values(input.weeks ?? {}).some(
+    (state) => new Set(state?.days ?? []).size >= 7,
+  )
+  const earned = new Set<string>()
+  if (input.participated.size > 0) earned.add('dabei')
+  if (fullWeek) earned.add('volle-woche')
+  if (input.bestStreak >= 4) earned.add('vier-wochen')
+  if (input.bestStreak >= 8) earned.add('acht-wochen')
+  if (input.quizAnswers >= 10) earned.add('zehn-fragen')
+  return IMPULSE_BADGES.filter((badge) => earned.has(badge.id))
+}
+
+/**
+ * Wer in einer Woche dabei war – für die Gruppenleiste.
+ *
+ * Die Namen kommen aus dem Fortschrittsdokument bzw. der Antwort selbst
+ * (beide schreiben den Vornamen mit); fremde Profile braucht es dafür
+ * nicht. Sortiert nach Vornamen, damit die Reihe stabil bleibt.
+ */
+export function weekParticipants(
+  progressDocs: ImpulseProgress[],
+  answers: ImpulseAnswer[],
+  weekOfItem: (itemId: string) => string | null,
+  week: string,
+): { uid: string; firstName: string }[] {
+  const byUid = new Map<string, string>()
+  for (const progress of progressDocs) {
+    const state = progress.weeks?.[week]
+    if (state?.goal === true || (state?.days?.length ?? 0) > 0) {
+      byUid.set(progress.uid, progress.firstName || '–')
+    }
+  }
+  for (const answer of answers) {
+    if (weekOfItem(answer.itemId) === week && !byUid.has(answer.uid)) {
+      byUid.set(answer.uid, answer.firstName || '–')
+    }
+  }
+  return [...byUid.entries()]
+    .map(([uid, firstName]) => ({ uid, firstName }))
+    .sort((a, b) => a.firstName.localeCompare(b.firstName, 'de'))
 }

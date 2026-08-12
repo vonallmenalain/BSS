@@ -25,6 +25,7 @@ import {
   type CleaningWeek,
   type ImpulseAnswer,
   type ImpulseItem,
+  type ImpulseProgress,
   type Meeting,
   type MonthlyDuty,
   type Note,
@@ -512,6 +513,21 @@ export function useImpulseAnswers() {
   const state = useCollection<ImpulseAnswer>(COLLECTIONS.impulseAnswers, canViewImpulse)
   return useMemo(
     () => ({ ...state, byId: new Map(state.data.map((answer) => [answer.id, answer])) }),
+    [state],
+  )
+}
+
+/**
+ * Der persönliche Fortschritt aller im Bereich – Wochenziel und
+ * Tages-Challenge. Der ganze Bestand, nicht nur der eigene: Serie und
+ * Abzeichen brauchen bloss das eigene Dokument, die Gruppenleiste aber
+ * alle. Bei einem Kollegium bleibt das eine Handvoll Dokumente.
+ */
+export function useImpulseProgress() {
+  const { canViewImpulse } = useAuth()
+  const state = useCollection<ImpulseProgress>(COLLECTIONS.impulseProgress, canViewImpulse)
+  return useMemo(
+    () => ({ ...state, byUid: new Map(state.data.map((progress) => [progress.uid, progress])) }),
     [state],
   )
 }

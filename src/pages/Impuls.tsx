@@ -1,18 +1,28 @@
 import { Link } from 'react-router-dom'
-import { Inbox, Pencil } from 'lucide-react'
+import { Check, Inbox, Pencil } from 'lucide-react'
 import { useAuth } from '@/contexts/AuthContext'
 import { useNow } from '@/hooks/useNow'
-import { useImpulseAnswers, useImpulseItems } from '@/hooks/useFirestore'
+import { useImpulseAnswers, useImpulseItems, useImpulseProgress } from '@/hooks/useFirestore'
 import { PageHeader } from '@/components/ui/Pickers'
 import { ImpulseCard, QuizCard, SourceLink } from '@/components/impulse/ImpulseCards'
 import {
+  ChallengeCard,
+  GoalCard,
+  GroupCard,
+  StreakCard,
+} from '@/components/impulse/ImpulseProgressCards'
+import {
+  computeStreak,
+  earnedImpulseBadges,
   formatWeekRange,
   impulseAnswerId,
   impulseWeekKey,
   itemsForWeek,
+  participatedWeeks,
   visibleImpulseItems,
+  weekParticipants,
 } from '@/lib/impulse'
-import type { ImpulseAnswer, ImpulseItem } from '@/lib/types'
+import type { ImpulseAnswer, ImpulseItem, ImpulseWeekProgress } from '@/lib/types'
 
 /**
  * «Impuls» – der geistige Bereich für die AP's (docs/KONZEPT-IMPULS.md).
@@ -31,6 +41,7 @@ export function Impuls() {
   const now = useNow()
   const itemsState = useImpulseItems()
   const answersState = useImpulseAnswers()
+  const progressState = useImpulseProgress()
 
   const todayKey = impulseWeekKey(now)
   const visible = visibleImpulseItems(itemsState.data, todayKey)
@@ -52,6 +63,39 @@ export function Impuls() {
   const uid = profile?.id ?? ''
   const answerFor = (item: ImpulseItem): ImpulseAnswer | null =>
     answersState.byId.get(impulseAnswerId(item.id, uid)) ?? null
+
+  /*
+   * Serie, Abzeichen und Gruppenleiste – alles beim Lesen gerechnet, aus
+   * dem eigenen Fortschritt und den Antworten. Die Zuordnung Antwort →
+   * Woche läuft über den Inhalt; Antworten auf Gelöschtes fallen still
+   * heraus. Bewusst ohne manuelles Memoisieren: Bei Kollegiumsgrösse
+   * kostet die Rechnung nichts, und den Rest erledigt der Compiler.
+   */
+  const myProgress = progressState.byUid.get(uid) ?? null
+  const itemsById = new Map(itemsState.data.map((item) => [item.id, item]))
+  const weekOfItem = (itemId: string) => itemsById.get(itemId)?.week ?? null
+  const myAnswers = answersState.data.filter((answer) => answer.uid === uid)
+  const participated = participatedWeeks(myProgress, myAnswers, weekOfItem)
+  const streak = computeStreak(participated, todayKey)
+  const badges = earnedImpulseBadges({
+    participated,
+    bestStreak: streak.best,
+    quizAnswers: myAnswers.length,
+    weeks: myProgress?.weeks,
+  })
+  const participants = weekParticipants(
+    progressState.data,
+    answersState.data,
+    weekOfItem,
+    todayKey,
+  )
+  // Der Nenner der Gruppenleiste: alle, die je mitgemacht haben.
+  const total = new Set([
+    ...progressState.data.map((progress) => progress.uid),
+    ...answersState.data.map((answer) => answer.uid),
+  ]).size
+
+  const myWeek = (week: string): ImpulseWeekProgress => myProgress?.weeks?.[week] ?? {}
 
   return (
     <>
@@ -87,13 +131,40 @@ export function Impuls() {
             </div>
           </section>
         ) : (
-          thisWeek.map((item) =>
-            item.kind === 'quiz' ? (
-              <QuizCard key={item.id} item={item} answer={answerFor(item)} />
-            ) : (
-              <ImpulseCard key={item.id} item={item} />
-            ),
-          )
+          thisWeek.map((item) => {
+            switch (item.kind) {
+              case 'quiz':
+                return <QuizCard key={item.id} item={item} answer={answerFor(item)} />
+              case 'wochenziel':
+                return (
+                  <GoalCard
+                    key={item.id}
+                    item={item}
+                    week={todayKey}
+                    done={myWeek(todayKey).goal === true}
+                  />
+                )
+              case 'tageschallenge':
+                return (
+                  <ChallengeCard
+                    key={item.id}
+                    item={item}
+                    week={todayKey}
+                    days={myWeek(todayKey).days ?? []}
+                  />
+                )
+              default:
+                return <ImpulseCard key={item.id} item={item} />
+            }
+          })
+        )}
+
+        {/* Serie und Gruppenleiste – unter der Woche, wie im Konzept. */}
+        {!itemsState.loading && (
+          <>
+            <StreakCard current={streak.current} best={streak.best} badges={badges} />
+            <GroupCard participants={participants} total={total} />
+          </>
         )}
 
         {pastWeeks.length > 0 && (
@@ -105,13 +176,34 @@ export function Impuls() {
               {pastWeeks.map((week) => (
                 <section key={week} className="card space-y-4 p-5">
                   <h3 className="hint font-medium">{formatWeekRange(week)}</h3>
-                  {itemsForWeek(visible, week).map((item) =>
-                    item.kind === 'quiz' ? (
-                      <PastQuiz key={item.id} item={item} answer={answerFor(item)} />
-                    ) : (
-                      <PastImpulse key={item.id} item={item} />
-                    ),
-                  )}
+                  {itemsForWeek(visible, week).map((item) => {
+                    switch (item.kind) {
+                      case 'quiz':
+                        return <PastQuiz key={item.id} item={item} answer={answerFor(item)} />
+                      case 'wochenziel':
+                        return (
+                          <PastTask
+                            key={item.id}
+                            item={item}
+                            label="Wochenziel"
+                            note={myWeek(week).goal === true ? 'geschafft' : null}
+                          />
+                        )
+                      case 'tageschallenge': {
+                        const count = Math.min((myWeek(week).days ?? []).length, 7)
+                        return (
+                          <PastTask
+                            key={item.id}
+                            item={item}
+                            label="Tages-Challenge"
+                            note={count > 0 ? `${count} von 7 Tagen` : null}
+                          />
+                        )
+                      }
+                      default:
+                        return <PastImpulse key={item.id} item={item} />
+                    }
+                  })}
                 </section>
               ))}
             </div>
@@ -125,6 +217,41 @@ export function Impuls() {
 /* ------------------------------------------------------------------ */
 /* Frühere Wochen                                                      */
 /* ------------------------------------------------------------------ */
+
+/**
+ * Wochenziel oder Tages-Challenge aus einer früheren Woche.
+ *
+ * Gezeigt wird, was war – und beim eigenen Stand nur das Erreichte: Ein
+ * leerer Vermerk mahnt nicht, er fehlt einfach (Leitgedanke 1).
+ */
+function PastTask({
+  item,
+  label,
+  note,
+}: {
+  item: ImpulseItem
+  label: string
+  note: string | null
+}) {
+  return (
+    <div>
+      <p className="text-sm font-medium">{item.title}</p>
+      <p className="hint mt-0.5">
+        {label}
+        {note && (
+          <>
+            {' · '}
+            <Check
+              className="inline size-3.5 text-emerald-600 dark:text-emerald-300"
+              aria-hidden
+            />{' '}
+            {note}
+          </>
+        )}
+      </p>
+    </div>
+  )
+}
 
 /** Ein Impuls aus einer früheren Woche – kompakt, mit Quelle. */
 function PastImpulse({ item }: { item: ImpulseItem }) {

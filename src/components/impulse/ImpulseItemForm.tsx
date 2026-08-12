@@ -211,7 +211,7 @@ export function ImpulseItemForm({
 
         <div>
           <label className="label" htmlFor="impulse-title">
-            {input.kind === 'quiz' ? 'Frage' : 'Titel'}
+            {input.kind === 'quiz' ? 'Frage' : input.kind === 'impuls' ? 'Titel' : 'Aufgabe'}
           </label>
           <input
             id="impulse-title"
@@ -221,14 +221,18 @@ export function ImpulseItemForm({
             placeholder={
               input.kind === 'quiz'
                 ? 'Wie heisst der Hund, von dem in der Ansprache erzählt wird?'
-                : 'Kraft aus den Schriften'
+                : input.kind === 'wochenziel'
+                  ? 'Lies diese Woche ein Kapitel im Buch Mormon'
+                  : input.kind === 'tageschallenge'
+                    ? 'Lies jeden Tag einen Vers'
+                    : 'Kraft aus den Schriften'
             }
           />
         </div>
 
         <div>
           <label className="label" htmlFor="impulse-body">
-            {input.kind === 'quiz' ? 'Ergänzung (optional)' : 'Hinführung'}
+            {input.kind === 'impuls' ? 'Hinführung' : 'Ergänzung (optional)'}
           </label>
           <textarea
             id="impulse-body"
@@ -238,7 +242,9 @@ export function ImpulseItemForm({
             placeholder={
               input.kind === 'quiz'
                 ? 'Ein Hinweis, wo sich das Suchen lohnt …'
-                : 'Zwei, drei Sätze, die zur Schriftstelle hinführen …'
+                : input.kind === 'impuls'
+                  ? 'Zwei, drei Sätze, die zur Schriftstelle hinführen …'
+                  : 'Ein Satz, der Lust macht, dranzubleiben …'
             }
           />
         </div>
@@ -246,7 +252,9 @@ export function ImpulseItemForm({
         <div className="grid gap-3 sm:grid-cols-2">
           <div>
             <label className="label" htmlFor="impulse-source">
-              Quelle
+              {/* Aufgaben brauchen keine Fundstelle – Material schon
+                  (siehe `readyProblems`). */}
+              {input.kind === 'impuls' || input.kind === 'quiz' ? 'Quelle' : 'Quelle (optional)'}
             </label>
             <input
               id="impulse-source"

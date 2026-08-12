@@ -1,6 +1,16 @@
 import { useMemo, useState } from 'react'
 import { Link } from 'react-router-dom'
-import { ChevronDown, ChevronRight, Eye, Lightbulb, Plus, Search, Sparkles } from 'lucide-react'
+import {
+  CheckCircle2,
+  ChevronDown,
+  ChevronRight,
+  Eye,
+  Lightbulb,
+  Plus,
+  Repeat,
+  Search,
+  Sparkles,
+} from 'lucide-react'
 import { useAuth } from '@/contexts/AuthContext'
 import { useToast } from '@/contexts/ToastContext'
 import { useNow } from '@/hooks/useNow'
@@ -9,7 +19,13 @@ import { PageHeader } from '@/components/ui/Pickers'
 import { ImpulseItemForm } from '@/components/impulse/ImpulseItemForm'
 import { ImpulseWeekPreview } from '@/components/impulse/ImpulseWeekPreview'
 import { cn } from '@/lib/utils'
-import { formatWeekRange, impulseWeekKey, itemsForWeek, upcomingWeekKeys } from '@/lib/impulse'
+import {
+  formatWeekRange,
+  IMPULSE_KIND_ORDER,
+  impulseWeekKey,
+  itemsForWeek,
+  upcomingWeekKeys,
+} from '@/lib/impulse'
 import { planStarterItems } from '@/lib/impulseStarter'
 import {
   createStarterItems,
@@ -77,22 +93,25 @@ export function ImpulsRedaktion() {
 
   /*
    * Das Startpaket: vier Wochen Inhalt aus den Schriften, mit einem Klick
-   * eingespielt (siehe `lib/impulseStarter`). Der Kasten verschwindet,
-   * sobald das Paket einmal da ist – erkannt an den festen IDs.
+   * eingespielt (siehe `lib/impulseStarter`). Der Kasten zeigt sich,
+   * solange etwas aus dem Paket fehlt – dank der festen IDs holt ein
+   * Klick genau das Fehlende nach und rührt Vorhandenes nicht an.
    */
   const [seeding, setSeeding] = useState(false)
-  const hasStarter = itemsState.data.some((item) => item.id.startsWith('starter-'))
+  const starterPlans = useMemo(
+    () => (itemsState.loading ? [] : planStarterItems(itemsState.data, todayKey)),
+    [itemsState.loading, itemsState.data, todayKey],
+  )
   const seedStarter = async () => {
-    if (seeding) return
+    if (seeding || starterPlans.length === 0) return
     setSeeding(true)
     try {
-      const plans = planStarterItems(itemsState.data, todayKey)
-      const outcome = await createStarterItems(plans, profile?.id)
-      const pooled = plans.filter((plan) => plan.week === null).length
+      const outcome = await createStarterItems(starterPlans, profile?.id)
+      const pooled = starterPlans.filter((plan) => plan.week === null).length
       toast.saved(
         pooled === 0
           ? 'Startpaket eingespielt – vier Wochen sind geplant und bereit.'
-          : `Startpaket eingespielt – ${plans.length - pooled} Inhalte geplant, ${pooled} im Fragenpool (ihr Platz war schon belegt).`,
+          : `Startpaket eingespielt – ${starterPlans.length - pooled} Inhalte geplant, ${pooled} im Fragenpool (ihr Platz war schon belegt).`,
         outcome,
       )
     } catch (error) {
@@ -132,19 +151,21 @@ export function ImpulsRedaktion() {
 
       <div className="mx-auto max-w-3xl space-y-4">
         {/* ---------- Startpaket ---------- */}
-        {!itemsState.loading && !hasStarter && (
+        {starterPlans.length > 0 && (
           <section className="border-brand-200 bg-brand-50/40 dark:border-brand-900 dark:bg-brand-950/30 card p-5">
             <h2 className="flex items-center gap-2 text-sm font-semibold">
               <Sparkles className="text-brand-600 dark:text-brand-300 size-4" aria-hidden />
               Startpaket: vier Wochen aus den Schriften
             </h2>
             <p className="hint mt-1 mb-3">
-              Vier Wochenimpulse und vier Quizfragen – 1 Nephi 3:7, das Gleichnis vom Haus auf
-              dem Felsen, Lehre und Bündnisse 6:36 und Almas Samenkorn, dazu Auswahl-,
-              Emoji-, Reihenfolge- und Suchfrage. Alles mit Quelle und Link, alles «bereit»:
+              Je Woche ein Impuls, ein Wochenziel, eine Quizfrage und eine Tages-Challenge –
+              1 Nephi 3:7, das Haus auf dem Felsen, Lehre und Bündnisse 6:36 und Almas
+              Samenkorn, dazu Auswahl-, Emoji-, Reihenfolge- und Suchfrage. Alles «bereit»:
               Die laufende Woche erscheint sofort, drei weitere warten auf ihren Montag.
-              Bereits belegte Plätze bleiben unangetastet. Danach lässt sich jeder Inhalt wie
-              gewohnt bearbeiten, verschieben oder löschen.
+              Eingespielt wird nur, was noch fehlt ({starterPlans.length}{' '}
+              {starterPlans.length === 1 ? 'Inhalt' : 'Inhalte'}); Vorhandenes und belegte
+              Plätze bleiben unangetastet. Danach lässt sich alles wie gewohnt bearbeiten,
+              verschieben oder löschen.
             </p>
             <button
               type="button"
@@ -153,7 +174,7 @@ export function ImpulsRedaktion() {
               disabled={seeding}
             >
               <Plus className="size-4" aria-hidden />
-              {seeding ? 'Wird eingespielt …' : 'Vier Wochen einspielen'}
+              {seeding ? 'Wird eingespielt …' : 'Einspielen'}
             </button>
           </section>
         )}
@@ -188,7 +209,7 @@ export function ImpulsRedaktion() {
                   </button>
                 </div>
                 <div className="mt-2 grid gap-2 sm:grid-cols-2">
-                  {(['impuls', 'quiz'] as ImpulseKind[]).map((kind) => (
+                  {IMPULSE_KIND_ORDER.map((kind) => (
                     <SlotCell
                       key={kind}
                       kind={kind}
@@ -306,7 +327,12 @@ export function ImpulsRedaktion() {
 /* Bausteine                                                           */
 /* ------------------------------------------------------------------ */
 
-const KIND_ICONS = { impuls: Lightbulb, quiz: Search } as const
+const KIND_ICONS = {
+  impuls: Lightbulb,
+  quiz: Search,
+  wochenziel: CheckCircle2,
+  tageschallenge: Repeat,
+} as const
 
 /** Ein Platz im Wochenplan: gefüllt eine Schaltfläche, leer eine Einladung. */
 function SlotCell({
