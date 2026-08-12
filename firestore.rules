@@ -499,6 +499,25 @@ service cloud.firestore {
         || (impulseAccess() && resource.data.uid == request.auth.uid);
     }
 
+    /*
+     * Die Geräte-Adressen der Montags-Erinnerung.
+     *
+     * Ein Dokument je Gerät, das Cloud-Messaging-Token ist die ID.
+     * Hinterlegt und entfernt wird nur auf den eigenen Namen; gelesen
+     * werden muss hier gar nichts – verschickt wird von der geplanten
+     * Function über das Dienstkonto, und das geht an diesen Regeln
+     * vorbei. Nachsehen und aufräumen darf die Redaktion.
+     */
+    match /impulsePushTokens/{tokenId} {
+      allow read: if impulseWrite();
+
+      allow create, update: if impulseAccess()
+        && request.resource.data.uid == request.auth.uid;
+
+      allow delete: if impulseWrite()
+        || (impulseAccess() && resource.data.uid == request.auth.uid);
+    }
+
     /* ---------------- Einstellungen ---------------- */
 
     // Lesen darf auch, wer nur den AP-Kalender sieht: Der Name der Gemeinde

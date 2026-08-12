@@ -62,6 +62,12 @@
   [headers.values]
     Cache-Control = "public, max-age=0, must-revalidate"
 
+# Dasselbe für den Service Worker der Montags-Erinnerung («Impuls»).
+[[headers]]
+  for = "/impuls-push-sw.js"
+  [headers.values]
+    Cache-Control = "public, max-age=0, must-revalidate"
+
 [[headers]]
   for = "/manifest.webmanifest"
   [headers.values]

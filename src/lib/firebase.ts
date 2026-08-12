@@ -123,6 +123,8 @@ export const COLLECTIONS = {
   impulseComments: 'impulseComments',
   /** Einreichungen aus der Mitmach-Ecke – die Redaktion prüft und übernimmt */
   impulseSubmissions: 'impulseSubmissions',
+  /** Geräte-Adressen der Montags-Erinnerung, Dokument-ID ist das Token */
+  impulsePushTokens: 'impulsePushTokens',
   /** Wer wann da war und was sich dabei geändert hat – liest nur der Administrator */
   accessLog: 'accessLog',
 } as const

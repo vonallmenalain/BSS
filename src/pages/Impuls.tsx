@@ -15,6 +15,7 @@ import { ImpulseCard, QuizCard, SourceLink } from '@/components/impulse/ImpulseC
 import { ImpulseFeed } from '@/components/impulse/ImpulseFeed'
 import { ImpulseQuestionCard } from '@/components/impulse/ImpulseQuestionCard'
 import { ImpulseSubmitCard } from '@/components/impulse/ImpulseSubmitCard'
+import { ImpulsePushCard } from '@/components/impulse/ImpulsePushCard'
 import { setImpulseLastSeenWeek } from '@/services/impulse'
 import {
   ChallengeCard,
@@ -239,6 +240,7 @@ export function Impuls() {
             <StreakCard current={streak.current} best={streak.best} badges={badges} />
             <GroupCard participants={participants} total={total} />
             <ImpulseSubmitCard submissions={submissionsState.data} />
+            <ImpulsePushCard />
           </>
         )}
 

@@ -5,11 +5,11 @@ Stand: Die Entscheide vom 12. August 2026 sind eingearbeitet
 Zugang und Gerüst, Wochenimpuls und Quizfrage samt Redaktionsseite und
 Startpaket, Wochenziel, Tages-Challenge, Serie, Abzeichen und
 Gruppenleiste, der endliche Impuls-Feed mit «Amen» und Favoriten, die
-Frage der Woche mit Antworten, Vornamen und Moderation – und die
-Mitmach-Ecke samt stillem Erinnerungspunkt in der Navigation. Offen ist
-allein die Push-Benachrichtigung: Sie braucht Cloud Messaging aus der
-Firebase-Konsole (siehe 5.7) und folgt als eigener Schritt. Der Bereich
-heisst «Impuls».
+Frage der Woche mit Antworten, Vornamen und Moderation, die Mitmach-Ecke
+samt stillem Erinnerungspunkt in der Navigation – und die
+Montags-Erinnerung als Web-Push (siehe 5.7; braucht den öffentlichen
+VAPID-Schlüssel als `VITE_FIREBASE_VAPID_KEY` bei Netlify). Das Konzept
+ist damit vollständig umgesetzt. Der Bereich heisst «Impuls».
 
 ---
 
@@ -341,16 +341,20 @@ Der Bereich soll abholen, ohne zu nerven – in dieser Reihenfolge:
    solange die Woche noch nicht angeschaut ist – dieselbe stille Sprache
    wie beim Update-Hinweis. Er hängt an `lastSeenWeek` im
    Fortschrittsdokument und verschwindet mit dem ersten Blick.
-3. **Push aufs Telefon** (der eine offene Punkt): technisch möglich –
-   Firebase Cloud Messaging plus eine zeitgesteuerte Netlify-Function
-   (das Muster «Function mit Dienstkonto» existiert bereits für den
-   Kalender-Feed). Voraussetzung sind zwei Handgriffe in der
-   Firebase-Konsole (Cloud Messaging aktivieren, VAPID-Schlüsselpaar
-   erzeugen) und das Hinterlegen des Schlüssels bei Netlify – erst dann
-   lässt sich das Ganze auch wirklich prüfen. Auf iPhones erreicht
-   Web-Push nur installierte PWAs, und eine Benachrichtigung, die
-   aufdringlich wird, beschädigt Leitgedanke 1 – deshalb abschaltbar je
-   Konto, wenn sie kommt.
+3. **Push aufs Telefon** *(umgesetzt)*: die **Montags-Erinnerung**. Eine
+   geplante Netlify-Function (`impuls-push.mts`, montags 06:00 UTC)
+   schaut nach, ob die neue Woche bereiten Inhalt hat, und schickt nur
+   dann über Cloud Messaging eine kurze Nachricht an die Geräte, die den
+   Schalter gesetzt haben – eine leere Woche bleibt still. Der Schalter
+   («Montags-Erinnerung» auf der Bereichsseite) gilt **je Gerät** und
+   ist jederzeit abschaltbar; abgelaufene Geräte-Adressen räumt der Lauf
+   selbst weg. Eingerichtet wird mit dem **öffentlichen** VAPID-Schlüssel
+   (`VITE_FIREBASE_VAPID_KEY`, Firebase-Konsole → Cloud Messaging →
+   Web-Push-Zertifikate; kein Geheimnis, gehört ins Browser-Bundle) –
+   versendet wird über das Dienstkonto (`FIREBASE_SERVICE_ACCOUNT`), der
+   private Teil bleibt bei Firebase. Auf dem iPhone erreicht Web-Push
+   nur die installierte PWA; die Karte sagt genau das, statt still zu
+   scheitern.
 
 ---
 
