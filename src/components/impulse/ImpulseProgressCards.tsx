@@ -87,13 +87,16 @@ export function GoalCard({
         </div>
       )}
 
+      {/* Der eine Haken der Woche: Die Zeile gibt beim Drücken nach, der
+          Haken springt herein (scale-in) – das kleine Fest, das die
+          Selbstauskunft verdient. */}
       <button
         type="button"
         onClick={() => void toggle()}
         disabled={busy}
         aria-pressed={isDone}
         className={cn(
-          'mt-4 flex w-full items-center gap-2.5 rounded-lg border p-3 text-left text-sm font-medium transition',
+          'mt-4 flex w-full items-center gap-2.5 rounded-lg border p-3 text-left text-sm font-medium transition active:scale-[0.98]',
           isDone
             ? 'border-emerald-300 bg-emerald-50 text-emerald-800 dark:border-emerald-800 dark:bg-emerald-950/40 dark:text-emerald-200'
             : 'border-slate-200 hover:bg-slate-50 dark:border-slate-700 dark:hover:bg-slate-800/60',
@@ -108,9 +111,13 @@ export function GoalCard({
           )}
           aria-hidden
         >
-          {isDone && <Check className="size-3.5" />}
+          {isDone && <Check className="animate-scale-in size-3.5" />}
         </span>
-        {isDone ? 'Geschafft!' : 'Geschafft? Hier abhaken.'}
+        {isDone ? (
+          <span className="animate-fade-in">Geschafft!</span>
+        ) : (
+          'Geschafft? Hier abhaken.'
+        )}
       </button>
     </section>
   )
@@ -207,7 +214,7 @@ export function ChallengeCard({
               aria-pressed={isChecked}
               aria-label={`${DAY_LABELS[index]} abhaken`}
               className={cn(
-                'flex flex-1 flex-col items-center gap-1.5 rounded-lg border py-2 text-xs transition',
+                'flex flex-1 flex-col items-center gap-1.5 rounded-lg border py-2 text-xs transition active:scale-95',
                 isChecked
                   ? 'border-emerald-300 bg-emerald-50 text-emerald-800 dark:border-emerald-800 dark:bg-emerald-950/40 dark:text-emerald-200'
                   : isToday
@@ -228,7 +235,9 @@ export function ChallengeCard({
                 )}
                 aria-hidden
               >
-                {isChecked && <Check className="size-3" />}
+                {/* Der Tageshaken springt herein – klein und schnell,
+                    denn er kommt (hoffentlich) jeden Tag. */}
+                {isChecked && <Check className="animate-scale-in size-3" />}
               </span>
             </button>
           )

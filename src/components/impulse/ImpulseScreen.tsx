@@ -123,7 +123,7 @@ export function ImpulseScreen({
         <div className="flex items-center gap-2.5 px-3 py-2.5">
           <button
             type="button"
-            className="btn-ghost -ms-1 rounded-full p-2 active:scale-95"
+            className="btn-ghost -ms-1 rounded-full p-2"
             onClick={close}
             aria-label="Zur Übersicht"
           >

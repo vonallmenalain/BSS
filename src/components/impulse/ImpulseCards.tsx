@@ -243,7 +243,10 @@ export function QuizResolution({ item, answer }: { item: ImpulseItem; answer: Im
   if (!quiz) return null
 
   return (
-    <div className="mt-4 space-y-3">
+    /* Die Auflösung tritt an statt zu erscheinen – sie ersetzt das
+       Formular im selben Moment, und ohne Brücke wäre der Wechsel ein
+       Schnitt mitten im Lernmoment. */
+    <div className="animate-imp-rise mt-4 space-y-3">
       {quiz.form === 'choice' ? (
         <>
           <p

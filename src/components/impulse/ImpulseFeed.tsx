@@ -156,6 +156,32 @@ export function ImpulseFeed({
     setIndex(Math.round(element.scrollTop / element.clientHeight))
   }
 
+  /*
+   * Der Auftritt der Schlusskarte: einmal, wenn sie zum ersten Mal ins
+   * Bild kommt. Ohne IntersectionObserver (uralt-Browser) erscheint sie
+   * einfach – unsichtbar bleiben darf sie nie.
+   */
+  const finaleRef = useRef<HTMLElement>(null)
+  const [finaleIn, setFinaleIn] = useState(false)
+  useEffect(() => {
+    const element = finaleRef.current
+    if (!element || typeof IntersectionObserver === 'undefined') {
+      setFinaleIn(true)
+      return
+    }
+    const observer = new IntersectionObserver(
+      (entries) => {
+        if (entries.some((entry) => entry.isIntersecting)) {
+          setFinaleIn(true)
+          observer.disconnect()
+        }
+      },
+      { threshold: 0.6 },
+    )
+    observer.observe(element)
+    return () => observer.disconnect()
+  }, [])
+
   const toggleAmen = async (item: ImpulseItem) => {
     if (preview) {
       setPreviewAmens((current) => {
@@ -223,7 +249,7 @@ export function ImpulseFeed({
         </p>
         <button
           type="button"
-          className="btn-ghost ms-auto rounded-full p-2 active:scale-95"
+          className="btn-ghost ms-auto rounded-full p-2"
           onClick={close}
           aria-label="Feed schliessen"
         >
@@ -296,16 +322,23 @@ export function ImpulseFeed({
         })}
 
         {/* Die Schlusskarte – der Feed ist endlich, und genau das ist die
-            Botschaft: Das Telefon kann auch auftanken statt absaugen. */}
-        <section className="flex h-full snap-start flex-col items-center justify-center px-6 text-center">
-          <p className="text-2xl font-semibold text-balance">Das war’s für diese Woche.</p>
-          <p className="mt-2 max-w-sm text-sm text-slate-600 dark:text-slate-300">
-            Stark, dass du da warst – hier kommt nichts mehr nach. Der nächste Feed wartet am
-            Montag.
-          </p>
-          <button type="button" className="btn-primary mt-6 active:scale-[0.98]" onClick={close}>
-            Zurück zum Impuls
-          </button>
+            Botschaft: Das Telefon kann auch auftanken statt absaugen.
+            Sie federt einmal kurz herein, wenn sie erreicht wird – der
+            einzige Überschwung des Bereichs, für seinen besten Moment. */}
+        <section
+          ref={finaleRef}
+          className="flex h-full snap-start flex-col items-center justify-center px-6 text-center"
+        >
+          <div className={finaleIn ? 'animate-imp-pop' : 'opacity-0'}>
+            <p className="text-2xl font-semibold text-balance">Das war’s für diese Woche.</p>
+            <p className="mx-auto mt-2 max-w-sm text-sm text-slate-600 dark:text-slate-300">
+              Stark, dass du da warst – hier kommt nichts mehr nach. Der nächste Feed wartet am
+              Montag.
+            </p>
+            <button type="button" className="btn-primary mt-6" onClick={close}>
+              Zurück zum Impuls
+            </button>
+          </div>
         </section>
       </div>
     </div>,

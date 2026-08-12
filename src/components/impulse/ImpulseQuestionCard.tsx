@@ -120,18 +120,26 @@ export function ImpulseQuestionCard({
 
       {reveal && visible.length > 0 && (
         <div className="mt-4 space-y-2">
-          {visible.map((comment) => (
-            <CommentRow
+          {/* Die Antworten der anderen sind die Belohnung fürs eigene
+              Wort – sie entfalten sich kurz gestaffelt, statt als Block
+              dazustehen. Ab der siebten kommt alles zusammen. */}
+          {visible.map((comment, index) => (
+            <div
               key={comment.id}
-              comment={comment}
-              mine={comment === mine || comment.uid === uid}
-              progressDocs={progressDocs}
-              preview={preview}
-              onEdit={() => {
-                setDraft(mine?.text ?? '')
-                setEditing(true)
-              }}
-            />
+              className="animate-imp-rise"
+              style={{ animationDelay: `${Math.min(index, 6) * 40}ms` }}
+            >
+              <CommentRow
+                comment={comment}
+                mine={comment === mine || comment.uid === uid}
+                progressDocs={progressDocs}
+                preview={preview}
+                onEdit={() => {
+                  setDraft(mine?.text ?? '')
+                  setEditing(true)
+                }}
+              />
+            </div>
           ))}
         </div>
       )}
