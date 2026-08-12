@@ -1,0 +1,596 @@
+# Konzept «Impuls» – ein geistiger Bereich für die AP’s
+
+Stand: Entwurf zum Brainstorming – noch nichts davon ist umgesetzt.
+«Impuls» ist der Arbeitstitel; zum Namen siehe [Abschnitt 3](#3-der-name).
+
+---
+
+## 1. Ausgangslage und Ziel
+
+Die App kennt heute einen einzigen Bereich, den auch Konten ohne Vollzugriff
+erreichen: **«Aktivitäten AP’s»**, den Aktivitätenplan der
+Priestertumskollegien, geteilt mit Beratern und Jugendführung (`ap_editor`,
+`ap_viewer`). Daneben soll ein zweiter Bereich entstehen – nicht für die
+Organisation der Jugendarbeit, sondern **für die Jugendlichen selbst**.
+
+**Das Hauptziel in einem Satz:** Die AP’s sollen ein- bis zweimal pro Woche
+durch die App eingeladen werden, sich fünf Minuten mit dem Evangelium zu
+befassen – eine Schriftstelle lesen, eine Konferenzansprache anschauen, eine
+Quizfrage lösen – und am Ende der Woche sagen können: «Ich war dabei, ich habe
+etwas geschafft.»
+
+Drei Dinge stecken in diesem Satz:
+
+| | |
+| ------------- | ------------------------------------------------------------------------- |
+| **Rhythmus** | ein bis zwei Anstösse pro Woche – kein täglicher Druck |
+| **Spielform** | Quiz, Challenge, Feed – Formen, die Jugendliche kennen und gerne benutzen |
+| **Verankerung** | jede Karte und jede Frage führt zu offiziellem Material der Kirche Jesu Christi der Heiligen der Letzten Tage |
+
+Die Zielgruppe ist klein und bekannt: das Kollegium einer Gemeinde, eine
+Handvoll bis zwei Dutzend Jugendliche zwischen 12 und 18. Das ist eine Stärke.
+Es braucht keinen Algorithmus, keine Skalierung, keine Fremdmoderation – eine
+Person mit einer Viertelstunde pro Woche kann den ganzen Inhalt kuratieren,
+und alles Soziale spielt sich in einer Gruppe ab, in der sich alle mit Namen
+kennen.
+
+---
+
+## 2. Leitgedanken
+
+Sieben Entscheidungen, die alles Weitere prägen – in derselben Rolle wie die
+Leitgedanken im [Hauptkonzept](KONZEPT.md):
+
+**1 · Einladen, nicht verpflichten.** Der Bereich lädt ein und mahnt nie. Es
+gibt kein rotes Abzeichen «versäumt», keine Erinnerung im Ton einer offenen
+Rechnung – aus demselben Grund, aus dem die Pendenzen-Zahl aus der Navigation
+gefallen ist: Eine Dauermahnung sagt jeden Tag dasselbe und bewirkt nichts.
+Wer eine Woche aussetzt, wird beim nächsten Öffnen freundlich empfangen und
+nicht mit dem Rückstand begrüsst.
+
+**2 · Fünf Minuten genügen.** Vom Öffnen der App bis zum Erlebnis ist es ein
+Fingertipp: Die Woche steht als Karte da, die Frage darunter. Wer mehr will,
+findet mehr (die ganze Ansprache, das ganze Kapitel) – aber der kurze Weg ist
+der Normalfall, nicht die abgespeckte Variante.
+
+**3 · Nur offizielles Material – verlinkt statt kopiert.** Jeder Inhalt
+stammt aus den Schriften, der Generalkonferenz, den Kirchenzeitschriften oder
+anderem offiziellem Material und trägt seine Quelle sichtbar bei sich: kurzer
+Auszug in der App, Link in die Evangeliumsbibliothek bzw. auf
+churchofjesuschrist.org für den Rest. So bleibt die App auf der sicheren
+Seite des Urheberrechts – und der Klick auf die Quelle **ist** das Ziel des
+Bereichs, nicht ein Abfluss.
+
+**4 · Miteinander, nicht gegeneinander.** Sichtbar ist, **wer dabei war und
+was die Gruppe zusammen geschafft hat** – nicht, wer besser ist als wer. Es
+gibt Serien («4 Wochen in Folge») und Abzeichen, aber keine Rangliste und
+keine öffentlichen Punktzahlen. Die Challenge heisst: ich gegen meinen
+inneren Schweinehund, wir als Kollegium gemeinsam – nie ich gegen dich.
+
+**5 · Die Redaktion kuratiert, die App liefert aus.** Inhalte entstehen nicht
+von selbst und kommen nicht von einem Dienst – sie werden von einer
+verantwortlichen Person erfasst (am Anfang: das Administrator-Konto). Damit
+das trägt, muss das Erfassen billig sein: Vorlagen je Kartenart, ein
+wachsender Fragenpool, Planung mehrerer Wochen im Voraus. Zielmarke: **eine
+Viertelstunde pro Woche** Redaktionsaufwand.
+
+**6 · Endlich statt endlos.** Der Feed borgt die Form von Reels und TikTok –
+Karte für Karte, mit dem Daumen – aber nicht deren Mechanik: Er ist
+**redaktionell und endlich**. Fünf bis zehn Karten pro Woche, dann kommt die
+Schlusskarte «Du bist durch – bis nächste Woche». Kein Algorithmus, kein
+Nachschub, kein Sog. Genau darin liegt die Botschaft des Bereichs: Das
+Telefon kann auch auftanken statt absaugen.
+
+**7 · Zurückhaltung mit den Daten der Jugendlichen.** Im Bereich erscheinen
+Vorname und Kürzel, sonst nichts – keine Adressen, keine Geburtsdaten, kein
+Zugriff auf die Mitgliederdaten (das erzwingen die Zugriffsregeln, wie heute
+schon bei den AP-Rollen). Alles Soziale bleibt innerhalb der freigeschalteten
+Gruppe, und die Redaktion kann jeden Beitrag ausblenden.
+
+---
+
+## 3. Der Name
+
+Der Bereich braucht ein Wort, das in die Navigation passt (die App benennt
+Bereiche mit einem Wort: Sitzungen, Pendenzen, Notizen …) und das bei den
+Jugendlichen nicht nach Schulstoff klingt.
+
+| Kandidat | Klang |
+| ------------ | ------------------------------------------------------------------ |
+| **Impuls** | der Anstoss, der geistige Gedanke – kurz, kirchenvertraut, treffend |
+| **Funke** | jugendlicher, wärmer – der Funke, der überspringt |
+| **Kompass** | Richtung fürs Leben – etwas abgegriffen |
+| **Anker** | Halt – eher statisch für einen wöchentlichen Takt |
+| **Wegweiser** | beschreibend, aber lang und nüchtern |
+
+**Empfehlung: «Impuls».** Es beschreibt genau das, was der Bereich tut (ein
+Anstoss, ein geistiger Gedanke pro Woche), trägt kirchlichen Klang ohne
+Schulton und bleibt als Navigationseintrag und Route (`/impuls`) sauber.
+«Funke» wäre die charmante Alternative, wenn es verspielter sein darf.
+
+---
+
+## 4. So fühlt sich eine Woche an
+
+Bevor die Bausteine einzeln beschrieben sind, der Ablauf am Stück – so soll
+eine gewöhnliche Woche für einen AP aussehen:
+
+**Montag.** In der App steht ein Punkt am Bereich «Impuls». Darin: die neue
+Wochenkarte – eine Schriftstelle mit zwei Sätzen dazu, passend zum Thema der
+AP-Klasse vom kommenden Sonntag. Darunter die Quizfrage der Woche: *«In der
+verlinkten Ansprache erzählt der Sprecher von seinem Hund. Wie heisst er?»* –
+die Antwort steht nicht in der App, sondern in der Ansprache; wer sie wissen
+will, muss hineinlesen oder hineinhören. Dazu das Wochenziel: *«Lies diese
+Woche ein Kapitel im Buch Mormon.»*
+
+**Unter der Woche.** Zwei Minuten im Bus: den Feed durchtippen – eine
+Konferenz-Aussage, ein Vers, ein «Wusstest du?», ein kurzes Video von der
+Kirche, fertig nach acht Karten. Eine Karte gefällt – sie bekommt ein «Amen»
+und landet bei den Favoriten. Das Kapitel ist gelesen, ein Tipp aufs
+Wochenziel: erledigt. Die Serie zählt auf «5 Wochen in Folge».
+
+**Sonntag.** Die Frage der Woche wird aufgelöst: Wer geantwortet hat, sieht
+die Auflösung samt Erklärung – und was die anderen geantwortet haben. In der
+Gruppenleiste ist zu sehen: 8 von 11 waren diese Woche dabei. In der
+Kollegiumsstunde sagt der Berater: «Wer hat den Hund gefunden?» – und das
+Gespräch ist lanciert.
+
+Der Bereich ersetzt nichts – nicht das Seminar, nicht «Komm und folge mir
+nach!», nicht die Kollegiumsstunde. Er ist der **Zubringer**: klein genug für
+den Alltag, verbunden mit dem, was am Sonntag ohnehin stattfindet.
+
+---
+
+## 5. Die Bausteine
+
+Sechs Bausteine, unabhängig voneinander ein- und ausschaltbar. Nicht alle
+kommen am Anfang (siehe [Etappen](#10-etappen)); zusammen ergeben sie den
+Bereich.
+
+```
+                    ┌──────────────────────────────┐
+                    │  Woche  «2026-W34»           │
+                    │                              │
+   Redaktion  ──►   │  Wochenimpuls   (Karte)      │   ◄──  AP’s: lesen,
+   plant Wochen     │  Quizfrage      (+Auflösung) │        antworten,
+   im Voraus        │  Wochenziel     (Challenge)  │        abhaken,
+                    │  Feed           (5–10 Karten)│        swipen
+                    │  Frage der Woche(Antworten)  │
+                    └──────────────┬───────────────┘
+                                   │
+                          Fortschritt je Person
+                       (Serie, Abzeichen, Favoriten)
+                                   │
+                          Gruppenbild «8 von 11 dabei»
+```
+
+### 5.1 Wochenimpuls – das Herzstück
+
+Eine Karte pro Woche: eine Schriftstelle oder ein kurzer Auszug aus einer
+Konferenzansprache, zwei bis drei Sätze Hinführung, Link zur Quelle. Mehr
+nicht – das ist der Mindestinhalt, der jede Woche sicher da ist, auch wenn
+die Redaktion einmal wenig Zeit hatte.
+
+Zwei Anker machen den Impuls stärker als eine beliebige schöne Stelle:
+
+- **Passend zur AP-Klasse.** Der Aktivitätenplan kennt die Lektionsthemen
+  bereits – die Klassen stehen mit Titel im Plan (`apActivities`, Art
+  «AP-Klasse»). Der Impuls der Woche kann das Thema des kommenden Sonntags
+  aufnehmen; die App kann den Titel der nächsten Klasse gleich neben dem
+  Erfassungsformular anzeigen. Wer den Impuls gelesen hat, kommt vorbereitet
+  in die Lektion – und die Lektion holt ab, was die Woche gesät hat.
+- **Passend zum Lehrplan.** Alternativ oder ergänzend: das Wochenthema aus
+  «Komm und folge mir nach!» – dem Lehrplan, den Seminar und Familien ohnehin
+  begleiten – oder das Jahresmotto der Jugend.
+
+### 5.2 Die Quizfrage
+
+Eine Frage pro Woche, spielerisch, mit sofortiger Auflösung – und die
+Auflösung ist der Lernmoment: Sie erklärt die Antwort in zwei Sätzen und
+verlinkt die Quelle.
+
+Formen, damit es nicht eintönig wird (der Fragenpool hält zu jeder Frage ihre
+Form fest):
+
+| Form | Beispiel |
+| ---------------------- | --------------------------------------------------------------------------------------------- |
+| **Suchfrage** | «In dieser Ansprache erzählt der Sprecher von seinem Hund – wie heisst er?» (Antwort steht nur in der verlinkten Quelle) |
+| **Multiple Choice** | «In welchem Buch steht die Geschichte der 2000 jungen Krieger?» – 1 Nephi / Alma / Ether / Moroni |
+| **Wahr oder falsch** | «Das Buch Mormon enthält 15 Bücher.» |
+| **Wer hat’s gesagt?** | Ein Zitat – welcher Prophet oder Apostel hat es gesagt? |
+| **Lückentext** | «Ich will hingehen und das tun, was der Herr ___ hat» (1 Nephi 3:7) |
+| **Emoji-Rätsel** | 🌊 🪨 🏠 – welches Gleichnis ist gemeint? |
+| **Reihenfolge** | Glaube, Umkehr, Taufe, Gabe des Heiligen Geistes – in die richtige Ordnung bringen (4. Glaubensartikel) |
+| **Bildfrage** | Ein Bild aus der Mediathek der Kirche – welche Begebenheit zeigt es? |
+| **Schätzfrage** | «Wie viele Kapitel hat das Buch Alma?» – wer am nächsten liegt |
+
+Spielregeln, bewusst milde: **ein Versuch, keine Noten** – gewertet wird die
+Teilnahme, nicht die Richtigkeit. Wer falsch liegt, bekommt dieselbe
+freundliche Auflösung und denselben Haken «dabei gewesen». Die Suchfrage ist
+die wertvollste Form (sie erzwingt den Blick in die Quelle) und zugleich die
+aufwendigste – der Pool lebt von der Mischung.
+
+### 5.3 Wochenziel, Serie und Abzeichen
+
+Der Challenge-Baustein – die Antwort auf «ich möchte am Ende der Woche mit
+Stolz sagen können, dass ich etwas geschafft habe».
+
+- **Wochenziel.** Die Redaktion setzt es pro Woche: «Lies ein Kapitel», «Schau
+  eine Konferenzansprache», «Bete jeden Abend». Abgehakt wird per
+  Selbstauskunft – ohne Kontrolle, wie in der Kirche üblich: Es zählt, was
+  jemand vor sich selbst und dem Herrn sagt.
+- **Serie.** Wochen in Folge mit Beteiligung (Ziel erreicht oder Quiz
+  beantwortet). Mit eingebauter Milde: eine **Jokerwoche** pro Monat – Lager,
+  Prüfungen und Ferien sollen keine Serie brechen. Eine gerissene Serie wird
+  nüchtern neu gestartet, nicht betrauert.
+- **Abzeichen** für Meilensteine statt Punkte: «Erste Woche dabei», «4 Wochen
+  in Folge», «Alle vier heiligen Schriften aufgeschlagen», «10 Quizfragen
+  beantwortet», «Erster Beitrag zur Frage der Woche». Ein Abzeichen erzählt,
+  **was** jemand getan hat – eine Punktzahl erzählt nur, wie viel.
+- **Gruppenbild.** Eine Leiste: «Diese Woche dabei: 8 von 11» mit den Kürzeln
+  bzw. Vornamen derer, die dabei waren – die Form der Anerkennung, die
+  motiviert, ohne zu beschämen. Dazu, wenn gewünscht, ein **gemeinsames
+  Ziel**: «Als Kollegium zusammen 40 Kapitel in diesem Monat» mit einem
+  Balken, zu dem jeder beiträgt. Das dreht Wettbewerb in Zusammenarbeit.
+
+Bewusst **keine Rangliste** und keine öffentlich vergleichbaren Zahlen: In
+einer Gruppe von zehn ist der Letzte einer Rangliste keine Statistik, sondern
+ein Jugendlicher mit Namen, der nicht wiederkommt.
+
+### 5.4 Der Impuls-Feed (Swipen)
+
+Der Feed ist die niederschwelligste Tür: Karten im Vollbild, mit dem Daumen
+weiter – die Form von Reels, gefüllt mit Substanz.
+
+Kartenarten:
+
+- **Schriftstelle** – ein Vers, gross gesetzt, mit Link zum Kapitel
+- **Zitat** – zwei, drei Sätze aus einer Konferenzansprache, mit Sprecher und
+  Link (Text, Audio und Video der Generalkonferenz sind auf Deutsch verfügbar)
+- **Video** – Verweis auf ein offizielles Kurzvideo der Kirche
+- **«Wusstest du?»** – eine Kleinigkeit aus Schriften oder
+  Kirchengeschichte, die man weitererzählen mag
+- **Zum Nachdenken** – eine offene Frage für den Tag
+- **Aus der Jugendzeitschrift** – Auszug mit Quelle («Für eine starke
+  Jugend», früher der Jugendteil des Liahona; ebenso die Broschüre)
+- **Bild** – aus der Mediathek der Kirche, mit einem Satz
+
+Bedienung: **«Amen»** als einzige Reaktion (die kirchliche Form der
+Zustimmung – herzlicher als ein Like und ohne Zählwettbewerb), **Merken** für
+die eigene Favoritensammlung, Weiterwischen. Nach der letzten Karte kommt die
+Schlusskarte: «Das war’s für diese Woche – stark, dass du da warst.» Der Feed
+der Vorwochen bleibt erreichbar, aber es gibt keinen unendlichen Nachschub
+(Leitgedanke 6).
+
+### 5.5 Die Frage der Woche (Diskussion)
+
+Die soziale Stufe – klein gehalten, damit sie trägt statt kippt:
+
+- Eine offene Frage pro Woche: «Welche Schriftstelle hat dir diese Woche
+  geholfen – und warum?», «Was heisst für dich, den Sabbat heilig zu halten?»
+- Jeder schreibt eine kurze Antwort. **Sichtbar werden die Antworten der
+  anderen erst nach der eigenen** – das nimmt den Druck, das «Richtige» zu
+  schreiben, und verhindert Einheitsbrei.
+- Antworten tragen den Vornamen (Empfehlung – in einer Gruppe, die sich
+  kennt, wirkt Anonymität fremd und senkt die Hemmschwelle für Unfug),
+  können ein «Amen» bekommen und von der Redaktion ausgeblendet werden.
+- **Kein Chat, keine Direktnachrichten, keine Kommentare unter Kommentaren.**
+  Eine moderierte Frage mit Antworten ist überschaubar; ein offenes Forum
+  unter Minderjährigen wäre eine Moderationslast, die niemand tragen will.
+
+Die besten Antworten sind zugleich Material für den Sonntag: Der Berater
+sieht vor der Kollegiumsstunde, was die Jugendlichen bewegt.
+
+### 5.6 Die Mitmach-Ecke (später)
+
+Die stärkste Form der Aneignung: Die Jugendlichen liefern selbst.
+
+- **Eigener Impuls:** Ein AP reicht seine Lieblingsschriftstelle oder ein
+  Zitat ein; die Redaktion prüft und plant es als Feed-Karte ein – «Impuls,
+  ausgewählt von Luca». Wer je eine Karte beigesteuert hat, liest die
+  anderen anders.
+- **Eigene Quizfrage:** Wer eine Frage baut, muss die Quelle genau lesen –
+  die lehrreichste Übung von allen, versteckt als Spiel. Auch hier:
+  Veröffentlichung erst nach Prüfung.
+
+### 5.7 Erinnerungen
+
+Der Bereich soll abholen, ohne zu nerven – in dieser Reihenfolge:
+
+1. **Rhythmus als Gewohnheit** (sofort): feste Zeiten – montags der neue
+   Impuls, sonntags die Auflösung. Ein verlässlicher Takt schlägt jede
+   Benachrichtigung; er lässt sich in der Kollegiumsstunde verankern.
+2. **Zeichen in der App** (sofort): ein Punkt am Navigationseintrag, solange
+   die Woche noch nicht angeschaut ist – dieselbe stille Sprache wie beim
+   Update-Hinweis.
+3. **Push aufs Telefon** (später): technisch möglich – Firebase Cloud
+   Messaging plus eine zeitgesteuerte Netlify-Function (das Muster
+   «Function mit Dienstkonto» existiert bereits für den Kalender-Feed).
+   Aber: Auf iPhones erreicht Web-Push nur installierte PWAs, und eine
+   Benachrichtigung, die aufdringlich wird, beschädigt Leitgedanke 1.
+   Deshalb bewusst als späte Etappe, abschaltbar je Konto.
+
+---
+
+## 6. Inhalte und Quellen
+
+### Woraus geschöpft wird
+
+Alles offizielle Kanäle der Kirche, alle auf Deutsch verfügbar:
+
+| Quelle | Eignet sich für |
+| ----------------------------------------- | ------------------------------------------------ |
+| Heilige Schriften (Evangeliumsbibliothek) | Wochenimpuls, Verse im Feed, Lückentexte |
+| Generalkonferenz (Text/Audio/Video) | Suchfragen, Zitate, «Wer hat’s gesagt?» |
+| «Für eine starke Jugend» (Zeitschrift und Broschüre) | Feed-Karten, Alltagsthemen |
+| «Komm und folge mir nach!» | Wochenthema als roter Faden |
+| Seminar – «Beherrschen der Lehre» | Schlüsselschriftstellen als fertiger Fragenpool |
+| Evangeliumsthemen (Gospel Topics) | Erklärungen in den Auflösungen |
+| Mediathek der Kirche | Bildfragen, Bildkarten |
+| Jahresmotto der Jugend | Jahresbogen über alle Wochen |
+
+### Urheberrecht
+
+Die Nutzungsbedingungen der Kirche erlauben die nichtkommerzielle Verwendung
+für Kirche, Heim und Familie – genau der Rahmen dieser App. Trotzdem gilt als
+Hausregel: **kurze Auszüge statt Volltexte, immer mit Quellenangabe und
+Link**; Videos werden verlinkt bzw. eingebettet, nie kopiert. Das ist
+rechtlich sauber, hält die Datenbank klein – und der Sprung zur Quelle ist ja
+gerade das Ziel.
+
+### Der Redaktions-Arbeitsplatz
+
+Damit die Viertelstunde pro Woche reicht:
+
+- **Wochenplan-Ansicht:** die kommenden Wochen als Zeilen – wo schon etwas
+  steht, wo noch Lücken sind. Dieselbe Logik wie das Ansprachen-Programm mit
+  seinen freien Plätzen.
+- **Vorlagen je Kartenart:** Schriftstellen-Karte, Zitat-Karte, Quizfrage je
+  Form – jeweils drei, vier Felder, nicht mehr.
+- **Fragenpool:** Fragen entstehen, wann immer eine einfällt, und werden
+  später einer Woche zugeteilt. Nichts verfällt.
+- **Vorschau:** jede Karte so sehen, wie die AP’s sie sehen werden.
+- **Vorproduktion:** Vor dem Start werden vier bis sechs Wochen eingeplant –
+  der Puffer, der verhindert, dass der Bereich beim ersten vollen Terminplan
+  der Redaktion versiegt.
+
+Mittelfristig muss die Redaktion nicht am Administrator-Konto hängen: Ein
+eigenes Recht «Impuls-Redaktion» (siehe unten) kann an Berater oder die
+JM-Leitung gehen – oder, mit Prüfschritt, teilweise an die Jugendlichen
+selbst (Mitmach-Ecke).
+
+---
+
+## 7. Zugriff und Rechte
+
+### Ein Schalter pro Konto, keine neue Rolle
+
+Der Wunsch ist zweischichtig: grundsätzlich sollen alle den Bereich sehen
+können, die den AP-Kalender lesen – aber steuerbar **pro Konto**, und am
+Anfang nur das Administrator-Konto. Das spricht gegen eine Lösung über die
+Rolle (sie würde Kalender- und Impuls-Zugang aneinanderketten) und für ein
+**eigenes Feld am Benutzer**:
+
+```
+users/{uid}.impulse: boolean     – darf den Bereich «Impuls» sehen
+```
+
+- **Pro Konto schaltbar**, unabhängig von der Rolle: ein `ap_viewer` mit
+  Flag sieht Kalender und Impuls; einer ohne Flag nur den Kalender; auch ein
+  Konto mit Vollzugriff braucht das Flag (oder ist Admin). Später wäre sogar
+  ein Konto denkbar, das **nur** den Impuls-Bereich sieht.
+- **Verwalten kann es nur der Admin** – Benutzerdokumente darf heute schon
+  ausschliesslich das Administrator-Konto ändern (`isAdmin()` in den Regeln).
+  In der Benutzerverwaltung kommt neben die Rolle ein Schalter «Impuls»,
+  dazu eine Sammelaktion «für alle AP-Konten einschalten» für den Rollout.
+- **Das Administrator-Konto sieht den Bereich immer** (`isAdmin()` schliesst
+  den Zugriff ein). Damit ist die Startphase «nur ich» ohne jeden Sondercode
+  erledigt: Flag nirgends gesetzt → nur der Admin sieht den Bereich.
+
+**Eine Falle, die von Anfang an zu verriegeln ist:** Die bestehende Regel
+lässt jedes Konto sein eigenes Profil pflegen, gesperrt sind nur `role` und
+`active` (`unchanged(…)`). Ohne Erweiterung könnte sich also **jedes Konto
+das Impuls-Flag selbst setzen**. Die Selbst-Update-Regel braucht zwingend
+zusätzlich `unchanged('impulse')` – und `tests/firestore-rules.test.js`
+einen Testfall dafür, wie ihn die Sperre gegen die Selbstfreischaltung schon
+hat.
+
+Für die Redaktion dasselbe Muster ein zweites Mal:
+
+```
+users/{uid}.impulseEditor: boolean   – darf Inhalte pflegen und moderieren
+```
+
+Am Anfang bleibt es ungesetzt – Redaktion ist der Admin. Beide Flags stehen
+damit dort, wo heute schon Rolle und Aktivstatus verwaltet werden, und
+tauchen in denselben Oberflächen auf (Benutzerverwaltung, Freischalt-Dialog).
+
+### Regeln je Sammlung
+
+| Sammlung | Lesen | Schreiben |
+| ------------------ | ---------------------- | ------------------------------------------------ |
+| Inhalte (Karten, Fragen, Wochen) | Impuls-Zugang | nur Redaktion |
+| Antworten & Fortschritt | Impuls-Zugang | **nur die eigene Person** (UID im Dokumentpfad) |
+| Beiträge zur Frage der Woche | Impuls-Zugang | anlegen: die eigene Person; ausblenden: Redaktion |
+| Einstellungen des Bereichs | Impuls-Zugang | nur Redaktion |
+
+Durchgesetzt wie überall in `firestore.rules`, nicht in der Oberfläche. Die
+AP-Rollen behalten ihren heutigen Zuschnitt: kein Zugriff auf Mitglieder,
+Sitzungen oder sonst etwas – der Impuls-Bereich kommt als zweite Insel neben
+den Kalender.
+
+### Jugendschutz
+
+- Die Konten der Jugendlichen sind gewöhnliche Konten (E-Mail, Passwort,
+  Freischaltung durch den Admin) – es gelten dieselben Hürden wie heute.
+- Im Bereich erscheinen nur Vorname bzw. Kürzel und das, was jemand selbst
+  schreibt. Beiträge sind gruppenintern, moderierbar und meldbar.
+- Vor dem Rollout an die Jugendlichen gehört das Einverständnis der Eltern
+  eingeholt (kurze Information, was die App speichert und wer es sieht) –
+  und die Führung der Gemeinde ins Boot. Beides ist kein App-Thema, aber
+  Teil des Plans.
+
+---
+
+## 8. Datenmodell (Skizze)
+
+Die Woche ist die tragende Einheit – analog zum Datum als Dokument-ID bei
+`sacramentMeetings`: Mehrere Bausteine gehören zur selben Woche, die
+ISO-Woche als Schlüssel hält sie zusammen, ohne dass Dubletten entstehen
+können.
+
+```
+users/{uid}                    + impulse: boolean        (Zugang, schaltet der Admin)
+                               + impulseEditor: boolean  (Redaktion, schaltet der Admin)
+
+impulseItems/{id}              eine Karte oder Frage
+                               ├─ week      «2026-W34» – zu welcher Woche sie gehört
+                               ├─ kind      impuls | quiz | wochenziel | frage | feed
+                               ├─ title, body, emoji, imageUrl …
+                               ├─ source    { label, url }        – Pflicht
+                               ├─ quiz      { form, optionen[], antwort, erklärung }
+                               ├─ order     Reihenfolge im Feed
+                               └─ status    entwurf | geplant | veröffentlicht
+
+impulseAnswers/{itemId_uid}    genau eine Antwort pro Person und Frage
+                               ├─ uid, firstName            (mitgeschrieben)
+                               ├─ choice / text, correct
+                               └─ answeredAt
+
+impulseComments/{id}           Beitrag zur Frage der Woche
+                               ├─ itemId, uid, firstName    (mitgeschrieben)
+                               ├─ text, amens[]
+                               ├─ hidden                    (Moderation)
+                               └─ createdAt
+
+impulseProgress/{uid}          der persönliche Stand – schreibt nur die Person
+                               ├─ weeks     { «2026-W34»: { ziel, quiz, feed } }
+                               ├─ streak, bestStreak        (vorberechnet)
+                               ├─ badges[]
+                               └─ favorites[]               gemerkte Karten
+
+settings/impulse               Name, Rhythmus, Gruppenanzeige, Jokerregel
+```
+
+Vier bewusste Anleihen bei der bestehenden Architektur:
+
+- **`itemId_uid` als Antwort-ID** erzwingt «eine Antwort pro Person» durch
+  die ID selbst, und die Regel prüft, dass das Suffix zur anmeldenden UID
+  gehört – kein Zähler, kein Duplikat, dieselbe Denkweise wie beim Datum als
+  Programm-ID.
+- **`streak` liegt vorberechnet** am Fortschrittsdokument – dieselbe
+  Abwägung wie `lastTalkDate`/`talkCount` am Mitglied: Ohne Vorberechnung
+  müsste jede Anzeige alle Wochen aller Personen laden.
+- **`firstName` wird mitgeschrieben** statt nachgeschlagen – wie im
+  Zugriffsprotokoll: Ein Beitrag bleibt lesbar, auch wenn das Konto später
+  verschwindet, und die AP’s können ohnehin keine fremden Profile lesen.
+- **Geschrieben wird über `commit()`** (`lib/sync.ts`) wie überall – damit
+  Antworten und Haken auch im Zug ohne Empfang «zwischengespeichert» statt
+  «hängend» sind. Die Inhalte einer Woche sind klein; der Firestore-Cache
+  macht den Bereich vollständig offlinefähig.
+
+Die Mengen bleiben winzig (bei 15 Jugendlichen und 10 Karten pro Woche
+entstehen ein paar Hundert Dokumente pro Jahr) – Kosten und Indizes sind kein
+Thema.
+
+---
+
+## 9. Oberfläche (Skizze)
+
+- **Route `/impuls`**, ausserhalb von `RequireFullAccess` – exakt das Muster
+  von `/ap`. `RequireAuth` lässt zusätzlich durch, wer das Impuls-Flag trägt;
+  die Navigation zeigt den Punkt nur mit Flag (bzw. dem Admin). Für ein
+  AP-Konto mit beidem stehen am Telefon zwei Punkte in der unteren Leiste:
+  «AP» und «Impuls».
+- **Einstieg «Diese Woche»:** zuoberst die Impulskarte, darunter Wochenziel
+  mit Haken, Quiz-Einstieg, Feed-Einstieg («8 Karten»), darunter «Meine
+  Serie» und die Gruppenleiste. Eine Bildschirmhöhe, keine Unterseitenpflicht.
+- **Feed im Vollbild**, Karte für Karte, vertikal gewischt, Schlusskarte am
+  Ende. Reaktion und Merken als zwei stille Knöpfe am Rand.
+- **«Ansicht» oben rechts** wie überall: was der Einstieg zeigt
+  (Serie, Gruppenleiste ein/aus), Schriftgrösse des Feeds.
+- **Redaktion** als eigene Seite, sichtbar nur mit Redaktionsrecht:
+  Wochenplan, Karten mit Vorlagen, Fragenpool, Vorschau. Erreichbar über die
+  Einstellungen – nach dem Muster der Importe.
+- **Dashboard-Kachel «Impuls»** für die Bischofschaft (Beteiligung der
+  laufenden Woche auf einen Blick) – als spätere Ergänzung der bestehenden
+  Kachelliste.
+- **Icon:** eine Flamme (`Flame`) oder Funken (`Sparkles`) – neben dem Zelt
+  des Aktivitätenplans sofort unterscheidbar.
+
+---
+
+## 10. Etappen
+
+Jede Etappe ist für sich lauffähig und einzeln freischaltbar; nach Etappe 1
+ist der Bereich bereits benutzbar. Reihenfolge von 3 und 4 ist tauschbar.
+
+| # | Inhalt | Sichtbar für | Grösse |
+| - | ------------------------------------------------------------------------ | ---------------------------- | ------ |
+| 0 | **Zugang & Gerüst:** Flags samt Regelverriegelung und Regeltests, Route, Navigation, leere Wochen-Seite | nur Admin | klein |
+| 1 | **Wochenimpuls & Quiz** mit Auflösung; **Redaktions-Seite** (Karten, Fragenpool, Wochenplan); 4–6 Wochen Inhalt vorproduziert | Admin, dann 1–2 Pilot-AP’s | mittel |
+| 2 | **Wochenziel, Serie, Abzeichen, Gruppenleiste** | Pilotgruppe → alle AP’s | mittel |
+| 3 | **Feed** mit Amen und Favoriten | alle mit Flag | mittel |
+| 4 | **Frage der Woche** mit Antworten, Amen und Moderation | alle mit Flag | mittel |
+| 5 | **Mitmach-Ecke, Push-Erinnerung, Feinschliff**; ggf. Öffnung über die AP’s hinaus | nach Bedarf | je klein |
+
+Zum Rollout gehört mehr als Software:
+
+1. **Nur Admin** (Etappe 0–1): Inhalte aufbauen, selbst eine Weile benutzen.
+2. **Pilot:** ein, zwei wohlgesinnte Jugendliche schalten – Wortlaut,
+   Schwierigkeitsgrad und Ton an echten Reaktionen schärfen.
+3. **Kollegium:** Einführung nicht per Link, sondern **in der
+   Kollegiumsstunde** – Konten freischalten, App als PWA installieren, erste
+   Quizfrage gemeinsam lösen. Eltern vorab informiert.
+4. **Takt halten:** Der Bereich lebt von der Verlässlichkeit der Redaktion,
+   nicht von seiner Featureliste. Lieber Etappe 1 mit ununterbrochen guten
+   Wochen als Etappe 5 mit Lücken.
+
+---
+
+## 11. Was der Bereich bewusst nicht ist
+
+- **Kein endloser Feed und kein Algorithmus** – die Woche ist endlich, die
+  Reihenfolge redaktionell.
+- **Keine Rangliste, keine öffentlichen Punkte** – sichtbar ist Beteiligung
+  und Gemeinsames, nie ein Vergleich von Zahlen auf Personen.
+- **Kein Chat und keine Direktnachrichten** – die eine moderierte Frage der
+  Woche ist die ganze soziale Fläche.
+- **Keine Inhalte ausserhalb offizieller Quellen** – keine selbst
+  geschriebenen Lehren, keine fremden Zitate-Accounts, keine KI-Andachten.
+- **Kein Ersatz** für Seminar, «Komm und folge mir nach!» oder die
+  Kollegiumsstunde – ein Zubringer mit fünf Minuten pro Anlauf.
+- **Kein zweites soziales Netzwerk** – die Gruppe ist das Kollegium, und der
+  beste Erfolg des Bereichs ist ein Gespräch am Sonntag, nicht mehr Zeit in
+  der App.
+
+---
+
+## 12. Offene Fragen
+
+Zum gemeinsamen Entscheiden, bevor Etappe 0 beginnt – mit Empfehlung:
+
+1. **Name des Bereichs?** – Empfehlung «Impuls»; «Funke», wenn es
+   verspielter sein darf.
+2. **Antworten zur Frage der Woche mit Vornamen oder anonym?** – Empfehlung
+   Vorname: Die Gruppe kennt sich, Anonymität senkt die Hemmschwelle für
+   Unfug und passt nicht zum Zeugnis-Charakter.
+3. **Antworten der anderen erst nach eigener Antwort zeigen?** – Empfehlung
+   ja.
+4. **Gruppenleiste: Namen zeigen («dabei waren …») oder nur die Zahl («8 von
+   11»)?** – Empfehlung Namen der Beteiligten, keine Hervorhebung der
+   Fehlenden; falls das heikel scheint, Start mit der Zahl.
+5. **Genügt Selbstauskunft beim Wochenziel?** – Empfehlung ja; Kontrolle
+   widerspräche dem Geist des Bereichs.
+6. **Rhythmus?** – Empfehlung: Montag Veröffentlichung, Sonntag Auflösung –
+   ein Takt, zwei Berührungen pro Woche; ein zweiter
+   Veröffentlichungstag (Donnerstag) lässt sich später zuschalten.
+7. **Wer pflegt mittelfristig Inhalte mit?** – Kandidaten: Berater
+   (`ap_editor`-Konten existieren schon), JM-Leitung; via Mitmach-Ecke auch
+   die AP’s selbst. Entscheid kann bis Etappe 2 warten.
+8. **Öffnung über die AP’s hinaus?** – Der Bereich wird neutral gebaut
+   (Flag pro Konto, kein AP-Bezug im Datenmodell), sodass JD oder Erwachsene
+   später nur einen Schalter brauchen. Ob und wann, ist offen.
+9. **Konferenz-Wochen:** Generalkonferenz und Pfahlkonferenz als
+   Themenwochen mit eigenem Ablauf (z. B. «Konferenz-Bingo»)? – Schöne
+   spätere Ergänzung, kein Startthema.
