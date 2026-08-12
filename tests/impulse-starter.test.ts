@@ -7,34 +7,39 @@ import { planStarterItems, STARTER_WEEKS } from '../src/lib/impulseStarter.ts'
 /*
  * Das Startpaket verspricht «bereit» – also muss jeder seiner Inhalte die
  * Prüfung bestehen, die auch das Redaktionsformular anwendet. Diese Tests
- * sind die Garantie dafür, dass das Paket nie halbe Inhalte oder Inhalte
- * ohne Quelle veröffentlicht.
+ * sind die Garantie dafür, dass das Paket nie halbe Inhalte veröffentlicht
+ * und dass ein späterer Lauf nur nachholt, was fehlt.
  */
 
-test('Startpaket: vier Wochen, je Impuls und Quizfrage', () => {
+test('Startpaket: vier Wochen, je Impuls, Ziel, Frage und Tages-Challenge', () => {
   assert.equal(STARTER_WEEKS.length, 4)
   const plans = planStarterItems([], '2026-W33')
-  assert.equal(plans.length, 8)
-  assert.deepEqual(
-    plans.map((plan) => plan.id),
-    [
-      'starter-w1-impuls',
-      'starter-w1-quiz',
-      'starter-w2-impuls',
-      'starter-w2-quiz',
-      'starter-w3-impuls',
-      'starter-w3-quiz',
-      'starter-w4-impuls',
-      'starter-w4-quiz',
-    ],
-  )
+  assert.equal(plans.length, 16)
+  for (let week = 1; week <= 4; week += 1) {
+    for (const kind of ['impuls', 'wochenziel', 'quiz', 'tageschallenge']) {
+      assert.ok(
+        plans.some((plan) => plan.id === `starter-w${week}-${kind}`),
+        `starter-w${week}-${kind} fehlt`,
+      )
+    }
+  }
 })
 
 test('Startpaket: belegt die laufende und die nächsten drei Wochen', () => {
   const plans = planStarterItems([], '2026-W33')
+  const byWeek = new Map<string, number>()
+  for (const plan of plans) {
+    assert.ok(plan.week, `${plan.id} ohne Woche`)
+    byWeek.set(plan.week, (byWeek.get(plan.week) ?? 0) + 1)
+  }
   assert.deepEqual(
-    plans.map((plan) => plan.week),
-    ['2026-W33', '2026-W33', '2026-W34', '2026-W34', '2026-W35', '2026-W35', '2026-W36', '2026-W36'],
+    [...byWeek.entries()].sort(),
+    [
+      ['2026-W33', 4],
+      ['2026-W34', 4],
+      ['2026-W35', 4],
+      ['2026-W36', 4],
+    ],
   )
   // Auch über die Jahresgrenze hinweg – 2026 hat 53 Wochen.
   const yearEnd = planStarterItems([], '2026-W52')
@@ -55,13 +60,22 @@ test('Startpaket: jeder Inhalt ist vollständig «bereit»', () => {
   }
 })
 
-test('Startpaket: jede Quelle trägt Bezeichnung und Link zur Kirche', () => {
+test('Startpaket: Impuls und Quiz tragen immer einen Kirchen-Link', () => {
   for (const plan of planStarterItems([], '2026-W33')) {
-    assert.ok(plan.source.label.trim(), `${plan.id} ohne Quellenangabe`)
-    assert.ok(
-      plan.source.url.startsWith('https://www.churchofjesuschrist.org/'),
-      `${plan.id} verweist nicht auf churchofjesuschrist.org: ${plan.source.url}`,
-    )
+    if (plan.kind === 'impuls' || plan.kind === 'quiz') {
+      assert.ok(plan.source?.label.trim(), `${plan.id} ohne Quellenangabe`)
+      assert.ok(
+        plan.source?.url.startsWith('https://www.churchofjesuschrist.org/'),
+        `${plan.id} verweist nicht auf churchofjesuschrist.org: ${plan.source?.url}`,
+      )
+    } else if (plan.source) {
+      // Aufgaben dürfen ohne Quelle sein – wenn eine dasteht, gehört sie zur Kirche.
+      assert.ok(
+        plan.source.url === '' ||
+          plan.source.url.startsWith('https://www.churchofjesuschrist.org/'),
+        `${plan.id}: fremde Quelle ${plan.source.url}`,
+      )
+    }
   }
 })
 
@@ -90,8 +104,8 @@ test('Startpaket: die Lösungen stimmen mit den markierten Antworten überein', 
 test('Startpaket: belegte Plätze bleiben unangetastet – der Inhalt geht in den Pool', () => {
   const plans = planStarterItems(
     [
-      { week: '2026-W33', kind: 'impuls' },
-      { week: '2026-W34', kind: 'quiz' },
+      { id: 'eigenes-1', week: '2026-W33', kind: 'impuls' },
+      { id: 'eigenes-2', week: '2026-W34', kind: 'quiz' },
     ],
     '2026-W33',
   )
@@ -101,6 +115,31 @@ test('Startpaket: belegte Plätze bleiben unangetastet – der Inhalt geht in de
   assert.equal(byId.get('starter-w2-impuls')?.week, '2026-W34')
   assert.equal(byId.get('starter-w2-quiz')?.week, null)
   // Der Fragenpool zählt nicht als belegter Platz.
-  const withPool = planStarterItems([{ week: null, kind: 'impuls' }], '2026-W33')
+  const withPool = planStarterItems([{ id: 'pool-1', week: null, kind: 'impuls' }], '2026-W33')
   assert.equal(withPool.find((plan) => plan.id === 'starter-w1-impuls')?.week, '2026-W33')
+})
+
+test('Startpaket: was schon da ist, wird nicht noch einmal geplant', () => {
+  // Das Paket wurde früher eingespielt, als es nur Impuls und Quiz kannte –
+  // ein zweiter Lauf holt genau die neuen Aufgaben nach.
+  const existing = []
+  for (let week = 1; week <= 4; week += 1) {
+    existing.push(
+      { id: `starter-w${week}-impuls`, week: `2026-W3${2 + week}`, kind: 'impuls' as const },
+      { id: `starter-w${week}-quiz`, week: `2026-W3${2 + week}`, kind: 'quiz' as const },
+    )
+  }
+  const plans = planStarterItems(existing, '2026-W33')
+  assert.equal(plans.length, 8)
+  assert.ok(plans.every((plan) => plan.kind === 'wochenziel' || plan.kind === 'tageschallenge'))
+  // Und wer alles hat, bekommt nichts angeboten.
+  const complete = planStarterItems(
+    planStarterItems([], '2026-W33').map((plan) => ({
+      id: plan.id,
+      week: plan.week,
+      kind: plan.kind,
+    })),
+    '2026-W33',
+  )
+  assert.equal(complete.length, 0)
 })

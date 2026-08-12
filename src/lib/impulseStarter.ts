@@ -29,13 +29,16 @@ const SCRIPTURES = 'https://www.churchofjesuschrist.org/study/scriptures'
 interface StarterContent {
   title: string
   body: string
-  source: ImpulseSource
+  /** Bei Impuls und Quiz Pflicht; Aufgaben dürfen ohne Fundstelle sein. */
+  source?: ImpulseSource
   quiz?: ImpulseQuiz
 }
 
 export interface StarterWeek {
   impuls: StarterContent
   quiz: StarterContent
+  wochenziel: StarterContent
+  tageschallenge: StarterContent
 }
 
 export const STARTER_WEEKS: StarterWeek[] = [
@@ -73,6 +76,18 @@ export const STARTER_WEEKS: StarterWeek[] = [
           'und 56 bis 58. Ihr Geheimnis verrät Alma 56:47–48: Sie zweifelten nicht, ' +
           'denn sie hatten es von ihren Müttern gelernt.',
       },
+    },
+    wochenziel: {
+      title: 'Lies diese Woche ein Kapitel im Buch Mormon',
+      body:
+        'Egal welches – eines, das dich gerade anspricht. Der Haken gehört dir, ' +
+        'sobald es gelesen ist.',
+      source: { label: 'Buch Mormon', url: `${SCRIPTURES}/bofm?lang=deu` },
+    },
+    tageschallenge: {
+      title: 'Lies jeden Tag einen Vers',
+      body: 'Einer genügt – morgens im Bus oder abends im Bett.',
+      source: { label: 'Buch Mormon', url: `${SCRIPTURES}/bofm?lang=deu` },
     },
   },
 
@@ -114,6 +129,18 @@ export const STARTER_WEEKS: StarterWeek[] = [
           'gewesen.',
       },
     },
+    wochenziel: {
+      title: 'Schau oder hör dir eine Ansprache der letzten Generalkonferenz an',
+      body: 'Such dir selbst eine aus – vielleicht steckt darin deine nächste Quizidee.',
+      source: {
+        label: 'Generalkonferenz',
+        url: 'https://www.churchofjesuschrist.org/study/general-conference?lang=deu',
+      },
+    },
+    tageschallenge: {
+      title: 'Bete jeden Morgen kurz',
+      body: 'Ein Satz zählt. Der Tag beginnt anders, wenn er so beginnt.',
+    },
   },
 
   /* ---------------- Woche 3 ---------------- */
@@ -154,6 +181,18 @@ export const STARTER_WEEKS: StarterWeek[] = [
           'Sündenvergebung, viertens das Händeauflegen zur Gabe des Heiligen Geistes.',
       },
     },
+    wochenziel: {
+      title: 'Lern Lehre und Bündnisse 6:36 auswendig',
+      body: 'Elf Worte für die Hosentasche – am Sonntag kannst du sie aufsagen.',
+      source: {
+        label: 'Lehre und Bündnisse 6:36',
+        url: `${SCRIPTURES}/dc-testament/dc/6?lang=deu&id=p36#p36`,
+      },
+    },
+    tageschallenge: {
+      title: 'Ein Satz am Abend: Wo hast du heute Gott gespürt?',
+      body: 'Ein Notizbuch oder die Notizen-App genügt.',
+    },
   },
 
   /* ---------------- Woche 4 ---------------- */
@@ -187,6 +226,18 @@ export const STARTER_WEEKS: StarterWeek[] = [
           'man spüren. Der Versuch selbst ist schon Glaube.',
       },
     },
+    wochenziel: {
+      title: 'Erzähl jemandem von Almas Samenkorn',
+      body:
+        'Familie, Kollege, Mitschülerin – erklär das Experiment aus Alma 32 in ' +
+        'deinen eigenen Worten.',
+      source: { label: 'Alma 32', url: `${SCRIPTURES}/bofm/alma/32?lang=deu` },
+    },
+    tageschallenge: {
+      title: 'Lies jeden Tag einen Vers in Alma 32',
+      body: 'Sieben Tage, sieben Verse – das Kapitel trägt dich durch die Woche.',
+      source: { label: 'Alma 32', url: `${SCRIPTURES}/bofm/alma/32?lang=deu` },
+    },
   },
 ]
 
@@ -199,22 +250,29 @@ export interface StarterPlan {
   status: 'ready'
   title: string
   body: string
-  source: ImpulseSource
+  source: ImpulseSource | null
   quiz: ImpulseQuiz | null
 }
+
+/** Die Arten, die das Paket je Woche mitbringt – in Lesereihenfolge. */
+const STARTER_KINDS: ImpulseKind[] = ['impuls', 'wochenziel', 'quiz', 'tageschallenge']
 
 /**
  * Verteilt das Startpaket auf die laufende und die nächsten drei Wochen.
  *
- * Ein Platz, der schon belegt ist (gleiche Woche, gleiche Art), bleibt
- * unangetastet – der betreffende Inhalt geht stattdessen in den
- * Fragenpool (`week: null`) und kann von Hand geplant werden. So
- * überschreibt das Paket nie, was die Redaktion bereits erfasst hat.
+ * Zwei Rücksichten auf das, was schon da ist: Ein Inhalt, dessen feste ID
+ * bereits existiert, wird gar nicht erst geplant – so holt ein späterer
+ * Lauf nur nach, was fehlt (etwa die Aufgaben, wenn das Paket vor ihrer
+ * Einführung eingespielt wurde), ohne Bearbeitetes zu überschreiben. Und
+ * ein Platz, den die Redaktion selbst belegt hat (gleiche Woche, gleiche
+ * Art), bleibt unangetastet – der betreffende Inhalt geht stattdessen in
+ * den Fragenpool (`week: null`) und kann von Hand geplant werden.
  */
 export function planStarterItems(
-  existing: Pick<ImpulseItem, 'week' | 'kind'>[],
+  existing: Pick<ImpulseItem, 'id' | 'week' | 'kind'>[],
   todayKey: string,
 ): StarterPlan[] {
+  const existingIds = new Set(existing.map((item) => item.id))
   const taken = new Set(
     existing
       .filter((item) => typeof item.week === 'string')
@@ -224,17 +282,19 @@ export function planStarterItems(
   const plans: StarterPlan[] = []
   for (const [index, starter] of STARTER_WEEKS.entries()) {
     const week = weekKeyOffset(todayKey, index)
-    for (const kind of ['impuls', 'quiz'] as ImpulseKind[]) {
-      const content = kind === 'impuls' ? starter.impuls : starter.quiz
+    for (const kind of STARTER_KINDS) {
+      const id = `starter-w${index + 1}-${kind}`
+      if (existingIds.has(id)) continue
+      const content = starter[kind as keyof StarterWeek]
       const free = week !== null && !taken.has(`${week}·${kind}`)
       plans.push({
-        id: `starter-w${index + 1}-${kind}`,
+        id,
         week: free ? week : null,
         kind,
         status: 'ready',
         title: content.title,
         body: content.body,
-        source: content.source,
+        source: content.source ?? null,
         quiz: kind === 'quiz' ? (content.quiz ?? null) : null,
       })
     }

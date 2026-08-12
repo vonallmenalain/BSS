@@ -117,6 +117,8 @@ export const COLLECTIONS = {
   impulseItems: 'impulseItems',
   /** Eine Antwort pro Person und Quizfrage, Dokument-ID ist «{itemId}_{uid}» */
   impulseAnswers: 'impulseAnswers',
+  /** Persönlicher Stand im Bereich «Impuls» (Ziel, Tage), Dokument-ID ist die UID */
+  impulseProgress: 'impulseProgress',
   /** Wer wann da war und was sich dabei geändert hat – liest nur der Administrator */
   accessLog: 'accessLog',
 } as const

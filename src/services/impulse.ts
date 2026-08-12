@@ -1,5 +1,7 @@
 import {
   addDoc,
+  arrayRemove,
+  arrayUnion,
   collection,
   deleteDoc,
   doc,
@@ -148,6 +150,54 @@ export async function deleteImpulseItem(
 }
 
 /**
+ * Das Wochenziel abhaken – oder den Haken zurücknehmen.
+ *
+ * Selbstauskunft, gespeichert am eigenen Fortschrittsdokument (die UID
+ * ist die Dokument-ID, die Regeln lassen niemanden für andere abhaken).
+ * Der Vorname wird mitgeschrieben, damit die Gruppenleiste Namen zeigen
+ * kann, ohne fremde Profile zu lesen.
+ */
+export async function setImpulseWeekGoal(
+  user: { uid: string; displayName: string },
+  week: string,
+  done: boolean,
+): Promise<SaveOutcome> {
+  return commit(
+    setDoc(
+      doc(db, COLLECTIONS.impulseProgress, user.uid),
+      {
+        uid: user.uid,
+        firstName: impulseFirstName(user.displayName),
+        weeks: { [week]: { goal: done } },
+        updatedAt: serverTimestamp(),
+      },
+      { merge: true },
+    ),
+  )
+}
+
+/** Einen Tag der Tages-Challenge abhaken – oder den Haken zurücknehmen. */
+export async function setImpulseChallengeDay(
+  user: { uid: string; displayName: string },
+  week: string,
+  day: string,
+  checked: boolean,
+): Promise<SaveOutcome> {
+  return commit(
+    setDoc(
+      doc(db, COLLECTIONS.impulseProgress, user.uid),
+      {
+        uid: user.uid,
+        firstName: impulseFirstName(user.displayName),
+        weeks: { [week]: { days: checked ? arrayUnion(day) : arrayRemove(day) } },
+        updatedAt: serverTimestamp(),
+      },
+      { merge: true },
+    ),
+  )
+}
+
+/**
  * Das Startpaket anlegen – vier Wochen Inhalt in einem Zug.
  *
  * Die festen Dokument-IDs («starter-w1-impuls» …) machen den Lauf
@@ -181,6 +231,11 @@ export async function createStarterItems(
  * wenn das Konto später verschwindet – die AP's können keine fremden
  * Profile nachschlagen.
  */
+/** Der Vorname – mehr braucht der Bereich nicht von einem Namen. */
+function impulseFirstName(displayName: string): string {
+  return displayName.trim().split(/\s+/)[0] || displayName
+}
+
 export async function answerImpulseQuiz(
   item: ImpulseItem,
   user: { uid: string; displayName: string },
@@ -192,7 +247,7 @@ export async function answerImpulseQuiz(
       ? reply.choiceIndex === quiz.answerIndex
       : null
 
-  const firstName = user.displayName.trim().split(/\s+/)[0] || user.displayName
+  const firstName = impulseFirstName(user.displayName)
 
   return commit(
     setDoc(doc(db, COLLECTIONS.impulseAnswers, impulseAnswerId(item.id, user.uid)), {

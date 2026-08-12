@@ -2,18 +2,24 @@ import assert from 'node:assert/strict'
 import { test } from 'node:test'
 
 import {
+  computeStreak,
+  earnedImpulseBadges,
   formatWeekRange,
   impulseAnswerId,
   impulseWeekKey,
   itemsForWeek,
+  monthOfWeek,
+  participatedWeeks,
   readyProblems,
   upcomingWeekKeys,
   visibleImpulseItems,
+  weekDays,
   weekEnd,
   weekKeyOffset,
+  weekParticipants,
   weekStart,
 } from '../src/lib/impulse.ts'
-import type { ImpulseItem, ImpulseQuiz } from '../src/lib/types.ts'
+import type { ImpulseItem, ImpulseProgress, ImpulseQuiz } from '../src/lib/types.ts'
 
 /*
  * Die Wochenrechnung des Bereichs «Impuls».
@@ -110,15 +116,17 @@ test('visibleImpulseItems: bereit, geplant und die Woche hat begonnen', () => {
   )
 })
 
-test('itemsForWeek: der Impuls steht vor der Quizfrage', () => {
+test('itemsForWeek: Impuls, Ziel, Frage, Tages-Challenge – in dieser Folge', () => {
   const items = [
+    item({ id: 'challenge', week: '2026-W33', kind: 'tageschallenge' }),
     item({ id: 'frage', week: '2026-W33', kind: 'quiz' }),
+    item({ id: 'ziel', week: '2026-W33', kind: 'wochenziel' }),
     item({ id: 'impuls', week: '2026-W33', kind: 'impuls' }),
     item({ id: 'andere-woche', week: '2026-W34', kind: 'impuls' }),
   ]
   assert.deepEqual(
     itemsForWeek(items, '2026-W33').map((entry) => entry.id),
-    ['impuls', 'frage'],
+    ['impuls', 'ziel', 'frage', 'challenge'],
   )
 })
 
@@ -139,11 +147,19 @@ test('readyProblems: ein vollständiger Inhalt hat keine', () => {
   )
 })
 
-test('readyProblems: die Quelle ist Pflicht', () => {
+test('readyProblems: die Quelle ist Pflicht – bei Impuls und Quiz', () => {
   assert.deepEqual(readyProblems(item({ kind: 'impuls' })), ['Die Quelle fehlt.'])
   assert.deepEqual(readyProblems(item({ kind: 'impuls', source: { label: '  ', url: '' } })), [
     'Die Quelle fehlt.',
   ])
+})
+
+test('readyProblems: Aufgaben brauchen keine Fundstelle', () => {
+  // «Bete jeden Abend» hat keine – das darf trotzdem «bereit» sein.
+  assert.deepEqual(readyProblems(item({ kind: 'wochenziel' })), [])
+  assert.deepEqual(readyProblems(item({ kind: 'tageschallenge' })), [])
+  // Ohne Aufgabe geht es trotzdem nicht.
+  assert.deepEqual(readyProblems(item({ kind: 'wochenziel', title: ' ' })), ['Der Titel fehlt.'])
 })
 
 test('readyProblems: eine Auswahlfrage braucht Antworten und die Markierung', () => {
@@ -178,5 +194,154 @@ test('readyProblems: ohne Titel keine Veröffentlichung', () => {
   assert.deepEqual(
     readyProblems(item({ title: '  ', source: { label: 'Alma 32', url: '' } })),
     ['Der Titel fehlt.'],
+  )
+})
+
+/* ------------------------------------------------------------------ */
+/* Beteiligung, Serie und Abzeichen                                    */
+/* ------------------------------------------------------------------ */
+
+test('weekDays: Montag bis Sonntag als ISO-Daten', () => {
+  assert.deepEqual(weekDays('2026-W33'), [
+    '2026-08-10',
+    '2026-08-11',
+    '2026-08-12',
+    '2026-08-13',
+    '2026-08-14',
+    '2026-08-15',
+    '2026-08-16',
+  ])
+  assert.deepEqual(weekDays('quatsch'), [])
+})
+
+test('monthOfWeek: der Monat, in dem die Woche beginnt', () => {
+  assert.equal(monthOfWeek('2026-W33'), '2026-08')
+  // Die Woche 1 des Jahres 2026 beginnt noch im Dezember 2025.
+  assert.equal(monthOfWeek('2026-W01'), '2025-12')
+  assert.equal(monthOfWeek('quatsch'), null)
+})
+
+test('participatedWeeks: Ziel, Tage oder Antwort – jedes davon zählt', () => {
+  const weekOfItem = (itemId: string) => (itemId === 'frage-33' ? '2026-W33' : null)
+  const participated = participatedWeeks(
+    {
+      weeks: {
+        '2026-W30': { goal: true },
+        '2026-W31': { days: ['2026-07-28'] },
+        '2026-W32': { goal: false, days: [] },
+      },
+    },
+    [{ itemId: 'frage-33' }, { itemId: 'geloescht' }],
+    weekOfItem,
+  )
+  assert.deepEqual([...participated].sort(), ['2026-W30', '2026-W31', '2026-W33'])
+})
+
+test('computeStreak: Wochen in Folge, die laufende zählt sofort mit', () => {
+  assert.deepEqual(computeStreak(new Set(), '2026-W33'), { current: 0, best: 0 })
+  assert.deepEqual(
+    computeStreak(new Set(['2026-W30', '2026-W31', '2026-W32', '2026-W33']), '2026-W33'),
+    { current: 4, best: 4 },
+  )
+})
+
+test('computeStreak: die laufende Woche ist neutral, solange sie offen ist', () => {
+  // Montagmorgen: W33 hat begonnen, noch nichts abgehakt – die Serie hält.
+  assert.deepEqual(computeStreak(new Set(['2026-W31', '2026-W32']), '2026-W33'), {
+    current: 2,
+    best: 2,
+  })
+})
+
+test('computeStreak: eine Jokerwoche pro Monat überbrückt, zählt aber nicht', () => {
+  // W32 (beginnt im August) verpasst – der August-Joker fängt sie auf.
+  assert.deepEqual(
+    computeStreak(new Set(['2026-W30', '2026-W31', '2026-W33']), '2026-W33'),
+    { current: 3, best: 3 },
+  )
+})
+
+test('computeStreak: die zweite verpasste Woche im selben Monat reisst die Serie', () => {
+  // W30 und W31 beginnen beide im Juli – ein Joker, dann ist Schluss.
+  assert.deepEqual(
+    computeStreak(new Set(['2026-W28', '2026-W29', '2026-W32', '2026-W33']), '2026-W33'),
+    { current: 2, best: 2 },
+  )
+})
+
+test('computeStreak: zwei verpasste Wochen über die Monatsgrenze werden getragen', () => {
+  // W31 beginnt im Juli, W32 im August – zwei Monate, zwei Joker.
+  assert.deepEqual(
+    computeStreak(new Set(['2026-W29', '2026-W30', '2026-W33']), '2026-W33'),
+    { current: 3, best: 3 },
+  )
+})
+
+test('computeStreak: die beste Serie überlebt den Riss', () => {
+  const participated = new Set([
+    '2026-W20',
+    '2026-W21',
+    '2026-W22',
+    '2026-W23',
+    '2026-W24',
+    '2026-W25',
+    '2026-W32',
+    '2026-W33',
+  ])
+  assert.deepEqual(computeStreak(participated, '2026-W33'), { current: 2, best: 6 })
+})
+
+test('earnedImpulseBadges: Meilensteine, einmal erreicht, bleiben', () => {
+  const none = earnedImpulseBadges({
+    participated: new Set(),
+    bestStreak: 0,
+    quizAnswers: 0,
+    weeks: undefined,
+  })
+  assert.deepEqual(none, [])
+
+  const earned = earnedImpulseBadges({
+    participated: new Set(['2026-W33']),
+    bestStreak: 4,
+    quizAnswers: 10,
+    weeks: {
+      '2026-W32': {
+        days: [
+          '2026-08-03',
+          '2026-08-04',
+          '2026-08-05',
+          '2026-08-06',
+          '2026-08-07',
+          '2026-08-08',
+          '2026-08-09',
+        ],
+      },
+    },
+  })
+  assert.deepEqual(
+    earned.map((badge) => badge.id),
+    ['dabei', 'volle-woche', 'vier-wochen', 'zehn-fragen'],
+  )
+})
+
+test('weekParticipants: Vornamen aus Fortschritt und Antworten, ohne Doppelte', () => {
+  const progress: ImpulseProgress[] = [
+    { id: 'a', uid: 'a', firstName: 'Levin', weeks: { '2026-W33': { goal: true } } },
+    { id: 'b', uid: 'b', firstName: 'Dario', weeks: { '2026-W33': { days: ['2026-08-11'] } } },
+    { id: 'c', uid: 'c', firstName: 'Nico', weeks: { '2026-W32': { goal: true } } },
+  ]
+  const answers = [
+    { id: 'f_a', itemId: 'frage-33', uid: 'a', firstName: 'Levin', correct: true },
+    { id: 'f_d', itemId: 'frage-33', uid: 'd', firstName: 'Elias', correct: null },
+  ]
+  const participants = weekParticipants(
+    progress,
+    answers,
+    (itemId) => (itemId === 'frage-33' ? '2026-W33' : null),
+    '2026-W33',
+  )
+  assert.deepEqual(
+    participants.map((person) => person.firstName),
+    ['Dario', 'Elias', 'Levin'],
   )
 })

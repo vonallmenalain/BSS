@@ -413,6 +413,26 @@ service cloud.firestore {
       allow delete: if impulseWrite();
     }
 
+    /*
+     * Der persönliche Fortschritt – Wochenziel und Tages-Challenge.
+     *
+     * Ein Dokument pro Konto, die UID ist die Dokument-ID. Geschrieben
+     * wird es ausschliesslich von der Person selbst – Selbstauskunft
+     * heisst auch: Niemand hakt für jemand anderen ab, und anders als
+     * bei den Antworten darf umgehakt werden (ein Versehen beim Ziel ist
+     * kein Quizversuch). Lesen dürfen alle im Bereich – die Gruppenleiste
+     * «diese Woche dabei» lebt davon. Wegräumen kann die Redaktion.
+     */
+    match /impulseProgress/{userId} {
+      allow read: if impulseAccess();
+
+      allow create, update: if impulseAccess()
+        && request.auth.uid == userId
+        && request.resource.data.uid == userId;
+
+      allow delete: if impulseWrite();
+    }
+
     /* ---------------- Einstellungen ---------------- */
 
     // Lesen darf auch, wer nur den AP-Kalender sieht: Der Name der Gemeinde

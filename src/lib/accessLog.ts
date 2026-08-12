@@ -46,6 +46,7 @@ export const AREA_LABELS: Record<string, string> = {
   calendarFeeds: 'Kalender-Links',
   impulseItems: 'Impuls',
   impulseAnswers: 'Impuls · Antworten',
+  impulseProgress: 'Impuls · Fortschritt',
   settings: 'Einstellungen',
 }
 

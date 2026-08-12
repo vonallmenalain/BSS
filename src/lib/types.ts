@@ -2797,12 +2797,23 @@ export interface CalendarFeed extends WithId {
  * `lib/impulse`.
  */
 
-/** Was ein Inhalt ist. Etappe 1 kennt den Wochenimpuls und die Quizfrage. */
-export type ImpulseKind = 'impuls' | 'quiz'
+/**
+ * Was ein Inhalt ist.
+ *
+ * Vier Arten, alle wochenweise geplant: Der **Wochenimpuls** und die
+ * **Quizfrage** sind Lesestoff; das **Wochenziel** und die
+ * **Tages-Challenge** sind Aufgaben – das eine für die ganze Woche, das
+ * andere Tag für Tag abhakbar. Abgehakt wird per Selbstauskunft, und der
+ * Stand liegt am eigenen Fortschrittsdokument (`ImpulseProgress`), nicht
+ * am Inhalt.
+ */
+export type ImpulseKind = 'impuls' | 'quiz' | 'wochenziel' | 'tageschallenge'
 
 export const IMPULSE_KIND_LABELS: Record<ImpulseKind, string> = {
   impuls: 'Wochenimpuls',
   quiz: 'Quizfrage',
+  wochenziel: 'Wochenziel',
+  tageschallenge: 'Tages-Challenge',
 }
 
 /**
@@ -2906,5 +2917,34 @@ export interface ImpulseAnswer extends WithId {
    */
   correct: boolean | null
   answeredAt?: TS
+  updatedAt?: TS
+}
+
+/** Der Stand einer Person in einer Woche – was sie selbst abgehakt hat. */
+export interface ImpulseWeekProgress {
+  /** Wochenziel geschafft – Selbstauskunft, umhakbar. */
+  goal?: boolean
+  /** Abgehakte Tage der Tages-Challenge, als «2026-08-11». */
+  days?: string[]
+}
+
+/**
+ * Der persönliche Fortschritt im Bereich «Impuls» – ein Dokument pro
+ * Konto, die UID ist die Dokument-ID. Geschrieben wird es nur von der
+ * Person selbst (siehe `firestore.rules`); der Vorname steht dabei, damit
+ * die Gruppenleiste Namen zeigen kann, ohne fremde Profile zu lesen.
+ *
+ * Bewusst **ohne** gespeicherte Serie und Abzeichen: Beides wird beim
+ * Lesen berechnet (`lib/impulse`). Ein gespeicherter Wert veraltete
+ * stillschweigend – eine verpasste Woche bricht die Serie ja gerade dann,
+ * wenn niemand etwas schreibt –, und bei der Grösse eines Kollegiums
+ * kostet das Rechnen nichts.
+ */
+export interface ImpulseProgress extends WithId {
+  uid: string
+  firstName: string
+  /** Der Stand je Woche, Schlüssel ist «2026-W34». */
+  weeks?: Record<string, ImpulseWeekProgress>
+  createdAt?: TS
   updatedAt?: TS
 }
