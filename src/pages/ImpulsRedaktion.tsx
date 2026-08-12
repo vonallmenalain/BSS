@@ -5,6 +5,7 @@ import {
   ChevronDown,
   ChevronRight,
   Eye,
+  LayoutList,
   Lightbulb,
   Plus,
   Repeat,
@@ -84,7 +85,17 @@ export function ImpulsRedaktion() {
     null,
   )
   const openNew = (kind: ImpulseKind, week: string | null) =>
-    setEditor({ itemId: null, initial: emptyImpulseItem(kind, week) })
+    setEditor({
+      itemId: null,
+      initial: emptyImpulseItem(
+        kind,
+        week,
+        // Neue Feed-Karten reihen sich hinten ein.
+        kind === 'feed'
+          ? itemsState.data.filter((item) => item.week === week && item.kind === 'feed').length + 1
+          : null,
+      ),
+    })
   const openItem = (item: ImpulseItem) =>
     setEditor({ itemId: item.id, initial: toImpulseInput(item) })
 
@@ -158,9 +169,10 @@ export function ImpulsRedaktion() {
               Startpaket: vier Wochen aus den Schriften
             </h2>
             <p className="hint mt-1 mb-3">
-              Je Woche ein Impuls, ein Wochenziel, eine Quizfrage und eine Tages-Challenge –
-              1 Nephi 3:7, das Haus auf dem Felsen, Lehre und Bündnisse 6:36 und Almas
-              Samenkorn, dazu Auswahl-, Emoji-, Reihenfolge- und Suchfrage. Alles «bereit»:
+              Je Woche ein Impuls, ein Wochenziel, eine Quizfrage, eine Tages-Challenge und
+              drei Feed-Karten – 1 Nephi 3:7, das Haus auf dem Felsen, Lehre und Bündnisse
+              6:36 und Almas Samenkorn, dazu Auswahl-, Emoji-, Reihenfolge- und Suchfrage.
+              Alles «bereit»:
               Die laufende Woche erscheint sofort, drei weitere warten auf ihren Montag.
               Eingespielt wird nur, was noch fehlt ({starterPlans.length}{' '}
               {starterPlans.length === 1 ? 'Inhalt' : 'Inhalte'}); Vorhandenes und belegte
@@ -210,16 +222,17 @@ export function ImpulsRedaktion() {
                 </div>
                 <div className="mt-2 grid gap-2 sm:grid-cols-2">
                   {IMPULSE_KIND_ORDER.map((kind) => (
-                    <SlotCell
-                      key={kind}
-                      kind={kind}
-                      items={itemsState.data.filter(
-                        (item) => item.week === week && item.kind === kind,
-                      )}
-                      answerCount={answerCount}
-                      onOpen={openItem}
-                      onCreate={() => openNew(kind, week)}
-                    />
+                    <div key={kind} className={kind === 'feed' ? 'sm:col-span-2' : undefined}>
+                      <SlotCell
+                        kind={kind}
+                        items={itemsForWeek(itemsState.data, week).filter(
+                          (item) => item.kind === kind,
+                        )}
+                        answerCount={answerCount}
+                        onOpen={openItem}
+                        onCreate={() => openNew(kind, week)}
+                      />
+                    </div>
                   ))}
                 </div>
               </li>
@@ -332,9 +345,16 @@ const KIND_ICONS = {
   quiz: Search,
   wochenziel: CheckCircle2,
   tageschallenge: Repeat,
+  feed: LayoutList,
 } as const
 
-/** Ein Platz im Wochenplan: gefüllt eine Schaltfläche, leer eine Einladung. */
+/**
+ * Ein Platz im Wochenplan: gefüllt eine Schaltfläche, leer eine Einladung.
+ *
+ * Die vier Einzel-Plätze laden nur ein, solange sie leer sind; der Feed
+ * lädt weiter ein, bis seine Woche voll ist – er ist die eine Art mit
+ * mehreren Karten, endlich bleibt er trotzdem (höchstens zehn).
+ */
 function SlotCell({
   kind,
   items,
@@ -349,13 +369,14 @@ function SlotCell({
   onCreate: () => void
 }) {
   const Icon = KIND_ICONS[kind]
+  const showAdd = items.length === 0 || (kind === 'feed' && items.length < 10)
 
   if (items.length === 0) {
     return (
       <button
         type="button"
         onClick={onCreate}
-        className="hint flex items-center justify-center gap-1.5 rounded-lg border border-dashed border-slate-300 p-3 transition hover:border-slate-400 hover:text-slate-700 dark:border-slate-700 dark:hover:border-slate-500 dark:hover:text-slate-200"
+        className="hint flex w-full items-center justify-center gap-1.5 rounded-lg border border-dashed border-slate-300 p-3 transition hover:border-slate-400 hover:text-slate-700 dark:border-slate-700 dark:hover:border-slate-500 dark:hover:text-slate-200"
       >
         <Plus className="size-4" aria-hidden />
         {IMPULSE_KIND_LABELS[kind]}
@@ -394,6 +415,16 @@ function SlotCell({
           </span>
         </button>
       ))}
+      {showAdd && (
+        <button
+          type="button"
+          onClick={onCreate}
+          className="hint flex w-full items-center justify-center gap-1.5 rounded-lg border border-dashed border-slate-300 p-2 transition hover:border-slate-400 hover:text-slate-700 dark:border-slate-700 dark:hover:border-slate-500 dark:hover:text-slate-200"
+        >
+          <Plus className="size-4" aria-hidden />
+          Karte
+        </button>
+      )}
     </div>
   )
 }

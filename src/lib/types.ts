@@ -2807,13 +2807,14 @@ export interface CalendarFeed extends WithId {
  * Stand liegt am eigenen Fortschrittsdokument (`ImpulseProgress`), nicht
  * am Inhalt.
  */
-export type ImpulseKind = 'impuls' | 'quiz' | 'wochenziel' | 'tageschallenge'
+export type ImpulseKind = 'impuls' | 'quiz' | 'wochenziel' | 'tageschallenge' | 'feed'
 
 export const IMPULSE_KIND_LABELS: Record<ImpulseKind, string> = {
   impuls: 'Wochenimpuls',
   quiz: 'Quizfrage',
   wochenziel: 'Wochenziel',
   tageschallenge: 'Tages-Challenge',
+  feed: 'Feed-Karte',
 }
 
 /**
@@ -2882,10 +2883,17 @@ export interface ImpulseItem extends WithId {
   week: string | null
   kind: ImpulseKind
   status: ImpulseStatus
-  /** Überschrift; bei der Quizfrage die Frage selbst. */
+  /** Überschrift; bei der Quizfrage die Frage, bei der Feed-Karte ihr Text. */
   title: string
-  /** Impuls: die Hinführung, zwei, drei Sätze. Quiz: optionale Ergänzung. */
+  /** Impuls: die Hinführung, zwei, drei Sätze. Sonst optionale Ergänzung. */
   body?: string
+  /**
+   * Platz im Feed der Woche – nur für Feed-Karten von Belang.
+   *
+   * Der Feed ist redaktionell und endlich: Die Reihenfolge legt die
+   * Redaktion, kein Algorithmus. Fehlt das Feld, kommt die Karte ans Ende.
+   */
+  order?: number
   quiz?: ImpulseQuiz | null
   source?: ImpulseSource | null
   createdAt?: TS
@@ -2926,6 +2934,8 @@ export interface ImpulseWeekProgress {
   goal?: boolean
   /** Abgehakte Tage der Tages-Challenge, als «2026-08-11». */
   days?: string[]
+  /** Den Feed der Woche bis zur Schlusskarte durchgetippt. */
+  feed?: boolean
 }
 
 /**
@@ -2945,6 +2955,16 @@ export interface ImpulseProgress extends WithId {
   firstName: string
   /** Der Stand je Woche, Schlüssel ist «2026-W34». */
   weeks?: Record<string, ImpulseWeekProgress>
+  /**
+   * «Amen» – die eine Reaktion des Feeds, als Liste von Inhalts-IDs.
+   *
+   * Am eigenen Dokument statt am Inhalt: Inhalte schreibt nur die
+   * Redaktion, und die Karte zeigt daraus Vornamen statt Zählstände –
+   * herzlicher als ein Like und ohne Wettbewerb.
+   */
+  amens?: string[]
+  /** Gemerkte Karten – die eigene Favoritensammlung, als Inhalts-IDs. */
+  favorites?: string[]
   createdAt?: TS
   updatedAt?: TS
 }

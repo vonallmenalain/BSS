@@ -39,6 +39,8 @@ export interface StarterWeek {
   quiz: StarterContent
   wochenziel: StarterContent
   tageschallenge: StarterContent
+  /** Der Feed der Woche, in Lesereihenfolge – endlich, wie das Konzept will. */
+  feed: StarterContent[]
 }
 
 export const STARTER_WEEKS: StarterWeek[] = [
@@ -89,6 +91,22 @@ export const STARTER_WEEKS: StarterWeek[] = [
       body: 'Einer genügt – morgens im Bus oder abends im Bett.',
       source: { label: 'Buch Mormon', url: `${SCRIPTURES}/bofm?lang=deu` },
     },
+    feed: [
+      {
+        title: '«Ich will hingehen und das tun, was der Herr geboten hat.»',
+        body: 'Nephi sagt zu, bevor er weiss, wie es gehen soll.',
+        source: { label: '1 Nephi 3:7', url: `${SCRIPTURES}/bofm/1-ne/3?lang=deu&id=p7#p7` },
+      },
+      {
+        title: 'Wusstest du? Das Buch Mormon enthält 15 Bücher.',
+        body: 'Vom ersten Buch Nephi bis zum Buch Moroni.',
+        source: { label: 'Buch Mormon', url: `${SCRIPTURES}/bofm?lang=deu` },
+      },
+      {
+        title: 'Zum Nachdenken: Was ist dein «Ich will hingehen»-Moment diese Woche?',
+        body: 'Die eine Sache, die du anpackst, obwohl sie schwer scheint.',
+      },
+    ],
   },
 
   /* ---------------- Woche 2 ---------------- */
@@ -141,6 +159,25 @@ export const STARTER_WEEKS: StarterWeek[] = [
       title: 'Bete jeden Morgen kurz',
       body: 'Ein Satz zählt. Der Tag beginnt anders, wenn er so beginnt.',
     },
+    feed: [
+      {
+        title: 'Hören und handeln – das ist der ganze Unterschied zwischen den beiden Bauleuten.',
+        body: 'Beide hörten dieselben Worte. Nur einer baute danach.',
+        source: {
+          label: 'Matthäus 7:24–27',
+          url: `${SCRIPTURES}/nt/matt/7?lang=deu&id=p24-p27#p24`,
+        },
+      },
+      {
+        title: 'Wusstest du? Die Bergpredigt umfasst drei Kapitel – Matthäus 5 bis 7.',
+        body: 'Das Gleichnis vom Hausbau ist ihr Schlusswort.',
+        source: { label: 'Matthäus 5–7', url: `${SCRIPTURES}/nt/matt/5?lang=deu` },
+      },
+      {
+        title: 'Zum Nachdenken: Welcher «Regen» prasselt gerade auf dein Haus?',
+        body: 'Und worauf steht es?',
+      },
+    ],
   },
 
   /* ---------------- Woche 3 ---------------- */
@@ -193,6 +230,24 @@ export const STARTER_WEEKS: StarterWeek[] = [
       title: 'Ein Satz am Abend: Wo hast du heute Gott gespürt?',
       body: 'Ein Notizbuch oder die Notizen-App genügt.',
     },
+    feed: [
+      {
+        title:
+          '«Denn Gott hat uns nicht einen Geist der Furchtsamkeit gegeben, sondern der Kraft und der Liebe und der Besonnenheit.»',
+        body: 'Paulus an seinen jungen Mitarbeiter Timotheus – und an dich.',
+        source: { label: '2 Timotheus 1:7', url: `${SCRIPTURES}/nt/2-tim/1?lang=deu&id=p7#p7` },
+      },
+      {
+        title:
+          'Wusstest du? Die 13 Glaubensartikel stammen aus einem Brief von Joseph Smith an einen Zeitungsredaktor.',
+        body: 'Dem «Wentworth-Brief» von 1842 – als knappe Antwort auf die Frage, was wir glauben.',
+        source: { label: 'Die Glaubensartikel', url: `${SCRIPTURES}/pgp/a-of-f/1?lang=deu` },
+      },
+      {
+        title: 'Zum Nachdenken: Wenn dich jemand fragt, was du glaubst – womit fängst du an?',
+        body: '',
+      },
+    ],
   },
 
   /* ---------------- Woche 4 ---------------- */
@@ -238,6 +293,24 @@ export const STARTER_WEEKS: StarterWeek[] = [
       body: 'Sieben Tage, sieben Verse – das Kapitel trägt dich durch die Woche.',
       source: { label: 'Alma 32', url: `${SCRIPTURES}/bofm/alma/32?lang=deu` },
     },
+    feed: [
+      {
+        title: '«Ihr empfangt keinen Zeugen, ehe euer Glaube nicht geprüft ist.»',
+        body: 'Erst der Schritt, dann die Gewissheit – nicht umgekehrt.',
+        source: { label: 'Ether 12:6', url: `${SCRIPTURES}/bofm/ether/12?lang=deu&id=p6#p6` },
+      },
+      {
+        title: 'Wusstest du? Almas Samenkorn-Rede galt Menschen, die man hinausgeworfen hatte.',
+        body:
+          'Die Zoramiten durften wegen ihrer Armut nicht in die Synagogen – gerade ihnen ' +
+          'traute Alma das Experiment des Glaubens zu.',
+        source: { label: 'Alma 32:2–5', url: `${SCRIPTURES}/bofm/alma/32?lang=deu&id=p2-p5#p2` },
+      },
+      {
+        title: 'Zum Nachdenken: Welchem kleinen Samenkorn gibst du diese Woche Platz?',
+        body: 'Und wie nährst du es?',
+      },
+    ],
   },
 ]
 
@@ -250,12 +323,19 @@ export interface StarterPlan {
   status: 'ready'
   title: string
   body: string
+  /** Platz im Feed – nur an Feed-Karten. */
+  order: number | null
   source: ImpulseSource | null
   quiz: ImpulseQuiz | null
 }
 
-/** Die Arten, die das Paket je Woche mitbringt – in Lesereihenfolge. */
-const STARTER_KINDS: ImpulseKind[] = ['impuls', 'wochenziel', 'quiz', 'tageschallenge']
+/** Die Einzel-Arten, die das Paket je Woche mitbringt – in Lesereihenfolge. */
+const STARTER_KINDS: Exclude<ImpulseKind, 'feed'>[] = [
+  'impuls',
+  'wochenziel',
+  'quiz',
+  'tageschallenge',
+]
 
 /**
  * Verteilt das Startpaket auf die laufende und die nächsten drei Wochen.
@@ -285,7 +365,7 @@ export function planStarterItems(
     for (const kind of STARTER_KINDS) {
       const id = `starter-w${index + 1}-${kind}`
       if (existingIds.has(id)) continue
-      const content = starter[kind as keyof StarterWeek]
+      const content = starter[kind]
       const free = week !== null && !taken.has(`${week}·${kind}`)
       plans.push({
         id,
@@ -294,8 +374,30 @@ export function planStarterItems(
         status: 'ready',
         title: content.title,
         body: content.body,
+        order: null,
         source: content.source ?? null,
         quiz: kind === 'quiz' ? (content.quiz ?? null) : null,
+      })
+    }
+
+    /*
+     * Der Feed hat mehrere Karten je Woche und keinen «belegten Platz»:
+     * Eigene Feed-Karten der Redaktion und die des Pakets vertragen sich
+     * nebeneinander – die Reihenfolge sagt `order`.
+     */
+    for (const [cardIndex, card] of starter.feed.entries()) {
+      const id = `starter-w${index + 1}-feed-${cardIndex + 1}`
+      if (existingIds.has(id)) continue
+      plans.push({
+        id,
+        week,
+        kind: 'feed',
+        status: 'ready',
+        title: card.title,
+        body: card.body,
+        order: cardIndex + 1,
+        source: card.source ?? null,
+        quiz: null,
       })
     }
   }

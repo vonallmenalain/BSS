@@ -1,10 +1,11 @@
 # Konzept «Impuls» – ein geistiger Bereich für die AP’s
 
 Stand: Die Entscheide vom 12. August 2026 sind eingearbeitet
-([Abschnitt 12](#12-entscheide)). Umgesetzt sind die Etappen 0 bis 2:
+([Abschnitt 12](#12-entscheide)). Umgesetzt sind die Etappen 0 bis 3:
 Zugang und Gerüst, Wochenimpuls und Quizfrage samt Redaktionsseite und
-Startpaket, dazu Wochenziel, Tages-Challenge, Serie, Abzeichen und
-Gruppenleiste. Der Bereich heisst «Impuls».
+Startpaket, Wochenziel, Tages-Challenge, Serie, Abzeichen und
+Gruppenleiste – und der endliche Impuls-Feed mit «Amen» und Favoriten.
+Der Bereich heisst «Impuls».
 
 ---
 
@@ -500,9 +501,14 @@ impulseComments/{id}           Beitrag zur Frage der Woche
 
 impulseProgress/{uid}          der persönliche Stand – schreibt nur die Person
                                ├─ firstName                 (mitgeschrieben)
-                               ├─ weeks     { «2026-W34»: { ziel,
+                               ├─ weeks     { «2026-W34»: { ziel, feed,
                                │              tage: [«2026-08-11», …] } }
-                               └─ favorites[]               gemerkte Karten (Etappe 3)
+                               ├─ amens[]                   «Amen» je Karte – am
+                               │             eigenen Dokument, nicht am Inhalt:
+                               │             Inhalte schreibt nur die Redaktion,
+                               │             und die Karte zeigt Vornamen statt
+                               │             Zählstände
+                               └─ favorites[]               gemerkte Karten
 
                                Serie, Abzeichen und Gruppenleiste werden beim
                                Lesen berechnet (lib/impulse) statt gespeichert:
@@ -573,7 +579,7 @@ ist der Bereich bereits benutzbar. Reihenfolge von 3 und 4 ist tauschbar.
 | 0 | **Zugang & Gerüst** *(umgesetzt)*: Flags samt Regelverriegelung und Regeltests, Route, Navigation, leere Wochen-Seite, Impuls-Haken in der Benutzerverwaltung | nur Admin | klein |
 | 1 | **Wochenimpuls & Quiz** *(umgesetzt)* mit sofortiger Auflösung; **Redaktions-Seite** (Wochenplan, Fragenpool, Vergangenes, Wochen-Vorschau «was sehen die AP’s», ohne zu speichern); **Startpaket** mit vier Wochen aus den Schriften zum Einspielen – weitere Wochen produziert die Redaktion laufend | Admin, dann 1–2 Pilot-AP’s | mittel |
 | 2 | **Wochenziel, Tages-Challenge, Serie, Abzeichen, Gruppenleiste** *(umgesetzt)* – Aufgaben als planbare Wochen-Inhalte, Serie mit Jokerwoche pro Monat, Abzeichen als Meilensteine, Gruppenleiste mit Vornamen | Pilotgruppe → alle AP’s | mittel |
-| 3 | **Feed** mit Amen und Favoriten | alle mit Flag | mittel |
+| 3 | **Feed** mit Amen und Favoriten *(umgesetzt)* – Vollbild mit Wisch-Karten und Schlusskarte; unter dem «Amen» stehen Vornamen statt Zählstände, die Schlusskarte zählt zur Wochenbeteiligung, «Gemerkt» sammelt Favoriten | alle mit Flag | mittel |
 | 4 | **Frage der Woche** mit Antworten, Amen und Moderation | alle mit Flag | mittel |
 | 5 | **Mitmach-Ecke, Push-Erinnerung, Feinschliff**; ggf. Öffnung über die AP’s hinaus | nach Bedarf | je klein |
 
