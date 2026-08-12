@@ -463,6 +463,27 @@ export interface AppUser extends WithId {
   memberId?: string | null
   /** Gemerkte Darstellung des Aktivitätenplans – gilt auf jedem Gerät */
   apView?: ApView
+  /**
+   * Darf den Bereich «Impuls» sehen – den geistigen Bereich für die AP’s
+   * (siehe docs/KONZEPT-IMPULS.md).
+   *
+   * Ein Schalter am Konto und keine Rolle: Der Zugang ist unabhängig davon,
+   * ob jemand nur den AP-Kalender liest oder Vollzugriff hat, und er wird
+   * pro Konto vergeben. Setzen kann ihn allein das Administrator-Konto –
+   * die Selbst-Update-Regel in `firestore.rules` sperrt das Feld wie `role`
+   * und `active`, sonst schaltete sich jedes Konto den Bereich selbst frei.
+   * Das Administrator-Konto sieht den Bereich immer, auch ohne Schalter.
+   */
+  impulse?: boolean
+  /**
+   * Darf im Bereich «Impuls» Inhalte pflegen und moderieren.
+   *
+   * Noch ohne Wirkung – die Redaktion ist vorerst das Administrator-Konto.
+   * Das Feld ist trotzdem von Anfang an in den Regeln verriegelt, damit
+   * die Redaktion später nur noch Oberfläche braucht und keine
+   * Regeländerung.
+   */
+  impulseEditor?: boolean
   /** Farbe für Zuweisungs-Chips (Tailwind-Token-Name, siehe constants.ts) */
   color?: string
   active: boolean

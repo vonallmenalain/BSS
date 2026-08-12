@@ -21,6 +21,7 @@ import {
   MonitorSmartphone,
   ChevronDown,
   Tent,
+  Sparkles,
 } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { useAuth } from '@/contexts/AuthContext'
@@ -67,7 +68,7 @@ const SACRAMENT_CHILDREN = [
 
 export function Layout() {
   const { settings } = useData()
-  const { isApproved } = useAuth()
+  const { isApproved, canViewAp, canViewImpulse } = useAuth()
   const online = useOnlineStatus()
   const unsent = usePendingWrites()
   const [theme, setTheme] = useTheme()
@@ -96,10 +97,10 @@ export function Layout() {
   useEffect(() => setMenuOpen(false), [location.pathname])
 
   /**
-   * Der AP-Kalender steht in beiden Listen.
+   * Der AP-Kalender und «Impuls» stehen in beiden Listen.
    *
-   * Wer nur ihn sehen darf, bekommt eine Navigation aus einem einzigen
-   * Punkt – das wirkt zunächst überflüssig, hält aber Kopfzeile,
+   * Wer nur sie sehen darf, bekommt eine Navigation aus einem oder zwei
+   * Punkten – das wirkt zunächst überflüssig, hält aber Kopfzeile,
    * Benutzermenü und Aussehen der App gleich, statt für diese Konten eine
    * zweite Oberfläche zu bauen.
    */
@@ -108,6 +109,16 @@ export function Layout() {
     label: 'Aktivitäten AP’s',
     shortLabel: 'AP',
     icon: Tent,
+  }
+
+  /* «Impuls» erscheint nur mit dem Schalter am Konto – auch beim
+     Vollzugriff. Der Bereich gehört den AP's; wer ihn begleitet, wird
+     einzeln freigeschaltet (und das Administrator-Konto sieht ihn immer). */
+  const impulsItem: NavItem = {
+    to: '/impuls',
+    label: 'Impuls',
+    shortLabel: 'Impuls',
+    icon: Sparkles,
   }
 
   const navItems: NavItem[] = isApproved
@@ -138,13 +149,17 @@ export function Layout() {
           children: SACRAMENT_CHILDREN,
         },
         apItem,
+        ...(canViewImpulse ? [impulsItem] : []),
         { to: '/mitglieder', label: 'Mitglieder', shortLabel: 'Mitglieder', icon: Users },
         { to: '/berufungen', label: 'Berufungen', shortLabel: 'Berufung', icon: Award },
         { to: '/einstellungen', label: 'Einstellungen', shortLabel: 'Mehr', icon: Settings },
       ]
-    : // Ohne Vollzugriff ist der Kalender der ganze Inhalt – dann gehört er
-      // auch in die untere Leiste.
-      [{ ...apItem, primary: true }]
+    : // Ohne Vollzugriff sind der Kalender und – mit Schalter – «Impuls»
+      // der ganze Inhalt; dann gehören sie auch in die untere Leiste.
+      [
+        ...(canViewAp ? [{ ...apItem, primary: true }] : []),
+        ...(canViewImpulse ? [{ ...impulsItem, primary: true }] : []),
+      ]
 
   const ThemeIcon = theme === 'dark' ? Moon : theme === 'light' ? Sun : MonitorSmartphone
 

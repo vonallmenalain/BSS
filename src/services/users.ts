@@ -47,6 +47,23 @@ export async function updateUserProfile(
 }
 
 /**
+ * Schaltet den Bereich «Impuls» für ein Konto frei bzw. wieder zu.
+ *
+ * Wie Rolle und Aktivstatus: Das darf ausschliesslich das
+ * Administrator-Konto, und `firestore.rules` setzt es durch – die
+ * Selbst-Update-Regel sperrt das Feld. Das Administrator-Konto selbst
+ * sieht den Bereich auch ohne Schalter.
+ */
+export async function setUserImpulse(userId: string, impulse: boolean): Promise<SaveOutcome> {
+  return commit(
+    updateDoc(doc(db, COLLECTIONS.users, userId), {
+      impulse,
+      updatedAt: serverTimestamp(),
+    }),
+  )
+}
+
+/**
  * Merkt sich, wie jemand den Aktivitätenplan sieht.
  *
  * Am Konto und nicht am Gerät: Wer den Plan als Kacheln mag, mag ihn am

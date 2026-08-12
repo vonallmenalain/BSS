@@ -464,6 +464,96 @@ describe('Rollen und Rechteausweitung', () => {
 /* ------------------------------------------------------------------ */
 
 /*
+ * Die beiden Impuls-Schalter am Benutzer.
+ *
+ * Der Bereich «Impuls» wird pro Konto freigegeben (`impulse`), die
+ * Redaktion ebenso (`impulseEditor`). Beides vergibt allein der
+ * Administrator: Die Selbst-Update-Regel lässt das eigene Profil zu,
+ * sperrt aber diese Felder wie Rolle und Aktivstatus – sonst schaltete
+ * sich jedes Konto den Bereich selbst auf. Und ein neues Profil darf die
+ * Schalter nicht mitbringen, sonst lägen sie als schlafender Zugang
+ * bereit und erwachten mit der Freischaltung.
+ */
+describe('Impuls-Schalter', () => {
+  it('hindert jedes Konto daran, sich den Zugang selbst zu geben', async () => {
+    await assertFails(updateDoc(doc(asSecretary(), 'users', SECRETARY), { impulse: true }))
+    await assertFails(updateDoc(doc(asApViewer(), 'users', AP_VIEWER), { impulse: true }))
+    await assertFails(updateDoc(doc(asPending(), 'users', PENDING), { impulse: true }))
+  })
+
+  it('hindert jedes Konto daran, sich die Redaktion selbst zu geben', async () => {
+    await assertFails(updateDoc(doc(asSecretary(), 'users', SECRETARY), { impulseEditor: true }))
+    await assertFails(updateDoc(doc(asApViewer(), 'users', AP_VIEWER), { impulseEditor: true }))
+  })
+
+  it('auch nicht versteckt neben einer erlaubten Änderung', async () => {
+    await assertFails(
+      updateDoc(doc(asApViewer(), 'users', AP_VIEWER), {
+        displayName: 'Berater B',
+        impulse: true,
+      }),
+    )
+  })
+
+  it('lässt den Administrator die Schalter setzen und wieder wegnehmen', async () => {
+    await assertSucceeds(updateDoc(doc(asBishop(), 'users', AP_VIEWER), { impulse: true }))
+    await assertSucceeds(updateDoc(doc(asBishop(), 'users', AP_VIEWER), { impulse: false }))
+    await assertSucceeds(updateDoc(doc(asBishop(), 'users', SECRETARY), { impulseEditor: true }))
+    // Aufräumen, damit die übrigen Tests den Ausgangszustand vorfinden.
+    await testEnv.withSecurityRulesDisabled(async (context) => {
+      await updateDoc(doc(context.firestore(), 'users', SECRETARY), { impulseEditor: false })
+    })
+  })
+
+  it('lässt ein gesetztes Feld beim Pflegen des eigenen Profils stehen', async () => {
+    // Ein merge-Schreibvorgang trägt das bestehende Feld unverändert mit –
+    // das muss erlaubt bleiben, sonst könnte ein freigeschaltetes Konto
+    // sein eigenes Profil nicht mehr pflegen.
+    await testEnv.withSecurityRulesDisabled(async (context) => {
+      await updateDoc(doc(context.firestore(), 'users', AP_VIEWER), { impulse: true })
+    })
+    await assertSucceeds(
+      setDoc(
+        doc(asApViewer(), 'users', AP_VIEWER),
+        { displayName: 'Berater C', impulse: true },
+        { merge: true },
+      ),
+    )
+    // Mit einem anderen Wert bleibt es verboten.
+    await assertFails(
+      setDoc(doc(asApViewer(), 'users', AP_VIEWER), { impulse: false }, { merge: true }),
+    )
+    await testEnv.withSecurityRulesDisabled(async (context) => {
+      await updateDoc(doc(context.firestore(), 'users', AP_VIEWER), { impulse: false })
+    })
+  })
+
+  it('lässt ein neues Konto sein Profil nicht mit Impuls-Zugang anlegen', async () => {
+    const neu = testEnv.authenticatedContext('uid-impuls-neu').firestore()
+    await assertFails(
+      setDoc(doc(neu, 'users', 'uid-impuls-neu'), {
+        email: 'impuls-neu@example.ch',
+        displayName: 'Neu',
+        role: 'pending',
+        active: true,
+        impulse: true,
+      }),
+    )
+    await assertFails(
+      setDoc(doc(neu, 'users', 'uid-impuls-neu'), {
+        email: 'impuls-neu@example.ch',
+        displayName: 'Neu',
+        role: 'pending',
+        active: true,
+        impulseEditor: true,
+      }),
+    )
+  })
+})
+
+/* ------------------------------------------------------------------ */
+
+/*
  * Der AP-Kalender ist der einzige Bereich, der über die Bischofschaft
  * hinaus geteilt wird. Die Regeln müssen deshalb zwei Dinge zugleich
  * leisten: den Kalender öffnen und alles andere zuhalten. Genau das prüfen

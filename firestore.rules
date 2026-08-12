@@ -37,6 +37,14 @@ rules_version = '2';
 // abonniert werden kann. Lesen dürfen sie beide AP-Rollen – wer den Plan
 // sieht, darf ihn sich auch in den eigenen Kalender holen. Vergeben und
 // widerrufen darf sie nur, wer den Plan auch pflegen darf.
+//
+// Unabhängig von der Rolle steht der Bereich «Impuls» – der geistige
+// Bereich für die AP's (docs/KONZEPT-IMPULS.md). Wer ihn sieht, sagt das
+// Feld `impulse` am Benutzer; wer Inhalte pflegen darf, das Feld
+// `impulseEditor`. Beide vergibt allein das Administrator-Konto, und das
+// Administrator-Konto sieht den Bereich immer. Die Sammlungen des Bereichs
+// folgen mit der nächsten Etappe – verriegelt ist ab sofort, dass sich
+// niemand die beiden Schalter selbst setzt.
 
 service cloud.firestore {
   match /databases/{database}/documents {
@@ -125,20 +133,27 @@ service cloud.firestore {
       allow list: if approved();
 
       // Ein neues Konto legt sein eigenes Profil an – zwingend als `pending`.
-      // Damit kann sich niemand selbst Rechte geben.
+      // Damit kann sich niemand selbst Rechte geben. Auch die beiden
+      // Impuls-Schalter darf es nicht mitbringen: Sie blieben sonst als
+      // schlafender Zugang stehen und erwachten mit der Freischaltung.
       allow create: if signedIn()
         && request.auth.uid == userId
         && request.resource.data.role == 'pending'
-        && request.resource.data.active == true;
+        && request.resource.data.active == true
+        && !('impulse' in request.resource.data)
+        && !('impulseEditor' in request.resource.data);
 
       // Das eigene Profil darf jede und jeder pflegen (Name, Verknüpfung,
-      // Ansichts-Einstellungen) – aber weder Rolle noch Aktivstatus anfassen.
-      // Das ist die Sperre gegen die Selbstfreischaltung, und sie gilt für
-      // wartende wie für freigeschaltete Konten gleichermassen.
+      // Ansichts-Einstellungen) – aber weder Rolle noch Aktivstatus anfassen,
+      // und ebenso wenig die beiden Impuls-Schalter. Das ist die Sperre gegen
+      // die Selbstfreischaltung, und sie gilt für wartende wie für
+      // freigeschaltete Konten gleichermassen.
       allow update: if signedIn()
         && request.auth.uid == userId
         && unchanged('role')
-        && unchanged('active');
+        && unchanged('active')
+        && unchanged('impulse')
+        && unchanged('impulseEditor');
 
       // Benutzer verwalten – freischalten, Rollen zuweisen, deaktivieren,
       // löschen – darf ausschliesslich der Administrator. Damit genügt ein

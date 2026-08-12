@@ -30,7 +30,13 @@ import { resyncCollectionStores } from '@/lib/collectionStore'
 import { backupTotal } from '@/lib/backup'
 import { BACKUP_COLLECTIONS, createBackup, downloadBackup } from '@/services/backup'
 import { saveSettings } from '@/services/settings'
-import { deleteUserProfile, setUserActive, setUserRole, updateUserProfile } from '@/services/users'
+import {
+  deleteUserProfile,
+  setUserActive,
+  setUserImpulse,
+  setUserRole,
+  updateUserProfile,
+} from '@/services/users'
 import { formatRelative } from '@/lib/dates'
 import {
   ADMIN_IMPORTS,
@@ -41,6 +47,7 @@ import {
 import { cn } from '@/lib/utils'
 import {
   ACCESS_LEVELS,
+  ADMIN_EMAIL,
   AP_ONLY_ROLES,
   ASSIGNABLE_ROLES,
   ROLE_LABELS,
@@ -436,6 +443,13 @@ export function Settings() {
             gehört. Ein Konto ist eine Anmeldung, ein Mitglied ein Eintrag der Gemeinde – erst diese
             Verknüpfung sagt der App, dass beides dieselbe Person ist.
           </p>
+          {isAdmin && (
+            <p className="hint mb-4">
+              Der Haken <strong>«Impuls»</strong> schaltet den geistigen Bereich für die AP’s pro
+              Konto frei – unabhängig von der Rolle, für Vollzugriff wie für AP-Zugänge. Das
+              Administrator-Konto sieht ihn immer.
+            </p>
+          )}
           {!isAdmin && (
             <p className="hint mb-4">
               Freischalten, Rollen ändern und Konten entfernen kann nur das Administrator-Konto.
@@ -1001,7 +1015,27 @@ function UserRow({
     }
   }
 
+  const changeImpulse = async (impulse: boolean) => {
+    try {
+      const outcome = await setUserImpulse(user.id, impulse)
+      toast.saved(
+        impulse
+          ? `${user.displayName} sieht jetzt «Impuls».`
+          : `${user.displayName} sieht «Impuls» nicht mehr.`,
+        outcome,
+      )
+    } catch (error) {
+      console.error(error)
+      toast.error('Impuls-Zugang konnte nicht geändert werden.')
+    }
+  }
+
   const apOnly = AP_ONLY_ROLES.includes(user.role)
+  /*
+   * Das Administrator-Konto sieht «Impuls» immer – ein Haken, der nichts
+   * bewirkt, würde nur in die Irre führen. Er fehlt deshalb an dieser Zeile.
+   */
+  const isAdminAccount = user.email.toLowerCase() === ADMIN_EMAIL
 
   return (
     <li className="flex flex-wrap items-center gap-3 py-3">
@@ -1014,7 +1048,8 @@ function UserRow({
         </p>
         <p className="truncate text-xs text-slate-500 dark:text-slate-400">
           {user.email}
-          {apOnly && ' · sieht nur den AP-Kalender'}
+          {apOnly &&
+            (user.impulse ? ' · sieht AP-Kalender und Impuls' : ' · sieht nur den AP-Kalender')}
         </p>
       </div>
 
@@ -1063,6 +1098,24 @@ function UserRow({
           {ROLE_LABELS[user.role]}
           {!user.active && ' · deaktiviert'}
         </span>
+      )}
+
+      {/* «Impuls» hängt am Konto und nicht an der Rolle – der Haken steht
+          deshalb neben der Rollenwahl. Gesetzt wird er nur hier; die
+          Zugriffsregeln lassen niemanden das eigene Feld anfassen. */}
+      {canManage && !isAdminAccount && (
+        <label
+          className="flex cursor-pointer items-center gap-1.5 text-sm text-slate-600 dark:text-slate-300"
+          title="Bereich «Impuls» für dieses Konto freischalten"
+        >
+          <input
+            type="checkbox"
+            className="size-4"
+            checked={user.impulse === true}
+            onChange={(event) => void changeImpulse(event.target.checked)}
+          />
+          Impuls
+        </label>
       )}
 
       {/* Ein AP-Zugang erreicht das Mitgliederverzeichnis gar nicht – für ihn

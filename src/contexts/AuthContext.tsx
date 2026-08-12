@@ -63,6 +63,16 @@ interface AuthContextValue {
   canEditAp: boolean
   /** Sieht ausschliesslich den AP-Kalender und sonst nichts von der App. */
   isApOnly: boolean
+  /**
+   * Darf den Bereich «Impuls» sehen – den geistigen Bereich für die AP’s.
+   *
+   * Hängt am Schalter `impulse` des Profils und nicht an der Rolle;
+   * vergeben wird er in der Benutzerverwaltung, und zwar allein vom
+   * Administrator-Konto. Das Administrator-Konto selbst sieht den Bereich
+   * immer – so bleibt er beim Aufbau ohne einen einzigen gesetzten
+   * Schalter erst einmal nur dort sichtbar.
+   */
+  canViewImpulse: boolean
   role: Role | null
   error: string | null
   signIn: (email: string, password: string) => Promise<void>
@@ -281,6 +291,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     const active = Boolean(profile && profile.active && role)
     const isApproved = active && Boolean(role && FULL_ACCESS_ROLES.includes(role))
     const canViewAp = active && Boolean(role && AP_ACCESS_ROLES.includes(role))
+    const isAdmin = firebaseUser?.email?.toLowerCase() === ADMIN_EMAIL
 
     return {
       firebaseUser,
@@ -289,10 +300,13 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       isApproved,
       isBishopric: Boolean(role && BISHOPRIC_ROLES.includes(role)),
       isBishop: role === 'bishop',
-      isAdmin: firebaseUser?.email?.toLowerCase() === ADMIN_EMAIL,
+      isAdmin,
       canViewAp,
       canEditAp: active && Boolean(role && AP_WRITE_ROLES.includes(role)),
       isApOnly: canViewAp && !isApproved,
+      // Ein wartendes Konto bleibt draussen, selbst wenn das Feld gesetzt
+      // sein sollte – freigeschaltet wird zuerst, der Schalter kommt danach.
+      canViewImpulse: isAdmin || (active && role !== 'pending' && profile?.impulse === true),
       role,
       error,
       signIn,
