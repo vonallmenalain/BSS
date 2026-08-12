@@ -1,6 +1,7 @@
 import { useMemo, useState } from 'react'
 import { Link } from 'react-router-dom'
 import {
+  Check,
   CheckCircle2,
   ChevronDown,
   ChevronRight,
@@ -11,13 +12,21 @@ import {
   Plus,
   Repeat,
   Search,
+  Send,
   Sparkles,
+  X,
 } from 'lucide-react'
 import { useAuth } from '@/contexts/AuthContext'
 import { useToast } from '@/contexts/ToastContext'
 import { useNow } from '@/hooks/useNow'
-import { useImpulseAnswers, useImpulseComments, useImpulseItems } from '@/hooks/useFirestore'
+import {
+  useImpulseAnswers,
+  useImpulseComments,
+  useImpulseItems,
+  useImpulseSubmissions,
+} from '@/hooks/useFirestore'
 import { PageHeader } from '@/components/ui/Pickers'
+import { ConfirmDialog } from '@/components/ui/Modal'
 import { ImpulseItemForm } from '@/components/impulse/ImpulseItemForm'
 import { ImpulseWeekPreview } from '@/components/impulse/ImpulseWeekPreview'
 import { cn } from '@/lib/utils'
@@ -31,11 +40,20 @@ import {
 import { planStarterItems } from '@/lib/impulseStarter'
 import {
   createStarterItems,
+  deleteImpulseSubmission,
   emptyImpulseItem,
+  markImpulseSubmissionAccepted,
+  submissionToInput,
   toImpulseInput,
   type ImpulseItemInput,
 } from '@/services/impulse'
-import { IMPULSE_KIND_LABELS, type ImpulseItem, type ImpulseKind } from '@/lib/types'
+import {
+  IMPULSE_KIND_LABELS,
+  IMPULSE_SUBMISSION_KIND_LABELS,
+  type ImpulseItem,
+  type ImpulseKind,
+  type ImpulseSubmission,
+} from '@/lib/types'
 
 /**
  * Die Redaktion des Bereichs «Impuls» – nur für Konten mit Redaktionsrecht
@@ -83,9 +101,13 @@ export function ImpulsRedaktion() {
   )
   const [showPast, setShowPast] = useState(false)
 
-  const [editor, setEditor] = useState<{ itemId: string | null; initial: ImpulseItemInput } | null>(
-    null,
-  )
+  const [editor, setEditor] = useState<{
+    itemId: string | null
+    initial: ImpulseItemInput
+    /** Gesetzt, wenn das Formular aus einer Einreichung entstand –
+        nach dem Speichern wird sie als übernommen markiert. */
+    fromSubmissionId?: string
+  } | null>(null)
   const openNew = (kind: ImpulseKind, week: string | null) =>
     setEditor({
       itemId: null,
@@ -159,6 +181,19 @@ export function ImpulsRedaktion() {
 
   const answerCount = (item: ImpulseItem) =>
     (answersByItem.get(item.id)?.length ?? 0) + (commentsByItem.get(item.id)?.length ?? 0)
+
+  /* Die Mitmach-Ecke: offene Einreichungen prüfen und übernehmen. */
+  const submissionsState = useImpulseSubmissions()
+  const openSubmissions = submissionsState.data.filter(
+    (submission) => submission.status === 'open',
+  )
+  const [removeSubmission, setRemoveSubmission] = useState<ImpulseSubmission | null>(null)
+  const acceptSubmission = (submission: ImpulseSubmission) =>
+    setEditor({
+      itemId: null,
+      initial: submissionToInput(submission),
+      fromSubmissionId: submission.id,
+    })
 
   return (
     <>
@@ -288,6 +323,64 @@ export function ImpulsRedaktion() {
           )}
         </section>
 
+        {/* ---------- Mitmach-Ecke ---------- */}
+        {openSubmissions.length > 0 && (
+          <section className="card p-5">
+            <h2 className="flex items-center gap-2 text-sm font-semibold">
+              <Send className="size-4 text-slate-400" aria-hidden />
+              Mitmach-Ecke
+              <span className="hint font-normal">
+                {openSubmissions.length}{' '}
+                {openSubmissions.length === 1 ? 'Einreichung' : 'Einreichungen'}
+              </span>
+            </h2>
+            <p className="hint mt-1 mb-3">
+              «Übernehmen» öffnet das Formular, vorbefüllt und mit «Eingereicht von …» – beim
+              Speichern gilt die Einreichung als übernommen. Was nicht passt, wird still
+              entfernt; die Person sieht keine Ablehnung.
+            </p>
+            <ul className="divide-list">
+              {openSubmissions.map((submission) => (
+                <li key={submission.id} className="flex items-start gap-3 py-3">
+                  <div className="min-w-0 flex-1">
+                    <p className="text-sm font-medium">
+                      {submission.firstName}
+                      <span className="hint font-normal">
+                        {' · '}
+                        {IMPULSE_SUBMISSION_KIND_LABELS[submission.kind]}
+                      </span>
+                    </p>
+                    <p className="mt-0.5 text-sm whitespace-pre-line text-slate-600 dark:text-slate-300">
+                      {submission.text}
+                    </p>
+                    {submission.sourceLabel && (
+                      <p className="hint mt-0.5">Quelle: {submission.sourceLabel}</p>
+                    )}
+                  </div>
+                  <div className="flex shrink-0 items-center gap-1">
+                    <button
+                      type="button"
+                      className="btn-secondary btn-sm"
+                      onClick={() => acceptSubmission(submission)}
+                    >
+                      <Check className="size-4" aria-hidden />
+                      Übernehmen
+                    </button>
+                    <button
+                      type="button"
+                      className="btn-ghost p-1.5 text-rose-600 dark:text-rose-400"
+                      onClick={() => setRemoveSubmission(submission)}
+                      aria-label={`Einreichung von ${submission.firstName} entfernen`}
+                    >
+                      <X className="size-4" aria-hidden />
+                    </button>
+                  </div>
+                </li>
+              ))}
+            </ul>
+          </section>
+        )}
+
         {/* ---------- Vergangenes ---------- */}
         {past.length > 0 && (
           <section className="card p-5">
@@ -327,7 +420,7 @@ export function ImpulsRedaktion() {
 
       {editor && (
         <ImpulseItemForm
-          key={editor.itemId ?? 'neu'}
+          key={editor.itemId ?? editor.fromSubmissionId ?? 'neu'}
           open
           onClose={() => setEditor(null)}
           itemId={editor.itemId}
@@ -336,8 +429,39 @@ export function ImpulsRedaktion() {
           answerIds={editor.itemId ? (answersByItem.get(editor.itemId) ?? []) : []}
           commentIds={editor.itemId ? (commentsByItem.get(editor.itemId) ?? []) : []}
           todayKey={todayKey}
+          onSaved={
+            editor.fromSubmissionId
+              ? () => {
+                  void markImpulseSubmissionAccepted(editor.fromSubmissionId!).catch((error) =>
+                    console.error(error),
+                  )
+                }
+              : undefined
+          }
         />
       )}
+
+      <ConfirmDialog
+        open={removeSubmission !== null}
+        onClose={() => setRemoveSubmission(null)}
+        onConfirm={() => {
+          if (!removeSubmission) return
+          void deleteImpulseSubmission(removeSubmission.id).then((outcome) =>
+            toast.saved('Einreichung entfernt.', outcome),
+          )
+          setRemoveSubmission(null)
+        }}
+        title="Einreichung entfernen?"
+        message={
+          <>
+            Die Einreichung von {removeSubmission?.firstName} wird entfernt.{' '}
+            {removeSubmission?.firstName} sieht keine Ablehnung – sie verschwindet einfach aus
+            der eigenen Liste.
+          </>
+        }
+        confirmLabel="Entfernen"
+        danger
+      />
 
       {previewWeek && (
         <ImpulseWeekPreview

@@ -27,6 +27,7 @@ import {
   type ImpulseComment,
   type ImpulseItem,
   type ImpulseProgress,
+  type ImpulseSubmission,
   type Meeting,
   type MonthlyDuty,
   type Note,
@@ -537,6 +538,16 @@ export function useImpulseProgress() {
 export function useImpulseComments() {
   const { canViewImpulse } = useAuth()
   const state = useCollection<ImpulseComment>(COLLECTIONS.impulseComments, canViewImpulse)
+  return useMemo(() => ({ ...state, data: byDate(state.data, 'createdAt', 'asc') }), [state])
+}
+
+/**
+ * Einreichungen aus der Mitmach-Ecke – die ältesten zuerst, damit die
+ * Redaktion in der Reihenfolge des Eintreffens prüft.
+ */
+export function useImpulseSubmissions() {
+  const { canViewImpulse } = useAuth()
+  const state = useCollection<ImpulseSubmission>(COLLECTIONS.impulseSubmissions, canViewImpulse)
   return useMemo(() => ({ ...state, data: byDate(state.data, 'createdAt', 'asc') }), [state])
 }
 

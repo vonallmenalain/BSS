@@ -465,6 +465,40 @@ service cloud.firestore {
         || (impulseAccess() && resource.data.uid == request.auth.uid);
     }
 
+    /*
+     * Die Mitmach-Ecke: Einreichungen der AP's.
+     *
+     * Angelegt wird nur auf den eigenen Namen und nur als «offen» – die
+     * Übernahme (`accepted`) spricht allein die Redaktion aus, und nur
+     * sie darf fremde Einreichungen anfassen oder entfernen. Die eigene
+     * lässt sich nachbessern und zurückziehen, solange der Zustand
+     * unangetastet bleibt.
+     *
+     * Lesen dürfen alle im Bereich – dieselbe Abwägung wie bei den
+     * Inhalten: Die Oberfläche zeigt eine Einreichung nur der Person
+     * selbst und der Redaktion, und veröffentlicht wird sie erst, wenn
+     * die Redaktion daraus einen Inhalt gemacht hat. Eine Leserregel je
+     * Person zwänge jede Abfrage auf einen Ausschnitt und bräche den
+     * einfachen Offline-Abgleich – geschützt würde wenig, denn die
+     * Einreichung ist für die Gruppe gedacht.
+     */
+    match /impulseSubmissions/{submissionId} {
+      allow read: if impulseAccess();
+
+      allow create: if impulseAccess()
+        && request.resource.data.uid == request.auth.uid
+        && request.resource.data.status == 'open';
+
+      allow update: if impulseWrite()
+        || (impulseAccess()
+          && resource.data.uid == request.auth.uid
+          && unchanged('uid')
+          && unchanged('status'));
+
+      allow delete: if impulseWrite()
+        || (impulseAccess() && resource.data.uid == request.auth.uid);
+    }
+
     /* ---------------- Einstellungen ---------------- */
 
     // Lesen darf auch, wer nur den AP-Kalender sieht: Der Name der Gemeinde

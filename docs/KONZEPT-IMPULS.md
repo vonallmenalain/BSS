@@ -1,11 +1,14 @@
 # Konzept «Impuls» – ein geistiger Bereich für die AP’s
 
 Stand: Die Entscheide vom 12. August 2026 sind eingearbeitet
-([Abschnitt 12](#12-entscheide)). Umgesetzt sind die Etappen 0 bis 4:
+([Abschnitt 12](#12-entscheide)). Umgesetzt sind die Etappen 0 bis 5:
 Zugang und Gerüst, Wochenimpuls und Quizfrage samt Redaktionsseite und
 Startpaket, Wochenziel, Tages-Challenge, Serie, Abzeichen und
-Gruppenleiste, der endliche Impuls-Feed mit «Amen» und Favoriten – und
-die Frage der Woche mit Antworten, Vornamen und Moderation. Der Bereich
+Gruppenleiste, der endliche Impuls-Feed mit «Amen» und Favoriten, die
+Frage der Woche mit Antworten, Vornamen und Moderation – und die
+Mitmach-Ecke samt stillem Erinnerungspunkt in der Navigation. Offen ist
+allein die Push-Benachrichtigung: Sie braucht Cloud Messaging aus der
+Firebase-Konsole (siehe 5.7) und folgt als eigener Schritt. Der Bereich
 heisst «Impuls».
 
 ---
@@ -334,15 +337,20 @@ Der Bereich soll abholen, ohne zu nerven – in dieser Reihenfolge:
 1. **Rhythmus als Gewohnheit** (sofort): feste Zeiten – montags der neue
    Impuls, sonntags die Auflösung. Ein verlässlicher Takt schlägt jede
    Benachrichtigung; er lässt sich in der Kollegiumsstunde verankern.
-2. **Zeichen in der App** (sofort): ein Punkt am Navigationseintrag, solange
-   die Woche noch nicht angeschaut ist – dieselbe stille Sprache wie beim
-   Update-Hinweis.
-3. **Push aufs Telefon** (später): technisch möglich – Firebase Cloud
-   Messaging plus eine zeitgesteuerte Netlify-Function (das Muster
-   «Function mit Dienstkonto» existiert bereits für den Kalender-Feed).
-   Aber: Auf iPhones erreicht Web-Push nur installierte PWAs, und eine
-   Benachrichtigung, die aufdringlich wird, beschädigt Leitgedanke 1.
-   Deshalb bewusst als späte Etappe, abschaltbar je Konto.
+2. **Zeichen in der App** *(umgesetzt)*: ein Punkt am Navigationseintrag,
+   solange die Woche noch nicht angeschaut ist – dieselbe stille Sprache
+   wie beim Update-Hinweis. Er hängt an `lastSeenWeek` im
+   Fortschrittsdokument und verschwindet mit dem ersten Blick.
+3. **Push aufs Telefon** (der eine offene Punkt): technisch möglich –
+   Firebase Cloud Messaging plus eine zeitgesteuerte Netlify-Function
+   (das Muster «Function mit Dienstkonto» existiert bereits für den
+   Kalender-Feed). Voraussetzung sind zwei Handgriffe in der
+   Firebase-Konsole (Cloud Messaging aktivieren, VAPID-Schlüsselpaar
+   erzeugen) und das Hinterlegen des Schlüssels bei Netlify – erst dann
+   lässt sich das Ganze auch wirklich prüfen. Auf iPhones erreicht
+   Web-Push nur installierte PWAs, und eine Benachrichtigung, die
+   aufdringlich wird, beschädigt Leitgedanke 1 – deshalb abschaltbar je
+   Konto, wenn sie kommt.
 
 ---
 
@@ -507,8 +515,19 @@ impulseComments/{itemId_uid}   Beitrag zur Frage der Woche – eine Antwort
                                reports[]) – kein Schreibrecht am fremden
                                Beitrag nötig.
 
+impulseSubmissions/{id}        Einreichung aus der Mitmach-Ecke
+                               ├─ uid, firstName            (mitgeschrieben)
+                               ├─ kind      gedanke | frage
+                               ├─ text, sourceLabel, sourceUrl   – formlos,
+                               │            die Redaktion bringt es in Form
+                               └─ status    open | accepted – «abgelehnt» gibt
+                                            es nicht: Was nicht passt, wird
+                                            still entfernt (Leitgedanke 1)
+
 impulseProgress/{uid}          der persönliche Stand – schreibt nur die Person
                                ├─ firstName                 (mitgeschrieben)
+                               ├─ lastSeenWeek              – der stille Punkt
+                               │            in der Navigation hängt daran
                                ├─ weeks     { «2026-W34»: { ziel, feed,
                                │              tage: [«2026-08-11», …] } }
                                ├─ amens[]                   «Amen» je Karte – am
@@ -589,7 +608,7 @@ ist der Bereich bereits benutzbar. Reihenfolge von 3 und 4 ist tauschbar.
 | 2 | **Wochenziel, Tages-Challenge, Serie, Abzeichen, Gruppenleiste** *(umgesetzt)* – Aufgaben als planbare Wochen-Inhalte, Serie mit Jokerwoche pro Monat, Abzeichen als Meilensteine, Gruppenleiste mit Vornamen | Pilotgruppe → alle AP’s | mittel |
 | 3 | **Feed** mit Amen und Favoriten *(umgesetzt)* – Vollbild mit Wisch-Karten und Schlusskarte; unter dem «Amen» stehen Vornamen statt Zählstände, die Schlusskarte zählt zur Wochenbeteiligung, «Gemerkt» sammelt Favoriten | alle mit Flag | mittel |
 | 4 | **Frage der Woche** *(umgesetzt)* – eine Antwort pro Person (nachbesserbar), sichtbar erst nach der eigenen; Amen und Melden liegen am eigenen Fortschritt, die Redaktion blendet aus und sieht Meldungen; ein Beitrag zählt zur Beteiligung («Mitgeredet»-Abzeichen) | alle mit Flag | mittel |
-| 5 | **Mitmach-Ecke, Push-Erinnerung, Feinschliff**; ggf. Öffnung über die AP’s hinaus | nach Bedarf | je klein |
+| 5 | **Mitmach-Ecke** *(umgesetzt)* – formlose Einreichungen, Übernahme mit «Eingereicht von …», stilles Entfernen statt Ablehnung; **Erinnerungspunkt** *(umgesetzt)* – der stille Punkt am Navigationseintrag, weg mit dem ersten Blick; **Push** wartet auf die FCM-Einrichtung (Konsole); Öffnung über die AP’s hinaus bleibt ein Schalter | nach Bedarf | je klein |
 
 Zum Rollout gehört mehr als Software:
 

@@ -10,6 +10,8 @@ import {
   updateDoc,
   writeBatch,
 } from '@/lib/db'
+// Am Protokoll vorbei – warum, steht bei `setImpulseLastSeenWeek`.
+import { setDoc as fbSetDoc } from 'firebase/firestore'
 import { db, COLLECTIONS } from '@/lib/firebase'
 import { forgetDoc } from '@/lib/collectionStore'
 import { commit, type SaveOutcome } from '@/lib/sync'
@@ -20,6 +22,8 @@ import type {
   ImpulseKind,
   ImpulseQuiz,
   ImpulseStatus,
+  ImpulseSubmission,
+  ImpulseSubmissionKind,
 } from '@/lib/types'
 
 /*
@@ -48,6 +52,8 @@ export interface ImpulseItemInput {
   sourceUrl: string
   /** Platz im Feed – nur für Feed-Karten von Belang. */
   order: number | null
+  /** «Eingereicht von Luca» – wenn der Inhalt aus der Mitmach-Ecke stammt. */
+  contributor: string
   quiz: ImpulseQuiz
 }
 
@@ -74,6 +80,7 @@ export function emptyImpulseItem(
     sourceLabel: '',
     sourceUrl: '',
     order,
+    contributor: '',
     quiz: { ...EMPTY_IMPULSE_QUIZ, options: [...EMPTY_IMPULSE_QUIZ.options] },
   }
 }
@@ -89,6 +96,7 @@ export function toImpulseInput(item: ImpulseItem): ImpulseItemInput {
     sourceLabel: item.source?.label ?? '',
     sourceUrl: item.source?.url ?? '',
     order: typeof item.order === 'number' ? item.order : null,
+    contributor: item.contributor ?? '',
     quiz: item.quiz
       ? { ...item.quiz, options: [...item.quiz.options] }
       : { ...EMPTY_IMPULSE_QUIZ, options: [...EMPTY_IMPULSE_QUIZ.options] },
@@ -109,6 +117,7 @@ export async function saveImpulseItem(
     title: input.title.trim(),
     body: input.body.trim(),
     order: typeof input.order === 'number' && Number.isFinite(input.order) ? input.order : null,
+    contributor: input.contributor.trim() || null,
     source: sourceLabel ? { label: sourceLabel, url: input.sourceUrl.trim() } : null,
     // Das Quiz bleibt am Datensatz, auch wenn die Art wechselt – wie beim
     // variablen Layout wirft das Umschalten nichts weg.
@@ -332,6 +341,91 @@ export async function setImpulseFavorite(
         uid: user.uid,
         firstName: impulseFirstName(user.displayName),
         favorites: on ? arrayUnion(itemId) : arrayRemove(itemId),
+        updatedAt: serverTimestamp(),
+      },
+      { merge: true },
+    ),
+  )
+}
+
+/**
+ * Eine Einreichung für die Mitmach-Ecke – formlos, die Redaktion bringt
+ * sie in Form. Angelegt wird immer als «offen»; die Regeln lassen nichts
+ * anderes zu.
+ */
+export async function createImpulseSubmission(
+  user: { uid: string; displayName: string },
+  input: { kind: ImpulseSubmissionKind; text: string; sourceLabel: string; sourceUrl: string },
+): Promise<SaveOutcome> {
+  return commit(
+    addDoc(collection(db, COLLECTIONS.impulseSubmissions), {
+      uid: user.uid,
+      firstName: impulseFirstName(user.displayName),
+      kind: input.kind,
+      text: input.text.trim(),
+      sourceLabel: input.sourceLabel.trim(),
+      sourceUrl: input.sourceUrl.trim(),
+      status: 'open',
+      createdAt: serverTimestamp(),
+      updatedAt: serverTimestamp(),
+    }),
+  )
+}
+
+/** Eine Einreichung zurückziehen bzw. wegräumen. */
+export async function deleteImpulseSubmission(id: string): Promise<SaveOutcome> {
+  const outcome = await commit(deleteDoc(doc(db, COLLECTIONS.impulseSubmissions, id)))
+  forgetDoc(COLLECTIONS.impulseSubmissions, id)
+  return outcome
+}
+
+/** Die Redaktion hat übernommen – die Einreichung ist «accepted». */
+export async function markImpulseSubmissionAccepted(id: string): Promise<SaveOutcome> {
+  return commit(
+    updateDoc(doc(db, COLLECTIONS.impulseSubmissions, id), {
+      status: 'accepted',
+      updatedAt: serverTimestamp(),
+    }),
+  )
+}
+
+/**
+ * Aus einer Einreichung das Redaktionsformular vorbefüllen.
+ *
+ * Ein «Gedanke» wird zur Feed-Karte, eine «Quizfrage-Idee» zur Quizfrage
+ * (die Redaktion ergänzt Antworten und Lösung). Beides landet als Entwurf
+ * im Fragenpool – geplant wird wie gewohnt, und der Vorname wandert als
+ * «Eingereicht von …» mit.
+ */
+export function submissionToInput(submission: ImpulseSubmission): ImpulseItemInput {
+  const input = emptyImpulseItem(submission.kind === 'frage' ? 'quiz' : 'feed', null)
+  input.title = submission.text.trim()
+  input.sourceLabel = submission.sourceLabel?.trim() ?? ''
+  input.sourceUrl = submission.sourceUrl?.trim() ?? ''
+  input.contributor = submission.firstName
+  return input
+}
+
+/**
+ * Die zuletzt angeschaute Woche vermerken – daran hängt der stille Punkt
+ * am Navigationseintrag.
+ *
+ * Wie `saveApView` geht dieser eine Schreibvorgang **nicht** ins
+ * Zugriffsprotokoll: Wer den Bereich öffnet, ändert nichts am Bestand der
+ * Gemeinde – im Protokoll stünde sonst eine Zeile je Besuch und begrübe
+ * die Änderungen, wegen derer man es aufschlägt.
+ */
+export async function setImpulseLastSeenWeek(
+  user: { uid: string; displayName: string },
+  week: string,
+): Promise<SaveOutcome> {
+  return commit(
+    fbSetDoc(
+      doc(db, COLLECTIONS.impulseProgress, user.uid),
+      {
+        uid: user.uid,
+        firstName: impulseFirstName(user.displayName),
+        lastSeenWeek: week,
         updatedAt: serverTimestamp(),
       },
       { merge: true },

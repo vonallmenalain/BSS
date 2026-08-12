@@ -2897,9 +2897,48 @@ export interface ImpulseItem extends WithId {
   order?: number
   quiz?: ImpulseQuiz | null
   source?: ImpulseSource | null
+  /**
+   * «Eingereicht von Luca» – der Vorname, wenn der Inhalt aus der
+   * Mitmach-Ecke stammt. Wer je eine Karte beigesteuert hat, liest die
+   * anderen anders.
+   */
+  contributor?: string | null
   createdAt?: TS
   updatedAt?: TS
   createdBy?: string
+}
+
+/**
+ * Eine Einreichung aus der Mitmach-Ecke.
+ *
+ * Die AP's liefern selbst: eine Lieblingsschriftstelle, einen Gedanken,
+ * eine Quizidee. Veröffentlicht wird nie direkt – die Redaktion prüft und
+ * macht daraus einen gewöhnlichen Inhalt («Eingereicht von …»). Es gibt
+ * bewusst keinen Zustand «abgelehnt»: Was nicht passt, entfernt die
+ * Redaktion still – eine angeschriebene Ablehnung entmutigte genau die,
+ * die sich getraut haben (Leitgedanke 1).
+ */
+export type ImpulseSubmissionKind = 'gedanke' | 'frage'
+
+export const IMPULSE_SUBMISSION_KIND_LABELS: Record<ImpulseSubmissionKind, string> = {
+  gedanke: 'Schriftstelle oder Gedanke',
+  frage: 'Quizfrage-Idee',
+}
+
+export type ImpulseSubmissionStatus = 'open' | 'accepted'
+
+export interface ImpulseSubmission extends WithId {
+  uid: string
+  firstName: string
+  kind: ImpulseSubmissionKind
+  /** Der Vorschlag, formlos – die Redaktion bringt ihn in Form. */
+  text: string
+  sourceLabel?: string
+  sourceUrl?: string
+  /** `open` wartet auf die Redaktion; `accepted` ist übernommen. */
+  status: ImpulseSubmissionStatus
+  createdAt?: TS
+  updatedAt?: TS
 }
 
 /**
@@ -2999,6 +3038,15 @@ export interface ImpulseProgress extends WithId {
    * gemeldet hat.
    */
   reports?: string[]
+  /**
+   * Die letzte Woche, deren Inhalt angeschaut wurde – «2026-W34».
+   *
+   * Daran hängt der stille Punkt am Navigationseintrag: Er steht, solange
+   * die laufende Woche Inhalt hat und hier noch nicht vermerkt ist – und
+   * verschwindet mit dem ersten Blick. Kein Zähler, keine Mahnung
+   * (Leitgedanke 1), dieselbe Sprache wie der Update-Hinweis.
+   */
+  lastSeenWeek?: string
   createdAt?: TS
   updatedAt?: TS
 }

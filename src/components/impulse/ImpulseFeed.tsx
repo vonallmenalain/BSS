@@ -4,7 +4,7 @@ import { Bookmark, HandHeart, X } from 'lucide-react'
 import { useAuth } from '@/contexts/AuthContext'
 import { useToast } from '@/contexts/ToastContext'
 import { cn } from '@/lib/utils'
-import { SourceLink } from '@/components/impulse/ImpulseCards'
+import { ContributorLine, SourceLink } from '@/components/impulse/ImpulseCards'
 import { markImpulseFeedDone, setImpulseAmen, setImpulseFavorite } from '@/services/impulse'
 import type { ImpulseItem, ImpulseProgress } from '@/lib/types'
 
@@ -194,8 +194,9 @@ export function ImpulseFeed({
                     {card.body}
                   </p>
                 )}
-                <div className="mt-4 flex justify-center">
+                <div className="mt-4 flex flex-col items-center">
                   <SourceLink item={card} />
+                  <ContributorLine item={card} />
                 </div>
               </div>
 
