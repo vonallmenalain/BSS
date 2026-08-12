@@ -1,8 +1,18 @@
-import { addDoc, collection, deleteDoc, doc, serverTimestamp, setDoc, updateDoc } from '@/lib/db'
+import {
+  addDoc,
+  collection,
+  deleteDoc,
+  doc,
+  serverTimestamp,
+  setDoc,
+  updateDoc,
+  writeBatch,
+} from '@/lib/db'
 import { db, COLLECTIONS } from '@/lib/firebase'
 import { forgetDoc } from '@/lib/collectionStore'
 import { commit, type SaveOutcome } from '@/lib/sync'
 import { impulseAnswerId } from '@/lib/impulse'
+import type { StarterPlan } from '@/lib/impulseStarter'
 import type {
   ImpulseItem,
   ImpulseKind,
@@ -135,6 +145,31 @@ export async function deleteImpulseItem(
   forgetDoc(COLLECTIONS.impulseItems, id)
   for (const answerId of answerIds) forgetDoc(COLLECTIONS.impulseAnswers, answerId)
   return outcome
+}
+
+/**
+ * Das Startpaket anlegen – vier Wochen Inhalt in einem Zug.
+ *
+ * Die festen Dokument-IDs («starter-w1-impuls» …) machen den Lauf
+ * gefahrlos: Ein zweiter würde dieselben Dokumente treffen statt Dubletten
+ * anzulegen – und die Redaktion blendet den Knopf ohnehin aus, sobald das
+ * Paket einmal da ist.
+ */
+export async function createStarterItems(
+  plans: StarterPlan[],
+  userId?: string | null,
+): Promise<SaveOutcome> {
+  const batch = writeBatch(db)
+  for (const plan of plans) {
+    const { id, ...data } = plan
+    batch.set(doc(db, COLLECTIONS.impulseItems, id), {
+      ...data,
+      createdAt: serverTimestamp(),
+      updatedAt: serverTimestamp(),
+      createdBy: userId ?? null,
+    })
+  }
+  return commit(batch.commit())
 }
 
 /**
