@@ -1,0 +1,39 @@
+{
+  /*
+   * Das Serverseitige unter `netlify/functions`.
+   *
+   * Eine eigene Konfiguration und nicht einfach ein Eintrag in
+   * `tsconfig.app.json`: Die Functions laufen in Node und nicht im Browser,
+   * sie kennen `process` und teilen sich mit der App nur, was unter
+   * `src/lib` steht. Bis hierher wurden sie überhaupt nicht geprüft – ein
+   * Tippfehler fiel erst beim Ausrollen auf, und dort ist er teuer.
+   *
+   * `DOM` steht in `lib`, weil die Functions mit `fetch`, `Request` und
+   * `Response` arbeiten; Node bringt sie mit, die Typen dazu stehen aber
+   * in der Browser-Bibliothek.
+   */
+  "compilerOptions": {
+    "tsBuildInfoFile": "./node_modules/.tmp/tsconfig.functions.tsbuildinfo",
+    "target": "ES2023",
+    "lib": ["ES2023", "DOM"],
+    "module": "ESNext",
+    "skipLibCheck": true,
+
+    "moduleResolution": "bundler",
+    "allowImportingTsExtensions": true,
+    "verbatimModuleSyntax": true,
+    "moduleDetection": "force",
+    "noEmit": true,
+
+    "strict": true,
+    "noUnusedLocals": true,
+    "noUnusedParameters": true,
+    "erasableSyntaxOnly": true,
+    "noFallthroughCasesInSwitch": true,
+    "noUncheckedSideEffectImports": true,
+
+    "types": ["node"],
+    "paths": { "@/*": ["./src/*"] }
+  },
+  "include": ["netlify/**/*.mts"]
+}

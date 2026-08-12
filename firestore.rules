@@ -150,6 +150,19 @@ service cloud.firestore {
     }
 
     /*
+     * Darf Benachrichtigungen bestellen.
+     *
+     * Jedes freigeschaltete Konto – wer die App überhaupt benutzt, darf
+     * sich sagen lassen, wenn es etwas Neues gibt. Was jemand dann
+     * tatsächlich bekommt, hängt an seinen Einstellungen und daran, was
+     * er ohnehin sehen dürfte: Der Versand schaut für die Traktanden auf
+     * den Vollzugriff und für den Impuls auf den Schalter am Konto.
+     */
+    function notifyAccess() {
+      return isAdmin() || apAccess();
+    }
+
+    /*
      * Prüft, dass ein Feld durch die Schreiboperation nicht verändert wird.
      *
      * `resource` ist null, wenn das Dokument noch nicht existiert. Firestore
@@ -499,23 +512,53 @@ service cloud.firestore {
         || (impulseAccess() && resource.data.uid == request.auth.uid);
     }
 
+    /* ---------------- Benachrichtigungen ---------------- */
+
     /*
-     * Die Geräte-Adressen der Montags-Erinnerung.
+     * Die Geräte-Adressen für Benachrichtigungen.
      *
      * Ein Dokument je Gerät, das Cloud-Messaging-Token ist die ID.
      * Hinterlegt und entfernt wird nur auf den eigenen Namen; gelesen
      * werden muss hier gar nichts – verschickt wird von der geplanten
      * Function über das Dienstkonto, und das geht an diesen Regeln
-     * vorbei. Nachsehen und aufräumen darf die Redaktion.
+     * vorbei. Nachsehen und aufräumen darf der Administrator.
      */
-    match /impulsePushTokens/{tokenId} {
-      allow read: if impulseWrite();
+    match /pushTokens/{tokenId} {
+      allow read: if isAdmin();
 
-      allow create, update: if impulseAccess()
+      allow create, update: if notifyAccess()
         && request.resource.data.uid == request.auth.uid;
 
-      allow delete: if impulseWrite()
-        || (impulseAccess() && resource.data.uid == request.auth.uid);
+      allow delete: if isAdmin()
+        || (notifyAccess() && resource.data.uid == request.auth.uid);
+    }
+
+    /*
+     * Was jemand benachrichtigt bekommen will – ein Dokument je Konto,
+     * die UID ist die ID.
+     *
+     * Nur die eigene Person liest und schreibt hier; niemand sonst hat
+     * ein Interesse daran, und die Einstellung anderer geht keinen etwas
+     * an. Die drei Felder, die der Versand selbst führt, sind gegen den
+     * Client verriegelt: Wer sie zurückstellen könnte, könnte sich
+     * dieselbe Nachricht beliebig oft schicken lassen – aus Versehen
+     * oder aus Übermut.
+     */
+    match /notificationSettings/{userId} {
+      allow read: if signedIn() && request.auth.uid == userId;
+
+      allow create: if notifyAccess()
+        && request.auth.uid == userId
+        && request.resource.data.uid == userId
+        && !request.resource.data.keys()
+             .hasAny(['impulsSentAt', 'agendaSentAt', 'meetingsNotified']);
+
+      allow update: if notifyAccess()
+        && request.auth.uid == userId
+        && request.resource.data.uid == userId
+        && unchanged('impulsSentAt')
+        && unchanged('agendaSentAt')
+        && unchanged('meetingsNotified');
     }
 
     /* ---------------- Einstellungen ---------------- */

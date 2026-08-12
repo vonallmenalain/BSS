@@ -970,45 +970,166 @@ describe('Impuls', () => {
       await assertFails(getDocs(collection(asAnonymous(), 'impulseSubmissions')))
     })
   })
+})
 
-  /*
-   * Die Montags-Erinnerung: Geräte-Adressen hinterlegt jede Person nur für
-   * sich; verschickt wird über das Dienstkonto, das an den Regeln vorbei
-   * liest – für Konten gibt es hier nichts zu lesen.
-   */
-  describe('Montags-Erinnerung', () => {
-    it('die eigene Geräte-Adresse hinterlegen und wieder entfernen', async () => {
+/* ------------------------------------------------------------------ */
+
+/*
+ * Benachrichtigungen: Geräte-Adressen hinterlegt jede Person nur für sich,
+ * und die Einstellungen sieht ausser ihr niemand. Verschickt wird über das
+ * Dienstkonto, das an den Regeln vorbei liest – für Konten gibt es bei den
+ * Adressen nichts zu lesen.
+ */
+describe('Benachrichtigungen', () => {
+  describe('Geräte-Adressen', () => {
+    it('die eigene Adresse hinterlegen und wieder entfernen', async () => {
       await assertSucceeds(
-        setDoc(doc(asImpulseAp(), 'impulsePushTokens', 'geraet-1'), {
+        setDoc(doc(asImpulseAp(), 'pushTokens', 'geraet-1'), {
           uid: IMPULSE_AP,
           token: 'geraet-1',
         }),
       )
-      await assertSucceeds(deleteDoc(doc(asImpulseAp(), 'impulsePushTokens', 'geraet-1')))
+      await assertSucceeds(deleteDoc(doc(asImpulseAp(), 'pushTokens', 'geraet-1')))
+    })
+
+    it('auch ohne Impuls-Schalter – Benachrichtigungen gibt es für alle Bereiche', async () => {
+      await assertSucceeds(
+        setDoc(doc(asSecretary(), 'pushTokens', 'geraet-sekretaer'), {
+          uid: SECRETARY,
+          token: 'geraet-sekretaer',
+        }),
+      )
+      await assertSucceeds(
+        setDoc(doc(asApViewer(), 'pushTokens', 'geraet-berater'), {
+          uid: AP_VIEWER,
+          token: 'geraet-berater',
+        }),
+      )
+    })
+
+    it('wer noch auf Freigabe wartet, hinterlegt nichts', async () => {
+      await assertFails(
+        setDoc(doc(asPending(), 'pushTokens', 'geraet-wartend'), {
+          uid: PENDING,
+          token: 'geraet-wartend',
+        }),
+      )
+      await assertFails(
+        setDoc(doc(asAnonymous(), 'pushTokens', 'geraet-fremd'), { uid: 'x', token: 'y' }),
+      )
     })
 
     it('keine Adresse auf fremden Namen – und fremde bleiben fremd', async () => {
       await assertFails(
-        setDoc(doc(asImpulseAp(), 'impulsePushTokens', 'geraet-2'), {
+        setDoc(doc(asImpulseAp(), 'pushTokens', 'geraet-2'), {
           uid: BISHOP,
           token: 'geraet-2',
         }),
       )
       await testEnv.withSecurityRulesDisabled(async (context) => {
-        await setDoc(doc(context.firestore(), 'impulsePushTokens', 'geraet-fremd'), {
+        await setDoc(doc(context.firestore(), 'pushTokens', 'geraet-fremd'), {
           uid: 'uid-zweiter',
           token: 'geraet-fremd',
         })
       })
-      await assertFails(deleteDoc(doc(asImpulseAp(), 'impulsePushTokens', 'geraet-fremd')))
-      await assertSucceeds(deleteDoc(doc(asBishop(), 'impulsePushTokens', 'geraet-fremd')))
+      await assertFails(deleteDoc(doc(asImpulseAp(), 'pushTokens', 'geraet-fremd')))
+      await assertSucceeds(deleteDoc(doc(asBishop(), 'pushTokens', 'geraet-fremd')))
     })
 
-    it('lesen darf allein die Redaktion', async () => {
-      await assertSucceeds(getDocs(collection(asBishop(), 'impulsePushTokens')))
-      await assertFails(getDocs(collection(asImpulseAp(), 'impulsePushTokens')))
-      await assertFails(getDocs(collection(asSecretary(), 'impulsePushTokens')))
-      await assertFails(getDocs(collection(asAnonymous(), 'impulsePushTokens')))
+    it('lesen darf allein der Administrator', async () => {
+      await assertSucceeds(getDocs(collection(asBishop(), 'pushTokens')))
+      await assertFails(getDocs(collection(asImpulseAp(), 'pushTokens')))
+      await assertFails(getDocs(collection(asSecretary(), 'pushTokens')))
+      await assertFails(getDocs(collection(asAnonymous(), 'pushTokens')))
+    })
+  })
+
+  describe('Einstellungen', () => {
+    const settings = (uid) => ({
+      uid,
+      impuls: { on: true, mode: 'weekly', weekday: 1, time: '08:00' },
+      agenda: { on: false },
+      meeting: { on: false },
+    })
+
+    it('die eigenen Einstellungen anlegen, ändern und lesen', async () => {
+      await assertSucceeds(
+        setDoc(doc(asSecretary(), 'notificationSettings', SECRETARY), settings(SECRETARY)),
+      )
+      await assertSucceeds(
+        updateDoc(doc(asSecretary(), 'notificationSettings', SECRETARY), {
+          agenda: { on: true },
+        }),
+      )
+      await assertSucceeds(getDoc(doc(asSecretary(), 'notificationSettings', SECRETARY)))
+    })
+
+    it('fremde Einstellungen bleiben fremd – auch für den Administrator', async () => {
+      await assertFails(
+        setDoc(doc(asImpulseAp(), 'notificationSettings', SECRETARY), settings(SECRETARY)),
+      )
+      await assertFails(getDoc(doc(asImpulseAp(), 'notificationSettings', SECRETARY)))
+      await assertFails(getDoc(doc(asBishop(), 'notificationSettings', SECRETARY)))
+    })
+
+    it('die UID im Dokument muss zur Person passen', async () => {
+      await assertFails(
+        setDoc(doc(asApEditor(), 'notificationSettings', AP_EDITOR), settings(BISHOP)),
+      )
+    })
+
+    /*
+     * Der Kern: Die Marken des Versands gehören dem Versand. Wer sie
+     * zurückstellen könnte, liesse sich dieselbe Nachricht beliebig oft
+     * schicken.
+     */
+    it('die Marken des Versands lassen sich nicht selbst setzen', async () => {
+      await assertFails(
+        setDoc(doc(asApEditor(), 'notificationSettings', AP_EDITOR), {
+          ...settings(AP_EDITOR),
+          impulsSentAt: new Date('2020-01-01'),
+        }),
+      )
+      await assertFails(
+        setDoc(doc(asApEditor(), 'notificationSettings', AP_EDITOR), {
+          ...settings(AP_EDITOR),
+          meetingsNotified: [],
+        }),
+      )
+    })
+
+    it('die Marken des Versands lassen sich auch nicht nachträglich ändern', async () => {
+      await testEnv.withSecurityRulesDisabled(async (context) => {
+        await setDoc(doc(context.firestore(), 'notificationSettings', AP_VIEWER), {
+          ...settings(AP_VIEWER),
+          impulsSentAt: new Date('2026-08-10T06:00:00Z'),
+          agendaSentAt: new Date('2026-08-10T06:00:00Z'),
+          meetingsNotified: ['sitzung-1'],
+        })
+      })
+
+      await assertFails(
+        updateDoc(doc(asApViewer(), 'notificationSettings', AP_VIEWER), {
+          impulsSentAt: new Date('2020-01-01'),
+        }),
+      )
+      await assertFails(
+        updateDoc(doc(asApViewer(), 'notificationSettings', AP_VIEWER), {
+          meetingsNotified: [],
+        }),
+      )
+      // Die eigenen Felder bleiben daneben ganz normal änderbar.
+      await assertSucceeds(
+        updateDoc(doc(asApViewer(), 'notificationSettings', AP_VIEWER), {
+          impuls: { on: true, mode: 'daily', weekday: 1, time: '07:30' },
+        }),
+      )
+    })
+
+    it('wer noch auf Freigabe wartet, stellt nichts ein', async () => {
+      await assertFails(
+        setDoc(doc(asPending(), 'notificationSettings', PENDING), settings(PENDING)),
+      )
     })
   })
 })

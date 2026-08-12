@@ -13,6 +13,7 @@ import {
   Award,
   Settings,
   LogOut,
+  Bell,
   Menu,
   X,
   WifiOff,
@@ -36,6 +37,7 @@ import { impulseWeekKey, visibleImpulseItems } from '@/lib/impulse'
 import { UserAvatar } from '@/components/ui/Avatar'
 import { ROLE_LABELS } from '@/lib/types'
 import { UpdatePrompt } from '@/components/UpdatePrompt'
+import { NotificationsModal } from '@/components/NotificationsModal'
 
 interface NavItem {
   to: string
@@ -499,8 +501,9 @@ function BottomLink({ item }: { item: NavItem }) {
  * und nicht erst, wenn er wieder loslässt.
  */
 function UserMenu() {
-  const { profile, signOut, isApproved } = useAuth()
+  const { profile, signOut, isApproved, canViewAp, canViewImpulse } = useAuth()
   const [open, setOpen] = useState(false)
+  const [notifications, setNotifications] = useState(false)
   const menu = useRef<HTMLDivElement>(null)
 
   useEffect(() => {
@@ -523,6 +526,11 @@ function UserMenu() {
 
   if (!profile) return null
 
+  // Wer die App überhaupt benutzt, darf sich benachrichtigen lassen –
+  // wer noch auf Freigabe wartet, sieht ohnehin nichts, was sich melden
+  // könnte.
+  const mayNotify = isApproved || canViewAp || canViewImpulse
+
   return (
     <div className="relative" ref={menu}>
       <button
@@ -544,6 +552,19 @@ function UserMenu() {
               {ROLE_LABELS[profile.role]}
             </p>
           </div>
+          {mayNotify && (
+            <button
+              type="button"
+              onClick={() => {
+                setOpen(false)
+                setNotifications(true)
+              }}
+              className="flex w-full items-center gap-2 rounded-lg px-3 py-2 text-sm transition hover:bg-slate-100 dark:hover:bg-slate-700"
+            >
+              <Bell className="size-4" aria-hidden />
+              Benachrichtigungen
+            </button>
+          )}
           {isApproved && (
             <NavLink
               to="/einstellungen"
@@ -564,6 +585,13 @@ function UserMenu() {
           </button>
         </div>
       )}
+
+      {/*
+       * Der Dialog steht ausserhalb des aufgeklappten Menüs: Er soll
+       * offen bleiben, wenn das Menü sich schliesst – und das tut es
+       * beim ersten Griff irgendwohin.
+       */}
+      <NotificationsModal open={notifications} onClose={() => setNotifications(false)} />
     </div>
   )
 }
