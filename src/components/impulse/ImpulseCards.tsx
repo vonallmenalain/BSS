@@ -15,6 +15,12 @@ import type { ImpulseAnswer, ImpulseItem } from '@/lib/types'
  * Original, wäre keine.
  */
 
+/** «Eingereicht von Luca» – die Ehre der Mitmach-Ecke, still und klein. */
+export function ContributorLine({ item }: { item: ImpulseItem }) {
+  if (!item.contributor) return null
+  return <p className="hint mt-1">Eingereicht von {item.contributor}</p>
+}
+
 /** Die Quellenangabe – kurzer Auszug in der App, der Rest hinter dem Link. */
 export function SourceLink({ item }: { item: ImpulseItem }) {
   const source = item.source
@@ -51,6 +57,7 @@ export function ImpulseCard({ item }: { item: ImpulseItem }) {
       )}
       <div className="mt-3">
         <SourceLink item={item} />
+        <ContributorLine item={item} />
       </div>
     </section>
   )
@@ -143,6 +150,7 @@ export function QuizCard({
           {item.body}
         </p>
       )}
+      <ContributorLine item={item} />
 
       {shown ? (
         <>

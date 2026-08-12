@@ -121,6 +121,8 @@ export const COLLECTIONS = {
   impulseProgress: 'impulseProgress',
   /** Beiträge zur Frage der Woche, Dokument-ID ist «{itemId}_{uid}» */
   impulseComments: 'impulseComments',
+  /** Einreichungen aus der Mitmach-Ecke – die Redaktion prüft und übernimmt */
+  impulseSubmissions: 'impulseSubmissions',
   /** Wer wann da war und was sich dabei geändert hat – liest nur der Administrator */
   accessLog: 'accessLog',
 } as const

@@ -883,6 +883,93 @@ describe('Impuls', () => {
       await assertFails(getDocs(collection(asAnonymous(), 'impulseComments')))
     })
   })
+
+  /*
+   * Die Mitmach-Ecke: Einreichungen entstehen nur auf den eigenen Namen
+   * und nur als «offen» – übernehmen kann allein die Redaktion, und der
+   * Zustand ist für die einreichende Person tabu.
+   */
+  describe('Mitmach-Ecke', () => {
+    const submission = (uid, extra = {}) => ({
+      uid,
+      firstName: 'Levin',
+      kind: 'gedanke',
+      text: 'Alma 37:6 – durch Kleines und Einfaches …',
+      sourceLabel: 'Alma 37:6',
+      sourceUrl: '',
+      status: 'open',
+      ...extra,
+    })
+
+    it('einreichen: auf den eigenen Namen, offen – und nachbessern erlaubt', async () => {
+      await assertSucceeds(
+        setDoc(doc(asImpulseAp(), 'impulseSubmissions', 'einreichung-1'), submission(IMPULSE_AP)),
+      )
+      await assertSucceeds(
+        updateDoc(doc(asImpulseAp(), 'impulseSubmissions', 'einreichung-1'), {
+          text: 'Alma 37:6-7 – durch Kleines und Einfaches wird Grosses zustande gebracht.',
+        }),
+      )
+    })
+
+    it('nicht auf fremden Namen und nicht schon als «übernommen»', async () => {
+      await assertFails(
+        setDoc(doc(asImpulseAp(), 'impulseSubmissions', 'einreichung-2'), submission(BISHOP)),
+      )
+      await assertFails(
+        setDoc(
+          doc(asImpulseAp(), 'impulseSubmissions', 'einreichung-2'),
+          submission(IMPULSE_AP, { status: 'accepted' }),
+        ),
+      )
+    })
+
+    it('den Zustand spricht allein die Redaktion aus', async () => {
+      await assertFails(
+        updateDoc(doc(asImpulseAp(), 'impulseSubmissions', 'einreichung-1'), {
+          status: 'accepted',
+        }),
+      )
+      await assertSucceeds(
+        updateDoc(doc(asBishop(), 'impulseSubmissions', 'einreichung-1'), {
+          status: 'accepted',
+        }),
+      )
+    })
+
+    it('fremde Einreichungen bleiben fremd', async () => {
+      await testEnv.withSecurityRulesDisabled(async (context) => {
+        await setDoc(
+          doc(context.firestore(), 'impulseSubmissions', 'einreichung-fremd'),
+          submission('uid-zweiter', { firstName: 'Dario' }),
+        )
+      })
+      await assertFails(
+        updateDoc(doc(asImpulseAp(), 'impulseSubmissions', 'einreichung-fremd'), {
+          text: 'Umgeschrieben',
+        }),
+      )
+      await assertFails(
+        deleteDoc(doc(asImpulseAp(), 'impulseSubmissions', 'einreichung-fremd')),
+      )
+    })
+
+    it('zurückziehen darf die Person selbst, aufräumen die Redaktion', async () => {
+      await assertSucceeds(
+        deleteDoc(doc(asImpulseAp(), 'impulseSubmissions', 'einreichung-1')),
+      )
+      await assertSucceeds(
+        deleteDoc(doc(asBishop(), 'impulseSubmissions', 'einreichung-fremd')),
+      )
+    })
+
+    it('ohne Schalter keine Sicht auf die Mitmach-Ecke', async () => {
+      await assertSucceeds(getDocs(collection(asImpulseAp(), 'impulseSubmissions')))
+      await assertFails(getDocs(collection(asSecretary(), 'impulseSubmissions')))
+      await assertFails(getDocs(collection(asPending(), 'impulseSubmissions')))
+      await assertFails(getDocs(collection(asAnonymous(), 'impulseSubmissions')))
+    })
+  })
 })
 
 /* ------------------------------------------------------------------ */

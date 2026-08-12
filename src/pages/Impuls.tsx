@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { Link } from 'react-router-dom'
 import { Bookmark, Check, Inbox, LayoutList, Pencil } from 'lucide-react'
 import { useAuth } from '@/contexts/AuthContext'
@@ -8,11 +8,14 @@ import {
   useImpulseComments,
   useImpulseItems,
   useImpulseProgress,
+  useImpulseSubmissions,
 } from '@/hooks/useFirestore'
 import { PageHeader } from '@/components/ui/Pickers'
 import { ImpulseCard, QuizCard, SourceLink } from '@/components/impulse/ImpulseCards'
 import { ImpulseFeed } from '@/components/impulse/ImpulseFeed'
 import { ImpulseQuestionCard } from '@/components/impulse/ImpulseQuestionCard'
+import { ImpulseSubmitCard } from '@/components/impulse/ImpulseSubmitCard'
+import { setImpulseLastSeenWeek } from '@/services/impulse'
 import {
   ChallengeCard,
   GoalCard,
@@ -51,6 +54,7 @@ export function Impuls() {
   const answersState = useImpulseAnswers()
   const progressState = useImpulseProgress()
   const commentsState = useImpulseComments()
+  const submissionsState = useImpulseSubmissions()
 
   const todayKey = impulseWeekKey(now)
   const visible = visibleImpulseItems(itemsState.data, todayKey)
@@ -119,6 +123,24 @@ export function Impuls() {
   const favoriteItems = (myProgress?.favorites ?? [])
     .map((itemId) => itemsById.get(itemId))
     .filter((entry): entry is ImpulseItem => Boolean(entry))
+
+  /*
+   * Der erste Blick auf eine Woche mit Inhalt nimmt den stillen Punkt aus
+   * der Navigation. Vermerkt wird erst, wenn der Bestand geladen ist und
+   * wirklich etwas dasteht – ein leerer Montag ist nichts Neues.
+   */
+  const seenPending =
+    Boolean(profile) &&
+    !itemsState.loading &&
+    thisWeekAll.length > 0 &&
+    myProgress?.lastSeenWeek !== todayKey
+  useEffect(() => {
+    if (!seenPending || !profile) return
+    setImpulseLastSeenWeek(
+      { uid: profile.id, displayName: profile.displayName },
+      todayKey,
+    ).catch((error) => console.error('[impuls] Woche konnte nicht vermerkt werden:', error))
+  }, [seenPending, profile, todayKey])
 
   return (
     <>
@@ -216,6 +238,7 @@ export function Impuls() {
           <>
             <StreakCard current={streak.current} best={streak.best} badges={badges} />
             <GroupCard participants={participants} total={total} />
+            <ImpulseSubmitCard submissions={submissionsState.data} />
           </>
         )}
 

@@ -30,6 +30,9 @@ import { useTrackLocation } from '@/hooks/useBack'
 import { useOnlineStatus, useTheme } from '@/hooks/useLocalStorage'
 import { usePendingWrites } from '@/hooks/useSync'
 import { useEnsureMonthlyDuties } from '@/hooks/useMonthlyDuties'
+import { useNow } from '@/hooks/useNow'
+import { useImpulseItems, useImpulseProgress } from '@/hooks/useFirestore'
+import { impulseWeekKey, visibleImpulseItems } from '@/lib/impulse'
 import { UserAvatar } from '@/components/ui/Avatar'
 import { ROLE_LABELS } from '@/lib/types'
 import { UpdatePrompt } from '@/components/UpdatePrompt'
@@ -41,6 +44,15 @@ interface NavItem {
   icon: typeof LayoutDashboard
   /** Auf dem Handy in der unteren Leiste sichtbar */
   primary?: boolean
+  /**
+   * Ein stiller Punkt am Eintrag – «hier wartet Neues».
+   *
+   * Kein Zähler und keine Mahnung (die Pendenzen-Zahl ist aus gutem Grund
+   * weggefallen): Der Punkt steht, solange etwas noch nie angeschaut
+   * wurde, und verschwindet mit dem ersten Blick – die Sprache des
+   * Update-Hinweises.
+   */
+  dot?: boolean
   /*
    * Eine Zahl neben «Pendenzen» stand hier einmal – wie viele offen sind.
    * Sie ist weggefallen: Ein rotes Abzeichen behauptet, es sei etwas
@@ -68,7 +80,24 @@ const SACRAMENT_CHILDREN = [
 
 export function Layout() {
   const { settings } = useData()
-  const { isApproved, canViewAp, canViewImpulse } = useAuth()
+  const { isApproved, canViewAp, canViewImpulse, profile } = useAuth()
+
+  /*
+   * Der Punkt am Eintrag «Impuls»: Die laufende Woche hat Inhalt, und
+   * dieses Konto hat sie noch nicht angeschaut. Ohne Impuls-Zugang sind
+   * die Abonnements abgeschaltet und alles bleibt still.
+   */
+  const impulseItems = useImpulseItems()
+  const impulseProgress = useImpulseProgress()
+  const nowForImpulse = useNow()
+  const impulseWeek = impulseWeekKey(nowForImpulse)
+  const impulseDot =
+    canViewImpulse &&
+    !impulseItems.loading &&
+    visibleImpulseItems(impulseItems.data, impulseWeek).some(
+      (item) => item.week === impulseWeek,
+    ) &&
+    impulseProgress.byUid.get(profile?.id ?? '')?.lastSeenWeek !== impulseWeek
   const online = useOnlineStatus()
   const unsent = usePendingWrites()
   const [theme, setTheme] = useTheme()
@@ -119,6 +148,7 @@ export function Layout() {
     label: 'Impuls',
     shortLabel: 'Impuls',
     icon: Sparkles,
+    dot: impulseDot,
   }
 
   const navItems: NavItem[] = isApproved
@@ -357,6 +387,12 @@ function SidebarLink({ item }: { item: NavItem }) {
         >
           <Icon className="size-5 shrink-0" aria-hidden />
           <span className="flex-1 truncate">{item.label}</span>
+          {item.dot && (
+            <>
+              <span className="bg-brand-500 size-2 shrink-0 rounded-full" aria-hidden />
+              <span className="sr-only">Neuer Inhalt</span>
+            </>
+          )}
         </NavLink>
 
         {item.children && (
@@ -431,8 +467,19 @@ function BottomLink({ item }: { item: NavItem }) {
         )
       }
     >
-      <Icon className="size-5 shrink-0" aria-hidden />
-      <span className="text-[10px] font-medium">{item.shortLabel}</span>
+      <span className="relative">
+        <Icon className="size-5 shrink-0" aria-hidden />
+        {item.dot && (
+          <span
+            className="bg-brand-500 absolute -top-0.5 -right-0.5 size-2 rounded-full"
+            aria-hidden
+          />
+        )}
+      </span>
+      <span className="text-[10px] font-medium">
+        {item.shortLabel}
+        {item.dot && <span className="sr-only"> – neuer Inhalt</span>}
+      </span>
     </NavLink>
   )
 }

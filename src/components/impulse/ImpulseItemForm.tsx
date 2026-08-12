@@ -39,9 +39,12 @@ export function ImpulseItemForm({
   answerIds,
   commentIds = [],
   todayKey,
+  onSaved,
 }: {
   open: boolean
   onClose: () => void
+  /** Nach erfolgreichem Speichern – etwa um eine Einreichung als übernommen zu markieren. */
+  onSaved?: () => void
   /** `null` heisst: ein neuer Inhalt entsteht. */
   itemId: string | null
   initial: ImpulseItemInput
@@ -112,6 +115,7 @@ export function ImpulseItemForm({
     try {
       const outcome = await saveImpulseItem(itemId, input, profile?.id)
       toast.saved(`«${input.title.trim()}» gespeichert.`, outcome)
+      onSaved?.()
       onClose()
     } catch (error) {
       console.error(error)
@@ -296,6 +300,21 @@ export function ImpulseItemForm({
               placeholder="https://www.churchofjesuschrist.org/…"
             />
           </div>
+        </div>
+
+        <div>
+          <label className="label" htmlFor="impulse-contributor">
+            Eingereicht von (optional)
+          </label>
+          <input
+            id="impulse-contributor"
+            className="input"
+            value={input.contributor}
+            onChange={(event) =>
+              setInput((value) => ({ ...value, contributor: event.target.value }))
+            }
+            placeholder="Vorname – erscheint auf der Karte"
+          />
         </div>
 
         {input.kind === 'feed' && (
