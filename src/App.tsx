@@ -66,6 +66,9 @@ const ApActivities = lazy(() =>
    Sichtbar nur mit dem Schalter am Konto – und immer für das
    Administrator-Konto. */
 const Impuls = lazy(() => import('@/pages/Impuls').then((m) => ({ default: m.Impuls })))
+const ImpulsRedaktion = lazy(() =>
+  import('@/pages/ImpulsRedaktion').then((m) => ({ default: m.ImpulsRedaktion })),
+)
 
 /* Abendmahlsversammlung – der Rahmen hält den gewählten Sonntag,
    die Unterseiten werden bei Bedarf nachgeladen. */
@@ -136,6 +139,19 @@ function RequireFullAccess() {
 function RequireImpulse() {
   const { canViewImpulse, isApproved } = useAuth()
   if (!canViewImpulse) return <Navigate to={isApproved ? '/' : '/ap'} replace />
+  return <Outlet />
+}
+
+/**
+ * Die Redaktion des Bereichs «Impuls» – Inhalte pflegen und moderieren.
+ *
+ * Vorerst allein das Administrator-Konto; der Schalter `impulseEditor`
+ * steht bereit. Wer nur liest, landet wieder im Bereich – die
+ * Zugriffsregeln liessen ihn ohnehin nichts schreiben.
+ */
+function RequireImpulseEditor() {
+  const { canEditImpulse } = useAuth()
+  if (!canEditImpulse) return <Navigate to="/impuls" replace />
   return <Outlet />
 }
 
@@ -218,6 +234,16 @@ export default function App() {
                         </Suspense>
                       }
                     />
+                    <Route element={<RequireImpulseEditor />}>
+                      <Route
+                        path="impuls/redaktion"
+                        element={
+                          <Suspense fallback={<LoadingScreen />}>
+                            <ImpulsRedaktion />
+                          </Suspense>
+                        }
+                      />
+                    </Route>
                   </Route>
 
                   <Route element={<RequireFullAccess />}>

@@ -73,6 +73,12 @@ interface AuthContextValue {
    * Schalter erst einmal nur dort sichtbar.
    */
   canViewImpulse: boolean
+  /**
+   * Darf im Bereich «Impuls» Inhalte pflegen und moderieren – die
+   * Redaktion. Vorerst ist das allein das Administrator-Konto; der
+   * Schalter `impulseEditor` steht bereit, um sie später zu öffnen.
+   */
+  canEditImpulse: boolean
   role: Role | null
   error: string | null
   signIn: (email: string, password: string) => Promise<void>
@@ -304,9 +310,16 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       canViewAp,
       canEditAp: active && Boolean(role && AP_WRITE_ROLES.includes(role)),
       isApOnly: canViewAp && !isApproved,
-      // Ein wartendes Konto bleibt draussen, selbst wenn das Feld gesetzt
+      // Ein wartendes Konto bleibt draussen, selbst wenn ein Feld gesetzt
       // sein sollte – freigeschaltet wird zuerst, der Schalter kommt danach.
-      canViewImpulse: isAdmin || (active && role !== 'pending' && profile?.impulse === true),
+      // Die Redaktion sieht den Bereich immer: Wer ihn pflegt, muss ihn
+      // lesen können. Dieselben Bedingungen stehen in `firestore.rules`.
+      canViewImpulse:
+        isAdmin ||
+        (active &&
+          role !== 'pending' &&
+          (profile?.impulse === true || profile?.impulseEditor === true)),
+      canEditImpulse: isAdmin || (active && role !== 'pending' && profile?.impulseEditor === true),
       role,
       error,
       signIn,

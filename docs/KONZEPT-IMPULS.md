@@ -1,8 +1,9 @@
 # Konzept «Impuls» – ein geistiger Bereich für die AP’s
 
 Stand: Die Entscheide vom 12. August 2026 sind eingearbeitet
-([Abschnitt 12](#12-entscheide)); Etappe 0 – Zugang und Gerüst – ist
-umgesetzt. Der Bereich heisst «Impuls».
+([Abschnitt 12](#12-entscheide)). Umgesetzt sind die Etappen 0 und 1:
+Zugang und Gerüst, Wochenimpuls und Quizfrage samt Redaktionsseite. Der
+Bereich heisst «Impuls».
 
 ---
 
@@ -222,6 +223,15 @@ Teilnahme, nicht die Richtigkeit. Wer falsch liegt, bekommt dieselbe
 freundliche Auflösung und denselben Haken «dabei gewesen». Die Suchfrage ist
 die wertvollste Form (sie erzwingt den Blick in die Quelle) und zugleich die
 aufwendigste – der Pool lebt von der Mischung.
+
+Zwei Präzisierungen aus der Umsetzung: Technisch genügen **zwei
+Mechaniken** – Auswahl und freie Antwort (Suchfrage); die Vielfalt der
+Formen liegt im Inhalt, nicht im Datenmodell. Und die Auflösung ist
+**persönlich und sofort**: Wer antwortet, sieht Erklärung und Quelle im
+selben Moment, solange die Aufmerksamkeit noch da ist. Der Sonntag bleibt
+der gemeinsame Abschluss – dort löst die Kollegiumsstunde auf, und ab
+Etappe 4 werden dann auch die Antworten der anderen zur Frage der Woche
+sichtbar.
 
 ### 5.3 Tages-Challenge, Wochenziel, Serie und Abzeichen
 
@@ -472,7 +482,9 @@ impulseItems/{id}              eine Karte oder Frage
                                ├─ source    { label, url }        – Pflicht
                                ├─ quiz      { form, optionen[], antwort, erklärung }
                                ├─ order     Reihenfolge im Feed
-                               └─ status    entwurf | geplant | veröffentlicht
+                               └─ status    entwurf | bereit – veröffentlicht wird
+                                            durch den Kalender: Woche beginnt, Inhalt
+                                            erscheint (kein Handgriff am Montag)
 
 impulseAnswers/{itemId_uid}    genau eine Antwort pro Person und Frage
                                ├─ uid, firstName            (mitgeschrieben)
@@ -551,7 +563,7 @@ ist der Bereich bereits benutzbar. Reihenfolge von 3 und 4 ist tauschbar.
 | # | Inhalt | Sichtbar für | Grösse |
 | - | ------------------------------------------------------------------------ | ---------------------------- | ------ |
 | 0 | **Zugang & Gerüst** *(umgesetzt)*: Flags samt Regelverriegelung und Regeltests, Route, Navigation, leere Wochen-Seite, Impuls-Haken in der Benutzerverwaltung | nur Admin | klein |
-| 1 | **Wochenimpuls & Quiz** mit Auflösung; **Redaktions-Seite** (Karten, Fragenpool, Wochenplan); 4–6 Wochen Inhalt vorproduziert | Admin, dann 1–2 Pilot-AP’s | mittel |
+| 1 | **Wochenimpuls & Quiz** *(umgesetzt)* mit sofortiger Auflösung; **Redaktions-Seite** (Wochenplan, Fragenpool, Vergangenes); bleibt: 4–6 Wochen Inhalt vorproduzieren | Admin, dann 1–2 Pilot-AP’s | mittel |
 | 2 | **Wochenziel, Tages-Challenge, Serie, Abzeichen, Gruppenleiste** | Pilotgruppe → alle AP’s | mittel |
 | 3 | **Feed** mit Amen und Favoriten | alle mit Flag | mittel |
 | 4 | **Frage der Woche** mit Antworten, Amen und Moderation | alle mit Flag | mittel |

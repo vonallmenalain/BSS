@@ -44,6 +44,8 @@ export const AREA_LABELS: Record<string, string> = {
   apActivities: 'Aktivitäten AP',
   apMonths: 'Aktivitäten AP · Leitung',
   calendarFeeds: 'Kalender-Links',
+  impulseItems: 'Impuls',
+  impulseAnswers: 'Impuls · Antworten',
   settings: 'Einstellungen',
 }
 

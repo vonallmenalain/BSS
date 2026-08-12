@@ -113,6 +113,10 @@ export const COLLECTIONS = {
   apMonths: 'apMonths',
   /** Links, unter denen der Aktivitätenplan als Kalender abonniert werden kann */
   calendarFeeds: 'calendarFeeds',
+  /** Inhalte des Bereichs «Impuls» – Wochenimpuls und Quizfragen (docs/KONZEPT-IMPULS.md) */
+  impulseItems: 'impulseItems',
+  /** Eine Antwort pro Person und Quizfrage, Dokument-ID ist «{itemId}_{uid}» */
+  impulseAnswers: 'impulseAnswers',
   /** Wer wann da war und was sich dabei geändert hat – liest nur der Administrator */
   accessLog: 'accessLog',
 } as const
