@@ -563,7 +563,7 @@ ist der Bereich bereits benutzbar. Reihenfolge von 3 und 4 ist tauschbar.
 | # | Inhalt | Sichtbar für | Grösse |
 | - | ------------------------------------------------------------------------ | ---------------------------- | ------ |
 | 0 | **Zugang & Gerüst** *(umgesetzt)*: Flags samt Regelverriegelung und Regeltests, Route, Navigation, leere Wochen-Seite, Impuls-Haken in der Benutzerverwaltung | nur Admin | klein |
-| 1 | **Wochenimpuls & Quiz** *(umgesetzt)* mit sofortiger Auflösung; **Redaktions-Seite** (Wochenplan, Fragenpool, Vergangenes, Wochen-Vorschau «was sehen die AP’s», ohne zu speichern); bleibt: 4–6 Wochen Inhalt vorproduzieren | Admin, dann 1–2 Pilot-AP’s | mittel |
+| 1 | **Wochenimpuls & Quiz** *(umgesetzt)* mit sofortiger Auflösung; **Redaktions-Seite** (Wochenplan, Fragenpool, Vergangenes, Wochen-Vorschau «was sehen die AP’s», ohne zu speichern); **Startpaket** mit vier Wochen aus den Schriften zum Einspielen – weitere Wochen produziert die Redaktion laufend | Admin, dann 1–2 Pilot-AP’s | mittel |
 | 2 | **Wochenziel, Tages-Challenge, Serie, Abzeichen, Gruppenleiste** | Pilotgruppe → alle AP’s | mittel |
 | 3 | **Feed** mit Amen und Favoriten | alle mit Flag | mittel |
 | 4 | **Frage der Woche** mit Antworten, Amen und Moderation | alle mit Flag | mittel |
