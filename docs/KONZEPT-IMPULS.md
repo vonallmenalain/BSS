@@ -1,7 +1,8 @@
 # Konzept «Impuls» – ein geistiger Bereich für die AP’s
 
-Stand: Entwurf zum Brainstorming – noch nichts davon ist umgesetzt.
-«Impuls» ist der Arbeitstitel; zum Namen siehe [Abschnitt 3](#3-der-name).
+Stand: Die Entscheide vom 12. August 2026 sind eingearbeitet
+([Abschnitt 12](#12-entscheide)); Etappe 0 – Zugang und Gerüst – ist
+umgesetzt. Der Bereich heisst «Impuls».
 
 ---
 
@@ -23,7 +24,7 @@ Drei Dinge stecken in diesem Satz:
 
 | | |
 | ------------- | ------------------------------------------------------------------------- |
-| **Rhythmus** | ein bis zwei Anstösse pro Woche – kein täglicher Druck |
+| **Rhythmus** | ein bis zwei Anstösse pro Woche, dazu die freiwillige Tages-Challenge – Druck macht beides nicht |
 | **Spielform** | Quiz, Challenge, Feed – Formen, die Jugendliche kennen und gerne benutzen |
 | **Verankerung** | jede Karte und jede Frage führt zu offiziellem Material der Kirche Jesu Christi der Heiligen der Letzten Tage |
 
@@ -108,6 +109,9 @@ Anstoss, ein geistiger Gedanke pro Woche), trägt kirchlichen Klang ohne
 Schulton und bleibt als Navigationseintrag und Route (`/impuls`) sauber.
 «Funke» wäre die charmante Alternative, wenn es verspielter sein darf.
 
+**Entschieden: «Impuls».** Zweitfavorit ist «Kompass» – er bleibt notiert,
+falls sich der Name im Piloten nicht bewährt.
+
 ---
 
 ## 4. So fühlt sich eine Woche an
@@ -123,11 +127,14 @@ die Antwort steht nicht in der App, sondern in der Ansprache; wer sie wissen
 will, muss hineinlesen oder hineinhören. Dazu das Wochenziel: *«Lies diese
 Woche ein Kapitel im Buch Mormon.»*
 
-**Unter der Woche.** Zwei Minuten im Bus: den Feed durchtippen – eine
-Konferenz-Aussage, ein Vers, ein «Wusstest du?», ein kurzes Video von der
-Kirche, fertig nach acht Karten. Eine Karte gefällt – sie bekommt ein «Amen»
-und landet bei den Favoriten. Das Kapitel ist gelesen, ein Tipp aufs
-Wochenziel: erledigt. Die Serie zählt auf «5 Wochen in Folge».
+**Unter der Woche.** Jeden Tag ein kleiner Haken: Die Tages-Challenge –
+«Lies heute eine Schriftstelle» – wird Tag für Tag abgehakt, und die Reihe
+aus sieben Punkten füllt sich. Dazwischen zwei Minuten im Bus: den Feed
+durchtippen – eine Konferenz-Aussage, ein Vers, ein «Wusstest du?», ein
+kurzes Video von der Kirche, fertig nach acht Karten. Eine Karte gefällt –
+sie bekommt ein «Amen» und landet bei den Favoriten. Das Kapitel ist
+gelesen, ein Tipp aufs Wochenziel: erledigt. Die Serie zählt auf «5 Wochen
+in Folge».
 
 **Sonntag.** Die Frage der Woche wird aufgelöst: Wer geantwortet hat, sieht
 die Auflösung samt Erklärung – und was die anderen geantwortet haben. In der
@@ -154,8 +161,9 @@ Bereich.
    Redaktion  ──►   │  Wochenimpuls   (Karte)      │   ◄──  AP’s: lesen,
    plant Wochen     │  Quizfrage      (+Auflösung) │        antworten,
    im Voraus        │  Wochenziel     (Challenge)  │        abhaken,
-                    │  Feed           (5–10 Karten)│        swipen
-                    │  Frage der Woche(Antworten)  │
+                    │  Tages-Challenge (7 Haken)   │        swipen
+                    │  Feed           (5–10 Karten)│
+                    │  Frage der Woche (Antworten) │
                     └──────────────┬───────────────┘
                                    │
                           Fortschritt je Person
@@ -182,6 +190,11 @@ Zwei Anker machen den Impuls stärker als eine beliebige schöne Stelle:
 - **Passend zum Lehrplan.** Alternativ oder ergänzend: das Wochenthema aus
   «Komm und folge mir nach!» – dem Lehrplan, den Seminar und Familien ohnehin
   begleiten – oder das Jahresmotto der Jugend.
+
+Eine Ausnahme im Jahreslauf: **In der Woche nach der Generalkonferenz**
+übernimmt eine Konferenz-Themenwoche den Takt – Impuls, Quiz und Feed
+schöpfen dann aus den frischen Ansprachen des Wochenendes. (Zur
+Pfahlkonferenz gibt es bewusst keine eigene Woche.)
 
 ### 5.2 Die Quizfrage
 
@@ -210,17 +223,25 @@ freundliche Auflösung und denselben Haken «dabei gewesen». Die Suchfrage ist
 die wertvollste Form (sie erzwingt den Blick in die Quelle) und zugleich die
 aufwendigste – der Pool lebt von der Mischung.
 
-### 5.3 Wochenziel, Serie und Abzeichen
+### 5.3 Tages-Challenge, Wochenziel, Serie und Abzeichen
 
 Der Challenge-Baustein – die Antwort auf «ich möchte am Ende der Woche mit
 Stolz sagen können, dass ich etwas geschafft habe».
 
+- **Tages-Challenge.** Die kleine Schwester des Wochenziels: eine
+  Mini-Aufgabe, die jeden Tag aufs Neue abgehakt werden kann – «Lies heute
+  eine Schriftstelle», «Bete heute Morgen um Hilfe für den Tag». Die
+  Redaktion setzt sie pro Woche (eine Aufgabe, die für alle sieben Tage
+  gilt); die Anzeige ist eine Reihe aus sieben Punkten, die sich über die
+  Woche füllt. Auch hier gilt Leitgedanke 1: Ein leerer Tag mahnt nicht –
+  er bleibt einfach leer, und der nächste Punkt wartet.
 - **Wochenziel.** Die Redaktion setzt es pro Woche: «Lies ein Kapitel», «Schau
   eine Konferenzansprache», «Bete jeden Abend». Abgehakt wird per
   Selbstauskunft – ohne Kontrolle, wie in der Kirche üblich: Es zählt, was
   jemand vor sich selbst und dem Herrn sagt.
-- **Serie.** Wochen in Folge mit Beteiligung (Ziel erreicht oder Quiz
-  beantwortet). Mit eingebauter Milde: eine **Jokerwoche** pro Monat – Lager,
+- **Serie.** Wochen in Folge mit Beteiligung (Ziel erreicht, Quiz
+  beantwortet oder an mindestens einem Tag die Tages-Challenge abgehakt).
+  Mit eingebauter Milde: eine **Jokerwoche** pro Monat – Lager,
   Prüfungen und Ferien sollen keine Serie brechen. Eine gerissene Serie wird
   nüchtern neu gestartet, nicht betrauert.
 - **Abzeichen** für Meilensteine statt Punkte: «Erste Woche dabei», «4 Wochen
@@ -445,7 +466,8 @@ users/{uid}                    + impulse: boolean        (Zugang, schaltet der A
 
 impulseItems/{id}              eine Karte oder Frage
                                ├─ week      «2026-W34» – zu welcher Woche sie gehört
-                               ├─ kind      impuls | quiz | wochenziel | frage | feed
+                               ├─ kind      impuls | quiz | wochenziel |
+                               │            tageschallenge | frage | feed
                                ├─ title, body, emoji, imageUrl …
                                ├─ source    { label, url }        – Pflicht
                                ├─ quiz      { form, optionen[], antwort, erklärung }
@@ -464,7 +486,8 @@ impulseComments/{id}           Beitrag zur Frage der Woche
                                └─ createdAt
 
 impulseProgress/{uid}          der persönliche Stand – schreibt nur die Person
-                               ├─ weeks     { «2026-W34»: { ziel, quiz, feed } }
+                               ├─ weeks     { «2026-W34»: { ziel, quiz, feed,
+                               │              tage: [«2026-08-11», …] } }
                                ├─ streak, bestStreak        (vorberechnet)
                                ├─ badges[]
                                └─ favorites[]               gemerkte Karten
@@ -527,9 +550,9 @@ ist der Bereich bereits benutzbar. Reihenfolge von 3 und 4 ist tauschbar.
 
 | # | Inhalt | Sichtbar für | Grösse |
 | - | ------------------------------------------------------------------------ | ---------------------------- | ------ |
-| 0 | **Zugang & Gerüst:** Flags samt Regelverriegelung und Regeltests, Route, Navigation, leere Wochen-Seite | nur Admin | klein |
+| 0 | **Zugang & Gerüst** *(umgesetzt)*: Flags samt Regelverriegelung und Regeltests, Route, Navigation, leere Wochen-Seite, Impuls-Haken in der Benutzerverwaltung | nur Admin | klein |
 | 1 | **Wochenimpuls & Quiz** mit Auflösung; **Redaktions-Seite** (Karten, Fragenpool, Wochenplan); 4–6 Wochen Inhalt vorproduziert | Admin, dann 1–2 Pilot-AP’s | mittel |
-| 2 | **Wochenziel, Serie, Abzeichen, Gruppenleiste** | Pilotgruppe → alle AP’s | mittel |
+| 2 | **Wochenziel, Tages-Challenge, Serie, Abzeichen, Gruppenleiste** | Pilotgruppe → alle AP’s | mittel |
 | 3 | **Feed** mit Amen und Favoriten | alle mit Flag | mittel |
 | 4 | **Frage der Woche** mit Antworten, Amen und Moderation | alle mit Flag | mittel |
 | 5 | **Mitmach-Ecke, Push-Erinnerung, Feinschliff**; ggf. Öffnung über die AP’s hinaus | nach Bedarf | je klein |
@@ -566,31 +589,26 @@ Zum Rollout gehört mehr als Software:
 
 ---
 
-## 12. Offene Fragen
+## 12. Entscheide
 
-Zum gemeinsamen Entscheiden, bevor Etappe 0 beginnt – mit Empfehlung:
+Am 12. August 2026 besprochen und festgelegt:
 
-1. **Name des Bereichs?** – Empfehlung «Impuls»; «Funke», wenn es
-   verspielter sein darf.
-2. **Antworten zur Frage der Woche mit Vornamen oder anonym?** – Empfehlung
-   Vorname: Die Gruppe kennt sich, Anonymität senkt die Hemmschwelle für
-   Unfug und passt nicht zum Zeugnis-Charakter.
-3. **Antworten der anderen erst nach eigener Antwort zeigen?** – Empfehlung
-   ja.
-4. **Gruppenleiste: Namen zeigen («dabei waren …») oder nur die Zahl («8 von
-   11»)?** – Empfehlung Namen der Beteiligten, keine Hervorhebung der
-   Fehlenden; falls das heikel scheint, Start mit der Zahl.
-5. **Genügt Selbstauskunft beim Wochenziel?** – Empfehlung ja; Kontrolle
-   widerspräche dem Geist des Bereichs.
-6. **Rhythmus?** – Empfehlung: Montag Veröffentlichung, Sonntag Auflösung –
-   ein Takt, zwei Berührungen pro Woche; ein zweiter
-   Veröffentlichungstag (Donnerstag) lässt sich später zuschalten.
-7. **Wer pflegt mittelfristig Inhalte mit?** – Kandidaten: Berater
-   (`ap_editor`-Konten existieren schon), JM-Leitung; via Mitmach-Ecke auch
-   die AP’s selbst. Entscheid kann bis Etappe 2 warten.
-8. **Öffnung über die AP’s hinaus?** – Der Bereich wird neutral gebaut
-   (Flag pro Konto, kein AP-Bezug im Datenmodell), sodass JD oder Erwachsene
-   später nur einen Schalter brauchen. Ob und wann, ist offen.
-9. **Konferenz-Wochen:** Generalkonferenz und Pfahlkonferenz als
-   Themenwochen mit eigenem Ablauf (z. B. «Konferenz-Bingo»)? – Schöne
-   spätere Ergänzung, kein Startthema.
+1. **Name:** «Impuls». Zweitfavorit bleibt «Kompass», falls sich der Name
+   im Piloten nicht bewährt.
+2. **Frage der Woche:** Die Antworten tragen den Vornamen – keine
+   Anonymität.
+3. **Reihenfolge:** Die Antworten der anderen erscheinen erst nach der
+   eigenen Antwort.
+4. **Gruppenleiste:** Die Namen der Beteiligten werden gezeigt – ohne
+   Hervorhebung der Fehlenden.
+5. **Wochenziel:** Selbstauskunft genügt, keine Kontrolle.
+6. **Rhythmus:** Wöchentlich – Veröffentlichung am Montag, Auflösung am
+   Sonntag. Dazu kommt die **Tages-Challenge** als kleiner täglicher Haken
+   (siehe [5.3](#53-tages-challenge-wochenziel-serie-und-abzeichen)).
+7. **Redaktion:** Vorerst allein das Administrator-Konto; die Öffnung für
+   weitere Personen ist mit `impulseEditor` vorbereitet.
+8. **Öffnung über die AP’s hinaus:** bleibt als Möglichkeit bestehen – der
+   Bereich wird neutral gebaut (Schalter pro Konto, kein AP-Bezug im
+   Datenmodell).
+9. **Konferenzwochen:** Ja zur Generalkonferenz – als Themenwoche in der
+   Woche **nach** der Konferenz. Keine Spezialwoche zur Pfahlkonferenz.
