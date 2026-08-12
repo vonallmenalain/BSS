@@ -221,20 +221,37 @@ test('monthOfWeek: der Monat, in dem die Woche beginnt', () => {
   assert.equal(monthOfWeek('quatsch'), null)
 })
 
-test('participatedWeeks: Ziel, Tage oder Antwort – jedes davon zählt', () => {
+test('participatedWeeks: Ziel, Tage, Feed oder Antwort – jedes davon zählt', () => {
   const weekOfItem = (itemId: string) => (itemId === 'frage-33' ? '2026-W33' : null)
   const participated = participatedWeeks(
     {
       weeks: {
+        '2026-W29': { feed: true },
         '2026-W30': { goal: true },
         '2026-W31': { days: ['2026-07-28'] },
-        '2026-W32': { goal: false, days: [] },
+        '2026-W32': { goal: false, days: [], feed: false },
       },
     },
     [{ itemId: 'frage-33' }, { itemId: 'geloescht' }],
     weekOfItem,
   )
-  assert.deepEqual([...participated].sort(), ['2026-W30', '2026-W31', '2026-W33'])
+  assert.deepEqual(
+    [...participated].sort(),
+    ['2026-W29', '2026-W30', '2026-W31', '2026-W33'],
+  )
+})
+
+test('itemsForWeek: Feed-Karten am Ende, in der Reihenfolge der Redaktion', () => {
+  const items = [
+    item({ id: 'feed-b', week: '2026-W33', kind: 'feed', order: 2 }),
+    item({ id: 'impuls', week: '2026-W33', kind: 'impuls' }),
+    item({ id: 'feed-a', week: '2026-W33', kind: 'feed', order: 1 }),
+    item({ id: 'feed-ohne', week: '2026-W33', kind: 'feed' }),
+  ]
+  assert.deepEqual(
+    itemsForWeek(items, '2026-W33').map((entry) => entry.id),
+    ['impuls', 'feed-a', 'feed-b', 'feed-ohne'],
+  )
 })
 
 test('computeStreak: Wochen in Folge, die laufende zählt sofort mit', () => {

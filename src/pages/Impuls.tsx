@@ -1,10 +1,12 @@
+import { useState } from 'react'
 import { Link } from 'react-router-dom'
-import { Check, Inbox, Pencil } from 'lucide-react'
+import { Bookmark, Check, Inbox, LayoutList, Pencil } from 'lucide-react'
 import { useAuth } from '@/contexts/AuthContext'
 import { useNow } from '@/hooks/useNow'
 import { useImpulseAnswers, useImpulseItems, useImpulseProgress } from '@/hooks/useFirestore'
 import { PageHeader } from '@/components/ui/Pickers'
 import { ImpulseCard, QuizCard, SourceLink } from '@/components/impulse/ImpulseCards'
+import { ImpulseFeed } from '@/components/impulse/ImpulseFeed'
 import {
   ChallengeCard,
   GoalCard,
@@ -45,7 +47,12 @@ export function Impuls() {
 
   const todayKey = impulseWeekKey(now)
   const visible = visibleImpulseItems(itemsState.data, todayKey)
-  const thisWeek = itemsForWeek(visible, todayKey)
+  const thisWeekAll = itemsForWeek(visible, todayKey)
+  /* Die Feed-Karten erscheinen nicht einzeln, sondern hinter ihrem
+     Einstieg – der Feed ist ein eigener Raum, keine Kartenreihe. */
+  const feedCards = thisWeekAll.filter((entry) => entry.kind === 'feed')
+  const thisWeek = thisWeekAll.filter((entry) => entry.kind !== 'feed')
+  const [feedOpen, setFeedOpen] = useState(false)
 
   /*
    * Frühere Wochen, jüngste zuerst. Der Bestand kommt bereits nach Woche
@@ -97,6 +104,11 @@ export function Impuls() {
 
   const myWeek = (week: string): ImpulseWeekProgress => myProgress?.weeks?.[week] ?? {}
 
+  /* Die Favoritensammlung – in der Reihenfolge des Merkens. */
+  const favoriteItems = (myProgress?.favorites ?? [])
+    .map((itemId) => itemsById.get(itemId))
+    .filter((entry): entry is ImpulseItem => Boolean(entry))
+
   return (
     <>
       <PageHeader
@@ -114,7 +126,7 @@ export function Impuls() {
       />
 
       <div className="mx-auto max-w-2xl space-y-4">
-        {thisWeek.length === 0 ? (
+        {thisWeekAll.length === 0 ? (
           <section className="card p-5">
             <div className="grid place-items-center rounded-xl border border-dashed border-slate-300 px-4 py-8 text-center dark:border-slate-700">
               <Inbox className="size-6 text-slate-400" aria-hidden />
@@ -159,6 +171,26 @@ export function Impuls() {
           })
         )}
 
+        {/* Der Einstieg in den Feed – kurz und endlich. */}
+        {feedCards.length > 0 && (
+          <section className="card p-5">
+            <p className="hint flex items-center gap-1.5 font-medium">
+              <LayoutList className="size-4" aria-hidden />
+              Impuls-Feed
+            </p>
+            <div className="mt-2 flex flex-wrap items-center gap-3">
+              <p className="min-w-0 flex-1 text-sm text-slate-600 dark:text-slate-300">
+                {feedCards.length} {feedCards.length === 1 ? 'Karte' : 'Karten'} für diese Woche
+                – dann ist Schluss.
+                {myWeek(todayKey).feed === true && ' Durchgetippt – stark!'}
+              </p>
+              <button type="button" className="btn-primary" onClick={() => setFeedOpen(true)}>
+                {myWeek(todayKey).feed === true ? 'Nochmals ansehen' : 'Durchtippen'}
+              </button>
+            </div>
+          </section>
+        )}
+
         {/* Serie und Gruppenleiste – unter der Woche, wie im Konzept. */}
         {!itemsState.loading && (
           <>
@@ -200,6 +232,8 @@ export function Impuls() {
                           />
                         )
                       }
+                      case 'feed':
+                        return <PastFeed key={item.id} item={item} />
                       default:
                         return <PastImpulse key={item.id} item={item} />
                     }
@@ -209,7 +243,33 @@ export function Impuls() {
             </div>
           </section>
         )}
+
+        {/* Die eigene Favoritensammlung – was beim Durchtippen ein
+            «Merken» bekommen hat, bleibt hier greifbar. */}
+        {favoriteItems.length > 0 && (
+          <section>
+            <h2 className="mt-6 mb-2 flex items-center gap-1.5 text-sm font-semibold text-slate-500 dark:text-slate-400">
+              <Bookmark className="size-4" aria-hidden />
+              Gemerkt
+            </h2>
+            <section className="card space-y-4 p-5">
+              {favoriteItems.map((item) => (
+                <PastImpulse key={item.id} item={item} />
+              ))}
+            </section>
+          </section>
+        )}
       </div>
+
+      {feedOpen && (
+        <ImpulseFeed
+          week={todayKey}
+          cards={feedCards}
+          progressDocs={progressState.data}
+          feedDone={myWeek(todayKey).feed === true}
+          onClose={() => setFeedOpen(false)}
+        />
+      )}
     </>
   )
 }
@@ -248,6 +308,19 @@ function PastTask({
             {note}
           </>
         )}
+      </p>
+    </div>
+  )
+}
+
+/** Eine Feed-Karte aus einer früheren Woche – nur Titel und Herkunft. */
+function PastFeed({ item }: { item: ImpulseItem }) {
+  return (
+    <div>
+      <p className="text-sm">{item.title}</p>
+      <p className="hint mt-0.5">
+        Feed-Karte
+        {item.source?.label && ` · ${item.source.label}`}
       </p>
     </div>
   )

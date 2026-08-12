@@ -83,10 +83,16 @@ export function upcomingWeekKeys(from: Date | number, count: number): string[] {
 
 /**
  * Die Lesereihenfolge innerhalb einer Woche – wie im Konzept: zuerst der
- * Impuls, dann das Ziel mit dem Haken, dann die Frage, zuletzt die
- * tägliche Kleinigkeit.
+ * Impuls, dann das Ziel mit dem Haken, dann die Frage, die tägliche
+ * Kleinigkeit – und zuletzt der Einstieg in den Feed.
  */
-export const IMPULSE_KIND_ORDER: ImpulseKind[] = ['impuls', 'wochenziel', 'quiz', 'tageschallenge']
+export const IMPULSE_KIND_ORDER: ImpulseKind[] = [
+  'impuls',
+  'wochenziel',
+  'quiz',
+  'tageschallenge',
+  'feed',
+]
 
 export function impulseKindRank(kind: ImpulseKind): number {
   const index = IMPULSE_KIND_ORDER.indexOf(kind)
@@ -104,11 +110,19 @@ export function visibleImpulseItems(items: ImpulseItem[], todayKey: string): Imp
   )
 }
 
-/** Die Inhalte einer Woche, in Lesereihenfolge. */
+/**
+ * Die Inhalte einer Woche, in Lesereihenfolge – und innerhalb der
+ * Feed-Karten in der Reihenfolge der Redaktion (`order`); ohne Angabe
+ * kommt eine Karte ans Ende.
+ */
 export function itemsForWeek(items: ImpulseItem[], week: string): ImpulseItem[] {
   return items
     .filter((item) => item.week === week)
-    .sort((a, b) => impulseKindRank(a.kind) - impulseKindRank(b.kind))
+    .sort(
+      (a, b) =>
+        impulseKindRank(a.kind) - impulseKindRank(b.kind) ||
+        (a.order ?? Number.MAX_SAFE_INTEGER) - (b.order ?? Number.MAX_SAFE_INTEGER),
+    )
 }
 
 /**
@@ -196,7 +210,8 @@ export function participatedWeeks(
 ): Set<string> {
   const weeks = new Set<string>()
   for (const [week, state] of Object.entries(progress?.weeks ?? {})) {
-    if (state?.goal === true || (state?.days?.length ?? 0) > 0) weeks.add(week)
+    if (state?.goal === true || (state?.days?.length ?? 0) > 0 || state?.feed === true)
+      weeks.add(week)
   }
   for (const answer of answers) {
     const week = weekOfItem(answer.itemId)
@@ -307,7 +322,7 @@ export function weekParticipants(
   const byUid = new Map<string, string>()
   for (const progress of progressDocs) {
     const state = progress.weeks?.[week]
-    if (state?.goal === true || (state?.days?.length ?? 0) > 0) {
+    if (state?.goal === true || (state?.days?.length ?? 0) > 0 || state?.feed === true) {
       byUid.set(progress.uid, progress.firstName || '–')
     }
   }

@@ -46,6 +46,8 @@ export interface ImpulseItemInput {
   body: string
   sourceLabel: string
   sourceUrl: string
+  /** Platz im Feed – nur für Feed-Karten von Belang. */
+  order: number | null
   quiz: ImpulseQuiz
 }
 
@@ -58,7 +60,11 @@ export const EMPTY_IMPULSE_QUIZ: ImpulseQuiz = {
 }
 
 /** Leeres Formular – zugleich die Vorlage für neue Inhalte. */
-export function emptyImpulseItem(kind: ImpulseKind, week: string | null): ImpulseItemInput {
+export function emptyImpulseItem(
+  kind: ImpulseKind,
+  week: string | null,
+  order: number | null = null,
+): ImpulseItemInput {
   return {
     week,
     kind,
@@ -67,6 +73,7 @@ export function emptyImpulseItem(kind: ImpulseKind, week: string | null): Impuls
     body: '',
     sourceLabel: '',
     sourceUrl: '',
+    order,
     quiz: { ...EMPTY_IMPULSE_QUIZ, options: [...EMPTY_IMPULSE_QUIZ.options] },
   }
 }
@@ -81,6 +88,7 @@ export function toImpulseInput(item: ImpulseItem): ImpulseItemInput {
     body: item.body ?? '',
     sourceLabel: item.source?.label ?? '',
     sourceUrl: item.source?.url ?? '',
+    order: typeof item.order === 'number' ? item.order : null,
     quiz: item.quiz
       ? { ...item.quiz, options: [...item.quiz.options] }
       : { ...EMPTY_IMPULSE_QUIZ, options: [...EMPTY_IMPULSE_QUIZ.options] },
@@ -100,6 +108,7 @@ export async function saveImpulseItem(
     status: input.status,
     title: input.title.trim(),
     body: input.body.trim(),
+    order: typeof input.order === 'number' && Number.isFinite(input.order) ? input.order : null,
     source: sourceLabel ? { label: sourceLabel, url: input.sourceUrl.trim() } : null,
     // Das Quiz bleibt am Datensatz, auch wenn die Art wechselt – wie beim
     // variablen Layout wirft das Umschalten nichts weg.
@@ -190,6 +199,71 @@ export async function setImpulseChallengeDay(
         uid: user.uid,
         firstName: impulseFirstName(user.displayName),
         weeks: { [week]: { days: checked ? arrayUnion(day) : arrayRemove(day) } },
+        updatedAt: serverTimestamp(),
+      },
+      { merge: true },
+    ),
+  )
+}
+
+/** Die Schlusskarte erreicht: Der Feed der Woche ist durchgetippt. */
+export async function markImpulseFeedDone(
+  user: { uid: string; displayName: string },
+  week: string,
+): Promise<SaveOutcome> {
+  return commit(
+    setDoc(
+      doc(db, COLLECTIONS.impulseProgress, user.uid),
+      {
+        uid: user.uid,
+        firstName: impulseFirstName(user.displayName),
+        weeks: { [week]: { feed: true } },
+        updatedAt: serverTimestamp(),
+      },
+      { merge: true },
+    ),
+  )
+}
+
+/**
+ * «Amen» zu einer Karte – oder das Amen zurücknehmen.
+ *
+ * Gespeichert am eigenen Fortschrittsdokument, nicht am Inhalt: Inhalte
+ * schreibt nur die Redaktion, und so bleibt die Reaktion dort, wo alles
+ * Persönliche liegt. Dasselbe gilt fürs Merken.
+ */
+export async function setImpulseAmen(
+  user: { uid: string; displayName: string },
+  itemId: string,
+  on: boolean,
+): Promise<SaveOutcome> {
+  return commit(
+    setDoc(
+      doc(db, COLLECTIONS.impulseProgress, user.uid),
+      {
+        uid: user.uid,
+        firstName: impulseFirstName(user.displayName),
+        amens: on ? arrayUnion(itemId) : arrayRemove(itemId),
+        updatedAt: serverTimestamp(),
+      },
+      { merge: true },
+    ),
+  )
+}
+
+/** Eine Karte merken – oder aus der Favoritensammlung nehmen. */
+export async function setImpulseFavorite(
+  user: { uid: string; displayName: string },
+  itemId: string,
+  on: boolean,
+): Promise<SaveOutcome> {
+  return commit(
+    setDoc(
+      doc(db, COLLECTIONS.impulseProgress, user.uid),
+      {
+        uid: user.uid,
+        firstName: impulseFirstName(user.displayName),
+        favorites: on ? arrayUnion(itemId) : arrayRemove(itemId),
         updatedAt: serverTimestamp(),
       },
       { merge: true },

@@ -11,16 +11,21 @@ import { planStarterItems, STARTER_WEEKS } from '../src/lib/impulseStarter.ts'
  * und dass ein späterer Lauf nur nachholt, was fehlt.
  */
 
-test('Startpaket: vier Wochen, je Impuls, Ziel, Frage und Tages-Challenge', () => {
+test('Startpaket: vier Wochen, je Impuls, Ziel, Frage, Tages-Challenge und drei Feed-Karten', () => {
   assert.equal(STARTER_WEEKS.length, 4)
   const plans = planStarterItems([], '2026-W33')
-  assert.equal(plans.length, 16)
+  assert.equal(plans.length, 28)
   for (let week = 1; week <= 4; week += 1) {
     for (const kind of ['impuls', 'wochenziel', 'quiz', 'tageschallenge']) {
       assert.ok(
         plans.some((plan) => plan.id === `starter-w${week}-${kind}`),
         `starter-w${week}-${kind} fehlt`,
       )
+    }
+    for (let card = 1; card <= 3; card += 1) {
+      const plan = plans.find((entry) => entry.id === `starter-w${week}-feed-${card}`)
+      assert.ok(plan, `starter-w${week}-feed-${card} fehlt`)
+      assert.equal(plan.order, card)
     }
   }
 })
@@ -35,10 +40,10 @@ test('Startpaket: belegt die laufende und die nächsten drei Wochen', () => {
   assert.deepEqual(
     [...byWeek.entries()].sort(),
     [
-      ['2026-W33', 4],
-      ['2026-W34', 4],
-      ['2026-W35', 4],
-      ['2026-W36', 4],
+      ['2026-W33', 7],
+      ['2026-W34', 7],
+      ['2026-W35', 7],
+      ['2026-W36', 7],
     ],
   )
   // Auch über die Jahresgrenze hinweg – 2026 hat 53 Wochen.
@@ -130,8 +135,13 @@ test('Startpaket: was schon da ist, wird nicht noch einmal geplant', () => {
     )
   }
   const plans = planStarterItems(existing, '2026-W33')
-  assert.equal(plans.length, 8)
-  assert.ok(plans.every((plan) => plan.kind === 'wochenziel' || plan.kind === 'tageschallenge'))
+  assert.equal(plans.length, 20)
+  assert.ok(
+    plans.every(
+      (plan) =>
+        plan.kind === 'wochenziel' || plan.kind === 'tageschallenge' || plan.kind === 'feed',
+    ),
+  )
   // Und wer alles hat, bekommt nichts angeboten.
   const complete = planStarterItems(
     planStarterItems([], '2026-W33').map((plan) => ({

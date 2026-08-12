@@ -211,7 +211,13 @@ export function ImpulseItemForm({
 
         <div>
           <label className="label" htmlFor="impulse-title">
-            {input.kind === 'quiz' ? 'Frage' : input.kind === 'impuls' ? 'Titel' : 'Aufgabe'}
+            {input.kind === 'quiz'
+              ? 'Frage'
+              : input.kind === 'impuls'
+                ? 'Titel'
+                : input.kind === 'feed'
+                  ? 'Text der Karte'
+                  : 'Aufgabe'}
           </label>
           <input
             id="impulse-title"
@@ -225,7 +231,9 @@ export function ImpulseItemForm({
                   ? 'Lies diese Woche ein Kapitel im Buch Mormon'
                   : input.kind === 'tageschallenge'
                     ? 'Lies jeden Tag einen Vers'
-                    : 'Kraft aus den Schriften'
+                    : input.kind === 'feed'
+                      ? '«Blickt in jedem Gedanken auf mich …»'
+                      : 'Kraft aus den Schriften'
             }
           />
         </div>
@@ -282,6 +290,31 @@ export function ImpulseItemForm({
             />
           </div>
         </div>
+
+        {input.kind === 'feed' && (
+          <div>
+            <label className="label" htmlFor="impulse-order">
+              Platz im Feed
+            </label>
+            <input
+              id="impulse-order"
+              className="input w-24"
+              type="number"
+              min={1}
+              value={input.order ?? ''}
+              onChange={(event) =>
+                setInput((value) => ({
+                  ...value,
+                  order: event.target.value === '' ? null : Number(event.target.value),
+                }))
+              }
+            />
+            <p className="hint mt-1">
+              Die Reihenfolge legt die Redaktion – kein Algorithmus. Ohne Zahl kommt die Karte
+              ans Ende.
+            </p>
+          </div>
+        )}
 
         {input.kind === 'quiz' && (
           <fieldset className="space-y-3 rounded-xl border border-slate-200 p-3 dark:border-slate-700">

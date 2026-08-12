@@ -25,7 +25,8 @@ export function ImpulseWeekPreview({
   items: ImpulseItem[]
   onClose: () => void
 }) {
-  const ready = items.filter((item) => item.status === 'ready')
+  const ready = items.filter((item) => item.status === 'ready' && item.kind !== 'feed')
+  const feeds = items.filter((item) => item.status === 'ready' && item.kind === 'feed')
   const drafts = items.filter((item) => item.status === 'draft')
 
   return (
@@ -36,7 +37,7 @@ export function ImpulseWeekPreview({
           werden nicht gespeichert.
         </p>
 
-        {ready.length === 0 ? (
+        {ready.length === 0 && feeds.length === 0 ? (
           <div className="grid place-items-center rounded-xl border border-dashed border-slate-300 px-4 py-8 text-center dark:border-slate-700">
             <Inbox className="size-6 text-slate-400" aria-hidden />
             <p className="mt-2 text-sm font-medium">Diese Woche ist noch nichts aufgeschaltet</p>
@@ -57,6 +58,37 @@ export function ImpulseWeekPreview({
                 return <ImpulseCard key={item.id} item={item} />
             }
           })
+        )}
+
+        {/* Der Feed, Karte für Karte – hier untereinander statt im
+            Vollbild; für den Wisch-Eindruck gibt es den Bereich selbst. */}
+        {feeds.length > 0 && (
+          <div className="space-y-3">
+            <p className="hint font-medium">
+              Impuls-Feed · {feeds.length} {feeds.length === 1 ? 'Karte' : 'Karten'}, dann ist
+              Schluss
+            </p>
+            {feeds.map((card, index) => (
+              <section key={card.id} className="card p-5 text-center">
+                <p className="hint">
+                  Karte {index + 1} von {feeds.length}
+                </p>
+                <h3 className="mt-2 text-lg leading-snug font-semibold text-balance">
+                  {card.title}
+                </h3>
+                {card.body && (
+                  <p className="mt-2 text-sm whitespace-pre-line text-slate-600 dark:text-slate-300">
+                    {card.body}
+                  </p>
+                )}
+                {card.source?.label && (
+                  <p className="hint mt-2">
+                    {card.source.label}
+                  </p>
+                )}
+              </section>
+            ))}
+          </div>
         )}
 
         {drafts.length > 0 && (
