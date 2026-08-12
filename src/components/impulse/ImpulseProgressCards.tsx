@@ -42,10 +42,17 @@ export function GoalCard({
   const toast = useToast()
   const [busy, setBusy] = useState(false)
   const [previewDone, setPreviewDone] = useState(false)
+  /*
+   * Ob der Haken **in dieser Sitzung** gesetzt wurde – nur dann springt
+   * er herein. Ein schon erledigtes Ziel steht beim Öffnen einfach da:
+   * Bewegung zeigt den Wechsel, nicht den Bestand.
+   */
+  const [celebrate, setCelebrate] = useState(false)
 
   const isDone = preview ? previewDone : done
 
   const toggle = async () => {
+    setCelebrate(!isDone)
     if (preview) {
       setPreviewDone((value) => !value)
       return
@@ -111,10 +118,10 @@ export function GoalCard({
           )}
           aria-hidden
         >
-          {isDone && <Check className="animate-scale-in size-3.5" />}
+          {isDone && <Check className={cn('size-3.5', celebrate && 'animate-scale-in')} />}
         </span>
         {isDone ? (
-          <span className="animate-fade-in">Geschafft!</span>
+          <span className={celebrate ? 'animate-fade-in' : undefined}>Geschafft!</span>
         ) : (
           'Geschafft? Hier abhaken.'
         )}
@@ -144,6 +151,9 @@ export function ChallengeCard({
   const now = useNow()
   const [busyDay, setBusyDay] = useState<string | null>(null)
   const [previewDays, setPreviewDays] = useState<Set<string>>(new Set())
+  /* Wie beim Wochenziel: Nur der eben gesetzte Haken springt – die
+     schon abgehakten Tage stehen beim Öffnen still da. */
+  const [celebrateDay, setCelebrateDay] = useState<string | null>(null)
 
   const allDays = weekDays(week)
   const today = format(now, 'yyyy-MM-dd')
@@ -151,6 +161,7 @@ export function ChallengeCard({
   const doneCount = allDays.filter((day) => checked.has(day)).length
 
   const toggle = async (day: string) => {
+    setCelebrateDay(checked.has(day) ? null : day)
     if (preview) {
       setPreviewDays((value) => {
         const next = new Set(value)
@@ -237,7 +248,9 @@ export function ChallengeCard({
               >
                 {/* Der Tageshaken springt herein – klein und schnell,
                     denn er kommt (hoffentlich) jeden Tag. */}
-                {isChecked && <Check className="animate-scale-in size-3" />}
+                {isChecked && (
+                  <Check className={cn('size-3', celebrateDay === day && 'animate-scale-in')} />
+                )}
               </span>
             </button>
           )

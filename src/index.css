@@ -43,7 +43,7 @@
 
   /* Inhalt tritt auf: kurz von unten, ohne Hüpfer. `both` hält den
      Anfangszustand auch während einer Stagger-Verzögerung fest. */
-  --animate-imp-rise: imp-rise 0.35s var(--ease-out-strong) both;
+  --animate-imp-rise: imp-rise 0.3s var(--ease-out-strong) both;
 
   /* Der eine Überschwung des Bereichs «Impuls»: die Schlusskarte des
      Feeds – einmal pro Woche, der Moment darf federn. Sonst nirgends. */
@@ -275,19 +275,21 @@
 
   /* Der Farbschleier des Bereichs: blendet weich ein, wenn der Bereich
      wechselt – der Grund darunter bleibt stehen, darum reicht das
-     Einblenden des Neuen. */
+     Einblenden des Neuen. Gleich lang wie der Eintritt des Raums. */
   .imp-wash {
     opacity: 1;
-    transition: opacity 320ms ease;
+    transition: opacity 260ms ease;
     @starting-style {
       opacity: 0;
     }
   }
 
   /* Der Fortschrittsring zeichnet sich beim Erscheinen – vom vollen
-     Umfang (`--imp-ring-c`, setzt die Komponente) auf den Zielstand. */
+     Umfang (`--imp-ring-c`, setzt die Komponente) auf den Zielstand.
+     600 ms, bewusst über dem UI-Budget: eine dekorative Daten-Enthüllung,
+     die nichts blockiert und einmal pro Öffnen läuft. */
   .imp-ring-arc {
-    transition: stroke-dashoffset 700ms var(--ease-out-strong);
+    transition: stroke-dashoffset 600ms var(--ease-out-strong);
     @starting-style {
       stroke-dashoffset: var(--imp-ring-c, 0);
     }
@@ -299,7 +301,7 @@
   .imp-meter {
     transform: scaleX(var(--imp-share, 0));
     transform-origin: left;
-    transition: transform 700ms var(--ease-out-strong);
+    transition: transform 600ms var(--ease-out-strong);
     @starting-style {
       transform: scaleX(0);
     }

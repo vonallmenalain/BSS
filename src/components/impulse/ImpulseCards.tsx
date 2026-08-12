@@ -94,6 +94,12 @@ export function QuizCard({
   const [text, setText] = useState('')
   const [busy, setBusy] = useState(false)
   const [previewAnswer, setPreviewAnswer] = useState<ImpulseAnswer | null>(null)
+  /*
+   * Eben erst geantwortet? Nur dann tritt die Auflösung an – wer eine
+   * schon beantwortete Frage wieder öffnet, sieht sie einfach dastehen.
+   * Bewegung gehört dem Moment des Wechsels.
+   */
+  const [justAnswered, setJustAnswered] = useState(false)
 
   const quiz = item.quiz
   if (!quiz) return null
@@ -104,6 +110,7 @@ export function QuizCard({
     event.preventDefault()
     if (quiz.form === 'choice' && choice === null) return
     if (quiz.form === 'text' && !text.trim()) return
+    setJustAnswered(true)
 
     if (preview) {
       setPreviewAnswer({
@@ -159,7 +166,7 @@ export function QuizCard({
 
       {shown ? (
         <>
-          <QuizResolution item={item} answer={shown} />
+          <QuizResolution item={item} answer={shown} animated={justAnswered} />
           {preview && (
             <button type="button" className="btn-ghost btn-sm mt-3" onClick={reset}>
               <RotateCcw className="size-4" aria-hidden />
@@ -238,7 +245,16 @@ export function QuizCard({
 }
 
 /** Die Auflösung – der Lernmoment nach der Antwort. */
-export function QuizResolution({ item, answer }: { item: ImpulseItem; answer: ImpulseAnswer }) {
+export function QuizResolution({
+  item,
+  answer,
+  animated = false,
+}: {
+  item: ImpulseItem
+  answer: ImpulseAnswer
+  /** Tritt nur an, wenn eben geantwortet wurde – nicht beim Wiedersehen. */
+  animated?: boolean
+}) {
   const quiz = item.quiz
   if (!quiz) return null
 
@@ -246,7 +262,7 @@ export function QuizResolution({ item, answer }: { item: ImpulseItem; answer: Im
     /* Die Auflösung tritt an statt zu erscheinen – sie ersetzt das
        Formular im selben Moment, und ohne Brücke wäre der Wechsel ein
        Schnitt mitten im Lernmoment. */
-    <div className="animate-imp-rise mt-4 space-y-3">
+    <div className={cn('mt-4 space-y-3', animated && 'animate-imp-rise')}>
       {quiz.form === 'choice' ? (
         <>
           <p
