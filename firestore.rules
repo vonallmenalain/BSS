@@ -37,6 +37,14 @@ rules_version = '2';
 // abonniert werden kann. Lesen dürfen sie beide AP-Rollen – wer den Plan
 // sieht, darf ihn sich auch in den eigenen Kalender holen. Vergeben und
 // widerrufen darf sie nur, wer den Plan auch pflegen darf.
+//
+// Unabhängig von der Rolle steht der Bereich «Impuls» – der geistige
+// Bereich für die AP's (docs/KONZEPT-IMPULS.md). Wer ihn sieht, sagt das
+// Feld `impulse` am Benutzer; wer Inhalte pflegen darf, das Feld
+// `impulseEditor`. Beide vergibt allein das Administrator-Konto, und das
+// Administrator-Konto sieht den Bereich immer. Die Sammlungen des Bereichs
+// folgen mit der nächsten Etappe – verriegelt ist ab sofort, dass sich
+// niemand die beiden Schalter selbst setzt.
 
 service cloud.firestore {
   match /databases/{database}/documents {
@@ -102,6 +110,46 @@ service cloud.firestore {
     }
 
     /*
+     * Darf den Bereich «Impuls» sehen.
+     *
+     * Anders als beim AP-Kalender entscheidet keine Rolle, sondern der
+     * Schalter am Konto – er wird pro Person vergeben und ist mit jeder
+     * freigeschalteten Rolle kombinierbar. Das Administrator-Konto sieht
+     * den Bereich immer, und wer Inhalte pflegt, sieht ihn ebenfalls –
+     * eine Redaktion, die ihren eigenen Bereich nicht lesen dürfte, wäre
+     * ein Widerspruch. `pending` bleibt draussen, auch wenn ein Feld
+     * gesetzt sein sollte.
+     */
+    function impulseAccess() {
+      return isAdmin()
+        || (hasProfile()
+          && userDoc().active == true
+          && userDoc().role in [
+               'bishop', 'counselor1', 'counselor2',
+               'executive_secretary', 'secretary', 'counselor',
+               'ap_editor', 'ap_viewer'
+             ]
+          && (userDoc().get('impulse', false) == true
+              || userDoc().get('impulseEditor', false) == true));
+    }
+
+    // Darf im Bereich «Impuls» Inhalte pflegen und moderieren – die
+    // Redaktion. Vorerst ist das allein das Administrator-Konto; der
+    // zweite Schalter steht bereit, damit die Öffnung später keine
+    // Regeländerung mehr braucht.
+    function impulseWrite() {
+      return isAdmin()
+        || (hasProfile()
+          && userDoc().active == true
+          && userDoc().role in [
+               'bishop', 'counselor1', 'counselor2',
+               'executive_secretary', 'secretary', 'counselor',
+               'ap_editor', 'ap_viewer'
+             ]
+          && userDoc().get('impulseEditor', false) == true);
+    }
+
+    /*
      * Prüft, dass ein Feld durch die Schreiboperation nicht verändert wird.
      *
      * `resource` ist null, wenn das Dokument noch nicht existiert. Firestore
@@ -125,20 +173,27 @@ service cloud.firestore {
       allow list: if approved();
 
       // Ein neues Konto legt sein eigenes Profil an – zwingend als `pending`.
-      // Damit kann sich niemand selbst Rechte geben.
+      // Damit kann sich niemand selbst Rechte geben. Auch die beiden
+      // Impuls-Schalter darf es nicht mitbringen: Sie blieben sonst als
+      // schlafender Zugang stehen und erwachten mit der Freischaltung.
       allow create: if signedIn()
         && request.auth.uid == userId
         && request.resource.data.role == 'pending'
-        && request.resource.data.active == true;
+        && request.resource.data.active == true
+        && !('impulse' in request.resource.data)
+        && !('impulseEditor' in request.resource.data);
 
       // Das eigene Profil darf jede und jeder pflegen (Name, Verknüpfung,
-      // Ansichts-Einstellungen) – aber weder Rolle noch Aktivstatus anfassen.
-      // Das ist die Sperre gegen die Selbstfreischaltung, und sie gilt für
-      // wartende wie für freigeschaltete Konten gleichermassen.
+      // Ansichts-Einstellungen) – aber weder Rolle noch Aktivstatus anfassen,
+      // und ebenso wenig die beiden Impuls-Schalter. Das ist die Sperre gegen
+      // die Selbstfreischaltung, und sie gilt für wartende wie für
+      // freigeschaltete Konten gleichermassen.
       allow update: if signedIn()
         && request.auth.uid == userId
         && unchanged('role')
-        && unchanged('active');
+        && unchanged('active')
+        && unchanged('impulse')
+        && unchanged('impulseEditor');
 
       // Benutzer verwalten – freischalten, Rollen zuweisen, deaktivieren,
       // löschen – darf ausschliesslich der Administrator. Damit genügt ein
@@ -309,6 +364,53 @@ service cloud.firestore {
     match /calendarFeeds/{feedId} {
       allow read: if apAccess();
       allow write: if apWrite();
+    }
+
+    /* ---------------- Impuls ---------------- */
+
+    /*
+     * Der geistige Bereich für die AP's (docs/KONZEPT-IMPULS.md) – nach dem
+     * AP-Kalender die zweite Insel, die ohne Vollzugriff erreichbar ist.
+     * Wer sie sieht, sagt der Schalter am Konto (`impulseAccess`); Inhalte
+     * pflegt die Redaktion (`impulseWrite`).
+     *
+     * Lesen dürfen alle im Bereich den ganzen Bestand – Entwürfe und
+     * kommende Wochen eingeschlossen. Das ist eine Abwägung und keine
+     * Nachlässigkeit: Eine Zeile «nur Veröffentlichtes» zwänge jede
+     * Abfrage auf einen gefilterten Ausschnitt und bräche den einfachen
+     * Offline-Abgleich – und geschützt würde wenig, denn schon die
+     * veröffentlichte Quizfrage trägt ihre Lösung im selben Dokument.
+     * Wer mit Entwicklerwerkzeugen nachsieht, kann sich die Antwort also
+     * ohnehin holen und betrügt dabei nur sich selbst: Gewertet wird die
+     * Teilnahme, nicht die Richtigkeit. Was die AP's zu sehen bekommen,
+     * entscheidet die Ansicht (`visibleImpulseItems` in lib/impulse).
+     */
+    match /impulseItems/{itemId} {
+      allow read: if impulseAccess();
+      allow write: if impulseWrite();
+    }
+
+    /*
+     * Eine Antwort pro Person und Frage.
+     *
+     * Die Dokument-ID trägt beides – `{itemId}_{uid}` – und die Regel
+     * prüft, dass beide Teile zur schreibenden Person passen: Niemand
+     * antwortet für jemand anderen, und niemand antwortet zweimal
+     * (die zweite Antwort wäre ein `update`, und das gibt es nicht:
+     * ein Versuch, keine Korrektur). Lesen dürfen alle im Bereich –
+     * die Auflösung und später das Gruppenbild leben davon.
+     * Wegräumen kann allein die Redaktion, etwa Testantworten.
+     */
+    match /impulseAnswers/{answerId} {
+      allow read: if impulseAccess();
+
+      allow create: if impulseAccess()
+        && answerId == request.resource.data.itemId + '_' + request.auth.uid
+        && request.resource.data.uid == request.auth.uid;
+
+      allow update: if false;
+
+      allow delete: if impulseWrite();
     }
 
     /* ---------------- Einstellungen ---------------- */

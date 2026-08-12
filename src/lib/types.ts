@@ -463,6 +463,27 @@ export interface AppUser extends WithId {
   memberId?: string | null
   /** Gemerkte Darstellung des Aktivitätenplans – gilt auf jedem Gerät */
   apView?: ApView
+  /**
+   * Darf den Bereich «Impuls» sehen – den geistigen Bereich für die AP’s
+   * (siehe docs/KONZEPT-IMPULS.md).
+   *
+   * Ein Schalter am Konto und keine Rolle: Der Zugang ist unabhängig davon,
+   * ob jemand nur den AP-Kalender liest oder Vollzugriff hat, und er wird
+   * pro Konto vergeben. Setzen kann ihn allein das Administrator-Konto –
+   * die Selbst-Update-Regel in `firestore.rules` sperrt das Feld wie `role`
+   * und `active`, sonst schaltete sich jedes Konto den Bereich selbst frei.
+   * Das Administrator-Konto sieht den Bereich immer, auch ohne Schalter.
+   */
+  impulse?: boolean
+  /**
+   * Darf im Bereich «Impuls» Inhalte pflegen und moderieren.
+   *
+   * Noch ohne Wirkung – die Redaktion ist vorerst das Administrator-Konto.
+   * Das Feld ist trotzdem von Anfang an in den Regeln verriegelt, damit
+   * die Redaktion später nur noch Oberfläche braucht und keine
+   * Regeländerung.
+   */
+  impulseEditor?: boolean
   /** Farbe für Zuweisungs-Chips (Tailwind-Token-Name, siehe constants.ts) */
   color?: string
   active: boolean
@@ -2759,4 +2780,131 @@ export interface CalendarFeed extends WithId {
    * es am Abo und nicht an den Terminen.
    */
   lastFetchedAt?: TS
+}
+
+/* ------------------------------------------------------------------ */
+/* Impuls                                                              */
+/* ------------------------------------------------------------------ */
+
+/*
+ * Der Bereich «Impuls» – der geistige Bereich für die AP's
+ * (docs/KONZEPT-IMPULS.md).
+ *
+ * Die tragende Einheit ist die ISO-Woche («2026-W34», Montag bis Sonntag):
+ * Veröffentlicht wird am Montag, aufgelöst am Sonntag. Ein Inhalt gehört zu
+ * genau einer Woche – oder zu keiner: Dann liegt er im Fragenpool und
+ * wartet darauf, geplant zu werden. Die Wochenrechnung steht in
+ * `lib/impulse`.
+ */
+
+/** Was ein Inhalt ist. Etappe 1 kennt den Wochenimpuls und die Quizfrage. */
+export type ImpulseKind = 'impuls' | 'quiz'
+
+export const IMPULSE_KIND_LABELS: Record<ImpulseKind, string> = {
+  impuls: 'Wochenimpuls',
+  quiz: 'Quizfrage',
+}
+
+/**
+ * Wie eine Quizfrage beantwortet wird.
+ *
+ * `choice` deckt die meisten Formen aus dem Konzept ab – Multiple Choice,
+ * Wahr/Falsch, «Wer hat's gesagt?», Emoji-Rätsel, Reihenfolge als Auswahl –,
+ * denn sie unterscheiden sich im Inhalt, nicht in der Mechanik. `text` ist
+ * die Suchfrage: Die Antwort steht in der verlinkten Quelle und wird frei
+ * eingetippt.
+ */
+export type ImpulseQuizForm = 'choice' | 'text'
+
+export const IMPULSE_QUIZ_FORM_LABELS: Record<ImpulseQuizForm, string> = {
+  choice: 'Auswahl',
+  text: 'Freie Antwort (Suchfrage)',
+}
+
+export interface ImpulseQuiz {
+  form: ImpulseQuizForm
+  /** Bei `choice`: die Antworten in der angezeigten Reihenfolge (2–6). */
+  options: string[]
+  /** Bei `choice`: welche Antwort stimmt – Index in `options`. */
+  answerIndex: number
+  /** Bei `text`: die Lösung, wie sie in der Auflösung stehen soll. */
+  answerText: string
+  /** Der Lernmoment: zwei, drei Sätze, warum die Antwort stimmt. */
+  explanation: string
+}
+
+/**
+ * Woher ein Inhalt stammt.
+ *
+ * Immer offizielles Material der Kirche, immer mit Quellenangabe – kurze
+ * Auszüge in der App, der Rest hinter dem Link. Die Quelle ist deshalb
+ * Voraussetzung dafür, dass ein Inhalt «bereit» werden darf (siehe
+ * `readyProblems` in `lib/impulse`).
+ */
+export interface ImpulseSource {
+  /** «Alma 32:21», «Generalkonferenz Okt. 2025, Präsident …» */
+  label: string
+  /** Tiefer Link auf churchofjesuschrist.org bzw. in die Evangeliumsbibliothek */
+  url: string
+}
+
+/**
+ * `draft` sieht nur die Redaktion. `ready` erscheint bei den AP's, sobald
+ * die Woche des Inhalts beginnt – veröffentlicht wird also nicht von Hand
+ * am Montagmorgen, sondern durch den Kalender: Die Redaktion plant Wochen
+ * im Voraus, die App schaltet um.
+ */
+export type ImpulseStatus = 'draft' | 'ready'
+
+export const IMPULSE_STATUS_LABELS: Record<ImpulseStatus, string> = {
+  draft: 'Entwurf',
+  ready: 'Bereit',
+}
+
+export interface ImpulseItem extends WithId {
+  /**
+   * Die Woche, zu der der Inhalt gehört – «2026-W34».
+   *
+   * `null` heisst: noch keiner Woche zugeteilt. Das ist der Fragenpool –
+   * Ideen entstehen, wann immer sie einfallen, und werden später geplant.
+   */
+  week: string | null
+  kind: ImpulseKind
+  status: ImpulseStatus
+  /** Überschrift; bei der Quizfrage die Frage selbst. */
+  title: string
+  /** Impuls: die Hinführung, zwei, drei Sätze. Quiz: optionale Ergänzung. */
+  body?: string
+  quiz?: ImpulseQuiz | null
+  source?: ImpulseSource | null
+  createdAt?: TS
+  updatedAt?: TS
+  createdBy?: string
+}
+
+/**
+ * Eine Antwort auf eine Quizfrage.
+ *
+ * Die Dokument-ID ist `{itemId}_{uid}` – eine Antwort pro Person und
+ * Frage, erzwungen durch die ID selbst und geprüft in den Zugriffsregeln;
+ * dieselbe Denkweise wie das Datum als Programm-ID. Der Vorname wird
+ * mitgeschrieben statt nachgeschlagen: Die AP's können keine fremden
+ * Profile lesen, und eine Antwort soll lesbar bleiben, auch wenn das
+ * Konto später verschwindet.
+ */
+export interface ImpulseAnswer extends WithId {
+  itemId: string
+  uid: string
+  firstName: string
+  /** Bei `choice`: der gewählte Index. */
+  choiceIndex?: number | null
+  /** Bei `text`: die eingetippte Antwort. */
+  text?: string
+  /**
+   * Richtig beantwortet? Bei der Suchfrage `null` – sie wird nicht
+   * bewertet. Gewertet wird die Teilnahme: ein Versuch, keine Noten.
+   */
+  correct: boolean | null
+  answeredAt?: TS
+  updatedAt?: TS
 }

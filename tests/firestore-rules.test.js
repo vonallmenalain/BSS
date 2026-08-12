@@ -39,6 +39,7 @@ const LEGACY_COUNSELOR = 'uid-ratgeber-alt'
 const SECRETARY = 'uid-sekretaer'
 const AP_EDITOR = 'uid-ap-schreibend'
 const AP_VIEWER = 'uid-ap-lesend'
+const IMPULSE_AP = 'uid-impuls-ap'
 const PENDING = 'uid-wartend'
 
 /** Die Anmelde-E-Mail des Administrator-Kontos – wie in firestore.rules. */
@@ -69,6 +70,45 @@ async function seed() {
         active: true,
       })
     }
+
+    // Ein AP mit dem Impuls-Schalter – das Konto, für das der Bereich da ist.
+    await setDoc(doc(db, 'users', IMPULSE_AP), {
+      email: `${IMPULSE_AP}@example.ch`,
+      displayName: 'AP mit Impuls',
+      role: 'ap_viewer',
+      active: true,
+      impulse: true,
+    })
+
+    // Inhalte des Bereichs «Impuls»: eine bereite Woche und ein Entwurf.
+    await setDoc(doc(db, 'impulseItems', 'impuls-woche'), {
+      week: '2026-W33',
+      kind: 'impuls',
+      status: 'ready',
+      title: 'Kraft aus den Schriften',
+      body: '',
+      source: { label: '1 Nephi 3:7', url: '' },
+    })
+    await setDoc(doc(db, 'impulseItems', 'frage-1'), {
+      week: '2026-W33',
+      kind: 'quiz',
+      status: 'ready',
+      title: 'In welchem Buch stehen die 2000 jungen Krieger?',
+      quiz: {
+        form: 'choice',
+        options: ['1 Nephi', 'Alma', 'Ether'],
+        answerIndex: 1,
+        answerText: '',
+        explanation: 'Alma 53 und 56.',
+      },
+      source: { label: 'Alma 53', url: '' },
+    })
+    await setDoc(doc(db, 'impulseItems', 'impuls-entwurf'), {
+      week: null,
+      kind: 'quiz',
+      status: 'draft',
+      title: 'Noch eine Idee',
+    })
 
     const baseItem = {
       meetingId: null,
@@ -218,6 +258,7 @@ const asLegacyCounselor = () => testEnv.authenticatedContext(LEGACY_COUNSELOR).f
 const asSecretary = () => testEnv.authenticatedContext(SECRETARY).firestore()
 const asApEditor = () => testEnv.authenticatedContext(AP_EDITOR).firestore()
 const asApViewer = () => testEnv.authenticatedContext(AP_VIEWER).firestore()
+const asImpulseAp = () => testEnv.authenticatedContext(IMPULSE_AP).firestore()
 const asPending = () => testEnv.authenticatedContext(PENDING).firestore()
 const asAnonymous = () => testEnv.unauthenticatedContext().firestore()
 
@@ -458,6 +499,234 @@ describe('Rollen und Rechteausweitung', () => {
         active: true,
       }),
     )
+  })
+})
+
+/* ------------------------------------------------------------------ */
+
+/*
+ * Die beiden Impuls-Schalter am Benutzer.
+ *
+ * Der Bereich «Impuls» wird pro Konto freigegeben (`impulse`), die
+ * Redaktion ebenso (`impulseEditor`). Beides vergibt allein der
+ * Administrator: Die Selbst-Update-Regel lässt das eigene Profil zu,
+ * sperrt aber diese Felder wie Rolle und Aktivstatus – sonst schaltete
+ * sich jedes Konto den Bereich selbst auf. Und ein neues Profil darf die
+ * Schalter nicht mitbringen, sonst lägen sie als schlafender Zugang
+ * bereit und erwachten mit der Freischaltung.
+ */
+describe('Impuls-Schalter', () => {
+  it('hindert jedes Konto daran, sich den Zugang selbst zu geben', async () => {
+    await assertFails(updateDoc(doc(asSecretary(), 'users', SECRETARY), { impulse: true }))
+    await assertFails(updateDoc(doc(asApViewer(), 'users', AP_VIEWER), { impulse: true }))
+    await assertFails(updateDoc(doc(asPending(), 'users', PENDING), { impulse: true }))
+  })
+
+  it('hindert jedes Konto daran, sich die Redaktion selbst zu geben', async () => {
+    await assertFails(updateDoc(doc(asSecretary(), 'users', SECRETARY), { impulseEditor: true }))
+    await assertFails(updateDoc(doc(asApViewer(), 'users', AP_VIEWER), { impulseEditor: true }))
+  })
+
+  it('auch nicht versteckt neben einer erlaubten Änderung', async () => {
+    await assertFails(
+      updateDoc(doc(asApViewer(), 'users', AP_VIEWER), {
+        displayName: 'Berater B',
+        impulse: true,
+      }),
+    )
+  })
+
+  it('lässt den Administrator die Schalter setzen und wieder wegnehmen', async () => {
+    await assertSucceeds(updateDoc(doc(asBishop(), 'users', AP_VIEWER), { impulse: true }))
+    await assertSucceeds(updateDoc(doc(asBishop(), 'users', AP_VIEWER), { impulse: false }))
+    await assertSucceeds(updateDoc(doc(asBishop(), 'users', SECRETARY), { impulseEditor: true }))
+    // Aufräumen, damit die übrigen Tests den Ausgangszustand vorfinden.
+    await testEnv.withSecurityRulesDisabled(async (context) => {
+      await updateDoc(doc(context.firestore(), 'users', SECRETARY), { impulseEditor: false })
+    })
+  })
+
+  it('lässt ein gesetztes Feld beim Pflegen des eigenen Profils stehen', async () => {
+    // Ein merge-Schreibvorgang trägt das bestehende Feld unverändert mit –
+    // das muss erlaubt bleiben, sonst könnte ein freigeschaltetes Konto
+    // sein eigenes Profil nicht mehr pflegen.
+    await testEnv.withSecurityRulesDisabled(async (context) => {
+      await updateDoc(doc(context.firestore(), 'users', AP_VIEWER), { impulse: true })
+    })
+    await assertSucceeds(
+      setDoc(
+        doc(asApViewer(), 'users', AP_VIEWER),
+        { displayName: 'Berater C', impulse: true },
+        { merge: true },
+      ),
+    )
+    // Mit einem anderen Wert bleibt es verboten.
+    await assertFails(
+      setDoc(doc(asApViewer(), 'users', AP_VIEWER), { impulse: false }, { merge: true }),
+    )
+    await testEnv.withSecurityRulesDisabled(async (context) => {
+      await updateDoc(doc(context.firestore(), 'users', AP_VIEWER), { impulse: false })
+    })
+  })
+
+  it('lässt ein neues Konto sein Profil nicht mit Impuls-Zugang anlegen', async () => {
+    const neu = testEnv.authenticatedContext('uid-impuls-neu').firestore()
+    await assertFails(
+      setDoc(doc(neu, 'users', 'uid-impuls-neu'), {
+        email: 'impuls-neu@example.ch',
+        displayName: 'Neu',
+        role: 'pending',
+        active: true,
+        impulse: true,
+      }),
+    )
+    await assertFails(
+      setDoc(doc(neu, 'users', 'uid-impuls-neu'), {
+        email: 'impuls-neu@example.ch',
+        displayName: 'Neu',
+        role: 'pending',
+        active: true,
+        impulseEditor: true,
+      }),
+    )
+  })
+})
+
+/* ------------------------------------------------------------------ */
+
+/*
+ * Der Bereich «Impuls» – die zweite Insel neben dem AP-Kalender.
+ *
+ * Auch hier müssen die Regeln zwei Dinge zugleich leisten: den Bereich für
+ * die Konten mit Schalter öffnen und ihn für alle anderen zuhalten – auch
+ * für Vollzugriff und AP-Rollen ohne Schalter, denn der Zugang hängt am
+ * Konto, nicht an der Rolle. Dazu die Antworten: eine pro Person und
+ * Frage, auf den eigenen Namen, ohne Korrektur.
+ */
+describe('Impuls', () => {
+  it('lässt Konten mit Schalter die Inhalte lesen', async () => {
+    await assertSucceeds(getDocs(collection(asImpulseAp(), 'impulseItems')))
+    await assertSucceeds(getDoc(doc(asImpulseAp(), 'impulseItems', 'impuls-woche')))
+    await assertSucceeds(getDocs(collection(asImpulseAp(), 'impulseAnswers')))
+  })
+
+  it('hält Konten ohne Schalter fern – auch die mit Vollzugriff', async () => {
+    for (const as of [asSecretary, asCounselor1, asApEditor, asApViewer]) {
+      await assertFails(getDocs(collection(as(), 'impulseItems')))
+      await assertFails(getDoc(doc(as(), 'impulseItems', 'impuls-woche')))
+      await assertFails(getDocs(collection(as(), 'impulseAnswers')))
+    }
+    await assertFails(getDocs(collection(asPending(), 'impulseItems')))
+    await assertFails(getDocs(collection(asAnonymous(), 'impulseItems')))
+  })
+
+  it('lässt das Administrator-Konto auch ohne Schalter lesen und pflegen', async () => {
+    await assertSucceeds(getDocs(collection(asBishop(), 'impulseItems')))
+    await assertSucceeds(
+      setDoc(doc(asBishop(), 'impulseItems', 'impuls-neu'), {
+        week: '2026-W34',
+        kind: 'impuls',
+        status: 'draft',
+        title: 'Nächste Woche',
+      }),
+    )
+    await assertSucceeds(deleteDoc(doc(asBishop(), 'impulseItems', 'impuls-neu')))
+  })
+
+  it('lässt Konten mit Schalter keine Inhalte schreiben', async () => {
+    await assertFails(
+      setDoc(doc(asImpulseAp(), 'impulseItems', 'versuch'), {
+        week: '2026-W33',
+        kind: 'impuls',
+        status: 'ready',
+        title: 'Selbst gemacht',
+      }),
+    )
+    await assertFails(
+      updateDoc(doc(asImpulseAp(), 'impulseItems', 'impuls-woche'), { title: 'Umbenannt' }),
+    )
+    await assertFails(deleteDoc(doc(asImpulseAp(), 'impulseItems', 'impuls-woche')))
+  })
+
+  it('die Redaktion pflegt Inhalte – und sieht den Bereich auch ohne zweiten Schalter', async () => {
+    await testEnv.withSecurityRulesDisabled(async (context) => {
+      await updateDoc(doc(context.firestore(), 'users', SECRETARY), { impulseEditor: true })
+    })
+    await assertSucceeds(getDocs(collection(asSecretary(), 'impulseItems')))
+    await assertSucceeds(
+      setDoc(doc(asSecretary(), 'impulseItems', 'redaktion-neu'), {
+        week: null,
+        kind: 'quiz',
+        status: 'draft',
+        title: 'Aus dem Fragenpool',
+      }),
+    )
+    await assertSucceeds(deleteDoc(doc(asSecretary(), 'impulseItems', 'redaktion-neu')))
+    await testEnv.withSecurityRulesDisabled(async (context) => {
+      await updateDoc(doc(context.firestore(), 'users', SECRETARY), { impulseEditor: false })
+    })
+  })
+
+  describe('Antworten', () => {
+    const answer = (uid, extra = {}) => ({
+      itemId: 'frage-1',
+      uid,
+      firstName: 'Levin',
+      choiceIndex: 1,
+      correct: true,
+      ...extra,
+    })
+
+    it('eine Antwort auf den eigenen Namen – die ID trägt Frage und Konto', async () => {
+      await assertSucceeds(
+        setDoc(doc(asImpulseAp(), 'impulseAnswers', `frage-1_${IMPULSE_AP}`), answer(IMPULSE_AP)),
+      )
+    })
+
+    it('ein Versuch: Die zweite Antwort auf dieselbe Frage scheitert', async () => {
+      await assertFails(
+        setDoc(
+          doc(asImpulseAp(), 'impulseAnswers', `frage-1_${IMPULSE_AP}`),
+          answer(IMPULSE_AP, { choiceIndex: 2 }),
+        ),
+      )
+      await assertFails(
+        updateDoc(doc(asImpulseAp(), 'impulseAnswers', `frage-1_${IMPULSE_AP}`), {
+          choiceIndex: 0,
+        }),
+      )
+    })
+
+    it('keine Antwort auf fremden Namen oder unter fremder ID', async () => {
+      // Die ID nennt ein anderes Konto …
+      await assertFails(
+        setDoc(doc(asImpulseAp(), 'impulseAnswers', 'frage-1_uid-fremd'), answer(IMPULSE_AP)),
+      )
+      // … die Daten nennen ein anderes Konto (die ID selbst würde passen) …
+      await assertFails(
+        setDoc(
+          doc(asImpulseAp(), 'impulseAnswers', `frage-2_${IMPULSE_AP}`),
+          answer(BISHOP, { itemId: 'frage-2' }),
+        ),
+      )
+      // … oder die ID passt nicht zur genannten Frage.
+      await assertFails(
+        setDoc(
+          doc(asImpulseAp(), 'impulseAnswers', `frage-2_${IMPULSE_AP}`),
+          answer(IMPULSE_AP, { itemId: 'frage-1' }),
+        ),
+      )
+    })
+
+    it('wegräumen darf allein die Redaktion', async () => {
+      await assertFails(
+        deleteDoc(doc(asImpulseAp(), 'impulseAnswers', `frage-1_${IMPULSE_AP}`)),
+      )
+      // Das Administrator-Konto ist die Redaktion – und räumt zugleich auf.
+      await assertSucceeds(
+        deleteDoc(doc(asBishop(), 'impulseAnswers', `frage-1_${IMPULSE_AP}`)),
+      )
+    })
   })
 })
 

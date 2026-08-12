@@ -44,6 +44,8 @@ export const AREA_LABELS: Record<string, string> = {
   apActivities: 'Aktivitäten AP',
   apMonths: 'Aktivitäten AP · Leitung',
   calendarFeeds: 'Kalender-Links',
+  impulseItems: 'Impuls',
+  impulseAnswers: 'Impuls · Antworten',
   settings: 'Einstellungen',
 }
 
@@ -98,6 +100,8 @@ const FIELD_LABELS: Record<string, string> = {
   group: 'Gruppe',
   history: 'Verlauf',
   hymns: 'Lieder',
+  impulse: 'Impuls-Zugang',
+  impulseEditor: 'Impuls-Redaktion',
   initials: 'Kürzel',
   kind: 'Art',
   label: 'Bezeichnung',

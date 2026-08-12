@@ -62,6 +62,14 @@ const ApActivities = lazy(() =>
   import('@/pages/ApActivities').then((m) => ({ default: m.ApActivities })),
 )
 
+/* Impuls – der geistige Bereich für die AP's (docs/KONZEPT-IMPULS.md).
+   Sichtbar nur mit dem Schalter am Konto – und immer für das
+   Administrator-Konto. */
+const Impuls = lazy(() => import('@/pages/Impuls').then((m) => ({ default: m.Impuls })))
+const ImpulsRedaktion = lazy(() =>
+  import('@/pages/ImpulsRedaktion').then((m) => ({ default: m.ImpulsRedaktion })),
+)
+
 /* Abendmahlsversammlung – der Rahmen hält den gewählten Sonntag,
    die Unterseiten werden bei Bedarf nachgeladen. */
 const SacramentLayout = lazy(() =>
@@ -89,7 +97,7 @@ const Prayers = lazy(() =>
  * dorthin, dafür sorgt `RequireFullAccess`.
  */
 function RequireAuth({ children }: { children: ReactNode }) {
-  const { firebaseUser, loading, isApproved, canViewAp } = useAuth()
+  const { firebaseUser, loading, isApproved, canViewAp, canViewImpulse } = useAuth()
 
   /*
    * Hier und nicht tiefer: Diese Stelle sieht jedes angemeldete Konto, auch
@@ -101,21 +109,49 @@ function RequireAuth({ children }: { children: ReactNode }) {
 
   if (loading) return <LoadingScreen label="Anmeldung wird geprüft …" />
   if (!firebaseUser) return <Navigate to="/anmelden" replace />
-  if (!isApproved && !canViewAp) return <PendingApproval />
+  if (!isApproved && !canViewAp && !canViewImpulse) return <PendingApproval />
 
   return <>{children}</>
 }
 
 /**
- * Alles ausser dem AP-Kalender.
+ * Alles ausser dem AP-Kalender und «Impuls».
  *
  * Die Sicherheitsregeln lehnen für diese Konten ohnehin jede Abfrage ab –
  * das hier erspart ihnen leere Seiten und Fehlermeldungen und führt sie
- * dorthin, wofür sie freigeschaltet wurden.
+ * dorthin, wofür sie freigeschaltet wurden: zum Kalender, und wer nur den
+ * Impuls-Schalter trägt, zu «Impuls».
  */
 function RequireFullAccess() {
-  const { isApproved } = useAuth()
-  if (!isApproved) return <Navigate to="/ap" replace />
+  const { isApproved, canViewAp } = useAuth()
+  if (!isApproved) return <Navigate to={canViewAp ? '/ap' : '/impuls'} replace />
+  return <Outlet />
+}
+
+/**
+ * Nur wer den Bereich «Impuls» sehen darf.
+ *
+ * Wie bei `RequireFullAccess`: Die Zugriffsregeln geben den
+ * Impuls-Sammlungen ohnehin nichts heraus – die Weiche erspart bloss die
+ * leere Seite hinter einem Lesezeichen und führt zurück an den Ort, der
+ * dem Konto gehört.
+ */
+function RequireImpulse() {
+  const { canViewImpulse, isApproved } = useAuth()
+  if (!canViewImpulse) return <Navigate to={isApproved ? '/' : '/ap'} replace />
+  return <Outlet />
+}
+
+/**
+ * Die Redaktion des Bereichs «Impuls» – Inhalte pflegen und moderieren.
+ *
+ * Vorerst allein das Administrator-Konto; der Schalter `impulseEditor`
+ * steht bereit. Wer nur liest, landet wieder im Bereich – die
+ * Zugriffsregeln liessen ihn ohnehin nichts schreiben.
+ */
+function RequireImpulseEditor() {
+  const { canEditImpulse } = useAuth()
+  if (!canEditImpulse) return <Navigate to="/impuls" replace />
   return <Outlet />
 }
 
@@ -184,6 +220,31 @@ export default function App() {
                       </Suspense>
                     }
                   />
+
+                  {/* ---------- Impuls ----------
+                    Ebenfalls ausserhalb von `RequireFullAccess`: Der Bereich
+                    wird pro Konto freigeschaltet und steht damit auch Konten
+                    offen, die sonst nur den AP-Kalender sehen. */}
+                  <Route element={<RequireImpulse />}>
+                    <Route
+                      path="impuls"
+                      element={
+                        <Suspense fallback={<LoadingScreen />}>
+                          <Impuls />
+                        </Suspense>
+                      }
+                    />
+                    <Route element={<RequireImpulseEditor />}>
+                      <Route
+                        path="impuls/redaktion"
+                        element={
+                          <Suspense fallback={<LoadingScreen />}>
+                            <ImpulsRedaktion />
+                          </Suspense>
+                        }
+                      />
+                    </Route>
+                  </Route>
 
                   <Route element={<RequireFullAccess />}>
                     <Route index element={<Dashboard />} />

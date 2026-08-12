@@ -8,6 +8,7 @@ import {
   type StoreState,
 } from '@/lib/collectionStore'
 import { toDate } from '@/lib/dates'
+import { impulseKindRank } from '@/lib/impulse'
 import { isDutyItem, monthLeaders } from '@/lib/monthlyDuties'
 import {
   isWithdrawnTalk,
@@ -22,6 +23,8 @@ import {
   type CalendarFeed,
   type Calling,
   type CleaningWeek,
+  type ImpulseAnswer,
+  type ImpulseItem,
   type Meeting,
   type MonthlyDuty,
   type Note,
@@ -464,6 +467,53 @@ export function useCalendarFeeds() {
   const { canViewAp } = useAuth()
   const state = useCollection<CalendarFeed>(COLLECTIONS.calendarFeeds, canViewAp)
   return useMemo(() => ({ ...state, data: byDate(state.data, 'createdAt') }), [state])
+}
+
+/* ------------------------------------------------------------------ */
+/* Impuls                                                              */
+/* ------------------------------------------------------------------ */
+
+/**
+ * Die Inhalte des Bereichs «Impuls».
+ *
+ * Freigegeben pro Konto – deshalb hängt die Sammlung an `canViewImpulse`
+ * und nicht an einer Rolle. Entwürfe und der Fragenpool liegen mit im
+ * Bestand (die Zugriffsregeln erklären die Abwägung); was die AP's zu
+ * sehen bekommen, entscheidet die Ansicht über `visibleImpulseItems`.
+ *
+ * Sortiert nach Woche, die jüngste zuerst, der Fragenpool (ohne Woche)
+ * am Ende – und innerhalb der Woche der Impuls vor der Quizfrage.
+ */
+export function useImpulseItems() {
+  const { canViewImpulse } = useAuth()
+  const state = useCollection<ImpulseItem>(COLLECTIONS.impulseItems, canViewImpulse)
+  return useMemo(
+    () => ({
+      ...state,
+      data: [...state.data].sort(
+        (a, b) =>
+          String(b.week ?? '').localeCompare(String(a.week ?? '')) ||
+          impulseKindRank(a.kind) - impulseKindRank(b.kind),
+      ),
+    }),
+    [state],
+  )
+}
+
+/**
+ * Alle Antworten auf Quizfragen.
+ *
+ * Der ganze Bestand, nicht nur die eigenen: Die Auflösung vergangener
+ * Wochen und später das Gruppenbild lesen daraus. Bei einem Kollegium
+ * bleibt das eine kurze Liste.
+ */
+export function useImpulseAnswers() {
+  const { canViewImpulse } = useAuth()
+  const state = useCollection<ImpulseAnswer>(COLLECTIONS.impulseAnswers, canViewImpulse)
+  return useMemo(
+    () => ({ ...state, byId: new Map(state.data.map((answer) => [answer.id, answer])) }),
+    [state],
+  )
 }
 
 /* ------------------------------------------------------------------ */

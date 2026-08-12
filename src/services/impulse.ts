@@ -1,0 +1,174 @@
+import { addDoc, collection, deleteDoc, doc, serverTimestamp, setDoc, updateDoc } from '@/lib/db'
+import { db, COLLECTIONS } from '@/lib/firebase'
+import { forgetDoc } from '@/lib/collectionStore'
+import { commit, type SaveOutcome } from '@/lib/sync'
+import { impulseAnswerId } from '@/lib/impulse'
+import type {
+  ImpulseItem,
+  ImpulseKind,
+  ImpulseQuiz,
+  ImpulseStatus,
+} from '@/lib/types'
+
+/*
+ * Der Bereich «Impuls» in Firestore (docs/KONZEPT-IMPULS.md).
+ *
+ * Zwei Sammlungen: die Inhalte der Redaktion (`impulseItems`) und die
+ * Antworten der AP's auf Quizfragen (`impulseAnswers`). Die Inhalte tragen
+ * eine eigene ID und die Woche als Feld – eine Woche kann mehrere Inhalte
+ * haben (Impuls und Quizfrage), und ein Inhalt kann die Woche wechseln,
+ * ohne seine Antworten zu verlieren. Die Antworten dagegen tragen Frage
+ * und Konto in der ID: eine Antwort pro Person und Frage, erzwungen durch
+ * den Schlüssel selbst.
+ */
+
+/**
+ * Das Formular der Redaktion – flach, damit die Felder direkt an den
+ * Eingaben hängen. Zusammengebaut (Quelle, Quiz) wird erst beim Speichern.
+ */
+export interface ImpulseItemInput {
+  week: string | null
+  kind: ImpulseKind
+  status: ImpulseStatus
+  title: string
+  body: string
+  sourceLabel: string
+  sourceUrl: string
+  quiz: ImpulseQuiz
+}
+
+export const EMPTY_IMPULSE_QUIZ: ImpulseQuiz = {
+  form: 'choice',
+  options: ['', ''],
+  answerIndex: 0,
+  answerText: '',
+  explanation: '',
+}
+
+/** Leeres Formular – zugleich die Vorlage für neue Inhalte. */
+export function emptyImpulseItem(kind: ImpulseKind, week: string | null): ImpulseItemInput {
+  return {
+    week,
+    kind,
+    status: 'draft',
+    title: '',
+    body: '',
+    sourceLabel: '',
+    sourceUrl: '',
+    quiz: { ...EMPTY_IMPULSE_QUIZ, options: [...EMPTY_IMPULSE_QUIZ.options] },
+  }
+}
+
+/** Einen bestehenden Inhalt ins Formular legen. */
+export function toImpulseInput(item: ImpulseItem): ImpulseItemInput {
+  return {
+    week: item.week ?? null,
+    kind: item.kind,
+    status: item.status,
+    title: item.title ?? '',
+    body: item.body ?? '',
+    sourceLabel: item.source?.label ?? '',
+    sourceUrl: item.source?.url ?? '',
+    quiz: item.quiz
+      ? { ...item.quiz, options: [...item.quiz.options] }
+      : { ...EMPTY_IMPULSE_QUIZ, options: [...EMPTY_IMPULSE_QUIZ.options] },
+  }
+}
+
+/** Anlegen oder ändern. Ohne `id` entsteht ein neuer Inhalt. */
+export async function saveImpulseItem(
+  id: string | null,
+  input: ImpulseItemInput,
+  userId?: string | null,
+): Promise<SaveOutcome> {
+  const sourceLabel = input.sourceLabel.trim()
+  const data = {
+    week: input.week,
+    kind: input.kind,
+    status: input.status,
+    title: input.title.trim(),
+    body: input.body.trim(),
+    source: sourceLabel ? { label: sourceLabel, url: input.sourceUrl.trim() } : null,
+    // Das Quiz bleibt am Datensatz, auch wenn die Art wechselt – wie beim
+    // variablen Layout wirft das Umschalten nichts weg.
+    quiz:
+      input.kind === 'quiz'
+        ? {
+            form: input.quiz.form,
+            options: input.quiz.options.map((option) => option.trim()),
+            answerIndex: input.quiz.answerIndex,
+            answerText: input.quiz.answerText.trim(),
+            explanation: input.quiz.explanation.trim(),
+          }
+        : null,
+    updatedAt: serverTimestamp(),
+  }
+
+  if (id) return commit(updateDoc(doc(db, COLLECTIONS.impulseItems, id), data))
+
+  return commit(
+    addDoc(collection(db, COLLECTIONS.impulseItems), {
+      ...data,
+      createdAt: serverTimestamp(),
+      createdBy: userId ?? null,
+    }),
+  )
+}
+
+/**
+ * Einen Inhalt entfernen – mitsamt seinen Antworten.
+ *
+ * Die Antworten kommen vom Aufrufer: Der hat den Bestand ohnehin abonniert,
+ * und so funktioniert das Löschen auch ohne Verbindung. Eine verwaiste
+ * Antwort wäre kein Schaden, nur Unordnung.
+ */
+export async function deleteImpulseItem(
+  id: string,
+  answerIds: string[] = [],
+): Promise<SaveOutcome> {
+  const outcome = await commit(
+    Promise.all([
+      deleteDoc(doc(db, COLLECTIONS.impulseItems, id)),
+      ...answerIds.map((answerId) => deleteDoc(doc(db, COLLECTIONS.impulseAnswers, answerId))),
+    ]),
+  )
+  forgetDoc(COLLECTIONS.impulseItems, id)
+  for (const answerId of answerIds) forgetDoc(COLLECTIONS.impulseAnswers, answerId)
+  return outcome
+}
+
+/**
+ * Eine Quizfrage beantworten – ein Versuch, auf den eigenen Namen.
+ *
+ * Richtig oder falsch wird bei der Auswahl gleich hier bestimmt; die
+ * Suchfrage bleibt unbewertet (`correct: null`), es zählt die Teilnahme.
+ * Der Vorname wird mitgeschrieben, damit die Antwort lesbar bleibt, auch
+ * wenn das Konto später verschwindet – die AP's können keine fremden
+ * Profile nachschlagen.
+ */
+export async function answerImpulseQuiz(
+  item: ImpulseItem,
+  user: { uid: string; displayName: string },
+  reply: { choiceIndex?: number; text?: string },
+): Promise<SaveOutcome> {
+  const quiz = item.quiz
+  const correct =
+    quiz && quiz.form === 'choice' && typeof reply.choiceIndex === 'number'
+      ? reply.choiceIndex === quiz.answerIndex
+      : null
+
+  const firstName = user.displayName.trim().split(/\s+/)[0] || user.displayName
+
+  return commit(
+    setDoc(doc(db, COLLECTIONS.impulseAnswers, impulseAnswerId(item.id, user.uid)), {
+      itemId: item.id,
+      uid: user.uid,
+      firstName,
+      choiceIndex: typeof reply.choiceIndex === 'number' ? reply.choiceIndex : null,
+      text: reply.text?.trim() ?? '',
+      correct,
+      answeredAt: serverTimestamp(),
+      updatedAt: serverTimestamp(),
+    }),
+  )
+}
