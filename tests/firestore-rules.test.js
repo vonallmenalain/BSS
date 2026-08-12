@@ -970,6 +970,47 @@ describe('Impuls', () => {
       await assertFails(getDocs(collection(asAnonymous(), 'impulseSubmissions')))
     })
   })
+
+  /*
+   * Die Montags-Erinnerung: Geräte-Adressen hinterlegt jede Person nur für
+   * sich; verschickt wird über das Dienstkonto, das an den Regeln vorbei
+   * liest – für Konten gibt es hier nichts zu lesen.
+   */
+  describe('Montags-Erinnerung', () => {
+    it('die eigene Geräte-Adresse hinterlegen und wieder entfernen', async () => {
+      await assertSucceeds(
+        setDoc(doc(asImpulseAp(), 'impulsePushTokens', 'geraet-1'), {
+          uid: IMPULSE_AP,
+          token: 'geraet-1',
+        }),
+      )
+      await assertSucceeds(deleteDoc(doc(asImpulseAp(), 'impulsePushTokens', 'geraet-1')))
+    })
+
+    it('keine Adresse auf fremden Namen – und fremde bleiben fremd', async () => {
+      await assertFails(
+        setDoc(doc(asImpulseAp(), 'impulsePushTokens', 'geraet-2'), {
+          uid: BISHOP,
+          token: 'geraet-2',
+        }),
+      )
+      await testEnv.withSecurityRulesDisabled(async (context) => {
+        await setDoc(doc(context.firestore(), 'impulsePushTokens', 'geraet-fremd'), {
+          uid: 'uid-zweiter',
+          token: 'geraet-fremd',
+        })
+      })
+      await assertFails(deleteDoc(doc(asImpulseAp(), 'impulsePushTokens', 'geraet-fremd')))
+      await assertSucceeds(deleteDoc(doc(asBishop(), 'impulsePushTokens', 'geraet-fremd')))
+    })
+
+    it('lesen darf allein die Redaktion', async () => {
+      await assertSucceeds(getDocs(collection(asBishop(), 'impulsePushTokens')))
+      await assertFails(getDocs(collection(asImpulseAp(), 'impulsePushTokens')))
+      await assertFails(getDocs(collection(asSecretary(), 'impulsePushTokens')))
+      await assertFails(getDocs(collection(asAnonymous(), 'impulsePushTokens')))
+    })
+  })
 })
 
 /* ------------------------------------------------------------------ */

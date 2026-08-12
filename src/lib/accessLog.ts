@@ -49,6 +49,7 @@ export const AREA_LABELS: Record<string, string> = {
   impulseProgress: 'Impuls · Fortschritt',
   impulseComments: 'Impuls · Frage der Woche',
   impulseSubmissions: 'Impuls · Mitmach-Ecke',
+  impulsePushTokens: 'Impuls · Erinnerung',
   settings: 'Einstellungen',
 }
 

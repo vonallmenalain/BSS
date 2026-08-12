@@ -74,6 +74,10 @@ export default defineConfig({
       },
       workbox: {
         globPatterns: ['**/*.{js,css,html,svg,png,ico,woff2}'],
+        // Der Service Worker der Montags-Erinnerung («Impuls») gehört nicht in
+        // den Precache: Der Browser holt SW-Skripte ohnehin am Cache vorbei,
+        // und Netlify liefert ihn bewusst mit «max-age=0» aus.
+        globIgnores: ['**/impuls-push-sw.js'],
         cleanupOutdatedCaches: true,
         clientsClaim: true,
         navigateFallback: '/index.html',
