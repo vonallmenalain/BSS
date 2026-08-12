@@ -5,8 +5,9 @@ import { useNow } from '@/hooks/useNow'
 import { useImpulseAnswers, useImpulseItems } from '@/hooks/useFirestore'
 import { PageHeader } from '@/components/ui/Pickers'
 import { ImpulseItemForm } from '@/components/impulse/ImpulseItemForm'
+import { ImpulseWeekPreview } from '@/components/impulse/ImpulseWeekPreview'
 import { cn } from '@/lib/utils'
-import { formatWeekRange, impulseWeekKey, upcomingWeekKeys } from '@/lib/impulse'
+import { formatWeekRange, impulseWeekKey, itemsForWeek, upcomingWeekKeys } from '@/lib/impulse'
 import {
   emptyImpulseItem,
   toImpulseInput,
@@ -65,6 +66,9 @@ export function ImpulsRedaktion() {
   const openItem = (item: ImpulseItem) =>
     setEditor({ itemId: item.id, initial: toImpulseInput(item) })
 
+  /* Die Wochen-Vorschau: die Woche so sehen, wie die AP's sie sehen werden. */
+  const [previewWeek, setPreviewWeek] = useState<string | null>(null)
+
   /* Antworten je Frage – für die Zahl an der Zeile und fürs Miträumen. */
   const answersByItem = useMemo(() => {
     const map = new Map<string, string[]>()
@@ -104,12 +108,24 @@ export function ImpulsRedaktion() {
           <ul className="divide-list">
             {weeks.map((week) => (
               <li key={week} className="py-3">
-                <p className="text-sm font-medium">
-                  {formatWeekRange(week)}
-                  {week === todayKey && (
-                    <span className="text-brand-700 dark:text-brand-300"> · diese Woche</span>
-                  )}
-                </p>
+                <div className="flex items-center gap-2">
+                  <p className="text-sm font-medium">
+                    {formatWeekRange(week)}
+                    {week === todayKey && (
+                      <span className="text-brand-700 dark:text-brand-300"> · diese Woche</span>
+                    )}
+                  </p>
+                  <button
+                    type="button"
+                    className="btn-ghost btn-sm ms-auto"
+                    onClick={() => setPreviewWeek(week)}
+                    title="Die Woche so sehen, wie die AP’s sie sehen werden"
+                  >
+                    <Eye className="size-4" aria-hidden />
+                    <span className="hidden sm:inline">Vorschau</span>
+                    <span className="sr-only sm:hidden">Vorschau</span>
+                  </button>
+                </div>
                 <div className="mt-2 grid gap-2 sm:grid-cols-2">
                   {(['impuls', 'quiz'] as ImpulseKind[]).map((kind) => (
                     <SlotCell
@@ -210,6 +226,15 @@ export function ImpulsRedaktion() {
           weekChoices={weekChoices}
           answerIds={editor.itemId ? (answersByItem.get(editor.itemId) ?? []) : []}
           todayKey={todayKey}
+        />
+      )}
+
+      {previewWeek && (
+        <ImpulseWeekPreview
+          key={previewWeek}
+          week={previewWeek}
+          items={itemsForWeek(itemsState.data, previewWeek)}
+          onClose={() => setPreviewWeek(null)}
         />
       )}
     </>
