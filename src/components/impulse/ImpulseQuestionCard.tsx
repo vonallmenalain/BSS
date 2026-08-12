@@ -32,12 +32,15 @@ export function ImpulseQuestionCard({
   comments,
   progressDocs,
   preview = false,
+  plain = false,
 }: {
   item: ImpulseItem
   /** Alle Beiträge zu dieser Frage, älteste zuerst. */
   comments: ImpulseComment[]
   progressDocs: ImpulseProgress[]
   preview?: boolean
+  /** Ohne Bereichszeile – im Vollbild steht der Bereich schon im Kopf. */
+  plain?: boolean
 }) {
   const { profile, canEditImpulse } = useAuth()
   const toast = useToast()
@@ -97,11 +100,13 @@ export function ImpulseQuestionCard({
 
   return (
     <section className="card p-5">
-      <p className="hint flex items-center gap-1.5 font-medium">
-        <MessagesSquare className="size-4" aria-hidden />
-        Frage der Woche
-      </p>
-      <h2 className="mt-2 text-lg font-semibold text-balance">{item.title}</h2>
+      {!plain && (
+        <p className="hint flex items-center gap-1.5 font-medium">
+          <MessagesSquare className="size-4" aria-hidden />
+          Frage der Woche
+        </p>
+      )}
+      <h2 className={plain ? 'text-lg font-semibold text-balance' : 'mt-2 text-lg font-semibold text-balance'}>{item.title}</h2>
       {item.body && (
         <p className="mt-2 text-sm whitespace-pre-line text-slate-600 dark:text-slate-300">
           {item.body}
@@ -115,18 +120,26 @@ export function ImpulseQuestionCard({
 
       {reveal && visible.length > 0 && (
         <div className="mt-4 space-y-2">
-          {visible.map((comment) => (
-            <CommentRow
+          {/* Die Antworten der anderen sind die Belohnung fürs eigene
+              Wort – sie entfalten sich kurz gestaffelt, statt als Block
+              dazustehen. Ab der siebten kommt alles zusammen. */}
+          {visible.map((comment, index) => (
+            <div
               key={comment.id}
-              comment={comment}
-              mine={comment === mine || comment.uid === uid}
-              progressDocs={progressDocs}
-              preview={preview}
-              onEdit={() => {
-                setDraft(mine?.text ?? '')
-                setEditing(true)
-              }}
-            />
+              className="animate-imp-rise"
+              style={{ animationDelay: `${Math.min(index, 6) * 40}ms` }}
+            >
+              <CommentRow
+                comment={comment}
+                mine={comment === mine || comment.uid === uid}
+                progressDocs={progressDocs}
+                preview={preview}
+                onEdit={() => {
+                  setDraft(mine?.text ?? '')
+                  setEditing(true)
+                }}
+              />
+            </div>
           ))}
         </div>
       )}

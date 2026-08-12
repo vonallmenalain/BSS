@@ -234,6 +234,17 @@ export default function App() {
                         </Suspense>
                       }
                     />
+                    {/* Ein Bereich im Vollbild – dieselbe Seite, der
+                        Routenteil sagt, welcher Raum offen ist. Die
+                        statische Route «redaktion» geht vor. */}
+                    <Route
+                      path="impuls/:bereich"
+                      element={
+                        <Suspense fallback={<LoadingScreen />}>
+                          <Impuls />
+                        </Suspense>
+                      }
+                    />
                     <Route element={<RequireImpulseEditor />}>
                       <Route
                         path="impuls/redaktion"

@@ -1,20 +1,21 @@
 import { useState } from 'react'
 import { format } from 'date-fns'
-import { Award, Check, CheckCircle2, Repeat, Sparkles, Users } from 'lucide-react'
+import { Check, CheckCircle2, Repeat, Users } from 'lucide-react'
 import { useAuth } from '@/contexts/AuthContext'
 import { useToast } from '@/contexts/ToastContext'
 import { useNow } from '@/hooks/useNow'
 import { cn } from '@/lib/utils'
-import { weekDays, type ImpulseBadge } from '@/lib/impulse'
+import { weekDays } from '@/lib/impulse'
 import { SourceLink } from '@/components/impulse/ImpulseCards'
 import { setImpulseChallengeDay, setImpulseWeekGoal } from '@/services/impulse'
 import type { ImpulseItem } from '@/lib/types'
 
 /*
  * Die Challenge-Karten des Bereichs «Impuls»: das Wochenziel mit seinem
- * einen Haken, die Tages-Challenge mit ihren sieben, dazu Serie und
+ * einen Haken, die Tages-Challenge mit ihren sieben, dazu die
  * Gruppenleiste. Abgehakt wird per Selbstauskunft – die Karten fragen
- * nicht nach, sie glauben es.
+ * nicht nach, sie glauben es. Die Serie wohnt seit dem Kachel-Umbau in
+ * «Mein Fortschritt» (`ImpulseStats`).
  *
  * Wie die Quizkarte kennen beide Aufgaben-Karten einen Vorschau-Modus:
  * Dort lebt der Haken nur im Fenster, gespeichert wird nichts.
@@ -28,20 +29,30 @@ export function GoalCard({
   week,
   done,
   preview = false,
+  plain = false,
 }: {
   item: ImpulseItem
   week: string
   done: boolean
   preview?: boolean
+  /** Ohne Bereichszeile – im Vollbild steht der Bereich schon im Kopf. */
+  plain?: boolean
 }) {
   const { profile } = useAuth()
   const toast = useToast()
   const [busy, setBusy] = useState(false)
   const [previewDone, setPreviewDone] = useState(false)
+  /*
+   * Ob der Haken **in dieser Sitzung** gesetzt wurde – nur dann springt
+   * er herein. Ein schon erledigtes Ziel steht beim Öffnen einfach da:
+   * Bewegung zeigt den Wechsel, nicht den Bestand.
+   */
+  const [celebrate, setCelebrate] = useState(false)
 
   const isDone = preview ? previewDone : done
 
   const toggle = async () => {
+    setCelebrate(!isDone)
     if (preview) {
       setPreviewDone((value) => !value)
       return
@@ -65,11 +76,13 @@ export function GoalCard({
 
   return (
     <section className="card p-5">
-      <p className="hint flex items-center gap-1.5 font-medium">
-        <CheckCircle2 className="size-4" aria-hidden />
-        Wochenziel
-      </p>
-      <h2 className="mt-2 text-lg font-semibold text-balance">{item.title}</h2>
+      {!plain && (
+        <p className="hint flex items-center gap-1.5 font-medium">
+          <CheckCircle2 className="size-4" aria-hidden />
+          Wochenziel
+        </p>
+      )}
+      <h2 className={plain ? 'text-lg font-semibold text-balance' : 'mt-2 text-lg font-semibold text-balance'}>{item.title}</h2>
       {item.body && (
         <p className="mt-2 text-sm whitespace-pre-line text-slate-600 dark:text-slate-300">
           {item.body}
@@ -81,13 +94,16 @@ export function GoalCard({
         </div>
       )}
 
+      {/* Der eine Haken der Woche: Die Zeile gibt beim Drücken nach, der
+          Haken springt herein (scale-in) – das kleine Fest, das die
+          Selbstauskunft verdient. */}
       <button
         type="button"
         onClick={() => void toggle()}
         disabled={busy}
         aria-pressed={isDone}
         className={cn(
-          'mt-4 flex w-full items-center gap-2.5 rounded-lg border p-3 text-left text-sm font-medium transition',
+          'mt-4 flex w-full items-center gap-2.5 rounded-lg border p-3 text-left text-sm font-medium transition active:scale-[0.98]',
           isDone
             ? 'border-emerald-300 bg-emerald-50 text-emerald-800 dark:border-emerald-800 dark:bg-emerald-950/40 dark:text-emerald-200'
             : 'border-slate-200 hover:bg-slate-50 dark:border-slate-700 dark:hover:bg-slate-800/60',
@@ -102,9 +118,13 @@ export function GoalCard({
           )}
           aria-hidden
         >
-          {isDone && <Check className="size-3.5" />}
+          {isDone && <Check className={cn('size-3.5', celebrate && 'animate-scale-in')} />}
         </span>
-        {isDone ? 'Geschafft!' : 'Geschafft? Hier abhaken.'}
+        {isDone ? (
+          <span className={celebrate ? 'animate-fade-in' : undefined}>Geschafft!</span>
+        ) : (
+          'Geschafft? Hier abhaken.'
+        )}
       </button>
     </section>
   )
@@ -116,18 +136,24 @@ export function ChallengeCard({
   week,
   days,
   preview = false,
+  plain = false,
 }: {
   item: ImpulseItem
   week: string
   /** Die abgehakten Tage («2026-08-11») aus dem eigenen Fortschritt. */
   days: string[]
   preview?: boolean
+  /** Ohne Bereichszeile – im Vollbild steht der Bereich schon im Kopf. */
+  plain?: boolean
 }) {
   const { profile } = useAuth()
   const toast = useToast()
   const now = useNow()
   const [busyDay, setBusyDay] = useState<string | null>(null)
   const [previewDays, setPreviewDays] = useState<Set<string>>(new Set())
+  /* Wie beim Wochenziel: Nur der eben gesetzte Haken springt – die
+     schon abgehakten Tage stehen beim Öffnen still da. */
+  const [celebrateDay, setCelebrateDay] = useState<string | null>(null)
 
   const allDays = weekDays(week)
   const today = format(now, 'yyyy-MM-dd')
@@ -135,6 +161,7 @@ export function ChallengeCard({
   const doneCount = allDays.filter((day) => checked.has(day)).length
 
   const toggle = async (day: string) => {
+    setCelebrateDay(checked.has(day) ? null : day)
     if (preview) {
       setPreviewDays((value) => {
         const next = new Set(value)
@@ -164,11 +191,13 @@ export function ChallengeCard({
 
   return (
     <section className="card p-5">
-      <p className="hint flex items-center gap-1.5 font-medium">
-        <Repeat className="size-4" aria-hidden />
-        Tages-Challenge
-      </p>
-      <h2 className="mt-2 text-lg font-semibold text-balance">{item.title}</h2>
+      {!plain && (
+        <p className="hint flex items-center gap-1.5 font-medium">
+          <Repeat className="size-4" aria-hidden />
+          Tages-Challenge
+        </p>
+      )}
+      <h2 className={plain ? 'text-lg font-semibold text-balance' : 'mt-2 text-lg font-semibold text-balance'}>{item.title}</h2>
       {item.body && (
         <p className="mt-2 text-sm whitespace-pre-line text-slate-600 dark:text-slate-300">
           {item.body}
@@ -196,7 +225,7 @@ export function ChallengeCard({
               aria-pressed={isChecked}
               aria-label={`${DAY_LABELS[index]} abhaken`}
               className={cn(
-                'flex flex-1 flex-col items-center gap-1.5 rounded-lg border py-2 text-xs transition',
+                'flex flex-1 flex-col items-center gap-1.5 rounded-lg border py-2 text-xs transition active:scale-95',
                 isChecked
                   ? 'border-emerald-300 bg-emerald-50 text-emerald-800 dark:border-emerald-800 dark:bg-emerald-950/40 dark:text-emerald-200'
                   : isToday
@@ -217,7 +246,11 @@ export function ChallengeCard({
                 )}
                 aria-hidden
               >
-                {isChecked && <Check className="size-3" />}
+                {/* Der Tageshaken springt herein – klein und schnell,
+                    denn er kommt (hoffentlich) jeden Tag. */}
+                {isChecked && (
+                  <Check className={cn('size-3', celebrateDay === day && 'animate-scale-in')} />
+                )}
               </span>
             </button>
           )
@@ -227,55 +260,6 @@ export function ChallengeCard({
         {doneCount} von 7 Tagen
         {doneCount === 7 && ' – die volle Woche!'}
       </p>
-    </section>
-  )
-}
-
-/** Die eigene Serie samt Abzeichen – Meilensteine statt Punkte. */
-export function StreakCard({
-  current,
-  best,
-  badges,
-}: {
-  current: number
-  best: number
-  badges: ImpulseBadge[]
-}) {
-  return (
-    <section className="card p-5">
-      <p className="hint flex items-center gap-1.5 font-medium">
-        <Sparkles className="size-4" aria-hidden />
-        Meine Serie
-      </p>
-      {current > 0 ? (
-        <p className="mt-2 text-lg font-semibold">
-          {current} {current === 1 ? 'Woche' : 'Wochen'} in Folge
-          {best > current && (
-            <span className="ml-2 text-sm font-normal text-slate-500 dark:text-slate-400">
-              beste: {best}
-            </span>
-          )}
-        </p>
-      ) : (
-        <p className="mt-2 text-sm text-slate-600 dark:text-slate-300">
-          Noch keine Serie – sie beginnt, sobald du diese Woche etwas abhakst oder die Quizfrage
-          beantwortest. Eine Jokerwoche pro Monat ist eingebaut.
-        </p>
-      )}
-      {badges.length > 0 && (
-        <div className="mt-3 flex flex-wrap gap-1.5">
-          {badges.map((badge) => (
-            <span
-              key={badge.id}
-              className="badge bg-amber-100 text-amber-900 dark:bg-amber-950 dark:text-amber-200"
-              title={badge.hint}
-            >
-              <Award className="size-3.5" aria-hidden />
-              {badge.label}
-            </span>
-          ))}
-        </div>
-      )}
     </section>
   )
 }

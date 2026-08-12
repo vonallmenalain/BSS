@@ -33,6 +33,21 @@
   --animate-slide-up: slide-up 0.22s cubic-bezier(0.32, 0.72, 0, 1);
   --animate-fade-in: fade-in 0.15s ease-out;
   --animate-scale-in: scale-in 0.18s cubic-bezier(0.32, 0.72, 0, 1);
+
+  /* Zwei kräftige Kurven für den Bereich «Impuls» (und wen es sonst
+     freut): Die eingebauten CSS-Easings sind zu schwach, um Absicht zu
+     zeigen. `swift` ist die iOS-Schubladen-Kurve, `out-strong` ein
+     entschlossenes ease-out für alles, was erscheint. */
+  --ease-swift: cubic-bezier(0.32, 0.72, 0, 1);
+  --ease-out-strong: cubic-bezier(0.23, 1, 0.32, 1);
+
+  /* Inhalt tritt auf: kurz von unten, ohne Hüpfer. `both` hält den
+     Anfangszustand auch während einer Stagger-Verzögerung fest. */
+  --animate-imp-rise: imp-rise 0.3s var(--ease-out-strong) both;
+
+  /* Der eine Überschwung des Bereichs «Impuls»: die Schlusskarte des
+     Feeds – einmal pro Woche, der Moment darf federn. Sonst nirgends. */
+  --animate-imp-pop: imp-pop 0.5s cubic-bezier(0.34, 1.56, 0.64, 1) both;
 }
 
 @keyframes slide-up {
@@ -63,6 +78,28 @@
   to {
     opacity: 1;
     transform: scale(1);
+  }
+}
+
+@keyframes imp-rise {
+  from {
+    opacity: 0;
+    transform: translateY(10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes imp-pop {
+  from {
+    opacity: 0;
+    transform: scale(0.92) translateY(10px);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1) translateY(0);
   }
 }
 
@@ -125,9 +162,12 @@
 }
 
 /* --- Schaltflächen -------------------------------------------------- */
+/* Der Druckpunkt: Jeder Knopf gibt beim Drücken minimal nach – das
+   sofortige «Ich habe dich gehört», das ein Farbwechsel allein nicht
+   gibt. `transition` deckt transform bereits ab. */
 @utility btn {
   @apply inline-flex shrink-0 items-center justify-center gap-2 rounded-lg px-3.5 py-2 text-sm font-medium
-    transition select-none disabled:pointer-events-none disabled:opacity-50;
+    transition select-none active:scale-[0.98] disabled:pointer-events-none disabled:opacity-50;
 }
 
 @utility btn-primary {
@@ -203,6 +243,68 @@
 @utility divide-list {
   & > * + * {
     @apply border-t border-slate-200 dark:border-slate-800;
+  }
+}
+
+/* --- Impuls: das Vollbild und seine Bewegung -------------------------
+   Der Bereich «Impuls» öffnet jede Kachel als eigenen Vollbild-Raum.
+   Übergänge als **Transitions**, nicht als Keyframes: Sie lassen sich
+   unterbrechen und umlenken – wer sofort wieder schliesst, sieht eine
+   Umkehr statt eines Neustarts. Animiert werden nur transform und
+   opacity; die globale Reduced-Motion-Regel oben dreht auch das ab. */
+@layer components {
+  /* Der Raum selbst: tritt vom Auslöser her an (transform-origin setzt
+     die Kachel per Inline-Stil), geht schneller als er kam – Eintritt
+     260 ms, Austritt 150 ms, wie sich Türen anfühlen sollen. */
+  .imp-screen {
+    opacity: 1;
+    transform: scale(1);
+    transition:
+      opacity 260ms var(--ease-out-strong),
+      transform 260ms var(--ease-out-strong);
+    @starting-style {
+      opacity: 0;
+      transform: scale(0.96);
+    }
+  }
+  .imp-screen[data-closing] {
+    opacity: 0;
+    transform: scale(0.97);
+    transition-duration: 150ms;
+  }
+
+  /* Der Farbschleier des Bereichs: blendet weich ein, wenn der Bereich
+     wechselt – der Grund darunter bleibt stehen, darum reicht das
+     Einblenden des Neuen. Gleich lang wie der Eintritt des Raums. */
+  .imp-wash {
+    opacity: 1;
+    transition: opacity 260ms ease;
+    @starting-style {
+      opacity: 0;
+    }
+  }
+
+  /* Der Fortschrittsring zeichnet sich beim Erscheinen – vom vollen
+     Umfang (`--imp-ring-c`, setzt die Komponente) auf den Zielstand.
+     600 ms, bewusst über dem UI-Budget: eine dekorative Daten-Enthüllung,
+     die nichts blockiert und einmal pro Öffnen läuft. */
+  .imp-ring-arc {
+    transition: stroke-dashoffset 600ms var(--ease-out-strong);
+    @starting-style {
+      stroke-dashoffset: var(--imp-ring-c, 0);
+    }
+  }
+
+  /* Fortschrittsbalken: füllen sich beim Erscheinen auf ihren Stand
+     (`--imp-share`, setzt die Komponente). scaleX statt width – die
+     Breite triggerte Layout, die Skalierung bleibt beim Compositor. */
+  .imp-meter {
+    transform: scaleX(var(--imp-share, 0));
+    transform-origin: left;
+    transition: transform 600ms var(--ease-out-strong);
+    @starting-style {
+      transform: scaleX(0);
+    }
   }
 }
 

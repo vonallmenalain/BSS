@@ -80,10 +80,13 @@ export function QuizCard({
   item,
   answer,
   preview = false,
+  plain = false,
 }: {
   item: ImpulseItem
   answer: ImpulseAnswer | null
   preview?: boolean
+  /** Ohne Bereichszeile – im Vollbild steht der Bereich schon im Kopf. */
+  plain?: boolean
 }) {
   const { profile } = useAuth()
   const toast = useToast()
@@ -91,6 +94,12 @@ export function QuizCard({
   const [text, setText] = useState('')
   const [busy, setBusy] = useState(false)
   const [previewAnswer, setPreviewAnswer] = useState<ImpulseAnswer | null>(null)
+  /*
+   * Eben erst geantwortet? Nur dann tritt die Auflösung an – wer eine
+   * schon beantwortete Frage wieder öffnet, sieht sie einfach dastehen.
+   * Bewegung gehört dem Moment des Wechsels.
+   */
+  const [justAnswered, setJustAnswered] = useState(false)
 
   const quiz = item.quiz
   if (!quiz) return null
@@ -101,6 +110,7 @@ export function QuizCard({
     event.preventDefault()
     if (quiz.form === 'choice' && choice === null) return
     if (quiz.form === 'text' && !text.trim()) return
+    setJustAnswered(true)
 
     if (preview) {
       setPreviewAnswer({
@@ -140,11 +150,13 @@ export function QuizCard({
 
   return (
     <section className="card p-5">
-      <p className="hint flex items-center gap-1.5 font-medium">
-        <Search className="size-4" aria-hidden />
-        Quizfrage der Woche
-      </p>
-      <h2 className="mt-2 text-lg font-semibold text-balance">{item.title}</h2>
+      {!plain && (
+        <p className="hint flex items-center gap-1.5 font-medium">
+          <Search className="size-4" aria-hidden />
+          Quizfrage der Woche
+        </p>
+      )}
+      <h2 className={plain ? 'text-lg font-semibold text-balance' : 'mt-2 text-lg font-semibold text-balance'}>{item.title}</h2>
       {item.body && (
         <p className="mt-2 text-sm whitespace-pre-line text-slate-600 dark:text-slate-300">
           {item.body}
@@ -154,7 +166,7 @@ export function QuizCard({
 
       {shown ? (
         <>
-          <QuizResolution item={item} answer={shown} />
+          <QuizResolution item={item} answer={shown} animated={justAnswered} />
           {preview && (
             <button type="button" className="btn-ghost btn-sm mt-3" onClick={reset}>
               <RotateCcw className="size-4" aria-hidden />
@@ -233,12 +245,24 @@ export function QuizCard({
 }
 
 /** Die Auflösung – der Lernmoment nach der Antwort. */
-export function QuizResolution({ item, answer }: { item: ImpulseItem; answer: ImpulseAnswer }) {
+export function QuizResolution({
+  item,
+  answer,
+  animated = false,
+}: {
+  item: ImpulseItem
+  answer: ImpulseAnswer
+  /** Tritt nur an, wenn eben geantwortet wurde – nicht beim Wiedersehen. */
+  animated?: boolean
+}) {
   const quiz = item.quiz
   if (!quiz) return null
 
   return (
-    <div className="mt-4 space-y-3">
+    /* Die Auflösung tritt an statt zu erscheinen – sie ersetzt das
+       Formular im selben Moment, und ohne Brücke wäre der Wechsel ein
+       Schnitt mitten im Lernmoment. */
+    <div className={cn('mt-4 space-y-3', animated && 'animate-imp-rise')}>
       {quiz.form === 'choice' ? (
         <>
           <p

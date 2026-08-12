@@ -22,7 +22,14 @@ import {
  * «Bei der Redaktion» oder «Übernommen». Einen Zustand «abgelehnt» gibt es
  * bewusst nicht – was nicht passt, verschwindet still (Leitgedanke 1).
  */
-export function ImpulseSubmitCard({ submissions }: { submissions: ImpulseSubmission[] }) {
+export function ImpulseSubmitCard({
+  submissions,
+  plain = false,
+}: {
+  submissions: ImpulseSubmission[]
+  /** Ohne Bereichszeile – im Vollbild steht der Bereich schon im Kopf. */
+  plain?: boolean
+}) {
   const { profile } = useAuth()
   const toast = useToast()
   const [open, setOpen] = useState(false)
@@ -68,11 +75,13 @@ export function ImpulseSubmitCard({ submissions }: { submissions: ImpulseSubmiss
 
   return (
     <section className="card p-5">
-      <p className="hint flex items-center gap-1.5 font-medium">
-        <Send className="size-4" aria-hidden />
-        Mitmach-Ecke
-      </p>
-      <div className="mt-2 flex flex-wrap items-center gap-3">
+      {!plain && (
+        <p className="hint flex items-center gap-1.5 font-medium">
+          <Send className="size-4" aria-hidden />
+          Mitmach-Ecke
+        </p>
+      )}
+      <div className={plain ? 'flex flex-wrap items-center gap-3' : 'mt-2 flex flex-wrap items-center gap-3'}>
         <p className="min-w-0 flex-1 text-sm text-slate-600 dark:text-slate-300">
           Deine Lieblingsschriftstelle oder eine Quizidee – die Redaktion schaut sie an, und auf
           der Karte steht dann dein Name.
