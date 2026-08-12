@@ -80,10 +80,13 @@ export function QuizCard({
   item,
   answer,
   preview = false,
+  plain = false,
 }: {
   item: ImpulseItem
   answer: ImpulseAnswer | null
   preview?: boolean
+  /** Ohne Bereichszeile – im Vollbild steht der Bereich schon im Kopf. */
+  plain?: boolean
 }) {
   const { profile } = useAuth()
   const toast = useToast()
@@ -140,11 +143,13 @@ export function QuizCard({
 
   return (
     <section className="card p-5">
-      <p className="hint flex items-center gap-1.5 font-medium">
-        <Search className="size-4" aria-hidden />
-        Quizfrage der Woche
-      </p>
-      <h2 className="mt-2 text-lg font-semibold text-balance">{item.title}</h2>
+      {!plain && (
+        <p className="hint flex items-center gap-1.5 font-medium">
+          <Search className="size-4" aria-hidden />
+          Quizfrage der Woche
+        </p>
+      )}
+      <h2 className={plain ? 'text-lg font-semibold text-balance' : 'mt-2 text-lg font-semibold text-balance'}>{item.title}</h2>
       {item.body && (
         <p className="mt-2 text-sm whitespace-pre-line text-slate-600 dark:text-slate-300">
           {item.body}

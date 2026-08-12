@@ -1,12 +1,14 @@
-import { useEffect, useRef, useState } from 'react'
+import { useEffect, useLayoutEffect, useRef, useState } from 'react'
 import { createPortal } from 'react-dom'
 import { Bookmark, HandHeart, X } from 'lucide-react'
 import { useAuth } from '@/contexts/AuthContext'
 import { useToast } from '@/contexts/ToastContext'
 import { cn } from '@/lib/utils'
+import { IMPULSE_SECTIONS } from '@/lib/impulseSections'
 import { ContributorLine, SourceLink } from '@/components/impulse/ImpulseCards'
 import { markImpulseFeedDone, setImpulseAmen, setImpulseFavorite } from '@/services/impulse'
 import type { ImpulseItem, ImpulseProgress } from '@/lib/types'
+import type { ScreenOrigin } from '@/components/impulse/ImpulseScreen'
 
 /**
  * Der Impuls-Feed: Karte für Karte, mit dem Daumen – die Form von Reels,
@@ -29,6 +31,8 @@ export function ImpulseFeed({
   progressDocs,
   feedDone,
   preview = false,
+  initialItemId,
+  origin,
   onClose,
 }: {
   week: string
@@ -37,13 +41,36 @@ export function ImpulseFeed({
   /** Schon einmal bis zur Schlusskarte gekommen – dann wird nichts mehr geschrieben. */
   feedDone: boolean
   preview?: boolean
+  /** Bei dieser Karte einsteigen – der Weg von «Gemerkt» zurück zur Karte. */
+  initialItemId?: string | null
+  /** Wo der öffnende Tipp sass – von dort wächst der Feed heran. */
+  origin?: ScreenOrigin | null
   onClose: () => void
 }) {
   const { profile } = useAuth()
   const toast = useToast()
   const containerRef = useRef<HTMLDivElement>(null)
-  const [index, setIndex] = useState(0)
+  const [closing, setClosing] = useState(false)
   const marked = useRef(feedDone)
+
+  /*
+   * Der Einstieg: normal bei der ersten Karte – oder direkt bei der
+   * gemerkten, ohne Anlauf (vor dem ersten Bild gesetzt, nichts rollt).
+   */
+  const initialIndex = initialItemId
+    ? Math.max(
+        cards.findIndex((card) => card.id === initialItemId),
+        0,
+      )
+    : 0
+  const [index, setIndex] = useState(initialIndex)
+  useLayoutEffect(() => {
+    const element = containerRef.current
+    if (!element || initialIndex === 0) return
+    element.scrollTop = initialIndex * element.clientHeight
+    // Nur beim Öffnen – danach führt der Daumen.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [])
 
   const [previewAmens, setPreviewAmens] = useState<ReadonlySet<string>>(new Set())
   const [previewFavorites, setPreviewFavorites] = useState<ReadonlySet<string>>(new Set())
@@ -73,14 +100,33 @@ export function ImpulseFeed({
     }
   }, [])
 
-  /* Escape schliesst – wie ein Fenster. */
-  const close = useRef(onClose)
+  /*
+   * Schliessen mit kurzem Abgang (150 ms), wie die Vollbild-Räume der
+   * anderen Bereiche – Escape schliesst, wie ein Fenster. Bei reduzierter
+   * Bewegung geht es sofort.
+   */
+  const closeRef = useRef(onClose)
   useEffect(() => {
-    close.current = onClose
+    closeRef.current = onClose
+  })
+  const closingRef = useRef(false)
+  const close = () => {
+    if (closingRef.current) return
+    if (window.matchMedia('(prefers-reduced-motion: reduce)').matches) {
+      closeRef.current()
+      return
+    }
+    closingRef.current = true
+    setClosing(true)
+    window.setTimeout(() => closeRef.current(), 150)
+  }
+  const closeHandler = useRef(close)
+  useEffect(() => {
+    closeHandler.current = close
   })
   useEffect(() => {
     const onKey = (event: KeyboardEvent) => {
-      if (event.key === 'Escape') close.current()
+      if (event.key === 'Escape') closeHandler.current()
     }
     window.addEventListener('keydown', onKey)
     return () => window.removeEventListener('keydown', onKey)
@@ -157,16 +203,28 @@ export function ImpulseFeed({
   }
 
   return createPortal(
-    <div className="fixed inset-0 z-50 flex flex-col bg-slate-50 dark:bg-slate-950">
-      <header className="flex items-center gap-3 px-4 py-2.5 pt-safe">
+    <div
+      data-closing={closing || undefined}
+      className="imp-screen fixed inset-0 z-50 flex flex-col bg-slate-50 dark:bg-slate-950"
+      style={{ transformOrigin: origin ? `${origin.x}px ${origin.y}px` : '50% 40%' }}
+    >
+      {/* Der Schleier des Feeds – dieselbe Sprache wie die anderen Räume. */}
+      <div
+        aria-hidden
+        className={cn(
+          'pointer-events-none absolute inset-x-0 top-0 h-72 bg-gradient-to-b to-transparent',
+          IMPULSE_SECTIONS.feed.wash,
+        )}
+      />
+      <header className="relative flex items-center gap-3 px-4 py-2.5 pt-safe">
         <p className="text-sm font-medium text-slate-500 dark:text-slate-400" aria-live="polite">
           {preview && 'Vorschau · '}
           {index < total ? `${index + 1} von ${total}` : 'Geschafft'}
         </p>
         <button
           type="button"
-          className="btn-ghost ms-auto p-2"
-          onClick={onClose}
+          className="btn-ghost ms-auto rounded-full p-2 active:scale-95"
+          onClick={close}
           aria-label="Feed schliessen"
         >
           <X className="size-5" aria-hidden />
@@ -176,7 +234,7 @@ export function ImpulseFeed({
       <div
         ref={containerRef}
         onScroll={onScroll}
-        className="flex-1 snap-y snap-mandatory overflow-y-auto overscroll-contain"
+        className="relative flex-1 snap-y snap-mandatory overflow-y-auto overscroll-contain"
       >
         {cards.map((card) => {
           const names = amenNames(card.id)
@@ -245,7 +303,7 @@ export function ImpulseFeed({
             Stark, dass du da warst – hier kommt nichts mehr nach. Der nächste Feed wartet am
             Montag.
           </p>
-          <button type="button" className="btn-primary mt-6" onClick={onClose}>
+          <button type="button" className="btn-primary mt-6 active:scale-[0.98]" onClick={close}>
             Zurück zum Impuls
           </button>
         </section>

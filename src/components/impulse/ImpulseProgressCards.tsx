@@ -1,20 +1,21 @@
 import { useState } from 'react'
 import { format } from 'date-fns'
-import { Award, Check, CheckCircle2, Repeat, Sparkles, Users } from 'lucide-react'
+import { Check, CheckCircle2, Repeat, Users } from 'lucide-react'
 import { useAuth } from '@/contexts/AuthContext'
 import { useToast } from '@/contexts/ToastContext'
 import { useNow } from '@/hooks/useNow'
 import { cn } from '@/lib/utils'
-import { weekDays, type ImpulseBadge } from '@/lib/impulse'
+import { weekDays } from '@/lib/impulse'
 import { SourceLink } from '@/components/impulse/ImpulseCards'
 import { setImpulseChallengeDay, setImpulseWeekGoal } from '@/services/impulse'
 import type { ImpulseItem } from '@/lib/types'
 
 /*
  * Die Challenge-Karten des Bereichs «Impuls»: das Wochenziel mit seinem
- * einen Haken, die Tages-Challenge mit ihren sieben, dazu Serie und
+ * einen Haken, die Tages-Challenge mit ihren sieben, dazu die
  * Gruppenleiste. Abgehakt wird per Selbstauskunft – die Karten fragen
- * nicht nach, sie glauben es.
+ * nicht nach, sie glauben es. Die Serie wohnt seit dem Kachel-Umbau in
+ * «Mein Fortschritt» (`ImpulseStats`).
  *
  * Wie die Quizkarte kennen beide Aufgaben-Karten einen Vorschau-Modus:
  * Dort lebt der Haken nur im Fenster, gespeichert wird nichts.
@@ -28,11 +29,14 @@ export function GoalCard({
   week,
   done,
   preview = false,
+  plain = false,
 }: {
   item: ImpulseItem
   week: string
   done: boolean
   preview?: boolean
+  /** Ohne Bereichszeile – im Vollbild steht der Bereich schon im Kopf. */
+  plain?: boolean
 }) {
   const { profile } = useAuth()
   const toast = useToast()
@@ -65,11 +69,13 @@ export function GoalCard({
 
   return (
     <section className="card p-5">
-      <p className="hint flex items-center gap-1.5 font-medium">
-        <CheckCircle2 className="size-4" aria-hidden />
-        Wochenziel
-      </p>
-      <h2 className="mt-2 text-lg font-semibold text-balance">{item.title}</h2>
+      {!plain && (
+        <p className="hint flex items-center gap-1.5 font-medium">
+          <CheckCircle2 className="size-4" aria-hidden />
+          Wochenziel
+        </p>
+      )}
+      <h2 className={plain ? 'text-lg font-semibold text-balance' : 'mt-2 text-lg font-semibold text-balance'}>{item.title}</h2>
       {item.body && (
         <p className="mt-2 text-sm whitespace-pre-line text-slate-600 dark:text-slate-300">
           {item.body}
@@ -116,12 +122,15 @@ export function ChallengeCard({
   week,
   days,
   preview = false,
+  plain = false,
 }: {
   item: ImpulseItem
   week: string
   /** Die abgehakten Tage («2026-08-11») aus dem eigenen Fortschritt. */
   days: string[]
   preview?: boolean
+  /** Ohne Bereichszeile – im Vollbild steht der Bereich schon im Kopf. */
+  plain?: boolean
 }) {
   const { profile } = useAuth()
   const toast = useToast()
@@ -164,11 +173,13 @@ export function ChallengeCard({
 
   return (
     <section className="card p-5">
-      <p className="hint flex items-center gap-1.5 font-medium">
-        <Repeat className="size-4" aria-hidden />
-        Tages-Challenge
-      </p>
-      <h2 className="mt-2 text-lg font-semibold text-balance">{item.title}</h2>
+      {!plain && (
+        <p className="hint flex items-center gap-1.5 font-medium">
+          <Repeat className="size-4" aria-hidden />
+          Tages-Challenge
+        </p>
+      )}
+      <h2 className={plain ? 'text-lg font-semibold text-balance' : 'mt-2 text-lg font-semibold text-balance'}>{item.title}</h2>
       {item.body && (
         <p className="mt-2 text-sm whitespace-pre-line text-slate-600 dark:text-slate-300">
           {item.body}
@@ -227,55 +238,6 @@ export function ChallengeCard({
         {doneCount} von 7 Tagen
         {doneCount === 7 && ' – die volle Woche!'}
       </p>
-    </section>
-  )
-}
-
-/** Die eigene Serie samt Abzeichen – Meilensteine statt Punkte. */
-export function StreakCard({
-  current,
-  best,
-  badges,
-}: {
-  current: number
-  best: number
-  badges: ImpulseBadge[]
-}) {
-  return (
-    <section className="card p-5">
-      <p className="hint flex items-center gap-1.5 font-medium">
-        <Sparkles className="size-4" aria-hidden />
-        Meine Serie
-      </p>
-      {current > 0 ? (
-        <p className="mt-2 text-lg font-semibold">
-          {current} {current === 1 ? 'Woche' : 'Wochen'} in Folge
-          {best > current && (
-            <span className="ml-2 text-sm font-normal text-slate-500 dark:text-slate-400">
-              beste: {best}
-            </span>
-          )}
-        </p>
-      ) : (
-        <p className="mt-2 text-sm text-slate-600 dark:text-slate-300">
-          Noch keine Serie – sie beginnt, sobald du diese Woche etwas abhakst oder die Quizfrage
-          beantwortest. Eine Jokerwoche pro Monat ist eingebaut.
-        </p>
-      )}
-      {badges.length > 0 && (
-        <div className="mt-3 flex flex-wrap gap-1.5">
-          {badges.map((badge) => (
-            <span
-              key={badge.id}
-              className="badge bg-amber-100 text-amber-900 dark:bg-amber-950 dark:text-amber-200"
-              title={badge.hint}
-            >
-              <Award className="size-3.5" aria-hidden />
-              {badge.label}
-            </span>
-          ))}
-        </div>
-      )}
     </section>
   )
 }

@@ -33,6 +33,17 @@
   --animate-slide-up: slide-up 0.22s cubic-bezier(0.32, 0.72, 0, 1);
   --animate-fade-in: fade-in 0.15s ease-out;
   --animate-scale-in: scale-in 0.18s cubic-bezier(0.32, 0.72, 0, 1);
+
+  /* Zwei kräftige Kurven für den Bereich «Impuls» (und wen es sonst
+     freut): Die eingebauten CSS-Easings sind zu schwach, um Absicht zu
+     zeigen. `swift` ist die iOS-Schubladen-Kurve, `out-strong` ein
+     entschlossenes ease-out für alles, was erscheint. */
+  --ease-swift: cubic-bezier(0.32, 0.72, 0, 1);
+  --ease-out-strong: cubic-bezier(0.23, 1, 0.32, 1);
+
+  /* Inhalt tritt auf: kurz von unten, ohne Hüpfer. `both` hält den
+     Anfangszustand auch während einer Stagger-Verzögerung fest. */
+  --animate-imp-rise: imp-rise 0.35s var(--ease-out-strong) both;
 }
 
 @keyframes slide-up {
@@ -63,6 +74,17 @@
   to {
     opacity: 1;
     transform: scale(1);
+  }
+}
+
+@keyframes imp-rise {
+  from {
+    opacity: 0;
+    transform: translateY(10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
   }
 }
 
@@ -203,6 +225,66 @@
 @utility divide-list {
   & > * + * {
     @apply border-t border-slate-200 dark:border-slate-800;
+  }
+}
+
+/* --- Impuls: das Vollbild und seine Bewegung -------------------------
+   Der Bereich «Impuls» öffnet jede Kachel als eigenen Vollbild-Raum.
+   Übergänge als **Transitions**, nicht als Keyframes: Sie lassen sich
+   unterbrechen und umlenken – wer sofort wieder schliesst, sieht eine
+   Umkehr statt eines Neustarts. Animiert werden nur transform und
+   opacity; die globale Reduced-Motion-Regel oben dreht auch das ab. */
+@layer components {
+  /* Der Raum selbst: tritt vom Auslöser her an (transform-origin setzt
+     die Kachel per Inline-Stil), geht schneller als er kam – Eintritt
+     260 ms, Austritt 150 ms, wie sich Türen anfühlen sollen. */
+  .imp-screen {
+    opacity: 1;
+    transform: scale(1);
+    transition:
+      opacity 260ms var(--ease-out-strong),
+      transform 260ms var(--ease-out-strong);
+    @starting-style {
+      opacity: 0;
+      transform: scale(0.96);
+    }
+  }
+  .imp-screen[data-closing] {
+    opacity: 0;
+    transform: scale(0.97);
+    transition-duration: 150ms;
+  }
+
+  /* Der Farbschleier des Bereichs: blendet weich ein, wenn der Bereich
+     wechselt – der Grund darunter bleibt stehen, darum reicht das
+     Einblenden des Neuen. */
+  .imp-wash {
+    opacity: 1;
+    transition: opacity 320ms ease;
+    @starting-style {
+      opacity: 0;
+    }
+  }
+
+  /* Der Fortschrittsring zeichnet sich beim Erscheinen – vom vollen
+     Umfang (`--imp-ring-c`, setzt die Komponente) auf den Zielstand. */
+  .imp-ring-arc {
+    transition: stroke-dashoffset 700ms var(--ease-out-strong);
+    @starting-style {
+      stroke-dashoffset: var(--imp-ring-c, 0);
+    }
+  }
+
+  /* Fortschrittsbalken: füllen sich beim Erscheinen auf ihren Stand
+     (`--imp-share`, setzt die Komponente). scaleX statt width – die
+     Breite triggerte Layout, die Skalierung bleibt beim Compositor. */
+  .imp-meter {
+    transform: scaleX(var(--imp-share, 0));
+    transform-origin: left;
+    transition: transform 700ms var(--ease-out-strong);
+    @starting-style {
+      transform: scaleX(0);
+    }
   }
 }
 
