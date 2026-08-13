@@ -539,7 +539,7 @@ service cloud.firestore {
      *
      * Nur die eigene Person liest und schreibt hier; niemand sonst hat
      * ein Interesse daran, und die Einstellung anderer geht keinen etwas
-     * an. Die drei Felder, die der Versand selbst führt, sind gegen den
+     * an. Die Felder, die der Versand selbst führt, sind gegen den
      * Client verriegelt: Wer sie zurückstellen könnte, könnte sich
      * dieselbe Nachricht beliebig oft schicken lassen – aus Versehen
      * oder aus Übermut.
@@ -551,14 +551,15 @@ service cloud.firestore {
         && request.auth.uid == userId
         && request.resource.data.uid == userId
         && !request.resource.data.keys()
-             .hasAny(['impulsSentAt', 'agendaSentAt', 'meetingsNotified']);
+             .hasAny(['impulsSentAt', 'agendaSentAt', 'meetingsNotified', 'apNotified']);
 
       allow update: if notifyAccess()
         && request.auth.uid == userId
         && request.resource.data.uid == userId
         && unchanged('impulsSentAt')
         && unchanged('agendaSentAt')
-        && unchanged('meetingsNotified');
+        && unchanged('meetingsNotified')
+        && unchanged('apNotified');
     }
 
     /* ---------------- Einstellungen ---------------- */

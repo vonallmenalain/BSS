@@ -55,7 +55,7 @@ export function pushEnabled(): boolean {
   }
 }
 
-/** Hat der Browser Mitteilungen für diese App ausdrücklich verweigert? */
+/** Hat der Browser Benachrichtigungen für diese App ausdrücklich verweigert? */
 export function pushDenied(): boolean {
   return typeof Notification !== 'undefined' && Notification.permission === 'denied'
 }

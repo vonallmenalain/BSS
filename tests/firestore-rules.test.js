@@ -1050,6 +1050,7 @@ describe('Benachrichtigungen', () => {
       impuls: { on: true, mode: 'weekly', weekday: 1, time: '08:00' },
       agenda: { on: false },
       meeting: { on: false },
+      ap: { on: true, hoursBefore: 24, scope: 'alle' },
     })
 
     it('die eigenen Einstellungen anlegen, ändern und lesen', async () => {
@@ -1096,6 +1097,12 @@ describe('Benachrichtigungen', () => {
           meetingsNotified: [],
         }),
       )
+      await assertFails(
+        setDoc(doc(asApEditor(), 'notificationSettings', AP_EDITOR), {
+          ...settings(AP_EDITOR),
+          apNotified: [],
+        }),
+      )
     })
 
     it('die Marken des Versands lassen sich auch nicht nachträglich ändern', async () => {
@@ -1105,6 +1112,7 @@ describe('Benachrichtigungen', () => {
           impulsSentAt: new Date('2026-08-10T06:00:00Z'),
           agendaSentAt: new Date('2026-08-10T06:00:00Z'),
           meetingsNotified: ['sitzung-1'],
+          apNotified: ['ap-1'],
         })
       })
 
@@ -1116,6 +1124,11 @@ describe('Benachrichtigungen', () => {
       await assertFails(
         updateDoc(doc(asApViewer(), 'notificationSettings', AP_VIEWER), {
           meetingsNotified: [],
+        }),
+      )
+      await assertFails(
+        updateDoc(doc(asApViewer(), 'notificationSettings', AP_VIEWER), {
+          apNotified: [],
         }),
       )
       // Die eigenen Felder bleiben daneben ganz normal änderbar.

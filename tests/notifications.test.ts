@@ -5,6 +5,10 @@ import {
   AGENDA_GAP_MINUTES,
   agendaDue,
   agendaMessage,
+  apLeadLabel,
+  apReminderDue,
+  apReminderMessage,
+  apScopeIncludes,
   clockLabel,
   DEFAULT_NOTIFICATION_SETTINGS,
   firstName,
@@ -18,6 +22,8 @@ import {
   scheduleDue,
   scheduleLabel,
   wallClock,
+  zurichDay,
+  zurichTime,
 } from '../src/lib/notifications.ts'
 import type { NotificationSchedule } from '../src/lib/types.ts'
 
@@ -237,5 +243,86 @@ test('der Standard ist Montag um acht – und alles ausgeschaltet', () => {
     impuls: { on: false, mode: 'weekly', weekday: 1, time: '08:00' },
     agenda: { on: false },
     meeting: { on: false },
+    ap: { on: false, hoursBefore: 1, scope: 'alle' },
   })
+})
+
+/* ------------------------------------------------------------------ */
+/* AP-Kalender: Vorlauf, Auswahl und Zürcher Wandzeit                  */
+/* ------------------------------------------------------------------ */
+
+test('zurichTime: Wandzeit wird zum richtigen Zeitpunkt – Sommer wie Winter', () => {
+  // 19:30 Schweizer Sommerzeit ist 17:30 UTC …
+  assert.equal(
+    zurichTime('2026-08-19', '19:30').toISOString(),
+    new Date('2026-08-19T17:30:00Z').toISOString(),
+  )
+  // … und 19:30 Winterzeit ist 18:30 UTC.
+  assert.equal(
+    zurichTime('2026-12-16', '19:30').toISOString(),
+    new Date('2026-12-16T18:30:00Z').toISOString(),
+  )
+})
+
+test('zurichTime und zurichDay bilden einen Kreis', () => {
+  const startsAt = zurichTime('2026-08-19', '00:15')
+  assert.equal(zurichDay(startsAt), '2026-08-19')
+  // In UTC liegt dieser Moment noch am Vortag – der Zürcher Tag zählt.
+  assert.equal(startsAt.toISOString(), '2026-08-18T22:15:00.000Z')
+})
+
+test('apReminderDue: fällig ab dem Vorlauf, mit zwei Stunden Nachlauf', () => {
+  const startsAt = new Date('2026-08-19T17:30:00Z')
+  const lead = 24 * 60
+  // Zu früh – mehr als 24 Stunden vorher.
+  assert.equal(apReminderDue(startsAt, new Date('2026-08-18T17:00:00Z'), lead), false)
+  // Im Fenster: genau 24 Stunden vorher und kurz danach.
+  assert.equal(apReminderDue(startsAt, new Date('2026-08-18T17:30:00Z'), lead), true)
+  assert.equal(apReminderDue(startsAt, new Date('2026-08-18T19:00:00Z'), lead), true)
+  // Der Nachlauf ist vorbei – lieber still als eine irreführende Erinnerung.
+  assert.equal(apReminderDue(startsAt, new Date('2026-08-18T19:31:00Z'), lead), false)
+
+  // Eine Stunde Vorlauf: kurz vor dem Termin fällig, nach dem Beginn nicht mehr … 
+  assert.equal(apReminderDue(startsAt, new Date('2026-08-19T16:30:00Z'), 60), true)
+  assert.equal(apReminderDue(startsAt, new Date('2026-08-19T17:31:00Z'), 60), false)
+})
+
+test('apScopeIncludes: Klassen, Aktivitäten – und Ausgefallenes nie', () => {
+  assert.equal(apScopeIncludes('alle', 'activity'), true)
+  assert.equal(apScopeIncludes('alle', 'class'), true)
+  assert.equal(apScopeIncludes('alle', 'special'), true)
+  assert.equal(apScopeIncludes('aktivitaeten', 'activity'), true)
+  assert.equal(apScopeIncludes('aktivitaeten', 'special'), true)
+  assert.equal(apScopeIncludes('aktivitaeten', 'class'), false)
+  assert.equal(apScopeIncludes('klassen', 'class'), true)
+  assert.equal(apScopeIncludes('klassen', 'activity'), false)
+  assert.equal(apScopeIncludes('alle', 'cancelled'), false)
+  assert.equal(apScopeIncludes('klassen', 'cancelled'), false)
+})
+
+test('apLeadLabel: Stunden ausgeschrieben, der Tag als Tag', () => {
+  assert.equal(apLeadLabel(1), '1 Stunde vorher')
+  assert.equal(apLeadLabel(6), '6 Stunden vorher')
+  assert.equal(apLeadLabel(24), '1 Tag vorher')
+})
+
+test('apReminderMessage: Vorlauf im Titel, Titel und Zeit im Text', () => {
+  const startsAt = zurichTime('2026-08-19', '19:30')
+  assert.deepEqual(
+    apReminderMessage({ kind: 'activity', title: 'Bouldern', startsAt, leadHours: 2 }),
+    { title: 'In 2 Stunden: AP-Aktivität', body: '«Bouldern» um 19:30.' },
+  )
+  assert.deepEqual(
+    apReminderMessage({
+      kind: 'class',
+      title: 'Kleine Entscheidungen',
+      startsAt: zurichTime('2026-08-23', '11:35'),
+      leadHours: 24,
+    }),
+    { title: 'Morgen: AP-Klasse', body: '«Kleine Entscheidungen» um 11:35.' },
+  )
+  assert.equal(
+    apReminderMessage({ kind: 'special', title: 'Tempelbesuch', startsAt, leadHours: 1 }).title,
+    'In einer Stunde: AP-Aktivität',
+  )
 })

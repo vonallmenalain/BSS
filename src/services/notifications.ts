@@ -20,7 +20,7 @@ import type { NotificationSettings } from '@/lib/types'
  */
 export async function saveNotificationSettings(
   uid: string,
-  patch: Partial<Pick<NotificationSettings, 'impuls' | 'agenda' | 'meeting'>>,
+  patch: Partial<Pick<NotificationSettings, 'impuls' | 'agenda' | 'meeting' | 'ap'>>,
 ): Promise<void> {
   await fbSetDoc(
     fbDoc(db, COLLECTIONS.notificationSettings, uid),
@@ -37,5 +37,6 @@ export function withDefaults(
     impuls: { ...DEFAULT_NOTIFICATION_SETTINGS.impuls, ...(settings?.impuls ?? {}) },
     agenda: { ...DEFAULT_NOTIFICATION_SETTINGS.agenda, ...(settings?.agenda ?? {}) },
     meeting: { ...DEFAULT_NOTIFICATION_SETTINGS.meeting, ...(settings?.meeting ?? {}) },
+    ap: { ...DEFAULT_NOTIFICATION_SETTINGS.ap, ...(settings?.ap ?? {}) },
   }
 }
