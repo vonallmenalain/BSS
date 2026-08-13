@@ -48,6 +48,11 @@
   /* Der eine Überschwung des Bereichs «Impuls»: die Schlusskarte des
      Feeds – einmal pro Woche, der Moment darf federn. Sonst nirgends. */
   --animate-imp-pop: imp-pop 0.5s cubic-bezier(0.34, 1.56, 0.64, 1) both;
+
+  /* Der Wisch-Hinweis «Vertiefen» im Vollbild-Feed: ein Pfeil, der sanft
+     nach links pulst – die Richtung des Fingers. Endlos, aber leise; die
+     Reduced-Motion-Regel unten hält auch ihn an. */
+  --animate-imp-nudge: imp-nudge 1.8s ease-in-out infinite;
 }
 
 @keyframes slide-up {
@@ -100,6 +105,16 @@
   to {
     opacity: 1;
     transform: scale(1) translateY(0);
+  }
+}
+
+@keyframes imp-nudge {
+  0%,
+  100% {
+    transform: translateX(0);
+  }
+  50% {
+    transform: translateX(-5px);
   }
 }
 

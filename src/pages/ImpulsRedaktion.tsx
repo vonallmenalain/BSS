@@ -6,10 +6,12 @@ import {
   ChevronDown,
   ChevronRight,
   Eye,
+  HeartHandshake,
   LayoutList,
   Lightbulb,
   MessagesSquare,
   Plus,
+  Puzzle,
   Repeat,
   Search,
   Send,
@@ -115,9 +117,9 @@ export function ImpulsRedaktion() {
       initial: emptyImpulseItem(
         kind,
         week,
-        // Neue Feed-Karten reihen sich hinten ein.
-        kind === 'feed'
-          ? itemsState.data.filter((item) => item.week === week && item.kind === 'feed').length + 1
+        // Arten mit mehreren Karten je Woche reihen sich hinten ein.
+        MULTI_KIND_LIMITS[kind]
+          ? itemsState.data.filter((item) => item.week === week && item.kind === kind).length + 1
           : null,
       ),
     })
@@ -144,10 +146,15 @@ export function ImpulsRedaktion() {
     try {
       const outcome = await createStarterItems(starterPlans, profile?.id)
       const pooled = starterPlans.filter((plan) => plan.week === null).length
+      const drafts = starterPlans.filter((plan) => plan.status === 'draft').length
+      const draftNote =
+        drafts > 0
+          ? ` ${drafts} ${drafts === 1 ? 'Bilderrätsel wartet' : 'Bilderrätsel warten'} als Entwurf auf ihr Bild aus der Mediathek.`
+          : ''
       toast.saved(
         pooled === 0
-          ? 'Startpaket eingespielt – vier Wochen sind geplant und bereit.'
-          : `Startpaket eingespielt – ${starterPlans.length - pooled} Inhalte geplant, ${pooled} im Fragenpool (ihr Platz war schon belegt).`,
+          ? `Startpaket eingespielt – vier Wochen sind geplant.${draftNote}`
+          : `Startpaket eingespielt – ${starterPlans.length - pooled} Inhalte geplant, ${pooled} im Fragenpool (ihr Platz war schon belegt).${draftNote}`,
         outcome,
       )
     } catch (error) {
@@ -222,14 +229,16 @@ export function ImpulsRedaktion() {
               Startpaket: vier Wochen aus den Schriften
             </h2>
             <p className="hint mt-1 mb-3">
-              Je Woche ein Impuls, ein Wochenziel, eine Quizfrage, eine Tages-Challenge, eine Frage
-              der Woche und drei Feed-Karten – 1 Nephi 3:7, das Haus auf dem Felsen, Lehre und
-              Bündnisse 6:36 und Almas Samenkorn, dazu Auswahl-, Emoji-, Reihenfolge- und Suchfrage.
-              Alles «bereit»: Die laufende Woche erscheint sofort, drei weitere warten auf ihren
-              Montag. Eingespielt wird nur, was noch fehlt ({starterPlans.length}{' '}
-              {starterPlans.length === 1 ? 'Inhalt' : 'Inhalte'}); Vorhandenes und belegte Plätze
-              bleiben unangetastet. Danach lässt sich alles wie gewohnt bearbeiten, verschieben oder
-              löschen.
+              1 Nephi 3:7, das Haus auf dem Felsen, Lehre und Bündnisse 6:36 und Almas Samenkorn –
+              die ersten drei Wochen voll ausgebaut: je drei Quizfragen in steigendem
+              Schwierigkeitsgrad, drei Bilderrätsel, zehn Feed-Karten (etliche mit Vertiefung),
+              dazu Impuls, Wochenziel, Tages-Challenge, Frage der Woche und Teilen-Aufgabe. Alles
+              «bereit» – einzig die Bilderrätsel kommen als <strong>Entwurf</strong>: Ihr Bild muss
+              aus der Mediathek der Kirche stammen; die Auflösung sagt, welches gemeint ist –
+              Bild-Link einsetzen, «bereit» anhaken, fertig. Eingespielt wird nur, was noch fehlt (
+              {starterPlans.length} {starterPlans.length === 1 ? 'Inhalt' : 'Inhalte'}); Vorhandenes
+              und belegte Plätze bleiben unangetastet. Danach lässt sich alles wie gewohnt
+              bearbeiten, verschieben oder löschen.
             </p>
             <button
               type="button"
@@ -493,18 +502,33 @@ export function ImpulsRedaktion() {
 const KIND_ICONS = {
   impuls: Lightbulb,
   quiz: Search,
+  bilderraetsel: Puzzle,
   wochenziel: CheckCircle2,
   tageschallenge: Repeat,
   frage: MessagesSquare,
   feed: LayoutList,
+  teilen: HeartHandshake,
 } as const
+
+/**
+ * Wie viele Karten einer Art in eine Woche passen – nur die Arten mit
+ * mehreren Karten stehen hier. Der Feed bleibt endlich (höchstens zehn,
+ * das Konzept plant etwa zehn je Woche), Quiz und Bilderrätsel dürfen je
+ * drei tragen (verschiedene Schwierigkeitsgrade); alles andere gibt es
+ * einmal pro Woche.
+ */
+const MULTI_KIND_LIMITS: Partial<Record<ImpulseKind, number>> = {
+  feed: 10,
+  quiz: 3,
+  bilderraetsel: 3,
+}
 
 /**
  * Ein Platz im Wochenplan: gefüllt eine Schaltfläche, leer eine Einladung.
  *
- * Die vier Einzel-Plätze laden nur ein, solange sie leer sind; der Feed
- * lädt weiter ein, bis seine Woche voll ist – er ist die eine Art mit
- * mehreren Karten, endlich bleibt er trotzdem (höchstens zehn).
+ * Die Einzel-Plätze laden nur ein, solange sie leer sind; Feed, Quiz und
+ * Bilderrätsel laden weiter ein, bis ihre Woche voll ist
+ * (`MULTI_KIND_LIMITS`) – endlich bleibt alles trotzdem.
  */
 function SlotCell({
   kind,
@@ -520,7 +544,8 @@ function SlotCell({
   onCreate: () => void
 }) {
   const Icon = KIND_ICONS[kind]
-  const showAdd = items.length === 0 || (kind === 'feed' && items.length < 10)
+  const limit = MULTI_KIND_LIMITS[kind] ?? 1
+  const showAdd = items.length < limit
 
   if (items.length === 0) {
     return (
@@ -554,12 +579,13 @@ function SlotCell({
             <span className="block truncate text-sm font-medium">{item.title || 'Ohne Titel'}</span>
             <span className="hint block">
               {item.status === 'draft' ? 'Entwurf – erscheint nicht' : 'Bereit'}
-              {(item.kind === 'quiz' || item.kind === 'frage') && answerCount(item) > 0 && (
-                <>
-                  {' · '}
-                  {answerCount(item)} {answerCount(item) === 1 ? 'Antwort' : 'Antworten'}
-                </>
-              )}
+              {(item.kind === 'quiz' || item.kind === 'bilderraetsel' || item.kind === 'frage') &&
+                answerCount(item) > 0 && (
+                  <>
+                    {' · '}
+                    {answerCount(item)} {answerCount(item) === 1 ? 'Antwort' : 'Antworten'}
+                  </>
+                )}
             </span>
           </span>
         </button>
@@ -604,12 +630,13 @@ function ItemRow({
           {IMPULSE_KIND_LABELS[item.kind]}
           {showWeek && item.week && <> · {formatWeekRange(item.week)}</>}
           {item.status === 'draft' && ' · Entwurf'}
-          {(item.kind === 'quiz' || item.kind === 'frage') && answerCount > 0 && (
-            <>
-              {' · '}
-              {answerCount} {answerCount === 1 ? 'Antwort' : 'Antworten'}
-            </>
-          )}
+          {(item.kind === 'quiz' || item.kind === 'bilderraetsel' || item.kind === 'frage') &&
+            answerCount > 0 && (
+              <>
+                {' · '}
+                {answerCount} {answerCount === 1 ? 'Antwort' : 'Antworten'}
+              </>
+            )}
         </span>
       </span>
     </button>

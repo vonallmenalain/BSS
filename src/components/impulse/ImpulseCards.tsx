@@ -1,13 +1,15 @@
 import { useState, type FormEvent } from 'react'
-import { Check, Lightbulb, Link2, RotateCcw, Search, X } from 'lucide-react'
+import { Check, Lightbulb, Link2, Puzzle, RotateCcw, Search, X } from 'lucide-react'
 import { useAuth } from '@/contexts/AuthContext'
 import { useToast } from '@/contexts/ToastContext'
 import { cn } from '@/lib/utils'
+import { splitLinks } from '@/lib/links'
 import { answerImpulseQuiz } from '@/services/impulse'
 import type { ImpulseAnswer, ImpulseItem } from '@/lib/types'
 
 /*
- * Die Karten des Bereichs «Impuls» – Wochenimpuls und Quizfrage.
+ * Die Karten des Bereichs «Impuls» – Wochenimpuls, Quizfrage und
+ * Bilderrätsel (dieselbe Mechanik wie das Quiz, nur mit Bild).
  *
  * Sie stehen hier und nicht in der Seite, weil zwei Orte sie zeichnen:
  * der Bereich selbst und die Wochen-Vorschau der Redaktion. Beide sollen
@@ -41,6 +43,65 @@ export function SourceLink({ item }: { item: ImpulseItem }) {
   )
 }
 
+/**
+ * Die Vertiefung einer Karte – der Inhalt der zweiten Seite im
+ * Vollbild-Feed (Wisch nach links).
+ *
+ * Freitext der Redaktion mit weiterführenden Gedanken, Quellen und Links;
+ * Adressen im Text werden anklickbar (`lib/links`). Der Titel der Karte
+ * steht klein darüber, damit klar bleibt, was hier vertieft wird.
+ */
+export function ImpulseDeepeningCard({ item }: { item: ImpulseItem }) {
+  if (!item.deepening) return null
+  return (
+    <article className="card p-6">
+      <h3 className="text-base font-semibold text-balance">{item.title}</h3>
+      <p className="mt-3 text-sm whitespace-pre-line text-slate-600 dark:text-slate-300">
+        {splitLinks(item.deepening).map((part, index) =>
+          part.href ? (
+            <a
+              key={index}
+              href={part.href}
+              target="_blank"
+              rel="noreferrer"
+              className="text-brand-700 dark:text-brand-300 font-medium break-words hover:underline"
+            >
+              {part.text}
+            </a>
+          ) : (
+            <span key={index}>{part.text}</span>
+          ),
+        )}
+      </p>
+      <div className="mt-4">
+        <SourceLink item={item} />
+      </div>
+    </article>
+  )
+}
+
+/**
+ * Das Bild eines Bilderrätsels – aus der offiziellen Mediathek der Kirche
+ * geladen (die App speichert nur die Adresse). Ohne Bild bleibt die Karte
+ * einfach ohne; ein kaputter Link zeigt den Alt-Text statt eines Lochs.
+ */
+export function ImpulseItemImage({ item, className }: { item: ImpulseItem; className?: string }) {
+  const image = item.image
+  if (!image?.url) return null
+  return (
+    <img
+      src={image.url}
+      alt={image.alt || 'Bild zum Rätsel'}
+      loading="lazy"
+      draggable={false}
+      className={cn(
+        'mx-auto mt-3 w-full rounded-xl border border-slate-200 bg-slate-100 object-cover dark:border-slate-800 dark:bg-slate-800',
+        className ?? 'max-h-64',
+      )}
+    />
+  )
+}
+
 /** Der Wochenimpuls: eine Schriftstelle oder ein Gedanke, mit Quelle. */
 export function ImpulseCard({ item }: { item: ImpulseItem }) {
   return (
@@ -64,7 +125,9 @@ export function ImpulseCard({ item }: { item: ImpulseItem }) {
 }
 
 /**
- * Die Quizfrage der Woche.
+ * Die Quizfrage der Woche – und das Bilderrätsel, das dieselbe Mechanik
+ * mit einem Bild aus der Mediathek der Kirche verbindet (die Karte
+ * erkennt es an `item.kind`).
  *
  * Erst wählen bzw. tippen, dann «Antworten» – ein Versuch, darum kein
  * Antworten mit einem einzigen Tippen. Nach der Antwort kommt sofort die
@@ -148,15 +211,26 @@ export function QuizCard({
     setText('')
   }
 
+  const riddle = item.kind === 'bilderraetsel'
+  const KindIcon = riddle ? Puzzle : Search
+
   return (
     <section className="card p-5">
       {!plain && (
         <p className="hint flex items-center gap-1.5 font-medium">
-          <Search className="size-4" aria-hidden />
-          Quizfrage der Woche
+          <KindIcon className="size-4" aria-hidden />
+          {riddle ? 'Bilderrätsel' : 'Quizfrage der Woche'}
         </p>
       )}
-      <h2 className={plain ? 'text-lg font-semibold text-balance' : 'mt-2 text-lg font-semibold text-balance'}>{item.title}</h2>
+      <ImpulseItemImage item={item} />
+      <h2
+        className={cn(
+          'text-lg font-semibold text-balance',
+          item.image?.url ? 'mt-3' : !plain && 'mt-2',
+        )}
+      >
+        {item.title}
+      </h2>
       {item.body && (
         <p className="mt-2 text-sm whitespace-pre-line text-slate-600 dark:text-slate-300">
           {item.body}

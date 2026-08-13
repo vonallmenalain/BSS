@@ -320,6 +320,28 @@ Die soziale Stufe – klein gehalten, damit sie trägt statt kippt:
 Die besten Antworten sind zugleich Material für den Sonntag: Der Berater
 sieht vor der Kollegiumsstunde, was die Jugendlichen bewegt.
 
+### 5.5a Teilen, Bilderrätsel und Vertiefung (Feed-Ausbau)
+
+Drei Bausteine, die den Vollbild-Feed vom Anschauen zum Weitertragen führen:
+
+- **Teilen-Aufgabe** – je Woche eine Einladung, das Thema aus der App
+  hinauszutragen: «Frag ein Familienmitglied oder einen Freund, wann er dem
+  Beispiel von Nephi gefolgt ist …». Bewusst die letzte Karte des Feeds
+  (erst lesen, dann weitergeben), mit einem Haken wie beim Wochenziel –
+  Selbstauskunft, zählt zur Wochenbeteiligung (`weeks[week].share`).
+- **Bilderrätsel** – ein Bild aus der offiziellen Mediathek der Kirche
+  (verlinkt, nicht hochgeladen): ein Tempel («In welcher Stadt steht er?»),
+  ein Prophet, eine Begebenheit aus den Schriften. Dieselbe Mechanik wie die
+  Quizfrage (Auswahl oder Suchfrage, sofortige Auflösung, Antworten in
+  `impulseAnswers`), bis zu drei je Woche in verschiedenen
+  Schwierigkeitsgraden – wie beim Quiz.
+- **Vertiefung** – jede Feed-Karte kann eine zweite Seite tragen: ein Wisch
+  nach links (die Karte kommt vom rechten Rand herein) zeigt Freitext der
+  Redaktion mit weiterführenden Gedanken, Quellen und anklickbaren Links.
+  Nur Karten mit Vertiefung zeigen den pulsierenden Pfeil «Vertiefen»; ohne
+  bleibt die Karte, wie sie ist. In der Redaktion ist die Vertiefung ein
+  Feld unterhalb der Hinführung.
+
 ### 5.6 Die Mitmach-Ecke (später)
 
 Die stärkste Form der Aneignung: Die Jugendlichen liefern selbst.
@@ -587,11 +609,16 @@ Thema.
   die Navigation zeigt den Punkt nur mit Flag (bzw. dem Admin). Für ein
   AP-Konto mit beidem stehen am Telefon zwei Punkte in der unteren Leiste:
   «AP» und «Impuls».
-- **Einstieg «Diese Woche»:** zuoberst die Impulskarte, darunter Wochenziel
-  mit Haken, Quiz-Einstieg, Feed-Einstieg («8 Karten»), darunter «Meine
-  Serie» und die Gruppenleiste. Eine Bildschirmhöhe, keine Unterseitenpflicht.
-- **Feed im Vollbild**, Karte für Karte, vertikal gewischt, Schlusskarte am
-  Ende. Reaktion und Merken als zwei stille Knöpfe am Rand.
+- **Einstieg «Dashboard»:** das Wochenthema (der Wochenimpuls) gross im
+  Zentrum, noch ohne Wischen – ein Tipp öffnet den Vollbild-Feed bei der
+  ersten Karte. Darunter die Kacheln, die bewusst nicht Teil des Feeds sind:
+  Wochenziel, Tages-Challenge, Mein Fortschritt, Gemerkt, Mitmach-Ecke und
+  «Diese Woche dabei». Eine Bildschirmhöhe, keine Unterseitenpflicht.
+- **Feed im Vollbild**, Karte für Karte, vertikal gewischt – nur die Karte
+  und der Menüknopf oben links, alle Kacheln sind verschwunden. Reihenfolge:
+  Wochenimpuls, Quiz, Bilderrätsel, Frage der Woche, Feed-Karten,
+  Teilen-Aufgabe. Ein Wisch nach links vertieft die Karte (wenn eine
+  Vertiefung erfasst ist); Reaktion und Merken als stille Knöpfe.
 - **«Ansicht» oben rechts** wie überall: was der Einstieg zeigt
   (Serie, Gruppenleiste ein/aus), Schriftgrösse des Feeds.
 - **Redaktion** als eigene Seite, sichtbar nur mit Redaktionsrecht:

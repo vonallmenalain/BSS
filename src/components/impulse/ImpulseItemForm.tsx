@@ -105,9 +105,17 @@ export function ImpulseItemForm({
     source: input.sourceLabel.trim()
       ? { label: input.sourceLabel, url: input.sourceUrl }
       : null,
-    quiz: input.kind === 'quiz' ? quiz : null,
+    quiz: input.kind === 'quiz' || input.kind === 'bilderraetsel' ? quiz : null,
+    image: input.imageUrl.trim() ? { url: input.imageUrl } : null,
   })
   const blocked = input.status === 'ready' && problems.length > 0
+
+  /* Nur die Feed-Karten kennen den Wisch nach links – also auch nur sie
+     das Feld «Vertiefung». Wochenziel und Tages-Challenge sind Kacheln. */
+  const hasDeepening = input.kind !== 'wochenziel' && input.kind !== 'tageschallenge'
+  /* Arten mit mehreren Karten je Woche tragen einen Platz. */
+  const hasOrder =
+    input.kind === 'feed' || input.kind === 'quiz' || input.kind === 'bilderraetsel'
 
   const save = async () => {
     if (busy || blocked || !input.title.trim()) return
@@ -222,11 +230,13 @@ export function ImpulseItemForm({
           <label className="label" htmlFor="impulse-title">
             {input.kind === 'quiz' || input.kind === 'frage'
               ? 'Frage'
-              : input.kind === 'impuls'
-                ? 'Titel'
-                : input.kind === 'feed'
-                  ? 'Text der Karte'
-                  : 'Aufgabe'}
+              : input.kind === 'bilderraetsel'
+                ? 'Frage zum Bild'
+                : input.kind === 'impuls'
+                  ? 'Titel'
+                  : input.kind === 'feed'
+                    ? 'Text der Karte'
+                    : 'Aufgabe'}
           </label>
           <input
             id="impulse-title"
@@ -236,15 +246,19 @@ export function ImpulseItemForm({
             placeholder={
               input.kind === 'quiz'
                 ? 'Wie heisst der Hund, von dem in der Ansprache erzählt wird?'
-                : input.kind === 'frage'
-                  ? 'Welche Schriftstelle hat dir diese Woche geholfen – und warum?'
-                  : input.kind === 'wochenziel'
-                    ? 'Lies diese Woche ein Kapitel im Buch Mormon'
-                    : input.kind === 'tageschallenge'
-                      ? 'Lies jeden Tag einen Vers'
-                      : input.kind === 'feed'
-                        ? '«Blickt in jedem Gedanken auf mich …»'
-                        : 'Kraft aus den Schriften'
+                : input.kind === 'bilderraetsel'
+                  ? 'In welcher Stadt steht dieser Tempel?'
+                  : input.kind === 'frage'
+                    ? 'Welche Schriftstelle hat dir diese Woche geholfen – und warum?'
+                    : input.kind === 'wochenziel'
+                      ? 'Lies diese Woche ein Kapitel im Buch Mormon'
+                      : input.kind === 'tageschallenge'
+                        ? 'Lies jeden Tag einen Vers'
+                        : input.kind === 'teilen'
+                          ? 'Frag ein Familienmitglied, wann es Nephis Beispiel gefolgt ist …'
+                          : input.kind === 'feed'
+                            ? '«Blickt in jedem Gedanken auf mich …»'
+                            : 'Kraft aus den Schriften'
             }
           />
         </div>
@@ -259,14 +273,91 @@ export function ImpulseItemForm({
             value={input.body}
             onChange={(event) => setInput((value) => ({ ...value, body: event.target.value }))}
             placeholder={
-              input.kind === 'quiz'
+              input.kind === 'quiz' || input.kind === 'bilderraetsel'
                 ? 'Ein Hinweis, wo sich das Suchen lohnt …'
                 : input.kind === 'impuls'
                   ? 'Zwei, drei Sätze, die zur Schriftstelle hinführen …'
-                  : 'Ein Satz, der Lust macht, dranzubleiben …'
+                  : input.kind === 'teilen'
+                    ? 'Ein Satz, warum sich dieses Gespräch lohnt …'
+                    : 'Ein Satz, der Lust macht, dranzubleiben …'
             }
           />
         </div>
+
+        {/* Die Vertiefung – die zweite Seite der Karte im Vollbild-Feed:
+            Der Wisch nach links zeigt sie, und der Pfeil «Vertiefen»
+            erscheint nur, wenn hier etwas steht. */}
+        {hasDeepening && (
+          <div>
+            <label className="label" htmlFor="impulse-deepening">
+              Vertiefung (optional)
+            </label>
+            <textarea
+              id="impulse-deepening"
+              className="input min-h-24"
+              value={input.deepening}
+              onChange={(event) =>
+                setInput((value) => ({ ...value, deepening: event.target.value }))
+              }
+              placeholder={
+                'Weiterführende Gedanken, Quellen und Links – Adressen werden anklickbar.\n' +
+                'https://www.churchofjesuschrist.org/…'
+              }
+            />
+            <p className="hint mt-1">
+              Erscheint im Feed beim Wisch nach links. Nur Karten mit Vertiefung zeigen den
+              pulsierenden Pfeil «Vertiefen».
+            </p>
+          </div>
+        )}
+
+        {/* Das Bild des Bilderrätsels – aus der offiziellen Mediathek der
+            Kirche verlinkt, nicht hochgeladen. */}
+        {input.kind === 'bilderraetsel' && (
+          <fieldset className="space-y-3 rounded-xl border border-slate-200 p-3 dark:border-slate-700">
+            <legend className="label px-1">Bild</legend>
+            <div>
+              <label className="label" htmlFor="impulse-image-url">
+                Bild-Link
+              </label>
+              <input
+                id="impulse-image-url"
+                className="input"
+                type="url"
+                value={input.imageUrl}
+                onChange={(event) =>
+                  setInput((value) => ({ ...value, imageUrl: event.target.value }))
+                }
+                placeholder="https://www.churchofjesuschrist.org/media/…"
+              />
+              <p className="hint mt-1">
+                Aus der offiziellen Mediathek der Kirche (churchofjesuschrist.org/media): Bild
+                öffnen, Bildadresse kopieren, hier einsetzen.
+              </p>
+            </div>
+            <div>
+              <label className="label" htmlFor="impulse-image-alt">
+                Bildbeschreibung (optional)
+              </label>
+              <input
+                id="impulse-image-alt"
+                className="input"
+                value={input.imageAlt}
+                onChange={(event) =>
+                  setInput((value) => ({ ...value, imageAlt: event.target.value }))
+                }
+                placeholder="Ein Tempel bei Sonnenuntergang – ohne die Lösung zu verraten"
+              />
+            </div>
+            {input.imageUrl.trim() && (
+              <img
+                src={input.imageUrl.trim()}
+                alt={input.imageAlt || 'Vorschau des Bildes'}
+                className="max-h-48 w-full rounded-lg border border-slate-200 object-cover dark:border-slate-700"
+              />
+            )}
+          </fieldset>
+        )}
 
         <div className="grid gap-3 sm:grid-cols-2">
           <div>
@@ -317,10 +408,10 @@ export function ImpulseItemForm({
           />
         </div>
 
-        {input.kind === 'feed' && (
+        {hasOrder && (
           <div>
             <label className="label" htmlFor="impulse-order">
-              Platz im Feed
+              {input.kind === 'feed' ? 'Platz im Feed' : 'Platz innerhalb der Woche'}
             </label>
             <input
               id="impulse-order"
@@ -342,9 +433,11 @@ export function ImpulseItemForm({
           </div>
         )}
 
-        {input.kind === 'quiz' && (
+        {(input.kind === 'quiz' || input.kind === 'bilderraetsel') && (
           <fieldset className="space-y-3 rounded-xl border border-slate-200 p-3 dark:border-slate-700">
-            <legend className="label px-1">Quiz</legend>
+            <legend className="label px-1">
+              {input.kind === 'bilderraetsel' ? 'Rätsel und Auflösung' : 'Quiz'}
+            </legend>
 
             <div>
               <label className="label" htmlFor="impulse-quiz-form">
