@@ -12,6 +12,7 @@ import {
 } from '@/hooks/useFirestore'
 import { cn } from '@/lib/utils'
 import { PageHeader } from '@/components/ui/Pickers'
+import { AppMenuButton } from '@/components/AppMenuButton'
 import { ContributorLine, QuizCard, SourceLink } from '@/components/impulse/ImpulseCards'
 import { ChallengeCard, GoalCard } from '@/components/impulse/ImpulseProgressCards'
 import { ImpulseQuestionCard } from '@/components/impulse/ImpulseQuestionCard'
@@ -175,10 +176,9 @@ export function Impuls() {
     myProgress?.lastSeenWeek !== todayKey
   useEffect(() => {
     if (!seenPending || !profile) return
-    setImpulseLastSeenWeek(
-      { uid: profile.id, displayName: profile.displayName },
-      todayKey,
-    ).catch((error) => console.error('[impuls] Woche konnte nicht vermerkt werden:', error))
+    setImpulseLastSeenWeek({ uid: profile.id, displayName: profile.displayName }, todayKey).catch(
+      (error) => console.error('[impuls] Woche konnte nicht vermerkt werden:', error),
+    )
   }, [seenPending, profile, todayKey])
 
   /*
@@ -202,8 +202,7 @@ export function Impuls() {
     navigate(`/impuls/${key}`, { state: origin ? { origin } : undefined })
 
   /** Von Raum zu Raum – ersetzt den Schritt, Zurück führt zur Übersicht. */
-  const switchSection = (key: ImpulseSectionKey) =>
-    navigate(`/impuls/${key}`, { replace: true })
+  const switchSection = (key: ImpulseSectionKey) => navigate(`/impuls/${key}`, { replace: true })
 
   /**
    * Zurück zur Übersicht: der Schritt zurück in der Chronik, damit die
@@ -435,21 +434,25 @@ export function Impuls() {
 
   return (
     <>
-      <PageHeader
-        title="Impuls"
-        subtitle={formatWeekRange(todayKey)}
-        actions={
-          canEditImpulse ? (
-            <Link to="/impuls/redaktion" className="btn-secondary">
-              <Pencil className="size-4" aria-hidden />
-              <span className="hidden sm:inline">Redaktion</span>
-              <span className="sr-only sm:hidden">Redaktion</span>
-            </Link>
-          ) : undefined
-        }
-      />
+      {/* Kopf und Kacheln teilen sich die schmale Mittelspalte: Die Hülle
+          der App ist hier ausgeblendet (siehe Layout), die Seite ist das
+          Vollbild – und ihr Menüknopf der einzige Rest der Navigation. */}
+      <div className="mx-auto w-full max-w-2xl">
+        <PageHeader
+          title="Impuls"
+          subtitle={formatWeekRange(todayKey)}
+          leading={<AppMenuButton />}
+          actions={
+            canEditImpulse ? (
+              <Link to="/impuls/redaktion" className="btn-secondary">
+                <Pencil className="size-4" aria-hidden />
+                <span className="hidden sm:inline">Redaktion</span>
+                <span className="sr-only sm:hidden">Redaktion</span>
+              </Link>
+            ) : undefined
+          }
+        />
 
-      <div className="mx-auto max-w-2xl">
         <ImpulseDashboard
           model={{
             loading: itemsState.loading,
