@@ -4,7 +4,7 @@ import { IMPULSE_SECTIONS, type ImpulseSectionKey } from '@/lib/impulseSections'
 import type { ScreenOrigin } from '@/components/impulse/ImpulseScreen'
 
 /*
- * Die Kacheln unter dem Wochenimpuls: Wochenziel, Tages-Challenge, Mein
+ * Die Kacheln unter dem Wochenthema: Wochenziel, Tages-Challenge, Mein
  * Fortschritt, Gemerkt und die Mitmach-Ecke. Sie gehören bewusst nicht
  * zum Vollbild-Feed – sie sind die Werkzeuge und Aufgaben neben den
  * Karten der Woche, und sie verschwinden, sobald der Feed offen ist.

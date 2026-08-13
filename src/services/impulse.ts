@@ -27,12 +27,12 @@ import type {
 } from '@/lib/types'
 
 /*
- * Der Bereich «Impuls» in Firestore (docs/KONZEPT-IMPULS.md).
+ * Der Bereich «Anti Doom» in Firestore (docs/KONZEPT-IMPULS.md).
  *
  * Zwei Sammlungen: die Inhalte der Redaktion (`impulseItems`) und die
  * Antworten der AP's auf Quizfragen (`impulseAnswers`). Die Inhalte tragen
  * eine eigene ID und die Woche als Feld – eine Woche kann mehrere Inhalte
- * haben (Impuls und Quizfrage), und ein Inhalt kann die Woche wechseln,
+ * haben (Wochenthema und Quizfrage), und ein Inhalt kann die Woche wechseln,
  * ohne seine Antworten zu verlieren. Die Antworten dagegen tragen Frage
  * und Konto in der ID: eine Antwort pro Person und Frage, erzwungen durch
  * den Schlüssel selbst.

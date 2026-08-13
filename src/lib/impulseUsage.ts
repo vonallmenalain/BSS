@@ -1,7 +1,7 @@
 import type { ImpulseSectionKey } from './impulseSections.ts'
 
 /*
- * Die stille Statistik des Bereichs «Impuls» – Zeit und Besuche, gezählt
+ * Die stille Statistik des Bereichs «Anti Doom» – Zeit und Besuche, gezählt
  * **auf diesem Gerät** (localStorage), nicht in Firestore.
  *
  * Mit Bedacht lokal: Das Fortschrittsdokument können alle im Bereich

@@ -146,17 +146,17 @@ function NotificationsPanel() {
         )}
       </section>
 
-      {/* --- Impuls ------------------------------------------------ */}
+      {/* --- Anti Doom ---------------------------------------------- */}
       {canViewImpulse && (
         <section>
-          <SectionTitle icon={<Sparkles className="size-4" aria-hidden />}>Impuls</SectionTitle>
+          <SectionTitle icon={<Sparkles className="size-4" aria-hidden />}>Anti Doom</SectionTitle>
 
           <Row
             label="Erinnerung an die neue Woche"
             description={
               current.impuls.on
                 ? `${scheduleLabel(current.impuls)} – aber nur, wenn es auch Inhalt gibt.`
-                : 'Eine kurze Nachricht, wenn Impuls, Quiz und Challenge bereitstehen.'
+                : 'Eine kurze Nachricht, wenn Wochenthema, Quiz und Challenge bereitstehen.'
             }
             control={
               <Switch

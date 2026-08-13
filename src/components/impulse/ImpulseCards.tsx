@@ -9,7 +9,7 @@ import { answerImpulseQuiz } from '@/services/impulse'
 import type { ImpulseAnswer, ImpulseItem } from '@/lib/types'
 
 /*
- * Die Karten des Bereichs «Impuls» – Wochenimpuls, Quizfrage und
+ * Die Karten des Bereichs «Anti Doom» – Wochenthema, Quizfrage und
  * Bilderrätsel (dieselbe Mechanik wie das Quiz, nur mit Bild).
  *
  * Sie stehen hier und nicht in der Seite, weil zwei Orte sie zeichnen:
@@ -155,13 +155,13 @@ export function ImpulseItemImage({ item, className }: { item: ImpulseItem; class
   )
 }
 
-/** Der Wochenimpuls: eine Schriftstelle oder ein Gedanke, mit Quelle. */
+/** Das Wochenthema: eine Schriftstelle oder ein Gedanke, mit Quelle. */
 export function ImpulseCard({ item }: { item: ImpulseItem }) {
   return (
     <section className="card p-5">
       <p className="hint flex items-center gap-1.5 font-medium">
         <Lightbulb className="size-4" aria-hidden />
-        Wochenimpuls
+        Wochenthema
       </p>
       <h2 className="mt-2 text-lg font-semibold text-balance">{item.title}</h2>
       {item.body && (

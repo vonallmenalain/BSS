@@ -445,7 +445,7 @@ export function Settings() {
           </p>
           {isAdmin && (
             <p className="hint mb-4">
-              Der Haken <strong>«Impuls»</strong> schaltet den geistigen Bereich für die AP’s pro
+              Der Haken <strong>«Anti Doom»</strong> schaltet den geistigen Bereich für die AP’s pro
               Konto frei – unabhängig von der Rolle, für Vollzugriff wie für AP-Zugänge. Das
               Administrator-Konto sieht ihn immer.
             </p>
@@ -1020,19 +1020,19 @@ function UserRow({
       const outcome = await setUserImpulse(user.id, impulse)
       toast.saved(
         impulse
-          ? `${user.displayName} sieht jetzt «Impuls».`
-          : `${user.displayName} sieht «Impuls» nicht mehr.`,
+          ? `${user.displayName} sieht jetzt «Anti Doom».`
+          : `${user.displayName} sieht «Anti Doom» nicht mehr.`,
         outcome,
       )
     } catch (error) {
       console.error(error)
-      toast.error('Impuls-Zugang konnte nicht geändert werden.')
+      toast.error('Der Anti-Doom-Zugang konnte nicht geändert werden.')
     }
   }
 
   const apOnly = AP_ONLY_ROLES.includes(user.role)
   /*
-   * Das Administrator-Konto sieht «Impuls» immer – ein Haken, der nichts
+   * Das Administrator-Konto sieht «Anti Doom» immer – ein Haken, der nichts
    * bewirkt, würde nur in die Irre führen. Er fehlt deshalb an dieser Zeile.
    */
   const isAdminAccount = user.email.toLowerCase() === ADMIN_EMAIL
@@ -1049,7 +1049,7 @@ function UserRow({
         <p className="truncate text-xs text-slate-500 dark:text-slate-400">
           {user.email}
           {apOnly &&
-            (user.impulse ? ' · sieht AP-Kalender und Impuls' : ' · sieht nur den AP-Kalender')}
+            (user.impulse ? ' · sieht AP-Kalender und Anti Doom' : ' · sieht nur den AP-Kalender')}
         </p>
       </div>
 
@@ -1100,13 +1100,13 @@ function UserRow({
         </span>
       )}
 
-      {/* «Impuls» hängt am Konto und nicht an der Rolle – der Haken steht
+      {/* «Anti Doom» hängt am Konto und nicht an der Rolle – der Haken steht
           deshalb neben der Rollenwahl. Gesetzt wird er nur hier; die
           Zugriffsregeln lassen niemanden das eigene Feld anfassen. */}
       {canManage && !isAdminAccount && (
         <label
           className="flex cursor-pointer items-center gap-1.5 text-sm text-slate-600 dark:text-slate-300"
-          title="Bereich «Impuls» für dieses Konto freischalten"
+          title="Bereich «Anti Doom» für dieses Konto freischalten"
         >
           <input
             type="checkbox"
@@ -1114,7 +1114,7 @@ function UserRow({
             checked={user.impulse === true}
             onChange={(event) => void changeImpulse(event.target.checked)}
           />
-          Impuls
+          Anti Doom
         </label>
       )}
 

@@ -64,7 +64,7 @@ interface AuthContextValue {
   /** Sieht ausschliesslich den AP-Kalender und sonst nichts von der App. */
   isApOnly: boolean
   /**
-   * Darf den Bereich «Impuls» sehen – den geistigen Bereich für die AP’s.
+   * Darf den Bereich «Anti Doom» sehen – den geistigen Bereich für die AP’s.
    *
    * Hängt am Schalter `impulse` des Profils und nicht an der Rolle;
    * vergeben wird er in der Benutzerverwaltung, und zwar allein vom
@@ -74,7 +74,7 @@ interface AuthContextValue {
    */
   canViewImpulse: boolean
   /**
-   * Darf im Bereich «Impuls» Inhalte pflegen und moderieren – die
+   * Darf im Bereich «Anti Doom» Inhalte pflegen und moderieren – die
    * Redaktion. Vorerst ist das allein das Administrator-Konto; der
    * Schalter `impulseEditor` steht bereit, um sie später zu öffnen.
    */

@@ -9,10 +9,10 @@ import {
 } from '@/lib/impulseSections'
 
 /*
- * Der Vollbild-Raum des Bereichs «Impuls».
+ * Der Vollbild-Raum des Bereichs «Anti Doom».
  *
  * Jede Kachel des Dashboards öffnet ihren Bereich hier: ein Raum, eine
- * Sache, volle Aufmerksamkeit – die Form, die der Impuls-Feed vorgemacht
+ * Sache, volle Aufmerksamkeit – die Form, die der Feed vorgemacht
  * hat. Oben der Weg zurück, unten der Bereichswechsler: eine Chip-Leiste,
  * mit der man den Raum wechselt, ohne durch die Übersicht zu müssen –
  * und die auch zurück in den AP-Kalender führt. Der Farbschleier oben

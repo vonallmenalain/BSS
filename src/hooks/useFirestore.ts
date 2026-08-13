@@ -473,11 +473,11 @@ export function useCalendarFeeds() {
 }
 
 /* ------------------------------------------------------------------ */
-/* Impuls                                                              */
+/* Anti Doom                                                           */
 /* ------------------------------------------------------------------ */
 
 /**
- * Die Inhalte des Bereichs «Impuls».
+ * Die Inhalte des Bereichs «Anti Doom».
  *
  * Freigegeben pro Konto – deshalb hängt die Sammlung an `canViewImpulse`
  * und nicht an einer Rolle. Entwürfe und der Fragenpool liegen mit im
@@ -485,7 +485,7 @@ export function useCalendarFeeds() {
  * sehen bekommen, entscheidet die Ansicht über `visibleImpulseItems`.
  *
  * Sortiert nach Woche, die jüngste zuerst, der Fragenpool (ohne Woche)
- * am Ende – und innerhalb der Woche der Impuls vor der Quizfrage.
+ * am Ende – und innerhalb der Woche das Wochenthema vor der Quizfrage.
  */
 export function useImpulseItems() {
   const { canViewImpulse } = useAuth()

@@ -8,7 +8,7 @@ import { setImpulseWeekShare } from '@/services/impulse'
 import type { ImpulseItem } from '@/lib/types'
 
 /**
- * Die Teilen-Aufgabe – die Einladung, den Impuls der Woche aus der App
+ * Die Teilen-Aufgabe – die Einladung, das Wochenthema aus der App
  * hinauszutragen: ein Gespräch mit der Familie, eine Frage an einen
  * Freund, ein Erlebnis erzählen. Sie ist bewusst die letzte Karte des
  * Vollbild-Feeds – erst lesen, dann weitergeben.

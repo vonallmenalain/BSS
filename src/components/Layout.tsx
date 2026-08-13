@@ -82,29 +82,29 @@ const SACRAMENT_CHILDREN = [
 ]
 
 /**
- * «Impuls» klappt im Menü auf wie die Abendmahlsversammlung.
+ * «Anti Doom» klappt im Menü auf wie die Abendmahlsversammlung.
  *
  * Die ersten Punkte sind die Karten des Vollbild-Feeds – ein Tipp öffnet
  * den Feed genau bei dieser Karte. Danach die Räume (Wochenziel,
  * Tages-Challenge, Fortschritt, Gemerkt, Mitmach-Ecke) und zuunterst die
- * Impuls-Einstellungen (Reihenfolge der Karten, Rückblick in frühere
+ * Anti-Doom-Einstellungen (Reihenfolge der Karten, Rückblick in frühere
  * Wochen). Die Liste steht fest, auch wenn eine Woche einmal keine
  * Quizfrage hat – ein Menü, das je nach Woche anders aussieht, wäre
  * keines.
  */
 const IMPULSE_CHILDREN = [
-  { to: '/impuls/woche', label: 'Wochenimpuls' },
-  { to: '/impuls/quiz', label: 'Quizfrage' },
-  { to: '/impuls/bilderraetsel', label: 'Bilderrätsel' },
-  { to: '/impuls/frage', label: 'Frage der Woche' },
-  { to: '/impuls/feed', label: 'Impuls-Feed' },
-  { to: '/impuls/teilen', label: 'Teilen' },
-  { to: '/impuls/ziel', label: 'Wochenziel' },
-  { to: '/impuls/challenge', label: 'Tages-Challenge' },
-  { to: '/impuls/fortschritt', label: 'Mein Fortschritt' },
-  { to: '/impuls/gemerkt', label: 'Gemerkt' },
-  { to: '/impuls/mitmachen', label: 'Mitmach-Ecke' },
-  { to: '/impuls/einstellungen', label: 'Impuls-Einstellungen' },
+  { to: '/anti-doom/woche', label: 'Wochenthema' },
+  { to: '/anti-doom/quiz', label: 'Quizfrage' },
+  { to: '/anti-doom/bilderraetsel', label: 'Bilderrätsel' },
+  { to: '/anti-doom/frage', label: 'Frage der Woche' },
+  { to: '/anti-doom/feed', label: 'Feed' },
+  { to: '/anti-doom/teilen', label: 'Teilen' },
+  { to: '/anti-doom/ziel', label: 'Wochenziel' },
+  { to: '/anti-doom/challenge', label: 'Tages-Challenge' },
+  { to: '/anti-doom/fortschritt', label: 'Mein Fortschritt' },
+  { to: '/anti-doom/gemerkt', label: 'Gemerkt' },
+  { to: '/anti-doom/mitmachen', label: 'Mitmach-Ecke' },
+  { to: '/anti-doom/einstellungen', label: 'Anti-Doom-Einstellungen' },
 ]
 
 export function Layout() {
@@ -112,8 +112,8 @@ export function Layout() {
   const { isApproved, canViewAp, canViewImpulse, profile, signOut } = useAuth()
 
   /*
-   * Der Punkt am Eintrag «Impuls»: Die laufende Woche hat Inhalt, und
-   * dieses Konto hat sie noch nicht angeschaut. Ohne Impuls-Zugang sind
+   * Der Punkt am Eintrag «Anti Doom»: Die laufende Woche hat Inhalt, und
+   * dieses Konto hat sie noch nicht angeschaut. Ohne Anti-Doom-Zugang sind
    * die Abonnements abgeschaltet und alles bleibt still.
    */
   const impulseItems = useImpulseItems()
@@ -133,17 +133,17 @@ export function Layout() {
   const location = useLocation()
 
   /*
-   * «Impuls» ist eine App in der App – und fühlt sich nur so an, wenn die
+   * «Anti Doom» ist eine App in der App – und fühlt sich nur so an, wenn die
    * Hülle schweigt. Sobald jemand den Bereich betritt, verschwinden
    * Kopfzeile, Seitennavigation und untere Leiste; der Inhalt hat den
    * Bildschirm für sich. Die Navigation wartet hinter dem dezenten
-   * Menüknopf, den die Impuls-Seiten oben links tragen (`AppMenuButton` →
+   * Menüknopf, den die Anti-Doom-Seiten oben links tragen (`AppMenuButton` →
    * `AppMenuContext`): Er öffnet die Schublade, die sonst nur das Handy
    * kennt – hier auf allen Bildschirmgrössen, und um das ergänzt, was
    * sonst in der Kopfzeile wohnt (Benachrichtigungen, Darstellung,
    * Abmelden).
    */
-  const immersive = location.pathname === '/impuls' || location.pathname.startsWith('/impuls/')
+  const immersive = location.pathname === '/anti-doom' || location.pathname.startsWith('/anti-doom/')
   const openMenu = useCallback(() => setMenuOpen(true), [])
 
   /*
@@ -168,7 +168,7 @@ export function Layout() {
   useEffect(() => setMenuOpen(false), [location.pathname])
 
   /**
-   * Der AP-Kalender und «Impuls» stehen in beiden Listen.
+   * Der AP-Kalender und «Anti Doom» stehen in beiden Listen.
    *
    * Wer nur sie sehen darf, bekommt eine Navigation aus einem oder zwei
    * Punkten – das wirkt zunächst überflüssig, hält aber Kopfzeile,
@@ -182,13 +182,13 @@ export function Layout() {
     icon: Tent,
   }
 
-  /* «Impuls» erscheint nur mit dem Schalter am Konto – auch beim
+  /* «Anti Doom» erscheint nur mit dem Schalter am Konto – auch beim
      Vollzugriff. Der Bereich gehört den AP's; wer ihn begleitet, wird
      einzeln freigeschaltet (und das Administrator-Konto sieht ihn immer). */
   const impulsItem: NavItem = {
-    to: '/impuls',
-    label: 'Impuls',
-    shortLabel: 'Impuls',
+    to: '/anti-doom',
+    label: 'Anti Doom',
+    shortLabel: 'Anti Doom',
     icon: Sparkles,
     dot: impulseDot,
     children: IMPULSE_CHILDREN,
@@ -227,7 +227,7 @@ export function Layout() {
         { to: '/berufungen', label: 'Berufungen', shortLabel: 'Berufung', icon: Award },
         { to: '/einstellungen', label: 'Einstellungen', shortLabel: 'Mehr', icon: Settings },
       ]
-    : // Ohne Vollzugriff sind der Kalender und – mit Schalter – «Impuls»
+    : // Ohne Vollzugriff sind der Kalender und – mit Schalter – «Anti Doom»
       // der ganze Inhalt; dann gehören sie auch in die untere Leiste.
       [
         ...(canViewAp ? [{ ...apItem, primary: true }] : []),
@@ -241,7 +241,7 @@ export function Layout() {
 
   return (
     <div className="flex min-h-dvh flex-col bg-slate-50 dark:bg-slate-950">
-      {/* ---------- Kopfzeile (im Impuls-Vollbild ausgeblendet) ---------- */}
+      {/* ---------- Kopfzeile (im Anti-Doom-Vollbild ausgeblendet) ---------- */}
       {!immersive && (
         <header className="no-print sticky top-0 z-40 border-b border-slate-200 bg-white/85 px-safe backdrop-blur-md dark:border-slate-800 dark:bg-slate-900/85">
           {/* Quer auf dem Telefon ist der Bildschirm niedrig – dort wird die
@@ -326,7 +326,7 @@ export function Layout() {
         )}
 
         {/* ---------- Die Navigations-Schublade ----------
-            Am Handy das Menü hinter dem Hamburger; im Impuls-Vollbild der
+            Am Handy das Menü hinter dem Hamburger; im Anti-Doom-Vollbild der
             einzige Weg durch die App – dann auch auf dem grossen Bildschirm
             und unten ergänzt um die Handgriffe der Kopfzeile. */}
         {menuOpen && (
@@ -437,7 +437,7 @@ export function Layout() {
   )
 }
 
-/** Ein Handgriff der Kopfzeile, in die Schublade verlegt (Impuls-Vollbild). */
+/** Ein Handgriff der Kopfzeile, in die Schublade verlegt (Anti-Doom-Vollbild). */
 const DRAWER_ACTION =
   'flex w-full items-center gap-3 rounded-lg px-3 py-2 text-sm font-medium text-slate-600 ' +
   'transition hover:bg-slate-100 dark:text-slate-300 dark:hover:bg-slate-800'

@@ -21,7 +21,7 @@ import type { NotificationMode } from '../../src/lib/types.ts'
  * dasselbe: Wer hat sich etwas bestellt, und ist es jetzt so weit? Drei
  * Anlässe kennt er:
  *
- *   1. **Impuls** – die Erinnerung an die neue Woche, zur selbst gewählten
+ *   1. **Anti Doom** – die Erinnerung an die neue Woche, zur selbst gewählten
  *      Zeit. Eine Woche ohne bereiten Inhalt bleibt still; eine
  *      Benachrichtigung ohne Inhalt wäre genau die Mahnung, die der
  *      Bereich nie sein will (Leitgedanke 1 des Konzepts).
@@ -444,7 +444,7 @@ export default async function handler(): Promise<Response> {
   const outbox: { recipient: Recipient; message: PushMessage; url: string; tag: string }[] = []
   const marks: { uid: string; fields: Record<string, FirestoreValue> }[] = []
 
-  /* --- 1. Der Impuls ------------------------------------------------ */
+  /* --- 1. Anti Doom -------------------------------------------------- */
 
   const impulsSchedule = (recipient: Recipient) => ({
     mode:
@@ -477,7 +477,7 @@ export default async function handler(): Promise<Response> {
         outbox.push({
           recipient,
           message: impulsMessage(impulsSchedule(recipient).mode),
-          url: '/impuls',
+          url: '/anti-doom',
           // Beim Tagestakt trägt der Anker den Tag, sonst käme die
           // Nachricht von gestern der von heute in die Quere.
           tag: `impuls-${week}-${impulsSchedule(recipient).mode === 'daily' ? now.toISOString().slice(0, 10) : 'woche'}`,

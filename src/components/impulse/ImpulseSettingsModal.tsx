@@ -4,11 +4,11 @@ import { Modal } from '@/components/ui/Modal'
 import { formatWeekRange } from '@/lib/impulse'
 
 /*
- * Die Impuls-Einstellungen – der unterste Punkt im Impuls-Menü.
+ * Die Anti-Doom-Einstellungen – der unterste Punkt im Anti-Doom-Menü.
  *
  * Zwei Dinge, beide klein gehalten:
  *
- * **Die Reihenfolge der Karten.** Der Reihe nach (Wochenimpuls zuerst)
+ * **Die Reihenfolge der Karten.** Der Reihe nach (Wochenthema zuerst)
  * oder zufällig gemischt – die Mischung bleibt innerhalb der Woche
  * gleich, damit der Stapel beim Wiederkommen so liegt wie verlassen.
  * Die Wahl merkt sich das Gerät (localStorage, siehe `Impuls`).
@@ -44,7 +44,7 @@ export function ImpulseSettingsModal({
   onWeek: (week: string) => void
 }) {
   return (
-    <Modal open={open} onClose={onClose} title="Impuls-Einstellungen" size="sm">
+    <Modal open={open} onClose={onClose} title="Anti-Doom-Einstellungen" size="sm">
       <div className="space-y-5">
         <section>
           <h3 className="label">Reihenfolge der Karten</h3>
@@ -52,14 +52,14 @@ export function ImpulseSettingsModal({
             <ChoiceRow
               icon={<ArrowDownAZ className="size-4" aria-hidden />}
               label="Der Reihe nach"
-              hint="Wochenimpuls zuerst, dann Quiz, Bilderrätsel, Frage, Feed und Teilen."
+              hint="Wochenthema zuerst, dann Quiz, Bilderrätsel, Frage, Feed und Teilen."
               active={order === 'geordnet'}
               onClick={() => onOrder('geordnet')}
             />
             <ChoiceRow
               icon={<Shuffle className="size-4" aria-hidden />}
               label="Zufällig gemischt"
-              hint="Bunt durcheinander – nur der Wochenimpuls bleibt zuoberst, und die Mischung bleibt die Woche über gleich."
+              hint="Bunt durcheinander – nur das Wochenthema bleibt zuoberst, und die Mischung bleibt die Woche über gleich."
               active={order === 'zufall'}
               onClick={() => onOrder('zufall')}
             />

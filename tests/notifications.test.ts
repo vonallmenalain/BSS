@@ -198,11 +198,11 @@ test('die Traktanden-Nachricht nennt die Person und die Zahl', () => {
   assert.equal(agendaMessage([], 2).body, 'Es gibt 2 neue Traktanden.')
 })
 
-test('die Impuls-Nachricht kündigt die neue Woche nur beim Wochentakt an', () => {
+test('die Anti-Doom-Nachricht kündigt die neue Woche nur beim Wochentakt an', () => {
   assert.match(impulsMessage('weekly').body, /Die neue Woche ist da/)
   // Am Donnerstag wäre «die neue Woche ist da» schlicht falsch.
   assert.doesNotMatch(impulsMessage('daily').body, /neue Woche/)
-  assert.equal(impulsMessage('daily').title, 'Impuls')
+  assert.equal(impulsMessage('daily').title, 'Anti Doom')
 })
 
 test('die Sitzungsnachricht nennt Zeit, Traktanden und Pendenzen', () => {

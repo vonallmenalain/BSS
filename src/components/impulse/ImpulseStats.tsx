@@ -13,7 +13,7 @@ import { ImpulseRing } from '@/components/impulse/ImpulseRing'
 import type { ImpulseAnswer, ImpulseProgress } from '@/lib/types'
 
 /*
- * «Mein Fortschritt» – die Statistik-Ansicht des Bereichs «Impuls».
+ * «Mein Fortschritt» – die Statistik-Ansicht des Bereichs «Anti Doom».
  *
  * Ein kleines Spiel mit sich selbst, nie gegen andere: Serie, Verlauf,
  * Meilensteine mit sichtbarem Weg dorthin, die eigenen Zahlen – und die
@@ -237,7 +237,7 @@ export function ImpulseStats({
               <p className="tabular text-2xl font-bold">
                 {formatImpulseDuration(usage.seconds)}
               </p>
-              <p className="hint">Zeit im Impuls</p>
+              <p className="hint">Zeit im Bereich</p>
             </div>
             <div>
               <p className="tabular text-2xl font-bold">{opensTotal}</p>

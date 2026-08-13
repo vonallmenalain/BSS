@@ -11,7 +11,7 @@ import { setImpulseChallengeDay, setImpulseWeekGoal } from '@/services/impulse'
 import type { ImpulseItem } from '@/lib/types'
 
 /*
- * Die Challenge-Karten des Bereichs «Impuls»: das Wochenziel mit seinem
+ * Die Challenge-Karten des Bereichs «Anti Doom»: das Wochenziel mit seinem
  * einen Haken, die Tages-Challenge mit ihren sieben, dazu die
  * Gruppenleiste. Abgehakt wird per Selbstauskunft – die Karten fragen
  * nicht nach, sie glauben es. Die Serie wohnt seit dem Kachel-Umbau in

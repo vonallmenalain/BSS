@@ -10,7 +10,7 @@ import type {
 } from './types.ts'
 
 /*
- * Die Wochenrechnung des Bereichs «Impuls» (docs/KONZEPT-IMPULS.md).
+ * Die Wochenrechnung des Bereichs «Anti Doom» (docs/KONZEPT-IMPULS.md).
  *
  * Die Woche ist die tragende Einheit: Inhalte gehören zu einer ISO-Woche
  * («2026-W34», Montag bis Sonntag), veröffentlicht wird am Montag durch den
@@ -142,7 +142,7 @@ export function impulseAnswerId(itemId: string, uid: string): string {
  *
  * Leer heisst: nichts – er kann veröffentlicht werden. Die Redaktion sieht
  * die Liste im Formular; gespeichert wird ein unfertiger Inhalt trotzdem,
- * bloss als Entwurf. Beim Impuls und bei der Quizfrage ist die Quelle
+ * bloss als Entwurf. Beim Wochenthema und bei der Quizfrage ist die Quelle
  * Pflicht: Der Bereich lebt von offiziellem Material, und der Sprung zur
  * Quelle ist sein Ziel. Das Bilderrätsel braucht sein Bild – aus der
  * offiziellen Mediathek der Kirche – und wie das Quiz eine Auflösung.
@@ -370,7 +370,7 @@ export function weekParticipants(
 /**
  * Eine Liste mischen – gleich gemischt, solange der Schlüssel gleich bleibt.
  *
- * Für die Zufalls-Reihenfolge der Impuls-Karten: Der Schlüssel ist Konto
+ * Für die Zufalls-Reihenfolge der Anti-Doom-Karten: Der Schlüssel ist Konto
  * plus Woche, darum liegt der Stapel die ganze Woche über gleich – wer die
  * Seite neu öffnet, findet die Karten wieder, wo sie waren, und der Sprung
  * aus dem Menü zu einer bestimmten Karte trifft. Erst die neue Woche

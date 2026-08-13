@@ -121,6 +121,15 @@ Schulton und bleibt als Navigationseintrag und Route (`/impuls`) sauber.
 **Entschieden: «Impuls».** Zweitfavorit ist «Kompass» – er bleibt notiert,
 falls sich der Name im Piloten nicht bewährt.
 
+**Umentschieden (August 2026): «Anti Doom».** Der Bereich heisst in der
+App jetzt «Anti Doom» – das Gegenprogramm zum Doomscrolling: dieselbe
+Geste, die Karten im Vollbild, aber gefüllt mit Substanz statt Sog. Der
+Wochenimpuls heisst neu **Wochenthema**, der Impuls-Feed schlicht
+**Feed**; die Adresse ist `/anti-doom` (alte `/impuls`-Links leiten
+weiter). In Code, Datenbank-Sammlungen und in diesem Konzept bleibt aus
+historischen Gründen die Benennung `impulse`/«Impuls» stehen – sie ist
+nirgends mehr sichtbar.
+
 ---
 
 ## 4. So fühlt sich eine Woche an
