@@ -1,9 +1,10 @@
 import { useState, type FormEvent } from 'react'
-import { Check, Lightbulb, Link2, Puzzle, RotateCcw, Search, X } from 'lucide-react'
+import { Check, Lightbulb, Link2, Maximize2, Puzzle, RotateCcw, Search, X } from 'lucide-react'
 import { useAuth } from '@/contexts/AuthContext'
 import { useToast } from '@/contexts/ToastContext'
 import { cn } from '@/lib/utils'
 import { labeledLink, splitLinks } from '@/lib/links'
+import { ImpulseImageLightbox } from '@/components/impulse/ImpulseImageLightbox'
 import { answerImpulseQuiz } from '@/services/impulse'
 import type { ImpulseAnswer, ImpulseItem } from '@/lib/types'
 
@@ -112,21 +113,45 @@ export function ImpulseDeepeningCard({ item }: { item: ImpulseItem }) {
  * Das Bild eines Bilderrätsels – aus der offiziellen Mediathek der Kirche
  * geladen (die App speichert nur die Adresse). Ohne Bild bleibt die Karte
  * einfach ohne; ein kaputter Link zeigt den Alt-Text statt eines Lochs.
+ *
+ * Gezeigt wird immer das **ganze** Bild (kein Zuschnitt – beim Rätseln
+ * zählt jedes Detail), und ein Tipp darauf öffnet es im Vollbild mit
+ * Zoom (`ImpulseImageLightbox`); die kleine Lupe unten rechts sagt es an.
  */
 export function ImpulseItemImage({ item, className }: { item: ImpulseItem; className?: string }) {
+  const [open, setOpen] = useState(false)
   const image = item.image
   if (!image?.url) return null
   return (
-    <img
-      src={image.url}
-      alt={image.alt || 'Bild zum Rätsel'}
-      loading="lazy"
-      draggable={false}
-      className={cn(
-        'mx-auto mt-3 w-full rounded-xl border border-slate-200 bg-slate-100 object-cover dark:border-slate-800 dark:bg-slate-800',
-        className ?? 'max-h-64',
+    <>
+      <button
+        type="button"
+        onClick={() => setOpen(true)}
+        className="group relative mx-auto mt-3 block w-fit max-w-full cursor-zoom-in"
+        title="Bild vergrössern"
+      >
+        <img
+          src={image.url}
+          alt={image.alt || 'Bild zum Rätsel'}
+          loading="lazy"
+          draggable={false}
+          className={cn(
+            'w-auto max-w-full rounded-xl border border-slate-200 bg-slate-100 object-contain dark:border-slate-800 dark:bg-slate-800',
+            className ?? 'max-h-64',
+          )}
+        />
+        <span
+          className="absolute end-2 bottom-2 grid size-7 place-items-center rounded-full bg-slate-900/55 text-white transition group-hover:bg-slate-900/75"
+          aria-hidden
+        >
+          <Maximize2 className="size-3.5" />
+        </span>
+        <span className="sr-only">Bild vergrössern</span>
+      </button>
+      {open && (
+        <ImpulseImageLightbox url={image.url} alt={image.alt} onClose={() => setOpen(false)} />
       )}
-    />
+    </>
   )
 }
 
@@ -325,10 +350,13 @@ export function QuizCard({
             </div>
           )}
 
-          {/* Die Quelle steht schon vor dem Antworten da – bei der
-              Suchfrage ist der Weg dorthin die eigentliche Aufgabe. */}
+          {/* Nur die Suchfrage zeigt ihre Quelle schon vor dem Antworten –
+              der Weg dorthin ist dort die eigentliche Aufgabe. Bei
+              Auswahlfragen (auch im Bilderrätsel) wäre die Fundstelle ein
+              Spoiler («Joseph Smith – Lebensgeschichte» verrät Joseph
+              Smith); sie erscheint erst mit der Auflösung. */}
           <div className="flex flex-wrap items-center justify-between gap-3">
-            <SourceLink item={item} />
+            {quiz.form === 'text' && <SourceLink item={item} />}
             <button
               type="submit"
               className="btn-primary ms-auto"
