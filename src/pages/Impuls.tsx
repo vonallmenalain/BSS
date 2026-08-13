@@ -14,17 +14,24 @@ import {
 import { cn } from '@/lib/utils'
 import { PageHeader } from '@/components/ui/Pickers'
 import { AppMenuButton } from '@/components/AppMenuButton'
-import { ContributorLine, QuizCard, SourceLink } from '@/components/impulse/ImpulseCards'
+import {
+  ContributorLine,
+  ImpulseDeepeningCard,
+  ImpulseItemImage,
+  QuizCard,
+  SourceLink,
+} from '@/components/impulse/ImpulseCards'
 import { ChallengeCard, GoalCard, GroupCard } from '@/components/impulse/ImpulseProgressCards'
 import { ImpulseQuestionCard } from '@/components/impulse/ImpulseQuestionCard'
+import { ImpulseShareCard } from '@/components/impulse/ImpulseShareCard'
 import { ImpulseSubmitCard } from '@/components/impulse/ImpulseSubmitCard'
 import { ImpulseFeedCard } from '@/components/impulse/ImpulseFeedCard'
 import {
-  ImpulseDeck,
+  ImpulseFeedScreen,
   type ImpulseDeckCard,
   type ImpulseDeckTarget,
-} from '@/components/impulse/ImpulseDeck'
-import { MitmachRow, ProgressRow } from '@/components/impulse/ImpulseHomeRows'
+} from '@/components/impulse/ImpulseFeedScreen'
+import { SectionTile } from '@/components/impulse/ImpulseHomeTiles'
 import { ImpulseSettingsModal, type ImpulseOrder } from '@/components/impulse/ImpulseSettingsModal'
 import { ImpulseScreen, type ScreenOrigin } from '@/components/impulse/ImpulseScreen'
 import { ImpulseStats } from '@/components/impulse/ImpulseStats'
@@ -43,6 +50,7 @@ import {
   weekParticipants,
 } from '@/lib/impulse'
 import {
+  IMPULSE_DECK_KINDS,
   IMPULSE_KIND_SECTION,
   IMPULSE_SECTIONS,
   isDeckSection,
@@ -58,26 +66,32 @@ import {
   type ImpulseAnswer,
   type ImpulseComment,
   type ImpulseItem,
-  type ImpulseKind,
   type ImpulseWeekProgress,
 } from '@/lib/types'
 
 /**
  * «Impuls» – der geistige Bereich für die AP's (docs/KONZEPT-IMPULS.md).
  *
- * Der Einstieg ist ein **Wischstapel**: Zuoberst liegt der Wochenimpuls,
- * gross wie eh – ein Wisch nach unten bringt die nächste Karte der Woche
- * (Quizfrage, Wochenziel, Tages-Challenge, Frage der Woche, die
- * Feed-Karten). Kein Endlos-Feed: Nach der letzten Karte ist Schluss.
- * Unter dem Stapel stehen die ruhigen Zeilen, die keine Wochenkarten
- * sind – Mein Fortschritt, die Mitmach-Ecke, «Diese Woche dabei».
+ * Der Einstieg ist das **Dashboard**: Im Zentrum steht das Wochenthema –
+ * der Wochenimpuls, gross und ruhig, noch ohne Wischen. Erst der Tipp
+ * darauf öffnet den **Vollbild-Feed**: Alle Kacheln verschwinden, nur
+ * noch die Karte und der Menüknopf oben links. Die erste Karte ist der
+ * Wochenimpuls, ein Wisch nach unten bringt die nächste (Quizfrage,
+ * Bilderrätsel, Frage der Woche, die Feed-Karten, die Teilen-Aufgabe) –
+ * und ein Wisch nach links vertieft die Karte, wenn die Redaktion eine
+ * Vertiefung erfasst hat. Kein Endlos-Feed: Nach der letzten Karte ist
+ * Schluss.
  *
- * Die Navigation wohnt im App-Menü: «Impuls» klappt dort auf wie die
- * Abendmahlsversammlung, ein Punkt pro Karte – ein Tipp springt im
- * Stapel genau dorthin (`/impuls/<bereich>`). Fortschritt, Gemerkt und
- * Mitmach-Ecke öffnen weiterhin ihren Vollbild-Raum. Zuunterst im Menü
- * liegen die **Impuls-Einstellungen**: die Reihenfolge der Karten (der
- * Reihe nach oder gemischt, gemerkt am Gerät) und der Rückblick in eine
+ * Unter dem Wochenthema liegen die **Kacheln**, die bewusst nicht Teil
+ * des Feeds sind: Wochenziel, Tages-Challenge, Mein Fortschritt, Gemerkt,
+ * Mitmach-Ecke – und «Diese Woche dabei». Jede Kachel öffnet ihren
+ * Vollbild-Raum; im Feed sind sie verschwunden.
+ *
+ * Die Navigation wohnt im App-Menü: «Impuls» klappt dort auf, ein Punkt
+ * pro Bereich – die Feed-Bereiche springen im Feed genau zur Karte
+ * (`/impuls/<bereich>`), die übrigen öffnen ihren Raum. Zuunterst liegen
+ * die **Impuls-Einstellungen**: die Reihenfolge der Karten (der Reihe
+ * nach oder gemischt, gemerkt am Gerät) und der Rückblick in eine
  * frühere Woche – er gilt nur für diesen Besuch, Standard bleibt immer
  * die laufende Woche.
  *
@@ -90,23 +104,13 @@ import {
 
 /** Was eine Navigation dem Ziel mitgibt – alles davon ist optional. */
 interface ImpulsLocationState {
-  /** Der Klickpunkt der Zeile – dort beginnt der Vollbild-Übergang. */
+  /** Der Klickpunkt der Kachel – dort beginnt der Vollbild-Übergang. */
   origin?: ScreenOrigin
   /** Die Woche einer gemerkten Feed-Karte – der Weg aus «Gemerkt». */
   feedWeek?: string
   /** … und dort gleich bei dieser Karte einsteigen. */
   feedItem?: string
 }
-
-/** Die Lesereihenfolge des Stapels – der Wochenimpuls zuerst. */
-const DECK_KIND_ORDER: ImpulseKind[] = [
-  'impuls',
-  'quiz',
-  'wochenziel',
-  'tageschallenge',
-  'frage',
-  'feed',
-]
 
 export function Impuls() {
   const { profile, canEditImpulse, canViewAp } = useAuth()
@@ -121,10 +125,10 @@ export function Impuls() {
   const submissionsState = useImpulseSubmissions()
 
   const sectionKey: ImpulseSectionKey | null = isImpulseSection(bereich) ? bereich : null
-  /* Nur die Raum-Bereiche öffnen noch ein Vollbild – die Stapel-Bereiche
-     sind Sprungziele im Stapel der Hauptseite. */
+  /* Feed-Bereiche öffnen den Vollbild-Feed, Raum-Bereiche ihren Raum. */
   const roomKey: ImpulseRoomSectionKey | null =
     sectionKey && isRoomSection(sectionKey) ? sectionKey : null
+  const feedOpen = sectionKey !== null && isDeckSection(sectionKey)
   const settingsOpen = bereich === 'einstellungen'
   const state = (location.state ?? null) as ImpulsLocationState | null
 
@@ -227,7 +231,7 @@ export function Impuls() {
   /*
    * Die stille Statistik: Zeit und Besuche, nur auf diesem Gerät
    * (`lib/impulseUsage`). Die Uhr läuft, solange die Seite offen ist;
-   * die Stapel-Karten vermerkt der Stapel selbst (`onDeckActive`), die
+   * die Feed-Karten vermerkt der Feed selbst (`onDeckActive`), die
    * Räume und die Übersicht vermerkt dieser Effekt.
    */
   useEffect(() => {
@@ -239,7 +243,7 @@ export function Impuls() {
     recordImpulseOpen(uid, roomKey ?? 'uebersicht')
   }, [uid, roomKey])
 
-  /* ---------------- Der Stapel: die Karten der Woche ---------------- */
+  /* ---------------- Der Feed: die Karten der Woche ---------------- */
 
   const deckWeekItems = viewWeek === todayKey ? thisWeekAll : itemsForWeek(visible, viewWeek)
 
@@ -247,13 +251,8 @@ export function Impuls() {
   const liveNode = (item: ImpulseItem) => {
     switch (item.kind) {
       case 'quiz':
+      case 'bilderraetsel':
         return <QuizCard item={item} answer={answerFor(item)} plain />
-      case 'wochenziel':
-        return <GoalCard item={item} week={todayKey} done={myWeek(todayKey).goal === true} plain />
-      case 'tageschallenge':
-        return (
-          <ChallengeCard item={item} week={todayKey} days={myWeek(todayKey).days ?? []} plain />
-        )
       case 'frage':
         return (
           <ImpulseQuestionCard
@@ -265,6 +264,15 @@ export function Impuls() {
         )
       case 'feed':
         return <ImpulseFeedCard item={item} progressDocs={progressState.data} />
+      case 'teilen':
+        return (
+          <ImpulseShareCard
+            item={item}
+            week={todayKey}
+            done={myWeek(todayKey).share === true}
+            plain
+          />
+        )
       default:
         return <WocheDeckCard item={item} />
     }
@@ -280,33 +288,12 @@ export function Impuls() {
   const pastNode = (item: ImpulseItem) => {
     switch (item.kind) {
       case 'quiz':
+      case 'bilderraetsel':
         return (
           <div className="card p-5">
             <PastQuiz item={item} answer={answerFor(item)} />
           </div>
         )
-      case 'wochenziel':
-        return (
-          <div className="card p-5">
-            <PastTask
-              item={item}
-              label="Wochenziel"
-              note={myWeek(viewWeek).goal === true ? 'geschafft' : null}
-            />
-          </div>
-        )
-      case 'tageschallenge': {
-        const count = Math.min((myWeek(viewWeek).days ?? []).length, 7)
-        return (
-          <div className="card p-5">
-            <PastTask
-              item={item}
-              label="Tages-Challenge"
-              note={count > 0 ? `${count} von 7 Tagen` : null}
-            />
-          </div>
-        )
-      }
       case 'frage': {
         const mine = myComments.some((comment) => comment.itemId === item.id)
         return (
@@ -320,24 +307,44 @@ export function Impuls() {
       }
       case 'feed':
         return <ImpulseFeedCard item={item} progressDocs={progressState.data} />
+      case 'teilen':
+        return (
+          <div className="card p-5">
+            <PastTask
+              item={item}
+              label="Teilen"
+              note={myWeek(viewWeek).share === true ? 'besprochen' : null}
+            />
+          </div>
+        )
       default:
         return <WocheDeckCard item={item} />
     }
   }
 
-  const deckEntries: ImpulseDeckCard[] = DECK_KIND_ORDER.flatMap((kind) =>
-    deckWeekItems.filter((item) => item.kind === kind),
-  ).map((item) => ({
-    id: `${item.kind}-${item.id}`,
-    section: IMPULSE_KIND_SECTION[item.kind],
-    node: viewWeek === todayKey ? liveNode(item) : pastNode(item),
-  }))
-  /* Gemischt bleibt gemischt: Der Schlüssel Konto+Woche hält den Stapel
-     die Woche über in derselben Ordnung (siehe `seededShuffle`). */
+  const deckEntries: ImpulseDeckCard[] = IMPULSE_DECK_KINDS.flatMap((kind) =>
+    deckWeekItems
+      .filter((item) => item.kind === kind)
+      .map((item) => ({
+        id: `${item.kind}-${item.id}`,
+        section: IMPULSE_KIND_SECTION[kind],
+        node: viewWeek === todayKey ? liveNode(item) : pastNode(item),
+        /* Die zweite Seite der Karte – nur wenn die Redaktion eine
+           Vertiefung erfasst hat; sonst gibt es sie gar nicht. */
+        deepening: item.deepening ? <ImpulseDeepeningCard item={item} /> : null,
+      })),
+  )
+  /* Gemischt bleibt gemischt: Der Schlüssel Konto+Woche hält den Feed
+     die Woche über in derselben Ordnung (siehe `seededShuffle`) – nur
+     der Wochenimpuls bleibt immer die erste Karte. */
+  const wocheEntries = deckEntries.filter((card) => card.section === 'woche')
+  const restEntries = deckEntries.filter((card) => card.section !== 'woche')
   const deckCards =
-    order === 'zufall' ? seededShuffle(deckEntries, `${uid}:${viewWeek}`) : deckEntries
+    order === 'zufall'
+      ? [...wocheEntries, ...seededShuffle(restEntries, `${uid}:${viewWeek}`)]
+      : deckEntries
 
-  /* ---------------- Sprünge in den Stapel ---------------- */
+  /* ---------------- Sprünge in den Feed ---------------- */
 
   /* Der Einstieg über eine Karten-Adresse (`/impuls/quiz` – App-Menü oder
      Lesezeichen): vor dem ersten Bild bestimmt, ohne Anlauf. */
@@ -374,9 +381,9 @@ export function Impuls() {
   /* -------------- Der Stand: durchgetippt und gezählt -------------- */
 
   /*
-   * «Durchgetippt» heisst jetzt: Alle Feed-Karten der Woche waren einmal
-   * im Bild – egal in welcher Reihenfolge, auch quer durch einen
-   * gemischten Stapel. Vermerkt wird einmal und still, wie bisher.
+   * «Durchgetippt» heisst: Alle Feed-Karten der Woche waren einmal im
+   * Bild – egal in welcher Reihenfolge, auch quer durch einen gemischten
+   * Feed. Vermerkt wird einmal und still, wie bisher.
    */
   const recordedDeckSections = useRef(new Set<string>())
   const seenFeedCards = useRef(new Set<string>())
@@ -404,16 +411,20 @@ export function Impuls() {
 
   /* ---------------- Navigation zwischen den Räumen ---------------- */
 
-  /** Von der Zeile in den Raum – ein Schritt in der Chronik. */
+  /** Von der Kachel in den Raum – ein Schritt in der Chronik. */
   const openSection = (key: ImpulseSectionKey, origin?: ScreenOrigin) =>
     navigate(`/impuls/${key}`, { state: origin ? { origin } : undefined })
+
+  /** Der Tipp auf das Wochenthema: der Feed geht auf, bei der ersten Karte. */
+  const openFeed = (origin?: ScreenOrigin) =>
+    navigate('/impuls/woche', { state: origin ? { origin } : undefined })
 
   /** Von Raum zu Raum – ersetzt den Schritt, Zurück führt zur Übersicht. */
   const switchSection = (key: ImpulseSectionKey) => navigate(`/impuls/${key}`, { replace: true })
 
   /**
    * Zurück zur Übersicht: der Schritt zurück in der Chronik, damit die
-   * Zurück-Geste und der Pfeil dasselbe tun. Wer den Raum direkt
+   * Zurück-Geste und der Pfeil dasselbe tun. Wer den Bereich direkt
    * aufgeschlagen hat (Lesezeichen), hat keinen Schritt – dann ersetzt
    * die Übersicht den Eintrag.
    */
@@ -429,7 +440,7 @@ export function Impuls() {
 
   const chooseOrder = (next: ImpulseOrder) => {
     setOrder(next)
-    // Ein alter Sprungbefehl soll den frisch gelegten Stapel nicht anfahren.
+    // Ein alter Sprungbefehl soll den frisch gelegten Feed nicht anfahren.
     setDeckTarget(null)
   }
   const chooseWeek = (week: string) => {
@@ -450,11 +461,20 @@ export function Impuls() {
     }
   }
 
-  /* Welche Räume der Wechsler anbietet – die Werkzeuge, nicht die Karten. */
+  /* Die Aufgaben der laufenden Woche – für die Kacheln und ihre Räume. */
+  const goalItem = thisWeekAll.find((item) => item.kind === 'wochenziel') ?? null
+  const challengeItem = thisWeekAll.find((item) => item.kind === 'tageschallenge') ?? null
+  const challengeDays = Math.min((myWeek(todayKey).days ?? []).length, 7)
+
+  /* Welche Räume der Wechsler anbietet – die Kacheln, nicht die Karten. */
   const availableSections: ImpulseSectionKey[] = (
-    ['fortschritt', 'gemerkt', 'wochen', 'mitmachen'] as const
+    ['ziel', 'challenge', 'fortschritt', 'gemerkt', 'wochen', 'mitmachen'] as const
   ).filter((key) => {
     switch (key) {
+      case 'ziel':
+        return goalItem !== null
+      case 'challenge':
+        return challengeItem !== null
       case 'gemerkt':
         return favoriteItems.length > 0
       case 'wochen':
@@ -473,6 +493,23 @@ export function Impuls() {
 
   const sectionContent = (key: ImpulseRoomSectionKey) => {
     switch (key) {
+      case 'ziel':
+        return goalItem ? (
+          <GoalCard item={goalItem} week={todayKey} done={myWeek(todayKey).goal === true} plain />
+        ) : (
+          <EmptyScreenNote text="Diese Woche ist kein Wochenziel aufgeschaltet." />
+        )
+      case 'challenge':
+        return challengeItem ? (
+          <ChallengeCard
+            item={challengeItem}
+            week={todayKey}
+            days={myWeek(todayKey).days ?? []}
+            plain
+          />
+        ) : (
+          <EmptyScreenNote text="Diese Woche ist keine Tages-Challenge aufgeschaltet." />
+        )
       case 'fortschritt':
         return (
           <ImpulseStats
@@ -498,6 +535,7 @@ export function Impuls() {
                 {itemsForWeek(visible, week).map((item) => {
                   switch (item.kind) {
                     case 'quiz':
+                    case 'bilderraetsel':
                       return <PastQuiz key={item.id} item={item} answer={answerFor(item)} />
                     case 'wochenziel':
                       return (
@@ -519,6 +557,15 @@ export function Impuls() {
                         />
                       )
                     }
+                    case 'teilen':
+                      return (
+                        <PastTask
+                          key={item.id}
+                          item={item}
+                          label="Teilen"
+                          note={myWeek(week).share === true ? 'besprochen' : null}
+                        />
+                      )
                     case 'frage': {
                       const count = commentsState.data.filter(
                         (comment) => comment.itemId === item.id && !comment.hidden,
@@ -555,7 +602,7 @@ export function Impuls() {
 
   return (
     <>
-      {/* Kopf, Stapel und die ruhigen Zeilen teilen sich die schmale
+      {/* Kopf, Wochenthema und Kacheln teilen sich die schmale
           Mittelspalte: Die Hülle der App ist hier ausgeblendet (siehe
           Layout), ihr Menüknopf der einzige Rest der Navigation. */}
       <div className="mx-auto w-full max-w-2xl">
@@ -592,15 +639,13 @@ export function Impuls() {
           </div>
         )}
 
+        {/* Das Wochenthema im Zentrum – gross, ruhig, noch ohne Wischen.
+            Erst der Tipp darauf öffnet den Vollbild-Feed. */}
         {deckCards.length > 0 ? (
-          /* Wechselt Konto, Woche oder Reihenfolge, beginnt der Stapel
-             sauber von vorn – darum der Schlüssel. */
-          <ImpulseDeck
-            key={`${uid}:${viewWeek}:${order}`}
-            cards={deckCards}
-            initialTarget={initialDeckTarget}
-            target={deckTarget}
-            onActive={onDeckActive}
+          <WochenimpulsHero
+            item={deckWeekItems.find((item) => item.kind === 'impuls') ?? null}
+            cardCount={deckCards.length}
+            onOpen={openFeed}
           />
         ) : (
           <section className="card animate-imp-rise grid place-items-center rounded-2xl border-dashed px-4 py-14 text-center">
@@ -621,32 +666,90 @@ export function Impuls() {
           </section>
         )}
 
-        {/* Unter dem Stapel, bewusst nicht Teil des Wischens: der eigene
-            Weg, das Einreichen – und wer diese Woche dabei war. */}
-        <div className="mt-3 space-y-3">
-          <ProgressRow
-            streak={streak}
-            badgeCount={badges.length}
-            badgeTotal={IMPULSE_BADGES.length}
-            delay="60ms"
-            onOpen={openSection}
-          />
-          <MitmachRow
-            openSubmissions={
-              submissionsState.data.filter(
-                (submission) => submission.uid === uid && submission.status === 'open',
-              ).length
-            }
-            delay="105ms"
-            onOpen={openSection}
-          />
-          {!itemsState.loading && (
-            <div className="animate-imp-rise" style={{ animationDelay: '150ms' }}>
-              <GroupCard participants={participants} total={total} />
-            </div>
+        {/* Die Kacheln unter dem Wochenthema – Aufgaben und Werkzeuge,
+            bewusst nicht Teil des Feeds: Im Vollbild sind sie weg. */}
+        <div className="mt-3 grid grid-cols-2 gap-3">
+          {goalItem && (
+            <SectionTile
+              section="ziel"
+              status={goalItem.title}
+              done={myWeek(todayKey).goal === true}
+              delay="60ms"
+              onOpen={openSection}
+            />
           )}
+          {challengeItem && (
+            <SectionTile
+              section="challenge"
+              status={challengeItem.title}
+              badge={`${challengeDays}/7`}
+              done={challengeDays >= 7}
+              delay="90ms"
+              onOpen={openSection}
+            />
+          )}
+          <SectionTile
+            section="fortschritt"
+            status={
+              streak.current > 0
+                ? `${streak.current} ${streak.current === 1 ? 'Woche' : 'Wochen'} in Folge · ${badges.length} von ${IMPULSE_BADGES.length} Abzeichen`
+                : 'Deine Serie beginnt mit dem ersten Haken.'
+            }
+            delay="120ms"
+            onOpen={openSection}
+          />
+          <SectionTile
+            section="gemerkt"
+            status={
+              favoriteItems.length > 0
+                ? `${favoriteItems.length} ${favoriteItems.length === 1 ? 'Karte' : 'Karten'} gesammelt`
+                : 'Auf den Feed-Karten wartet «Merken».'
+            }
+            delay="150ms"
+            onOpen={openSection}
+          />
+          <div className="col-span-2">
+            <SectionTile
+              section="mitmachen"
+              status="Dein Vers oder deine Quizidee – auf der Karte steht dein Name."
+              badge={
+                submissionsState.data.filter(
+                  (submission) => submission.uid === uid && submission.status === 'open',
+                ).length > 0
+                  ? `${
+                      submissionsState.data.filter(
+                        (submission) => submission.uid === uid && submission.status === 'open',
+                      ).length
+                    } eingereicht`
+                  : undefined
+              }
+              delay="180ms"
+              onOpen={openSection}
+            />
+          </div>
         </div>
+
+        {!itemsState.loading && (
+          <div className="animate-imp-rise mt-3" style={{ animationDelay: '210ms' }}>
+            <GroupCard participants={participants} total={total} />
+          </div>
+        )}
       </div>
+
+      {/* Der Vollbild-Feed: nur die Karte und der Menüknopf – alle
+          Kacheln sind verschwunden. Wechselt Konto, Woche oder
+          Reihenfolge, beginnt der Feed sauber von vorn (Key). */}
+      {feedOpen && (
+        <ImpulseFeedScreen
+          key={`${uid}:${viewWeek}:${order}`}
+          cards={deckCards}
+          initialTarget={initialDeckTarget}
+          target={deckTarget}
+          origin={state?.origin ?? null}
+          onActive={onDeckActive}
+          onClose={closeSection}
+        />
+      )}
 
       {roomKey && (
         <ImpulseScreen
@@ -676,10 +779,78 @@ export function Impuls() {
 }
 
 /* ------------------------------------------------------------------ */
-/* Die Karten des Stapels                                              */
+/* Das Wochenthema im Zentrum                                          */
 /* ------------------------------------------------------------------ */
 
-/** Der Wochenimpuls als Stapelkarte – gross und ruhig, wie eh und je. */
+/**
+ * Der Wochenimpuls als Herzstück des Dashboards: das Wochenthema, gross
+ * im Zentrum – noch ohne Wischen. Der ganze Kasten ist ein Knopf; der
+ * Tipp öffnet den Vollbild-Feed bei der ersten Karte, und der Klickpunkt
+ * wird zum Ursprung des Übergangs. Fehlt der Wochenimpuls (aber andere
+ * Karten sind da), lädt der Kasten trotzdem in den Feed ein.
+ */
+function WochenimpulsHero({
+  item,
+  cardCount,
+  onOpen,
+}: {
+  item: ImpulseItem | null
+  cardCount: number
+  onOpen: (origin: ScreenOrigin) => void
+}) {
+  const theme = IMPULSE_SECTIONS.woche
+  return (
+    <button
+      type="button"
+      onClick={(event) => {
+        const rect = event.currentTarget.getBoundingClientRect()
+        onOpen({ x: rect.left + rect.width / 2, y: rect.top + rect.height / 2 })
+      }}
+      className="card animate-imp-rise group relative w-full overflow-hidden rounded-2xl px-5 py-10 text-center transition hover:-translate-y-0.5 hover:shadow-md active:scale-[0.99] active:shadow-xs sm:px-8 sm:py-12"
+    >
+      {/* Der Farbschleier des Wochenimpulses – dieselbe Sprache wie im Feed. */}
+      <span
+        aria-hidden
+        className={cn(
+          'pointer-events-none absolute inset-x-0 top-0 h-32 bg-gradient-to-b to-transparent',
+          theme.wash,
+        )}
+      />
+      <span className="relative block">
+        <span className={cn('inline-flex items-center gap-1.5 text-xs font-medium', theme.text)}>
+          <span
+            className={cn('grid size-6 shrink-0 place-items-center rounded-md', theme.iconBox)}
+            aria-hidden
+          >
+            <theme.icon className="size-3.5" />
+          </span>
+          Wochenimpuls
+        </span>
+        <span className="mt-4 block text-3xl leading-tight font-semibold text-balance sm:text-4xl">
+          {item ? item.title : 'Die Karten der Woche'}
+        </span>
+        {item?.body && (
+          <span className="mx-auto mt-3 line-clamp-3 block max-w-md text-sm whitespace-pre-line text-slate-600 dark:text-slate-300">
+            {item.body}
+          </span>
+        )}
+        <span className="mt-6 inline-flex items-center gap-1 rounded-full bg-slate-900/5 px-3.5 py-1.5 text-xs font-medium text-slate-600 transition group-hover:bg-slate-900/10 dark:bg-white/10 dark:text-slate-300 dark:group-hover:bg-white/15">
+          Antippen zum Eintauchen · {cardCount} {cardCount === 1 ? 'Karte' : 'Karten'}
+          <ChevronRight
+            className="size-3.5 transition-transform group-hover:translate-x-0.5"
+            aria-hidden
+          />
+        </span>
+      </span>
+    </button>
+  )
+}
+
+/* ------------------------------------------------------------------ */
+/* Die Karten des Feeds                                                */
+/* ------------------------------------------------------------------ */
+
+/** Der Wochenimpuls als Feed-Karte – gross und ruhig, wie eh und je. */
 function WocheDeckCard({ item }: { item: ImpulseItem }) {
   return (
     <article className="card p-6 text-center sm:p-8">
@@ -756,7 +927,7 @@ function PastFrageCard({
 
 /**
  * Die Favoritensammlung, jüngste zuerst – und jede Karte führt zurück in
- * den Stapel, aufgeschlagen genau bei ihr (Karten aus früheren Wochen
+ * den Feed, aufgeschlagen genau bei ihr (Karten aus früheren Wochen
  * samt Wechsel in deren Rückblick).
  */
 function GemerktList({
@@ -822,7 +993,8 @@ function EmptyScreenNote({ text }: { text: string }) {
 /* ------------------------------------------------------------------ */
 
 /**
- * Wochenziel oder Tages-Challenge aus einer früheren Woche.
+ * Eine Aufgabe aus einer früheren Woche – Wochenziel, Tages-Challenge
+ * oder Teilen-Aufgabe.
  *
  * Gezeigt wird, was war – und beim eigenen Stand nur das Erreichte: Ein
  * leerer Vermerk mahnt nicht, er fehlt einfach (Leitgedanke 1).
@@ -883,10 +1055,11 @@ function PastImpulse({ item }: { item: ImpulseItem }) {
 }
 
 /**
- * Eine Quizfrage aus einer früheren Woche.
+ * Eine Quizfrage oder ein Bilderrätsel aus einer früheren Woche.
  *
  * Die Woche ist vorbei, deshalb steht die Lösung offen da – wer geantwortet
- * hat, sieht dazu, wie es ausgegangen ist.
+ * hat, sieht dazu, wie es ausgegangen ist. Beim Bilderrätsel bleibt das
+ * Bild dabei, klein.
  */
 function PastQuiz({ item, answer }: { item: ImpulseItem; answer: ImpulseAnswer | null }) {
   const quiz = item.quiz
@@ -895,7 +1068,8 @@ function PastQuiz({ item, answer }: { item: ImpulseItem; answer: ImpulseAnswer |
 
   return (
     <div>
-      <p className="text-sm font-medium">{item.title}</p>
+      <ImpulseItemImage item={item} className="max-h-40" />
+      <p className={cn('text-sm font-medium', item.image?.url && 'mt-2')}>{item.title}</p>
       <p className="hint mt-0.5">
         Lösung: <span className="font-medium">{solution}</span>
         {answer &&

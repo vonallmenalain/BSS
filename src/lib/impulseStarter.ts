@@ -29,6 +29,8 @@ const SCRIPTURES = 'https://www.churchofjesuschrist.org/study/scriptures'
 interface StarterContent {
   title: string
   body: string
+  /** Die Vertiefung – die zweite Seite der Karte im Vollbild-Feed. */
+  deepening?: string
   /** Bei Impuls und Quiz Pflicht; Aufgaben dürfen ohne Fundstelle sein. */
   source?: ImpulseSource
   quiz?: ImpulseQuiz
@@ -41,6 +43,8 @@ export interface StarterWeek {
   tageschallenge: StarterContent
   /** Die offene Frage der Woche – Antworten mit Vornamen. */
   frage: StarterContent
+  /** Die Teilen-Aufgabe: die Einladung, das Thema weiterzutragen. */
+  teilen: StarterContent
   /** Der Feed der Woche, in Lesereihenfolge – endlich, wie das Konzept will. */
   feed: StarterContent[]
 }
@@ -56,6 +60,16 @@ export const STARTER_WEEKS: StarterWeek[] = [
         'für deine Woche: Der Herr gibt keine Gebote, ohne einen Weg zu bereiten. ' +
         'Lies den Vers und achte darauf, was Nephi verspricht, bevor er weiss, wie es ' +
         'gehen soll.',
+      deepening:
+        'Dass der Herr einen Weg bereitet, heisst nicht, dass der Weg leicht ist: Nephi ' +
+        'brauchte drei Anläufe, bis er die Messingplatten hatte – erst der dritte gelang, ' +
+        'und zwar, als er «vom Geist geführt» ging, ohne im Voraus zu wissen, was er tun ' +
+        'sollte (1 Nephi 4:6). Jahre später baut Nephi mit derselben Haltung ein Schiff ' +
+        'und sagt den Satz gleichsam noch einmal: «Wenn Gott mir geboten hat, alle Dinge ' +
+        'zu tun, kann ich sie tun.»\n\n' +
+        'Zum Weiterlesen:\n' +
+        `1 Nephi 4:6 – ${SCRIPTURES}/bofm/1-ne/4?lang=deu&id=p6#p6\n` +
+        `1 Nephi 17:3 – ${SCRIPTURES}/bofm/1-ne/17?lang=deu&id=p3#p3`,
       source: {
         label: '1 Nephi 3:7',
         url: `${SCRIPTURES}/bofm/1-ne/3?lang=deu&id=p7#p7`,
@@ -97,6 +111,15 @@ export const STARTER_WEEKS: StarterWeek[] = [
       title: 'Was hilft dir, Ja zu sagen, wenn ein Auftrag zu gross wirkt?',
       body: 'Zwei, drei Sätze genügen – dein Beispiel hilft den anderen.',
     },
+    teilen: {
+      title:
+        'Frag ein Familienmitglied oder einen Freund: Wann bist du – wie Nephi – hingegangen ' +
+        'und hast getan, was der Herr geboten hat, obwohl es schwer schien?',
+      body:
+        'Hör gut zu – und erzähl danach von deinem eigenen «Ich will hingehen»-Moment. ' +
+        'Danach darfst du hier abhaken.',
+      source: { label: '1 Nephi 3:7', url: `${SCRIPTURES}/bofm/1-ne/3?lang=deu&id=p7#p7` },
+    },
     feed: [
       {
         title: '«Ich will hingehen und das tun, was der Herr geboten hat.»',
@@ -124,6 +147,14 @@ export const STARTER_WEEKS: StarterWeek[] = [
         'denselben Sturm. Den Unterschied macht nicht das Wetter, sondern der Grund, ' +
         'auf dem sie stehen. Wer seine Woche mit ihm baut – ein Gebet, ein Vers, ein ' +
         'guter Entschluss –, baut auf Fels.',
+      deepening:
+        'Das Buch Mormon nennt den Fels beim Namen: Helaman sagt seinen Söhnen, dass es ' +
+        '«der Fels unseres Erlösers» ist, auf den wir bauen müssen – und verspricht, dass ' +
+        'der Teufel mit all seinen Wirbelstürmen dann «keine Macht über euch» hat. Beide ' +
+        'Bauleute erleben den Sturm; das Evangelium verspricht keinen sturmfreien Himmel, ' +
+        'sondern einen Grund, der hält.\n\n' +
+        'Zum Weiterlesen:\n' +
+        `Helaman 5:12 – ${SCRIPTURES}/bofm/hel/5?lang=deu&id=p12#p12`,
       source: {
         label: 'Matthäus 7:24–25',
         url: `${SCRIPTURES}/nt/matt/7?lang=deu&id=p24-p25#p24`,
@@ -169,6 +200,16 @@ export const STARTER_WEEKS: StarterWeek[] = [
       title: 'Was gehört für dich zu einem Fundament auf Fels – ganz konkret im Alltag?',
       body: '',
     },
+    teilen: {
+      title:
+        'Sprich mit jemandem aus deiner Familie darüber, was eurem Zuhause ein Fundament ' +
+        'aus Fels gibt – und was ihr gemeinsam stärken wollt.',
+      body: 'Ein Abendessen genügt als Gelegenheit. Danach darfst du hier abhaken.',
+      source: {
+        label: 'Matthäus 7:24–27',
+        url: `${SCRIPTURES}/nt/matt/7?lang=deu&id=p24-p27#p24`,
+      },
+    },
     feed: [
       {
         title: 'Hören und handeln – das ist der ganze Unterschied zwischen den beiden Bauleuten.',
@@ -199,6 +240,14 @@ export const STARTER_WEEKS: StarterWeek[] = [
         'zweifelt nicht, fürchtet euch nicht.» Der Herr sagt ihn 1829 zu Oliver ' +
         'Cowdery – und heute zu dir. Nimm ihn diese Woche mit: beim Aufstehen, vor ' +
         'der Prüfung, im Bus.',
+      deepening:
+        'Ein paar Verse davor erinnert der Herr Oliver Cowdery an eine Nacht, in der er ' +
+        'um Gewissheit gebetet hatte: «Habe ich dir nicht Frieden in deinen Sinn geredet, ' +
+        'was die Sache betrifft?» (LuB 6:23). Der Satz «Blickt in jedem Gedanken auf mich» ' +
+        'steht also nicht am Anfang, sondern nach einer Antwort, die Oliver schon erhalten ' +
+        'hatte – sich erinnern gehört zum Glauben.\n\n' +
+        'Zum Weiterlesen:\n' +
+        `Lehre und Bündnisse 6:22–23 – ${SCRIPTURES}/dc-testament/dc/6?lang=deu&id=p22-p23#p22`,
       source: {
         label: 'Lehre und Bündnisse 6:36',
         url: `${SCRIPTURES}/dc-testament/dc/6?lang=deu&id=p36#p36`,
@@ -244,6 +293,16 @@ export const STARTER_WEEKS: StarterWeek[] = [
       title: 'Welcher Gedanke oder Vers hilft dir gegen Angst und Zweifel?',
       body: '',
     },
+    teilen: {
+      title:
+        'Teile den Satz «Blickt in jedem Gedanken auf mich» mit einem Freund oder einer ' +
+        'Freundin – und frag, was er für sie oder ihn bedeutet.',
+      body: 'Eine Nachricht zählt auch. Danach darfst du hier abhaken.',
+      source: {
+        label: 'Lehre und Bündnisse 6:36',
+        url: `${SCRIPTURES}/dc-testament/dc/6?lang=deu&id=p36#p36`,
+      },
+    },
     feed: [
       {
         title:
@@ -272,6 +331,15 @@ export const STARTER_WEEKS: StarterWeek[] = [
         'Alma erklärt, was Glaube ist: keine vollkommene Erkenntnis, sondern hoffen ' +
         'auf das, was nicht gesehen wird, was aber wahr ist. Das ist keine Schwäche, ' +
         'sondern ein Anfang – wie ein Experiment, das man wagt.',
+      deepening:
+        'Alma nimmt dem Anfang die Schwere: Es genügt, wenn ihr «nichts weiter als den ' +
+        'Wunsch habt zu glauben» – lasst diesen Wunsch nur wirken (Alma 32:27). Und das ' +
+        'Experiment hat ein Ziel: Wer das Samenkorn geduldig nährt, erntet eine Frucht, ' +
+        'die «süss ist über alles, was süss ist» (Alma 32:41–42). Glaube ist bei Alma kein ' +
+        'Zustand, sondern eine Pflege.\n\n' +
+        'Zum Weiterlesen:\n' +
+        `Alma 32:27 – ${SCRIPTURES}/bofm/alma/32?lang=deu&id=p27#p27\n` +
+        `Alma 32:41–43 – ${SCRIPTURES}/bofm/alma/32?lang=deu&id=p41-p43#p41`,
       source: {
         label: 'Alma 32:21',
         url: `${SCRIPTURES}/bofm/alma/32?lang=deu&id=p21#p21`,
@@ -311,6 +379,13 @@ export const STARTER_WEEKS: StarterWeek[] = [
       title: 'Wo hast du erlebt, dass aus einem kleinen Samenkorn des Glaubens etwas gewachsen ist?',
       body: 'Ein kleines Erlebnis zählt genauso wie ein grosses.',
     },
+    teilen: {
+      title:
+        'Frag ein Familienmitglied oder einen Freund: Wo hat dein Glaube einmal ganz klein ' +
+        'angefangen – und was ist daraus geworden?',
+      body: 'Geschichten wie diese vergisst man nicht. Danach darfst du hier abhaken.',
+      source: { label: 'Alma 32', url: `${SCRIPTURES}/bofm/alma/32?lang=deu` },
+    },
     feed: [
       {
         title: '«Ihr empfangt keinen Zeugen, ehe euer Glaube nicht geprüft ist.»',
@@ -341,6 +416,8 @@ export interface StarterPlan {
   status: 'ready'
   title: string
   body: string
+  /** Die Vertiefung – die zweite Seite der Karte im Vollbild-Feed. */
+  deepening: string | null
   /** Platz im Feed – nur an Feed-Karten. */
   order: number | null
   source: ImpulseSource | null
@@ -348,12 +425,13 @@ export interface StarterPlan {
 }
 
 /** Die Einzel-Arten, die das Paket je Woche mitbringt – in Lesereihenfolge. */
-const STARTER_KINDS: Exclude<ImpulseKind, 'feed'>[] = [
+const STARTER_KINDS: Exclude<ImpulseKind, 'feed' | 'bilderraetsel'>[] = [
   'impuls',
   'wochenziel',
   'quiz',
   'tageschallenge',
   'frage',
+  'teilen',
 ]
 
 /**
@@ -393,6 +471,7 @@ export function planStarterItems(
         status: 'ready',
         title: content.title,
         body: content.body,
+        deepening: content.deepening ?? null,
         order: null,
         source: content.source ?? null,
         quiz: kind === 'quiz' ? (content.quiz ?? null) : null,
@@ -414,6 +493,7 @@ export function planStarterItems(
         status: 'ready',
         title: card.title,
         body: card.body,
+        deepening: card.deepening ?? null,
         order: cardIndex + 1,
         source: card.source ?? null,
         quiz: null,

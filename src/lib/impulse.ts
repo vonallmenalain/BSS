@@ -82,17 +82,20 @@ export function upcomingWeekKeys(from: Date | number, count: number): string[] {
 }
 
 /**
- * Die Lesereihenfolge innerhalb einer Woche – wie im Konzept: zuerst der
- * Impuls, dann das Ziel mit dem Haken, dann die Frage, die tägliche
- * Kleinigkeit – und zuletzt der Einstieg in den Feed.
+ * Die Lesereihenfolge innerhalb einer Woche – zuerst der Impuls, dann die
+ * beiden Aufgaben neben dem Feed (Ziel und Tages-Challenge), dann die
+ * übrigen Feed-Karten: Quiz, Bilderrätsel, Frage, Feed – und zum Schluss
+ * die Teilen-Aufgabe, die Einladung zum Weitererzählen.
  */
 export const IMPULSE_KIND_ORDER: ImpulseKind[] = [
   'impuls',
   'wochenziel',
-  'quiz',
   'tageschallenge',
+  'quiz',
+  'bilderraetsel',
   'frage',
   'feed',
+  'teilen',
 ]
 
 export function impulseKindRank(kind: ImpulseKind): number {
@@ -141,25 +144,32 @@ export function impulseAnswerId(itemId: string, uid: string): string {
  * die Liste im Formular; gespeichert wird ein unfertiger Inhalt trotzdem,
  * bloss als Entwurf. Beim Impuls und bei der Quizfrage ist die Quelle
  * Pflicht: Der Bereich lebt von offiziellem Material, und der Sprung zur
- * Quelle ist sein Ziel. Wochenziel und Tages-Challenge sind Aufgaben,
- * kein Material – «Bete jeden Abend» hat keine Fundstelle; eine Quelle
- * darf trotzdem dranstehen und wird dann gezeigt.
+ * Quelle ist sein Ziel. Das Bilderrätsel braucht sein Bild – aus der
+ * offiziellen Mediathek der Kirche – und wie das Quiz eine Auflösung.
+ * Wochenziel, Tages-Challenge und die Teilen-Aufgabe sind Aufgaben, kein
+ * Material – «Bete jeden Abend» hat keine Fundstelle; eine Quelle darf
+ * trotzdem dranstehen und wird dann gezeigt.
  */
 export function readyProblems(item: {
   kind: ImpulseKind
   title: string
   source?: ImpulseSource | null
   quiz?: ImpulseQuiz | null
+  image?: { url: string } | null
 }): string[] {
   const problems: string[] = []
   if (!item.title.trim())
     problems.push(
-      item.kind === 'quiz' || item.kind === 'frage' ? 'Die Frage fehlt.' : 'Der Titel fehlt.',
+      item.kind === 'quiz' || item.kind === 'frage' || item.kind === 'bilderraetsel'
+        ? 'Die Frage fehlt.'
+        : 'Der Titel fehlt.',
     )
   const sourceRequired = item.kind === 'impuls' || item.kind === 'quiz'
   if (sourceRequired && !item.source?.label.trim()) problems.push('Die Quelle fehlt.')
 
-  if (item.kind === 'quiz') {
+  if (item.kind === 'bilderraetsel' && !item.image?.url.trim()) problems.push('Das Bild fehlt.')
+
+  if (item.kind === 'quiz' || item.kind === 'bilderraetsel') {
     const quiz = item.quiz
     if (!quiz) {
       problems.push('Die Quizangaben fehlen.')
@@ -200,10 +210,10 @@ export function monthOfWeek(key: string): string | null {
  * In welchen Wochen jemand dabei war.
  *
  * Dabei heisst: Wochenziel abgehakt, mindestens ein Tag der
- * Tages-Challenge – oder eine Quizfrage beantwortet. Die Antworten
- * liegen in ihrer eigenen Sammlung und werden hier über den Inhalt der
- * Woche zugeordnet (`weekOfItem`); nichts davon steht doppelt im
- * Fortschrittsdokument.
+ * Tages-Challenge, die Teilen-Aufgabe besprochen – oder eine Quizfrage
+ * beantwortet. Die Antworten liegen in ihrer eigenen Sammlung und werden
+ * hier über den Inhalt der Woche zugeordnet (`weekOfItem`); nichts davon
+ * steht doppelt im Fortschrittsdokument.
  */
 export function participatedWeeks(
   progress: Pick<ImpulseProgress, 'weeks'> | null | undefined,
@@ -212,7 +222,12 @@ export function participatedWeeks(
 ): Set<string> {
   const weeks = new Set<string>()
   for (const [week, state] of Object.entries(progress?.weeks ?? {})) {
-    if (state?.goal === true || (state?.days?.length ?? 0) > 0 || state?.feed === true)
+    if (
+      state?.goal === true ||
+      (state?.days?.length ?? 0) > 0 ||
+      state?.feed === true ||
+      state?.share === true
+    )
       weeks.add(week)
   }
   for (const answer of answers) {
@@ -333,7 +348,12 @@ export function weekParticipants(
   const byUid = new Map<string, string>()
   for (const progress of progressDocs) {
     const state = progress.weeks?.[week]
-    if (state?.goal === true || (state?.days?.length ?? 0) > 0 || state?.feed === true) {
+    if (
+      state?.goal === true ||
+      (state?.days?.length ?? 0) > 0 ||
+      state?.feed === true ||
+      state?.share === true
+    ) {
       byUid.set(progress.uid, progress.firstName || '–')
     }
   }

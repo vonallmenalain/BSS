@@ -2,6 +2,7 @@ import { Inbox } from 'lucide-react'
 import { Modal } from '@/components/ui/Modal'
 import { ImpulseCard, QuizCard } from '@/components/impulse/ImpulseCards'
 import { ImpulseQuestionCard } from '@/components/impulse/ImpulseQuestionCard'
+import { ImpulseShareCard } from '@/components/impulse/ImpulseShareCard'
 import { ChallengeCard, GoalCard } from '@/components/impulse/ImpulseProgressCards'
 import { formatWeekRange } from '@/lib/impulse'
 import type { ImpulseItem } from '@/lib/types'
@@ -48,26 +49,31 @@ export function ImpulseWeekPreview({
           </div>
         ) : (
           ready.map((item) => {
-            switch (item.kind) {
-              case 'quiz':
-                return <QuizCard key={item.id} item={item} answer={null} preview />
-              case 'wochenziel':
-                return <GoalCard key={item.id} item={item} week={week} done={false} preview />
-              case 'tageschallenge':
-                return <ChallengeCard key={item.id} item={item} week={week} days={[]} preview />
-              case 'frage':
-                return (
-                  <ImpulseQuestionCard
-                    key={item.id}
-                    item={item}
-                    comments={[]}
-                    progressDocs={[]}
-                    preview
-                  />
-                )
-              default:
-                return <ImpulseCard key={item.id} item={item} />
-            }
+            const card = (() => {
+              switch (item.kind) {
+                case 'quiz':
+                case 'bilderraetsel':
+                  return <QuizCard item={item} answer={null} preview />
+                case 'wochenziel':
+                  return <GoalCard item={item} week={week} done={false} preview />
+                case 'tageschallenge':
+                  return <ChallengeCard item={item} week={week} days={[]} preview />
+                case 'teilen':
+                  return <ImpulseShareCard item={item} week={week} done={false} preview />
+                case 'frage':
+                  return (
+                    <ImpulseQuestionCard item={item} comments={[]} progressDocs={[]} preview />
+                  )
+                default:
+                  return <ImpulseCard item={item} />
+              }
+            })()
+            return (
+              <div key={item.id}>
+                {card}
+                <DeepeningNote item={item} />
+              </div>
+            )
           })
         )}
 
@@ -80,24 +86,27 @@ export function ImpulseWeekPreview({
               Schluss
             </p>
             {feeds.map((card, index) => (
-              <section key={card.id} className="card p-5 text-center">
-                <p className="hint">
-                  Karte {index + 1} von {feeds.length}
-                </p>
-                <h3 className="mt-2 text-lg leading-snug font-semibold text-balance">
-                  {card.title}
-                </h3>
-                {card.body && (
-                  <p className="mt-2 text-sm whitespace-pre-line text-slate-600 dark:text-slate-300">
-                    {card.body}
+              <div key={card.id}>
+                <section className="card p-5 text-center">
+                  <p className="hint">
+                    Karte {index + 1} von {feeds.length}
                   </p>
-                )}
-                {card.source?.label && (
-                  <p className="hint mt-2">
-                    {card.source.label}
-                  </p>
-                )}
-              </section>
+                  <h3 className="mt-2 text-lg leading-snug font-semibold text-balance">
+                    {card.title}
+                  </h3>
+                  {card.body && (
+                    <p className="mt-2 text-sm whitespace-pre-line text-slate-600 dark:text-slate-300">
+                      {card.body}
+                    </p>
+                  )}
+                  {card.source?.label && (
+                    <p className="hint mt-2">
+                      {card.source.label}
+                    </p>
+                  )}
+                </section>
+                <DeepeningNote item={card} />
+              </div>
             ))}
           </div>
         )}
@@ -111,4 +120,10 @@ export function ImpulseWeekPreview({
       </div>
     </Modal>
   )
+}
+
+/** Der stille Vermerk unter einer Karte mit Vertiefung. */
+function DeepeningNote({ item }: { item: ImpulseItem }) {
+  if (!item.deepening) return null
+  return <p className="hint mt-1">Mit Vertiefung – im Feed ein Wisch nach links.</p>
 }

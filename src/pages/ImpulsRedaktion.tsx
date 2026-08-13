@@ -6,10 +6,12 @@ import {
   ChevronDown,
   ChevronRight,
   Eye,
+  HeartHandshake,
   LayoutList,
   Lightbulb,
   MessagesSquare,
   Plus,
+  Puzzle,
   Repeat,
   Search,
   Send,
@@ -115,9 +117,9 @@ export function ImpulsRedaktion() {
       initial: emptyImpulseItem(
         kind,
         week,
-        // Neue Feed-Karten reihen sich hinten ein.
-        kind === 'feed'
-          ? itemsState.data.filter((item) => item.week === week && item.kind === 'feed').length + 1
+        // Arten mit mehreren Karten je Woche reihen sich hinten ein.
+        MULTI_KIND_LIMITS[kind]
+          ? itemsState.data.filter((item) => item.week === week && item.kind === kind).length + 1
           : null,
       ),
     })
@@ -222,11 +224,11 @@ export function ImpulsRedaktion() {
               Startpaket: vier Wochen aus den Schriften
             </h2>
             <p className="hint mt-1 mb-3">
-              Je Woche ein Impuls, ein Wochenziel, eine Quizfrage, eine Tages-Challenge, eine Frage
-              der Woche und drei Feed-Karten – 1 Nephi 3:7, das Haus auf dem Felsen, Lehre und
-              Bündnisse 6:36 und Almas Samenkorn, dazu Auswahl-, Emoji-, Reihenfolge- und Suchfrage.
-              Alles «bereit»: Die laufende Woche erscheint sofort, drei weitere warten auf ihren
-              Montag. Eingespielt wird nur, was noch fehlt ({starterPlans.length}{' '}
+              Je Woche ein Impuls mit Vertiefung, ein Wochenziel, Quizfragen, eine Tages-Challenge,
+              eine Frage der Woche, eine Teilen-Aufgabe und Feed-Karten – 1 Nephi 3:7, das Haus auf
+              dem Felsen, Lehre und Bündnisse 6:36 und Almas Samenkorn. Alles «bereit»: Die laufende
+              Woche erscheint sofort, drei weitere warten auf ihren Montag. Eingespielt wird nur,
+              was noch fehlt ({starterPlans.length}{' '}
               {starterPlans.length === 1 ? 'Inhalt' : 'Inhalte'}); Vorhandenes und belegte Plätze
               bleiben unangetastet. Danach lässt sich alles wie gewohnt bearbeiten, verschieben oder
               löschen.
@@ -493,18 +495,33 @@ export function ImpulsRedaktion() {
 const KIND_ICONS = {
   impuls: Lightbulb,
   quiz: Search,
+  bilderraetsel: Puzzle,
   wochenziel: CheckCircle2,
   tageschallenge: Repeat,
   frage: MessagesSquare,
   feed: LayoutList,
+  teilen: HeartHandshake,
 } as const
+
+/**
+ * Wie viele Karten einer Art in eine Woche passen – nur die Arten mit
+ * mehreren Karten stehen hier. Der Feed bleibt endlich (höchstens zehn,
+ * das Konzept plant etwa zehn je Woche), Quiz und Bilderrätsel dürfen je
+ * drei tragen (verschiedene Schwierigkeitsgrade); alles andere gibt es
+ * einmal pro Woche.
+ */
+const MULTI_KIND_LIMITS: Partial<Record<ImpulseKind, number>> = {
+  feed: 10,
+  quiz: 3,
+  bilderraetsel: 3,
+}
 
 /**
  * Ein Platz im Wochenplan: gefüllt eine Schaltfläche, leer eine Einladung.
  *
- * Die vier Einzel-Plätze laden nur ein, solange sie leer sind; der Feed
- * lädt weiter ein, bis seine Woche voll ist – er ist die eine Art mit
- * mehreren Karten, endlich bleibt er trotzdem (höchstens zehn).
+ * Die Einzel-Plätze laden nur ein, solange sie leer sind; Feed, Quiz und
+ * Bilderrätsel laden weiter ein, bis ihre Woche voll ist
+ * (`MULTI_KIND_LIMITS`) – endlich bleibt alles trotzdem.
  */
 function SlotCell({
   kind,
@@ -520,7 +537,8 @@ function SlotCell({
   onCreate: () => void
 }) {
   const Icon = KIND_ICONS[kind]
-  const showAdd = items.length === 0 || (kind === 'feed' && items.length < 10)
+  const limit = MULTI_KIND_LIMITS[kind] ?? 1
+  const showAdd = items.length < limit
 
   if (items.length === 0) {
     return (
@@ -554,12 +572,13 @@ function SlotCell({
             <span className="block truncate text-sm font-medium">{item.title || 'Ohne Titel'}</span>
             <span className="hint block">
               {item.status === 'draft' ? 'Entwurf – erscheint nicht' : 'Bereit'}
-              {(item.kind === 'quiz' || item.kind === 'frage') && answerCount(item) > 0 && (
-                <>
-                  {' · '}
-                  {answerCount(item)} {answerCount(item) === 1 ? 'Antwort' : 'Antworten'}
-                </>
-              )}
+              {(item.kind === 'quiz' || item.kind === 'bilderraetsel' || item.kind === 'frage') &&
+                answerCount(item) > 0 && (
+                  <>
+                    {' · '}
+                    {answerCount(item)} {answerCount(item) === 1 ? 'Antwort' : 'Antworten'}
+                  </>
+                )}
             </span>
           </span>
         </button>
@@ -604,12 +623,13 @@ function ItemRow({
           {IMPULSE_KIND_LABELS[item.kind]}
           {showWeek && item.week && <> · {formatWeekRange(item.week)}</>}
           {item.status === 'draft' && ' · Entwurf'}
-          {(item.kind === 'quiz' || item.kind === 'frage') && answerCount > 0 && (
-            <>
-              {' · '}
-              {answerCount} {answerCount === 1 ? 'Antwort' : 'Antworten'}
-            </>
-          )}
+          {(item.kind === 'quiz' || item.kind === 'bilderraetsel' || item.kind === 'frage') &&
+            answerCount > 0 && (
+              <>
+                {' · '}
+                {answerCount} {answerCount === 1 ? 'Antwort' : 'Antworten'}
+              </>
+            )}
         </span>
       </span>
     </button>

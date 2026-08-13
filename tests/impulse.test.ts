@@ -113,17 +113,19 @@ test('visibleImpulseItems: bereit, geplant und die Woche hat begonnen', () => {
   )
 })
 
-test('itemsForWeek: Impuls, Ziel, Frage, Tages-Challenge – in dieser Folge', () => {
+test('itemsForWeek: Impuls, Ziel, Tages-Challenge, Quiz, Rätsel, Teilen – in dieser Folge', () => {
   const items = [
+    item({ id: 'teilen', week: '2026-W33', kind: 'teilen' }),
+    item({ id: 'raetsel', week: '2026-W33', kind: 'bilderraetsel' }),
     item({ id: 'challenge', week: '2026-W33', kind: 'tageschallenge' }),
-    item({ id: 'frage', week: '2026-W33', kind: 'quiz' }),
+    item({ id: 'quiz', week: '2026-W33', kind: 'quiz' }),
     item({ id: 'ziel', week: '2026-W33', kind: 'wochenziel' }),
     item({ id: 'impuls', week: '2026-W33', kind: 'impuls' }),
     item({ id: 'andere-woche', week: '2026-W34', kind: 'impuls' }),
   ]
   assert.deepEqual(
     itemsForWeek(items, '2026-W33').map((entry) => entry.id),
-    ['impuls', 'ziel', 'frage', 'challenge'],
+    ['impuls', 'ziel', 'challenge', 'quiz', 'raetsel', 'teilen'],
   )
 })
 
@@ -185,6 +187,27 @@ test('readyProblems: eine Suchfrage braucht die Lösung', () => {
   )
 })
 
+test('readyProblems: das Bilderrätsel braucht Bild und Auflösung, aber keine Quelle', () => {
+  const image = { url: 'https://www.churchofjesuschrist.org/media/bild.jpg' }
+  assert.deepEqual(readyProblems(item({ kind: 'bilderraetsel', quiz: QUIZ, image })), [])
+  assert.deepEqual(readyProblems(item({ kind: 'bilderraetsel', quiz: QUIZ })), [
+    'Das Bild fehlt.',
+  ])
+  assert.deepEqual(
+    readyProblems(item({ kind: 'bilderraetsel', quiz: QUIZ, image: { url: '  ' } })),
+    ['Das Bild fehlt.'],
+  )
+  assert.deepEqual(
+    readyProblems(item({ kind: 'bilderraetsel', image, quiz: { ...QUIZ, answerIndex: 5 } })),
+    ['Die richtige Antwort ist nicht markiert.'],
+  )
+})
+
+test('readyProblems: die Teilen-Aufgabe braucht nur ihre Aufgabe', () => {
+  assert.deepEqual(readyProblems(item({ kind: 'teilen' })), [])
+  assert.deepEqual(readyProblems(item({ kind: 'teilen', title: ' ' })), ['Der Titel fehlt.'])
+})
+
 test('readyProblems: ohne Titel keine Veröffentlichung', () => {
   assert.deepEqual(readyProblems(item({ title: '  ', source: { label: 'Alma 32', url: '' } })), [
     'Der Titel fehlt.',
@@ -220,16 +243,20 @@ test('participatedWeeks: Ziel, Tage, Feed oder Antwort – jedes davon zählt', 
   const participated = participatedWeeks(
     {
       weeks: {
+        '2026-W28': { share: true },
         '2026-W29': { feed: true },
         '2026-W30': { goal: true },
         '2026-W31': { days: ['2026-07-28'] },
-        '2026-W32': { goal: false, days: [], feed: false },
+        '2026-W32': { goal: false, days: [], feed: false, share: false },
       },
     },
     [{ itemId: 'frage-33' }, { itemId: 'geloescht' }],
     weekOfItem,
   )
-  assert.deepEqual([...participated].sort(), ['2026-W29', '2026-W30', '2026-W31', '2026-W33'])
+  assert.deepEqual(
+    [...participated].sort(),
+    ['2026-W28', '2026-W29', '2026-W30', '2026-W31', '2026-W33'],
+  )
 })
 
 test('itemsForWeek: Feed-Karten am Ende, in der Reihenfolge der Redaktion', () => {

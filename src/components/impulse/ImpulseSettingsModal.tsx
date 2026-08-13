@@ -52,14 +52,14 @@ export function ImpulseSettingsModal({
             <ChoiceRow
               icon={<ArrowDownAZ className="size-4" aria-hidden />}
               label="Der Reihe nach"
-              hint="Wochenimpuls zuerst, dann Quiz, Ziel, Challenge, Frage und Feed."
+              hint="Wochenimpuls zuerst, dann Quiz, Bilderrätsel, Frage, Feed und Teilen."
               active={order === 'geordnet'}
               onClick={() => onOrder('geordnet')}
             />
             <ChoiceRow
               icon={<Shuffle className="size-4" aria-hidden />}
               label="Zufällig gemischt"
-              hint="Bunt durcheinander – die Mischung bleibt die Woche über gleich."
+              hint="Bunt durcheinander – nur der Wochenimpuls bleibt zuoberst, und die Mischung bleibt die Woche über gleich."
               active={order === 'zufall'}
               onClick={() => onOrder('zufall')}
             />

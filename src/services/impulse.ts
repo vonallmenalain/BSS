@@ -48,9 +48,14 @@ export interface ImpulseItemInput {
   status: ImpulseStatus
   title: string
   body: string
+  /** Die Vertiefung – erscheint im Feed beim Wisch nach links. */
+  deepening: string
   sourceLabel: string
   sourceUrl: string
-  /** Platz im Feed – nur für Feed-Karten von Belang. */
+  /** Das Bild des Bilderrätsels – ein Link in die Mediathek der Kirche. */
+  imageUrl: string
+  imageAlt: string
+  /** Platz innerhalb der Art – für Feed, Quizfrage und Bilderrätsel. */
   order: number | null
   /** «Eingereicht von Luca» – wenn der Inhalt aus der Mitmach-Ecke stammt. */
   contributor: string
@@ -77,8 +82,11 @@ export function emptyImpulseItem(
     status: 'draft',
     title: '',
     body: '',
+    deepening: '',
     sourceLabel: '',
     sourceUrl: '',
+    imageUrl: '',
+    imageAlt: '',
     order,
     contributor: '',
     quiz: { ...EMPTY_IMPULSE_QUIZ, options: [...EMPTY_IMPULSE_QUIZ.options] },
@@ -93,8 +101,11 @@ export function toImpulseInput(item: ImpulseItem): ImpulseItemInput {
     status: item.status,
     title: item.title ?? '',
     body: item.body ?? '',
+    deepening: item.deepening ?? '',
     sourceLabel: item.source?.label ?? '',
     sourceUrl: item.source?.url ?? '',
+    imageUrl: item.image?.url ?? '',
+    imageAlt: item.image?.alt ?? '',
     order: typeof item.order === 'number' ? item.order : null,
     contributor: item.contributor ?? '',
     quiz: item.quiz
@@ -110,19 +121,27 @@ export async function saveImpulseItem(
   userId?: string | null,
 ): Promise<SaveOutcome> {
   const sourceLabel = input.sourceLabel.trim()
+  const imageUrl = input.imageUrl.trim()
   const data = {
     week: input.week,
     kind: input.kind,
     status: input.status,
     title: input.title.trim(),
     body: input.body.trim(),
+    deepening: input.deepening.trim() || null,
     order: typeof input.order === 'number' && Number.isFinite(input.order) ? input.order : null,
     contributor: input.contributor.trim() || null,
     source: sourceLabel ? { label: sourceLabel, url: input.sourceUrl.trim() } : null,
+    // Das Bild gehört zum Bilderrätsel; andere Arten speichern keines.
+    image:
+      input.kind === 'bilderraetsel' && imageUrl
+        ? { url: imageUrl, alt: input.imageAlt.trim() }
+        : null,
     // Das Quiz bleibt am Datensatz, auch wenn die Art wechselt – wie beim
-    // variablen Layout wirft das Umschalten nichts weg.
+    // variablen Layout wirft das Umschalten nichts weg. Das Bilderrätsel
+    // nutzt dieselbe Mechanik: Frage, Antworten, Auflösung.
     quiz:
-      input.kind === 'quiz'
+      input.kind === 'quiz' || input.kind === 'bilderraetsel'
         ? {
             form: input.quiz.form,
             options: input.quiz.options.map((option) => option.trim()),
@@ -276,6 +295,32 @@ export async function setImpulseChallengeDay(
         uid: user.uid,
         firstName: impulseFirstName(user.displayName),
         weeks: { [week]: { days: checked ? arrayUnion(day) : arrayRemove(day) } },
+        updatedAt: serverTimestamp(),
+      },
+      { merge: true },
+    ),
+  )
+}
+
+/**
+ * Die Teilen-Aufgabe abhaken – oder den Haken zurücknehmen.
+ *
+ * Dieselbe Selbstauskunft wie beim Wochenziel: Wer das Gespräch mit
+ * Familie oder Freunden geführt hat, hakt es selbst ab – niemand prüft
+ * nach, und der Haken zählt als Beteiligung der Woche.
+ */
+export async function setImpulseWeekShare(
+  user: { uid: string; displayName: string },
+  week: string,
+  done: boolean,
+): Promise<SaveOutcome> {
+  return commit(
+    setDoc(
+      doc(db, COLLECTIONS.impulseProgress, user.uid),
+      {
+        uid: user.uid,
+        firstName: impulseFirstName(user.displayName),
+        weeks: { [week]: { share: done } },
         updatedAt: serverTimestamp(),
       },
       { merge: true },

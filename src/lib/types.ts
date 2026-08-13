@@ -2800,22 +2800,33 @@ export interface CalendarFeed extends WithId {
 /**
  * Was ein Inhalt ist.
  *
- * Vier Arten, alle wochenweise geplant: Der **Wochenimpuls** und die
- * **Quizfrage** sind Lesestoff; das **Wochenziel** und die
- * **Tages-Challenge** sind Aufgaben – das eine für die ganze Woche, das
- * andere Tag für Tag abhakbar. Abgehakt wird per Selbstauskunft, und der
- * Stand liegt am eigenen Fortschrittsdokument (`ImpulseProgress`), nicht
- * am Inhalt.
+ * Alle Arten sind wochenweise geplant. Die **Feed-Karten** des Vollbilds
+ * sind der Wochenimpuls, die Quizfrage, das Bilderrätsel, die Frage der
+ * Woche, der Impuls-Feed und die Teilen-Aufgabe. Das **Wochenziel** und
+ * die **Tages-Challenge** sind Aufgaben neben dem Feed – das eine für die
+ * ganze Woche, das andere Tag für Tag abhakbar. Abgehakt wird per
+ * Selbstauskunft, und der Stand liegt am eigenen Fortschrittsdokument
+ * (`ImpulseProgress`), nicht am Inhalt.
  */
-export type ImpulseKind = 'impuls' | 'quiz' | 'wochenziel' | 'tageschallenge' | 'frage' | 'feed'
+export type ImpulseKind =
+  | 'impuls'
+  | 'quiz'
+  | 'bilderraetsel'
+  | 'wochenziel'
+  | 'tageschallenge'
+  | 'frage'
+  | 'feed'
+  | 'teilen'
 
 export const IMPULSE_KIND_LABELS: Record<ImpulseKind, string> = {
   impuls: 'Wochenimpuls',
   quiz: 'Quizfrage',
+  bilderraetsel: 'Bilderrätsel',
   wochenziel: 'Wochenziel',
   tageschallenge: 'Tages-Challenge',
   frage: 'Frage der Woche',
   feed: 'Feed-Karte',
+  teilen: 'Teilen-Aufgabe',
 }
 
 /**
@@ -2862,6 +2873,19 @@ export interface ImpulseSource {
 }
 
 /**
+ * Das Bild eines Bilderrätsels.
+ *
+ * Wie die Quellen kommt es aus dem offiziellen Material: ein Link in die
+ * Mediathek der Kirche (churchofjesuschrist.org/media), kein hochgeladenes
+ * Foto – die App speichert nur die Adresse und lädt das Bild von dort.
+ */
+export interface ImpulseImage {
+  url: string
+  /** Was zu sehen ist – für Vorlesende und wenn das Bild nicht lädt. */
+  alt?: string
+}
+
+/**
  * `draft` sieht nur die Redaktion. `ready` erscheint bei den AP's, sobald
  * die Woche des Inhalts beginnt – veröffentlicht wird also nicht von Hand
  * am Montagmorgen, sondern durch den Kalender: Die Redaktion plant Wochen
@@ -2889,13 +2913,24 @@ export interface ImpulseItem extends WithId {
   /** Impuls: die Hinführung, zwei, drei Sätze. Sonst optionale Ergänzung. */
   body?: string
   /**
-   * Platz im Feed der Woche – nur für Feed-Karten von Belang.
+   * Die Vertiefung – erscheint im Vollbild-Feed beim Wisch nach links.
+   *
+   * Freitext mit weiterführenden Gedanken, Quellen und Links (Adressen
+   * werden beim Anzeigen anklickbar, siehe `lib/links`). Nur Karten mit
+   * Vertiefung zeigen den Wisch-Hinweis; ohne bleibt die Karte, wie sie ist.
+   */
+  deepening?: string | null
+  /**
+   * Platz innerhalb der Art und Woche – für Arten mit mehreren Karten
+   * (Feed, Quizfrage, Bilderrätsel).
    *
    * Der Feed ist redaktionell und endlich: Die Reihenfolge legt die
    * Redaktion, kein Algorithmus. Fehlt das Feld, kommt die Karte ans Ende.
    */
   order?: number
   quiz?: ImpulseQuiz | null
+  /** Das Bild des Bilderrätsels – nur dort von Belang. */
+  image?: ImpulseImage | null
   source?: ImpulseSource | null
   /**
    * «Eingereicht von Luca» – der Vorname, wenn der Inhalt aus der
@@ -3001,6 +3036,8 @@ export interface ImpulseWeekProgress {
   days?: string[]
   /** Den Feed der Woche bis zur Schlusskarte durchgetippt. */
   feed?: boolean
+  /** Die Teilen-Aufgabe der Woche besprochen – Selbstauskunft, umhakbar. */
+  share?: boolean
 }
 
 /**

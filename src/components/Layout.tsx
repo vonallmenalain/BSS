@@ -84,20 +84,23 @@ const SACRAMENT_CHILDREN = [
 /**
  * «Impuls» klappt im Menü auf wie die Abendmahlsversammlung.
  *
- * Die ersten Punkte sind die Karten des Wischstapels auf der Hauptseite –
- * ein Tipp springt im Stapel genau dorthin. Danach die Räume (Fortschritt,
- * Gemerkt, Mitmach-Ecke) und zuunterst die Impuls-Einstellungen
- * (Reihenfolge der Karten, Rückblick in frühere Wochen). Die Liste steht
- * fest, auch wenn eine Woche einmal keine Quizfrage hat – ein Menü, das
- * je nach Woche anders aussieht, wäre keines.
+ * Die ersten Punkte sind die Karten des Vollbild-Feeds – ein Tipp öffnet
+ * den Feed genau bei dieser Karte. Danach die Räume (Wochenziel,
+ * Tages-Challenge, Fortschritt, Gemerkt, Mitmach-Ecke) und zuunterst die
+ * Impuls-Einstellungen (Reihenfolge der Karten, Rückblick in frühere
+ * Wochen). Die Liste steht fest, auch wenn eine Woche einmal keine
+ * Quizfrage hat – ein Menü, das je nach Woche anders aussieht, wäre
+ * keines.
  */
 const IMPULSE_CHILDREN = [
   { to: '/impuls/woche', label: 'Wochenimpuls' },
   { to: '/impuls/quiz', label: 'Quizfrage' },
-  { to: '/impuls/ziel', label: 'Wochenziel' },
-  { to: '/impuls/challenge', label: 'Tages-Challenge' },
+  { to: '/impuls/bilderraetsel', label: 'Bilderrätsel' },
   { to: '/impuls/frage', label: 'Frage der Woche' },
   { to: '/impuls/feed', label: 'Impuls-Feed' },
+  { to: '/impuls/teilen', label: 'Teilen' },
+  { to: '/impuls/ziel', label: 'Wochenziel' },
+  { to: '/impuls/challenge', label: 'Tages-Challenge' },
   { to: '/impuls/fortschritt', label: 'Mein Fortschritt' },
   { to: '/impuls/gemerkt', label: 'Gemerkt' },
   { to: '/impuls/mitmachen', label: 'Mitmach-Ecke' },
