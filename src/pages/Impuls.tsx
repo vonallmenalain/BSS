@@ -337,14 +337,25 @@ export function Impuls() {
   const deckEntries: ImpulseDeckCard[] = IMPULSE_DECK_KINDS.flatMap((kind) =>
     deckWeekItems
       .filter((item) => item.kind === kind)
-      .map((item) => ({
-        id: `${item.kind}-${item.id}`,
-        section: IMPULSE_KIND_SECTION[kind],
-        node: viewWeek === todayKey ? liveNode(item) : pastNode(item),
-        /* Die zweite Seite der Karte – nur wenn die Redaktion eine
-           Vertiefung erfasst hat; sonst gibt es sie gar nicht. */
-        deepening: item.deepening ? <ImpulseDeepeningCard item={item} /> : null,
-      })),
+      .map((item) => {
+        /* Die Vertiefung einer noch offenen Quiz- oder Rätselkarte
+           bleibt zu – sie könnte die Lösung verraten. Mit der Antwort
+           (und im Rückblick) geht sie auf; der Pfeil «Vertiefen»
+           erscheint dann als kleine Belohnung. */
+        const spoiler =
+          viewWeek === todayKey &&
+          (item.kind === 'quiz' || item.kind === 'bilderraetsel') &&
+          !answerFor(item)
+        return {
+          id: `${item.kind}-${item.id}`,
+          section: IMPULSE_KIND_SECTION[kind],
+          node: viewWeek === todayKey ? liveNode(item) : pastNode(item),
+          /* Die zweite Seite der Karte – nur wenn die Redaktion eine
+             Vertiefung erfasst hat; sonst gibt es sie gar nicht. */
+          deepening:
+            item.deepening && !spoiler ? <ImpulseDeepeningCard item={item} /> : null,
+        }
+      }),
   )
   /* Gemischt bleibt gemischt: Der Schlüssel Konto+Woche hält den Feed
      die Woche über in derselben Ordnung (siehe `seededShuffle`) – nur
