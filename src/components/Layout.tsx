@@ -1,6 +1,7 @@
-import { useEffect, useRef, useState } from 'react'
+import { useCallback, useEffect, useRef, useState } from 'react'
 import { NavLink, Outlet, useLocation } from 'react-router-dom'
 import { ErrorBoundary } from '@/components/ErrorBoundary'
+import { AppMenuContext } from '@/contexts/AppMenuContext'
 import {
   LayoutDashboard,
   CalendarDays,
@@ -82,7 +83,7 @@ const SACRAMENT_CHILDREN = [
 
 export function Layout() {
   const { settings } = useData()
-  const { isApproved, canViewAp, canViewImpulse, profile } = useAuth()
+  const { isApproved, canViewAp, canViewImpulse, profile, signOut } = useAuth()
 
   /*
    * Der Punkt am Eintrag «Impuls»: Die laufende Woche hat Inhalt, und
@@ -96,15 +97,28 @@ export function Layout() {
   const impulseDot =
     canViewImpulse &&
     !impulseItems.loading &&
-    visibleImpulseItems(impulseItems.data, impulseWeek).some(
-      (item) => item.week === impulseWeek,
-    ) &&
+    visibleImpulseItems(impulseItems.data, impulseWeek).some((item) => item.week === impulseWeek) &&
     impulseProgress.byUid.get(profile?.id ?? '')?.lastSeenWeek !== impulseWeek
   const online = useOnlineStatus()
   const unsent = usePendingWrites()
   const [theme, setTheme] = useTheme()
   const [menuOpen, setMenuOpen] = useState(false)
+  const [notificationsOpen, setNotificationsOpen] = useState(false)
   const location = useLocation()
+
+  /*
+   * «Impuls» ist eine App in der App – und fühlt sich nur so an, wenn die
+   * Hülle schweigt. Sobald jemand den Bereich betritt, verschwinden
+   * Kopfzeile, Seitennavigation und untere Leiste; der Inhalt hat den
+   * Bildschirm für sich. Die Navigation wartet hinter dem dezenten
+   * Menüknopf, den die Impuls-Seiten oben links tragen (`AppMenuButton` →
+   * `AppMenuContext`): Er öffnet die Schublade, die sonst nur das Handy
+   * kennt – hier auf allen Bildschirmgrössen, und um das ergänzt, was
+   * sonst in der Kopfzeile wohnt (Benachrichtigungen, Darstellung,
+   * Abmelden).
+   */
+  const immersive = location.pathname === '/impuls' || location.pathname.startsWith('/impuls/')
+  const openMenu = useCallback(() => setMenuOpen(true), [])
 
   /*
    * Wo man gerade ist, für den Weg zurück festhalten.
@@ -194,94 +208,102 @@ export function Layout() {
       ]
 
   const ThemeIcon = theme === 'dark' ? Moon : theme === 'light' ? Sun : MonitorSmartphone
+  const themeLabel = theme === 'system' ? 'System' : theme === 'dark' ? 'Dunkel' : 'Hell'
+  const cycleTheme = () =>
+    setTheme(theme === 'light' ? 'dark' : theme === 'dark' ? 'system' : 'light')
 
   return (
     <div className="flex min-h-dvh flex-col bg-slate-50 dark:bg-slate-950">
-      {/* ---------- Kopfzeile ---------- */}
-      <header className="no-print sticky top-0 z-40 border-b border-slate-200 bg-white/85 px-safe backdrop-blur-md dark:border-slate-800 dark:bg-slate-900/85">
-        {/* Quer auf dem Telefon ist der Bildschirm niedrig – dort wird die
+      {/* ---------- Kopfzeile (im Impuls-Vollbild ausgeblendet) ---------- */}
+      {!immersive && (
+        <header className="no-print sticky top-0 z-40 border-b border-slate-200 bg-white/85 px-safe backdrop-blur-md dark:border-slate-800 dark:bg-slate-900/85">
+          {/* Quer auf dem Telefon ist der Bildschirm niedrig – dort wird die
             Kopfzeile flacher, damit vom Inhalt mehr übrig bleibt. */}
-        <div className="mx-auto flex h-14 max-w-7xl items-center gap-3 px-4 pt-safe landscape-short:h-12">
-          {navItems.length > 1 && (
+          <div className="mx-auto flex h-14 max-w-7xl items-center gap-3 px-4 pt-safe landscape-short:h-12">
+            {navItems.length > 1 && (
+              <button
+                type="button"
+                className="btn-ghost -ml-2 p-2 lg:hidden"
+                onClick={() => setMenuOpen((v) => !v)}
+                aria-label={menuOpen ? 'Menü schliessen' : 'Menü öffnen'}
+                aria-expanded={menuOpen}
+              >
+                <Menu className="size-5" />
+              </button>
+            )}
+
+            <NavLink to="/" className="flex min-w-0 items-center gap-2.5">
+              <span className="bg-brand-600 grid size-8 shrink-0 place-items-center rounded-lg text-sm font-bold text-white">
+                BS
+              </span>
+              <span className="min-w-0">
+                <span className="block truncate text-sm leading-tight font-semibold">
+                  Bischofschaft
+                </span>
+                <span className="block truncate text-[11px] leading-tight text-slate-500 dark:text-slate-400">
+                  {settings.wardName}
+                </span>
+              </span>
+            </NavLink>
+
+            <div className="flex-1" />
+
+            {!online && (
+              <span
+                className="badge bg-amber-100 text-amber-800 dark:bg-amber-950 dark:text-amber-200"
+                title="Änderungen werden gespeichert und später übertragen."
+              >
+                <WifiOff className="size-3.5" aria-hidden />
+                <span className="hidden sm:inline">Offline</span>
+              </span>
+            )}
+
+            {/* Zeigt, dass noch etwas unterwegs ist – auch wenn die Verbindung
+              inzwischen wieder steht. Erst wenn das weg ist, ist alles beim Server. */}
+            {unsent > 0 && (
+              <span
+                className="badge bg-sky-100 text-sky-800 dark:bg-sky-950 dark:text-sky-200"
+                title={`${unsent} Änderung${unsent === 1 ? '' : 'en'} lokal gespeichert, Übertragung läuft.`}
+              >
+                <CloudUpload className="size-3.5 animate-pulse" aria-hidden />
+                <span className="tabular hidden sm:inline">{unsent} unterwegs</span>
+                <span className="tabular sm:hidden">{unsent}</span>
+              </span>
+            )}
+
             <button
               type="button"
-              className="btn-ghost -ml-2 p-2 lg:hidden"
-              onClick={() => setMenuOpen((v) => !v)}
-              aria-label={menuOpen ? 'Menü schliessen' : 'Menü öffnen'}
-              aria-expanded={menuOpen}
+              className="btn-ghost p-2"
+              onClick={cycleTheme}
+              aria-label={`Darstellung: ${themeLabel}`}
+              title={`Darstellung: ${themeLabel}`}
             >
-              <Menu className="size-5" />
+              <ThemeIcon className="size-5" aria-hidden />
             </button>
-          )}
 
-          <NavLink to="/" className="flex min-w-0 items-center gap-2.5">
-            <span className="bg-brand-600 grid size-8 shrink-0 place-items-center rounded-lg text-sm font-bold text-white">
-              BS
-            </span>
-            <span className="min-w-0">
-              <span className="block truncate text-sm leading-tight font-semibold">
-                Bischofschaft
-              </span>
-              <span className="block truncate text-[11px] leading-tight text-slate-500 dark:text-slate-400">
-                {settings.wardName}
-              </span>
-            </span>
-          </NavLink>
-
-          <div className="flex-1" />
-
-          {!online && (
-            <span
-              className="badge bg-amber-100 text-amber-800 dark:bg-amber-950 dark:text-amber-200"
-              title="Änderungen werden gespeichert und später übertragen."
-            >
-              <WifiOff className="size-3.5" aria-hidden />
-              <span className="hidden sm:inline">Offline</span>
-            </span>
-          )}
-
-          {/* Zeigt, dass noch etwas unterwegs ist – auch wenn die Verbindung
-              inzwischen wieder steht. Erst wenn das weg ist, ist alles beim Server. */}
-          {unsent > 0 && (
-            <span
-              className="badge bg-sky-100 text-sky-800 dark:bg-sky-950 dark:text-sky-200"
-              title={`${unsent} Änderung${unsent === 1 ? '' : 'en'} lokal gespeichert, Übertragung läuft.`}
-            >
-              <CloudUpload className="size-3.5 animate-pulse" aria-hidden />
-              <span className="tabular hidden sm:inline">{unsent} unterwegs</span>
-              <span className="tabular sm:hidden">{unsent}</span>
-            </span>
-          )}
-
-          <button
-            type="button"
-            className="btn-ghost p-2"
-            onClick={() =>
-              setTheme(theme === 'light' ? 'dark' : theme === 'dark' ? 'system' : 'light')
-            }
-            aria-label={`Darstellung: ${theme === 'system' ? 'System' : theme === 'dark' ? 'Dunkel' : 'Hell'}`}
-            title={`Darstellung: ${theme === 'system' ? 'System' : theme === 'dark' ? 'Dunkel' : 'Hell'}`}
-          >
-            <ThemeIcon className="size-5" aria-hidden />
-          </button>
-
-          <UserMenu />
-        </div>
-      </header>
+            <UserMenu />
+          </div>
+        </header>
+      )}
 
       <div className="mx-auto flex w-full max-w-7xl flex-1 px-safe">
         {/* ---------- Seitennavigation (Desktop) ---------- */}
-        <nav className="no-print sticky top-14 hidden h-[calc(100dvh-3.5rem)] w-56 shrink-0 flex-col gap-0.5 overflow-y-auto border-r border-slate-200 px-3 py-4 lg:flex dark:border-slate-800">
-          {/* Name, Rolle und Abmelden stehen nur noch im Benutzermenü oben
-              rechts – einmal genügt, und die Navigation bleibt ruhig. */}
-          {navItems.map((item) => (
-            <SidebarLink key={item.to} item={item} />
-          ))}
-        </nav>
+        {!immersive && (
+          <nav className="no-print sticky top-14 hidden h-[calc(100dvh-3.5rem)] w-56 shrink-0 flex-col gap-0.5 overflow-y-auto border-r border-slate-200 px-3 py-4 lg:flex dark:border-slate-800">
+            {/* Name, Rolle und Abmelden stehen nur noch im Benutzermenü oben
+                rechts – einmal genügt, und die Navigation bleibt ruhig. */}
+            {navItems.map((item) => (
+              <SidebarLink key={item.to} item={item} />
+            ))}
+          </nav>
+        )}
 
-        {/* ---------- Mobiles Menü ---------- */}
+        {/* ---------- Die Navigations-Schublade ----------
+            Am Handy das Menü hinter dem Hamburger; im Impuls-Vollbild der
+            einzige Weg durch die App – dann auch auf dem grossen Bildschirm
+            und unten ergänzt um die Handgriffe der Kopfzeile. */}
         {menuOpen && (
-          <div className="no-print fixed inset-0 z-50 lg:hidden">
+          <div className={cn('no-print fixed inset-0 z-50', !immersive && 'lg:hidden')}>
             <div
               className="animate-fade-in absolute inset-0 bg-slate-900/50 backdrop-blur-[2px]"
               onClick={() => setMenuOpen(false)}
@@ -302,47 +324,96 @@ export function Layout() {
               {navItems.map((item) => (
                 <SidebarLink key={item.to} item={item} />
               ))}
+              {immersive && (
+                <div className="mt-auto border-t border-slate-200 pt-2 pb-safe dark:border-slate-800">
+                  {(isApproved || canViewAp || canViewImpulse) && (
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setMenuOpen(false)
+                        setNotificationsOpen(true)
+                      }}
+                      className={DRAWER_ACTION}
+                    >
+                      <Bell className="size-5 shrink-0" aria-hidden />
+                      Benachrichtigungen
+                    </button>
+                  )}
+                  <button type="button" onClick={cycleTheme} className={DRAWER_ACTION}>
+                    <ThemeIcon className="size-5 shrink-0" aria-hidden />
+                    Darstellung: {themeLabel}
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => void signOut()}
+                    className="flex w-full items-center gap-3 rounded-lg px-3 py-2 text-sm font-medium text-rose-600 transition hover:bg-rose-50 dark:text-rose-400 dark:hover:bg-rose-950"
+                  >
+                    <LogOut className="size-5 shrink-0" aria-hidden />
+                    Abmelden
+                  </button>
+                </div>
+              )}
             </nav>
           </div>
         )}
 
         {/* ---------- Inhalt ---------- */}
-        <main className="min-w-0 flex-1 px-4 py-5 pb-24 sm:px-6 lg:pb-8 landscape-short:py-3 landscape-short:pb-16">
+        <main
+          className={cn(
+            'min-w-0 flex-1 px-4 sm:px-6',
+            immersive
+              ? 'pt-safe-5 pb-10'
+              : 'py-5 pb-24 lg:pb-8 landscape-short:py-3 landscape-short:pb-16',
+          )}
+        >
           {/* Bricht eine Seite beim Zeichnen, bleibt die Navigation stehen –
               und der Seitenwechsel gibt der Ansicht einen neuen Versuch. */}
-          <ErrorBoundary resetKey={location.pathname}>
-            <Outlet />
-          </ErrorBoundary>
+          <AppMenuContext.Provider value={openMenu}>
+            <ErrorBoundary resetKey={location.pathname}>
+              <Outlet />
+            </ErrorBoundary>
+          </AppMenuContext.Provider>
         </main>
       </div>
 
       {/* ---------- Untere Leiste (Handy) ---------- */}
-      <nav className="no-print fixed inset-x-0 bottom-0 z-40 border-t border-slate-200 bg-white/95 px-safe backdrop-blur-md pb-safe lg:hidden dark:border-slate-800 dark:bg-slate-900/95">
-        <div className="flex items-stretch">
-          {navItems
-            .filter((item) => item.primary)
-            .map((item) => (
-              <BottomLink key={item.to} item={item} />
-            ))}
-          {/* «Mehr» nur, wenn es tatsächlich mehr gibt – wer allein den
-              AP-Kalender sieht, findet dahinter nichts. */}
-          {navItems.some((item) => !item.primary) && (
-            <button
-              type="button"
-              onClick={() => setMenuOpen(true)}
-              className={cn(BOTTOM_LINK, 'text-slate-500 dark:text-slate-400')}
-            >
-              <ChevronDown className="size-5 shrink-0 rotate-180" aria-hidden />
-              <span className="text-[10px] font-medium">Mehr</span>
-            </button>
-          )}
-        </div>
-      </nav>
+      {!immersive && (
+        <nav className="no-print fixed inset-x-0 bottom-0 z-40 border-t border-slate-200 bg-white/95 px-safe backdrop-blur-md pb-safe lg:hidden dark:border-slate-800 dark:bg-slate-900/95">
+          <div className="flex items-stretch">
+            {navItems
+              .filter((item) => item.primary)
+              .map((item) => (
+                <BottomLink key={item.to} item={item} />
+              ))}
+            {/* «Mehr» nur, wenn es tatsächlich mehr gibt – wer allein den
+                AP-Kalender sieht, findet dahinter nichts. */}
+            {navItems.some((item) => !item.primary) && (
+              <button
+                type="button"
+                onClick={() => setMenuOpen(true)}
+                className={cn(BOTTOM_LINK, 'text-slate-500 dark:text-slate-400')}
+              >
+                <ChevronDown className="size-5 shrink-0 rotate-180" aria-hidden />
+                <span className="text-[10px] font-medium">Mehr</span>
+              </button>
+            )}
+          </div>
+        </nav>
+      )}
+
+      {/* Der Benachrichtigungs-Dialog der Schublade – ausserhalb von ihr,
+          denn die Schublade schliesst sich beim Öffnen des Dialogs. */}
+      <NotificationsModal open={notificationsOpen} onClose={() => setNotificationsOpen(false)} />
 
       <UpdatePrompt />
     </div>
   )
 }
+
+/** Ein Handgriff der Kopfzeile, in die Schublade verlegt (Impuls-Vollbild). */
+const DRAWER_ACTION =
+  'flex w-full items-center gap-3 rounded-lg px-3 py-2 text-sm font-medium text-slate-600 ' +
+  'transition hover:bg-slate-100 dark:text-slate-300 dark:hover:bg-slate-800'
 
 function SidebarLink({ item }: { item: NavItem }) {
   const Icon = item.icon

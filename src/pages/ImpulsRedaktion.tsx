@@ -26,6 +26,7 @@ import {
   useImpulseSubmissions,
 } from '@/hooks/useFirestore'
 import { PageHeader } from '@/components/ui/Pickers'
+import { AppMenuButton } from '@/components/AppMenuButton'
 import { ConfirmDialog } from '@/components/ui/Modal'
 import { ImpulseItemForm } from '@/components/impulse/ImpulseItemForm'
 import { ImpulseWeekPreview } from '@/components/impulse/ImpulseWeekPreview'
@@ -184,9 +185,7 @@ export function ImpulsRedaktion() {
 
   /* Die Mitmach-Ecke: offene Einreichungen prüfen und übernehmen. */
   const submissionsState = useImpulseSubmissions()
-  const openSubmissions = submissionsState.data.filter(
-    (submission) => submission.status === 'open',
-  )
+  const openSubmissions = submissionsState.data.filter((submission) => submission.status === 'open')
   const [removeSubmission, setRemoveSubmission] = useState<ImpulseSubmission | null>(null)
   const acceptSubmission = (submission: ImpulseSubmission) =>
     setEditor({
@@ -197,17 +196,22 @@ export function ImpulsRedaktion() {
 
   return (
     <>
-      <PageHeader
-        title="Impuls-Redaktion"
-        subtitle="Wochenplan, Inhalte und Fragenpool"
-        actions={
-          <Link to="/impuls" className="btn-secondary">
-            <Eye className="size-4" aria-hidden />
-            <span className="hidden sm:inline">Zum Bereich</span>
-            <span className="sr-only sm:hidden">Zum Bereich</span>
-          </Link>
-        }
-      />
+      {/* Auch die Redaktion lebt im Impuls-Vollbild (siehe Layout): Der Kopf
+          rückt in die Mittelspalte, der Menüknopf ersetzt die Kopfzeile. */}
+      <div className="mx-auto w-full max-w-3xl">
+        <PageHeader
+          title="Impuls-Redaktion"
+          subtitle="Wochenplan, Inhalte und Fragenpool"
+          leading={<AppMenuButton />}
+          actions={
+            <Link to="/impuls" className="btn-secondary">
+              <Eye className="size-4" aria-hidden />
+              <span className="hidden sm:inline">Zum Bereich</span>
+              <span className="sr-only sm:hidden">Zum Bereich</span>
+            </Link>
+          }
+        />
+      </div>
 
       <div className="mx-auto max-w-3xl space-y-4">
         {/* ---------- Startpaket ---------- */}
@@ -218,15 +222,14 @@ export function ImpulsRedaktion() {
               Startpaket: vier Wochen aus den Schriften
             </h2>
             <p className="hint mt-1 mb-3">
-              Je Woche ein Impuls, ein Wochenziel, eine Quizfrage, eine Tages-Challenge, eine
-              Frage der Woche und drei Feed-Karten – 1 Nephi 3:7, das Haus auf dem Felsen,
-              Lehre und Bündnisse 6:36 und Almas Samenkorn, dazu Auswahl-, Emoji-,
-              Reihenfolge- und Suchfrage. Alles «bereit»:
-              Die laufende Woche erscheint sofort, drei weitere warten auf ihren Montag.
-              Eingespielt wird nur, was noch fehlt ({starterPlans.length}{' '}
-              {starterPlans.length === 1 ? 'Inhalt' : 'Inhalte'}); Vorhandenes und belegte
-              Plätze bleiben unangetastet. Danach lässt sich alles wie gewohnt bearbeiten,
-              verschieben oder löschen.
+              Je Woche ein Impuls, ein Wochenziel, eine Quizfrage, eine Tages-Challenge, eine Frage
+              der Woche und drei Feed-Karten – 1 Nephi 3:7, das Haus auf dem Felsen, Lehre und
+              Bündnisse 6:36 und Almas Samenkorn, dazu Auswahl-, Emoji-, Reihenfolge- und Suchfrage.
+              Alles «bereit»: Die laufende Woche erscheint sofort, drei weitere warten auf ihren
+              Montag. Eingespielt wird nur, was noch fehlt ({starterPlans.length}{' '}
+              {starterPlans.length === 1 ? 'Inhalt' : 'Inhalte'}); Vorhandenes und belegte Plätze
+              bleiben unangetastet. Danach lässt sich alles wie gewohnt bearbeiten, verschieben oder
+              löschen.
             </p>
             <button
               type="button"
@@ -244,9 +247,9 @@ export function ImpulsRedaktion() {
         <section className="card p-5">
           <h2 className="text-sm font-semibold">Wochenplan</h2>
           <p className="hint mt-1 mb-3">
-            Ein Inhalt erscheint bei den AP’s, sobald er <strong>bereit</strong> ist und seine
-            Woche beginnt – veröffentlicht wird durch den Kalender, nicht von Hand. Vier bis
-            sechs vorbereitete Wochen sind ein gutes Polster.
+            Ein Inhalt erscheint bei den AP’s, sobald er <strong>bereit</strong> ist und seine Woche
+            beginnt – veröffentlicht wird durch den Kalender, nicht von Hand. Vier bis sechs
+            vorbereitete Wochen sind ein gutes Polster.
           </p>
           <ul className="divide-list">
             {weeks.map((week) => (
@@ -294,19 +297,27 @@ export function ImpulsRedaktion() {
           <div className="flex flex-wrap items-center gap-2">
             <h2 className="text-sm font-semibold">Fragenpool</h2>
             <div className="ms-auto flex gap-2">
-              <button type="button" className="btn-secondary btn-sm" onClick={() => openNew('impuls', null)}>
+              <button
+                type="button"
+                className="btn-secondary btn-sm"
+                onClick={() => openNew('impuls', null)}
+              >
                 <Plus className="size-4" aria-hidden />
                 Impuls
               </button>
-              <button type="button" className="btn-secondary btn-sm" onClick={() => openNew('quiz', null)}>
+              <button
+                type="button"
+                className="btn-secondary btn-sm"
+                onClick={() => openNew('quiz', null)}
+              >
                 <Plus className="size-4" aria-hidden />
                 Frage
               </button>
             </div>
           </div>
           <p className="hint mt-1 mb-3">
-            Ideen entstehen, wann immer sie einfallen – hier warten sie ohne Woche. Geplant wird
-            im Inhalt selbst: Woche zuteilen, fertig.
+            Ideen entstehen, wann immer sie einfallen – hier warten sie ohne Woche. Geplant wird im
+            Inhalt selbst: Woche zuteilen, fertig.
           </p>
           {pool.length === 0 ? (
             <p className="hint rounded-xl border border-dashed border-slate-300 p-4 text-center dark:border-slate-700">
@@ -336,8 +347,8 @@ export function ImpulsRedaktion() {
             </h2>
             <p className="hint mt-1 mb-3">
               «Übernehmen» öffnet das Formular, vorbefüllt und mit «Eingereicht von …» – beim
-              Speichern gilt die Einreichung als übernommen. Was nicht passt, wird still
-              entfernt; die Person sieht keine Ablehnung.
+              Speichern gilt die Einreichung als übernommen. Was nicht passt, wird still entfernt;
+              die Person sieht keine Ablehnung.
             </p>
             <ul className="divide-list">
               {openSubmissions.map((submission) => (
@@ -455,8 +466,8 @@ export function ImpulsRedaktion() {
         message={
           <>
             Die Einreichung von {removeSubmission?.firstName} wird entfernt.{' '}
-            {removeSubmission?.firstName} sieht keine Ablehnung – sie verschwindet einfach aus
-            der eigenen Liste.
+            {removeSubmission?.firstName} sieht keine Ablehnung – sie verschwindet einfach aus der
+            eigenen Liste.
           </>
         }
         confirmLabel="Entfernen"
@@ -540,9 +551,7 @@ function SlotCell({
         >
           <Icon className="mt-0.5 size-4 shrink-0 text-slate-400" aria-hidden />
           <span className="min-w-0">
-            <span className="block truncate text-sm font-medium">
-              {item.title || 'Ohne Titel'}
-            </span>
+            <span className="block truncate text-sm font-medium">{item.title || 'Ohne Titel'}</span>
             <span className="hint block">
               {item.status === 'draft' ? 'Entwurf – erscheint nicht' : 'Bereit'}
               {(item.kind === 'quiz' || item.kind === 'frage') && answerCount(item) > 0 && (

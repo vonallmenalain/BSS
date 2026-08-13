@@ -637,12 +637,15 @@ export function PageHeader({
   title,
   subtitle,
   actions,
+  leading,
   hidden = false,
   sticky = false,
 }: {
   title: string
   subtitle?: string
   actions?: React.ReactNode
+  /** Steht vor dem Titel – etwa der Menüknopf im Vollbild-Bereich «Impuls». */
+  leading?: React.ReactNode
   /** Titel und Untertitel nur für Bildschirmleser ausgeben */
   hidden?: boolean
   /**
@@ -675,15 +678,23 @@ export function PageHeader({
         hidden && !sticky && 'mb-3',
       )}
     >
-      <div className={cn('min-w-0', hidden && 'sr-only')}>
-        <h1
-          className={cn('font-semibold tracking-tight sm:text-2xl', sticky ? 'text-lg' : 'text-xl')}
-        >
-          {title}
-        </h1>
-        {subtitle && (
-          <p className="mt-0.5 text-sm text-slate-500 dark:text-slate-400">{subtitle}</p>
-        )}
+      {/* Menüknopf und Titel gehören zusammen – als ein Flex-Kind, sonst
+          schöbe `justify-between` Platz zwischen sie. */}
+      <div className={cn('flex min-w-0 items-start', leading ? 'gap-1.5' : null)}>
+        {leading}
+        <div className={cn('min-w-0', hidden && 'sr-only')}>
+          <h1
+            className={cn(
+              'font-semibold tracking-tight sm:text-2xl',
+              sticky ? 'text-lg' : 'text-xl',
+            )}
+          >
+            {title}
+          </h1>
+          {subtitle && (
+            <p className="mt-0.5 text-sm text-slate-500 dark:text-slate-400">{subtitle}</p>
+          )}
+        </div>
       </div>
       {actions && <div className="ms-auto flex flex-wrap items-center gap-2">{actions}</div>}
     </header>

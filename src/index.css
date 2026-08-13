@@ -417,6 +417,11 @@
   .pt-safe-14 {
     padding-top: calc(env(safe-area-inset-top) + 3.5rem);
   }
+  /* Für den Inhalt im Impuls-Vollbild: Die Kopfzeile ist weg, also braucht
+     die Seite selbst die Notch-Luft – plus den gewohnten Abstand. */
+  .pt-safe-5 {
+    padding-top: calc(env(safe-area-inset-top) + 1.25rem);
+  }
   .pb-safe-10 {
     padding-bottom: calc(env(safe-area-inset-bottom) + 2.5rem);
   }
