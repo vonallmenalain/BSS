@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict'
 import { test } from 'node:test'
 
-import { splitLinks } from '../src/lib/links.ts'
+import { labeledLink, splitLinks } from '../src/lib/links.ts'
 
 /*
  * Läuft ohne Bundler direkt in Node: `npm run test:import`.
@@ -58,4 +58,40 @@ test('gibt den Text vollständig zurück', () => {
       .join(''),
     text,
   )
+})
+
+/* ------------------------------------------------------------------ */
+/* Beschriftete Verweise – «Alma 32:27 – https://…»                    */
+/* ------------------------------------------------------------------ */
+
+test('labeledLink: Beschriftung, Gedankenstrich, Adresse', () => {
+  assert.deepEqual(
+    labeledLink('Alma 32:27 – https://www.churchofjesuschrist.org/study/scriptures/bofm/alma/32?lang=deu&id=p27#p27'),
+    {
+      label: 'Alma 32:27',
+      href: 'https://www.churchofjesuschrist.org/study/scriptures/bofm/alma/32?lang=deu&id=p27#p27',
+    },
+  )
+  // Auch mit einfachem Bindestrich und mit www-Adresse (Schema wird ergänzt).
+  assert.deepEqual(labeledLink('Fahrplan - www.sbb.ch'), {
+    label: 'Fahrplan',
+    href: 'https://www.sbb.ch',
+  })
+})
+
+test('labeledLink: die Beschriftung darf selbst Gedankenstriche tragen', () => {
+  assert.deepEqual(
+    labeledLink('Alma 32:41–43 – https://www.churchofjesuschrist.org/study/scriptures/bofm/alma/32?lang=deu&id=p41-p43#p41'),
+    {
+      label: 'Alma 32:41–43',
+      href: 'https://www.churchofjesuschrist.org/study/scriptures/bofm/alma/32?lang=deu&id=p41-p43#p41',
+    },
+  )
+})
+
+test('labeledLink: gewöhnliche Zeilen sind keine Verweise', () => {
+  assert.equal(labeledLink('Zum Weiterlesen:'), null)
+  assert.equal(labeledLink('Ein Satz mit https://sbb.ch mittendrin geht weiter'), null)
+  assert.equal(labeledLink('https://sbb.ch'), null)
+  assert.equal(labeledLink(''), null)
 })
