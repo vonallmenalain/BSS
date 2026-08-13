@@ -226,19 +226,14 @@ export default function App() {
                     wird pro Konto freigeschaltet und steht damit auch Konten
                     offen, die sonst nur den AP-Kalender sehen. */}
                   <Route element={<RequireImpulse />}>
+                    {/* Eine Route mit wahlfreiem Teil statt zweier
+                        Geschwister: `/impuls` und `/impuls/quiz` sind so
+                        dieselbe Route, und die Seite bleibt beim Springen
+                        zwischen Karten, Räumen und Einstellungen montiert –
+                        samt Stapel-Position und gewählter Rückblick-Woche.
+                        Die statische Route «redaktion» geht vor. */}
                     <Route
-                      path="impuls"
-                      element={
-                        <Suspense fallback={<LoadingScreen />}>
-                          <Impuls />
-                        </Suspense>
-                      }
-                    />
-                    {/* Ein Bereich im Vollbild – dieselbe Seite, der
-                        Routenteil sagt, welcher Raum offen ist. Die
-                        statische Route «redaktion» geht vor. */}
-                    <Route
-                      path="impuls/:bereich"
+                      path="impuls/:bereich?"
                       element={
                         <Suspense fallback={<LoadingScreen />}>
                           <Impuls />

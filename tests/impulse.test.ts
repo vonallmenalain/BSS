@@ -12,6 +12,7 @@ import {
   participatedWeeks,
   readyProblems,
   upcomingWeekKeys,
+  seededShuffle,
   visibleImpulseItems,
   weekDays,
   weekEnd,
@@ -87,11 +88,7 @@ test('weekKeyOffset: über die Jahresgrenze in beide Richtungen', () => {
 })
 
 test('upcomingWeekKeys: die laufende Woche zuerst', () => {
-  assert.deepEqual(upcomingWeekKeys(new Date(2026, 7, 12), 3), [
-    '2026-W33',
-    '2026-W34',
-    '2026-W35',
-  ])
+  assert.deepEqual(upcomingWeekKeys(new Date(2026, 7, 12), 3), ['2026-W33', '2026-W34', '2026-W35'])
 })
 
 test('formatWeekRange: innerhalb des Monats, über Monats- und Jahresgrenzen', () => {
@@ -136,9 +133,7 @@ test('impulseAnswerId: Frage und Konto, mehr nicht', () => {
 
 test('readyProblems: ein vollständiger Inhalt hat keine', () => {
   assert.deepEqual(
-    readyProblems(
-      item({ kind: 'quiz', quiz: QUIZ, source: { label: 'Alma 53', url: '' } }),
-    ),
+    readyProblems(item({ kind: 'quiz', quiz: QUIZ, source: { label: 'Alma 53', url: '' } })),
     [],
   )
   assert.deepEqual(
@@ -191,10 +186,9 @@ test('readyProblems: eine Suchfrage braucht die Lösung', () => {
 })
 
 test('readyProblems: ohne Titel keine Veröffentlichung', () => {
-  assert.deepEqual(
-    readyProblems(item({ title: '  ', source: { label: 'Alma 32', url: '' } })),
-    ['Der Titel fehlt.'],
-  )
+  assert.deepEqual(readyProblems(item({ title: '  ', source: { label: 'Alma 32', url: '' } })), [
+    'Der Titel fehlt.',
+  ])
 })
 
 /* ------------------------------------------------------------------ */
@@ -235,10 +229,7 @@ test('participatedWeeks: Ziel, Tage, Feed oder Antwort – jedes davon zählt', 
     [{ itemId: 'frage-33' }, { itemId: 'geloescht' }],
     weekOfItem,
   )
-  assert.deepEqual(
-    [...participated].sort(),
-    ['2026-W29', '2026-W30', '2026-W31', '2026-W33'],
-  )
+  assert.deepEqual([...participated].sort(), ['2026-W29', '2026-W30', '2026-W31', '2026-W33'])
 })
 
 test('itemsForWeek: Feed-Karten am Ende, in der Reihenfolge der Redaktion', () => {
@@ -272,10 +263,10 @@ test('computeStreak: die laufende Woche ist neutral, solange sie offen ist', () 
 
 test('computeStreak: eine Jokerwoche pro Monat überbrückt, zählt aber nicht', () => {
   // W32 (beginnt im August) verpasst – der August-Joker fängt sie auf.
-  assert.deepEqual(
-    computeStreak(new Set(['2026-W30', '2026-W31', '2026-W33']), '2026-W33'),
-    { current: 3, best: 3 },
-  )
+  assert.deepEqual(computeStreak(new Set(['2026-W30', '2026-W31', '2026-W33']), '2026-W33'), {
+    current: 3,
+    best: 3,
+  })
 })
 
 test('computeStreak: die zweite verpasste Woche im selben Monat reisst die Serie', () => {
@@ -288,10 +279,10 @@ test('computeStreak: die zweite verpasste Woche im selben Monat reisst die Serie
 
 test('computeStreak: zwei verpasste Wochen über die Monatsgrenze werden getragen', () => {
   // W31 beginnt im Juli, W32 im August – zwei Monate, zwei Joker.
-  assert.deepEqual(
-    computeStreak(new Set(['2026-W29', '2026-W30', '2026-W33']), '2026-W33'),
-    { current: 3, best: 3 },
-  )
+  assert.deepEqual(computeStreak(new Set(['2026-W29', '2026-W30', '2026-W33']), '2026-W33'), {
+    current: 3,
+    best: 3,
+  })
 })
 
 test('computeStreak: die beste Serie überlebt den Riss', () => {
@@ -362,4 +353,30 @@ test('weekParticipants: Vornamen aus Fortschritt und Antworten, ohne Doppelte', 
     participants.map((person) => person.firstName),
     ['Dario', 'Elias', 'Levin'],
   )
+})
+
+/*
+ * Das Kartenmischen der Zufalls-Reihenfolge: gleicher Schlüssel, gleiche
+ * Ordnung – der Stapel liegt die ganze Woche über gleich, und der Sprung
+ * aus dem Menü trifft seine Karte.
+ */
+test('seededShuffle: gleicher Schlüssel ergibt dieselbe Ordnung', () => {
+  const list = ['a', 'b', 'c', 'd', 'e', 'f']
+  assert.deepEqual(seededShuffle(list, 'uid:2026-W33'), seededShuffle(list, 'uid:2026-W33'))
+})
+
+test('seededShuffle: mischt eine Permutation, ohne das Original zu ändern', () => {
+  const list = ['a', 'b', 'c', 'd', 'e', 'f']
+  const shuffled = seededShuffle(list, 'uid:2026-W33')
+  assert.deepEqual([...shuffled].sort(), [...list].sort())
+  assert.deepEqual(list, ['a', 'b', 'c', 'd', 'e', 'f'])
+})
+
+test('seededShuffle: ein anderer Schlüssel mischt anders', () => {
+  const list = Array.from({ length: 12 }, (_, i) => i)
+  const a = seededShuffle(list, 'uid:2026-W33')
+  const b = seededShuffle(list, 'uid:2026-W34')
+  // Bei zwölf Karten wäre eine zufällig identische Ordnung ein Wunder –
+  // und ein deterministisches: Der Test bleibt stabil.
+  assert.notDeepEqual(a, b)
 })

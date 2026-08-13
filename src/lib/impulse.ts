@@ -167,8 +167,7 @@ export function readyProblems(item: {
     }
     if (quiz.form === 'choice') {
       const options = quiz.options.map((option) => option.trim())
-      if (options.filter(Boolean).length < 2)
-        problems.push('Es braucht mindestens zwei Antworten.')
+      if (options.filter(Boolean).length < 2) problems.push('Es braucht mindestens zwei Antworten.')
       else if (options.some((option) => !option)) problems.push('Eine Antwort ist noch leer.')
       if (quiz.answerIndex < 0 || quiz.answerIndex >= options.length || !options[quiz.answerIndex])
         problems.push('Die richtige Antwort ist nicht markiert.')
@@ -346,4 +345,36 @@ export function weekParticipants(
   return [...byUid.entries()]
     .map(([uid, firstName]) => ({ uid, firstName }))
     .sort((a, b) => a.firstName.localeCompare(b.firstName, 'de'))
+}
+
+/**
+ * Eine Liste mischen – gleich gemischt, solange der Schlüssel gleich bleibt.
+ *
+ * Für die Zufalls-Reihenfolge der Impuls-Karten: Der Schlüssel ist Konto
+ * plus Woche, darum liegt der Stapel die ganze Woche über gleich – wer die
+ * Seite neu öffnet, findet die Karten wieder, wo sie waren, und der Sprung
+ * aus dem Menü zu einer bestimmten Karte trifft. Erst die neue Woche
+ * mischt neu. Fisher-Yates über einem kleinen eingebetteten
+ * Zufallsgenerator (mulberry32), gefüttert mit einem FNV-1a-Hash des
+ * Schlüssels – gut genug zum Kartenmischen, und ohne Abhängigkeit.
+ */
+export function seededShuffle<T>(list: readonly T[], seed: string): T[] {
+  let state = 2166136261
+  for (let i = 0; i < seed.length; i++) {
+    state ^= seed.charCodeAt(i)
+    state = Math.imul(state, 16777619)
+  }
+  const random = () => {
+    state = (state + 0x6d2b79f5) | 0
+    let t = state
+    t = Math.imul(t ^ (t >>> 15), t | 1)
+    t ^= t + Math.imul(t ^ (t >>> 7), t | 61)
+    return ((t ^ (t >>> 14)) >>> 0) / 4294967296
+  }
+  const result = [...list]
+  for (let i = result.length - 1; i > 0; i--) {
+    const j = Math.floor(random() * (i + 1))
+    ;[result[i], result[j]] = [result[j], result[i]]
+  }
+  return result
 }

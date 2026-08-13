@@ -200,6 +200,48 @@ export const IMPULSE_SECTION_ORDER: ImpulseSectionKey[] = [
   'mitmachen',
 ]
 
+/*
+ * Seit dem Stapel-Umbau zerfallen die Bereiche in zwei Sorten:
+ *
+ * **Stapel-Bereiche** sind die Inhalte der Woche – sie liegen als Karten
+ * im Wischstapel auf der Hauptseite, eine Karte pro Inhalt, und die
+ * Adresse `/impuls/<bereich>` springt im Stapel dorthin. **Raum-Bereiche**
+ * öffnen weiterhin ihren eigenen Vollbild-Raum (Fortschritt, Gemerkt,
+ * Rückblick, Mitmach-Ecke) – sie sind Werkzeuge, keine Wochenkarten.
+ */
+export const IMPULSE_DECK_SECTIONS = [
+  'woche',
+  'quiz',
+  'ziel',
+  'challenge',
+  'frage',
+  'feed',
+] as const
+export type ImpulseDeckSectionKey = (typeof IMPULSE_DECK_SECTIONS)[number]
+
+export const IMPULSE_ROOM_SECTIONS = ['fortschritt', 'gemerkt', 'wochen', 'mitmachen'] as const
+export type ImpulseRoomSectionKey = (typeof IMPULSE_ROOM_SECTIONS)[number]
+
+/** Liegt der Bereich als Karte im Wischstapel? */
+export function isDeckSection(key: ImpulseSectionKey): key is ImpulseDeckSectionKey {
+  return (IMPULSE_DECK_SECTIONS as readonly string[]).includes(key)
+}
+
+/** Öffnet der Bereich einen Vollbild-Raum? */
+export function isRoomSection(key: ImpulseSectionKey): key is ImpulseRoomSectionKey {
+  return (IMPULSE_ROOM_SECTIONS as readonly string[]).includes(key)
+}
+
+/** Welcher Stapel-Bereich einen Inhalt dieser Art zeigt. */
+export const IMPULSE_KIND_SECTION: Record<ImpulseItem['kind'], ImpulseDeckSectionKey> = {
+  impuls: 'woche',
+  quiz: 'quiz',
+  wochenziel: 'ziel',
+  tageschallenge: 'challenge',
+  frage: 'frage',
+  feed: 'feed',
+}
+
 /** Ist der Routenteil ein Bereich? – `/impuls/quatsch` soll sauber zurückführen. */
 export function isImpulseSection(slug: string | undefined): slug is ImpulseSectionKey {
   return typeof slug === 'string' && slug in IMPULSE_SECTIONS
