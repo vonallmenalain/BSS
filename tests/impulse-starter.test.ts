@@ -5,24 +5,51 @@ import { readyProblems } from '../src/lib/impulse.ts'
 import { planStarterItems, STARTER_WEEKS } from '../src/lib/impulseStarter.ts'
 
 /*
- * Das Startpaket verspricht «bereit» – also muss jeder seiner Inhalte die
- * Prüfung bestehen, die auch das Redaktionsformular anwendet. Diese Tests
- * sind die Garantie dafür, dass das Paket nie halbe Inhalte veröffentlicht
- * und dass ein späterer Lauf nur nachholt, was fehlt.
+ * Das Startpaket verspricht «bereit» – also muss jeder seiner bereiten
+ * Inhalte die Prüfung bestehen, die auch das Redaktionsformular anwendet.
+ * Die eine erlaubte Ausnahme sind die Bilderrätsel: Sie kommen als
+ * Entwurf, und ihnen darf genau eines fehlen – das Bild, das die
+ * Redaktion aus der Mediathek der Kirche ergänzt. Diese Tests sind die
+ * Garantie dafür, dass das Paket nie halbe Inhalte veröffentlicht und
+ * dass ein späterer Lauf nur nachholt, was fehlt.
  */
 
-test('Startpaket: vier Wochen, je Impuls, Ziel, Quiz, Tages-Challenge, Wochenfrage, Teilen-Aufgabe und drei Feed-Karten', () => {
+/** Der Umfang je Woche – die ersten drei sind voll ausgebaut. */
+const WEEK_SHAPE = [
+  { quiz: 3, riddles: 3, feed: 10 },
+  { quiz: 3, riddles: 3, feed: 10 },
+  { quiz: 3, riddles: 3, feed: 10 },
+  { quiz: 1, riddles: 0, feed: 3 },
+]
+const WEEK_TOTALS = WEEK_SHAPE.map((shape) => 5 + shape.quiz + shape.riddles + shape.feed)
+const TOTAL = WEEK_TOTALS.reduce((sum, count) => sum + count, 0)
+
+test('Startpaket: vier Wochen – Einzel-Inhalte, Quizfragen, Bilderrätsel und Feed-Karten', () => {
   assert.equal(STARTER_WEEKS.length, 4)
   const plans = planStarterItems([], '2026-W33')
-  assert.equal(plans.length, 36)
+  assert.equal(plans.length, TOTAL)
   for (let week = 1; week <= 4; week += 1) {
-    for (const kind of ['impuls', 'wochenziel', 'quiz', 'tageschallenge', 'frage', 'teilen']) {
+    const shape = WEEK_SHAPE[week - 1]
+    for (const kind of ['impuls', 'wochenziel', 'tageschallenge', 'frage', 'teilen']) {
       assert.ok(
         plans.some((plan) => plan.id === `starter-w${week}-${kind}`),
         `starter-w${week}-${kind} fehlt`,
       )
     }
-    for (let card = 1; card <= 3; card += 1) {
+    // Die erste Quizfrage trägt die alte ID, die weiteren zählen hoch.
+    assert.ok(plans.some((plan) => plan.id === `starter-w${week}-quiz`))
+    for (let quiz = 2; quiz <= shape.quiz; quiz += 1) {
+      const plan = plans.find((entry) => entry.id === `starter-w${week}-quiz-${quiz}`)
+      assert.ok(plan, `starter-w${week}-quiz-${quiz} fehlt`)
+      assert.equal(plan.order, quiz)
+    }
+    for (let riddle = 1; riddle <= shape.riddles; riddle += 1) {
+      const plan = plans.find((entry) => entry.id === `starter-w${week}-bild-${riddle}`)
+      assert.ok(plan, `starter-w${week}-bild-${riddle} fehlt`)
+      assert.equal(plan.status, 'draft')
+      assert.equal(plan.order, riddle)
+    }
+    for (let card = 1; card <= shape.feed; card += 1) {
       const plan = plans.find((entry) => entry.id === `starter-w${week}-feed-${card}`)
       assert.ok(plan, `starter-w${week}-feed-${card} fehlt`)
       assert.equal(plan.order, card)
@@ -40,10 +67,10 @@ test('Startpaket: belegt die laufende und die nächsten drei Wochen', () => {
   assert.deepEqual(
     [...byWeek.entries()].sort(),
     [
-      ['2026-W33', 9],
-      ['2026-W34', 9],
-      ['2026-W35', 9],
-      ['2026-W36', 9],
+      ['2026-W33', WEEK_TOTALS[0]],
+      ['2026-W34', WEEK_TOTALS[1]],
+      ['2026-W35', WEEK_TOTALS[2]],
+      ['2026-W36', WEEK_TOTALS[3]],
     ],
   )
   // Auch über die Jahresgrenze hinweg – 2026 hat 53 Wochen.
@@ -54,14 +81,19 @@ test('Startpaket: belegt die laufende und die nächsten drei Wochen', () => {
   )
 })
 
-test('Startpaket: jeder Inhalt ist vollständig «bereit»', () => {
+test('Startpaket: Bereites ist vollständig, den Rätseln fehlt allein das Bild', () => {
   for (const plan of planStarterItems([], '2026-W33')) {
-    assert.deepEqual(
-      readyProblems(plan),
-      [],
-      `${plan.id} ist unvollständig: ${readyProblems(plan).join(' ')}`,
-    )
-    assert.equal(plan.status, 'ready')
+    if (plan.status === 'ready') {
+      assert.deepEqual(
+        readyProblems(plan),
+        [],
+        `${plan.id} ist unvollständig: ${readyProblems(plan).join(' ')}`,
+      )
+    } else {
+      // Entwürfe gibt es nur bei den Bilderrätseln – und nur wegen des Bildes.
+      assert.equal(plan.kind, 'bilderraetsel', `${plan.id} ist unerwartet Entwurf`)
+      assert.deepEqual(readyProblems(plan), ['Das Bild fehlt.'], `${plan.id}: mehr fehlt`)
+    }
   }
 })
 
@@ -79,6 +111,18 @@ test('Startpaket: Impuls und Quiz tragen immer einen Kirchen-Link', () => {
         plan.source.url === '' ||
           plan.source.url.startsWith('https://www.churchofjesuschrist.org/'),
         `${plan.id}: fremde Quelle ${plan.source.url}`,
+      )
+    }
+  }
+})
+
+test('Startpaket: alle Verweise in den Vertiefungen zeigen auf die Kirche', () => {
+  for (const plan of planStarterItems([], '2026-W33')) {
+    if (!plan.deepening) continue
+    for (const match of plan.deepening.matchAll(/https?:\/\/[^\s]+/g)) {
+      assert.ok(
+        match[0].startsWith('https://www.churchofjesuschrist.org/'),
+        `${plan.id}: fremder Link in der Vertiefung – ${match[0]}`,
       )
     }
   }
@@ -104,13 +148,30 @@ test('Startpaket: die Lösungen stimmen mit den markierten Antworten überein', 
   const search = quizOf('starter-w4-quiz')
   assert.equal(search.form, 'text')
   assert.equal(search.answerText, 'Mit einem Samenkorn')
+
+  // Stichproben aus dem Ausbau: die kniffligen Suchfragen der Wochen 1 und 3.
+  assert.equal(quizOf('starter-w1-quiz-3').form, 'text')
+  assert.equal(quizOf('starter-w1-quiz-3').answerText, 'Einen Weg')
+  assert.equal(quizOf('starter-w3-quiz-3').answerText, 'Stark und mutig (sein)')
+  // Und jedes Bilderrätsel bringt seine fertige Auflösung mit.
+  for (const plan of plans) {
+    if (plan.kind !== 'bilderraetsel') continue
+    assert.ok(plan.quiz, `${plan.id} ohne Rätselangaben`)
+    assert.ok(
+      plan.quiz.options[plan.quiz.answerIndex]?.trim(),
+      `${plan.id}: keine markierte Lösung`,
+    )
+    assert.ok(plan.quiz.explanation.trim(), `${plan.id}: keine Erklärung`)
+  }
 })
 
-test('Startpaket: belegte Plätze bleiben unangetastet – der Inhalt geht in den Pool', () => {
+test('Startpaket: belegte Einzel-Plätze bleiben unangetastet – der Inhalt geht in den Pool', () => {
   const plans = planStarterItems(
     [
       { id: 'eigenes-1', week: '2026-W33', kind: 'impuls' },
-      { id: 'eigenes-2', week: '2026-W34', kind: 'quiz' },
+      { id: 'eigenes-2', week: '2026-W34', kind: 'teilen' },
+      // Quiz ist eine Mehrfach-Art: eine eigene Frage belegt keinen Platz.
+      { id: 'eigenes-3', week: '2026-W34', kind: 'quiz' },
     ],
     '2026-W33',
   )
@@ -118,15 +179,16 @@ test('Startpaket: belegte Plätze bleiben unangetastet – der Inhalt geht in de
   assert.equal(byId.get('starter-w1-impuls')?.week, null)
   assert.equal(byId.get('starter-w1-quiz')?.week, '2026-W33')
   assert.equal(byId.get('starter-w2-impuls')?.week, '2026-W34')
-  assert.equal(byId.get('starter-w2-quiz')?.week, null)
+  assert.equal(byId.get('starter-w2-teilen')?.week, null)
+  assert.equal(byId.get('starter-w2-quiz')?.week, '2026-W34')
   // Der Fragenpool zählt nicht als belegter Platz.
   const withPool = planStarterItems([{ id: 'pool-1', week: null, kind: 'impuls' }], '2026-W33')
   assert.equal(withPool.find((plan) => plan.id === 'starter-w1-impuls')?.week, '2026-W33')
 })
 
 test('Startpaket: was schon da ist, wird nicht noch einmal geplant', () => {
-  // Das Paket wurde früher eingespielt, als es nur Impuls und Quiz kannte –
-  // ein zweiter Lauf holt genau die neuen Aufgaben nach.
+  // Das Paket wurde früher eingespielt, als es je Woche nur einen Impuls und
+  // eine Quizfrage kannte – ein zweiter Lauf holt genau das Neue nach.
   const existing = []
   for (let week = 1; week <= 4; week += 1) {
     existing.push(
@@ -135,15 +197,11 @@ test('Startpaket: was schon da ist, wird nicht noch einmal geplant', () => {
     )
   }
   const plans = planStarterItems(existing, '2026-W33')
-  assert.equal(plans.length, 28)
+  assert.equal(plans.length, TOTAL - 8)
   assert.ok(
     plans.every(
-      (plan) =>
-        plan.kind === 'wochenziel' ||
-        plan.kind === 'tageschallenge' ||
-        plan.kind === 'frage' ||
-        plan.kind === 'teilen' ||
-        plan.kind === 'feed',
+      (plan) => !/-impuls$/.test(plan.id) && !/-quiz$/.test(plan.id),
+      'Impuls oder erste Quizfrage wurden doppelt geplant',
     ),
   )
   // Und wer alles hat, bekommt nichts angeboten.

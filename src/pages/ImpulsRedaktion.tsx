@@ -146,10 +146,15 @@ export function ImpulsRedaktion() {
     try {
       const outcome = await createStarterItems(starterPlans, profile?.id)
       const pooled = starterPlans.filter((plan) => plan.week === null).length
+      const drafts = starterPlans.filter((plan) => plan.status === 'draft').length
+      const draftNote =
+        drafts > 0
+          ? ` ${drafts} ${drafts === 1 ? 'Bilderrätsel wartet' : 'Bilderrätsel warten'} als Entwurf auf ihr Bild aus der Mediathek.`
+          : ''
       toast.saved(
         pooled === 0
-          ? 'Startpaket eingespielt – vier Wochen sind geplant und bereit.'
-          : `Startpaket eingespielt – ${starterPlans.length - pooled} Inhalte geplant, ${pooled} im Fragenpool (ihr Platz war schon belegt).`,
+          ? `Startpaket eingespielt – vier Wochen sind geplant.${draftNote}`
+          : `Startpaket eingespielt – ${starterPlans.length - pooled} Inhalte geplant, ${pooled} im Fragenpool (ihr Platz war schon belegt).${draftNote}`,
         outcome,
       )
     } catch (error) {
@@ -224,14 +229,16 @@ export function ImpulsRedaktion() {
               Startpaket: vier Wochen aus den Schriften
             </h2>
             <p className="hint mt-1 mb-3">
-              Je Woche ein Impuls mit Vertiefung, ein Wochenziel, Quizfragen, eine Tages-Challenge,
-              eine Frage der Woche, eine Teilen-Aufgabe und Feed-Karten – 1 Nephi 3:7, das Haus auf
-              dem Felsen, Lehre und Bündnisse 6:36 und Almas Samenkorn. Alles «bereit»: Die laufende
-              Woche erscheint sofort, drei weitere warten auf ihren Montag. Eingespielt wird nur,
-              was noch fehlt ({starterPlans.length}{' '}
-              {starterPlans.length === 1 ? 'Inhalt' : 'Inhalte'}); Vorhandenes und belegte Plätze
-              bleiben unangetastet. Danach lässt sich alles wie gewohnt bearbeiten, verschieben oder
-              löschen.
+              1 Nephi 3:7, das Haus auf dem Felsen, Lehre und Bündnisse 6:36 und Almas Samenkorn –
+              die ersten drei Wochen voll ausgebaut: je drei Quizfragen in steigendem
+              Schwierigkeitsgrad, drei Bilderrätsel, zehn Feed-Karten (etliche mit Vertiefung),
+              dazu Impuls, Wochenziel, Tages-Challenge, Frage der Woche und Teilen-Aufgabe. Alles
+              «bereit» – einzig die Bilderrätsel kommen als <strong>Entwurf</strong>: Ihr Bild muss
+              aus der Mediathek der Kirche stammen; die Auflösung sagt, welches gemeint ist –
+              Bild-Link einsetzen, «bereit» anhaken, fertig. Eingespielt wird nur, was noch fehlt (
+              {starterPlans.length} {starterPlans.length === 1 ? 'Inhalt' : 'Inhalte'}); Vorhandenes
+              und belegte Plätze bleiben unangetastet. Danach lässt sich alles wie gewohnt
+              bearbeiten, verschieben oder löschen.
             </p>
             <button
               type="button"
