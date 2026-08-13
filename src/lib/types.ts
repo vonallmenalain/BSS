@@ -3125,6 +3125,21 @@ export interface NotificationSchedule {
 }
 
 /**
+ * Für welche Termine des AP-Kalenders erinnert werden soll.
+ *
+ * «Besondere Anlässe» (Lager, Tempelbesuche) zählen zu den Aktivitäten –
+ * sie sind welche, nur ausserhalb des üblichen Takts. Ausgefallene
+ * Termine erinnern nie.
+ */
+export type ApNotifyScope = 'alle' | 'aktivitaeten' | 'klassen'
+
+export const AP_NOTIFY_SCOPE_LABELS: Record<ApNotifyScope, string> = {
+  alle: 'Aktivitäten und AP-Klassen',
+  aktivitaeten: 'Nur Aktivitäten',
+  klassen: 'Nur AP-Klassen',
+}
+
+/**
  * Was jemand benachrichtigt bekommen möchte – ein Dokument je Konto,
  * die UID ist die ID.
  *
@@ -3134,8 +3149,9 @@ export interface NotificationSchedule {
  * entscheidet die Person – einmal, für alle ihre Geräte.
  *
  * Die Felder ohne Schalter führt der Versand selbst (`…SentAt`,
- * `meetingsNotified`); die Zugriffsregeln verriegeln sie gegen den
- * Client, damit sich niemand versehentlich eine Nachricht doppelt holt.
+ * `meetingsNotified`, `apNotified`); die Zugriffsregeln verriegeln sie
+ * gegen den Client, damit sich niemand versehentlich eine Nachricht
+ * doppelt holt.
  */
 export interface NotificationSettings extends WithId {
   uid: string
@@ -3150,11 +3166,22 @@ export interface NotificationSettings extends WithId {
   agenda: { on: boolean }
   /** Eine Stunde vor der Sitzung, mit Anzahl Traktanden und Pendenzen. */
   meeting: { on: boolean }
+  /**
+   * Erinnerung an Termine des AP-Kalenders.
+   *
+   * Der Vorlauf ist wählbar (1 bis 24 Stunden – 24 heisst «einen Tag
+   * vorher»), ebenso, welche Termine erinnern: nur Aktivitäten, nur
+   * AP-Klassen oder beides. Erinnert wird nur, was eine Uhrzeit hat –
+   * die eigene am Termin oder die übliche der Klasse.
+   */
+  ap: { on: boolean; hoursBefore: number; scope: ApNotifyScope }
   /** Vom Versand geführt: wann zuletzt gesendet wurde. */
   impulsSentAt?: TS | null
   agendaSentAt?: TS | null
   /** Vom Versand geführt: Sitzungen, für die schon erinnert wurde. */
   meetingsNotified?: string[]
+  /** Vom Versand geführt: AP-Termine, für die schon erinnert wurde. */
+  apNotified?: string[]
   createdAt?: TS
   updatedAt?: TS
 }

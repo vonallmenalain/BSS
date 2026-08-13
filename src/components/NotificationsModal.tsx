@@ -1,13 +1,19 @@
 import { useEffect, useState, type ReactNode } from 'react'
-import { Bell, CalendarClock, ListChecks, Smartphone, Sparkles } from 'lucide-react'
+import { Bell, CalendarClock, ListChecks, Smartphone, Sparkles, Tent } from 'lucide-react'
 import { Modal } from '@/components/ui/Modal'
 import { useAuth } from '@/contexts/AuthContext'
 import { useToast } from '@/contexts/ToastContext'
 import { useNotificationSettings } from '@/hooks/useNotificationSettings'
-import { NOTIFY_TIMES, WEEKDAY_LABELS, scheduleLabel } from '@/lib/notifications'
+import {
+  AP_LEAD_HOURS,
+  NOTIFY_TIMES,
+  WEEKDAY_LABELS,
+  apLeadLabel,
+  scheduleLabel,
+} from '@/lib/notifications'
 import { saveNotificationSettings, withDefaults } from '@/services/notifications'
 import { disablePush, enablePush, pushConfigured, pushDenied, pushEnabled, pushSupported } from '@/services/push'
-import type { NotificationMode } from '@/lib/types'
+import { AP_NOTIFY_SCOPE_LABELS, type ApNotifyScope, type NotificationMode } from '@/lib/types'
 
 /**
  * Alles über Benachrichtigungen an einem Ort – erreichbar über das
@@ -37,7 +43,7 @@ export function NotificationsModal({ open, onClose }: { open: boolean; onClose: 
 }
 
 function NotificationsPanel() {
-  const { profile, isApproved, canViewImpulse } = useAuth()
+  const { profile, isApproved, canViewAp, canViewImpulse } = useAuth()
   const toast = useToast()
   const { settings, loading } = useNotificationSettings()
 
@@ -76,7 +82,7 @@ function NotificationsPanel() {
       if (deviceOn) {
         await disablePush()
         setDeviceOn(false)
-        toast.success('Dieses Gerät bekommt keine Mitteilungen mehr.')
+        toast.success('Dieses Gerät bekommt keine Benachrichtigungen mehr.')
       } else {
         const outcome = await enablePush({ uid: profile.id })
         if (outcome === 'denied') {
@@ -84,7 +90,7 @@ function NotificationsPanel() {
         } else {
           setDeviceOn(true)
           setDenied(false)
-          toast.success('Mitteilungen auf diesem Gerät sind eingeschaltet.')
+          toast.success('Benachrichtigungen auf diesem Gerät sind eingeschaltet.')
         }
       }
     } catch (error) {
@@ -100,7 +106,7 @@ function NotificationsPanel() {
       {/* --- Das Gerät --------------------------------------------- */}
       <section>
         <SectionTitle icon={<Smartphone className="size-4" aria-hidden />}>
-          Mitteilungen auf diesem Gerät
+          Benachrichtigungen auf diesem Gerät
         </SectionTitle>
 
         {!configured ? (
@@ -110,7 +116,7 @@ function NotificationsPanel() {
           </p>
         ) : supported === false ? (
           <p className="text-sm text-slate-600 dark:text-slate-300">
-            Dieser Browser kann keine Mitteilungen empfangen. Auf dem iPhone geht es, sobald die
+            Dieser Browser kann keine Benachrichtigungen empfangen. Auf dem iPhone geht es, sobald die
             App installiert ist: Teilen-Symbol → «Zum Home-Bildschirm», dann hier einschalten.
           </p>
         ) : denied ? (
@@ -122,15 +128,15 @@ function NotificationsPanel() {
            */
           <Row
             label="Vom Browser blockiert"
-            description="Dieser Browser hat Mitteilungen für die App verweigert; ein Knopf hier hilft dann nicht mehr weiter. Erlauben lässt es sich in der Adresszeile über das Schloss- oder Info-Symbol → Berechtigungen → «Mitteilungen» auf «Zulassen». Danach diesen Dialog einmal schliessen und wieder öffnen."
+            description="Dieser Browser hat Benachrichtigungen für die App verweigert; ein Knopf hier hilft dann nicht mehr weiter. Erlauben lässt es sich in der Adresszeile über das Schloss- oder Info-Symbol → Berechtigungen → «Benachrichtigungen» auf «Zulassen». Danach diesen Dialog einmal schliessen und wieder öffnen."
           />
         ) : (
           <Row
             label={deviceOn ? 'Eingeschaltet' : 'Ausgeschaltet'}
             description={
               deviceOn
-                ? 'Mitteilungen kommen auf diesem Gerät an. Die Erlaubnis gilt je Browser – andere Geräte schalten Sie dort einzeln ein.'
-                : 'Ohne Mitteilungen auf diesem Gerät bleibt es hier still, auch wenn unten etwas eingeschaltet ist.'
+                ? 'Benachrichtigungen kommen auf diesem Gerät an. Die Erlaubnis gilt je Browser – andere Geräte schalten Sie dort einzeln ein.'
+                : 'Ohne Benachrichtigungen auf diesem Gerät bleibt es hier still, auch wenn unten etwas eingeschaltet ist.'
             }
             control={
               <button
@@ -240,6 +246,83 @@ function NotificationsPanel() {
         </section>
       )}
 
+      {/* --- AP-Kalender ------------------------------------------- */}
+      {canViewAp && (
+        <section>
+          <SectionTitle icon={<Tent className="size-4" aria-hidden />}>AP-Kalender</SectionTitle>
+
+          <Row
+            label="Erinnerung vor dem Termin"
+            description={
+              current.ap.on
+                ? `${apLeadLabel(current.ap.hoursBefore)} – ${AP_NOTIFY_SCOPE_LABELS[current.ap.scope]}.`
+                : 'Eine Benachrichtigung vor Aktivitäten und AP-Klassen – Vorlauf und Auswahl bestimmst du.'
+            }
+            control={
+              <Switch
+                checked={current.ap.on}
+                disabled={loading}
+                label="Erinnerung vor dem Termin"
+                onChange={(on) => void save({ ap: { ...current.ap, on } })}
+              />
+            }
+          />
+
+          {current.ap.on && (
+            <div className="mt-3 grid gap-3 sm:grid-cols-2">
+              <div>
+                <label className="label" htmlFor="ap-vorlauf">
+                  Wann
+                </label>
+                <select
+                  id="ap-vorlauf"
+                  className="input"
+                  value={current.ap.hoursBefore}
+                  onChange={(event) =>
+                    void save({ ap: { ...current.ap, hoursBefore: Number(event.target.value) } })
+                  }
+                >
+                  {AP_LEAD_HOURS.map((hours) => (
+                    <option key={hours} value={hours}>
+                      {apLeadLabel(hours)}
+                    </option>
+                  ))}
+                </select>
+              </div>
+
+              <div>
+                <label className="label" htmlFor="ap-auswahl">
+                  Wofür
+                </label>
+                <select
+                  id="ap-auswahl"
+                  className="input"
+                  value={current.ap.scope}
+                  onChange={(event) =>
+                    void save({
+                      ap: { ...current.ap, scope: event.target.value as ApNotifyScope },
+                    })
+                  }
+                >
+                  {(Object.keys(AP_NOTIFY_SCOPE_LABELS) as ApNotifyScope[]).map((scope) => (
+                    <option key={scope} value={scope}>
+                      {AP_NOTIFY_SCOPE_LABELS[scope]}
+                    </option>
+                  ))}
+                </select>
+              </div>
+            </div>
+          )}
+
+          {current.ap.on && (
+            <p className="hint">
+              Erinnert wird an Termine mit Uhrzeit – die AP-Klasse hat immer eine, besondere
+              Anlässe zählen zu den Aktivitäten, Ausgefallenes bleibt still.
+            </p>
+          )}
+        </section>
+      )}
+
       {/* --- Sitzungen --------------------------------------------- */}
       {isApproved && (
         <section>
@@ -281,9 +364,9 @@ function NotificationsPanel() {
         supported !== false &&
         !denied &&
         !deviceOn &&
-        (current.impuls.on || current.agenda.on || current.meeting.on) && (
+        (current.impuls.on || current.agenda.on || current.meeting.on || current.ap.on) && (
           <p className="rounded-lg bg-amber-50 px-3 py-2 text-xs text-amber-800 dark:bg-amber-950 dark:text-amber-200">
-            Eingeschaltet ist etwas – auf diesem Gerät sind Mitteilungen aber aus. Oben
+            Eingeschaltet ist etwas – auf diesem Gerät sind Benachrichtigungen aber aus. Oben
             einschalten, sonst kommt hier nichts an.
           </p>
         )}

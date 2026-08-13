@@ -1,4 +1,10 @@
-import type { NotificationMode, NotificationSchedule, NotificationSettings } from '@/lib/types'
+import type {
+  ApActivityKind,
+  ApNotifyScope,
+  NotificationMode,
+  NotificationSchedule,
+  NotificationSettings,
+} from '@/lib/types'
 
 /*
  * Die Rechenstube der Benachrichtigungen – ohne Firebase, ohne Browser.
@@ -52,6 +58,33 @@ export const DEFAULT_NOTIFICATION_SETTINGS: Omit<NotificationSettings, 'id' | 'u
   impuls: { on: false, mode: 'weekly', weekday: 1, time: '08:00' },
   agenda: { on: false },
   meeting: { on: false },
+  ap: { on: false, hoursBefore: 1, scope: 'alle' },
+}
+
+/**
+ * Die wählbaren Vorlaufzeiten für den AP-Kalender, in Stunden.
+ *
+ * 24 heisst «einen Tag vorher». Mehr Feinheit gäbe es nur um den Preis
+ * einer Auswahl, die man einmal trifft und nie wieder versteht.
+ */
+export const AP_LEAD_HOURS = [1, 2, 3, 4, 6, 12, 24] as const
+
+/** «1 Stunde vorher», «6 Stunden vorher», «1 Tag vorher». */
+export function apLeadLabel(hours: number): string {
+  if (hours >= 24) return '1 Tag vorher'
+  return hours === 1 ? '1 Stunde vorher' : `${hours} Stunden vorher`
+}
+
+/**
+ * Zählt ein Termin dieser Art zur gewählten Auswahl?
+ *
+ * Besondere Anlässe gehören zu den Aktivitäten; Ausgefallenes erinnert
+ * nie – eine Erinnerung an etwas, das nicht stattfindet, wäre Spott.
+ */
+export function apScopeIncludes(scope: ApNotifyScope, kind: ApActivityKind): boolean {
+  if (kind === 'cancelled') return false
+  if (kind === 'class') return scope !== 'aktivitaeten'
+  return scope !== 'klassen'
 }
 
 export const WEEKDAY_LABELS: Record<number, string> = {
@@ -189,6 +222,61 @@ export function meetingDue(startsAt: Date, now: Date): boolean {
   )
 }
 
+/**
+ * Ist die Erinnerung an einen AP-Termin jetzt fällig?
+ *
+ * Fällig heisst: Der gewählte Vorlauf ist erreicht, aber höchstens zwei
+ * Stunden überschritten – derselbe Nachlauf wie bei den übrigen
+ * Erinnerungen (`DUE_WINDOW_MINUTES`), damit ein ausgefallener Lauf die
+ * Erinnerung nicht verschluckt. Nach dem Beginn kommt nichts mehr: Eine
+ * Erinnerung an Vergangenes wäre keine. Dass sie höchstens einmal kommt,
+ * sichert die Marke `apNotified` am Einstellungsdokument.
+ */
+export function apReminderDue(startsAt: Date, now: Date, leadMinutes: number): boolean {
+  const minutes = (startsAt.getTime() - now.getTime()) / 60_000
+  return minutes > Math.max(leadMinutes - DUE_WINDOW_MINUTES, 0) && minutes <= leadMinutes
+}
+
+/**
+ * Der Zeitpunkt, zu dem eine Zürcher Wanduhr «date, time» zeigt.
+ *
+ * Die Umkehrung von `wallClock` – gebraucht vom Versand: Der AP-Kalender
+ * speichert Tag («2026-08-19») und Uhrzeit («19:30») als Schweizer
+ * Wandzeit, der Server rechnet aber in UTC. Zwei Näherungsschritte über
+ * `Intl` genügen: Der erste Versuch liegt höchstens um den Zonenversatz
+ * daneben, der zweite sitzt – auch über die Zeitumstellung hinweg.
+ */
+const zurichParts = new Intl.DateTimeFormat('en-CA', {
+  timeZone: NOTIFY_TIMEZONE,
+  year: 'numeric',
+  month: '2-digit',
+  day: '2-digit',
+  hour: '2-digit',
+  minute: '2-digit',
+  hourCycle: 'h23',
+})
+
+export function zurichTime(date: string, time: string): Date {
+  const target = Date.parse(`${date}T${time}:00Z`)
+  let result = new Date(target)
+  for (let i = 0; i < 2; i += 1) {
+    const parts = zurichParts.formatToParts(result)
+    const find = (type: string) => parts.find((part) => part.type === type)?.value ?? '00'
+    const wall = Date.parse(
+      `${find('year')}-${find('month')}-${find('day')}T${find('hour')}:${find('minute')}:00Z`,
+    )
+    result = new Date(result.getTime() + (target - wall))
+  }
+  return result
+}
+
+/** Der Kalendertag eines Zeitpunkts in Zürich – «2026-08-19». */
+export function zurichDay(date: Date): string {
+  const parts = zurichParts.formatToParts(date)
+  const find = (type: string) => parts.find((part) => part.type === type)?.value ?? '00'
+  return `${find('year')}-${find('month')}-${find('day')}`
+}
+
 /* ------------------------------------------------------------------ */
 /* Texte                                                               */
 /* ------------------------------------------------------------------ */
@@ -248,6 +336,32 @@ export function impulsMessage(mode: NotificationMode): PushMessage {
       mode === 'daily'
         ? 'Wochenthema, Quiz und Challenge dieser Woche warten.'
         : 'Die neue Woche ist da – Wochenthema, Quiz und Challenges warten.',
+  }
+}
+
+/**
+ * «Morgen: AP-Klasse» / «In 2 Stunden: AP-Aktivität» – mit Titel und Zeit.
+ *
+ * Der Vorlauf im Titel ist der eingestellte, nicht der gemessene: Wer
+ * «1 Tag vorher» bestellt hat, liest «Morgen», auch wenn der Lauf ein
+ * paar Minuten später kam.
+ */
+export function apReminderMessage(input: {
+  kind: ApActivityKind
+  title: string
+  startsAt: Date
+  leadHours: number
+}): PushMessage {
+  const what = input.kind === 'class' ? 'AP-Klasse' : 'AP-Aktivität'
+  const lead =
+    input.leadHours >= 24
+      ? 'Morgen'
+      : input.leadHours === 1
+        ? 'In einer Stunde'
+        : `In ${input.leadHours} Stunden`
+  return {
+    title: `${lead}: ${what}`,
+    body: `«${input.title}» um ${clockLabel(input.startsAt)}.`,
   }
 }
 

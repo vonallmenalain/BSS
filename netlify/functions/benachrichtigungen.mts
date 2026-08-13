@@ -5,14 +5,20 @@ import { impulseWeekKey } from '../../src/lib/impulse.ts'
 import {
   agendaDue,
   agendaMessage,
+  apReminderDue,
+  apReminderMessage,
+  apScopeIncludes,
   firstName,
   impulsMessage,
   meetingDue,
   meetingMessage,
   scheduleDue,
+  zurichDay,
+  zurichTime,
   type PushMessage,
 } from '../../src/lib/notifications.ts'
-import type { NotificationMode } from '../../src/lib/types.ts'
+import { apStartTime } from '../../src/lib/types.ts'
+import type { ApActivityKind, ApNotifyScope, NotificationMode } from '../../src/lib/types.ts'
 
 /**
  * Der Versand aller Benachrichtigungen.
@@ -29,6 +35,10 @@ import type { NotificationMode } from '../../src/lib/types.ts'
  *      was man selbst angelegt hat.
  *   3. **Eine Stunde vor der Sitzung** – mit Anzahl Traktanden und
  *      Pendenzen.
+ *   4. **AP-Kalender** – die Erinnerung vor Aktivitäten und AP-Klassen,
+ *      mit wählbarem Vorlauf (1 bis 24 Stunden) und wählbarer Auswahl.
+ *      Erinnert wird nur, was eine Uhrzeit hat; die Marke `apNotified`
+ *      hält jede Erinnerung einmalig.
  *
  * Wann etwas fällig ist, rechnet `src/lib/notifications.ts` – dieselbe
  * Datei, die auch die Einstellungen in der App beschriften. Hier steht nur,
@@ -279,6 +289,30 @@ function after(fieldPath: string, date: Date) {
   }
 }
 
+function stringBetween(fieldPath: string, from: string, to: string) {
+  return {
+    compositeFilter: {
+      op: 'AND',
+      filters: [
+        {
+          fieldFilter: {
+            field: { fieldPath },
+            op: 'GREATER_THAN_OR_EQUAL',
+            value: { stringValue: from },
+          },
+        },
+        {
+          fieldFilter: {
+            field: { fieldPath },
+            op: 'LESS_THAN_OR_EQUAL',
+            value: { stringValue: to },
+          },
+        },
+      ],
+    },
+  }
+}
+
 function between(fieldPath: string, from: Date, to: Date) {
   return {
     compositeFilter: {
@@ -383,6 +417,8 @@ interface Recipient {
   uid: string
   tokens: string[]
   fullAccess: boolean
+  /** Sieht den AP-Kalender – Vollzugriff oder eine der AP-Rollen. */
+  apAccess: boolean
   impulse: boolean
   settings: FirestoreDocument
 }
@@ -423,6 +459,8 @@ export default async function handler(): Promise<Response> {
         uid,
         tokens: tokensByUid.get(uid) ?? [],
         fullAccess: FULL_ACCESS.has(role),
+        // Dieselben Rollen wie `apAccess()` in den Zugriffsregeln.
+        apAccess: FULL_ACCESS.has(role) || role === 'ap_editor' || role === 'ap_viewer',
         // Der Schalter am Konto – oder das Administrator-Konto, das den
         // Bereich immer sieht. Dieselbe Adresse steht in `firestore.rules`
         // und in `src/lib/types.ts`; sie ändert sich an drei Orten oder an
@@ -608,6 +646,84 @@ export default async function handler(): Promise<Response> {
           uid: recipient.uid,
           fields: {
             meetingsNotified: {
+              arrayValue: { values: next.map((id) => ({ stringValue: id })) },
+            },
+          },
+        })
+      }
+    }
+  }
+
+  /* --- 4. Der AP-Kalender ------------------------------------------- */
+
+  const apWaiting = withDevices.filter(
+    (recipient) => recipient.apAccess && bool(recipient.settings, ['ap', 'on']),
+  )
+
+  if (apWaiting.length > 0) {
+    /*
+     * Der grösste Vorlauf ist ein Tag – also genügen die Termine von heute
+     * und morgen (Zürcher Kalendertage: der Plan speichert Wandzeit).
+     * Ausgefallenes erinnert nie, Termine ohne Uhrzeit auch nicht – ausser
+     * der Klasse, die ihre übliche Stunde mitbringt (`apStartTime`).
+     */
+    const today = zurichDay(now)
+    const tomorrow = zurichDay(new Date(now.getTime() + 26 * 60 * 60_000))
+    const upcoming = await runQuery(client, {
+      from: [{ collectionId: 'apActivities' }],
+      where: stringBetween('date', today, tomorrow),
+      limit: MAX_DOCUMENTS,
+    })
+
+    const notedApThisRun = new Map<string, string[]>()
+
+    for (const activity of upcoming) {
+      const kind = (text(activity, 'kind') || 'activity') as ApActivityKind
+      if (kind === 'cancelled') continue
+      const start = apStartTime({
+        date: text(activity, 'date'),
+        kind,
+        time: text(activity, 'time'),
+      })
+      if (!start) continue
+      const startsAt = zurichTime(text(activity, 'date'), start)
+
+      for (const recipient of apWaiting) {
+        const hours = Math.min(
+          Math.max(number(value(recipient.settings, ['ap', 'hoursBefore']), 1), 1),
+          24,
+        )
+        const scope = (value(recipient.settings, ['ap', 'scope'])?.stringValue ??
+          'alle') as ApNotifyScope
+        if (!apScopeIncludes(scope, kind)) continue
+        if (!apReminderDue(startsAt, now, hours * 60)) continue
+
+        const done = [
+          ...strings(recipient.settings, 'apNotified'),
+          ...(notedApThisRun.get(recipient.uid) ?? []),
+        ]
+        if (done.includes(idOf(activity))) continue
+
+        // Wie bei den Sitzungen: Die letzten zwanzig Marken genügen, sie
+        // stehen nur dafür, dass kein Lauf zweimal erinnert.
+        const next = [...done.slice(-19), idOf(activity)]
+        notedApThisRun.set(recipient.uid, next)
+
+        outbox.push({
+          recipient,
+          message: apReminderMessage({
+            kind,
+            title: text(activity, 'title'),
+            startsAt,
+            leadHours: hours,
+          }),
+          url: '/ap',
+          tag: `ap-${idOf(activity)}`,
+        })
+        marks.push({
+          uid: recipient.uid,
+          fields: {
+            apNotified: {
               arrayValue: { values: next.map((id) => ({ stringValue: id })) },
             },
           },
