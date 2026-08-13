@@ -2946,18 +2946,25 @@ export interface ImpulseItem extends WithId {
 /**
  * Eine Einreichung aus der Mitmach-Ecke.
  *
- * Die AP's liefern selbst: eine Lieblingsschriftstelle, einen Gedanken,
- * eine Quizidee. Veröffentlicht wird nie direkt – die Redaktion prüft und
+ * Die AP's liefern selbst – und zwar für jede Kartenart: ein Impuls, eine
+ * Quizfrage, ein Bilderrätsel, ein Wochenziel, eine Tages-Challenge, eine
+ * Frage der Woche, eine Feed-Karte oder eine Teilen-Aufgabe. Eingereicht
+ * wird formlos (Freitext plus Quelle); veröffentlicht wird nie direkt –
+ * die Redaktion prüft, bringt die Idee im Redaktionsformular in Form und
  * macht daraus einen gewöhnlichen Inhalt («Eingereicht von …»). Es gibt
  * bewusst keinen Zustand «abgelehnt»: Was nicht passt, entfernt die
  * Redaktion still – eine angeschriebene Ablehnung entmutigte genau die,
  * die sich getraut haben (Leitgedanke 1).
+ *
+ * `gedanke` ist die Alt-Art aus der ersten Fassung der Mitmach-Ecke
+ * («Schriftstelle oder Gedanke» – wurde zur Feed-Karte); neue
+ * Einreichungen tragen direkt eine der Inhaltsarten.
  */
-export type ImpulseSubmissionKind = 'gedanke' | 'frage'
+export type ImpulseSubmissionKind = ImpulseKind | 'gedanke'
 
 export const IMPULSE_SUBMISSION_KIND_LABELS: Record<ImpulseSubmissionKind, string> = {
+  ...IMPULSE_KIND_LABELS,
   gedanke: 'Schriftstelle oder Gedanke',
-  frage: 'Quizfrage-Idee',
 }
 
 export type ImpulseSubmissionStatus = 'open' | 'accepted'

@@ -342,17 +342,22 @@ Drei Bausteine, die den Vollbild-Feed vom Anschauen zum Weitertragen führen:
   bleibt die Karte, wie sie ist. In der Redaktion ist die Vertiefung ein
   Feld unterhalb der Hinführung.
 
-### 5.6 Die Mitmach-Ecke (später)
+### 5.6 Die Mitmach-Ecke
 
-Die stärkste Form der Aneignung: Die Jugendlichen liefern selbst.
+Die stärkste Form der Aneignung: Die Jugendlichen liefern selbst – und
+zwar **für jede Kartenart**: Impuls, Quizfrage, Bilderrätsel, Wochenziel,
+Tages-Challenge, Frage der Woche, Feed-Karte oder Teilen-Aufgabe.
 
-- **Eigener Impuls:** Ein AP reicht seine Lieblingsschriftstelle oder ein
-  Zitat ein; die Redaktion prüft und plant es als Feed-Karte ein – «Impuls,
-  ausgewählt von Luca». Wer je eine Karte beigesteuert hat, liest die
-  anderen anders.
-- **Eigene Quizfrage:** Wer eine Frage baut, muss die Quelle genau lesen –
-  die lehrreichste Übung von allen, versteckt als Spiel. Auch hier:
-  Veröffentlichung erst nach Prüfung.
+- Eingereicht wird **formlos** (Art wählen, Freitext, Quelle) – die
+  Redaktion prüft, öffnet ihr Formular gleich in der eingereichten Art
+  und bringt die Idee in Form; auf der fertigen Karte steht «Eingereicht
+  von …». Wer je eine Karte beigesteuert hat, liest die anderen anders.
+- Wer eine Frage baut, muss die Quelle genau lesen – die lehrreichste
+  Übung von allen, versteckt als Spiel. Veröffentlichung immer erst nach
+  Prüfung.
+- **Wo die Einreichungen landen:** in der Redaktion, Abschnitt
+  Mitmach-Ecke – die offenen zuoberst (Übernehmen oder still entfernen),
+  die übernommenen als aufklappbare Chronik.
 
 ### 5.7 Erinnerungen
 

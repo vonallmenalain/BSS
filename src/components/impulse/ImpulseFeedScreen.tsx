@@ -20,7 +20,8 @@ import {
  * nächste Karte (Quizfrage, Bilderrätsel, Frage der Woche, die
  * Feed-Karten, die Teilen-Aufgabe) – nativer Scroll-Snap, wischen am
  * Telefon, Rad oder Pfeiltasten am Rechner. Kein Endlos-Feed: Nach der
- * letzten Karte ist Schluss.
+ * letzten Karte gratuliert die Abschlusskarte (`finale`) und zeigt die
+ * Wege weiter – noch einmal von vorn, die Mitmach-Ecke, frühere Wochen.
  *
  * **Vertiefen:** Trägt eine Karte eine Vertiefung, pulst am rechten Rand
  * ein Pfeil («Vertiefen»). Ein Wisch nach links – der Finger fährt von
@@ -77,6 +78,7 @@ export function ImpulseFeedScreen({
   origin,
   onActive,
   onClose,
+  finale,
 }: {
   cards: ImpulseDeckCard[]
   /** Wo der Feed aufgeschlagen wird – gesetzt vor dem ersten Bild. */
@@ -90,11 +92,27 @@ export function ImpulseFeedScreen({
   onActive?: (card: ImpulseDeckCard) => void
   /** Escape schliesst den Feed – der Menüknopf und Zurück tun es auch. */
   onClose: () => void
+  /**
+   * Die Abschlusskarte nach der letzten Karte – «alles durchgeschaut».
+   * Ihren Inhalt (Glückwunsch, Neustart, Mitmach-Ecke, frühere Wochen)
+   * baut die Seite; «noch einmal von vorn» läuft dort über das
+   * `target`-Ziel. Ohne `finale` endet der Feed mit der letzten Karte.
+   */
+  finale?: ReactNode
 }) {
   const rootRef = useRef<HTMLDivElement>(null)
   const containerRef = useRef<HTMLDivElement>(null)
   const initialIndex = initialTarget ? Math.max(targetIndex(cards, initialTarget), 0) : 0
   const [index, setIndex] = useState(initialIndex)
+  /* Die Anzahl Bilder im Rollcontainer – die Abschlusskarte zählt mit. */
+  const total = cards.length + (finale && cards.length > 0 ? 1 : 0)
+  /*
+   * Einmal unten angekommen, bleibt gefeiert: Der Überschwung der
+   * Abschlusskarte (`imp-pop`) tritt an, wenn sie zum ersten Mal ins
+   * Bild rollt – und wiederholt sich beim Zurückblättern nicht.
+   * Gesetzt wird das im Scroll-Handler, dort entsteht der Stand ohnehin.
+   */
+  const [celebrated, setCelebrated] = useState(false)
 
   /* Hinter dem Vollbild soll nichts mitrollen – wie in den Räumen. */
   useEffect(() => {
@@ -161,7 +179,9 @@ export function ImpulseFeedScreen({
   const onScroll = () => {
     const element = containerRef.current
     if (!element || element.clientHeight === 0) return
-    setIndex(Math.round(element.scrollTop / element.clientHeight))
+    const next = Math.round(element.scrollTop / element.clientHeight)
+    setIndex(next)
+    if (finale && cards.length > 0 && next >= cards.length) setCelebrated(true)
   }
 
   return createPortal(
@@ -209,11 +229,33 @@ export function ImpulseFeedScreen({
           {cards.map((card, cardIndex) => (
             <FeedCard key={card.id} card={card} index={cardIndex} total={cards.length} />
           ))}
+
+          {/* Die Abschlusskarte: nach der letzten Karte ist nicht einfach
+              Schluss – sie gratuliert und zeigt die Wege weiter. */}
+          {finale && cards.length > 0 && (
+            <section
+              aria-label="Geschafft"
+              className="relative h-full snap-start snap-always overflow-hidden"
+            >
+              <div
+                aria-hidden
+                className={cn(
+                  'pointer-events-none absolute inset-x-0 top-0 h-44 bg-gradient-to-b to-transparent',
+                  IMPULSE_SECTIONS.ziel.wash,
+                )}
+              />
+              <CardPane theme={IMPULSE_SECTIONS.ziel} label="Geschafft">
+                {/* Der eine Überschwung des Bereichs – einmal pro Besuch,
+                    wenn die Karte zum ersten Mal ins Bild rollt. */}
+                <div className={cn(celebrated && 'animate-imp-pop')}>{finale}</div>
+              </CardPane>
+            </section>
+          )}
         </div>
       )}
 
       {/* Solange noch etwas kommt: der stille Hinweis nach unten. */}
-      {index < cards.length - 1 && (
+      {index < total - 1 && (
         <div className="pointer-events-none absolute inset-x-0 bottom-0 z-10 pb-safe">
           <ChevronDown
             className="mx-auto mb-1.5 size-4 text-slate-400/80 dark:text-slate-500/80"

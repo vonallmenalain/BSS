@@ -1,6 +1,18 @@
 import { useEffect, useRef, useState } from 'react'
 import { Link, Navigate, useLocation, useNavigate, useParams } from 'react-router-dom'
-import { Bookmark, Check, ChevronRight, History, Inbox, Pencil } from 'lucide-react'
+import {
+  ArrowUpToLine,
+  Bookmark,
+  Check,
+  ChevronRight,
+  History,
+  Inbox,
+  PartyPopper,
+  Pencil,
+  RotateCcw,
+  Send,
+  type LucideIcon,
+} from 'lucide-react'
 import { useAuth } from '@/contexts/AuthContext'
 import { useNow } from '@/hooks/useNow'
 import { useLocalStorage } from '@/hooks/useLocalStorage'
@@ -448,6 +460,13 @@ export function Impuls() {
     setDeckTarget(null)
   }
 
+  /* «Noch einmal von vorn» auf der Abschlusskarte: die erste Karte als
+     frisches Sprungziel – derselbe Weg, den auch das Menü nimmt. */
+  const restartFeed = () => {
+    const first = deckCards[0]
+    if (first) setDeckTarget({ section: first.section, cardId: first.id })
+  }
+
   /** Aus «Gemerkt» zurück zur Karte – bei früheren Wochen samt Rückblick. */
   const openFavorite = (item: ImpulseItem) => {
     const key = sectionForItem(item, todayKey)
@@ -711,7 +730,7 @@ export function Impuls() {
           <div className="col-span-2">
             <SectionTile
               section="mitmachen"
-              status="Dein Vers oder deine Quizidee – auf der Karte steht dein Name."
+              status="Deine Idee für jede Kartenart – auf der fertigen Karte steht dein Name."
               badge={
                 submissionsState.data.filter(
                   (submission) => submission.uid === uid && submission.status === 'open',
@@ -748,6 +767,18 @@ export function Impuls() {
           origin={state?.origin ?? null}
           onActive={onDeckActive}
           onClose={closeSection}
+          finale={
+            <FeedFinale
+              week={viewWeek}
+              isCurrent={viewWeek === todayKey}
+              pastWeeks={pastWeeks.filter((week) => week !== viewWeek)}
+              onRestart={restartFeed}
+              onMitmachen={() => navigate('/impuls/mitmachen', { replace: true })}
+              onWeek={chooseWeek}
+              onCurrentWeek={() => chooseWeek(todayKey)}
+              onAllWeeks={() => navigate('/impuls/einstellungen', { replace: true })}
+            />
+          }
         />
       )}
 
@@ -842,6 +873,138 @@ function WochenimpulsHero({
           />
         </span>
       </span>
+    </button>
+  )
+}
+
+/* ------------------------------------------------------------------ */
+/* Die Abschlusskarte des Feeds                                        */
+/* ------------------------------------------------------------------ */
+
+/**
+ * «Alle Karten durchgeschaut» – die Karte nach der letzten Karte.
+ *
+ * Sie gratuliert (der Feed ist endlich, das darf man feiern) und zeigt
+ * drei Wege weiter: den Feed der Woche noch einmal von vorn, die eigene
+ * Idee in der Mitmach-Ecke – und den Feed früherer Wochen, direkt
+ * anwählbar (der Wechsel baut den Feed in jener Woche neu auf). Im
+ * Rückblick führt der oberste Weg zurück in die laufende Woche.
+ */
+function FeedFinale({
+  week,
+  isCurrent,
+  pastWeeks,
+  onRestart,
+  onMitmachen,
+  onWeek,
+  onCurrentWeek,
+  onAllWeeks,
+}: {
+  week: string
+  isCurrent: boolean
+  /** Frühere Wochen ohne die gerade angezeigte, jüngste zuerst. */
+  pastWeeks: string[]
+  onRestart: () => void
+  onMitmachen: () => void
+  onWeek: (week: string) => void
+  onCurrentWeek: () => void
+  onAllWeeks: () => void
+}) {
+  const shownWeeks = pastWeeks.slice(0, 3)
+  return (
+    <article className="card p-6 text-center sm:p-8">
+      <span
+        className="mx-auto grid size-12 place-items-center rounded-full bg-emerald-500 text-white"
+        aria-hidden
+      >
+        <PartyPopper className="size-6" />
+      </span>
+      <h2 className="mt-4 text-2xl leading-snug font-semibold text-balance">
+        Alle Karten durchgeschaut – stark!
+      </h2>
+      <p className="mt-2 text-sm text-slate-600 dark:text-slate-300">
+        {isCurrent
+          ? 'Das war der Impuls für diese Woche. Am Montag liegt der nächste bereit – bis dahin:'
+          : `Das war der Rückblick auf ${formatWeekRange(week)}.`}
+      </p>
+
+      <div className="mt-6 space-y-2 text-left">
+        {!isCurrent && (
+          <FinaleAction
+            icon={ArrowUpToLine}
+            label="Zur aktuellen Woche"
+            hint="Zurück zum Feed der laufenden Woche."
+            onClick={onCurrentWeek}
+          />
+        )}
+        <FinaleAction
+          icon={RotateCcw}
+          label="Noch einmal von vorn"
+          hint="Den Feed dieser Woche neu starten."
+          onClick={onRestart}
+        />
+        <FinaleAction
+          icon={Send}
+          label="Eigene Karte einreichen"
+          hint="Mitmach-Ecke: deine Idee – auf der Karte steht dein Name."
+          onClick={onMitmachen}
+        />
+      </div>
+
+      {shownWeeks.length > 0 && (
+        <div className="mt-5 text-left">
+          <p className="hint mb-1.5 flex items-center gap-1.5 font-medium">
+            <History className="size-3.5" aria-hidden />
+            Feed früherer Wochen
+          </p>
+          <div className="space-y-1.5">
+            {shownWeeks.map((pastWeek) => (
+              <FinaleAction
+                key={pastWeek}
+                icon={History}
+                label={formatWeekRange(pastWeek)}
+                onClick={() => onWeek(pastWeek)}
+              />
+            ))}
+            {pastWeeks.length > shownWeeks.length && (
+              <FinaleAction
+                icon={History}
+                label="Alle früheren Wochen"
+                hint="Die ganze Liste in den Impuls-Einstellungen."
+                onClick={onAllWeeks}
+              />
+            )}
+          </div>
+        </div>
+      )}
+    </article>
+  )
+}
+
+/** Ein Weg weiter auf der Abschlusskarte – eine ruhige, volle Zeile. */
+function FinaleAction({
+  icon: Icon,
+  label,
+  hint,
+  onClick,
+}: {
+  icon: LucideIcon
+  label: string
+  hint?: string
+  onClick: () => void
+}) {
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      className="flex w-full items-center gap-2.5 rounded-lg border border-slate-200 p-3 text-left text-sm transition hover:bg-slate-50 active:scale-[0.98] dark:border-slate-700 dark:hover:bg-slate-800/60"
+    >
+      <Icon className="size-4 shrink-0 text-slate-400" aria-hidden />
+      <span className="min-w-0 flex-1">
+        <span className="block font-medium">{label}</span>
+        {hint && <span className="hint mt-0 block">{hint}</span>}
+      </span>
+      <ChevronRight className="size-4 shrink-0 text-slate-400" aria-hidden />
     </button>
   )
 }
