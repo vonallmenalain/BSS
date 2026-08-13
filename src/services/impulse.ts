@@ -437,13 +437,17 @@ export async function markImpulseSubmissionAccepted(id: string): Promise<SaveOut
 /**
  * Aus einer Einreichung das Redaktionsformular vorbefüllen.
  *
- * Ein «Gedanke» wird zur Feed-Karte, eine «Quizfrage-Idee» zur Quizfrage
- * (die Redaktion ergänzt Antworten und Lösung). Beides landet als Entwurf
- * im Fragenpool – geplant wird wie gewohnt, und der Vorname wandert als
+ * Die Einreichung trägt seit dem Ausbau der Mitmach-Ecke direkt ihre
+ * Inhaltsart – das Formular öffnet in derselben Art, und die Redaktion
+ * ergänzt, was der Art noch fehlt (beim Quiz die Antworten, beim
+ * Bilderrätsel das Bild). Der «Gedanke» aus der ersten Fassung wird
+ * weiterhin zur Feed-Karte. Alles landet als Entwurf im Fragenpool –
+ * geplant wird wie gewohnt, und der Vorname wandert als
  * «Eingereicht von …» mit.
  */
 export function submissionToInput(submission: ImpulseSubmission): ImpulseItemInput {
-  const input = emptyImpulseItem(submission.kind === 'frage' ? 'quiz' : 'feed', null)
+  const kind: ImpulseKind = submission.kind === 'gedanke' ? 'feed' : submission.kind
+  const input = emptyImpulseItem(kind, null)
   input.title = submission.text.trim()
   input.sourceLabel = submission.sourceLabel?.trim() ?? ''
   input.sourceUrl = submission.sourceUrl?.trim() ?? ''

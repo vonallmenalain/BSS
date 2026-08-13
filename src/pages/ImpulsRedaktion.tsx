@@ -190,9 +190,15 @@ export function ImpulsRedaktion() {
   const answerCount = (item: ImpulseItem) =>
     (answersByItem.get(item.id)?.length ?? 0) + (commentsByItem.get(item.id)?.length ?? 0)
 
-  /* Die Mitmach-Ecke: offene Einreichungen prüfen und übernehmen. */
+  /* Die Mitmach-Ecke: offene Einreichungen prüfen und übernehmen – und
+     die übernommenen bleiben aufklappbar stehen, als Chronik dessen, was
+     die AP's beigesteuert haben. */
   const submissionsState = useImpulseSubmissions()
   const openSubmissions = submissionsState.data.filter((submission) => submission.status === 'open')
+  const acceptedSubmissions = submissionsState.data.filter(
+    (submission) => submission.status === 'accepted',
+  )
+  const [showAccepted, setShowAccepted] = useState(false)
   const [removeSubmission, setRemoveSubmission] = useState<ImpulseSubmission | null>(null)
   const acceptSubmission = (submission: ImpulseSubmission) =>
     setEditor({
@@ -344,60 +350,120 @@ export function ImpulsRedaktion() {
         </section>
 
         {/* ---------- Mitmach-Ecke ---------- */}
-        {openSubmissions.length > 0 && (
+        {(openSubmissions.length > 0 || acceptedSubmissions.length > 0) && (
           <section className="card p-5">
             <h2 className="flex items-center gap-2 text-sm font-semibold">
               <Send className="size-4 text-slate-400" aria-hidden />
               Mitmach-Ecke
               <span className="hint font-normal">
-                {openSubmissions.length}{' '}
-                {openSubmissions.length === 1 ? 'Einreichung' : 'Einreichungen'}
+                {openSubmissions.length === 0
+                  ? 'nichts offen'
+                  : `${openSubmissions.length} ${openSubmissions.length === 1 ? 'Einreichung offen' : 'Einreichungen offen'}`}
               </span>
             </h2>
             <p className="hint mt-1 mb-3">
-              «Übernehmen» öffnet das Formular, vorbefüllt und mit «Eingereicht von …» – beim
+              Hier landet alles, was die AP's einreichen – für jede Kartenart. «Übernehmen» öffnet
+              das Formular in der eingereichten Art, vorbefüllt und mit «Eingereicht von …» – beim
               Speichern gilt die Einreichung als übernommen. Was nicht passt, wird still entfernt;
               die Person sieht keine Ablehnung.
             </p>
-            <ul className="divide-list">
-              {openSubmissions.map((submission) => (
-                <li key={submission.id} className="flex items-start gap-3 py-3">
-                  <div className="min-w-0 flex-1">
-                    <p className="text-sm font-medium">
-                      {submission.firstName}
-                      <span className="hint font-normal">
-                        {' · '}
-                        {IMPULSE_SUBMISSION_KIND_LABELS[submission.kind]}
-                      </span>
-                    </p>
-                    <p className="mt-0.5 text-sm whitespace-pre-line text-slate-600 dark:text-slate-300">
-                      {submission.text}
-                    </p>
-                    {submission.sourceLabel && (
-                      <p className="hint mt-0.5">Quelle: {submission.sourceLabel}</p>
-                    )}
-                  </div>
-                  <div className="flex shrink-0 items-center gap-1">
-                    <button
-                      type="button"
-                      className="btn-secondary btn-sm"
-                      onClick={() => acceptSubmission(submission)}
-                    >
-                      <Check className="size-4" aria-hidden />
-                      Übernehmen
-                    </button>
-                    <button
-                      type="button"
-                      className="btn-ghost p-1.5 text-rose-600 dark:text-rose-400"
-                      onClick={() => setRemoveSubmission(submission)}
-                      aria-label={`Einreichung von ${submission.firstName} entfernen`}
-                    >
-                      <X className="size-4" aria-hidden />
-                    </button>
-                  </div>
-                </li>
-              ))}
-            </ul>
+            {openSubmissions.length > 0 && (
+              <ul className="divide-list">
+                {openSubmissions.map((submission) => (
+                  <li key={submission.id} className="flex items-start gap-3 py-3">
+                    <div className="min-w-0 flex-1">
+                      <p className="text-sm font-medium">
+                        {submission.firstName}
+                        <span className="hint font-normal">
+                          {' · '}
+                          {IMPULSE_SUBMISSION_KIND_LABELS[submission.kind]}
+                        </span>
+                      </p>
+                      <p className="mt-0.5 text-sm whitespace-pre-line text-slate-600 dark:text-slate-300">
+                        {submission.text}
+                      </p>
+                      {submission.sourceLabel && (
+                        <p className="hint mt-0.5">Quelle: {submission.sourceLabel}</p>
+                      )}
+                    </div>
+                    <div className="flex shrink-0 items-center gap-1">
+                      <button
+                        type="button"
+                        className="btn-secondary btn-sm"
+                        onClick={() => acceptSubmission(submission)}
+                      >
+                        <Check className="size-4" aria-hidden />
+                        Übernehmen
+                      </button>
+                      <button
+                        type="button"
+                        className="btn-ghost p-1.5 text-rose-600 dark:text-rose-400"
+                        onClick={() => setRemoveSubmission(submission)}
+                        aria-label={`Einreichung von ${submission.firstName} entfernen`}
+                      >
+                        <X className="size-4" aria-hidden />
+                      </button>
+                    </div>
+                  </li>
+                ))}
+              </ul>
+            )}
+
+            {/* Die Chronik: was schon übernommen wurde – zum Nachschauen,
+                und zum Aufräumen, wenn sie einmal lang wird. */}
+            {acceptedSubmissions.length > 0 && (
+              <div className={openSubmissions.length > 0 ? 'mt-2 border-t border-slate-200 pt-2 dark:border-slate-800' : undefined}>
+                <button
+                  type="button"
+                  className="flex w-full items-center gap-2 py-1 text-left text-sm font-medium"
+                  onClick={() => setShowAccepted((value) => !value)}
+                  aria-expanded={showAccepted}
+                >
+                  {showAccepted ? (
+                    <ChevronDown className="size-4 text-slate-400" aria-hidden />
+                  ) : (
+                    <ChevronRight className="size-4 text-slate-400" aria-hidden />
+                  )}
+                  Bereits übernommen
+                  <span className="hint font-normal">{acceptedSubmissions.length}</span>
+                </button>
+                {showAccepted && (
+                  <ul className="divide-list mt-1">
+                    {acceptedSubmissions.map((submission) => (
+                      <li key={submission.id} className="flex items-start gap-3 py-2.5">
+                        <div className="min-w-0 flex-1">
+                          <p className="text-sm">
+                            <span className="font-medium">{submission.firstName}</span>
+                            <span className="hint font-normal">
+                              {' · '}
+                              {IMPULSE_SUBMISSION_KIND_LABELS[submission.kind]}
+                              {' · '}
+                              <Check
+                                className="inline size-3.5 text-emerald-600 dark:text-emerald-300"
+                                aria-hidden
+                              />{' '}
+                              übernommen
+                            </span>
+                          </p>
+                          <p className="mt-0.5 line-clamp-2 text-sm text-slate-600 dark:text-slate-300">
+                            {submission.text}
+                          </p>
+                        </div>
+                        <button
+                          type="button"
+                          className="btn-ghost shrink-0 p-1.5"
+                          onClick={() => setRemoveSubmission(submission)}
+                          aria-label={`Einreichung von ${submission.firstName} wegräumen`}
+                          title="Aus der Chronik wegräumen"
+                        >
+                          <X className="size-4" aria-hidden />
+                        </button>
+                      </li>
+                    ))}
+                  </ul>
+                )}
+              </div>
+            )}
           </section>
         )}
 

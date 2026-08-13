@@ -1,27 +1,81 @@
 import { useState } from 'react'
-import { Check, Lightbulb, Plus, Search, Send, X } from 'lucide-react'
+import { Check, Plus, Send, X } from 'lucide-react'
 import { Modal } from '@/components/ui/Modal'
 import { useAuth } from '@/contexts/AuthContext'
 import { useToast } from '@/contexts/ToastContext'
-import { cn } from '@/lib/utils'
 import { createImpulseSubmission, deleteImpulseSubmission } from '@/services/impulse'
 import {
+  IMPULSE_KIND_LABELS,
   IMPULSE_SUBMISSION_KIND_LABELS,
+  type ImpulseKind,
   type ImpulseSubmission,
-  type ImpulseSubmissionKind,
 } from '@/lib/types'
 
 /**
- * Die Mitmach-Ecke: Die AP's liefern selbst – eine Lieblingsschriftstelle,
- * einen Gedanken, eine Quizidee. Formlos eingereicht, von der Redaktion
- * geprüft und in Form gebracht; auf der fertigen Karte steht dann
- * «Eingereicht von …». Wer eine Frage baut, muss die Quelle genau lesen –
- * die lehrreichste Übung von allen, versteckt als Spiel.
+ * Die Mitmach-Ecke: Die AP's liefern selbst – und zwar für jede
+ * Kartenart des Bereichs: Impuls, Quizfrage, Bilderrätsel, Wochenziel,
+ * Tages-Challenge, Frage der Woche, Feed-Karte oder Teilen-Aufgabe.
+ * Eingereicht wird formlos (Freitext plus Quelle); die Redaktion prüft,
+ * bringt die Idee im Redaktionsformular in Form – es öffnet gleich in
+ * der eingereichten Art – und auf der fertigen Karte steht dann
+ * «Eingereicht von …». Wer eine Frage baut, muss die Quelle genau
+ * lesen – die lehrreichste Übung von allen, versteckt als Spiel.
  *
  * Zu sehen sind hier nur die **eigenen** Einreichungen samt Stand:
  * «Bei der Redaktion» oder «Übernommen». Einen Zustand «abgelehnt» gibt es
  * bewusst nicht – was nicht passt, verschwindet still (Leitgedanke 1).
  */
+
+/** Die wählbaren Arten – die Feed-Karte zuerst, sie ist die einfachste Tür. */
+const SUBMIT_KINDS: ImpulseKind[] = [
+  'feed',
+  'quiz',
+  'bilderraetsel',
+  'frage',
+  'wochenziel',
+  'tageschallenge',
+  'teilen',
+  'impuls',
+]
+
+/** Was das Textfeld je Art erbittet – Anschrift und Beispiel. */
+const SUBMIT_PROMPTS: Record<ImpulseKind, { label: string; placeholder: string }> = {
+  feed: {
+    label: 'Dein Vers, dein Zitat oder dein Gedanke',
+    placeholder: 'Schreib ihn auf, so wie er auf der Karte stehen soll …',
+  },
+  quiz: {
+    label: 'Deine Frage – mit der Lösung',
+    placeholder:
+      'Frage, mögliche Antworten und die Lösung – formlos, die Redaktion baut daraus die Quizkarte …',
+  },
+  bilderraetsel: {
+    label: 'Dein Bilderrätsel – Bild, Frage und Lösung',
+    placeholder:
+      'Beschreib das Bild (aus der Mediathek der Kirche), die Frage dazu und die Lösung …',
+  },
+  frage: {
+    label: 'Deine Frage der Woche',
+    placeholder: 'Eine offene Frage, auf die alle mit ein paar Sätzen antworten können …',
+  },
+  wochenziel: {
+    label: 'Dein Wochenziel',
+    placeholder: 'Eine Aufgabe für eine ganze Woche – mit einem Haken abzuhaken …',
+  },
+  tageschallenge: {
+    label: 'Deine Tages-Challenge',
+    placeholder: 'Eine kleine Aufgabe, die man jeden Tag der Woche schafft …',
+  },
+  teilen: {
+    label: 'Deine Teilen-Aufgabe',
+    placeholder: 'Eine Einladung, etwas mit der Familie oder mit Freunden zu besprechen …',
+  },
+  impuls: {
+    label: 'Dein Wochenimpuls',
+    placeholder: 'Titel und zwei, drei Sätze Hinführung – die Schriftstelle gehört in die Quelle …',
+  },
+}
+
 export function ImpulseSubmitCard({
   submissions,
   plain = false,
@@ -33,7 +87,7 @@ export function ImpulseSubmitCard({
   const { profile } = useAuth()
   const toast = useToast()
   const [open, setOpen] = useState(false)
-  const [kind, setKind] = useState<ImpulseSubmissionKind>('gedanke')
+  const [kind, setKind] = useState<ImpulseKind>('feed')
   const [text, setText] = useState('')
   const [sourceLabel, setSourceLabel] = useState('')
   const [sourceUrl, setSourceUrl] = useState('')
@@ -83,8 +137,8 @@ export function ImpulseSubmitCard({
       )}
       <div className={plain ? 'flex flex-wrap items-center gap-3' : 'mt-2 flex flex-wrap items-center gap-3'}>
         <p className="min-w-0 flex-1 text-sm text-slate-600 dark:text-slate-300">
-          Deine Lieblingsschriftstelle oder eine Quizidee – die Redaktion schaut sie an, und auf
-          der Karte steht dann dein Name.
+          Deine Idee für jede Art von Karte – Feed, Quiz, Bilderrätsel, Challenge und mehr. Die
+          Redaktion schaut sie an, und auf der Karte steht dann dein Name.
         </p>
         <button type="button" className="btn-secondary" onClick={() => setOpen(true)}>
           <Plus className="size-4" aria-hidden />
@@ -129,52 +183,39 @@ export function ImpulseSubmitCard({
 
       <Modal open={open} onClose={() => setOpen(false)} title="Einreichen" size="md">
         <div className="space-y-4">
-          <fieldset className="space-y-1.5">
-            <legend className="label">Was bringst du mit?</legend>
-            {(Object.keys(IMPULSE_SUBMISSION_KIND_LABELS) as ImpulseSubmissionKind[]).map(
-              (value) => (
-                <label
-                  key={value}
-                  className={cn(
-                    'flex cursor-pointer items-center gap-2.5 rounded-lg border p-2.5 text-sm transition',
-                    kind === value
-                      ? 'border-brand-500 bg-brand-50 dark:border-brand-500 dark:bg-brand-950'
-                      : 'border-slate-200 hover:bg-slate-50 dark:border-slate-700 dark:hover:bg-slate-800/60',
-                  )}
-                >
-                  <input
-                    type="radio"
-                    name="submission-kind"
-                    className="size-4"
-                    checked={kind === value}
-                    onChange={() => setKind(value)}
-                  />
-                  {value === 'gedanke' ? (
-                    <Lightbulb className="size-4 text-slate-400" aria-hidden />
-                  ) : (
-                    <Search className="size-4 text-slate-400" aria-hidden />
-                  )}
-                  {IMPULSE_SUBMISSION_KIND_LABELS[value]}
-                </label>
-              ),
-            )}
-          </fieldset>
+          <div>
+            <label className="label" htmlFor="submission-kind">
+              Was bringst du mit?
+            </label>
+            <select
+              id="submission-kind"
+              className="input"
+              value={kind}
+              onChange={(event) => setKind(event.target.value as ImpulseKind)}
+            >
+              {SUBMIT_KINDS.map((value) => (
+                <option key={value} value={value}>
+                  {IMPULSE_KIND_LABELS[value]}
+                </option>
+              ))}
+            </select>
+          </div>
 
           <div>
             <label className="label" htmlFor="submission-text">
-              {kind === 'gedanke' ? 'Dein Vers oder Gedanke' : 'Deine Frage – mit der Lösung'}
+              {SUBMIT_PROMPTS[kind].label}
             </label>
             <textarea
               id="submission-text"
               className="input min-h-24"
               value={text}
               onChange={(event) => setText(event.target.value)}
-              placeholder={
-                kind === 'gedanke'
-                  ? 'Schreib den Vers oder Gedanken auf, so wie er auf der Karte stehen soll …'
-                  : 'Frage, mögliche Antworten und die Lösung – formlos, die Redaktion baut daraus die Quizkarte …'
-              }
+              placeholder={SUBMIT_PROMPTS[kind].placeholder}
             />
+            <p className="hint mt-1">
+              Formlos genügt – die Redaktion bringt deine Idee in Form, und die Karte trägt deinen
+              Namen.
+            </p>
           </div>
 
           <div className="grid gap-3 sm:grid-cols-2">
