@@ -165,20 +165,24 @@ export function ImpulseFeedScreen({
   }
 
   return createPortal(
+    /* z-40, eine Ebene unter der Navigations-Schublade der Hülle (z-50):
+       Der Menüknopf unten öffnet sie, und sie muss über dem Feed liegen –
+       als Portal käme der Feed sonst später im DOM und deckte sie zu. */
     <div
       ref={rootRef}
       role="dialog"
       aria-modal="true"
       aria-label="Impuls der Woche"
       data-testid="impulse-feed"
-      className="imp-screen fixed inset-0 z-50 overflow-hidden bg-slate-50 outline-none dark:bg-slate-950"
+      className="imp-screen fixed inset-0 z-40 overflow-hidden bg-slate-50 outline-none dark:bg-slate-950"
       style={{ transformOrigin: origin ? `${origin.x}px ${origin.y}px` : '50% 40%' }}
     >
-      {/* Der einzige Rest der Navigation: der Menüknopf oben links –
-          er schwebt über der Karte, die Karten halten ihm Platz frei. */}
+      {/* Der einzige Rest der Navigation: der Menüknopf oben links – ohne
+          hinterlegte Fläche, transparent über dem Farbschleier; erst der
+          Hover des Knopfs selbst zeichnet seinen Kreis. */}
       <header className="pointer-events-none absolute inset-x-0 top-0 z-20 pt-safe">
         <div className="flex items-center px-3 py-2">
-          <span className="pointer-events-auto rounded-full bg-white/60 backdrop-blur-sm dark:bg-slate-950/50">
+          <span className="pointer-events-auto">
             <AppMenuButton />
           </span>
         </div>
