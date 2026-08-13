@@ -3,7 +3,7 @@ import { Check, Lightbulb, Link2, Puzzle, RotateCcw, Search, X } from 'lucide-re
 import { useAuth } from '@/contexts/AuthContext'
 import { useToast } from '@/contexts/ToastContext'
 import { cn } from '@/lib/utils'
-import { splitLinks } from '@/lib/links'
+import { labeledLink, splitLinks } from '@/lib/links'
 import { answerImpulseQuiz } from '@/services/impulse'
 import type { ImpulseAnswer, ImpulseItem } from '@/lib/types'
 
@@ -47,32 +47,60 @@ export function SourceLink({ item }: { item: ImpulseItem }) {
  * Die Vertiefung einer Karte – der Inhalt der zweiten Seite im
  * Vollbild-Feed (Wisch nach links).
  *
- * Freitext der Redaktion mit weiterführenden Gedanken, Quellen und Links;
- * Adressen im Text werden anklickbar (`lib/links`). Der Titel der Karte
- * steht klein darüber, damit klar bleibt, was hier vertieft wird.
+ * Freitext der Redaktion mit weiterführenden Gedanken, Quellen und Links.
+ * Eine Zeile «Alma 32:27 – https://…» wird zum anklickbaren Verweis mit
+ * Beschriftung – dieselbe Gestalt wie die Quellenangabe einer Karte
+ * (`labeledLink`); freistehende Adressen im Fliesstext bleiben wie bisher
+ * anklickbar (`splitLinks`). Der Titel der Karte steht klein darüber,
+ * damit klar bleibt, was hier vertieft wird.
  */
 export function ImpulseDeepeningCard({ item }: { item: ImpulseItem }) {
   if (!item.deepening) return null
   return (
     <article className="card p-6">
       <h3 className="text-base font-semibold text-balance">{item.title}</h3>
-      <p className="mt-3 text-sm whitespace-pre-line text-slate-600 dark:text-slate-300">
-        {splitLinks(item.deepening).map((part, index) =>
-          part.href ? (
-            <a
-              key={index}
-              href={part.href}
-              target="_blank"
-              rel="noreferrer"
-              className="text-brand-700 dark:text-brand-300 font-medium break-words hover:underline"
-            >
-              {part.text}
-            </a>
-          ) : (
-            <span key={index}>{part.text}</span>
-          ),
-        )}
-      </p>
+      <div className="mt-3 space-y-1 text-sm text-slate-600 dark:text-slate-300">
+        {item.deepening.split('\n').map((line, index) => {
+          const labeled = labeledLink(line)
+          if (labeled) {
+            return (
+              <a
+                key={index}
+                href={labeled.href}
+                target="_blank"
+                rel="noreferrer"
+                className="text-brand-700 dark:text-brand-300 flex w-fit items-center gap-1.5 py-0.5 font-medium hover:underline"
+              >
+                <Link2 className="size-4 shrink-0" aria-hidden />
+                {labeled.label}
+              </a>
+            )
+          }
+          if (!line.trim()) {
+            // Eine Leerzeile im Freitext bleibt eine Atempause im Satzbild.
+            return <div key={index} className="h-2" aria-hidden />
+          }
+          return (
+            <p key={index}>
+              {splitLinks(line).map((part, partIndex) =>
+                part.href ? (
+                  <a
+                    key={partIndex}
+                    href={part.href}
+                    target="_blank"
+                    rel="noreferrer"
+                    className="text-brand-700 dark:text-brand-300 font-medium break-words hover:underline"
+                  >
+                    {part.text}
+                  </a>
+                ) : (
+                  <span key={partIndex}>{part.text}</span>
+                ),
+              )}
+            </p>
+          )
+        })}
+      </div>
       <div className="mt-4">
         <SourceLink item={item} />
       </div>

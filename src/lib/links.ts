@@ -62,6 +62,26 @@ function hrefFor(link: string): string {
   return `https://${link}`
 }
 
+/**
+ * Eine Zeile «Alma 32:27 – https://…» – Beschriftung, Gedankenstrich,
+ * Adresse.
+ *
+ * So schreiben die Vertiefungen ihre Quellen an, und die Oberfläche macht
+ * daraus einen anklickbaren Verweis mit Beschriftung statt der rohen
+ * Adresse – dieselbe Gestalt wie die Quellenangabe einer Karte. `null`,
+ * wenn die Zeile keine solche ist; dann greift weiterhin `splitLinks`.
+ * Die Beschriftung darf selbst Gedankenstriche tragen («Alma 32:41–43»):
+ * Als Trenner zählt der letzte vor der Adresse.
+ */
+export function labeledLink(line: string): { label: string; href: string } | null {
+  const match = /^(.+?)\s*[–—-]\s*((?:https?:\/\/|www\.)[^\s<>"]+)$/.exec(line.trim())
+  if (!match) return null
+  const label = match[1].trim()
+  const { link } = trimTrailing(match[2])
+  if (!label || !link) return null
+  return { label, href: hrefFor(link) }
+}
+
 /** Zerlegt einen Text in Stücke – Text, Verweis, Text … */
 export function splitLinks(text: string): TextPart[] {
   const parts: TextPart[] = []

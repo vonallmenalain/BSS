@@ -300,13 +300,14 @@ export function ImpulseItemForm({
                 setInput((value) => ({ ...value, deepening: event.target.value }))
               }
               placeholder={
-                'Weiterführende Gedanken, Quellen und Links – Adressen werden anklickbar.\n' +
-                'https://www.churchofjesuschrist.org/…'
+                'Weiterführende Gedanken, Quellen und Links …\n' +
+                'Alma 32:27 – https://www.churchofjesuschrist.org/…'
               }
             />
             <p className="hint mt-1">
-              Erscheint im Feed beim Wisch nach links. Nur Karten mit Vertiefung zeigen den
-              pulsierenden Pfeil «Vertiefen».
+              Erscheint im Feed beim Wisch nach links; nur Karten mit Vertiefung zeigen den
+              pulsierenden Pfeil «Vertiefen». Eine Zeile «Alma 32:27 – https://…» wird zum
+              anklickbaren Verweis mit Beschriftung, wie bei der Quelle.
             </p>
           </div>
         )}
