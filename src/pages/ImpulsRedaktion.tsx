@@ -59,11 +59,11 @@ import {
 } from '@/lib/types'
 
 /**
- * Die Redaktion des Bereichs «Impuls» – nur für Konten mit Redaktionsrecht
+ * Die Redaktion des Bereichs «Anti Doom» – nur für Konten mit Redaktionsrecht
  * (`RequireImpulseEditor` in App.tsx; vorerst das Administrator-Konto).
  *
  * Drei Abschnitte, ein Arbeitsfluss: Der **Wochenplan** zeigt die laufende
- * und die kommenden Wochen mit ihren zwei Plätzen (Impuls und Quizfrage) –
+ * und die kommenden Wochen mit ihren Plätzen (Wochenthema, Quiz & Co.) –
  * Lücken sind sofort als solche erkennbar, wie die freien Plätze im
  * Ansprachen-Programm. Der **Fragenpool** sammelt Ideen ohne Woche; geplant
  * wird durch das Zuteilen einer Woche im Formular. Und **Vergangenes**
@@ -209,11 +209,11 @@ export function ImpulsRedaktion() {
 
   return (
     <>
-      {/* Auch die Redaktion lebt im Impuls-Vollbild (siehe Layout): Der Kopf
+      {/* Auch die Redaktion lebt im Anti-Doom-Vollbild (siehe Layout): Der Kopf
           rückt in die Mittelspalte, der Menüknopf ersetzt die Kopfzeile. */}
       <div className="mx-auto w-full max-w-3xl">
         <PageHeader
-          title="Impuls-Redaktion"
+          title="Anti-Doom-Redaktion"
           subtitle="Wochenplan, Inhalte und Fragenpool"
           leading={<AppMenuButton />}
           actions={
@@ -238,7 +238,7 @@ export function ImpulsRedaktion() {
               1 Nephi 3:7, das Haus auf dem Felsen, Lehre und Bündnisse 6:36 und Almas Samenkorn –
               die ersten drei Wochen voll ausgebaut: je drei Quizfragen in steigendem
               Schwierigkeitsgrad, drei Bilderrätsel, zehn Feed-Karten (etliche mit Vertiefung),
-              dazu Impuls, Wochenziel, Tages-Challenge, Frage der Woche und Teilen-Aufgabe. Alles
+              dazu Wochenthema, Wochenziel, Tages-Challenge, Frage der Woche und Teilen-Aufgabe. Alles
               «bereit» – einzig die Bilderrätsel kommen als <strong>Entwurf</strong>: Ihr Bild muss
               aus der Mediathek der Kirche stammen; die Auflösung sagt, welches gemeint ist –
               Bild-Link einsetzen, «bereit» anhaken, fertig. Eingespielt wird nur, was noch fehlt (
@@ -318,7 +318,7 @@ export function ImpulsRedaktion() {
                 onClick={() => openNew('impuls', null)}
               >
                 <Plus className="size-4" aria-hidden />
-                Impuls
+                Wochenthema
               </button>
               <button
                 type="button"

@@ -11,12 +11,12 @@ import {
 } from '@/lib/impulseSections'
 
 /*
- * Der Vollbild-Feed des Bereichs «Impuls» – eine Karte, der ganze
+ * Der Vollbild-Feed des Bereichs «Anti Doom» – eine Karte, der ganze
  * Bildschirm, sonst nichts als der Menüknopf oben links.
  *
- * Geöffnet wird er mit einem Tipp auf den Wochenimpuls des Dashboards
- * (oder über das Menü, `/impuls/<bereich>`): Alle Kacheln verschwinden,
- * die erste Karte ist der Wochenimpuls. Ein Wisch nach unten bringt die
+ * Geöffnet wird er mit einem Tipp auf das Wochenthema des Dashboards
+ * (oder über das Menü, `/anti-doom/<bereich>`): Alle Kacheln verschwinden,
+ * die erste Karte ist das Wochenthema. Ein Wisch nach unten bringt die
  * nächste Karte (Quizfrage, Bilderrätsel, Frage der Woche, die
  * Feed-Karten, die Teilen-Aufgabe) – nativer Scroll-Snap, wischen am
  * Telefon, Rad oder Pfeiltasten am Rechner. Kein Endlos-Feed: Nach der
@@ -192,7 +192,7 @@ export function ImpulseFeedScreen({
       ref={rootRef}
       role="dialog"
       aria-modal="true"
-      aria-label="Impuls der Woche"
+      aria-label="Anti Doom – die Karten der Woche"
       data-testid="impulse-feed"
       className="imp-screen fixed inset-0 z-40 overflow-hidden bg-slate-50 outline-none dark:bg-slate-950"
       style={{ transformOrigin: origin ? `${origin.x}px ${origin.y}px` : '50% 40%' }}
@@ -214,7 +214,7 @@ export function ImpulseFeedScreen({
             <Inbox className="mx-auto size-6 text-slate-400" aria-hidden />
             <p className="mt-2 text-sm font-medium">Diese Woche ist noch nichts aufgeschaltet</p>
             <p className="hint mx-auto mt-1 max-w-sm">
-              Schau später wieder vorbei – der nächste Impuls kommt.
+              Schau später wieder vorbei – das nächste Wochenthema kommt.
             </p>
           </div>
         </div>

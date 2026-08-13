@@ -82,13 +82,14 @@ import {
 } from '@/lib/types'
 
 /**
- * «Impuls» – der geistige Bereich für die AP's (docs/KONZEPT-IMPULS.md).
+ * «Anti Doom» – der geistige Bereich für die AP's (docs/KONZEPT-IMPULS.md;
+ * in Code und Datenbank heisst er aus historischen Gründen `impulse`).
  *
- * Der Einstieg ist das **Dashboard**: Im Zentrum steht das Wochenthema –
- * der Wochenimpuls, gross und ruhig, noch ohne Wischen. Erst der Tipp
+ * Der Einstieg ist das **Dashboard**: Im Zentrum steht das Wochenthema,
+ * gross und ruhig, noch ohne Wischen. Erst der Tipp
  * darauf öffnet den **Vollbild-Feed**: Alle Kacheln verschwinden, nur
- * noch die Karte und der Menüknopf oben links. Die erste Karte ist der
- * Wochenimpuls, ein Wisch nach unten bringt die nächste (Quizfrage,
+ * noch die Karte und der Menüknopf oben links. Die erste Karte ist das
+ * Wochenthema, ein Wisch nach unten bringt die nächste (Quizfrage,
  * Bilderrätsel, Frage der Woche, die Feed-Karten, die Teilen-Aufgabe) –
  * und ein Wisch nach links vertieft die Karte, wenn die Redaktion eine
  * Vertiefung erfasst hat. Kein Endlos-Feed: Nach der letzten Karte ist
@@ -99,10 +100,10 @@ import {
  * Mitmach-Ecke – und «Diese Woche dabei». Jede Kachel öffnet ihren
  * Vollbild-Raum; im Feed sind sie verschwunden.
  *
- * Die Navigation wohnt im App-Menü: «Impuls» klappt dort auf, ein Punkt
- * pro Bereich – die Feed-Bereiche springen im Feed genau zur Karte
- * (`/impuls/<bereich>`), die übrigen öffnen ihren Raum. Zuunterst liegen
- * die **Impuls-Einstellungen**: die Reihenfolge der Karten (der Reihe
+ * Die Navigation wohnt im App-Menü: «Anti Doom» klappt dort auf, ein
+ * Punkt pro Bereich – die Feed-Bereiche springen im Feed genau zur Karte
+ * (`/anti-doom/<bereich>`), die übrigen öffnen ihren Raum. Zuunterst liegen
+ * die **Anti-Doom-Einstellungen**: die Reihenfolge der Karten (der Reihe
  * nach oder gemischt, gemerkt am Gerät) und der Rückblick in eine
  * frühere Woche – er gilt nur für diesen Besuch, Standard bleibt immer
  * die laufende Woche.
@@ -359,7 +360,7 @@ export function Impuls() {
   )
   /* Gemischt bleibt gemischt: Der Schlüssel Konto+Woche hält den Feed
      die Woche über in derselben Ordnung (siehe `seededShuffle`) – nur
-     der Wochenimpuls bleibt immer die erste Karte. */
+     das Wochenthema bleibt immer die erste Karte. */
   const wocheEntries = deckEntries.filter((card) => card.section === 'woche')
   const restEntries = deckEntries.filter((card) => card.section !== 'woche')
   const deckCards =
@@ -369,7 +370,7 @@ export function Impuls() {
 
   /* ---------------- Sprünge in den Feed ---------------- */
 
-  /* Der Einstieg über eine Karten-Adresse (`/impuls/quiz` – App-Menü oder
+  /* Der Einstieg über eine Karten-Adresse (`/anti-doom/quiz` – App-Menü oder
      Lesezeichen): vor dem ersten Bild bestimmt, ohne Anlauf. */
   const [initialDeckTarget] = useState<ImpulseDeckTarget | null>(() => {
     if (!isImpulseSection(bereich) || !isDeckSection(bereich)) return null
@@ -436,14 +437,14 @@ export function Impuls() {
 
   /** Von der Kachel in den Raum – ein Schritt in der Chronik. */
   const openSection = (key: ImpulseSectionKey, origin?: ScreenOrigin) =>
-    navigate(`/impuls/${key}`, { state: origin ? { origin } : undefined })
+    navigate(`/anti-doom/${key}`, { state: origin ? { origin } : undefined })
 
   /** Der Tipp auf das Wochenthema: der Feed geht auf, bei der ersten Karte. */
   const openFeed = (origin?: ScreenOrigin) =>
-    navigate('/impuls/woche', { state: origin ? { origin } : undefined })
+    navigate('/anti-doom/woche', { state: origin ? { origin } : undefined })
 
   /** Von Raum zu Raum – ersetzt den Schritt, Zurück führt zur Übersicht. */
-  const switchSection = (key: ImpulseSectionKey) => navigate(`/impuls/${key}`, { replace: true })
+  const switchSection = (key: ImpulseSectionKey) => navigate(`/anti-doom/${key}`, { replace: true })
 
   /**
    * Zurück zur Übersicht: der Schritt zurück in der Chronik, damit die
@@ -452,14 +453,14 @@ export function Impuls() {
    * die Übersicht den Eintrag.
    */
   const closeSection = () => {
-    if (location.key === 'default') navigate('/impuls', { replace: true })
+    if (location.key === 'default') navigate('/anti-doom', { replace: true })
     else navigate(-1)
   }
 
   /* Die Einstellungen schliessen immer auf die Übersicht – auch wer sie
      aus einem anderen Bereich der App heraus aufgeschlagen hat, landet
-     im Impuls, nicht wieder draussen. */
-  const closeSettings = () => navigate('/impuls', { replace: true })
+     im Bereich, nicht wieder draussen. */
+  const closeSettings = () => navigate('/anti-doom', { replace: true })
 
   const chooseOrder = (next: ImpulseOrder) => {
     setOrder(next)
@@ -482,12 +483,12 @@ export function Impuls() {
   const openFavorite = (item: ImpulseItem) => {
     const key = sectionForItem(item, todayKey)
     if (key === 'feed') {
-      navigate('/impuls/feed', {
+      navigate('/anti-doom/feed', {
         replace: true,
         state: { feedWeek: item.week ?? todayKey, feedItem: item.id },
       })
     } else {
-      navigate(`/impuls/${key}`, { replace: true })
+      navigate(`/anti-doom/${key}`, { replace: true })
     }
   }
 
@@ -637,7 +638,7 @@ export function Impuls() {
           Layout), ihr Menüknopf der einzige Rest der Navigation. */}
       <div className="mx-auto w-full max-w-2xl">
         <PageHeader
-          title="Impuls"
+          title="Anti Doom"
           subtitle={formatWeekRange(viewWeek)}
           leading={<AppMenuButton />}
           actions={
@@ -689,7 +690,7 @@ export function Impuls() {
             </p>
             {!itemsState.loading && viewWeek === todayKey && (
               <p className="hint max-w-sm">
-                Schau später wieder vorbei – der nächste Impuls kommt. Dein Fortschritt und der
+                Schau später wieder vorbei – das nächste Wochenthema kommt. Dein Fortschritt und der
                 Rückblick sind trotzdem da.
               </p>
             )}
@@ -783,11 +784,18 @@ export function Impuls() {
               week={viewWeek}
               isCurrent={viewWeek === todayKey}
               pastWeeks={pastWeeks.filter((week) => week !== viewWeek)}
+              sections={[
+                ...(goalItem ? (['ziel'] as const) : []),
+                ...(challengeItem ? (['challenge'] as const) : []),
+                'fortschritt',
+                'gemerkt',
+              ]}
               onRestart={restartFeed}
-              onMitmachen={() => navigate('/impuls/mitmachen', { replace: true })}
+              onMitmachen={() => navigate('/anti-doom/mitmachen', { replace: true })}
+              onSection={(key) => navigate(`/anti-doom/${key}`, { replace: true })}
               onWeek={chooseWeek}
               onCurrentWeek={() => chooseWeek(todayKey)}
-              onAllWeeks={() => navigate('/impuls/einstellungen', { replace: true })}
+              onAllWeeks={() => navigate('/anti-doom/einstellungen', { replace: true })}
             />
           }
         />
@@ -825,11 +833,11 @@ export function Impuls() {
 /* ------------------------------------------------------------------ */
 
 /**
- * Der Wochenimpuls als Herzstück des Dashboards: das Wochenthema, gross
- * im Zentrum – noch ohne Wischen. Der ganze Kasten ist ein Knopf; der
- * Tipp öffnet den Vollbild-Feed bei der ersten Karte, und der Klickpunkt
- * wird zum Ursprung des Übergangs. Fehlt der Wochenimpuls (aber andere
- * Karten sind da), lädt der Kasten trotzdem in den Feed ein.
+ * Das Wochenthema als Herzstück des Dashboards: gross im Zentrum – noch
+ * ohne Wischen. Der ganze Kasten ist ein Knopf; der Tipp öffnet den
+ * Vollbild-Feed bei der ersten Karte, und der Klickpunkt wird zum
+ * Ursprung des Übergangs. Fehlt das Wochenthema (aber andere Karten sind
+ * da), lädt der Kasten trotzdem in den Feed ein.
  */
 function WochenimpulsHero({
   item,
@@ -850,7 +858,7 @@ function WochenimpulsHero({
       }}
       className="card animate-imp-rise group relative w-full overflow-hidden rounded-2xl px-5 py-10 text-center transition hover:-translate-y-0.5 hover:shadow-md active:scale-[0.99] active:shadow-xs sm:px-8 sm:py-12"
     >
-      {/* Der Farbschleier des Wochenimpulses – dieselbe Sprache wie im Feed. */}
+      {/* Der Farbschleier des Wochenthemas – dieselbe Sprache wie im Feed. */}
       <span
         aria-hidden
         className={cn(
@@ -866,7 +874,7 @@ function WochenimpulsHero({
           >
             <theme.icon className="size-3.5" />
           </span>
-          Wochenimpuls
+          Anti Doom Wochenthema
         </span>
         <span className="mt-4 block text-3xl leading-tight font-semibold text-balance sm:text-4xl">
           {item ? item.title : 'Die Karten der Woche'}
@@ -896,17 +904,20 @@ function WochenimpulsHero({
  * «Alle Karten durchgeschaut» – die Karte nach der letzten Karte.
  *
  * Sie gratuliert (der Feed ist endlich, das darf man feiern) und zeigt
- * drei Wege weiter: den Feed der Woche noch einmal von vorn, die eigene
- * Idee in der Mitmach-Ecke – und den Feed früherer Wochen, direkt
- * anwählbar (der Wechsel baut den Feed in jener Woche neu auf). Im
- * Rückblick führt der oberste Weg zurück in die laufende Woche.
+ * die Wege weiter: den Feed der Woche noch einmal von vorn, die eigene
+ * Idee in der Mitmach-Ecke, die Kacheln des Dashboards (Wochenziel,
+ * Tages-Challenge, Mein Fortschritt, Gemerkt) – und den Feed früherer
+ * Wochen, direkt anwählbar (der Wechsel baut den Feed in jener Woche neu
+ * auf). Im Rückblick führt der oberste Weg zurück in die laufende Woche.
  */
 function FeedFinale({
   week,
   isCurrent,
   pastWeeks,
+  sections,
   onRestart,
   onMitmachen,
+  onSection,
   onWeek,
   onCurrentWeek,
   onAllWeeks,
@@ -915,8 +926,11 @@ function FeedFinale({
   isCurrent: boolean
   /** Frühere Wochen ohne die gerade angezeigte, jüngste zuerst. */
   pastWeeks: string[]
+  /** Die Kacheln des Dashboards, die es diese Woche gibt – als Schnellzugriff. */
+  sections: ImpulseSectionKey[]
   onRestart: () => void
   onMitmachen: () => void
+  onSection: (key: ImpulseSectionKey) => void
   onWeek: (week: string) => void
   onCurrentWeek: () => void
   onAllWeeks: () => void
@@ -935,7 +949,7 @@ function FeedFinale({
       </h2>
       <p className="mt-2 text-sm text-slate-600 dark:text-slate-300">
         {isCurrent
-          ? 'Das war der Impuls für diese Woche. Am Montag liegt der nächste bereit – bis dahin:'
+          ? 'Das war Anti Doom für diese Woche. Am Montag liegt das nächste Wochenthema bereit – bis dahin:'
           : `Das war der Rückblick auf ${formatWeekRange(week)}.`}
       </p>
 
@@ -962,6 +976,39 @@ function FeedFinale({
         />
       </div>
 
+      {/* Die Kacheln des Dashboards, hier als Schnellzugriff: Aufgaben
+          abhaken und Gesammeltes anschauen, ohne den Feed zu verlassen
+          und wieder hineinzufinden. */}
+      {sections.length > 0 && (
+        <div className="mt-5 text-left">
+          <p className="hint mb-1.5 font-medium">Deine Kacheln</p>
+          <div className="grid grid-cols-2 gap-1.5">
+            {sections.map((key) => {
+              const theme = IMPULSE_SECTIONS[key]
+              return (
+                <button
+                  key={key}
+                  type="button"
+                  onClick={() => onSection(key)}
+                  className="flex items-center gap-2 rounded-lg border border-slate-200 p-2.5 text-left text-sm transition hover:bg-slate-50 active:scale-[0.98] dark:border-slate-700 dark:hover:bg-slate-800/60"
+                >
+                  <span
+                    className={cn(
+                      'grid size-7 shrink-0 place-items-center rounded-lg',
+                      theme.iconBox,
+                    )}
+                    aria-hidden
+                  >
+                    <theme.icon className="size-4" />
+                  </span>
+                  <span className="min-w-0 truncate font-medium">{theme.label}</span>
+                </button>
+              )
+            })}
+          </div>
+        </div>
+      )}
+
       {shownWeeks.length > 0 && (
         <div className="mt-5 text-left">
           <p className="hint mb-1.5 flex items-center gap-1.5 font-medium">
@@ -981,7 +1028,7 @@ function FeedFinale({
               <FinaleAction
                 icon={History}
                 label="Alle früheren Wochen"
-                hint="Die ganze Liste in den Impuls-Einstellungen."
+                hint="Die ganze Liste in den Anti-Doom-Einstellungen."
                 onClick={onAllWeeks}
               />
             )}
@@ -1024,7 +1071,7 @@ function FinaleAction({
 /* Die Karten des Feeds                                                */
 /* ------------------------------------------------------------------ */
 
-/** Der Wochenimpuls als Feed-Karte – gross und ruhig, wie eh und je. */
+/** Das Wochenthema als Feed-Karte – gross und ruhig, wie eh und je. */
 function WocheDeckCard({ item }: { item: ImpulseItem }) {
   return (
     <article className="card p-6 text-center sm:p-8">
@@ -1215,7 +1262,7 @@ function PastFeed({ item }: { item: ImpulseItem }) {
   )
 }
 
-/** Ein Impuls aus einer früheren Woche – kompakt, mit Quelle. */
+/** Ein Wochenthema aus einer früheren Woche – kompakt, mit Quelle. */
 function PastImpulse({ item }: { item: ImpulseItem }) {
   return (
     <div>

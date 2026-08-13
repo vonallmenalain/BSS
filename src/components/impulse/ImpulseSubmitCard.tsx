@@ -71,7 +71,7 @@ const SUBMIT_PROMPTS: Record<ImpulseKind, { label: string; placeholder: string }
     placeholder: 'Eine Einladung, etwas mit der Familie oder mit Freunden zu besprechen …',
   },
   impuls: {
-    label: 'Dein Wochenimpuls',
+    label: 'Dein Wochenthema',
     placeholder: 'Titel und zwei, drei Sätze Hinführung – die Schriftstelle gehört in die Quelle …',
   },
 }

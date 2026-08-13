@@ -7,7 +7,7 @@ import { setImpulseAmen, setImpulseFavorite } from '@/services/impulse'
 import type { ImpulseItem, ImpulseProgress } from '@/lib/types'
 
 /**
- * Eine Karte des Impuls-Feeds – seit dem Stapel-Umbau eine Karte im
+ * Eine Karte des Feeds – seit dem Stapel-Umbau eine Karte im
  * Wischstapel der Hauptseite statt eines eigenen Vollbilds.
  *
  * Zwei stille Knöpfe: **«Amen»** (die eine Reaktion – darunter stehen

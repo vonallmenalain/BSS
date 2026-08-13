@@ -4,7 +4,7 @@ import { useAppMenu } from '@/contexts/AppMenuContext'
 /**
  * Der Menüknopf der «App in der App».
  *
- * Im Bereich «Impuls» blendet das Layout die ganze Hülle aus – Kopfzeile,
+ * Im Bereich «Anti Doom» blendet das Layout die ganze Hülle aus – Kopfzeile,
  * Seitennavigation, untere Leiste. Dieser Knopf ist ihr einziger Rest:
  * dezent oben links im Seitenkopf, und erst der Tipp darauf öffnet die
  * Navigations-Schublade mit allen Bereichen der App.

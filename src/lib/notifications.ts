@@ -47,7 +47,7 @@ export const AGENDA_GAP_MINUTES = 30
 export const MEETING_LEAD_MINUTES = 60
 const MEETING_WINDOW_MINUTES = 15
 
-/** Ein frisches Einstellungsblatt: alles aus, der Impuls montags um acht. */
+/** Ein frisches Einstellungsblatt: alles aus, Anti Doom montags um acht. */
 export const DEFAULT_NOTIFICATION_SETTINGS: Omit<NotificationSettings, 'id' | 'uid'> = {
   impuls: { on: false, mode: 'weekly', weekday: 1, time: '08:00' },
   agenda: { on: false },
@@ -234,7 +234,7 @@ export function agendaMessage(names: string[], count: number): PushMessage {
 }
 
 /**
- * Die Erinnerung an den Impuls.
+ * Die Erinnerung an «Anti Doom».
  *
  * Beim Wochentakt kündigt sie die neue Woche an, beim Tagestakt nicht:
  * «Die neue Woche ist da» wäre am Donnerstag schlicht falsch, und eine
@@ -243,11 +243,11 @@ export function agendaMessage(names: string[], count: number): PushMessage {
  */
 export function impulsMessage(mode: NotificationMode): PushMessage {
   return {
-    title: 'Impuls',
+    title: 'Anti Doom',
     body:
       mode === 'daily'
-        ? 'Impuls, Quiz und Challenge dieser Woche warten.'
-        : 'Die neue Woche ist da – Impuls, Quiz und Challenges warten.',
+        ? 'Wochenthema, Quiz und Challenge dieser Woche warten.'
+        : 'Die neue Woche ist da – Wochenthema, Quiz und Challenges warten.',
   }
 }
 

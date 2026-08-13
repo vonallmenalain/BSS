@@ -47,7 +47,7 @@ export async function updateUserProfile(
 }
 
 /**
- * Schaltet den Bereich «Impuls» für ein Konto frei bzw. wieder zu.
+ * Schaltet den Bereich «Anti Doom» für ein Konto frei bzw. wieder zu.
  *
  * Wie Rolle und Aktivstatus: Das darf ausschliesslich das
  * Administrator-Konto, und `firestore.rules` setzt es durch – die

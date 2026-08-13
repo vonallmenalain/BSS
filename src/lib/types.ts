@@ -464,7 +464,7 @@ export interface AppUser extends WithId {
   /** Gemerkte Darstellung des Aktivitätenplans – gilt auf jedem Gerät */
   apView?: ApView
   /**
-   * Darf den Bereich «Impuls» sehen – den geistigen Bereich für die AP’s
+   * Darf den Bereich «Anti Doom» sehen – den geistigen Bereich für die AP’s
    * (siehe docs/KONZEPT-IMPULS.md).
    *
    * Ein Schalter am Konto und keine Rolle: Der Zugang ist unabhängig davon,
@@ -476,7 +476,7 @@ export interface AppUser extends WithId {
    */
   impulse?: boolean
   /**
-   * Darf im Bereich «Impuls» Inhalte pflegen und moderieren.
+   * Darf im Bereich «Anti Doom» Inhalte pflegen und moderieren.
    *
    * Noch ohne Wirkung – die Redaktion ist vorerst das Administrator-Konto.
    * Das Feld ist trotzdem von Anfang an in den Regeln verriegelt, damit
@@ -2783,11 +2783,11 @@ export interface CalendarFeed extends WithId {
 }
 
 /* ------------------------------------------------------------------ */
-/* Impuls                                                              */
+/* Anti Doom                                                           */
 /* ------------------------------------------------------------------ */
 
 /*
- * Der Bereich «Impuls» – der geistige Bereich für die AP's
+ * Der Bereich «Anti Doom» – der geistige Bereich für die AP's
  * (docs/KONZEPT-IMPULS.md).
  *
  * Die tragende Einheit ist die ISO-Woche («2026-W34», Montag bis Sonntag):
@@ -2801,8 +2801,8 @@ export interface CalendarFeed extends WithId {
  * Was ein Inhalt ist.
  *
  * Alle Arten sind wochenweise geplant. Die **Feed-Karten** des Vollbilds
- * sind der Wochenimpuls, die Quizfrage, das Bilderrätsel, die Frage der
- * Woche, der Impuls-Feed und die Teilen-Aufgabe. Das **Wochenziel** und
+ * sind das Wochenthema, die Quizfrage, das Bilderrätsel, die Frage der
+ * Woche, der Feed und die Teilen-Aufgabe. Das **Wochenziel** und
  * die **Tages-Challenge** sind Aufgaben neben dem Feed – das eine für die
  * ganze Woche, das andere Tag für Tag abhakbar. Abgehakt wird per
  * Selbstauskunft, und der Stand liegt am eigenen Fortschrittsdokument
@@ -2819,7 +2819,7 @@ export type ImpulseKind =
   | 'teilen'
 
 export const IMPULSE_KIND_LABELS: Record<ImpulseKind, string> = {
-  impuls: 'Wochenimpuls',
+  impuls: 'Wochenthema',
   quiz: 'Quizfrage',
   bilderraetsel: 'Bilderrätsel',
   wochenziel: 'Wochenziel',
@@ -2910,7 +2910,7 @@ export interface ImpulseItem extends WithId {
   status: ImpulseStatus
   /** Überschrift; bei der Quizfrage die Frage, bei der Feed-Karte ihr Text. */
   title: string
-  /** Impuls: die Hinführung, zwei, drei Sätze. Sonst optionale Ergänzung. */
+  /** Wochenthema: die Hinführung, zwei, drei Sätze. Sonst optionale Ergänzung. */
   body?: string
   /**
    * Die Vertiefung – erscheint im Vollbild-Feed beim Wisch nach links.
@@ -2946,7 +2946,7 @@ export interface ImpulseItem extends WithId {
 /**
  * Eine Einreichung aus der Mitmach-Ecke.
  *
- * Die AP's liefern selbst – und zwar für jede Kartenart: ein Impuls, eine
+ * Die AP's liefern selbst – und zwar für jede Kartenart: ein Wochenthema, eine
  * Quizfrage, ein Bilderrätsel, ein Wochenziel, eine Tages-Challenge, eine
  * Frage der Woche, eine Feed-Karte oder eine Teilen-Aufgabe. Eingereicht
  * wird formlos (Freitext plus Quelle); veröffentlicht wird nie direkt –
@@ -3048,7 +3048,7 @@ export interface ImpulseWeekProgress {
 }
 
 /**
- * Der persönliche Fortschritt im Bereich «Impuls» – ein Dokument pro
+ * Der persönliche Fortschritt im Bereich «Anti Doom» – ein Dokument pro
  * Konto, die UID ist die Dokument-ID. Geschrieben wird es nur von der
  * Person selbst (siehe `firestore.rules`); der Vorname steht dabei, damit
  * die Gruppenleiste Namen zeigen kann, ohne fremde Profile zu lesen.
@@ -3139,7 +3139,7 @@ export interface NotificationSchedule {
  */
 export interface NotificationSettings extends WithId {
   uid: string
-  /** Der Wochenimpuls – Takt und Zeit frei wählbar. */
+  /** Das Wochenthema von «Anti Doom» – Takt und Zeit frei wählbar. */
   impuls: NotificationSchedule & { on: boolean }
   /**
    * Wenn jemand anderes ein Traktandum anlegt.

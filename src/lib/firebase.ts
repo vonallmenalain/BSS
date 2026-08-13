@@ -113,11 +113,11 @@ export const COLLECTIONS = {
   apMonths: 'apMonths',
   /** Links, unter denen der Aktivitätenplan als Kalender abonniert werden kann */
   calendarFeeds: 'calendarFeeds',
-  /** Inhalte des Bereichs «Impuls» – Wochenimpuls und Quizfragen (docs/KONZEPT-IMPULS.md) */
+  /** Inhalte des Bereichs «Anti Doom» – Wochenthema, Quiz & Co. (docs/KONZEPT-IMPULS.md) */
   impulseItems: 'impulseItems',
   /** Eine Antwort pro Person und Quizfrage, Dokument-ID ist «{itemId}_{uid}» */
   impulseAnswers: 'impulseAnswers',
-  /** Persönlicher Stand im Bereich «Impuls» (Ziel, Tage), Dokument-ID ist die UID */
+  /** Persönlicher Stand im Bereich «Anti Doom» (Ziel, Tage), Dokument-ID ist die UID */
   impulseProgress: 'impulseProgress',
   /** Beiträge zur Frage der Woche, Dokument-ID ist «{itemId}_{uid}» */
   impulseComments: 'impulseComments',

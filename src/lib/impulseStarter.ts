@@ -8,7 +8,7 @@ import type {
 } from './types.ts'
 
 /*
- * Das Startpaket des Bereichs «Impuls»: vier Wochen Inhalt, damit der
+ * Das Startpaket des Bereichs «Anti Doom»: vier Wochen Inhalt, damit der
  * Bereich nicht leer beginnt und die Redaktion eine Vorlage hat, wie
  * die Karten gemeint sind. Die ersten drei Wochen sind voll ausgebaut –
  * je drei Quizfragen in steigendem Schwierigkeitsgrad, drei
@@ -43,7 +43,7 @@ interface StarterContent {
   body: string
   /** Die Vertiefung – die zweite Seite der Karte im Vollbild-Feed. */
   deepening?: string
-  /** Bei Impuls und Quiz Pflicht; Aufgaben dürfen ohne Fundstelle sein. */
+  /** Bei Wochenthema und Quiz Pflicht; Aufgaben dürfen ohne Fundstelle sein. */
   source?: ImpulseSource
   quiz?: ImpulseQuiz
 }

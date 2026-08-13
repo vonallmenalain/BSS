@@ -82,7 +82,7 @@ export function ImpulseWeekPreview({
         {feeds.length > 0 && (
           <div className="space-y-3">
             <p className="hint font-medium">
-              Impuls-Feed · {feeds.length} {feeds.length === 1 ? 'Karte' : 'Karten'}, dann ist
+              Feed · {feeds.length} {feeds.length === 1 ? 'Karte' : 'Karten'}, dann ist
               Schluss
             </p>
             {feeds.map((card, index) => (

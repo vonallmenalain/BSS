@@ -644,7 +644,7 @@ export function PageHeader({
   title: string
   subtitle?: string
   actions?: React.ReactNode
-  /** Steht vor dem Titel – etwa der Menüknopf im Vollbild-Bereich «Impuls». */
+  /** Steht vor dem Titel – etwa der Menüknopf im Vollbild-Bereich «Anti Doom». */
   leading?: React.ReactNode
   /** Titel und Untertitel nur für Bildschirmleser ausgeben */
   hidden?: boolean

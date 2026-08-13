@@ -1,5 +1,5 @@
 import { lazy, Suspense, type ReactNode } from 'react'
-import { BrowserRouter, Routes, Route, Navigate, Outlet } from 'react-router-dom'
+import { BrowserRouter, Routes, Route, Navigate, Outlet, useParams } from 'react-router-dom'
 import { AuthProvider, useAuth } from '@/contexts/AuthContext'
 import { DataProvider } from '@/contexts/DataContext'
 import { ToastProvider } from '@/contexts/ToastContext'
@@ -62,7 +62,7 @@ const ApActivities = lazy(() =>
   import('@/pages/ApActivities').then((m) => ({ default: m.ApActivities })),
 )
 
-/* Impuls – der geistige Bereich für die AP's (docs/KONZEPT-IMPULS.md).
+/* «Anti Doom» – der geistige Bereich für die AP's (docs/KONZEPT-IMPULS.md).
    Sichtbar nur mit dem Schalter am Konto – und immer für das
    Administrator-Konto. */
 const Impuls = lazy(() => import('@/pages/Impuls').then((m) => ({ default: m.Impuls })))
@@ -88,6 +88,12 @@ const Music = lazy(() => import('@/pages/sacrament/Music').then((m) => ({ defaul
 const Prayers = lazy(() =>
   import('@/pages/sacrament/Prayers').then((m) => ({ default: m.Prayers })),
 )
+
+/** Alte Adressen: «/impuls/…» heisst heute «/anti-doom/…». */
+function LegacyImpulsRedirect() {
+  const { bereich } = useParams()
+  return <Navigate to={bereich ? `/anti-doom/${bereich}` : '/anti-doom'} replace />
+}
 
 /**
  * Lässt nur angemeldete und freigeschaltete Personen durch.
@@ -115,24 +121,24 @@ function RequireAuth({ children }: { children: ReactNode }) {
 }
 
 /**
- * Alles ausser dem AP-Kalender und «Impuls».
+ * Alles ausser dem AP-Kalender und «Anti Doom».
  *
  * Die Sicherheitsregeln lehnen für diese Konten ohnehin jede Abfrage ab –
  * das hier erspart ihnen leere Seiten und Fehlermeldungen und führt sie
  * dorthin, wofür sie freigeschaltet wurden: zum Kalender, und wer nur den
- * Impuls-Schalter trägt, zu «Impuls».
+ * Anti-Doom-Schalter trägt, zu «Anti Doom».
  */
 function RequireFullAccess() {
   const { isApproved, canViewAp } = useAuth()
-  if (!isApproved) return <Navigate to={canViewAp ? '/ap' : '/impuls'} replace />
+  if (!isApproved) return <Navigate to={canViewAp ? '/ap' : '/anti-doom'} replace />
   return <Outlet />
 }
 
 /**
- * Nur wer den Bereich «Impuls» sehen darf.
+ * Nur wer den Bereich «Anti Doom» sehen darf.
  *
  * Wie bei `RequireFullAccess`: Die Zugriffsregeln geben den
- * Impuls-Sammlungen ohnehin nichts heraus – die Weiche erspart bloss die
+ * Anti-Doom-Sammlungen ohnehin nichts heraus – die Weiche erspart bloss die
  * leere Seite hinter einem Lesezeichen und führt zurück an den Ort, der
  * dem Konto gehört.
  */
@@ -143,7 +149,7 @@ function RequireImpulse() {
 }
 
 /**
- * Die Redaktion des Bereichs «Impuls» – Inhalte pflegen und moderieren.
+ * Die Redaktion des Bereichs «Anti Doom» – Inhalte pflegen und moderieren.
  *
  * Vorerst allein das Administrator-Konto; der Schalter `impulseEditor`
  * steht bereit. Wer nur liest, landet wieder im Bereich – die
@@ -151,7 +157,7 @@ function RequireImpulse() {
  */
 function RequireImpulseEditor() {
   const { canEditImpulse } = useAuth()
-  if (!canEditImpulse) return <Navigate to="/impuls" replace />
+  if (!canEditImpulse) return <Navigate to="/anti-doom" replace />
   return <Outlet />
 }
 
@@ -221,19 +227,19 @@ export default function App() {
                     }
                   />
 
-                  {/* ---------- Impuls ----------
+                  {/* ---------- Anti Doom ----------
                     Ebenfalls ausserhalb von `RequireFullAccess`: Der Bereich
                     wird pro Konto freigeschaltet und steht damit auch Konten
                     offen, die sonst nur den AP-Kalender sehen. */}
                   <Route element={<RequireImpulse />}>
                     {/* Eine Route mit wahlfreiem Teil statt zweier
-                        Geschwister: `/impuls` und `/impuls/quiz` sind so
-                        dieselbe Route, und die Seite bleibt beim Springen
+                        Geschwister: `/anti-doom` und `/anti-doom/quiz` sind
+                        so dieselbe Route, und die Seite bleibt beim Springen
                         zwischen Karten, Räumen und Einstellungen montiert –
                         samt Stapel-Position und gewählter Rückblick-Woche.
                         Die statische Route «redaktion» geht vor. */}
                     <Route
-                      path="impuls/:bereich?"
+                      path="anti-doom/:bereich?"
                       element={
                         <Suspense fallback={<LoadingScreen />}>
                           <Impuls />
@@ -242,7 +248,7 @@ export default function App() {
                     />
                     <Route element={<RequireImpulseEditor />}>
                       <Route
-                        path="impuls/redaktion"
+                        path="anti-doom/redaktion"
                         element={
                           <Suspense fallback={<LoadingScreen />}>
                             <ImpulsRedaktion />
@@ -250,6 +256,10 @@ export default function App() {
                         }
                       />
                     </Route>
+                    {/* Der Bereich hiess einmal «Impuls» – alte Lesezeichen
+                        und verschickte Links führen weiterhin ans Ziel. */}
+                    <Route path="impuls/redaktion" element={<Navigate to="/anti-doom/redaktion" replace />} />
+                    <Route path="impuls/:bereich?" element={<LegacyImpulsRedirect />} />
                   </Route>
 
                   <Route element={<RequireFullAccess />}>

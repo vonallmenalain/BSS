@@ -16,11 +16,11 @@ import {
 import type { ImpulseItem, ImpulseKind } from './types.ts'
 
 /*
- * Die Bereiche des Impuls – das Inhaltsverzeichnis der «App in der App».
+ * Die Bereiche von «Anti Doom» – das Inhaltsverzeichnis der «App in der App».
  *
- * Der Einstieg ist das Dashboard: der Wochenimpuls gross im Zentrum, die
- * Werkzeuge als Kacheln darunter. Ein Tipp auf den Wochenimpuls öffnet
- * den Vollbild-Feed (`/impuls/:bereich`), die Kacheln öffnen ihre Räume.
+ * Der Einstieg ist das Dashboard: das Wochenthema gross im Zentrum, die
+ * Werkzeuge als Kacheln darunter. Ein Tipp auf das Wochenthema öffnet
+ * den Vollbild-Feed (`/anti-doom/:bereich`), die Kacheln öffnen ihre Räume.
  * Damit Dashboard, Vollbild und Menü dieselbe Sprache sprechen, steht
  * hier alles an einem Ort: Slug, Name, Icon – und die Farbe, die dem
  * Bereich sein eigenes Thema gibt. Die Klassen sind ausgeschriebene
@@ -71,8 +71,8 @@ export interface ImpulseSection {
 export const IMPULSE_SECTIONS: Record<ImpulseSectionKey, ImpulseSection> = {
   woche: {
     key: 'woche',
-    label: 'Wochenimpuls',
-    short: 'Impuls',
+    label: 'Wochenthema',
+    short: 'Thema',
     icon: Lightbulb,
     iconBox: 'bg-amber-500 text-white',
     text: 'text-amber-700 dark:text-amber-300',
@@ -119,7 +119,7 @@ export const IMPULSE_SECTIONS: Record<ImpulseSectionKey, ImpulseSection> = {
   },
   feed: {
     key: 'feed',
-    label: 'Impuls-Feed',
+    label: 'Feed',
     short: 'Feed',
     icon: LayoutList,
     iconBox: 'bg-indigo-500 text-white',
@@ -235,8 +235,8 @@ export const IMPULSE_SECTION_ORDER: ImpulseSectionKey[] = [
  * Die Bereiche zerfallen in zwei Sorten:
  *
  * **Feed-Bereiche** sind die Karten des Vollbild-Feeds – eine Karte pro
- * Inhalt, der Wochenimpuls immer zuoberst, und die Adresse
- * `/impuls/<bereich>` schlägt den Feed genau dort auf. **Raum-Bereiche**
+ * Inhalt, das Wochenthema immer zuoberst, und die Adresse
+ * `/anti-doom/<bereich>` schlägt den Feed genau dort auf. **Raum-Bereiche**
  * öffnen ihren eigenen Vollbild-Raum: die beiden Aufgaben neben dem Feed
  * (Wochenziel, Tages-Challenge) und die Werkzeuge (Fortschritt, Gemerkt,
  * Rückblick, Mitmach-Ecke) – sie sind Kacheln des Dashboards, keine
@@ -274,7 +274,7 @@ export function isRoomSection(key: ImpulseSectionKey): key is ImpulseRoomSection
 
 /**
  * Die Inhaltsarten, die als Karten im Vollbild-Feed liegen – in der
- * Lesereihenfolge des Feeds: der Wochenimpuls zuerst, die Rätsel gleich
+ * Lesereihenfolge des Feeds: das Wochenthema zuerst, die Rätsel gleich
  * nach dem Quiz, die Teilen-Aufgabe als Einladung zum Schluss.
  */
 export const IMPULSE_DECK_KINDS = [
