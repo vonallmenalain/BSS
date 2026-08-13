@@ -68,7 +68,7 @@ interface NavItem {
 }
 
 /**
- * Die Abendmahlsversammlung ist der einzige Bereich mit Unterpunkten.
+ * Die Unterpunkte der Abendmahlsversammlung.
  * «Leitung» steht bewusst zuoberst: Dort läuft alles zusammen, die übrigen
  * Punkte sind die Zulieferer.
  */
@@ -79,6 +79,29 @@ const SACRAMENT_CHILDREN = [
   { to: '/abendmahl/ansprachen', label: 'Ansprachen' },
   { to: '/abendmahl/musik', label: 'Musik' },
   { to: '/abendmahl/gebet', label: 'Gebet' },
+]
+
+/**
+ * «Impuls» klappt im Menü auf wie die Abendmahlsversammlung.
+ *
+ * Die ersten Punkte sind die Karten des Wischstapels auf der Hauptseite –
+ * ein Tipp springt im Stapel genau dorthin. Danach die Räume (Fortschritt,
+ * Gemerkt, Mitmach-Ecke) und zuunterst die Impuls-Einstellungen
+ * (Reihenfolge der Karten, Rückblick in frühere Wochen). Die Liste steht
+ * fest, auch wenn eine Woche einmal keine Quizfrage hat – ein Menü, das
+ * je nach Woche anders aussieht, wäre keines.
+ */
+const IMPULSE_CHILDREN = [
+  { to: '/impuls/woche', label: 'Wochenimpuls' },
+  { to: '/impuls/quiz', label: 'Quizfrage' },
+  { to: '/impuls/ziel', label: 'Wochenziel' },
+  { to: '/impuls/challenge', label: 'Tages-Challenge' },
+  { to: '/impuls/frage', label: 'Frage der Woche' },
+  { to: '/impuls/feed', label: 'Impuls-Feed' },
+  { to: '/impuls/fortschritt', label: 'Mein Fortschritt' },
+  { to: '/impuls/gemerkt', label: 'Gemerkt' },
+  { to: '/impuls/mitmachen', label: 'Mitmach-Ecke' },
+  { to: '/impuls/einstellungen', label: 'Impuls-Einstellungen' },
 ]
 
 export function Layout() {
@@ -165,6 +188,7 @@ export function Layout() {
     shortLabel: 'Impuls',
     icon: Sparkles,
     dot: impulseDot,
+    children: IMPULSE_CHILDREN,
   }
 
   const navItems: NavItem[] = isApproved
