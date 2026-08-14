@@ -268,13 +268,16 @@ Stolz sagen können, dass ich etwas geschafft habe».
   jemand vor sich selbst und dem Herrn sagt.
 - **Serie.** Wochen in Folge mit Beteiligung (Ziel erreicht, Quiz
   beantwortet oder an mindestens einem Tag die Tages-Challenge abgehakt).
-  Mit eingebauter Milde: eine **Jokerwoche** pro Monat – Lager,
-  Prüfungen und Ferien sollen keine Serie brechen. Eine gerissene Serie wird
-  nüchtern neu gestartet, nicht betrauert.
-- **Abzeichen** für Meilensteine statt Punkte: «Erste Woche dabei», «4 Wochen
-  in Folge», «Alle vier heiligen Schriften aufgeschlagen», «10 Quizfragen
-  beantwortet», «Erster Beitrag zur Frage der Woche». Ein Abzeichen erzählt,
-  **was** jemand getan hat – eine Punktzahl erzählt nur, wie viel.
+  Gezählt wird ohne Milde-Mechanik – eine Jokerwoche pro Monat gab es
+  einmal und ist bewusst wieder ausgebaut: Die Zahl soll genau das sagen,
+  was sie zählt. Eine gerissene Serie wird nüchtern neu gestartet, nicht
+  betrauert; nur die laufende Woche ist neutral, solange sie offen ist.
+- **Meilensteine pro Woche** statt Punkte – vier kleine Ziele, die am
+  Montag wieder offen sind: «Dabei» (diese Woche hineingeschaut),
+  «Mitgeredet» (Frage der Woche beantwortet), «Tageschallenge erreicht»
+  (alle sieben Haken, mit Stand «1 von 7») und der «Anti Doom Scroller»
+  (alle Karten der Woche samt Vertiefungen angeschaut). Ein Meilenstein
+  erzählt, **was** jemand getan hat – eine Punktzahl erzählt nur, wie viel.
 - **Gruppenbild.** Eine Leiste: «Diese Woche dabei: 8 von 11» mit den Kürzeln
   bzw. Vornamen derer, die dabei waren – die Form der Anerkennung, die
   motiviert, ohne zu beschämen. Dazu, wenn gewünscht, ein **gemeinsames
@@ -656,7 +659,7 @@ ist der Bereich bereits benutzbar. Reihenfolge von 3 und 4 ist tauschbar.
 | - | ------------------------------------------------------------------------ | ---------------------------- | ------ |
 | 0 | **Zugang & Gerüst** *(umgesetzt)*: Flags samt Regelverriegelung und Regeltests, Route, Navigation, leere Wochen-Seite, Impuls-Haken in der Benutzerverwaltung | nur Admin | klein |
 | 1 | **Wochenimpuls & Quiz** *(umgesetzt)* mit sofortiger Auflösung; **Redaktions-Seite** (Wochenplan, Fragenpool, Vergangenes, Wochen-Vorschau «was sehen die AP’s», ohne zu speichern); **Startpaket** mit vier Wochen aus den Schriften zum Einspielen – weitere Wochen produziert die Redaktion laufend | Admin, dann 1–2 Pilot-AP’s | mittel |
-| 2 | **Wochenziel, Tages-Challenge, Serie, Abzeichen, Gruppenleiste** *(umgesetzt)* – Aufgaben als planbare Wochen-Inhalte, Serie mit Jokerwoche pro Monat, Abzeichen als Meilensteine, Gruppenleiste mit Vornamen | Pilotgruppe → alle AP’s | mittel |
+| 2 | **Wochenziel, Tages-Challenge, Serie, Meilensteine, Gruppenleiste** *(umgesetzt)* – Aufgaben als planbare Wochen-Inhalte, Serie ohne Jokerwoche, Meilensteine pro Woche (Dabei, Mitgeredet, Tageschallenge, Anti Doom Scroller), Gruppenleiste mit Vornamen | Pilotgruppe → alle AP’s | mittel |
 | 3 | **Feed** mit Amen und Favoriten *(umgesetzt)* – Vollbild mit Wisch-Karten und Schlusskarte; unter dem «Amen» stehen Vornamen statt Zählstände, die Schlusskarte zählt zur Wochenbeteiligung, «Gemerkt» sammelt Favoriten | alle mit Flag | mittel |
 | 4 | **Frage der Woche** *(umgesetzt)* – eine Antwort pro Person (nachbesserbar), sichtbar erst nach der eigenen; Amen und Melden liegen am eigenen Fortschritt, die Redaktion blendet aus und sieht Meldungen; ein Beitrag zählt zur Beteiligung («Mitgeredet»-Abzeichen) | alle mit Flag | mittel |
 | 5 | **Mitmach-Ecke** *(umgesetzt)* – formlose Einreichungen, Übernahme mit «Eingereicht von …», stilles Entfernen statt Ablehnung; **Erinnerungspunkt** *(umgesetzt)* – der stille Punkt am Navigationseintrag, weg mit dem ersten Blick; **Push** wartet auf die FCM-Einrichtung (Konsole); Öffnung über die AP’s hinaus bleibt ein Schalter | nach Bedarf | je klein |

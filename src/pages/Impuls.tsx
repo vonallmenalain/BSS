@@ -47,14 +47,18 @@ import { SectionTile } from '@/components/impulse/ImpulseHomeTiles'
 import { ImpulseSettingsModal, type ImpulseOrder } from '@/components/impulse/ImpulseSettingsModal'
 import { ImpulseScreen, type ScreenOrigin } from '@/components/impulse/ImpulseScreen'
 import { ImpulseStats } from '@/components/impulse/ImpulseStats'
-import { markImpulseFeedDone, setImpulseLastSeenWeek } from '@/services/impulse'
 import {
-  IMPULSE_BADGES,
+  markImpulseCardSeen,
+  markImpulseDeepeningSeen,
+  markImpulseFeedDone,
+  setImpulseLastSeenWeek,
+} from '@/services/impulse'
+import {
   computeStreak,
-  earnedImpulseBadges,
   formatWeekRange,
   impulseAnswerId,
   impulseWeekKey,
+  impulseWeekMilestones,
   itemsForWeek,
   participatedWeeks,
   seededShuffle,
@@ -65,6 +69,7 @@ import {
   IMPULSE_DECK_KINDS,
   IMPULSE_KIND_SECTION,
   IMPULSE_SECTIONS,
+  isDeckKind,
   isDeckSection,
   isImpulseSection,
   isRoomSection,
@@ -182,13 +187,6 @@ export function Impuls() {
   // Antworten und Beiträge zählen gleichermassen als Beteiligung.
   const participated = participatedWeeks(myProgress, [...myAnswers, ...myComments], weekOfItem)
   const streak = computeStreak(participated, todayKey)
-  const badges = earnedImpulseBadges({
-    participated,
-    bestStreak: streak.best,
-    quizAnswers: myAnswers.length,
-    comments: myComments.length,
-    weeks: myProgress?.weeks,
-  })
   const participants = weekParticipants(
     progressState.data,
     [...answersState.data, ...commentsState.data],
@@ -203,6 +201,32 @@ export function Impuls() {
   ]).size
 
   const myWeek = (week: string): ImpulseWeekProgress => myProgress?.weeks?.[week] ?? {}
+
+  /*
+   * Die Meilensteine der laufenden Woche – vier kleine Ziele, am Montag
+   * wieder offen (`impulseWeekMilestones`). «Dabei» hängt am ersten
+   * Blick in die Woche (`lastSeenWeek`), «Mitgeredet» an der Frage der
+   * Woche, die Tageschallenge zählt ihre Haken – und der «Anti Doom
+   * Scroller» braucht alle Karten samt Vertiefungen; angeschaut wird im
+   * Feed vermerkt (`onDeckActive`/`onDeckDeepening`).
+   */
+  const frageItem = thisWeekAll.find((item) => item.kind === 'frage') ?? null
+  const deckItemsThisWeek = thisWeekAll.filter((item) => isDeckKind(item.kind))
+  const deepeningItemsThisWeek = deckItemsThisWeek.filter((item) => Boolean(item.deepening))
+  const seenCardIds = new Set(myWeek(todayKey).cards ?? [])
+  const seenDeepeningIds = new Set(myWeek(todayKey).deepened ?? [])
+  const milestones = impulseWeekMilestones({
+    seen: myProgress?.lastSeenWeek === todayKey,
+    answeredQuestion: frageItem
+      ? myComments.some((comment) => comment.itemId === frageItem.id)
+      : false,
+    challengeDays: (myWeek(todayKey).days ?? []).length,
+    cardsSeen: deckItemsThisWeek.filter((item) => seenCardIds.has(item.id)).length,
+    cardsTotal: deckItemsThisWeek.length,
+    deepeningsSeen: deepeningItemsThisWeek.filter((item) => seenDeepeningIds.has(item.id)).length,
+    deepeningsTotal: deepeningItemsThisWeek.length,
+  })
+  const milestonesEarned = milestones.filter((milestone) => milestone.earned).length
 
   /* Die Favoritensammlung – in der Reihenfolge des Merkens. */
   const favoriteItems = (myProgress?.favorites ?? [])
@@ -349,6 +373,7 @@ export function Impuls() {
           !answerFor(item)
         return {
           id: `${item.kind}-${item.id}`,
+          itemId: item.id,
           section: IMPULSE_KIND_SECTION[kind],
           node: viewWeek === todayKey ? liveNode(item) : pastNode(item),
           /* Die zweite Seite der Karte – nur wenn die Redaktion eine
@@ -412,13 +437,33 @@ export function Impuls() {
   const recordedDeckSections = useRef(new Set<string>())
   const seenFeedCards = useRef(new Set<string>())
   const feedMarkPending = useRef(false)
+  /* Je Karte bzw. Vertiefung höchstens ein Schreibvorgang pro Besuch –
+     was das Fortschrittsdokument schon kennt, wird gar nicht erst
+     angefasst (der Meilenstein «Anti Doom Scroller» zählt daraus). */
+  const recordedCards = useRef(new Set<string>())
+  const recordedDeepenings = useRef(new Set<string>())
   const feedDone = myWeek(todayKey).feed === true
   const onDeckActive = (card: ImpulseDeckCard) => {
     if (uid && !recordedDeckSections.current.has(card.section)) {
       recordedDeckSections.current.add(card.section)
       recordImpulseOpen(uid, card.section)
     }
-    if (!profile || viewWeek !== todayKey || card.section !== 'feed') return
+    if (!profile || viewWeek !== todayKey) return
+
+    const itemId = card.itemId
+    if (itemId && !recordedCards.current.has(itemId) && !seenCardIds.has(itemId)) {
+      recordedCards.current.add(itemId)
+      markImpulseCardSeen(
+        { uid: profile.id, displayName: profile.displayName },
+        todayKey,
+        itemId,
+      ).catch((error) => {
+        console.error(error)
+        recordedCards.current.delete(itemId)
+      })
+    }
+
+    if (card.section !== 'feed') return
     seenFeedCards.current.add(card.id)
     const allSeen =
       feedCards.length > 0 &&
@@ -431,6 +476,22 @@ export function Impuls() {
         feedMarkPending.current = false
       },
     )
+  }
+
+  /** Der Wisch nach links: die Vertiefung war im Bild – einmal vermerken. */
+  const onDeckDeepening = (card: ImpulseDeckCard) => {
+    const itemId = card.itemId
+    if (!profile || viewWeek !== todayKey || !itemId) return
+    if (recordedDeepenings.current.has(itemId) || seenDeepeningIds.has(itemId)) return
+    recordedDeepenings.current.add(itemId)
+    markImpulseDeepeningSeen(
+      { uid: profile.id, displayName: profile.displayName },
+      todayKey,
+      itemId,
+    ).catch((error) => {
+      console.error(error)
+      recordedDeepenings.current.delete(itemId)
+    })
   }
 
   /* ---------------- Navigation zwischen den Räumen ---------------- */
@@ -544,7 +605,6 @@ export function Impuls() {
       case 'fortschritt':
         return (
           <ImpulseStats
-            uid={uid}
             todayKey={todayKey}
             streak={streak}
             participated={participated}
@@ -552,7 +612,7 @@ export function Impuls() {
             answers={myAnswers}
             commentsCount={myComments.length}
             favoritesCount={favoriteItems.length}
-            badges={badges}
+            milestones={milestones}
           />
         )
       case 'gemerkt':
@@ -722,7 +782,7 @@ export function Impuls() {
             section="fortschritt"
             status={
               streak.current > 0
-                ? `${streak.current} ${streak.current === 1 ? 'Woche' : 'Wochen'} in Folge · ${badges.length} von ${IMPULSE_BADGES.length} Abzeichen`
+                ? `${streak.current} ${streak.current === 1 ? 'Woche' : 'Wochen'} in Folge · ${milestonesEarned} von ${milestones.length} Meilensteinen`
                 : 'Deine Serie beginnt mit dem ersten Haken.'
             }
             delay="120ms"
@@ -777,6 +837,7 @@ export function Impuls() {
           target={deckTarget}
           origin={state?.origin ?? null}
           onActive={onDeckActive}
+          onDeepening={onDeckDeepening}
           onClose={closeSection}
           finale={
             <FeedFinale

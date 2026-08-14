@@ -456,6 +456,54 @@ export function submissionToInput(submission: ImpulseSubmission): ImpulseItemInp
 }
 
 /**
+ * Eine Karte des Feeds als angeschaut vermerken – für den Meilenstein
+ * «Anti Doom Scroller» (alle Karten samt Vertiefungen gesehen).
+ *
+ * Wie `setImpulseLastSeenWeek` geht das Anschauen **nicht** ins
+ * Zugriffsprotokoll: Wer durch den Feed tippt, ändert nichts am Bestand –
+ * im Protokoll stünde sonst eine Zeile je Karte. Die Seite ruft nur für
+ * noch nicht vermerkte Karten an (ein Vermerk je Karte und Besuch).
+ */
+export async function markImpulseCardSeen(
+  user: { uid: string; displayName: string },
+  week: string,
+  itemId: string,
+): Promise<SaveOutcome> {
+  return commit(
+    fbSetDoc(
+      doc(db, COLLECTIONS.impulseProgress, user.uid),
+      {
+        uid: user.uid,
+        firstName: impulseFirstName(user.displayName),
+        weeks: { [week]: { cards: arrayUnion(itemId) } },
+        updatedAt: serverTimestamp(),
+      },
+      { merge: true },
+    ),
+  )
+}
+
+/** Die Vertiefung einer Karte als angeschaut vermerken – gleiche Regeln. */
+export async function markImpulseDeepeningSeen(
+  user: { uid: string; displayName: string },
+  week: string,
+  itemId: string,
+): Promise<SaveOutcome> {
+  return commit(
+    fbSetDoc(
+      doc(db, COLLECTIONS.impulseProgress, user.uid),
+      {
+        uid: user.uid,
+        firstName: impulseFirstName(user.displayName),
+        weeks: { [week]: { deepened: arrayUnion(itemId) } },
+        updatedAt: serverTimestamp(),
+      },
+      { merge: true },
+    ),
+  )
+}
+
+/**
  * Die zuletzt angeschaute Woche vermerken – daran hängt der stille Punkt
  * am Navigationseintrag.
  *

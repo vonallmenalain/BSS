@@ -43,6 +43,8 @@ import {
 export interface ImpulseDeckCard {
   /** Eindeutig im Feed – `art-inhaltsId`, z. B. `feed-abc123`. */
   id: string
+  /** Die Inhalts-ID hinter der Karte – für das Vermerken «angeschaut». */
+  itemId?: string
   section: ImpulseDeckSectionKey
   node: ReactNode
   /** Die Vertiefung der Karte – `null`/`undefined` heisst: keine. */
@@ -78,6 +80,7 @@ export function ImpulseFeedScreen({
   target,
   origin,
   onActive,
+  onDeepening,
   onClose,
   finale,
 }: {
@@ -91,6 +94,8 @@ export function ImpulseFeedScreen({
   target?: ImpulseDeckTarget | null
   origin?: FeedOrigin | null
   onActive?: (card: ImpulseDeckCard) => void
+  /** Die Vertiefung einer Karte ist ins Bild gerollt – der Wisch nach links. */
+  onDeepening?: (card: ImpulseDeckCard) => void
   /** Escape schliesst den Feed – der Menüknopf und Zurück tun es auch. */
   onClose: () => void
   /**
@@ -222,7 +227,13 @@ export function ImpulseFeedScreen({
           className="no-scrollbar h-full snap-y snap-mandatory overflow-y-auto outline-none"
         >
           {cards.map((card, cardIndex) => (
-            <FeedCard key={card.id} card={card} index={cardIndex} total={cards.length} />
+            <FeedCard
+              key={card.id}
+              card={card}
+              index={cardIndex}
+              total={cards.length}
+              onDeepening={onDeepening ? () => onDeepening(card) : undefined}
+            />
           ))}
 
           {/* Die Abschlusskarte: nach der letzten Karte ist nicht einfach
@@ -271,10 +282,13 @@ function FeedCard({
   card,
   index,
   total,
+  onDeepening,
 }: {
   card: ImpulseDeckCard
   index: number
   total: number
+  /** Meldet, dass die Vertiefungsseite ins Bild gerollt ist. */
+  onDeepening?: () => void
 }) {
   const theme = IMPULSE_SECTIONS[card.section]
   const hasDeepening = Boolean(card.deepening)
@@ -284,7 +298,9 @@ function FeedCard({
   const onPaneScroll = () => {
     const element = panesRef.current
     if (!element || element.clientWidth === 0) return
-    setPane(Math.round(element.scrollLeft / element.clientWidth))
+    const next = Math.round(element.scrollLeft / element.clientWidth)
+    if (next === 1 && pane !== 1) onDeepening?.()
+    setPane(next)
   }
 
   const goToPane = (nextPane: number) => {

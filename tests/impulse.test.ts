@@ -3,10 +3,10 @@ import { test } from 'node:test'
 
 import {
   computeStreak,
-  earnedImpulseBadges,
   formatWeekRange,
   impulseAnswerId,
   impulseWeekKey,
+  impulseWeekMilestones,
   itemsForWeek,
   monthOfWeek,
   participatedWeeks,
@@ -290,27 +290,11 @@ test('computeStreak: die laufende Woche ist neutral, solange sie offen ist', () 
   })
 })
 
-test('computeStreak: eine Jokerwoche pro Monat überbrückt, zählt aber nicht', () => {
-  // W32 (beginnt im August) verpasst – der August-Joker fängt sie auf.
+test('computeStreak: eine verpasste Woche reisst die Serie – ohne Jokerwoche', () => {
+  // W32 verpasst: Die Serie beginnt mit W33 neu, die alte bleibt die beste.
   assert.deepEqual(computeStreak(new Set(['2026-W30', '2026-W31', '2026-W33']), '2026-W33'), {
-    current: 3,
-    best: 3,
-  })
-})
-
-test('computeStreak: die zweite verpasste Woche im selben Monat reisst die Serie', () => {
-  // W30 und W31 beginnen beide im Juli – ein Joker, dann ist Schluss.
-  assert.deepEqual(
-    computeStreak(new Set(['2026-W28', '2026-W29', '2026-W32', '2026-W33']), '2026-W33'),
-    { current: 2, best: 2 },
-  )
-})
-
-test('computeStreak: zwei verpasste Wochen über die Monatsgrenze werden getragen', () => {
-  // W31 beginnt im Juli, W32 im August – zwei Monate, zwei Joker.
-  assert.deepEqual(computeStreak(new Set(['2026-W29', '2026-W30', '2026-W33']), '2026-W33'), {
-    current: 3,
-    best: 3,
+    current: 1,
+    best: 2,
   })
 })
 
@@ -328,38 +312,85 @@ test('computeStreak: die beste Serie überlebt den Riss', () => {
   assert.deepEqual(computeStreak(participated, '2026-W33'), { current: 2, best: 6 })
 })
 
-test('earnedImpulseBadges: Meilensteine, einmal erreicht, bleiben', () => {
-  const none = earnedImpulseBadges({
-    participated: new Set(),
-    bestStreak: 0,
-    quizAnswers: 0,
-    weeks: undefined,
-  })
-  assert.deepEqual(none, [])
-
-  const earned = earnedImpulseBadges({
-    participated: new Set(['2026-W33']),
-    bestStreak: 4,
-    quizAnswers: 10,
-    comments: 1,
-    weeks: {
-      '2026-W32': {
-        days: [
-          '2026-08-03',
-          '2026-08-04',
-          '2026-08-05',
-          '2026-08-06',
-          '2026-08-07',
-          '2026-08-08',
-          '2026-08-09',
-        ],
-      },
-    },
+test('impulseWeekMilestones: vier Ziele, jede Woche neu offen', () => {
+  const open = impulseWeekMilestones({
+    seen: false,
+    answeredQuestion: false,
+    challengeDays: 0,
+    cardsSeen: 0,
+    cardsTotal: 12,
+    deepeningsSeen: 0,
+    deepeningsTotal: 4,
   })
   assert.deepEqual(
-    earned.map((badge) => badge.id),
-    ['dabei', 'mitgeredet', 'volle-woche', 'vier-wochen', 'zehn-fragen'],
+    open.map((milestone) => milestone.id),
+    ['dabei', 'mitgeredet', 'challenge', 'scroller'],
   )
+  assert.ok(open.every((milestone) => !milestone.earned))
+
+  const done = impulseWeekMilestones({
+    seen: true,
+    answeredQuestion: true,
+    challengeDays: 7,
+    cardsSeen: 12,
+    cardsTotal: 12,
+    deepeningsSeen: 4,
+    deepeningsTotal: 4,
+  })
+  assert.ok(done.every((milestone) => milestone.earned))
+})
+
+test('impulseWeekMilestones: die Tageschallenge zählt ihre Haken – höchstens sieben', () => {
+  const three = impulseWeekMilestones({
+    seen: true,
+    answeredQuestion: false,
+    challengeDays: 3,
+    cardsSeen: 0,
+    cardsTotal: 0,
+    deepeningsSeen: 0,
+    deepeningsTotal: 0,
+  }).find((milestone) => milestone.id === 'challenge')
+  assert.equal(three?.earned, false)
+  assert.deepEqual(three?.progress, { value: 3, max: 7 })
+
+  const nine = impulseWeekMilestones({
+    seen: true,
+    answeredQuestion: false,
+    challengeDays: 9,
+    cardsSeen: 0,
+    cardsTotal: 0,
+    deepeningsSeen: 0,
+    deepeningsTotal: 0,
+  }).find((milestone) => milestone.id === 'challenge')
+  assert.equal(nine?.earned, true)
+  assert.deepEqual(nine?.progress, { value: 7, max: 7 })
+})
+
+test('impulseWeekMilestones: der Scroller braucht alle Karten und alle Vertiefungen', () => {
+  const almost = impulseWeekMilestones({
+    seen: true,
+    answeredQuestion: true,
+    challengeDays: 0,
+    cardsSeen: 12,
+    cardsTotal: 12,
+    deepeningsSeen: 3,
+    deepeningsTotal: 4,
+  }).find((milestone) => milestone.id === 'scroller')
+  assert.equal(almost?.earned, false)
+  assert.deepEqual(almost?.progress, { value: 15, max: 16 })
+
+  // Eine Woche ohne Karten kennt keinen Scroller – erreicht ist sie nie.
+  const empty = impulseWeekMilestones({
+    seen: true,
+    answeredQuestion: true,
+    challengeDays: 0,
+    cardsSeen: 0,
+    cardsTotal: 0,
+    deepeningsSeen: 0,
+    deepeningsTotal: 0,
+  }).find((milestone) => milestone.id === 'scroller')
+  assert.equal(empty?.earned, false)
+  assert.deepEqual(empty?.progress, { value: 0, max: 0 })
 })
 
 test('weekParticipants: Vornamen aus Fortschritt und Antworten, ohne Doppelte', () => {
