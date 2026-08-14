@@ -195,6 +195,21 @@ export function ImpulseItemFields({
             />
             <p className="hint mt-1">{videoHint(input.videoUrl)}</p>
           </div>
+          {/* Ein Wisch oder zwei: Standard ist einer – das Video hat den
+              Bildschirm für sich, danach kommt die nächste Karte. Der
+              Haken holt den Text zurück, der sonst bei jeder Bildkarte
+              beim zweiten Wisch darüberfährt. */}
+          <label className="flex cursor-pointer items-center gap-2 text-sm">
+            <input
+              type="checkbox"
+              className="size-4"
+              checked={input.videoTextPage}
+              onChange={(event) =>
+                setInput((value) => ({ ...value, videoTextPage: event.target.checked }))
+              }
+            />
+            Text über dem Video – zweiter Wisch
+          </label>
         </fieldset>
       )}
 

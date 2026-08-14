@@ -64,6 +64,8 @@ export interface ImpulseItemInput {
   imageCrop: ImpulseImageCrop | null
   /** Der Videolink der Video-Karte (YouTube, Vimeo oder eine Videodatei). */
   videoUrl: string
+  /** Zwei Wische statt einem: der Text über dem Video (nur Video-Karten). */
+  videoTextPage: boolean
   /** Platz innerhalb der Art – für Feed, Quizfrage und Bilderrätsel. */
   order: number | null
   /** «Eingereicht von Luca» – wenn der Inhalt aus der Mitmach-Ecke stammt. */
@@ -101,6 +103,7 @@ export function emptyImpulseItem(
     imageAlt: '',
     imageCrop: null,
     videoUrl: '',
+    videoTextPage: false,
     order,
     contributor: '',
     quiz: { ...EMPTY_IMPULSE_QUIZ, options: [...EMPTY_IMPULSE_QUIZ.options] },
@@ -125,6 +128,7 @@ export function toImpulseInput(item: ImpulseItem): ImpulseItemInput {
     imageAlt: item.image?.alt ?? '',
     imageCrop: item.image?.crop ?? null,
     videoUrl: item.videoUrl ?? '',
+    videoTextPage: item.videoTextPage ?? false,
     order: typeof item.order === 'number' ? item.order : null,
     contributor: item.contributor ?? '',
     quiz: item.quiz
@@ -163,6 +167,7 @@ export async function saveImpulseItem(
       : null,
     // Das Video gehört zur Video-Karte; andere Arten speichern keines.
     videoUrl: input.kind === 'video' ? input.videoUrl.trim() || null : null,
+    videoTextPage: input.kind === 'video' ? input.videoTextPage : null,
     // Das Quiz bleibt am Datensatz, auch wenn die Art wechselt – wie beim
     // variablen Layout wirft das Umschalten nichts weg. Das Bilderrätsel
     // nutzt dieselbe Mechanik: Frage, Antworten, Auflösung.
@@ -460,6 +465,7 @@ function submissionCard(input: ImpulseItemInput) {
     imageAlt: input.imageAlt.trim(),
     imageCrop: input.imageCrop ?? null,
     videoUrl: input.kind === 'video' ? input.videoUrl.trim() : '',
+    videoTextPage: input.kind === 'video' ? input.videoTextPage : false,
     quiz:
       input.kind === 'quiz' || input.kind === 'bilderraetsel'
         ? {
@@ -526,6 +532,7 @@ export function submissionToItem(submission: ImpulseSubmission): ImpulseItem {
       ? { url: card.imageUrl, alt: card.imageAlt ?? '', crop: card.imageCrop ?? null }
       : null,
     videoUrl: card?.videoUrl?.trim() || null,
+    videoTextPage: card?.videoTextPage ?? false,
     quiz: card?.quiz ?? null,
     contributor: submission.firstName,
   }
@@ -581,6 +588,7 @@ export function submissionToInput(
     input.imageAlt = card.imageAlt ?? ''
     input.imageCrop = card.imageCrop ?? null
     input.videoUrl = card.videoUrl ?? ''
+    input.videoTextPage = card.videoTextPage ?? false
     if (card.quiz) input.quiz = { ...card.quiz, options: [...card.quiz.options] }
   }
   return input

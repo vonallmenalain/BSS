@@ -398,8 +398,19 @@ ist, und hält an, sobald man weiterwischt; Untertitel bleiben aus, und
 den Ton bedient die Leiste des Videos selbst. Was sich
 nicht einbetten lässt, wird zur Karte mit einem Knopf, der das Video
 draussen öffnet – ein ehrlicher Weg hinaus statt eines schwarzen
-Rechtecks. Auch die Video-Karte kennt Amen, Merken und die Vertiefung;
-gewertet wird wie überall die Teilnahme.
+Rechtecks.
+
+**Ein Wisch oder zwei.** Anders als die Bildkarte gehört der Video-Karte
+standardmässig nur ein Bildschirm: Das Video hat ihn für sich, und der
+nächste Wisch bringt schon die nächste Karte – kein Text, keine Zeile,
+nichts, was sich darüberschiebt. Wo der Text dazugehört – eine Frage
+zum Schauen, ein Gedanke danach –, setzt die Redaktion im Formular den
+Haken **«Text über dem Video – zweiter Wisch»**: Dann fährt er beim
+zweiten Wisch darüber, wie bei jeder Bildkarte, und mit ihm Titel,
+Quelle sowie Amen und Merken. Die Vertiefung bleibt in beiden Fällen
+erreichbar; auf der einstufigen Karte führt der Pfeil «Vertiefen»
+hinüber, weil dort das Wischen dem Video gehört. Gewertet wird wie
+überall die Teilnahme.
 
 ### 5.6 Die Mitmach-Ecke
 
