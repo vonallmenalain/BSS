@@ -1,7 +1,12 @@
 import assert from 'node:assert/strict'
 import { test } from 'node:test'
 
-import { scriptureLink } from '../src/lib/scriptures.ts'
+import {
+  addScriptureLinks,
+  churchSearchLink,
+  countScriptureLinkCandidates,
+  scriptureLink,
+} from '../src/lib/scriptures.ts'
 import { planStarterItems } from '../src/lib/impulseStarter.ts'
 
 /*
@@ -80,4 +85,36 @@ test('scriptureLink: deckt jeden Schriften-Link des Startpakets', () => {
   // Nicht nur «nichts widerspricht»: Der Grossteil der Links muss auch
   // wirklich hergeleitet werden – sonst ist die Bücher-Tafel löchrig.
   assert.ok(covered >= 25, `nur ${covered} Schriften-Links hergeleitet`)
+})
+
+test('churchSearchLink: die Suche der Kirche, vorbefüllt', () => {
+  assert.equal(
+    churchSearchLink('Generalkonferenz Okt. 2025'),
+    'https://www.churchofjesuschrist.org/search?lang=deu&query=Generalkonferenz%20Okt.%202025',
+  )
+})
+
+test('addScriptureLinks: verlinkt reine Schriftstellen-Zeilen, sonst nichts', () => {
+  const before = [
+    'Der Auftrag wirkt riskant – aber Gottes Gebote haben Gründe.',
+    '',
+    'Zum Weiterlesen:',
+    'Mosia 1:3–4',
+    `1 Nephi 4:6 – ${BASE}/bofm/1-ne/4?lang=deu&id=p6#p6`,
+  ].join('\n')
+  const { text, added } = addScriptureLinks(before)
+  assert.equal(added, 1)
+  assert.deepEqual(text.split('\n'), [
+    'Der Auftrag wirkt riskant – aber Gottes Gebote haben Gründe.',
+    '',
+    'Zum Weiterlesen:',
+    `Mosia 1:3–4 – ${BASE}/bofm/mosiah/1?lang=deu&id=p3-p4#p3`,
+    `1 Nephi 4:6 – ${BASE}/bofm/1-ne/4?lang=deu&id=p6#p6`,
+  ])
+  // Ein zweiter Lauf findet nichts mehr – der Knopf verlinkt nie doppelt.
+  const again = addScriptureLinks(text)
+  assert.equal(again.added, 0)
+  assert.equal(again.text, text)
+  assert.equal(countScriptureLinkCandidates(before), 1)
+  assert.equal(countScriptureLinkCandidates(text), 0)
 })

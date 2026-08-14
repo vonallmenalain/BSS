@@ -23,6 +23,17 @@
 
 const SCRIPTURES = 'https://www.churchofjesuschrist.org/study/scriptures'
 
+/**
+ * Die Suche der Kirche, vorbefüllt mit der Quellenangabe – der Helfer
+ * für alles, was keine Schriftstelle ist (Konferenzansprachen, Lieder,
+ * Artikel): Seite öffnen, Treffer anklicken, Adresse kopieren. Ein
+ * herleitbares Adress-Schema gibt es dafür nicht, eine öffentliche
+ * Schnittstelle auch nicht – die Suche ist der ehrliche Weg.
+ */
+export function churchSearchLink(query: string): string {
+  return `https://www.churchofjesuschrist.org/search?lang=deu&query=${encodeURIComponent(query.trim())}`
+}
+
 /** Werk und Buch-Kürzel, wie die Adressen der Kirche sie erwarten. */
 interface ScriptureBook {
   work: 'ot' | 'nt' | 'bofm' | 'dc-testament' | 'pgp'
@@ -198,4 +209,31 @@ export function scriptureLink(label: string): string | null {
   if (verse === null) return base
   const range = verseEnd !== null ? `p${verse}-p${verseEnd}` : `p${verse}`
   return `${base}&id=${range}#p${verse}`
+}
+
+/**
+ * Zeilen der Vertiefung, die nur eine Schriftstelle sind («Alma 32:27»),
+ * um ihren Link ergänzen – zu «Alma 32:27 – https://…», der Form, die
+ * die Anzeige als beschrifteten Verweis versteht (`lib/links`).
+ *
+ * Angefasst wird nur, was eindeutig ist: Zeilen mit einer Adresse darin
+ * bleiben stehen, Fliesstext sowieso. Ein zweiter Lauf ändert nichts
+ * mehr – der Knopf im Formular kann also nie etwas doppelt verlinken.
+ */
+export function addScriptureLinks(text: string): { text: string; added: number } {
+  let added = 0
+  const lines = text.split('\n').map((line) => {
+    const trimmed = line.trim()
+    if (!trimmed || trimmed.includes('http')) return line
+    const url = scriptureLink(trimmed)
+    if (!url) return line
+    added += 1
+    return line.replace(trimmed, `${trimmed} – ${url}`)
+  })
+  return { text: lines.join('\n'), added }
+}
+
+/** Wie viele Zeilen `addScriptureLinks` verlinken würde – für den Knopf. */
+export function countScriptureLinkCandidates(text: string): number {
+  return addScriptureLinks(text).added
 }

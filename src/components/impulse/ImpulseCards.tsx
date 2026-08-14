@@ -5,6 +5,7 @@ import { useToast } from '@/contexts/ToastContext'
 import { cn } from '@/lib/utils'
 import { formatWeekRange } from '@/lib/impulse'
 import { labeledLink, splitLinks } from '@/lib/links'
+import { scriptureLink } from '@/lib/scriptures'
 import { ImpulseCardActions } from '@/components/impulse/ImpulseCardActions'
 import { ImpulseImageLightbox } from '@/components/impulse/ImpulseImageLightbox'
 import { answerImpulseQuiz } from '@/services/impulse'
@@ -64,7 +65,16 @@ export function ImpulseDeepeningCard({ item }: { item: ImpulseItem }) {
       <h3 className="text-base font-semibold text-balance">{item.title}</h3>
       <div className="mt-3 space-y-1 text-sm text-slate-600 dark:text-slate-300">
         {item.deepening.split('\n').map((line, index) => {
-          const labeled = labeledLink(line)
+          /* Eine Zeile «Alma 32:27 – https://…» trägt ihren Link selbst;
+             eine Zeile, auf der nur «Alma 32:27» steht, bekommt ihn von
+             `scriptureLink` hergeleitet – die Redaktion und die
+             Mitmach-Ecke müssen keine Adressen abtippen. */
+          const labeled =
+            labeledLink(line) ??
+            (() => {
+              const derived = scriptureLink(line.trim())
+              return derived ? { label: line.trim(), href: derived } : null
+            })()
           if (labeled) {
             return (
               <a
