@@ -3045,6 +3045,14 @@ export interface ImpulseWeekProgress {
   feed?: boolean
   /** Die Teilen-Aufgabe der Woche besprochen – Selbstauskunft, umhakbar. */
   share?: boolean
+  /**
+   * Im Vollbild-Feed angeschaute Karten der Woche, als Inhalts-IDs –
+   * und die angeschauten Vertiefungen dazu. Daran hängt der Meilenstein
+   * «Anti Doom Scroller»: alle Karten samt Vertiefungen gesehen. Über
+   * Geräte hinweg gezählt, darum hier und nicht im localStorage.
+   */
+  cards?: string[]
+  deepened?: string[]
 }
 
 /**

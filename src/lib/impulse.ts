@@ -275,15 +275,13 @@ export function participatedWeeks(
 }
 
 /**
- * Die Serie: Wochen in Folge mit Beteiligung – mit eingebauter Milde.
+ * Die Serie: Wochen in Folge mit Beteiligung – ohne Milde-Mechanik.
  *
- * Pro Kalendermonat verzeiht eine **Jokerwoche** eine verpasste Woche
- * (Lager, Prüfungen, Ferien); erst die zweite verpasste Woche im selben
- * Monat reisst die Serie. Der Joker überbrückt, zählt aber nicht mit –
- * die Serie ist die Zahl der Wochen, in denen jemand wirklich dabei war.
- * Die **laufende** Woche ist neutral, solange sie nicht abgehakt ist:
- * Sie läuft ja noch, und eine Serie, die am Montagmorgen auf null fiele,
- * wäre keine Milde, sondern ein Fehler.
+ * Eine Jokerwoche pro Monat gab es hier einmal; sie ist bewusst wieder
+ * ausgebaut: Die Serie soll genau das sagen, was sie zählt. Nur die
+ * **laufende** Woche ist neutral, solange sie nicht abgehakt ist: Sie
+ * läuft ja noch, und eine Serie, die am Montagmorgen auf null fiele,
+ * wäre kein Zählen, sondern ein Fehler.
  */
 export function computeStreak(
   participated: ReadonlySet<string>,
@@ -294,7 +292,6 @@ export function computeStreak(
 
   let run = 0
   let best = 0
-  const jokerMonths = new Set<string>()
 
   let cursor: string | null = past[0]
   let guard = 0
@@ -304,12 +301,7 @@ export function computeStreak(
       run += 1
       if (run > best) best = run
     } else if (cursor !== todayKey) {
-      const month = monthOfWeek(cursor)
-      if (!month || jokerMonths.has(month)) {
-        run = 0
-      } else {
-        jokerMonths.add(month)
-      }
+      run = 0
     }
     cursor = weekKeyOffset(cursor, 1)
   }
@@ -318,54 +310,69 @@ export function computeStreak(
 }
 
 /**
- * Die Abzeichen – Meilensteine statt Punkte.
+ * Die Meilensteine **pro Woche** – jede Woche beginnen sie neu.
  *
- * Ein Abzeichen erzählt, **was** jemand getan hat, nicht wie viel. Einmal
- * erreicht, bleibt es: Gerechnet wird über die ganze Geschichte (beste
- * Serie, alle Antworten), nicht über den heutigen Stand.
+ * Kein Sammeln über Monate (die Vier- und Acht-Wochen-Abzeichen sind
+ * bewusst weggefallen): Vier kleine Ziele für die laufende Woche, am
+ * Montag wieder offen. Erzählt wird, **was** diese Woche geschah, samt
+ * Stand («1 von 7») – ein leerer Stand mahnt nicht, er wartet.
  */
-export interface ImpulseBadge {
-  id: string
+export interface ImpulseWeekMilestone {
+  id: 'dabei' | 'mitgeredet' | 'challenge' | 'scroller'
   label: string
   hint: string
+  earned: boolean
+  /** Der Stand für die Anzeige – «1 von 7». */
+  progress: { value: number; max: number }
 }
 
-export const IMPULSE_BADGES: ImpulseBadge[] = [
-  { id: 'dabei', label: 'Dabei!', hint: 'Die erste Woche mitgemacht.' },
-  {
-    id: 'mitgeredet',
-    label: 'Mitgeredet',
-    hint: 'Zum ersten Mal auf die Frage der Woche geantwortet.',
-  },
-  {
-    id: 'volle-woche',
-    label: 'Volle Woche',
-    hint: 'Eine Tages-Challenge an allen sieben Tagen abgehakt.',
-  },
-  { id: 'vier-wochen', label: '4 Wochen in Folge', hint: 'Vier Wochen am Stück dabei.' },
-  { id: 'acht-wochen', label: '8 Wochen in Folge', hint: 'Acht Wochen am Stück dabei.' },
-  { id: 'zehn-fragen', label: '10 Fragen', hint: 'Zehn Quizfragen beantwortet.' },
-]
-
-export function earnedImpulseBadges(input: {
-  participated: ReadonlySet<string>
-  bestStreak: number
-  quizAnswers: number
-  /** Beiträge zur Frage der Woche. */
-  comments?: number
-  weeks: Record<string, { days?: string[] }> | undefined
-}): ImpulseBadge[] {
-  const fullWeek = Object.values(input.weeks ?? {}).some(
-    (state) => new Set(state?.days ?? []).size >= 7,
-  )
-  const earned = new Set<string>()
-  if (input.participated.size > 0) earned.add('dabei')
-  if ((input.comments ?? 0) > 0) earned.add('mitgeredet')
-  if (fullWeek) earned.add('volle-woche')
-  if (input.bestStreak >= 4) earned.add('vier-wochen')
-  if (input.bestStreak >= 8) earned.add('acht-wochen')
-  if (input.quizAnswers >= 10) earned.add('zehn-fragen')
-  return IMPULSE_BADGES.filter((badge) => earned.has(badge.id))
+export function impulseWeekMilestones(input: {
+  /** Diese Woche eingeloggt – der erste Blick in den Bereich zählt. */
+  seen: boolean
+  /** Bei der Frage der Woche geantwortet. */
+  answeredQuestion: boolean
+  /** Abgehakte Tage der Tages-Challenge dieser Woche. */
+  challengeDays: number
+  /** Angeschaute Feed-Karten dieser Woche – und wie viele es gibt. */
+  cardsSeen: number
+  cardsTotal: number
+  /** Angeschaute Vertiefungen dieser Woche – und wie viele es gibt. */
+  deepeningsSeen: number
+  deepeningsTotal: number
+}): ImpulseWeekMilestone[] {
+  const days = Math.min(input.challengeDays, 7)
+  const scrollerTotal = input.cardsTotal + input.deepeningsTotal
+  const scrollerSeen = Math.min(input.cardsSeen + input.deepeningsSeen, scrollerTotal)
+  return [
+    {
+      id: 'dabei',
+      label: 'Dabei!',
+      hint: 'Diese Woche in Anti Doom hineingeschaut.',
+      earned: input.seen,
+      progress: { value: input.seen ? 1 : 0, max: 1 },
+    },
+    {
+      id: 'mitgeredet',
+      label: 'Mitgeredet',
+      hint: 'Bei der Frage der Woche geantwortet.',
+      earned: input.answeredQuestion,
+      progress: { value: input.answeredQuestion ? 1 : 0, max: 1 },
+    },
+    {
+      id: 'challenge',
+      label: 'Tageschallenge erreicht',
+      hint: 'Alle sieben Tage der Tages-Challenge abgehakt.',
+      earned: days >= 7,
+      progress: { value: days, max: 7 },
+    },
+    {
+      id: 'scroller',
+      label: 'Anti Doom Scroller',
+      hint: 'Alle Karten der Woche samt Vertiefungen angeschaut.',
+      earned: scrollerTotal > 0 && scrollerSeen >= scrollerTotal,
+      progress: { value: scrollerSeen, max: scrollerTotal },
+    },
+  ]
 }
 
 /**
