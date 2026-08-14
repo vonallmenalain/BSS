@@ -2,6 +2,7 @@ import { useEffect, useRef, type ReactNode } from 'react'
 import { createPortal } from 'react-dom'
 import { X } from 'lucide-react'
 import { cn } from '@/lib/utils'
+import { lockScroll } from '@/lib/scrollLock'
 
 const WIDTHS = {
   sm: 'max-w-md',
@@ -70,8 +71,7 @@ export function Modal({
     if (!open) return
 
     previouslyFocused.current = document.activeElement as HTMLElement
-    const { overflow } = document.body.style
-    document.body.style.overflow = 'hidden'
+    const unlockScroll = lockScroll()
 
     const onKeyDown = (event: KeyboardEvent) => {
       if (event.key === 'Escape') {
@@ -110,7 +110,7 @@ export function Modal({
 
     return () => {
       document.removeEventListener('keydown', onKeyDown, true)
-      document.body.style.overflow = overflow
+      unlockScroll()
       window.clearTimeout(timer)
       previouslyFocused.current?.focus?.()
     }

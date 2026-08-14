@@ -10,7 +10,9 @@ import {
   itemsForWeek,
   monthOfWeek,
   participatedWeeks,
+  planDifficultyCleanup,
   readyProblems,
+  stripDifficultyTag,
   upcomingWeekKeys,
   seededShuffle,
   visibleImpulseItems,
@@ -406,4 +408,52 @@ test('seededShuffle: ein anderer Schlüssel mischt anders', () => {
   // Bei zwölf Karten wäre eine zufällig identische Ordnung ein Wunder –
   // und ein deterministisches: Der Test bleibt stabil.
   assert.notDeepEqual(a, b)
+})
+
+test('stripDifficultyTag: nimmt die Ansage weg und schreibt gross weiter', () => {
+  assert.equal(
+    stripDifficultyTag('Zum Aufwärmen: ein Boot, hohe Wellen – und einer, der ruhig bleibt.'),
+    'Ein Boot, hohe Wellen – und einer, der ruhig bleibt.',
+  )
+  assert.equal(
+    stripDifficultyTag('Schon schwieriger: Der Engel auf dem Bild heisst Moroni.'),
+    'Der Engel auf dem Bild heisst Moroni.',
+  )
+  assert.equal(
+    stripDifficultyTag('Für Profis: Die Antwort ist ein einziges Wort.'),
+    'Die Antwort ist ein einziges Wort.',
+  )
+  // Auch mit Gedankenstrich statt Doppelpunkt.
+  assert.equal(
+    stripDifficultyTag('Zum Aufwärmen – für viele ist er der Tempel der Heimat.'),
+    'Für viele ist er der Tempel der Heimat.',
+  )
+  // Steht nur die Ansage da, bleibt schlicht nichts – die Frage genügt.
+  assert.equal(stripDifficultyTag('Für Profis:'), '')
+  assert.equal(stripDifficultyTag('Zum Aufwärmen'), '')
+})
+
+test('stripDifficultyTag: lässt gewöhnliche Hinweise in Ruhe', () => {
+  for (const text of [
+    'Die Familie war bereits in der Wildnis.',
+    // Ohne Doppelpunkt oder Gedankenstrich ist es keine Ansage, sondern Satzanfang.
+    'Schon schwieriger wird es beim zweiten Vers.',
+    'Ein Hinweis, wo sich das Suchen lohnt.',
+    '',
+  ]) {
+    assert.equal(stripDifficultyTag(text), text)
+  }
+})
+
+test('planDifficultyCleanup: findet nur Inhalte mit Ansage', () => {
+  const updates = planDifficultyCleanup([
+    { id: 'a', body: 'Für Profis: Alle drei stehen im selben Vers.' },
+    { id: 'b', body: 'Ein Hinweis ohne Ansage.' },
+    { id: 'c', body: undefined },
+    { id: 'd', body: 'schon schwieriger: klein geschrieben zählt auch.' },
+  ])
+  assert.deepEqual(updates, [
+    { id: 'a', body: 'Alle drei stehen im selben Vers.' },
+    { id: 'd', body: 'Klein geschrieben zählt auch.' },
+  ])
 })

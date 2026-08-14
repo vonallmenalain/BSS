@@ -1,6 +1,7 @@
 import { useEffect, useLayoutEffect, useRef, useState } from 'react'
 import { createPortal } from 'react-dom'
 import { Minus, Plus, X } from 'lucide-react'
+import { lockScroll } from '@/lib/scrollLock'
 
 /*
  * Das Vollbild eines Bilderrätsel-Bildes – ein Tipp auf das Bild öffnet
@@ -39,13 +40,7 @@ export function ImpulseImageLightbox({
   const pendingScroll = useRef<{ left: number; top: number } | null>(null)
 
   /* Hinter dem Vollbild soll nichts mitrollen. */
-  useEffect(() => {
-    const previous = document.body.style.overflow
-    document.body.style.overflow = 'hidden'
-    return () => {
-      document.body.style.overflow = previous
-    }
-  }, [])
+  useEffect(() => lockScroll(), [])
 
   /* Escape schliesst nur das Bild – nicht auch noch den Feed darunter:
      Der Lauscher hängt in der Capture-Phase und stoppt das Ereignis. */

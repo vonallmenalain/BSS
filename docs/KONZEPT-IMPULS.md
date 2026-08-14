@@ -342,8 +342,9 @@ Drei Bausteine, die den Vollbild-Feed vom Anschauen zum Weitertragen führen:
   (verlinkt, nicht hochgeladen): ein Tempel («In welcher Stadt steht er?»),
   ein Prophet, eine Begebenheit aus den Schriften. Dieselbe Mechanik wie die
   Quizfrage (Auswahl oder Suchfrage, sofortige Auflösung, Antworten in
-  `impulseAnswers`), bis zu drei je Woche in verschiedenen
-  Schwierigkeitsgraden – wie beim Quiz.
+  `impulseAnswers`), bis zu drei je Woche – wie beim Quiz. Ein
+  Schwierigkeitsgrad wird nicht angesagt: Unter der Frage steht höchstens
+  ein Hinweis zur Sache, oder nur die Frage selbst.
 - **Vertiefung** – jede Feed-Karte kann eine zweite Seite tragen: ein Wisch
   nach links (die Karte kommt vom rechten Rand herein) zeigt Freitext der
   Redaktion mit weiterführenden Gedanken, Quellen und anklickbaren Links.

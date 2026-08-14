@@ -2,6 +2,7 @@ import { useEffect, useRef, useState, type ReactNode } from 'react'
 import { createPortal } from 'react-dom'
 import { ArrowLeft, LayoutGrid, Tent } from 'lucide-react'
 import { cn } from '@/lib/utils'
+import { lockScroll } from '@/lib/scrollLock'
 import {
   IMPULSE_SECTIONS,
   type ImpulseSection,
@@ -54,13 +55,7 @@ export function ImpulseScreen({
   const [closing, setClosing] = useState(false)
 
   /* Hinter dem Vollbild soll nichts mitrollen – wie beim Feed. */
-  useEffect(() => {
-    const previous = document.body.style.overflow
-    document.body.style.overflow = 'hidden'
-    return () => {
-      document.body.style.overflow = previous
-    }
-  }, [])
+  useEffect(() => lockScroll(), [])
 
   /* Beim Öffnen den Fokus in den Raum holen – Escape schliesst ihn. */
   useEffect(() => {

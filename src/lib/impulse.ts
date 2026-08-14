@@ -190,6 +190,43 @@ export function readyProblems(item: {
 }
 
 /* ------------------------------------------------------------------ */
+/* Aufräumen: Schwierigkeitsansagen in Quiz-Hinweisen                  */
+/* ------------------------------------------------------------------ */
+
+/*
+ * Die Hinweise unter Quizfragen und Bilderrätseln begannen früher mit
+ * einer Schwierigkeitsansage – «Zum Aufwärmen:», «Schon schwieriger:»,
+ * «Für Profis:». Die Redaktion will keinen Schwierigkeitsgrad ansagen:
+ * Unter der Frage steht höchstens ein Hinweis zur Sache, oder gar
+ * nichts. Das Startpaket kommt seither ohne die Ansagen; für Inhalte,
+ * die schon in der Datenbank liegen, rechnet `planDifficultyCleanup`
+ * aus, was sich ändern würde – die Redaktion spielt es mit einem Klick
+ * ein. Erkannt wird nur die Ansage mit Doppelpunkt oder Gedankenstrich
+ * (oder allein auf weiter Flur) – ein Satz, der zufällig so beginnt
+ * («Schon schwieriger wird es …»), bleibt unangetastet.
+ */
+const DIFFICULTY_TAG = /^\s*(?:zum aufwärmen|schon schwieriger|für profis)\s*(?:[:–—-]+\s*|$)/i
+
+/** Den Hinweis von seiner Schwierigkeitsansage befreien – gross weiter. */
+export function stripDifficultyTag(text: string): string {
+  const match = DIFFICULTY_TAG.exec(text)
+  if (!match) return text
+  const rest = text.slice(match[0].length)
+  return rest.charAt(0).toLocaleUpperCase('de-CH') + rest.slice(1)
+}
+
+/** Welche Inhalte noch eine Ansage tragen – und wie ihr Hinweis danach lautet. */
+export function planDifficultyCleanup(
+  items: Pick<ImpulseItem, 'id' | 'body'>[],
+): { id: string; body: string }[] {
+  return items.flatMap((item) => {
+    const body = item.body ?? ''
+    const cleaned = stripDifficultyTag(body)
+    return cleaned === body ? [] : [{ id: item.id, body: cleaned }]
+  })
+}
+
+/* ------------------------------------------------------------------ */
 /* Beteiligung, Serie und Abzeichen                                    */
 /* ------------------------------------------------------------------ */
 
