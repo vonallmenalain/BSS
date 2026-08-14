@@ -7,6 +7,7 @@ import {
   LayoutList,
   Lightbulb,
   MessagesSquare,
+  PlayCircle,
   Puzzle,
   Repeat,
   Search,
@@ -32,6 +33,7 @@ export type ImpulseSectionKey =
   | 'woche'
   | 'quiz'
   | 'bilderraetsel'
+  | 'video'
   | 'frage'
   | 'feed'
   | 'teilen'
@@ -63,10 +65,14 @@ export interface ImpulseSection {
 }
 
 /*
- * Zwölf Bereiche, zwölf Farbtöne – bewusst weit auseinander, damit die
- * Farbe allein schon sagt, wo man ist. Die Vollbild-Töne sind Schleier
- * (klein dosiert, oben im Bild), keine Vollflächen: farbig, ohne zu
- * schreien – und im Dunkelmodus gedimmt statt grell.
+ * Dreizehn Bereiche, dreizehn Farbtöne – bewusst weit auseinander, damit
+ * die Farbe allein schon sagt, wo man ist.
+ *
+ * Die Vollbild-Töne sind Schleier, keine Vollflächen: Sie steigen oben
+ * satt ein, laufen über eine Zwischenstufe aus und enden im Grund der
+ * App – im Hellen also Farbe ins Weiss, im Dunkeln Farbe ins Schwarz.
+ * Seit die Karten ohne Kachel dastehen, trägt dieser Verlauf das Bild
+ * allein; darum ist er kräftiger als früher.
  */
 export const IMPULSE_SECTIONS: Record<ImpulseSectionKey, ImpulseSection> = {
   woche: {
@@ -76,7 +82,7 @@ export const IMPULSE_SECTIONS: Record<ImpulseSectionKey, ImpulseSection> = {
     icon: Lightbulb,
     iconBox: 'bg-amber-500 text-white',
     text: 'text-amber-700 dark:text-amber-300',
-    wash: 'from-amber-200/70 dark:from-amber-500/15',
+    wash: 'from-amber-300/90 via-amber-200/40 dark:from-amber-500/40 dark:via-amber-500/12',
     chipActive: 'bg-amber-600 text-white dark:bg-amber-400 dark:text-amber-950',
     ring: 'text-amber-500 dark:text-amber-400',
     bar: 'bg-amber-500 dark:bg-amber-400',
@@ -88,7 +94,7 @@ export const IMPULSE_SECTIONS: Record<ImpulseSectionKey, ImpulseSection> = {
     icon: Search,
     iconBox: 'bg-violet-500 text-white',
     text: 'text-violet-700 dark:text-violet-300',
-    wash: 'from-violet-200/70 dark:from-violet-500/15',
+    wash: 'from-violet-300/90 via-violet-200/40 dark:from-violet-500/40 dark:via-violet-500/12',
     chipActive: 'bg-violet-600 text-white dark:bg-violet-400 dark:text-violet-950',
     ring: 'text-violet-500 dark:text-violet-400',
     bar: 'bg-violet-500 dark:bg-violet-400',
@@ -100,10 +106,22 @@ export const IMPULSE_SECTIONS: Record<ImpulseSectionKey, ImpulseSection> = {
     icon: Puzzle,
     iconBox: 'bg-lime-600 text-white',
     text: 'text-lime-700 dark:text-lime-300',
-    wash: 'from-lime-200/70 dark:from-lime-500/15',
+    wash: 'from-lime-300/90 via-lime-200/40 dark:from-lime-500/40 dark:via-lime-500/12',
     chipActive: 'bg-lime-600 text-white dark:bg-lime-400 dark:text-lime-950',
     ring: 'text-lime-600 dark:text-lime-400',
     bar: 'bg-lime-600 dark:bg-lime-400',
+  },
+  video: {
+    key: 'video',
+    label: 'Video',
+    short: 'Video',
+    icon: PlayCircle,
+    iconBox: 'bg-red-500 text-white',
+    text: 'text-red-700 dark:text-red-300',
+    wash: 'from-red-300/90 via-red-200/40 dark:from-red-500/40 dark:via-red-500/12',
+    chipActive: 'bg-red-600 text-white dark:bg-red-400 dark:text-red-950',
+    ring: 'text-red-500 dark:text-red-400',
+    bar: 'bg-red-500 dark:bg-red-400',
   },
   frage: {
     key: 'frage',
@@ -112,7 +130,7 @@ export const IMPULSE_SECTIONS: Record<ImpulseSectionKey, ImpulseSection> = {
     icon: MessagesSquare,
     iconBox: 'bg-rose-500 text-white',
     text: 'text-rose-700 dark:text-rose-300',
-    wash: 'from-rose-200/70 dark:from-rose-500/15',
+    wash: 'from-rose-300/90 via-rose-200/40 dark:from-rose-500/40 dark:via-rose-500/12',
     chipActive: 'bg-rose-600 text-white dark:bg-rose-400 dark:text-rose-950',
     ring: 'text-rose-500 dark:text-rose-400',
     bar: 'bg-rose-500 dark:bg-rose-400',
@@ -124,7 +142,7 @@ export const IMPULSE_SECTIONS: Record<ImpulseSectionKey, ImpulseSection> = {
     icon: LayoutList,
     iconBox: 'bg-indigo-500 text-white',
     text: 'text-indigo-700 dark:text-indigo-300',
-    wash: 'from-indigo-200/70 dark:from-indigo-500/15',
+    wash: 'from-indigo-300/90 via-indigo-200/40 dark:from-indigo-500/40 dark:via-indigo-500/12',
     chipActive: 'bg-indigo-600 text-white dark:bg-indigo-400 dark:text-indigo-950',
     ring: 'text-indigo-500 dark:text-indigo-400',
     bar: 'bg-indigo-500 dark:bg-indigo-400',
@@ -136,7 +154,7 @@ export const IMPULSE_SECTIONS: Record<ImpulseSectionKey, ImpulseSection> = {
     icon: HeartHandshake,
     iconBox: 'bg-cyan-600 text-white',
     text: 'text-cyan-700 dark:text-cyan-300',
-    wash: 'from-cyan-200/70 dark:from-cyan-500/15',
+    wash: 'from-cyan-300/90 via-cyan-200/40 dark:from-cyan-500/40 dark:via-cyan-500/12',
     chipActive: 'bg-cyan-600 text-white dark:bg-cyan-400 dark:text-cyan-950',
     ring: 'text-cyan-600 dark:text-cyan-400',
     bar: 'bg-cyan-600 dark:bg-cyan-400',
@@ -148,7 +166,7 @@ export const IMPULSE_SECTIONS: Record<ImpulseSectionKey, ImpulseSection> = {
     icon: CheckCircle2,
     iconBox: 'bg-emerald-500 text-white',
     text: 'text-emerald-700 dark:text-emerald-300',
-    wash: 'from-emerald-200/70 dark:from-emerald-500/15',
+    wash: 'from-emerald-300/90 via-emerald-200/40 dark:from-emerald-500/40 dark:via-emerald-500/12',
     chipActive: 'bg-emerald-600 text-white dark:bg-emerald-400 dark:text-emerald-950',
     ring: 'text-emerald-500 dark:text-emerald-400',
     bar: 'bg-emerald-500 dark:bg-emerald-400',
@@ -160,7 +178,7 @@ export const IMPULSE_SECTIONS: Record<ImpulseSectionKey, ImpulseSection> = {
     icon: Repeat,
     iconBox: 'bg-sky-500 text-white',
     text: 'text-sky-700 dark:text-sky-300',
-    wash: 'from-sky-200/70 dark:from-sky-500/15',
+    wash: 'from-sky-300/90 via-sky-200/40 dark:from-sky-500/40 dark:via-sky-500/12',
     chipActive: 'bg-sky-600 text-white dark:bg-sky-400 dark:text-sky-950',
     ring: 'text-sky-500 dark:text-sky-400',
     bar: 'bg-sky-500 dark:bg-sky-400',
@@ -172,7 +190,7 @@ export const IMPULSE_SECTIONS: Record<ImpulseSectionKey, ImpulseSection> = {
     icon: Flame,
     iconBox: 'bg-orange-500 text-white',
     text: 'text-orange-700 dark:text-orange-300',
-    wash: 'from-orange-200/70 dark:from-orange-500/15',
+    wash: 'from-orange-300/90 via-orange-200/40 dark:from-orange-500/40 dark:via-orange-500/12',
     chipActive: 'bg-orange-600 text-white dark:bg-orange-400 dark:text-orange-950',
     ring: 'text-orange-500 dark:text-orange-400',
     bar: 'bg-orange-500 dark:bg-orange-400',
@@ -184,7 +202,7 @@ export const IMPULSE_SECTIONS: Record<ImpulseSectionKey, ImpulseSection> = {
     icon: Bookmark,
     iconBox: 'bg-teal-500 text-white',
     text: 'text-teal-700 dark:text-teal-300',
-    wash: 'from-teal-200/70 dark:from-teal-500/15',
+    wash: 'from-teal-300/90 via-teal-200/40 dark:from-teal-500/40 dark:via-teal-500/12',
     chipActive: 'bg-teal-600 text-white dark:bg-teal-400 dark:text-teal-950',
     ring: 'text-teal-500 dark:text-teal-400',
     bar: 'bg-teal-500 dark:bg-teal-400',
@@ -196,7 +214,7 @@ export const IMPULSE_SECTIONS: Record<ImpulseSectionKey, ImpulseSection> = {
     icon: History,
     iconBox: 'bg-slate-500 text-white',
     text: 'text-slate-600 dark:text-slate-300',
-    wash: 'from-slate-300/60 dark:from-slate-500/15',
+    wash: 'from-slate-300/80 via-slate-200/40 dark:from-slate-500/35 dark:via-slate-500/10',
     chipActive: 'bg-slate-600 text-white dark:bg-slate-300 dark:text-slate-950',
     ring: 'text-slate-500 dark:text-slate-400',
     bar: 'bg-slate-500 dark:bg-slate-400',
@@ -208,7 +226,7 @@ export const IMPULSE_SECTIONS: Record<ImpulseSectionKey, ImpulseSection> = {
     icon: Send,
     iconBox: 'bg-fuchsia-500 text-white',
     text: 'text-fuchsia-700 dark:text-fuchsia-300',
-    wash: 'from-fuchsia-200/70 dark:from-fuchsia-500/15',
+    wash: 'from-fuchsia-300/90 via-fuchsia-200/40 dark:from-fuchsia-500/40 dark:via-fuchsia-500/12',
     chipActive: 'bg-fuchsia-600 text-white dark:bg-fuchsia-400 dark:text-fuchsia-950',
     ring: 'text-fuchsia-500 dark:text-fuchsia-400',
     bar: 'bg-fuchsia-500 dark:bg-fuchsia-400',
@@ -220,6 +238,7 @@ export const IMPULSE_SECTION_ORDER: ImpulseSectionKey[] = [
   'woche',
   'quiz',
   'bilderraetsel',
+  'video',
   'frage',
   'feed',
   'teilen',
@@ -246,6 +265,7 @@ export const IMPULSE_DECK_SECTIONS = [
   'woche',
   'quiz',
   'bilderraetsel',
+  'video',
   'frage',
   'feed',
   'teilen',
@@ -275,12 +295,14 @@ export function isRoomSection(key: ImpulseSectionKey): key is ImpulseRoomSection
 /**
  * Die Inhaltsarten, die als Karten im Vollbild-Feed liegen – in der
  * Lesereihenfolge des Feeds: das Wochenthema zuerst, die Rätsel gleich
- * nach dem Quiz, die Teilen-Aufgabe als Einladung zum Schluss.
+ * nach dem Quiz, dann das Video als Wechsel des Takts, und die
+ * Teilen-Aufgabe als Einladung zum Schluss.
  */
 export const IMPULSE_DECK_KINDS = [
   'impuls',
   'quiz',
   'bilderraetsel',
+  'video',
   'frage',
   'feed',
   'teilen',
@@ -297,6 +319,7 @@ export const IMPULSE_KIND_SECTION: Record<ImpulseDeckKind, ImpulseDeckSectionKey
   impuls: 'woche',
   quiz: 'quiz',
   bilderraetsel: 'bilderraetsel',
+  video: 'video',
   frage: 'frage',
   feed: 'feed',
   teilen: 'teilen',
@@ -334,6 +357,8 @@ export function sectionForItem(item: ImpulseItem, todayKey: string): ImpulseSect
       return 'quiz'
     case 'bilderraetsel':
       return 'bilderraetsel'
+    case 'video':
+      return 'video'
     case 'wochenziel':
       return 'ziel'
     case 'tageschallenge':

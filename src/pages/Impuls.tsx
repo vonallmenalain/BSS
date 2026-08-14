@@ -15,7 +15,7 @@ import {
 } from 'lucide-react'
 import { useAuth } from '@/contexts/AuthContext'
 import { useNow } from '@/hooks/useNow'
-import { useLocalStorage } from '@/hooks/useLocalStorage'
+import { useImpulseAppearance, useLocalStorage } from '@/hooks/useLocalStorage'
 import {
   useImpulseAnswers,
   useImpulseComments,
@@ -28,14 +28,17 @@ import { PageHeader } from '@/components/ui/Pickers'
 import { AppMenuButton } from '@/components/AppMenuButton'
 import {
   ImpulseDeepeningCard,
+  ImpulseImageBackdrop,
   ImpulseItemImage,
   QuizCard,
   SourceLink,
+  VideoDeckCard,
   WocheDeckCard,
 } from '@/components/impulse/ImpulseCards'
 import { ChallengeCard, GoalCard, GroupCard } from '@/components/impulse/ImpulseProgressCards'
 import { ImpulseQuestionCard } from '@/components/impulse/ImpulseQuestionCard'
 import { ImpulseShareCard } from '@/components/impulse/ImpulseShareCard'
+import { ImpulseVideoPlayer } from '@/components/impulse/ImpulseVideoPlayer'
 import { ImpulseSubmitCard } from '@/components/impulse/ImpulseSubmitCard'
 import { ImpulseFeedCard } from '@/components/impulse/ImpulseFeedCard'
 import {
@@ -78,6 +81,7 @@ import {
   type ImpulseSectionKey,
 } from '@/lib/impulseSections'
 import { recordImpulseOpen, trackImpulseTime } from '@/lib/impulseUsage'
+import { impulseVideoSource } from '@/lib/impulseVideo'
 import {
   IMPULSE_KIND_LABELS,
   type ImpulseAnswer,
@@ -108,10 +112,12 @@ import {
  * Die Navigation wohnt im App-Menü: «Anti Doom» klappt dort auf, ein
  * Punkt pro Bereich – die Feed-Bereiche springen im Feed genau zur Karte
  * (`/anti-doom/<bereich>`), die übrigen öffnen ihren Raum. Zuunterst liegen
- * die **Anti-Doom-Einstellungen**: die Reihenfolge der Karten (der Reihe
- * nach oder gemischt, gemerkt am Gerät) und der Rückblick in eine
- * frühere Woche – er gilt nur für diesen Besuch, Standard bleibt immer
- * die laufende Woche.
+ * die **Anti-Doom-Einstellungen**: die Darstellung des Bereichs (dunkel
+ * oder hell, gemerkt am Gerät), die Reihenfolge der Karten (der Reihe
+ * nach oder gemischt) und der Rückblick in eine frühere Woche – er gilt
+ * nur für diesen Besuch, Standard bleibt immer die laufende Woche. Sie
+ * sind ein Fenster über dem Bereich, in dem man steht: Beim Schliessen
+ * steht man wieder dort, bei derselben Karte.
  *
  * Veröffentlicht wird weiterhin durch den Kalender – ein Inhalt
  * erscheint, sobald seine Woche beginnt (`visibleImpulseItems`);
@@ -143,11 +149,24 @@ export function Impuls() {
   const submissionsState = useImpulseSubmissions()
 
   const sectionKey: ImpulseSectionKey | null = isImpulseSection(bereich) ? bereich : null
-  /* Feed-Bereiche öffnen den Vollbild-Feed, Raum-Bereiche ihren Raum. */
-  const roomKey: ImpulseRoomSectionKey | null =
-    sectionKey && isRoomSection(sectionKey) ? sectionKey : null
-  const feedOpen = sectionKey !== null && isDeckSection(sectionKey)
   const settingsOpen = bereich === 'einstellungen'
+
+  /*
+   * Die Einstellungen sind ein Fenster, kein Ortswechsel.
+   *
+   * Sie legen sich über das, was gerade offen ist: Wer sie aus dem Feed
+   * heraus aufschlägt, steht beim Schliessen wieder im Feed – bei
+   * derselben Karte, nicht auf der Übersicht. Die Adresse allein kann das
+   * nicht sagen (sie heisst währenddessen «einstellungen»), darum merkt
+   * sich die Seite den Bereich darunter.
+   */
+  const [beneath, setBeneath] = useState<ImpulseSectionKey | null>(sectionKey)
+  if (!settingsOpen && beneath !== sectionKey) setBeneath(sectionKey)
+  const openKey = settingsOpen ? beneath : sectionKey
+
+  /* Feed-Bereiche öffnen den Vollbild-Feed, Raum-Bereiche ihren Raum. */
+  const roomKey: ImpulseRoomSectionKey | null = openKey && isRoomSection(openKey) ? openKey : null
+  const feedOpen = openKey !== null && isDeckSection(openKey)
   const state = (location.state ?? null) as ImpulsLocationState | null
 
   const todayKey = impulseWeekKey(now)
@@ -238,6 +257,9 @@ export function Impuls() {
   /* Die Reihenfolge merkt sich das Gerät; die Woche gilt nur für diesen
      Besuch – beim nächsten Öffnen steht wieder die laufende da. */
   const [order, setOrder] = useLocalStorage<ImpulseOrder>('bss:impuls:reihenfolge', 'geordnet')
+  /* Die Darstellung des Bereichs (dunkel, wenn nichts gewählt ist) legt
+     die Hülle an das `<html>` – hier steht nur die Wahl (siehe `Layout`). */
+  const [look, setLook] = useImpulseAppearance()
   const [weekOverride, setWeekOverride] = useState<string | null>(() => {
     // Eine gemerkte Karte aus einer früheren Woche schlägt gleich dort auf.
     const initial = (location.state ?? null) as ImpulsLocationState | null
@@ -284,8 +306,42 @@ export function Impuls() {
 
   const deckWeekItems = viewWeek === todayKey ? thisWeekAll : itemsForWeek(visible, viewWeek)
 
+  /**
+   * Im Feed liegt das Bild als Fläche hinter der Karte (siehe
+   * `mediaLayer`) – die Karte selbst zeigt es darum nicht ein zweites
+   * Mal. Ausserhalb des Feeds, in den Räumen und im Rückblick, bleibt
+   * das Bild im Inhalt, wo es hingehört.
+   */
+  const withoutImage = (item: ImpulseItem): ImpulseItem =>
+    item.image?.url ? { ...item, image: null } : item
+
+  /**
+   * Die Fläche einer Karte – das Bild oder das Video, über den ganzen
+   * Bildschirm. Wer eine hat, bekommt im Feed die zweistufige Karte:
+   * erst die Fläche allein, dann der Text darüber.
+   */
+  const mediaLayer = (item: ImpulseItem): ImpulseDeckCard['media'] => {
+    const source = impulseVideoSource(item.videoUrl)
+    if (item.kind === 'video' && source) {
+      return ({ active }) => (
+        <ImpulseVideoPlayer
+          source={source}
+          poster={item.image?.url ?? null}
+          title={item.title}
+          active={active}
+        />
+      )
+    }
+    if (item.image?.url) {
+      const image = item.image
+      return () => <ImpulseImageBackdrop image={image} />
+    }
+    return null
+  }
+
   /** Eine Karte der laufenden Woche – lebendig, mit allen Handgriffen. */
-  const liveNode = (item: ImpulseItem) => {
+  const liveNode = (raw: ImpulseItem) => {
+    const item = withoutImage(raw)
     switch (item.kind) {
       case 'quiz':
       case 'bilderraetsel':
@@ -297,6 +353,8 @@ export function Impuls() {
             progressDocs={progressState.data}
           />
         )
+      case 'video':
+        return <VideoDeckCard item={item} progressDocs={progressState.data} />
       case 'frage':
         return (
           <ImpulseQuestionCard
@@ -330,15 +388,15 @@ export function Impuls() {
    * und Merken auf Feed-Karten bleiben lebendig – sie hängen am Inhalt,
    * nicht an der Woche.
    */
-  const pastNode = (item: ImpulseItem) => {
+  const pastNode = (raw: ImpulseItem) => {
+    const item = withoutImage(raw)
     switch (item.kind) {
       case 'quiz':
       case 'bilderraetsel':
-        return (
-          <div className="card p-5">
-            <PastQuiz item={item} answer={answerFor(item)} />
-          </div>
-        )
+        return <PastQuiz item={item} answer={answerFor(item)} />
+      case 'video':
+        return <VideoDeckCard item={item} progressDocs={progressState.data} />
+
       case 'frage': {
         const mine = myComments.some((comment) => comment.itemId === item.id)
         return (
@@ -354,13 +412,11 @@ export function Impuls() {
         return <ImpulseFeedCard item={item} progressDocs={progressState.data} />
       case 'teilen':
         return (
-          <div className="card p-5">
-            <PastTask
-              item={item}
-              label="Teilen"
-              note={myWeek(viewWeek).share === true ? 'besprochen' : null}
-            />
-          </div>
+          <PastTask
+            item={item}
+            label="Teilen"
+            note={myWeek(viewWeek).share === true ? 'besprochen' : null}
+          />
         )
       default:
         /* Amen und Merken bleiben auch rückblickend lebendig – sie
@@ -386,10 +442,12 @@ export function Impuls() {
           itemId: item.id,
           section: IMPULSE_KIND_SECTION[kind],
           node: viewWeek === todayKey ? liveNode(item) : pastNode(item),
+          /* Bild oder Video füllen den Bildschirm – und machen aus der
+             Karte zwei Bühnen: erst die Fläche, dann der Text darüber. */
+          media: mediaLayer(item),
           /* Die zweite Seite der Karte – nur wenn die Redaktion eine
              Vertiefung erfasst hat; sonst gibt es sie gar nicht. */
-          deepening:
-            item.deepening && !spoiler ? <ImpulseDeepeningCard item={item} /> : null,
+          deepening: item.deepening && !spoiler ? <ImpulseDeepeningCard item={item} /> : null,
         }
       }),
   )
@@ -420,10 +478,18 @@ export function Impuls() {
      auch derselbe Punkt zweimal hintereinander fährt wieder hin. */
   const [deckTarget, setDeckTarget] = useState<ImpulseDeckTarget | null>(null)
   const firstNav = useRef(true)
+  /* Eine Navigation, die gar keine sein soll: das Schliessen der
+     Einstellungen (siehe `closeSettings`). Die Karte im Bild bleibt
+     stehen, statt an den Anfang ihres Bereichs zu fahren. */
+  const stayPut = useRef(false)
   useEffect(() => {
     if (firstNav.current) {
       // Der Aufbau ist bereits über `initialDeckTarget` positioniert.
       firstNav.current = false
+      return
+    }
+    if (stayPut.current) {
+      stayPut.current = false
       return
     }
     if (!isImpulseSection(bereich) || !isDeckSection(bereich)) return
@@ -528,10 +594,15 @@ export function Impuls() {
     else navigate(-1)
   }
 
-  /* Die Einstellungen schliessen immer auf die Übersicht – auch wer sie
-     aus einem anderen Bereich der App heraus aufgeschlagen hat, landet
-     im Bereich, nicht wieder draussen. */
-  const closeSettings = () => navigate('/anti-doom', { replace: true })
+  /* Die Einstellungen schliessen dorthin zurück, wo sie geöffnet wurden:
+     auf den Bereich unter dem Fenster – und ohne dessen Feed anzufahren,
+     die Karte im Bild bleibt stehen (`stayPut`). Wer sie aus einem
+     anderen Teil der App heraus aufgeschlagen hat, landet auf der
+     Übersicht des Bereichs, nicht wieder draussen. */
+  const closeSettings = () => {
+    stayPut.current = true
+    navigate(beneath ? `/anti-doom/${beneath}` : '/anti-doom', { replace: true })
+  }
 
   const chooseOrder = (next: ImpulseOrder) => {
     setOrder(next)
@@ -887,6 +958,8 @@ export function Impuls() {
       <ImpulseSettingsModal
         open={settingsOpen}
         onClose={closeSettings}
+        look={look}
+        onLook={setLook}
         order={order}
         onOrder={chooseOrder}
         weeks={pastWeeks}
@@ -1005,7 +1078,7 @@ function FeedFinale({
 }) {
   const shownWeeks = pastWeeks.slice(0, 3)
   return (
-    <article className="card p-6 text-center sm:p-8">
+    <article className="px-1 text-center">
       <span
         className="mx-auto grid size-12 place-items-center rounded-full bg-emerald-500 text-white"
         aria-hidden

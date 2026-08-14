@@ -746,6 +746,7 @@ const KIND_GROUP_LABELS: Record<ImpulseKind, string> = {
   impuls: 'Wochenthema',
   quiz: 'Quizfragen',
   bilderraetsel: 'Bilderrätsel',
+  video: 'Videos',
   wochenziel: 'Wochenziel',
   tageschallenge: 'Tages-Challenge',
   frage: 'Frage der Woche',

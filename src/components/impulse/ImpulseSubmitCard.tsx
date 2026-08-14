@@ -71,6 +71,7 @@ export function ImpulseSubmitCard({
             ? editor.input.quiz
             : null,
         image: editor.input.imageUrl.trim() ? { url: editor.input.imageUrl } : null,
+        videoUrl: editor.input.videoUrl,
       })
     : []
 
@@ -117,7 +118,7 @@ export function ImpulseSubmitCard({
   }
 
   return (
-    <section className="card p-5">
+    <section className={plain ? undefined : 'card p-5'}>
       {!plain && (
         <p className="hint flex items-center gap-1.5 font-medium">
           <Send className="size-4" aria-hidden />

@@ -2812,6 +2812,7 @@ export type ImpulseKind =
   | 'impuls'
   | 'quiz'
   | 'bilderraetsel'
+  | 'video'
   | 'wochenziel'
   | 'tageschallenge'
   | 'frage'
@@ -2822,6 +2823,7 @@ export const IMPULSE_KIND_LABELS: Record<ImpulseKind, string> = {
   impuls: 'Wochenthema',
   quiz: 'Quizfrage',
   bilderraetsel: 'Bilderrätsel',
+  video: 'Video',
   wochenziel: 'Wochenziel',
   tageschallenge: 'Tages-Challenge',
   frage: 'Frage der Woche',
@@ -2873,11 +2875,14 @@ export interface ImpulseSource {
 }
 
 /**
- * Das Bild eines Bilderrätsels.
+ * Das Bild einer Karte.
  *
- * Wie die Quellen kommt es aus dem offiziellen Material: ein Link in die
- * Mediathek der Kirche (churchofjesuschrist.org/media), kein hochgeladenes
- * Foto – die App speichert nur die Adresse und lädt das Bild von dort.
+ * Jede Kartenart darf eines tragen – beim Bilderrätsel ist es das Rätsel
+ * selbst, sonst das Bild zum Thema; im Vollbild-Feed füllt es die erste
+ * Seite der Karte. Wie die Quellen kommt es aus dem offiziellen Material:
+ * ein Link in die Mediathek der Kirche (churchofjesuschrist.org/media),
+ * kein hochgeladenes Foto – die App speichert nur die Adresse und lädt
+ * das Bild von dort.
  */
 export interface ImpulseImage {
   url: string
@@ -2939,8 +2944,17 @@ export interface ImpulseItem extends WithId {
    */
   order?: number
   quiz?: ImpulseQuiz | null
-  /** Das Bild des Bilderrätsels – nur dort von Belang. */
+  /** Das Bild der Karte – jede Art darf eines tragen. */
   image?: ImpulseImage | null
+  /**
+   * Das Video einer Video-Karte – ein Link, kein Upload.
+   *
+   * Am besten läuft es in der App, wenn die Adresse direkt auf die
+   * Videodatei zeigt (`…mp4`, der Download-Link aus der Mediathek der
+   * Kirche) oder auf YouTube bzw. Vimeo. Alles andere bleibt eine Karte
+   * mit Knopf, die das Video draussen öffnet (siehe `lib/impulseVideo`).
+   */
+  videoUrl?: string | null
   source?: ImpulseSource | null
   /**
    * «Eingereicht von Luca» – der Vorname, wenn der Inhalt aus der
@@ -2992,6 +3006,8 @@ export interface ImpulseSubmissionCard {
   deepeningSourceUrl?: string
   imageUrl: string
   imageAlt: string
+  /** Der Videolink – bei der Video-Karte. */
+  videoUrl?: string
   quiz: ImpulseQuiz | null
 }
 
