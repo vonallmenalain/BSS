@@ -380,6 +380,16 @@ bleibt und eine Spur näher rückt. So bekommt jedes Bild den Moment, den
 ein Bild braucht, und beim Bilderrätsel ist genau das die Aufgabe:
 erst schauen, dann fragen.
 
+Nicht jedes Bild will man ganz zeigen. Neben dem Bild-Link steht darum
+der Knopf **«Ausschnitt»**: Er öffnet das Bild gross, mit einem Rahmen
+zum Schieben und Ziehen, und darunter steht dasselbe so, wie es auf der
+Karte ankommt. Zugeschnitten wird dabei nichts – gespeichert werden vier
+Masse in Prozent, das Bild bleibt unangetastet in der Mediathek liegen.
+Der Ausschnitt gilt überall gleich: in der Karte, als Fläche im Feed und
+im Vollbild mit Zoom. Gerade beim Bilderrätsel zählt das Letzte: Was die
+Redaktion weggelassen hat, taucht auch beim Vergrössern nicht auf.
+Ohne Ausschnitt bleibt alles wie bisher – das ganze Bild, ungeschnitten.
+
 Die **Video-Karte** ist die konsequente Fortsetzung: eine Kartenart mit
 einem Link statt einer Datei – YouTube, Vimeo oder die direkte Adresse
 einer Videodatei (der Download-Link einer Videoseite der Kirche). Das

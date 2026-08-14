@@ -18,6 +18,7 @@ import { commit, type SaveOutcome } from '@/lib/sync'
 import { impulseAnswerId } from '@/lib/impulse'
 import type { StarterPlan } from '@/lib/impulseStarter'
 import type {
+  ImpulseImageCrop,
   ImpulseItem,
   ImpulseKind,
   ImpulseQuiz,
@@ -59,6 +60,8 @@ export interface ImpulseItemInput {
   /** Das Bild der Karte – ein Link in die Mediathek der Kirche. */
   imageUrl: string
   imageAlt: string
+  /** Der gewählte Ausschnitt des Bildes – `null` heisst: das ganze Bild. */
+  imageCrop: ImpulseImageCrop | null
   /** Der Videolink der Video-Karte (YouTube, Vimeo oder eine Videodatei). */
   videoUrl: string
   /** Platz innerhalb der Art – für Feed, Quizfrage und Bilderrätsel. */
@@ -96,6 +99,7 @@ export function emptyImpulseItem(
     sourceUrl: '',
     imageUrl: '',
     imageAlt: '',
+    imageCrop: null,
     videoUrl: '',
     order,
     contributor: '',
@@ -119,6 +123,7 @@ export function toImpulseInput(item: ImpulseItem): ImpulseItemInput {
     sourceUrl: item.source?.url ?? '',
     imageUrl: item.image?.url ?? '',
     imageAlt: item.image?.alt ?? '',
+    imageCrop: item.image?.crop ?? null,
     videoUrl: item.videoUrl ?? '',
     order: typeof item.order === 'number' ? item.order : null,
     contributor: item.contributor ?? '',
@@ -153,7 +158,9 @@ export async function saveImpulseItem(
     source: sourceLabel ? { label: sourceLabel, url: input.sourceUrl.trim() } : null,
     /* Ein Bild darf jede Karte tragen – beim Bilderrätsel ist es das
        Rätsel, beim Video das Vorschaubild, sonst das Bild zum Thema. */
-    image: imageUrl ? { url: imageUrl, alt: input.imageAlt.trim() } : null,
+    image: imageUrl
+      ? { url: imageUrl, alt: input.imageAlt.trim(), crop: input.imageCrop ?? null }
+      : null,
     // Das Video gehört zur Video-Karte; andere Arten speichern keines.
     videoUrl: input.kind === 'video' ? input.videoUrl.trim() || null : null,
     // Das Quiz bleibt am Datensatz, auch wenn die Art wechselt – wie beim
@@ -451,6 +458,7 @@ function submissionCard(input: ImpulseItemInput) {
     deepeningSourceUrl: input.deepeningSourceUrl.trim(),
     imageUrl: input.imageUrl.trim(),
     imageAlt: input.imageAlt.trim(),
+    imageCrop: input.imageCrop ?? null,
     videoUrl: input.kind === 'video' ? input.videoUrl.trim() : '',
     quiz:
       input.kind === 'quiz' || input.kind === 'bilderraetsel'
@@ -514,7 +522,9 @@ export function submissionToItem(submission: ImpulseSubmission): ImpulseItem {
       ? { label: deepeningSourceLabel, url: card?.deepeningSourceUrl?.trim() ?? '' }
       : null,
     source: sourceLabel ? { label: sourceLabel, url: submission.sourceUrl?.trim() ?? '' } : null,
-    image: card?.imageUrl ? { url: card.imageUrl, alt: card.imageAlt ?? '' } : null,
+    image: card?.imageUrl
+      ? { url: card.imageUrl, alt: card.imageAlt ?? '', crop: card.imageCrop ?? null }
+      : null,
     videoUrl: card?.videoUrl?.trim() || null,
     quiz: card?.quiz ?? null,
     contributor: submission.firstName,
@@ -569,6 +579,7 @@ export function submissionToInput(
     input.deepeningSourceUrl = card.deepeningSourceUrl ?? ''
     input.imageUrl = card.imageUrl ?? ''
     input.imageAlt = card.imageAlt ?? ''
+    input.imageCrop = card.imageCrop ?? null
     input.videoUrl = card.videoUrl ?? ''
     if (card.quiz) input.quiz = { ...card.quiz, options: [...card.quiz.options] }
   }

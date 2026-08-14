@@ -1413,7 +1413,7 @@ function PastQuiz({ item, answer }: { item: ImpulseItem; answer: ImpulseAnswer |
 
   return (
     <div>
-      <ImpulseItemImage item={item} className="max-h-40" />
+      <ImpulseItemImage item={item} maxHeight="10rem" />
       <p className={cn('text-sm font-medium', item.image?.url && 'mt-2')}>{item.title}</p>
       <p className="hint mt-0.5">
         Lösung: <span className="font-medium">{solution}</span>

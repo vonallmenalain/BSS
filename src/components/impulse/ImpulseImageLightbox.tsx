@@ -1,11 +1,17 @@
-import { useEffect, useLayoutEffect, useRef, useState } from 'react'
+import { useCallback, useEffect, useLayoutEffect, useRef, useState } from 'react'
 import { createPortal } from 'react-dom'
 import { Minus, Plus, X } from 'lucide-react'
+import { cropImageStyle } from '@/lib/impulseCrop'
 import { lockScroll } from '@/lib/scrollLock'
+import type { ImpulseImageCrop } from '@/lib/types'
 
 /*
  * Das Vollbild eines Bilderrätsel-Bildes – ein Tipp auf das Bild öffnet
  * es hier, gross und zoombar: Details erkennen gehört beim Rätseln dazu.
+ *
+ * Hat die Karte einen Ausschnitt, gilt er auch hier: Das Vollbild ist
+ * die Lupe auf die Karte, nicht der Blick hinter sie – sonst stünde beim
+ * Bilderrätsel plötzlich da, was die Redaktion weggelassen hat.
  *
  * Gezoomt wird, wie es das Gerät hergibt: mit zwei Fingern (Pinch), mit
  * dem Mausrad, mit Doppeltipp (hinein und wieder heraus) – und immer auch
@@ -22,10 +28,13 @@ const MAX_SCALE = 5
 export function ImpulseImageLightbox({
   url,
   alt,
+  crop = null,
   onClose,
 }: {
   url: string
   alt?: string
+  /** Der Ausschnitt der Karte – ohne ihn gilt das ganze Bild. */
+  crop?: ImpulseImageCrop | null
   onClose: () => void
 }) {
   const rootRef = useRef<HTMLDivElement>(null)
@@ -59,22 +68,29 @@ export function ImpulseImageLightbox({
     return () => window.removeEventListener('keydown', onKey, true)
   }, [])
 
-  /* Die eingepasste Grösse: so gross wie möglich, ohne Beschnitt. */
-  const measure = () => {
+  /* Die eingepasste Grösse: so gross wie möglich, ohne Beschnitt.
+     Gemessen wird, was gezeigt wird – beim Ausschnitt also nur sein
+     Teil des Bildes. Die Rechnung hängt an den beiden Massen, nicht am
+     Ausschnitt selbst: Der ist bei jedem Zeichnen ein neues Objekt und
+     würde das Messen endlos anstossen. */
+  const shownPart = { width: crop?.width ?? 100, height: crop?.height ?? 100 }
+  const measure = useCallback(() => {
     const img = imgRef.current
     const box = boxRef.current
     if (!img || !box || !img.naturalWidth || !img.naturalHeight) return
+    const shownW = (img.naturalWidth * shownPart.width) / 100
+    const shownH = (img.naturalHeight * shownPart.height) / 100
     const availableW = Math.max(box.clientWidth - 32, 1)
     const availableH = Math.max(box.clientHeight - 32, 1)
-    const fit = Math.min(availableW / img.naturalWidth, availableH / img.naturalHeight)
-    setBase({ w: img.naturalWidth * fit, h: img.naturalHeight * fit })
-  }
+    const fit = Math.min(availableW / shownW, availableH / shownH)
+    setBase({ w: shownW * fit, h: shownH * fit })
+  }, [shownPart.width, shownPart.height])
   useEffect(() => {
     // Ein aus dem Speicher geladenes Bild feuert `onLoad` nicht immer.
     if (imgRef.current?.complete) measure()
     window.addEventListener('resize', measure)
     return () => window.removeEventListener('resize', measure)
-  }, [])
+  }, [measure])
 
   /**
    * Zoomen um einen Brennpunkt: Der Punkt unter Finger bzw. Zeiger bleibt
@@ -173,19 +189,48 @@ export function ImpulseImageLightbox({
         className="no-scrollbar h-full w-full touch-pan-x touch-pan-y overflow-auto overscroll-contain"
       >
         <div className="flex min-h-full w-max min-w-full p-4">
-          <img
-            ref={imgRef}
-            src={url}
-            alt={alt || 'Bild zum Rätsel'}
-            onLoad={measure}
-            draggable={false}
-            style={
-              base
-                ? { width: base.w * scale, height: base.h * scale, maxWidth: 'none' }
-                : undefined
-            }
-            className={base ? 'm-auto shrink-0 select-none' : 'm-auto max-h-full max-w-full object-contain select-none'}
-          />
+          {crop ? (
+            /* Der Ausschnitt in einem Rahmen, der ihn abschneidet – das
+               Bild darin ist so gross, wie es der Zoom sagt. Solange
+               nichts gemessen ist, steht der Rahmen in Bildschirmbreite:
+               richtig geschnitten, nur noch nicht eingepasst. */
+            <div
+              className="relative m-auto shrink-0 overflow-hidden select-none"
+              style={
+                base
+                  ? { width: base.w * scale, height: base.h * scale }
+                  : { width: '90vw', aspectRatio: `${crop.ratio}` }
+              }
+            >
+              <img
+                ref={imgRef}
+                src={url}
+                alt={alt || 'Bild zum Rätsel'}
+                onLoad={measure}
+                draggable={false}
+                className="max-w-none select-none"
+                style={cropImageStyle(crop)}
+              />
+            </div>
+          ) : (
+            <img
+              ref={imgRef}
+              src={url}
+              alt={alt || 'Bild zum Rätsel'}
+              onLoad={measure}
+              draggable={false}
+              style={
+                base
+                  ? { width: base.w * scale, height: base.h * scale, maxWidth: 'none' }
+                  : undefined
+              }
+              className={
+                base
+                  ? 'm-auto shrink-0 select-none'
+                  : 'm-auto max-h-full max-w-full object-contain select-none'
+              }
+            />
+          )}
         </div>
       </div>
 
