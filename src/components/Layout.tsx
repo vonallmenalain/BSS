@@ -29,7 +29,7 @@ import { cn } from '@/lib/utils'
 import { useAuth } from '@/contexts/AuthContext'
 import { useData } from '@/contexts/DataContext'
 import { useTrackLocation } from '@/hooks/useBack'
-import { useOnlineStatus, useTheme } from '@/hooks/useLocalStorage'
+import { useImpulseAppearance, useOnlineStatus, useTheme } from '@/hooks/useLocalStorage'
 import { usePendingWrites } from '@/hooks/useSync'
 import { useEnsureMonthlyDuties } from '@/hooks/useMonthlyDuties'
 import { useNow } from '@/hooks/useNow'
@@ -127,7 +127,6 @@ export function Layout() {
     impulseProgress.byUid.get(profile?.id ?? '')?.lastSeenWeek !== impulseWeek
   const online = useOnlineStatus()
   const unsent = usePendingWrites()
-  const [theme, setTheme] = useTheme()
   const [menuOpen, setMenuOpen] = useState(false)
   const [notificationsOpen, setNotificationsOpen] = useState(false)
   const location = useLocation()
@@ -145,6 +144,17 @@ export function Layout() {
    */
   const immersive = location.pathname === '/anti-doom' || location.pathname.startsWith('/anti-doom/')
   const openMenu = useCallback(() => setMenuOpen(true), [])
+
+  /*
+   * Die Darstellung: In der App gilt die Wahl des Kontos (hell, dunkel
+   * oder wie das System), im Bereich «Anti Doom» seine eigene – dunkel,
+   * solange dort nichts anderes gewählt ist. Beides läuft durch dieselbe
+   * Stelle, sonst stritten sich zwei Effekte um dieselbe Klasse am
+   * `<html>`; beim Verlassen des Bereichs kommt die Wahl der App von
+   * selbst zurück.
+   */
+  const [impulseLook, setImpulseLook] = useImpulseAppearance()
+  const [theme, setTheme] = useTheme(immersive ? (impulseLook === 'hell' ? 'light' : 'dark') : null)
 
   /*
    * Wo man gerade ist, für den Weg zurück festhalten.
@@ -238,6 +248,14 @@ export function Layout() {
   const themeLabel = theme === 'system' ? 'System' : theme === 'dark' ? 'Dunkel' : 'Hell'
   const cycleTheme = () =>
     setTheme(theme === 'light' ? 'dark' : theme === 'dark' ? 'system' : 'light')
+
+  /* In der Schublade von «Anti Doom» schaltet derselbe Knopf die
+     Darstellung *des Bereichs* um – die der App wäre dort wirkungslos
+     und der Knopf damit tot. Zwei Zustände statt drei: Der Bereich folgt
+     dem System nicht, er ist dunkel, wenn nichts anderes gewählt ist. */
+  const ImpulseLookIcon = impulseLook === 'hell' ? Sun : Moon
+  const impulseLookLabel = impulseLook === 'hell' ? 'Hell' : 'Dunkel'
+  const toggleImpulseLook = () => setImpulseLook(impulseLook === 'hell' ? 'dunkel' : 'hell')
 
   return (
     <div className="flex min-h-dvh flex-col bg-slate-50 dark:bg-slate-950">
@@ -366,9 +384,9 @@ export function Layout() {
                       Benachrichtigungen
                     </button>
                   )}
-                  <button type="button" onClick={cycleTheme} className={DRAWER_ACTION}>
-                    <ThemeIcon className="size-5 shrink-0" aria-hidden />
-                    Darstellung: {themeLabel}
+                  <button type="button" onClick={toggleImpulseLook} className={DRAWER_ACTION}>
+                    <ImpulseLookIcon className="size-5 shrink-0" aria-hidden />
+                    Darstellung: {impulseLookLabel}
                   </button>
                   <button
                     type="button"

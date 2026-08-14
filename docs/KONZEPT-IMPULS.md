@@ -241,14 +241,19 @@ freundliche Auflösung und denselben Haken «dabei gewesen». Die Suchfrage ist
 die wertvollste Form (sie erzwingt den Blick in die Quelle) und zugleich die
 aufwendigste – der Pool lebt von der Mischung.
 
-Zwei Präzisierungen aus der Umsetzung: Technisch genügen **zwei
+Drei Präzisierungen aus der Umsetzung: Technisch genügen **zwei
 Mechaniken** – Auswahl und freie Antwort (Suchfrage); die Vielfalt der
-Formen liegt im Inhalt, nicht im Datenmodell. Und die Auflösung ist
+Formen liegt im Inhalt, nicht im Datenmodell. Die Auflösung ist
 **persönlich und sofort**: Wer antwortet, sieht Erklärung und Quelle im
-selben Moment, solange die Aufmerksamkeit noch da ist. Der Sonntag bleibt
-der gemeinsame Abschluss – dort löst die Kollegiumsstunde auf, und ab
-Etappe 4 werden dann auch die Antworten der anderen zur Frage der Woche
-sichtbar.
+selben Moment, solange die Aufmerksamkeit noch da ist. Und geantwortet
+wird mit **einem Tipp**: Bei Auswahlfragen gilt die angetippte
+Möglichkeit sofort – der Knopf «Antworten» darunter ist weg, er kostete
+jede Antwort einen zweiten Griff und liess die Karte wie ein Formular
+wirken. Es bleibt bei einem Versuch; die Suchfrage behält ihren Knopf,
+weil eine getippte Antwort nicht von selbst weiss, wann sie fertig ist.
+Der Sonntag bleibt der gemeinsame Abschluss – dort löst die
+Kollegiumsstunde auf, und ab Etappe 4 werden dann auch die Antworten der
+anderen zur Frage der Woche sichtbar.
 
 ### 5.3 Tages-Challenge, Wochenziel, Serie und Abzeichen
 
@@ -644,6 +649,16 @@ Thema.
   Vertiefung erfasst ist); Reaktion und Merken als stille Knöpfe.
 - **«Ansicht» oben rechts** wie überall: was der Einstieg zeigt
   (Serie, Gruppenleiste ein/aus), Schriftgrösse des Feeds.
+- **Dunkel von sich aus.** Der Bereich wird abends gelesen und lebt vom
+  Vollbild – der dunkle Grund lässt die Farben der Bereiche ruhiger
+  wirken. Er gilt nur hier: Die übrige App behält ihre eigene Darstellung
+  (hell, dunkel oder wie das System), und wem der dunkle Grund nicht
+  liegt, stellt in den Anti-Doom-Einstellungen auf «Hell».
+- **Anti-Doom-Einstellungen** als Fenster, nicht als Ort: Darstellung
+  (dunkel/hell), Reihenfolge der Karten (der Reihe nach oder gemischt)
+  und der Rückblick in eine frühere Woche. Sie legen sich über das, was
+  gerade offen ist – wer sie aus dem Feed heraus aufschlägt, steht beim
+  Schliessen wieder dort, bei derselben Karte.
 - **Redaktion** als eigene Seite, sichtbar nur mit Redaktionsrecht:
   Wochenplan, Karten mit Vorlagen, Fragenpool, Vorschau. Erreichbar über die
   Einstellungen – nach dem Muster der Importe.

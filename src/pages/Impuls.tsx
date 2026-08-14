@@ -15,7 +15,7 @@ import {
 } from 'lucide-react'
 import { useAuth } from '@/contexts/AuthContext'
 import { useNow } from '@/hooks/useNow'
-import { useLocalStorage } from '@/hooks/useLocalStorage'
+import { useImpulseAppearance, useLocalStorage } from '@/hooks/useLocalStorage'
 import {
   useImpulseAnswers,
   useImpulseComments,
@@ -108,10 +108,12 @@ import {
  * Die Navigation wohnt im App-Menü: «Anti Doom» klappt dort auf, ein
  * Punkt pro Bereich – die Feed-Bereiche springen im Feed genau zur Karte
  * (`/anti-doom/<bereich>`), die übrigen öffnen ihren Raum. Zuunterst liegen
- * die **Anti-Doom-Einstellungen**: die Reihenfolge der Karten (der Reihe
- * nach oder gemischt, gemerkt am Gerät) und der Rückblick in eine
- * frühere Woche – er gilt nur für diesen Besuch, Standard bleibt immer
- * die laufende Woche.
+ * die **Anti-Doom-Einstellungen**: die Darstellung des Bereichs (dunkel
+ * oder hell, gemerkt am Gerät), die Reihenfolge der Karten (der Reihe
+ * nach oder gemischt) und der Rückblick in eine frühere Woche – er gilt
+ * nur für diesen Besuch, Standard bleibt immer die laufende Woche. Sie
+ * sind ein Fenster über dem Bereich, in dem man steht: Beim Schliessen
+ * steht man wieder dort, bei derselben Karte.
  *
  * Veröffentlicht wird weiterhin durch den Kalender – ein Inhalt
  * erscheint, sobald seine Woche beginnt (`visibleImpulseItems`);
@@ -143,11 +145,24 @@ export function Impuls() {
   const submissionsState = useImpulseSubmissions()
 
   const sectionKey: ImpulseSectionKey | null = isImpulseSection(bereich) ? bereich : null
-  /* Feed-Bereiche öffnen den Vollbild-Feed, Raum-Bereiche ihren Raum. */
-  const roomKey: ImpulseRoomSectionKey | null =
-    sectionKey && isRoomSection(sectionKey) ? sectionKey : null
-  const feedOpen = sectionKey !== null && isDeckSection(sectionKey)
   const settingsOpen = bereich === 'einstellungen'
+
+  /*
+   * Die Einstellungen sind ein Fenster, kein Ortswechsel.
+   *
+   * Sie legen sich über das, was gerade offen ist: Wer sie aus dem Feed
+   * heraus aufschlägt, steht beim Schliessen wieder im Feed – bei
+   * derselben Karte, nicht auf der Übersicht. Die Adresse allein kann das
+   * nicht sagen (sie heisst währenddessen «einstellungen»), darum merkt
+   * sich die Seite den Bereich darunter.
+   */
+  const [beneath, setBeneath] = useState<ImpulseSectionKey | null>(sectionKey)
+  if (!settingsOpen && beneath !== sectionKey) setBeneath(sectionKey)
+  const openKey = settingsOpen ? beneath : sectionKey
+
+  /* Feed-Bereiche öffnen den Vollbild-Feed, Raum-Bereiche ihren Raum. */
+  const roomKey: ImpulseRoomSectionKey | null = openKey && isRoomSection(openKey) ? openKey : null
+  const feedOpen = openKey !== null && isDeckSection(openKey)
   const state = (location.state ?? null) as ImpulsLocationState | null
 
   const todayKey = impulseWeekKey(now)
@@ -238,6 +253,9 @@ export function Impuls() {
   /* Die Reihenfolge merkt sich das Gerät; die Woche gilt nur für diesen
      Besuch – beim nächsten Öffnen steht wieder die laufende da. */
   const [order, setOrder] = useLocalStorage<ImpulseOrder>('bss:impuls:reihenfolge', 'geordnet')
+  /* Die Darstellung des Bereichs (dunkel, wenn nichts gewählt ist) legt
+     die Hülle an das `<html>` – hier steht nur die Wahl (siehe `Layout`). */
+  const [look, setLook] = useImpulseAppearance()
   const [weekOverride, setWeekOverride] = useState<string | null>(() => {
     // Eine gemerkte Karte aus einer früheren Woche schlägt gleich dort auf.
     const initial = (location.state ?? null) as ImpulsLocationState | null
@@ -420,10 +438,18 @@ export function Impuls() {
      auch derselbe Punkt zweimal hintereinander fährt wieder hin. */
   const [deckTarget, setDeckTarget] = useState<ImpulseDeckTarget | null>(null)
   const firstNav = useRef(true)
+  /* Eine Navigation, die gar keine sein soll: das Schliessen der
+     Einstellungen (siehe `closeSettings`). Die Karte im Bild bleibt
+     stehen, statt an den Anfang ihres Bereichs zu fahren. */
+  const stayPut = useRef(false)
   useEffect(() => {
     if (firstNav.current) {
       // Der Aufbau ist bereits über `initialDeckTarget` positioniert.
       firstNav.current = false
+      return
+    }
+    if (stayPut.current) {
+      stayPut.current = false
       return
     }
     if (!isImpulseSection(bereich) || !isDeckSection(bereich)) return
@@ -528,10 +554,15 @@ export function Impuls() {
     else navigate(-1)
   }
 
-  /* Die Einstellungen schliessen immer auf die Übersicht – auch wer sie
-     aus einem anderen Bereich der App heraus aufgeschlagen hat, landet
-     im Bereich, nicht wieder draussen. */
-  const closeSettings = () => navigate('/anti-doom', { replace: true })
+  /* Die Einstellungen schliessen dorthin zurück, wo sie geöffnet wurden:
+     auf den Bereich unter dem Fenster – und ohne dessen Feed anzufahren,
+     die Karte im Bild bleibt stehen (`stayPut`). Wer sie aus einem
+     anderen Teil der App heraus aufgeschlagen hat, landet auf der
+     Übersicht des Bereichs, nicht wieder draussen. */
+  const closeSettings = () => {
+    stayPut.current = true
+    navigate(beneath ? `/anti-doom/${beneath}` : '/anti-doom', { replace: true })
+  }
 
   const chooseOrder = (next: ImpulseOrder) => {
     setOrder(next)
@@ -887,6 +918,8 @@ export function Impuls() {
       <ImpulseSettingsModal
         open={settingsOpen}
         onClose={closeSettings}
+        look={look}
+        onLook={setLook}
         order={order}
         onOrder={chooseOrder}
         weeks={pastWeeks}

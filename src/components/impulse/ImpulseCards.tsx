@@ -232,10 +232,15 @@ export function ImpulseCard({ item }: { item: ImpulseItem }) {
  * mit einem Bild aus der Mediathek der Kirche verbindet (die Karte
  * erkennt es an `item.kind`).
  *
- * Erst wählen bzw. tippen, dann «Antworten» – ein Versuch, darum kein
- * Antworten mit einem einzigen Tippen. Nach der Antwort kommt sofort die
- * Auflösung: Sie ist der Lernmoment, mit Erklärung und Quelle. Gewertet
- * wird die Teilnahme, nicht die Richtigkeit.
+ * **Ein Tipp ist die Antwort.** Der Knopf «Antworten» stand einmal unter
+ * den Möglichkeiten und sollte vor dem versehentlichen Tippen schützen –
+ * er kostete jede Antwort einen zweiten Griff und liess die Karte wie ein
+ * Formular wirken. Jetzt gilt der Tipp auf eine Möglichkeit sofort: Die
+ * Auflösung steht im selben Augenblick da, ohne auf den Server zu warten
+ * (`chosen`); scheitert das Speichern, tritt die Frage wieder an. Es
+ * bleibt bei **einem** Versuch – gewertet wird ohnehin die Teilnahme,
+ * nicht die Richtigkeit. Die Suchfrage behält ihren Knopf: Eine getippte
+ * Antwort weiss nicht von selbst, wann sie fertig ist.
  *
  * Im Vorschau-Modus (`preview`) wird nichts gespeichert: Die Antwort lebt
  * nur im Fenster, die Auflösung rechnet lokal, und ein Knopf setzt alles
@@ -259,7 +264,8 @@ export function QuizCard({
 }) {
   const { profile } = useAuth()
   const toast = useToast()
-  const [choice, setChoice] = useState<number | null>(null)
+  /** Die eben getippte Möglichkeit – die Auflösung, bevor der Server antwortet. */
+  const [chosen, setChosen] = useState<number | null>(null)
   const [text, setText] = useState('')
   const [busy, setBusy] = useState(false)
   const [previewAnswer, setPreviewAnswer] = useState<ImpulseAnswer | null>(null)
@@ -273,12 +279,67 @@ export function QuizCard({
   const quiz = item.quiz
   if (!quiz) return null
 
-  const shown = preview ? previewAnswer : answer
+  /* Die gespeicherte Antwort schlägt die eben getippte – sie ist
+     dieselbe, nur mit Namen und Zeitstempel. */
+  const local: ImpulseAnswer | null =
+    chosen === null
+      ? null
+      : {
+          id: 'lokal',
+          itemId: item.id,
+          uid: profile?.id ?? '',
+          firstName: '',
+          choiceIndex: chosen,
+          text: '',
+          correct: chosen === quiz.answerIndex,
+        }
+  const shown = preview ? previewAnswer : (answer ?? local)
 
+  /** Der Tipp auf eine Möglichkeit – Antwort und Auflösung in einem. */
+  const choose = async (index: number) => {
+    if (busy || shown) return
+
+    if (preview) {
+      setJustAnswered(true)
+      setPreviewAnswer({
+        id: 'vorschau',
+        itemId: item.id,
+        uid: 'vorschau',
+        firstName: 'Vorschau',
+        choiceIndex: index,
+        text: '',
+        correct: index === quiz.answerIndex,
+      })
+      return
+    }
+
+    if (!profile) return
+    setJustAnswered(true)
+    setBusy(true)
+    setChosen(index)
+    try {
+      const outcome = await answerImpulseQuiz(
+        item,
+        { uid: profile.id, displayName: profile.displayName },
+        { choiceIndex: index },
+      )
+      toast.saved('Antwort festgehalten.', outcome)
+    } catch (error) {
+      console.error(error)
+      /* Nicht angekommen: Die Frage tritt wieder an, statt eine Antwort
+         vorzugaukeln, die niemand hat. */
+      setChosen(null)
+      setJustAnswered(false)
+      toast.error('Die Antwort konnte nicht gespeichert werden.')
+    } finally {
+      setBusy(false)
+    }
+  }
+
+  /** Die Suchfrage: getippt, darum mit Knopf. */
   const submit = async (event: FormEvent) => {
     event.preventDefault()
-    if (quiz.form === 'choice' && choice === null) return
-    if (quiz.form === 'text' && !text.trim()) return
+    if (!text.trim()) return
     setJustAnswered(true)
 
     if (preview) {
@@ -287,9 +348,9 @@ export function QuizCard({
         itemId: item.id,
         uid: 'vorschau',
         firstName: 'Vorschau',
-        choiceIndex: quiz.form === 'choice' ? choice : null,
+        choiceIndex: null,
         text: text.trim(),
-        correct: quiz.form === 'choice' ? choice === quiz.answerIndex : null,
+        correct: null,
       })
       return
     }
@@ -300,7 +361,7 @@ export function QuizCard({
       const outcome = await answerImpulseQuiz(
         item,
         { uid: profile.id, displayName: profile.displayName },
-        quiz.form === 'choice' ? { choiceIndex: choice ?? 0 } : { text },
+        { text },
       )
       toast.saved('Antwort festgehalten.', outcome)
     } catch (error) {
@@ -313,8 +374,9 @@ export function QuizCard({
 
   const reset = () => {
     setPreviewAnswer(null)
-    setChoice(null)
+    setChosen(null)
     setText('')
+    setJustAnswered(false)
   }
 
   const riddle = item.kind === 'bilderraetsel'
@@ -354,68 +416,51 @@ export function QuizCard({
             </button>
           )}
         </>
+      ) : quiz.form === 'choice' ? (
+        /* Kein Formular mehr: Es gibt nichts abzuschicken, der Tipp auf
+           eine Möglichkeit ist die Antwort. Auch kein «radiogroup» –
+           gewählt wird hier nicht, es wird gehandelt. Die Fundstelle
+           bleibt bis zur Auflösung weg: «Joseph Smith –
+           Lebensgeschichte» verriete Joseph Smith. */
+        <div className="mt-4">
+          <div className="space-y-2" role="group" aria-label="Antworten">
+            {quiz.options.map((option, index) => (
+              <QuizOption
+                key={index}
+                index={index}
+                option={option}
+                state="offen"
+                disabled={busy}
+                onClick={() => void choose(index)}
+              />
+            ))}
+          </div>
+          <p className="hint mt-2.5">Ein Tipp genügt – du hast einen Versuch.</p>
+        </div>
       ) : (
         <form className="mt-4 space-y-3" onSubmit={(event) => void submit(event)}>
-          {quiz.form === 'choice' ? (
-            <div className="space-y-1.5" role="radiogroup" aria-label="Antworten">
-              {quiz.options.map((option, index) => (
-                <button
-                  key={index}
-                  type="button"
-                  role="radio"
-                  aria-checked={choice === index}
-                  onClick={() => setChoice(index)}
-                  className={cn(
-                    'flex w-full items-center gap-2.5 rounded-lg border p-3 text-left text-sm transition',
-                    choice === index
-                      ? 'border-brand-500 bg-brand-50 dark:border-brand-500 dark:bg-brand-950'
-                      : 'border-slate-200 hover:bg-slate-50 dark:border-slate-700 dark:hover:bg-slate-800/60',
-                  )}
-                >
-                  <span
-                    className={cn(
-                      'grid size-4 shrink-0 place-items-center rounded-full border',
-                      choice === index
-                        ? 'border-brand-600 bg-brand-600'
-                        : 'border-slate-300 dark:border-slate-600',
-                    )}
-                    aria-hidden
-                  >
-                    {choice === index && <span className="size-1.5 rounded-full bg-white" />}
-                  </span>
-                  {option}
-                </button>
-              ))}
-            </div>
-          ) : (
-            <div>
-              <label className="label" htmlFor={`quiz-${item.id}${preview ? '-vorschau' : ''}`}>
-                Deine Antwort
-              </label>
-              <input
-                id={`quiz-${item.id}${preview ? '-vorschau' : ''}`}
-                className="input"
-                value={text}
-                onChange={(event) => setText(event.target.value)}
-                placeholder="Die Antwort steht in der Quelle …"
-                autoComplete="off"
-              />
-            </div>
-          )}
+          <div>
+            <label className="label" htmlFor={`quiz-${item.id}${preview ? '-vorschau' : ''}`}>
+              Deine Antwort
+            </label>
+            <input
+              id={`quiz-${item.id}${preview ? '-vorschau' : ''}`}
+              className="input"
+              value={text}
+              onChange={(event) => setText(event.target.value)}
+              placeholder="Die Antwort steht in der Quelle …"
+              autoComplete="off"
+            />
+          </div>
 
-          {/* Nur die Suchfrage zeigt ihre Quelle schon vor dem Antworten –
-              der Weg dorthin ist dort die eigentliche Aufgabe. Bei
-              Auswahlfragen (auch im Bilderrätsel) wäre die Fundstelle ein
-              Spoiler («Joseph Smith – Lebensgeschichte» verrät Joseph
-              Smith); sie erscheint erst mit der Auflösung. */}
+          {/* Die Suchfrage zeigt ihre Quelle schon vor dem Antworten – der
+              Weg dorthin ist dort die eigentliche Aufgabe. */}
           <div className="flex flex-wrap items-center justify-between gap-3">
-            {quiz.form === 'text' && <SourceLink item={item} />}
+            <SourceLink item={item} />
             <button
               type="submit"
               className="btn-primary ms-auto"
-              disabled={
-                busy || (quiz.form === 'choice' ? choice === null : text.trim().length === 0)
-              }
+              disabled={busy || text.trim().length === 0}
             >
               <Check className="size-4" aria-hidden />
               Antworten
@@ -436,6 +481,96 @@ export function QuizCard({
   )
 }
 
+/**
+ * Eine Antwortmöglichkeit – ohne Rahmen, mit ihrem Buchstaben davor.
+ *
+ * Vier Zustände in einer Gestalt: `offen` ist der Knopf vor der Antwort,
+ * die übrigen drei zeichnen die Auflösung – die Lösung (`richtig`), der
+ * eigene Fehlgriff (`daneben`) und alles Übrige, das zurücktritt
+ * (`still`). Getragen wird die Zeile von einer ruhigen Fläche statt von
+ * einem Strich: im Hellen ein Grau, im Dunkeln ein heller Hauch. Was die
+ * Farbe sagt, sagt auch das Zeichen im Buchstabenfeld – Haken oder
+ * Kreuz –, und die eigene Antwort ist angeschrieben.
+ */
+type QuizOptionState = 'offen' | 'richtig' | 'daneben' | 'still'
+
+/** A, B, C … statt Radiopunkten – kürzer zu treffen und schneller zu lesen. */
+const OPTION_LETTERS = ['A', 'B', 'C', 'D', 'E', 'F', 'G', 'H']
+
+const OPTION_ROW: Record<QuizOptionState, string> = {
+  offen:
+    'bg-slate-100 hover:bg-slate-200/70 active:scale-[0.99] dark:bg-white/5 dark:hover:bg-white/10',
+  richtig: 'bg-emerald-500/15 text-emerald-950 dark:text-emerald-50',
+  daneben: 'bg-rose-500/15 text-rose-950 dark:text-rose-50',
+  still: 'bg-slate-100/60 text-slate-500 dark:bg-white/[0.04] dark:text-slate-400',
+}
+
+const OPTION_BADGE: Record<QuizOptionState, string> = {
+  offen: 'bg-white text-slate-500 shadow-xs dark:bg-white/10 dark:text-slate-200',
+  richtig: 'bg-emerald-600 text-white dark:bg-emerald-400 dark:text-emerald-950',
+  daneben: 'bg-rose-600 text-white dark:bg-rose-400 dark:text-rose-950',
+  still: 'bg-slate-200/80 text-slate-500 dark:bg-white/10 dark:text-slate-400',
+}
+
+function QuizOption({
+  index,
+  option,
+  state,
+  chosen = false,
+  disabled = false,
+  onClick,
+}: {
+  index: number
+  option: string
+  state: QuizOptionState
+  /** Die eigene Antwort – angeschrieben, damit sie unverwechselbar ist. */
+  chosen?: boolean
+  disabled?: boolean
+  onClick?: () => void
+}) {
+  const shape = 'flex w-full items-center gap-3 rounded-xl px-3.5 py-3 text-left text-sm transition'
+  const content = (
+    <>
+      <span
+        className={cn(
+          'grid size-6 shrink-0 place-items-center rounded-lg text-xs font-semibold',
+          OPTION_BADGE[state],
+        )}
+        aria-hidden
+      >
+        {state === 'richtig' ? (
+          <Check className="size-4" />
+        ) : state === 'daneben' ? (
+          <X className="size-4" />
+        ) : (
+          (OPTION_LETTERS[index] ?? index + 1)
+        )}
+      </span>
+      <span className="min-w-0 flex-1">
+        {/* Was die Farbe zeigt, muss auch vorgelesen werden. */}
+        {state === 'richtig' && <span className="sr-only">Richtige Antwort: </span>}
+        {state === 'daneben' && <span className="sr-only">Falsch: </span>}
+        {option}
+      </span>
+      {chosen && <span className="shrink-0 text-[11px] font-medium opacity-70">Deine Antwort</span>}
+    </>
+  )
+
+  if (state !== 'offen') {
+    return <div className={cn(shape, OPTION_ROW[state])}>{content}</div>
+  }
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      disabled={disabled}
+      className={cn(shape, 'disabled:opacity-60', OPTION_ROW.offen)}
+    >
+      {content}
+    </button>
+  )
+}
+
 /** Die Auflösung – der Lernmoment nach der Antwort. */
 export function QuizResolution({
   item,
@@ -451,52 +586,39 @@ export function QuizResolution({
   if (!quiz) return null
 
   return (
-    /* Die Auflösung tritt an statt zu erscheinen – sie ersetzt das
-       Formular im selben Moment, und ohne Brücke wäre der Wechsel ein
-       Schnitt mitten im Lernmoment. */
+    /* Die Auflösung tritt an statt zu erscheinen – sie ersetzt die
+       Möglichkeiten im selben Moment, und ohne Brücke wäre der Wechsel
+       ein Schnitt mitten im Lernmoment. */
     <div className={cn('mt-4 space-y-3', animated && 'animate-imp-rise')}>
       {quiz.form === 'choice' ? (
         <>
           <p
             className={cn(
-              'text-sm font-medium',
+              'inline-flex items-center gap-1.5 rounded-full px-3 py-1 text-xs font-medium',
               answer.correct
-                ? 'text-emerald-700 dark:text-emerald-300'
-                : 'text-slate-600 dark:text-slate-300',
+                ? 'bg-emerald-500/15 text-emerald-700 dark:text-emerald-300'
+                : 'bg-slate-900/[0.06] text-slate-600 dark:bg-white/10 dark:text-slate-300',
             )}
           >
-            {answer.correct
-              ? 'Richtig beantwortet – stark!'
-              : 'Gut versucht – die richtige Antwort ist markiert.'}
+            {answer.correct ? (
+              <Check className="size-3.5" aria-hidden />
+            ) : (
+              <X className="size-3.5" aria-hidden />
+            )}
+            {answer.correct ? 'Richtig – stark!' : 'Gut versucht'}
           </p>
-          <div className="space-y-1.5">
+          <div className="space-y-2">
             {quiz.options.map((option, index) => {
               const isSolution = index === quiz.answerIndex
               const isChosen = index === (answer.choiceIndex ?? -1)
               return (
-                <div
+                <QuizOption
                   key={index}
-                  className={cn(
-                    'flex items-center gap-2.5 rounded-lg border p-3 text-sm',
-                    isSolution
-                      ? 'border-emerald-300 bg-emerald-50 dark:border-emerald-800 dark:bg-emerald-950/40'
-                      : isChosen
-                        ? 'border-rose-300 bg-rose-50 dark:border-rose-800 dark:bg-rose-950/40'
-                        : 'border-slate-200 text-slate-500 dark:border-slate-700 dark:text-slate-400',
-                  )}
-                >
-                  {isSolution ? (
-                    <Check
-                      className="size-4 shrink-0 text-emerald-600 dark:text-emerald-300"
-                      aria-hidden
-                    />
-                  ) : isChosen ? (
-                    <X className="size-4 shrink-0 text-rose-500" aria-hidden />
-                  ) : (
-                    <span className="size-4 shrink-0" aria-hidden />
-                  )}
-                  {option}
-                </div>
+                  index={index}
+                  option={option}
+                  state={isSolution ? 'richtig' : isChosen ? 'daneben' : 'still'}
+                  chosen={isChosen}
+                />
               )
             })}
           </div>
