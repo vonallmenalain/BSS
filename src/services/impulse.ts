@@ -436,6 +436,74 @@ export async function createImpulseSubmission(
   )
 }
 
+/**
+ * Die eigene Einreichung nachbessern – solange sie offen ist.
+ *
+ * Dieselben Felder wie beim Anlegen; Konto und Zustand bleiben
+ * unangetastet (die Regeln bestehen darauf). Auch die Redaktion nutzt
+ * diesen Weg nicht – sie übernimmt in einen Inhalt, statt an der
+ * Einreichung zu schrauben.
+ */
+export async function updateImpulseSubmission(
+  id: string,
+  input: ImpulseItemInput,
+): Promise<SaveOutcome> {
+  return commit(
+    updateDoc(doc(db, COLLECTIONS.impulseSubmissions, id), {
+      kind: input.kind,
+      text: input.title.trim(),
+      sourceLabel: input.sourceLabel.trim(),
+      sourceUrl: input.sourceUrl.trim(),
+      card: {
+        body: input.body.trim(),
+        deepening: input.deepening.trim(),
+        imageUrl: input.kind === 'bilderraetsel' ? input.imageUrl.trim() : '',
+        imageAlt: input.kind === 'bilderraetsel' ? input.imageAlt.trim() : '',
+        quiz:
+          input.kind === 'quiz' || input.kind === 'bilderraetsel'
+            ? {
+                form: input.quiz.form,
+                options: input.quiz.options.map((option) => option.trim()),
+                answerIndex: input.quiz.answerIndex,
+                answerText: input.quiz.answerText.trim(),
+                explanation: input.quiz.explanation.trim(),
+              }
+            : null,
+      },
+      updatedAt: serverTimestamp(),
+    }),
+  )
+}
+
+/**
+ * Eine Einreichung als Karte, wie sie später aussehen würde – für die
+ * echte Vorschau (`ImpulseEditorPreview`), ohne dass je ein Inhalt
+ * entsteht. Die ID trägt ein Präfix, damit sie mit keiner echten
+ * Inhalts-ID zusammenfällt; Amen und Merken laufen in der Vorschau
+ * ohnehin nur im Fenster.
+ */
+export function submissionToItem(submission: ImpulseSubmission): ImpulseItem {
+  const kind: ImpulseKind = submission.kind === 'gedanke' ? 'feed' : submission.kind
+  const card = submission.card
+  const sourceLabel = submission.sourceLabel?.trim() ?? ''
+  return {
+    id: `einreichung-${submission.id}`,
+    week: null,
+    kind,
+    status: 'ready',
+    title: submission.text,
+    body: card?.body || undefined,
+    deepening: card?.deepening || null,
+    source: sourceLabel ? { label: sourceLabel, url: submission.sourceUrl?.trim() ?? '' } : null,
+    image:
+      kind === 'bilderraetsel' && card?.imageUrl
+        ? { url: card.imageUrl, alt: card.imageAlt ?? '' }
+        : null,
+    quiz: card?.quiz ?? null,
+    contributor: submission.firstName,
+  }
+}
+
 /** Eine Einreichung zurückziehen bzw. wegräumen. */
 export async function deleteImpulseSubmission(id: string): Promise<SaveOutcome> {
   const outcome = await commit(deleteDoc(doc(db, COLLECTIONS.impulseSubmissions, id)))

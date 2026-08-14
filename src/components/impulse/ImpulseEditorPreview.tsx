@@ -32,11 +32,14 @@ import type { ImpulseItem } from '@/lib/types'
 export function ImpulseEditorPreview({
   week,
   items,
+  label,
   onClose,
 }: {
   week: string
   /** Die Karten der Vorschau, in Lesereihenfolge – eine oder die ganze Woche. */
   items: ImpulseItem[]
+  /** Die Zeile in der Leiste – ohne Angabe steht die Woche da. */
+  label?: string
   onClose: () => void
 }) {
   const cards = useMemo<ImpulseDeckCard[]>(
@@ -46,7 +49,7 @@ export function ImpulseEditorPreview({
           switch (item.kind) {
             case 'quiz':
             case 'bilderraetsel':
-              return <QuizCard item={item} answer={null} preview plain />
+              return <QuizCard item={item} answer={null} preview plain progressDocs={[]} />
             case 'frage':
               return (
                 <ImpulseQuestionCard item={item} comments={[]} progressDocs={[]} preview plain />
@@ -54,13 +57,22 @@ export function ImpulseEditorPreview({
             case 'feed':
               return <ImpulseFeedCard item={item} progressDocs={[]} preview />
             case 'teilen':
-              return <ImpulseShareCard item={item} week={week} done={false} preview plain />
+              return (
+                <ImpulseShareCard
+                  item={item}
+                  week={week}
+                  done={false}
+                  preview
+                  plain
+                  progressDocs={[]}
+                />
+              )
             case 'wochenziel':
               return <GoalCard item={item} week={week} done={false} preview plain />
             case 'tageschallenge':
               return <ChallengeCard item={item} week={week} days={[]} preview plain />
             default:
-              return <WocheDeckCard item={item} />
+              return <WocheDeckCard item={item} progressDocs={[]} preview />
           }
         })()
         return {
@@ -97,7 +109,7 @@ export function ImpulseEditorPreview({
             <p className="min-w-0 flex-1 text-sm leading-tight">
               <span className="font-semibold">Vorschau</span>
               <span className="mx-1.5">·</span>
-              {formatWeekRange(week)}
+              {label ?? formatWeekRange(week)}
               <span className="block text-xs opacity-80">
                 Änderungen werden nicht gespeichert.
               </span>

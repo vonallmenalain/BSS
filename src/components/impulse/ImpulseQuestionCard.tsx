@@ -4,6 +4,7 @@ import { useAuth } from '@/contexts/AuthContext'
 import { useToast } from '@/contexts/ToastContext'
 import { cn } from '@/lib/utils'
 import { SourceLink } from '@/components/impulse/ImpulseCards'
+import { ImpulseCardActions } from '@/components/impulse/ImpulseCardActions'
 import {
   saveImpulseComment,
   setImpulseAmen,
@@ -198,6 +199,13 @@ export function ImpulseQuestionCard({
           </div>
         </div>
       )}
+
+      <ImpulseCardActions
+        item={item}
+        progressDocs={progressDocs}
+        preview={preview}
+        centered={false}
+      />
     </section>
   )
 }
@@ -290,7 +298,7 @@ function CommentRow({
               type="button"
               className={cn('btn-ghost btn-sm', reported && 'text-amber-700 dark:text-amber-300')}
               aria-pressed={reported}
-              title="Der Redaktion zeigen – sie schaut sich den Beitrag an"
+              title="Der Bischofschaft zeigen – sie schaut sich den Beitrag an"
               onClick={() =>
                 void run(
                   () => setImpulseReport(user!, comment.id, !reported),
@@ -331,7 +339,7 @@ function CommentRow({
 
       {canEditImpulse && !preview && (reportedBy.length > 0 || comment.hidden) && (
         <p className="mt-1.5 text-xs text-amber-700 dark:text-amber-300">
-          {comment.hidden && 'Ausgeblendet – nur die Redaktion sieht den Beitrag.'}
+          {comment.hidden && 'Ausgeblendet – nur die Bischofschaft sieht den Beitrag.'}
           {comment.hidden && reportedBy.length > 0 && ' '}
           {reportedBy.length > 0 && `Gemeldet von ${reportedBy.join(', ')}.`}
         </p>
