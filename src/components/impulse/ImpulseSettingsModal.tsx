@@ -66,14 +66,12 @@ export function ImpulseSettingsModal({
             <ChoiceRow
               icon={<Moon className="size-4" aria-hidden />}
               label="Dunkel"
-              hint="Der Standard – ruhiger Grund, die Karten stehen im Vordergrund."
               active={look !== 'hell'}
               onClick={() => onLook('dunkel')}
             />
             <ChoiceRow
               icon={<Sun className="size-4" aria-hidden />}
               label="Hell"
-              hint="Nur hier – die übrige App behält ihre eigene Darstellung."
               active={look === 'hell'}
               onClick={() => onLook('hell')}
             />
@@ -86,14 +84,12 @@ export function ImpulseSettingsModal({
             <ChoiceRow
               icon={<ArrowDownAZ className="size-4" aria-hidden />}
               label="Der Reihe nach"
-              hint="Wochenthema zuerst, dann Quiz, Bilderrätsel, Frage, Feed und Teilen."
               active={order === 'geordnet'}
               onClick={() => onOrder('geordnet')}
             />
             <ChoiceRow
               icon={<Shuffle className="size-4" aria-hidden />}
               label="Zufällig gemischt"
-              hint="Bunt durcheinander – nur das Wochenthema bleibt zuoberst, und die Mischung bleibt die Woche über gleich."
               active={order === 'zufall'}
               onClick={() => onOrder('zufall')}
             />
@@ -118,10 +114,6 @@ export function ImpulseSettingsModal({
               />
             ))}
           </div>
-          <p className="hint mt-2">
-            Der Rückblick gilt nur für diesen Besuch – beim nächsten Öffnen steht wieder die
-            aktuelle Woche da.
-          </p>
         </section>
       </div>
     </Modal>
@@ -135,13 +127,11 @@ export function ImpulseSettingsModal({
 function ChoiceRow({
   icon,
   label,
-  hint,
   active,
   onClick,
 }: {
   icon?: React.ReactNode
   label: string
-  hint?: string
   active: boolean
   onClick: () => void
 }) {
@@ -152,7 +142,7 @@ function ChoiceRow({
       aria-checked={active}
       onClick={onClick}
       className={cn(
-        'flex w-full items-start gap-2.5 rounded-xl p-3 text-left text-sm transition active:scale-[0.99]',
+        'flex w-full items-center gap-2.5 rounded-xl p-3 text-left text-sm transition active:scale-[0.99]',
         active
           ? 'bg-brand-500/15 text-brand-900 dark:text-brand-50'
           : 'bg-slate-100 hover:bg-slate-200/70 dark:bg-white/5 dark:hover:bg-white/10',
@@ -160,7 +150,7 @@ function ChoiceRow({
     >
       <span
         className={cn(
-          'mt-0.5 grid size-4 shrink-0 place-items-center rounded-full transition',
+          'grid size-4 shrink-0 place-items-center rounded-full transition',
           active
             ? 'bg-brand-600 dark:bg-brand-400'
             : 'ring-1 ring-slate-300 ring-inset dark:ring-white/25',
@@ -169,12 +159,9 @@ function ChoiceRow({
       >
         {active && <span className="dark:bg-brand-950 size-1.5 rounded-full bg-white" />}
       </span>
-      <span className="min-w-0 flex-1">
-        <span className="flex items-center gap-1.5 font-medium">
-          {icon}
-          {label}
-        </span>
-        {hint && <span className="hint mt-0.5 block">{hint}</span>}
+      <span className="flex min-w-0 flex-1 items-center gap-1.5 font-medium">
+        {icon}
+        {label}
       </span>
     </button>
   )

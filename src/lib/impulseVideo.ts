@@ -85,30 +85,32 @@ export function impulseVideoSource(raw: string | null | undefined): ImpulseVideo
 }
 
 /**
- * Die Adresse des eingebetteten Videos – stumm und startbereit.
+ * Die Adresse des eingebetteten Videos – mit Ton und startbereit.
  *
- * Stumm ist keine Bescheidenheit, sondern die Bedingung: Browser lassen
- * ein Video nur von selbst anlaufen, wenn es keinen Ton macht. Den Ton
- * schaltet der Knopf auf der Karte dazu (`ImpulseVideoPlayer`).
+ * Ein Video, das man erst lauthörbar machen muss, ist ein halbes Video:
+ * Es läuft von Anfang an mit Ton. Wehrt sich der Browser dagegen (er
+ * darf – ohne vorherige Berührung lässt er kein lautes Video anlaufen),
+ * zeigt die Fremdkarte ihren eigenen Startknopf; den Ton bedient danach
+ * die Leiste des Anbieters, die ohnehin in der Einbettung steckt.
+ *
+ * Untertitel bleiben aus (`cc_load_policy=0`, `texttrack=false`): Sie
+ * legen sich sonst über den Text der Karte.
  */
 export function impulseEmbedUrl(source: ImpulseVideoSource): string | null {
   if (source.art === 'youtube') {
     const params = new URLSearchParams({
       autoplay: '1',
-      mute: '1',
+      mute: '0',
       playsinline: '1',
       rel: '0',
       modestbranding: '1',
-      enablejsapi: '1',
-      /* Ohne diese Angabe verweigert YouTube die JS-Steuerung – der
-         Tonknopf bliebe wirkungslos. */
-      origin: window.location.origin,
+      cc_load_policy: '0',
     })
     if (source.start > 0) params.set('start', String(source.start))
     return `https://www.youtube-nocookie.com/embed/${encodeURIComponent(source.id)}?${params}`
   }
   if (source.art === 'vimeo') {
-    return `https://player.vimeo.com/video/${encodeURIComponent(source.id)}?autoplay=1&muted=1&playsinline=1&title=0&byline=0&portrait=0`
+    return `https://player.vimeo.com/video/${encodeURIComponent(source.id)}?autoplay=1&muted=0&texttrack=false&playsinline=1&title=0&byline=0&portrait=0`
   }
   return null
 }

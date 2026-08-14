@@ -383,9 +383,9 @@ erst schauen, dann fragen.
 Die **Video-Karte** ist die konsequente Fortsetzung: eine Kartenart mit
 einem Link statt einer Datei – YouTube, Vimeo oder die direkte Adresse
 einer Videodatei (der Download-Link einer Videoseite der Kirche). Das
-Video füllt den Bildschirm, startet stumm, sobald die Karte im Bild ist,
-und hält an, sobald man weiterwischt; ein Knopf schaltet den Ton dazu
-(anders lassen Browser ein Video nicht von selbst anlaufen). Was sich
+Video füllt den Bildschirm, startet mit Ton, sobald die Karte im Bild
+ist, und hält an, sobald man weiterwischt; Untertitel bleiben aus, und
+den Ton bedient die Leiste des Videos selbst. Was sich
 nicht einbetten lässt, wird zur Karte mit einem Knopf, der das Video
 draussen öffnet – ein ehrlicher Weg hinaus statt eines schwarzen
 Rechtecks. Auch die Video-Karte kennt Amen, Merken und die Vertiefung;

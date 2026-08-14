@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react'
-import { ExternalLink, Play, Volume2, VolumeX } from 'lucide-react'
+import { ExternalLink, Play } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { impulseEmbedUrl, impulseVideoHost, type ImpulseVideoSource } from '@/lib/impulseVideo'
 
@@ -14,13 +14,15 @@ import { impulseEmbedUrl, impulseVideoHost, type ImpulseVideoSource } from '@/li
  *   sobald man weiterwischt. Eine eingebettete Fremdkarte (YouTube,
  *   Vimeo) wird dafür gar nicht erst geladen, solange sie nicht dran
  *   ist – das spart Daten und hält den Feed leise.
- * - **Stumm.** Nicht aus Zurückhaltung, sondern weil Browser ein Video
- *   nur ohne Ton von selbst starten lassen. Der Knopf «Ton an» steht
- *   gross genug da, um ihn nicht zu suchen.
+ * - **Mit Ton.** Ein Video ohne Ton ist ein halbes Video; es läuft von
+ *   Anfang an laut. Nur wenn der Browser das ablehnt, springt die
+ *   Videodatei stumm an – lieber ein leises Video als ein stehendes
+ *   Bild. Einen eigenen Tonknopf gibt es nicht: Den Ton bedient die
+ *   Leiste des Videos selbst.
  * - **Vollbild** ist der Normalfall, nicht ein Knopf: Die Karte selbst
  *   ist der Bildschirm. Wer die Bedienung des Anbieters braucht (spulen,
  *   Untertitel), findet sie in der eingebetteten Karte; die Videodatei
- *   bringt beim Antippen die eigene Leiste mit.
+ *   bringt ihre eigene Leiste mit.
  *
  * Was sich nicht einbetten lässt – eine Videoseite der Kirche etwa,
  * deren Server das verbietet –, wird zur ruhigen Karte mit einem Knopf,
@@ -41,8 +43,6 @@ export function ImpulseVideoPlayer({
   active: boolean
 }) {
   const videoRef = useRef<HTMLVideoElement>(null)
-  const frameRef = useRef<HTMLIFrameElement>(null)
-  const [muted, setMuted] = useState(true)
   /*
    * Die Fremdkarte (YouTube, Vimeo) hängt am Auftritt: Sie kommt, wenn
    * die Karte im Bild steht, und verschwindet mit ihr – das ist die eine
@@ -62,47 +62,24 @@ export function ImpulseVideoPlayer({
   useEffect(() => {
     const element = videoRef.current
     if (!element) return
-    if (active) {
-      const promise = element.play()
-      // Ein abgelehntes Abspielen ist kein Fehler, nur eine Regel des Browsers.
-      if (promise) promise.catch(() => {})
-    } else {
+    if (!active) {
       element.pause()
       element.currentTime = 0
+      return
+    }
+    /* Zuerst mit Ton. Ein abgelehntes Abspielen ist kein Fehler, nur
+       eine Regel des Browsers – dann eben stumm, aber laufend. Den Ton
+       holt sich über die Leiste des Videos zurück, wer ihn will. */
+    element.muted = false
+    const promise = element.play()
+    if (promise) {
+      promise.catch(() => {
+        element.muted = true
+        const quiet = element.play()
+        if (quiet) quiet.catch(() => {})
+      })
     }
   }, [active])
-
-  /* YouTube und Vimeo hören auf Zurufe durch das Fenster – so lässt sich
-     der Ton dazuschalten, ohne fremde Skripte zu laden. */
-  const tellEmbed = (command: 'mute' | 'unMute') => {
-    const frame = frameRef.current
-    if (!frame?.contentWindow) return
-    if (source.art === 'youtube') {
-      frame.contentWindow.postMessage(
-        JSON.stringify({ event: 'command', func: command, args: [] }),
-        'https://www.youtube-nocookie.com',
-      )
-    } else if (source.art === 'vimeo') {
-      frame.contentWindow.postMessage(
-        JSON.stringify({ method: 'setVolume', value: command === 'mute' ? 0 : 1 }),
-        'https://player.vimeo.com',
-      )
-    }
-  }
-
-  const toggleSound = () => {
-    const next = !muted
-    setMuted(next)
-    const element = videoRef.current
-    if (element) {
-      element.muted = next
-      if (!next) {
-        const promise = element.play()
-        if (promise) promise.catch(() => {})
-      }
-    }
-    tellEmbed(next ? 'mute' : 'unMute')
-  }
 
   /* Nicht einbettbar: ein Vorschaubild (oder ein ruhiger Grund) und der
      Weg hinaus – ohne Versprechen, das die Karte nicht halten kann. */
@@ -146,17 +123,16 @@ export function ImpulseVideoPlayer({
           poster={poster ?? undefined}
           className="size-full object-cover"
           playsInline
-          muted={muted}
           loop
           preload="metadata"
-          controls={!muted}
+          /* Die Leiste des Videos ist zugleich der Tonknopf. */
+          controls
           aria-label={title}
         />
       ) : (
         embedded &&
         embedUrl && (
           <iframe
-            ref={frameRef}
             src={embedUrl}
             title={title}
             className="size-full"
@@ -185,25 +161,6 @@ export function ImpulseVideoPlayer({
           </span>
         </div>
       )}
-
-      <button
-        type="button"
-        onClick={toggleSound}
-        className="absolute end-3 bottom-3 z-20 flex items-center gap-1.5 rounded-full bg-slate-950/55 px-3 py-2 text-xs font-medium text-white backdrop-blur-sm transition hover:bg-slate-950/70 active:scale-95"
-        aria-pressed={!muted}
-      >
-        {muted ? (
-          <>
-            <VolumeX className="size-4" aria-hidden />
-            Ton an
-          </>
-        ) : (
-          <>
-            <Volume2 className="size-4" aria-hidden />
-            Ton aus
-          </>
-        )}
-      </button>
     </div>
   )
 }
