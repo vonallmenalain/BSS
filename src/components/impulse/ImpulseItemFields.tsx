@@ -1,5 +1,11 @@
-import { Plus, X } from 'lucide-react'
+import { Link2, Plus, Search, X } from 'lucide-react'
 import { cn } from '@/lib/utils'
+import {
+  addScriptureLinks,
+  churchSearchLink,
+  countScriptureLinkCandidates,
+  scriptureLink,
+} from '@/lib/scriptures'
 import type { ImpulseItemInput } from '@/services/impulse'
 import {
   IMPULSE_KIND_LABELS,
@@ -65,6 +71,24 @@ export function ImpulseItemFields({
   /* Nur die Feed-Karten kennen den Wisch nach links – also auch nur sie
      das Feld «Vertiefung». Wochenziel und Tages-Challenge sind Kacheln. */
   const hasDeepening = input.kind !== 'wochenziel' && input.kind !== 'tageschallenge'
+
+  /* Sieht die Quelle wie eine Schriftstelle aus, steht ihr Link in der
+     Evangeliumsbibliothek einen Tipp entfernt (`lib/scriptures`) – kein
+     Adressen-Abtippen, und nichts wird ungefragt eingesetzt. */
+  const suggestedUrl = scriptureLink(input.sourceLabel)
+  const showSuggestion = suggestedUrl !== null && input.sourceUrl.trim() !== suggestedUrl
+
+  /* Alles andere – Konferenzansprachen, Lieder, Artikel – hat kein
+     herleitbares Adress-Schema: Dafür öffnet der Helfer die Suche der
+     Kirche mit der Quellenangabe; die gefundene Adresse wird kopiert
+     und hier eingesetzt. */
+  const showSearch =
+    suggestedUrl === null && input.sourceLabel.trim() !== '' && input.sourceUrl.trim() === ''
+
+  /* Reine Schriftstellen-Zeilen in der Vertiefung («Alma 32:27») lassen
+     sich mit einem Tipp verlinken – zur Form «Alma 32:27 – https://…»,
+     die die Anzeige als beschrifteten Verweis zeigt. */
+  const deepeningCandidates = hasDeepening ? countScriptureLinkCandidates(input.deepening) : 0
 
   return (
     <>
@@ -171,9 +195,27 @@ export function ImpulseItemFields({
           />
           <p className="hint mt-1">
             Erscheint im Feed beim Wisch nach links; nur Karten mit Vertiefung zeigen den
-            pulsierenden Pfeil «Vertiefen». Eine Zeile «Alma 32:27 – https://…» wird zum
-            anklickbaren Verweis mit Beschriftung, wie bei der Quelle.
+            pulsierenden Pfeil «Vertiefen». Eine Zeile, auf der nur eine Schriftstelle steht
+            («Alma 32:27»), wird von allein zum anklickbaren Verweis – mit dem Knopf unten
+            bekommt sie ihren Link auch fest in den Text.
           </p>
+          {deepeningCandidates > 0 && (
+            <button
+              type="button"
+              className="btn-secondary btn-sm mt-1.5"
+              onClick={() =>
+                setInput((value) => ({
+                  ...value,
+                  deepening: addScriptureLinks(value.deepening).text,
+                }))
+              }
+            >
+              <Link2 className="size-4" aria-hidden />
+              {deepeningCandidates === 1
+                ? 'Schriftstelle in der Vertiefung verlinken'
+                : `${deepeningCandidates} Schriftstellen in der Vertiefung verlinken`}
+            </button>
+          )}
         </div>
       )}
 
@@ -258,6 +300,34 @@ export function ImpulseItemFields({
           />
         </div>
       </div>
+
+      {showSuggestion && (
+        <button
+          type="button"
+          className="btn-secondary btn-sm -mt-1"
+          onClick={() => setInput((value) => ({ ...value, sourceUrl: suggestedUrl }))}
+        >
+          <Link2 className="size-4" aria-hidden />
+          Link zu «{input.sourceLabel.trim()}» einsetzen
+        </button>
+      )}
+      {showSearch && (
+        <div className="-mt-1">
+          <a
+            className="btn-secondary btn-sm"
+            href={churchSearchLink(input.sourceLabel)}
+            target="_blank"
+            rel="noreferrer"
+          >
+            <Search className="size-4" aria-hidden />
+            «{input.sourceLabel.trim()}» auf churchofjesuschrist.org suchen
+          </a>
+          <p className="hint mt-1">
+            Öffnet die Suche der Kirche in einem neuen Tab – Treffer öffnen, Adresse kopieren
+            und oben als Link zur Quelle einsetzen.
+          </p>
+        </div>
+      )}
 
       {(input.kind === 'quiz' || input.kind === 'bilderraetsel') && (
         <fieldset className="space-y-3 rounded-xl border border-slate-200 p-3 dark:border-slate-700">
