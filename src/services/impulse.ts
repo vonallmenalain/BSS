@@ -508,6 +508,27 @@ export async function createStarterItems(
 }
 
 /**
+ * Die Schwierigkeitsansagen aus bestehenden Hinweisen räumen – ein Klick.
+ *
+ * Was zu ändern ist, rechnet `planDifficultyCleanup` (lib/impulse) aus
+ * dem abonnierten Bestand; hier wird nur noch geschrieben. Ein Stapel
+ * statt einzelner Schreibvorgänge: alles oder nichts, wie beim
+ * Startpaket.
+ */
+export async function applyDifficultyCleanup(
+  updates: { id: string; body: string }[],
+): Promise<SaveOutcome> {
+  const batch = writeBatch(db)
+  for (const update of updates) {
+    batch.update(doc(db, COLLECTIONS.impulseItems, update.id), {
+      body: update.body,
+      updatedAt: serverTimestamp(),
+    })
+  }
+  return commit(batch.commit())
+}
+
+/**
  * Eine Quizfrage beantworten – ein Versuch, auf den eigenen Namen.
  *
  * Richtig oder falsch wird bei der Auswahl gleich hier bestimmt; die

@@ -11,9 +11,13 @@ import type {
  * Das Startpaket des Bereichs «Anti Doom»: vier Wochen Inhalt, damit der
  * Bereich nicht leer beginnt und die Redaktion eine Vorlage hat, wie
  * die Karten gemeint sind. Die ersten drei Wochen sind voll ausgebaut –
- * je drei Quizfragen in steigendem Schwierigkeitsgrad, drei
- * Bilderrätsel, zehn Feed-Karten (etliche mit Vertiefung), dazu Impuls,
- * Wochenziel, Tages-Challenge, Frage der Woche und die Teilen-Aufgabe.
+ * je drei Quizfragen, drei Bilderrätsel, zehn Feed-Karten (etliche mit
+ * Vertiefung), dazu Impuls, Wochenziel, Tages-Challenge, Frage der
+ * Woche und die Teilen-Aufgabe. Unter der Frage steht höchstens ein
+ * Hinweis zur Sache – keine Schwierigkeitsansage: «Zum Aufwärmen»,
+ * «Schon schwieriger» und «Für Profis» standen hier einmal und sind
+ * bewusst wieder verschwunden (`stripDifficultyTag` in `lib/impulse`
+ * räumt sie auch aus einer schon eingespielten Datenbank).
  *
  * Alles stammt aus den heiligen Schriften – dem offiziellen Material,
  * das das Konzept verlangt – und trägt Quelle samt Link in die
@@ -50,7 +54,7 @@ interface StarterContent {
 
 export interface StarterWeek {
   impuls: StarterContent
-  /** Bis zu drei Quizfragen, in steigendem Schwierigkeitsgrad. */
+  /** Bis zu drei Quizfragen. */
   quiz: StarterContent[]
   /** Bilderrätsel – als Entwurf geplant, das Bild ergänzt die Redaktion. */
   bilderraetsel: StarterContent[]
@@ -94,8 +98,8 @@ export const STARTER_WEEKS: StarterWeek[] = [
       {
         title: 'In welchem Buch im Buch Mormon steht die Geschichte der 2000 jungen Krieger?',
         body:
-          'Zum Aufwärmen: Sie waren jung, sie hatten noch nie gekämpft – und sie ' +
-          'vertrauten dem, was ihre Mütter ihnen beigebracht hatten.',
+          'Sie waren jung, sie hatten noch nie gekämpft – und sie vertrauten dem, ' +
+          'was ihre Mütter ihnen beigebracht hatten.',
         source: {
           label: 'Alma 56:47–48',
           url: `${SCRIPTURES}/bofm/alma/56?lang=deu&id=p47-p48#p47`,
@@ -113,9 +117,7 @@ export const STARTER_WEEKS: StarterWeek[] = [
       },
       {
         title: 'Weshalb schickte Lehi seine Söhne zurück nach Jerusalem?',
-        body:
-          'Schon schwieriger: Die Familie war bereits in der Wildnis – und musste ' +
-          'trotzdem noch einmal zurück.',
+        body: 'Die Familie war bereits in der Wildnis – und musste trotzdem noch einmal zurück.',
         deepening:
           'Der Auftrag wirkt auf den ersten Blick unnötig riskant – Laban war mächtig ' +
           'und gefährlich. Aber ohne die Messingplatten hätte Lehis Volk seine Schriften ' +
@@ -146,7 +148,7 @@ export const STARTER_WEEKS: StarterWeek[] = [
       },
       {
         title: 'Schlag 1 Nephi 3:7 auf: Was wird der Herr bereiten, damit seine Kinder das Gebotene vollbringen können?',
-        body: 'Für Profis: Die Antwort ist ein einziges Wort – es steht wörtlich im Vers.',
+        body: 'Die Antwort ist ein einziges Wort – es steht wörtlich im Vers.',
         source: {
           label: '1 Nephi 3:7',
           url: `${SCRIPTURES}/bofm/1-ne/3?lang=deu&id=p7#p7`,
@@ -167,7 +169,7 @@ export const STARTER_WEEKS: StarterWeek[] = [
     bilderraetsel: [
       {
         title: 'In welcher Schweizer Gemeinde steht der älteste Tempel Europas?',
-        body: 'Zum Aufwärmen – für viele ist er der Tempel der Heimat.',
+        body: 'Für viele ist er der Tempel der Heimat.',
         source: { label: 'Tempel der Kirche', url: TEMPLES },
         quiz: {
           form: 'choice',
@@ -182,7 +184,7 @@ export const STARTER_WEEKS: StarterWeek[] = [
       },
       {
         title: 'Welcher Prophet erhält auf diesem Bild die goldenen Platten?',
-        body: 'Schon schwieriger: Der Engel auf dem Bild heisst Moroni.',
+        body: 'Der Engel auf dem Bild heisst Moroni.',
         source: {
           label: 'Joseph Smith – Lebensgeschichte 1:59',
           url: `${SCRIPTURES}/pgp/js-h/1?lang=deu&id=p59#p59`,
@@ -200,7 +202,7 @@ export const STARTER_WEEKS: StarterWeek[] = [
       },
       {
         title: 'Welche Begebenheit aus dem Buch Mormon zeigt dieses Bild?',
-        body: 'Für Profis: Ein Baum, ein Pfad, ein eisernes Geländer – und viel Nebel.',
+        body: 'Ein Baum, ein Pfad, ein eisernes Geländer – und viel Nebel.',
         source: {
           label: '1 Nephi 8',
           url: `${SCRIPTURES}/bofm/1-ne/8?lang=deu`,
@@ -355,7 +357,7 @@ export const STARTER_WEEKS: StarterWeek[] = [
     quiz: [
       {
         title: '🌊 ⛵ 😴 – welche Begebenheit aus dem Neuen Testament suchen wir?',
-        body: 'Zum Aufwärmen: Drei Emojis, eine Geschichte.',
+        body: 'Drei Emojis, eine Geschichte.',
         source: {
           label: 'Markus 4:35–41',
           url: `${SCRIPTURES}/nt/mark/4?lang=deu&id=p35-p41#p35`,
@@ -379,7 +381,7 @@ export const STARTER_WEEKS: StarterWeek[] = [
       },
       {
         title: 'Wer sagte: «Auf dem Fels unseres Erlösers … müsst ihr euer Fundament bauen»?',
-        body: 'Schon schwieriger: Ein Vater sagt es zu seinen zwei Söhnen – die nach zwei Propheten benannt sind.',
+        body: 'Ein Vater sagt es zu seinen zwei Söhnen – die nach zwei Propheten benannt sind.',
         deepening:
           'Helaman hatte seine Söhne Nephi und Lehi genannt, «damit ihr euch an sie ' +
           'erinnert» und an ihre Werke (Helaman 5:6). Der Rat mit dem Fels steht mitten ' +
@@ -403,7 +405,7 @@ export const STARTER_WEEKS: StarterWeek[] = [
       },
       {
         title: 'Schlag Matthäus 7:25 auf: Welche drei Dinge brechen über das Haus herein?',
-        body: 'Für Profis: Alle drei stehen im selben Vers – der Reihe nach.',
+        body: 'Alle drei stehen im selben Vers – der Reihe nach.',
         source: {
           label: 'Matthäus 7:25',
           url: `${SCRIPTURES}/nt/matt/7?lang=deu&id=p25#p25`,
@@ -423,7 +425,7 @@ export const STARTER_WEEKS: StarterWeek[] = [
     bilderraetsel: [
       {
         title: 'Welche Begebenheit zeigt dieses Bild?',
-        body: 'Zum Aufwärmen: ein Boot, hohe Wellen – und einer, der ruhig bleibt.',
+        body: 'Ein Boot, hohe Wellen – und einer, der ruhig bleibt.',
         source: {
           label: 'Markus 4:39',
           url: `${SCRIPTURES}/nt/mark/4?lang=deu&id=p39#p39`,
@@ -446,7 +448,7 @@ export const STARTER_WEEKS: StarterWeek[] = [
       },
       {
         title: 'In welchem Land steht dieser Tempel?',
-        body: 'Schon schwieriger: Er wurde 2019 geweiht – ganz in der Nähe einer sehr alten Stadt.',
+        body: 'Er wurde 2019 geweiht – ganz in der Nähe einer sehr alten Stadt.',
         source: { label: 'Tempel der Kirche', url: TEMPLES },
         quiz: {
           form: 'choice',
@@ -460,7 +462,7 @@ export const STARTER_WEEKS: StarterWeek[] = [
       },
       {
         title: 'Wo hielt Jesus die Predigt, die dieses Bild zeigt – mit den Seligpreisungen am Anfang?',
-        body: 'Für Profis: Der Ort gab der Predigt ihren Namen.',
+        body: 'Der Ort gab der Predigt ihren Namen.',
         source: {
           label: 'Matthäus 5:1–2',
           url: `${SCRIPTURES}/nt/matt/5?lang=deu&id=p1-p2#p1`,
@@ -617,7 +619,7 @@ export const STARTER_WEEKS: StarterWeek[] = [
       {
         title:
           'Bring die ersten Grundsätze und Verordnungen des Evangeliums in die richtige Reihenfolge',
-        body: 'Zum Aufwärmen: Vier Schritte – aber welcher kommt zuerst?',
+        body: 'Vier Schritte – aber welcher kommt zuerst?',
         source: {
           label: '4. Glaubensartikel',
           url: `${SCRIPTURES}/pgp/a-of-f/1?lang=deu&id=p4#p4`,
@@ -640,7 +642,7 @@ export const STARTER_WEEKS: StarterWeek[] = [
       },
       {
         title: 'Wem galt die Offenbarung mit dem Satz «Blickt in jedem Gedanken auf mich»?',
-        body: 'Schon schwieriger: Er diente Joseph Smith gerade als Schreiber bei der Übersetzung.',
+        body: 'Er diente Joseph Smith gerade als Schreiber bei der Übersetzung.',
         deepening:
           'Oliver Cowdery war Schullehrer und wohnte bei Josephs Eltern, als er von den ' +
           'Platten hörte. Im April 1829 reiste er zu Joseph nach Harmony und wurde sein ' +
@@ -665,7 +667,7 @@ export const STARTER_WEEKS: StarterWeek[] = [
       },
       {
         title: 'Schlag Josua 1:9 auf: Welche zwei Eigenschaften gebietet der Herr Josua?',
-        body: 'Für Profis: Beide stehen in einer einzigen Aufforderung – kurz vor dem Einzug ins verheissene Land.',
+        body: 'Beide stehen in einer einzigen Aufforderung – kurz vor dem Einzug ins verheissene Land.',
         source: {
           label: 'Josua 1:9',
           url: `${SCRIPTURES}/ot/josh/1?lang=deu&id=p9#p9`,
@@ -685,7 +687,7 @@ export const STARTER_WEEKS: StarterWeek[] = [
     bilderraetsel: [
       {
         title: 'Welche Begebenheit zeigt dieses Bild?',
-        body: 'Zum Aufwärmen: ein Wäldchen, helles Licht – und ein 14-Jähriger mit einer Frage.',
+        body: 'Ein Wäldchen, helles Licht – und ein 14-Jähriger mit einer Frage.',
         source: {
           label: 'Joseph Smith – Lebensgeschichte 1:16–17',
           url: `${SCRIPTURES}/pgp/js-h/1?lang=deu&id=p16-p17#p16`,
@@ -708,7 +710,7 @@ export const STARTER_WEEKS: StarterWeek[] = [
       },
       {
         title: 'In welcher Stadt steht dieser Tempel?',
-        body: 'Schon schwieriger: An ihm wurde 40 Jahre lang gebaut.',
+        body: 'An ihm wurde 40 Jahre lang gebaut.',
         source: { label: 'Tempel der Kirche', url: TEMPLES },
         quiz: {
           form: 'choice',
@@ -723,7 +725,7 @@ export const STARTER_WEEKS: StarterWeek[] = [
       },
       {
         title: 'Was zeigt dieses Bild aus dem Frühjahr 1829?',
-        body: 'Für Profis: Ein Tisch, zwei junge Männer, ein Stapel Papier.',
+        body: 'Ein Tisch, zwei junge Männer, ein Stapel Papier.',
         source: {
           label: 'Lehre und Bündnisse 6',
           url: `${SCRIPTURES}/dc-testament/dc/6?lang=deu`,

@@ -35,6 +35,7 @@ import {
 } from '@/components/sacrament/SundayResponsible'
 import { useAutoDraft } from '@/components/sacrament/useDraft'
 import { formatDate, formatDateLong, toDate, toDateInput } from '@/lib/dates'
+import { lockScroll } from '@/lib/scrollLock'
 import { isSeriesEntry } from '@/lib/series'
 import { cn } from '@/lib/utils'
 import { formatHymn } from '@/services/hymns'
@@ -317,8 +318,7 @@ export function Conducting() {
   useEffect(() => {
     if (!fullscreen) return
 
-    const { overflow } = document.body.style
-    document.body.style.overflow = 'hidden'
+    const unlockScroll = lockScroll()
 
     const onKeyDown = (event: KeyboardEvent) => {
       if (event.key === 'Escape') setFullscreen(false)
@@ -334,7 +334,7 @@ export function Conducting() {
     document.addEventListener('fullscreenchange', onFullscreenChange)
 
     return () => {
-      document.body.style.overflow = overflow
+      unlockScroll()
       document.removeEventListener('keydown', onKeyDown)
       document.removeEventListener('fullscreenchange', onFullscreenChange)
     }

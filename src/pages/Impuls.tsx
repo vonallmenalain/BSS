@@ -517,7 +517,7 @@ export function Impuls() {
 
   /* Ein unbekannter Routenteil führt still zur Übersicht zurück. */
   if (bereich && !sectionKey && bereich !== 'einstellungen') {
-    return <Navigate to="/impuls" replace />
+    return <Navigate to="/anti-doom" replace />
   }
 
   /* ---------------- Die Inhalte der Räume ---------------- */
@@ -643,7 +643,7 @@ export function Impuls() {
           leading={<AppMenuButton />}
           actions={
             canEditImpulse ? (
-              <Link to="/impuls/redaktion" className="btn-secondary">
+              <Link to="/anti-doom/redaktion" className="btn-secondary">
                 <Pencil className="size-4" aria-hidden />
                 <span className="hidden sm:inline">Redaktion</span>
                 <span className="sr-only sm:hidden">Redaktion</span>
@@ -675,7 +675,6 @@ export function Impuls() {
         {deckCards.length > 0 ? (
           <WochenimpulsHero
             item={deckWeekItems.find((item) => item.kind === 'impuls') ?? null}
-            cardCount={deckCards.length}
             onOpen={openFeed}
           />
         ) : (
@@ -841,11 +840,9 @@ export function Impuls() {
  */
 function WochenimpulsHero({
   item,
-  cardCount,
   onOpen,
 }: {
   item: ImpulseItem | null
-  cardCount: number
   onOpen: (origin: ScreenOrigin) => void
 }) {
   const theme = IMPULSE_SECTIONS.woche
@@ -885,7 +882,7 @@ function WochenimpulsHero({
           </span>
         )}
         <span className="mt-6 inline-flex items-center gap-1 rounded-full bg-slate-900/5 px-3.5 py-1.5 text-xs font-medium text-slate-600 transition group-hover:bg-slate-900/10 dark:bg-white/10 dark:text-slate-300 dark:group-hover:bg-white/15">
-          Antippen zum Eintauchen · {cardCount} {cardCount === 1 ? 'Karte' : 'Karten'}
+          Antippen zum Eintauchen
           <ChevronRight
             className="size-3.5 transition-transform group-hover:translate-x-0.5"
             aria-hidden
@@ -978,10 +975,10 @@ function FeedFinale({
 
       {/* Die Kacheln des Dashboards, hier als Schnellzugriff: Aufgaben
           abhaken und Gesammeltes anschauen, ohne den Feed zu verlassen
-          und wieder hineinzufinden. */}
+          und wieder hineinzufinden – unangeschrieben, die Kacheln sagen
+          selbst, was sie sind. */}
       {sections.length > 0 && (
         <div className="mt-5 text-left">
-          <p className="hint mb-1.5 font-medium">Deine Kacheln</p>
           <div className="grid grid-cols-2 gap-1.5">
             {sections.map((key) => {
               const theme = IMPULSE_SECTIONS[key]

@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict'
 import { test } from 'node:test'
 
-import { readyProblems } from '../src/lib/impulse.ts'
+import { readyProblems, stripDifficultyTag } from '../src/lib/impulse.ts'
 import { planStarterItems, STARTER_WEEKS } from '../src/lib/impulseStarter.ts'
 
 /*
@@ -214,4 +214,14 @@ test('Startpaket: was schon da ist, wird nicht noch einmal geplant', () => {
     '2026-W33',
   )
   assert.equal(complete.length, 0)
+})
+
+test('Startpaket: kein Hinweis sagt mehr einen Schwierigkeitsgrad an', () => {
+  for (const plan of planStarterItems([], '2026-W33')) {
+    assert.equal(
+      stripDifficultyTag(plan.body),
+      plan.body,
+      `${plan.id} trägt noch eine Schwierigkeitsansage: ${plan.body}`,
+    )
+  }
 })

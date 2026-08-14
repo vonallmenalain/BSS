@@ -3,6 +3,7 @@ import { createPortal } from 'react-dom'
 import { ArrowLeft, ArrowRight, ChevronDown, Inbox } from 'lucide-react'
 import { AppMenuButton } from '@/components/AppMenuButton'
 import { cn } from '@/lib/utils'
+import { lockScroll } from '@/lib/scrollLock'
 import {
   IMPULSE_SECTIONS,
   type ImpulseDeckSectionKey,
@@ -115,13 +116,7 @@ export function ImpulseFeedScreen({
   const [celebrated, setCelebrated] = useState(false)
 
   /* Hinter dem Vollbild soll nichts mitrollen – wie in den Räumen. */
-  useEffect(() => {
-    const previous = document.body.style.overflow
-    document.body.style.overflow = 'hidden'
-    return () => {
-      document.body.style.overflow = previous
-    }
-  }, [])
+  useEffect(() => lockScroll(), [])
 
   /* Beim Öffnen den Fokus in den Feed holen – Escape führt hinaus. */
   useEffect(() => {
