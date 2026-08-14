@@ -1,3 +1,4 @@
+import { useState } from 'react'
 import { Bookmark, HandHeart } from 'lucide-react'
 import { useAuth } from '@/contexts/AuthContext'
 import { useToast } from '@/contexts/ToastContext'
@@ -22,17 +23,22 @@ import type { ImpulseItem, ImpulseProgress } from '@/lib/types'
 export function ImpulseFeedCard({
   item,
   progressDocs,
+  preview = false,
 }: {
   item: ImpulseItem
   progressDocs: ImpulseProgress[]
+  /** Vorschau der Redaktion: Amen und Merken leben nur im Fenster. */
+  preview?: boolean
 }) {
   const { profile } = useAuth()
   const toast = useToast()
+  const [previewAmen, setPreviewAmen] = useState(false)
+  const [previewFavorite, setPreviewFavorite] = useState(false)
 
   const uid = profile?.id ?? ''
   const mine = progressDocs.find((progress) => progress.uid === uid)
-  const amen = mine?.amens?.includes(item.id) ?? false
-  const favorite = mine?.favorites?.includes(item.id) ?? false
+  const amen = preview ? previewAmen : (mine?.amens?.includes(item.id) ?? false)
+  const favorite = preview ? previewFavorite : (mine?.favorites?.includes(item.id) ?? false)
 
   /** Wer zu dieser Karte «Amen» gesagt hat – Vornamen, alphabetisch. */
   const names = progressDocs
@@ -41,6 +47,10 @@ export function ImpulseFeedCard({
     .sort((a, b) => a.localeCompare(b, 'de'))
 
   const toggleAmen = async () => {
+    if (preview) {
+      setPreviewAmen((value) => !value)
+      return
+    }
     if (!profile) return
     try {
       await setImpulseAmen({ uid: profile.id, displayName: profile.displayName }, item.id, !amen)
@@ -51,6 +61,10 @@ export function ImpulseFeedCard({
   }
 
   const toggleFavorite = async () => {
+    if (preview) {
+      setPreviewFavorite((value) => !value)
+      return
+    }
     if (!profile) return
     try {
       await setImpulseFavorite(

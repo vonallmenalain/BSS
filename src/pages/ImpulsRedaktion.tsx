@@ -3,9 +3,11 @@ import { Link } from 'react-router-dom'
 import {
   Check,
   ChevronDown,
+  ChevronLeft,
   ChevronRight,
   Eraser,
   Eye,
+  Inbox,
   Pencil,
   Plus,
   Send,
@@ -24,8 +26,8 @@ import {
 import { PageHeader } from '@/components/ui/Pickers'
 import { AppMenuButton } from '@/components/AppMenuButton'
 import { ConfirmDialog } from '@/components/ui/Modal'
+import { ImpulseEditorPreview } from '@/components/impulse/ImpulseEditorPreview'
 import { ImpulseItemForm } from '@/components/impulse/ImpulseItemForm'
-import { ImpulseWeekPreview } from '@/components/impulse/ImpulseWeekPreview'
 import { cn } from '@/lib/utils'
 import {
   formatWeekRange,
@@ -35,7 +37,7 @@ import {
   planDifficultyCleanup,
   upcomingWeekKeys,
 } from '@/lib/impulse'
-import { IMPULSE_SECTIONS, type ImpulseSectionKey } from '@/lib/impulseSections'
+import { IMPULSE_KIND_THEME, IMPULSE_SECTIONS } from '@/lib/impulseSections'
 import { planStarterItems } from '@/lib/impulseStarter'
 import {
   applyDifficultyCleanup,
@@ -59,15 +61,18 @@ import {
  * Die Redaktion des Bereichs «Anti Doom» – nur für Konten mit Redaktionsrecht
  * (`RequireImpulseEditor` in App.tsx; vorerst das Administrator-Konto).
  *
- * Zwei Blicke auf denselben Bestand, beide fürs Telefon gebaut: Der
- * **Wochenplan** zeigt je Woche kompakt, was da ist und was fehlt – jede
- * Lücke ist ein Knopf, der sie füllt, und die Vorschau zeigt die Woche so,
- * wie die AP's sie sehen werden. Darunter stehen **alle Karten nach Art
- * gruppiert** – alle Quizfragen beieinander, alle Bilderrätsel, alle
- * Feed-Karten und so fort: Ein Tipp auf eine Karte öffnet sie zum
- * Bearbeiten, «Neu» legt eine weitere ihrer Art an. Der Fragenpool (Ideen
- * ohne Woche) und Vergangenes wohnen in denselben Gruppen, statt eigene
- * Abschnitte zu füllen; Vergangenes bleibt zugeklappt, bis man es braucht.
+ * Eine Woche im Blick: Oben wird die Woche gewählt (mit Pfeilen oder aus
+ * der Liste, samt Füllstand), darunter stehen **alle Karten dieser
+ * Woche**, nach Art gruppiert – alle Quizfragen beieinander, alle
+ * Bilderrätsel, alle Feed-Karten. Ein Tipp auf eine Karte öffnet sie im
+ * Formular; «Neu» in jeder Sparte legt eine weitere Karte dieser Art in
+ * dieser Woche an. Das Auge daneben zeigt die Karte in der **echten**
+ * Vorschau: der Vollbild-Feed mit Vorschau-Leiste, wahlweise für die
+ * einzelne Karte oder die ganze Woche (`ImpulseEditorPreview`).
+ *
+ * Einreichungen aus der Mitmach-Ecke lassen sich direkt in die gerade
+ * angezeigte Woche übernehmen; der Fragenpool (Karten ohne Woche) wohnt
+ * zugeklappt am Ende der Seite.
  */
 export function ImpulsRedaktion() {
   const { profile } = useAuth()
@@ -78,23 +83,48 @@ export function ImpulsRedaktion() {
   const commentsState = useImpulseComments()
   const todayKey = impulseWeekKey(now)
 
-  /* Die laufende Woche und die nächsten sieben – dazu alles, was noch
-     weiter voraus schon geplant ist. */
-  const weeks = useMemo(() => {
-    const plan = upcomingWeekKeys(now, 8)
-    const last = plan[plan.length - 1]
-    const far = [
+  /* ---------------- Die gewählte Woche ---------------- */
+
+  const [selectedWeek, setSelectedWeek] = useState(todayKey)
+
+  /* Zur Wahl: die laufende Woche und elf weitere, dazu alles, was weiter
+     voraus schon geplant ist – und die vergangenen Wochen mit Inhalt. */
+  const plannedWeeks = useMemo(
+    () => [
       ...new Set(
         itemsState.data
           .map((item) => item.week)
-          .filter((week): week is string => typeof week === 'string' && week > last),
+          .filter((week): week is string => typeof week === 'string'),
       ),
-    ].sort()
-    return [...plan, ...far]
-  }, [now, itemsState.data])
-
-  /* Zur Wahl im Formular: die laufende Woche und elf weitere. */
+    ],
+    [itemsState.data],
+  )
   const weekChoices = useMemo(() => upcomingWeekKeys(now, 12), [now])
+  const futureWeeks = useMemo(() => {
+    const last = weekChoices[weekChoices.length - 1]
+    const far = plannedWeeks.filter((week) => week > last).sort()
+    return [...weekChoices, ...far]
+  }, [weekChoices, plannedWeeks])
+  const pastWeeks = useMemo(
+    () => plannedWeeks.filter((week) => week < todayKey).sort().reverse(),
+    [plannedWeeks, todayKey],
+  )
+  /* Für die Pfeile: alle wählbaren Wochen in zeitlicher Reihenfolge. */
+  const weekTimeline = useMemo(
+    () => [...[...pastWeeks].reverse(), ...futureWeeks.filter((week) => !pastWeeks.includes(week))],
+    [pastWeeks, futureWeeks],
+  )
+  const timelineIndex = weekTimeline.indexOf(selectedWeek)
+  const stepWeek = (offset: number) => {
+    const next = weekTimeline[timelineIndex + offset]
+    if (next) setSelectedWeek(next)
+  }
+
+  const weekItems = itemsForWeek(itemsState.data, selectedWeek)
+  const weekDrafts = weekItems.filter((item) => item.status === 'draft').length
+  const countOf = (week: string) => itemsState.data.filter((item) => item.week === week).length
+
+  /* ---------------- Bearbeiten und Anlegen ---------------- */
 
   const [editor, setEditor] = useState<{
     itemId: string | null
@@ -103,35 +133,31 @@ export function ImpulsRedaktion() {
         nach dem Speichern wird sie als übernommen markiert. */
     fromSubmissionId?: string
   } | null>(null)
-  const openNew = (kind: ImpulseKind, week: string | null) =>
+  const openNew = (kind: ImpulseKind) =>
     setEditor({
       itemId: null,
       initial: emptyImpulseItem(
         kind,
-        week,
+        selectedWeek,
         // Arten mit mehreren Karten je Woche reihen sich hinten ein.
-        MULTI_KIND_LIMITS[kind] && week
-          ? itemsState.data.filter((item) => item.week === week && item.kind === kind).length + 1
+        MULTI_KIND_LIMITS[kind]
+          ? itemsState.data.filter((item) => item.week === selectedWeek && item.kind === kind)
+              .length + 1
           : null,
       ),
     })
   const openItem = (item: ImpulseItem) =>
     setEditor({ itemId: item.id, initial: toImpulseInput(item) })
 
-  /* «Neu» in einer Gruppe: die nächste Woche, in der die Art noch Platz
-     hat – sonst der Fragenpool. Die Woche bleibt im Formular wählbar. */
-  const nextFreeWeek = (kind: ImpulseKind): string | null => {
-    const limit = MULTI_KIND_LIMITS[kind] ?? 1
-    return (
-      weekChoices.find(
-        (week) =>
-          itemsState.data.filter((item) => item.week === week && item.kind === kind).length < limit,
-      ) ?? null
-    )
-  }
+  /* ---------------- Die echte Vorschau ---------------- */
 
-  /* Die Wochen-Vorschau: die Woche so sehen, wie die AP's sie sehen werden. */
-  const [previewWeek, setPreviewWeek] = useState<string | null>(null)
+  /* Ein Schnappschuss der Karten – die Vorschau soll ruhig stehen,
+     auch wenn der Bestand währenddessen weitertickt. */
+  const [preview, setPreview] = useState<{ week: string; items: ImpulseItem[] } | null>(null)
+  const previewWeek = () => setPreview({ week: selectedWeek, items: weekItems })
+  const previewItem = (item: ImpulseItem) => setPreview({ week: selectedWeek, items: [item] })
+
+  /* ---------------- Startpaket und Aufräumen ---------------- */
 
   /*
    * Das Startpaket: vier Wochen Inhalt aus den Schriften, mit einem Klick
@@ -231,12 +257,18 @@ export function ImpulsRedaktion() {
   )
   const [showAccepted, setShowAccepted] = useState(false)
   const [removeSubmission, setRemoveSubmission] = useState<ImpulseSubmission | null>(null)
+  /* «Übernehmen» stellt die Karte in die gerade angezeigte Woche – im
+     Formular bleibt die Woche wählbar. */
   const acceptSubmission = (submission: ImpulseSubmission) =>
     setEditor({
       itemId: null,
-      initial: submissionToInput(submission),
+      initial: submissionToInput(submission, selectedWeek),
       fromSubmissionId: submission.id,
     })
+
+  /* Der Fragenpool: Karten ohne Woche – zugeklappt am Ende der Seite. */
+  const pool = itemsState.data.filter((item) => item.week === null)
+  const [showPool, setShowPool] = useState(false)
 
   return (
     <>
@@ -245,7 +277,7 @@ export function ImpulsRedaktion() {
       <div className="mx-auto w-full max-w-3xl">
         <PageHeader
           title="Anti-Doom-Redaktion"
-          subtitle="Wochenplan und alle Karten nach Art"
+          subtitle="Woche wählen, Karten bearbeiten und prüfen"
           leading={<AppMenuButton />}
           actions={
             <Link to="/anti-doom" className="btn-secondary">
@@ -315,45 +347,97 @@ export function ImpulsRedaktion() {
           </section>
         )}
 
-        {/* ---------- Wochenplan ---------- */}
+        {/* ---------- Die Woche ---------- */}
         <section className="card p-4 sm:p-5">
-          <h2 className="text-sm font-semibold">Wochenplan</h2>
-          <p className="hint mt-1 mb-2">
+          <h2 className="text-sm font-semibold">Woche</h2>
+          <p className="hint mt-1 mb-3">
             Ein Inhalt erscheint bei den AP’s, sobald er <strong>bereit</strong> ist und seine
-            Woche beginnt – veröffentlicht wird durch den Kalender, nicht von Hand. Jede Lücke ist
-            ein Knopf; vier bis sechs vorbereitete Wochen sind ein gutes Polster.
+            Woche beginnt – veröffentlicht wird die neue Woche automatisch jeden Montag, nicht
+            manuell.
           </p>
-          <ul className="divide-list">
-            {weeks.map((week) => (
-              <WeekRow
-                key={week}
-                week={week}
-                todayKey={todayKey}
-                items={itemsForWeek(itemsState.data, week)}
-                onPreview={() => setPreviewWeek(week)}
-                onCreate={(kind) => openNew(kind, week)}
-              />
-            ))}
-          </ul>
+          <div className="flex items-center gap-2">
+            <button
+              type="button"
+              className="btn-secondary shrink-0 p-2"
+              onClick={() => stepWeek(-1)}
+              disabled={timelineIndex <= 0}
+              aria-label="Eine Woche zurück"
+            >
+              <ChevronLeft className="size-4" aria-hidden />
+            </button>
+            <select
+              className="input min-w-0 flex-1"
+              aria-label="Woche wählen"
+              value={selectedWeek}
+              onChange={(event) => setSelectedWeek(event.target.value)}
+            >
+              {!weekTimeline.includes(selectedWeek) && (
+                <option value={selectedWeek}>{formatWeekRange(selectedWeek)}</option>
+              )}
+              <optgroup label="Diese und kommende Wochen">
+                {futureWeeks.map((week) => (
+                  <option key={week} value={week}>
+                    {formatWeekRange(week)}
+                    {week === todayKey ? ' · diese Woche' : ''}
+                    {countOf(week) > 0 ? ` · ${countOf(week)} Karten` : ' · leer'}
+                  </option>
+                ))}
+              </optgroup>
+              {pastWeeks.length > 0 && (
+                <optgroup label="Vergangene Wochen">
+                  {pastWeeks.map((week) => (
+                    <option key={week} value={week}>
+                      {formatWeekRange(week)} · {countOf(week)} Karten
+                    </option>
+                  ))}
+                </optgroup>
+              )}
+            </select>
+            <button
+              type="button"
+              className="btn-secondary shrink-0 p-2"
+              onClick={() => stepWeek(1)}
+              disabled={timelineIndex === -1 || timelineIndex >= weekTimeline.length - 1}
+              aria-label="Eine Woche weiter"
+            >
+              <ChevronRight className="size-4" aria-hidden />
+            </button>
+          </div>
+          <div className="mt-3 flex flex-wrap items-center gap-2">
+            <p className="hint mt-0 min-w-0 flex-1">
+              {weekItems.length === 0
+                ? 'Noch keine Karten in dieser Woche.'
+                : `${weekItems.length} ${weekItems.length === 1 ? 'Karte' : 'Karten'}`}
+              {weekDrafts > 0 && (
+                <span className="text-amber-700 dark:text-amber-300">
+                  {' · '}
+                  {weekDrafts === 1 ? '1 Entwurf' : `${weekDrafts} Entwürfe`}
+                </span>
+              )}
+              {selectedWeek < todayKey && ' · vergangene Woche'}
+            </p>
+            <button
+              type="button"
+              className="btn-secondary btn-sm"
+              onClick={previewWeek}
+              disabled={weekItems.length === 0}
+            >
+              <Eye className="size-4" aria-hidden />
+              Vorschau der Woche
+            </button>
+          </div>
         </section>
 
-        {/* ---------- Alle Karten, nach Art gruppiert ---------- */}
-        <div className="px-1 pt-2">
-          <h2 className="text-sm font-semibold">Alle Karten</h2>
-          <p className="hint mt-0.5">
-            Nach Art gruppiert, die nächsten Wochen zuoberst. Eine Karte antippen öffnet sie zum
-            Bearbeiten; «Neu» legt eine weitere dieser Art an – die Woche wählst du im Formular.
-          </p>
-        </div>
+        {/* ---------- Die Karten der Woche, nach Art gruppiert ---------- */}
         {IMPULSE_KIND_ORDER.map((kind) => (
-          <KindGroup
+          <WeekKindGroup
             key={kind}
             kind={kind}
-            items={itemsState.data.filter((item) => item.kind === kind)}
-            todayKey={todayKey}
+            items={weekItems.filter((item) => item.kind === kind)}
             answerCount={answerCount}
             onOpen={openItem}
-            onCreate={() => openNew(kind, nextFreeWeek(kind))}
+            onPreview={previewItem}
+            onCreate={() => openNew(kind)}
           />
         ))}
 
@@ -370,10 +454,11 @@ export function ImpulsRedaktion() {
               </span>
             </h2>
             <p className="hint mt-1 mb-3">
-              Hier landet alles, was die AP's einreichen – für jede Kartenart. «Übernehmen» öffnet
-              das Formular in der eingereichten Art, vorbefüllt und mit «Eingereicht von …» – beim
-              Speichern gilt die Einreichung als übernommen. Was nicht passt, wird still entfernt;
-              die Person sieht keine Ablehnung.
+              Hier landet alles, was die AP's einreichen – seit dem Formular-Umbau als fixfertige
+              Karte. «Übernehmen» öffnet die Karte vorbefüllt und stellt sie in die oben gewählte
+              Woche ({formatWeekRange(selectedWeek)}); im Formular lässt sich die Woche noch
+              ändern. Beim Speichern gilt die Einreichung als übernommen. Was nicht passt, wird
+              still entfernt; die Person sieht keine Ablehnung.
             </p>
             {openSubmissions.length > 0 && (
               <ul className="divide-list">
@@ -389,11 +474,14 @@ export function ImpulsRedaktion() {
                     <p className="mt-0.5 text-sm whitespace-pre-line text-slate-600 dark:text-slate-300">
                       {submission.text}
                     </p>
+                    {submission.card?.body && (
+                      <p className="hint mt-0.5 line-clamp-2 whitespace-pre-line">
+                        {submission.card.body}
+                      </p>
+                    )}
                     {submission.sourceLabel && (
                       <p className="hint mt-0.5">Quelle: {submission.sourceLabel}</p>
                     )}
-                    {/* Die Handgriffe unter dem Text statt daneben – auf dem
-                        Handy bleibt so die ganze Breite dem Vorschlag. */}
                     <div className="mt-2 flex items-center gap-1.5">
                       <button
                         type="button"
@@ -401,7 +489,7 @@ export function ImpulsRedaktion() {
                         onClick={() => acceptSubmission(submission)}
                       >
                         <Check className="size-4" aria-hidden />
-                        Übernehmen
+                        In diese Woche übernehmen
                       </button>
                       <button
                         type="button"
@@ -481,6 +569,64 @@ export function ImpulsRedaktion() {
             )}
           </section>
         )}
+
+        {/* ---------- Fragenpool ---------- */}
+        {pool.length > 0 && (
+          <section className="card p-4 sm:p-5">
+            <button
+              type="button"
+              className="flex w-full items-center gap-2 text-left text-sm font-semibold"
+              onClick={() => setShowPool((value) => !value)}
+              aria-expanded={showPool}
+            >
+              {showPool ? (
+                <ChevronDown className="size-4 text-slate-400" aria-hidden />
+              ) : (
+                <ChevronRight className="size-4 text-slate-400" aria-hidden />
+              )}
+              Fragenpool – Karten ohne Woche
+              <span className="hint font-normal">{pool.length}</span>
+            </button>
+            {showPool && (
+              <>
+                <p className="hint mt-1">
+                  Ideen, die auf ihre Woche warten. Karte antippen, Woche zuteilen, fertig.
+                </p>
+                <ul className="divide-list mt-1">
+                  {pool.map((item) => (
+                    <li key={item.id}>
+                      <button
+                        type="button"
+                        onClick={() => openItem(item)}
+                        className="group flex w-full items-center gap-3 rounded-lg px-1 py-2.5 text-left transition hover:bg-slate-50 active:scale-[0.99] dark:hover:bg-slate-800/60"
+                      >
+                        <span className="min-w-0 flex-1">
+                          <span className="block truncate text-sm font-medium">
+                            {item.title || 'Ohne Titel'}
+                          </span>
+                          <span className="hint mt-0 block">{IMPULSE_KIND_LABELS[item.kind]}</span>
+                        </span>
+                        <Pencil
+                          className="size-4 shrink-0 text-slate-300 transition group-hover:text-slate-500 dark:text-slate-600 dark:group-hover:text-slate-300"
+                          aria-hidden
+                        />
+                      </button>
+                    </li>
+                  ))}
+                </ul>
+              </>
+            )}
+          </section>
+        )}
+
+        {/* Eine leere Woche ganz ohne Startpaket-Kasten wirkt sonst wie
+            ein Fehler – der Hinweis sagt, dass einfach nichts da ist. */}
+        {!itemsState.loading && itemsState.data.length === 0 && starterPlans.length === 0 && (
+          <p className="hint flex items-center justify-center gap-1.5 py-4 text-center">
+            <Inbox className="size-4" aria-hidden />
+            Noch keine Karten – lege oben in einer Sparte die erste an.
+          </p>
+        )}
       </div>
 
       {editor && (
@@ -528,12 +674,11 @@ export function ImpulsRedaktion() {
         danger
       />
 
-      {previewWeek && (
-        <ImpulseWeekPreview
-          key={previewWeek}
-          week={previewWeek}
-          items={itemsForWeek(itemsState.data, previewWeek)}
-          onClose={() => setPreviewWeek(null)}
+      {preview && (
+        <ImpulseEditorPreview
+          week={preview.week}
+          items={preview.items}
+          onClose={() => setPreview(null)}
         />
       )}
     </>
@@ -544,28 +689,16 @@ export function ImpulsRedaktion() {
 /* Bausteine                                                           */
 /* ------------------------------------------------------------------ */
 
-/** Welche Farb- und Zeichenwelt eine Kartenart trägt – die des Bereichs. */
-const KIND_SECTION: Record<ImpulseKind, ImpulseSectionKey> = {
-  impuls: 'woche',
-  quiz: 'quiz',
-  bilderraetsel: 'bilderraetsel',
-  wochenziel: 'ziel',
-  tageschallenge: 'challenge',
-  frage: 'frage',
-  feed: 'feed',
-  teilen: 'teilen',
-}
-
 /** Die Gruppen-Überschriften – die Mehrzahl der Kartenart. */
 const KIND_GROUP_LABELS: Record<ImpulseKind, string> = {
-  impuls: 'Wochenthemen',
+  impuls: 'Wochenthema',
   quiz: 'Quizfragen',
   bilderraetsel: 'Bilderrätsel',
-  wochenziel: 'Wochenziele',
-  tageschallenge: 'Tages-Challenges',
-  frage: 'Fragen der Woche',
+  wochenziel: 'Wochenziel',
+  tageschallenge: 'Tages-Challenge',
+  frage: 'Frage der Woche',
   feed: 'Feed-Karten',
-  teilen: 'Teilen-Aufgaben',
+  teilen: 'Teilen-Aufgabe',
 }
 
 /**
@@ -581,130 +714,29 @@ const MULTI_KIND_LIMITS: Partial<Record<ImpulseKind, number>> = {
 }
 
 /**
- * Eine Woche im Wochenplan – eine kompakte Zeile statt acht Kästen:
- * oben die Woche mit der Vorschau, darunter der Stand («5 Karten · 2
- * Entwürfe») und je fehlender Kartenart ein Knopf, der die Lücke füllt.
- * Bei den Mehrfach-Arten sagt der Knopf dazu, wie voll die Woche schon
- * ist («Quiz 1/3»); bearbeitet wird unten in den Gruppen.
+ * Eine Sparte der gewählten Woche: alle ihre Karten untereinander, jede
+ * antippbar zum Bearbeiten, das Auge daneben öffnet die echte Vorschau –
+ * und «Neu» legt eine weitere Karte dieser Art in dieser Woche an,
+ * solange die Woche Platz hat (`MULTI_KIND_LIMITS`).
  */
-function WeekRow({
-  week,
-  todayKey,
-  items,
-  onPreview,
-  onCreate,
-}: {
-  week: string
-  todayKey: string
-  items: ImpulseItem[]
-  onPreview: () => void
-  onCreate: (kind: ImpulseKind) => void
-}) {
-  const drafts = items.filter((item) => item.status === 'draft').length
-  const gaps = IMPULSE_KIND_ORDER.map((kind) => ({
-    kind,
-    count: items.filter((item) => item.kind === kind).length,
-    limit: MULTI_KIND_LIMITS[kind] ?? 1,
-  })).filter((gap) => gap.count < gap.limit)
-
-  return (
-    <li className="py-3">
-      <div className="flex items-center gap-2">
-        <p className="min-w-0 flex-1 truncate text-sm font-medium">
-          {formatWeekRange(week)}
-          {week === todayKey && (
-            <span className="text-brand-700 dark:text-brand-300"> · diese Woche</span>
-          )}
-        </p>
-        <button
-          type="button"
-          className="btn-ghost btn-sm -me-1 shrink-0"
-          onClick={onPreview}
-          title="Die Woche so sehen, wie die AP’s sie sehen werden"
-        >
-          <Eye className="size-4" aria-hidden />
-          <span className="hidden sm:inline">Vorschau</span>
-          <span className="sr-only sm:hidden">Vorschau</span>
-        </button>
-      </div>
-      <p className="hint mt-0.5">
-        {items.length === 0
-          ? 'Noch nichts geplant.'
-          : `${items.length} ${items.length === 1 ? 'Karte' : 'Karten'}`}
-        {drafts > 0 && (
-          <span className="text-amber-700 dark:text-amber-300">
-            {' · '}
-            {drafts === 1 ? '1 Entwurf' : `${drafts} Entwürfe`}
-          </span>
-        )}
-      </p>
-      {gaps.length > 0 && (
-        <div className="mt-2 flex flex-wrap gap-1.5">
-          {gaps.map(({ kind, count, limit }) => (
-            <button
-              key={kind}
-              type="button"
-              onClick={() => onCreate(kind)}
-              className="hint mt-0 inline-flex items-center gap-1 rounded-full border border-dashed border-slate-300 px-2.5 py-1 transition hover:border-slate-400 hover:text-slate-700 dark:border-slate-700 dark:hover:border-slate-500 dark:hover:text-slate-200"
-              aria-label={`${IMPULSE_KIND_LABELS[kind]} für ${formatWeekRange(week)} anlegen`}
-            >
-              <Plus className="size-3.5" aria-hidden />
-              {IMPULSE_KIND_LABELS[kind]}
-              {count > 0 && (
-                <span className="tabular text-slate-400 dark:text-slate-500">
-                  {count}/{limit}
-                </span>
-              )}
-            </button>
-          ))}
-        </div>
-      )}
-    </li>
-  )
-}
-
-/**
- * Eine Kartenart als Gruppe: alle ihre Karten untereinander, nach Woche
- * gebündelt – die nächsten Wochen zuoberst, dann der Fragenpool, und
- * Vergangenes zugeklappt am Ende. Jede Zeile öffnet die Karte zum
- * Bearbeiten, «Neu» im Kopf legt eine weitere dieser Art an.
- */
-function KindGroup({
+function WeekKindGroup({
   kind,
   items,
-  todayKey,
   answerCount,
   onOpen,
+  onPreview,
   onCreate,
 }: {
   kind: ImpulseKind
   items: ImpulseItem[]
-  todayKey: string
   answerCount: (item: ImpulseItem) => number
   onOpen: (item: ImpulseItem) => void
+  onPreview: (item: ImpulseItem) => void
   onCreate: () => void
 }) {
-  const theme = IMPULSE_SECTIONS[KIND_SECTION[kind]]
-  const [showPast, setShowPast] = useState(false)
-
-  const byOrder = (a: ImpulseItem, b: ImpulseItem) =>
-    (a.order ?? Number.MAX_SAFE_INTEGER) - (b.order ?? Number.MAX_SAFE_INTEGER) ||
-    (a.title || '').localeCompare(b.title || '', 'de')
-
-  /* Laufende und kommende Wochen, nach Woche gebündelt. */
-  const upcomingWeeks = [
-    ...new Set(
-      items
-        .map((item) => item.week)
-        .filter((week): week is string => typeof week === 'string' && week >= todayKey),
-    ),
-  ].sort()
-  const pool = items.filter((item) => item.week === null).sort(byOrder)
-  const past = items
-    .filter((item) => typeof item.week === 'string' && item.week < todayKey)
-    .sort((a, b) => (b.week as string).localeCompare(a.week as string) || byOrder(a, b))
-
-  const activeCount = items.length - past.length
+  const theme = IMPULSE_SECTIONS[IMPULSE_KIND_THEME[kind]]
+  const limit = MULTI_KIND_LIMITS[kind] ?? 1
+  const hasRoom = items.length < limit
 
   return (
     <section className="card p-4 sm:p-5">
@@ -717,130 +749,80 @@ function KindGroup({
         </span>
         <h3 className="min-w-0 flex-1 truncate text-sm font-semibold">
           {KIND_GROUP_LABELS[kind]}
-          {activeCount > 0 && <span className="hint font-normal"> {activeCount}</span>}
+          {limit > 1 && items.length > 0 && (
+            <span className="hint font-normal">
+              {' '}
+              {items.length}/{limit}
+            </span>
+          )}
         </h3>
-        <button type="button" className="btn-secondary btn-sm shrink-0" onClick={onCreate}>
-          <Plus className="size-4" aria-hidden />
-          Neu
-        </button>
+        {hasRoom && items.length > 0 && (
+          <button type="button" className="btn-secondary btn-sm shrink-0" onClick={onCreate}>
+            <Plus className="size-4" aria-hidden />
+            Neu
+          </button>
+        )}
       </div>
 
-      {activeCount === 0 && past.length === 0 && (
+      {items.length === 0 ? (
         <button
           type="button"
           onClick={onCreate}
           className="hint mt-3 flex w-full items-center justify-center gap-1.5 rounded-lg border border-dashed border-slate-300 p-3 transition hover:border-slate-400 hover:text-slate-700 dark:border-slate-700 dark:hover:border-slate-500 dark:hover:text-slate-200"
         >
           <Plus className="size-4" aria-hidden />
-          Erste {IMPULSE_KIND_LABELS[kind]} anlegen
+          {IMPULSE_KIND_LABELS[kind]} für diese Woche anlegen
         </button>
-      )}
-
-      {upcomingWeeks.map((week) => (
-        <div key={week} className="mt-3">
-          <p className="hint mb-0.5 font-medium">
-            {formatWeekRange(week)}
-            {week === todayKey && (
-              <span className="text-brand-700 dark:text-brand-300"> · diese Woche</span>
-            )}
-          </p>
-          <ul className="divide-list">
-            {items
-              .filter((item) => item.week === week)
-              .sort(byOrder)
-              .map((item) => (
-                <li key={item.id}>
-                  <CardRow item={item} answerCount={answerCount(item)} onOpen={onOpen} />
-                </li>
-              ))}
-          </ul>
-        </div>
-      ))}
-
-      {pool.length > 0 && (
-        <div className="mt-3">
-          <p className="hint mb-0.5 font-medium">Fragenpool – noch ohne Woche</p>
-          <ul className="divide-list">
-            {pool.map((item) => (
-              <li key={item.id}>
-                <CardRow item={item} answerCount={answerCount(item)} onOpen={onOpen} />
-              </li>
-            ))}
-          </ul>
-        </div>
-      )}
-
-      {past.length > 0 && (
-        <div className="mt-3 border-t border-slate-200 pt-2 dark:border-slate-800">
-          <button
-            type="button"
-            className="flex w-full items-center gap-2 py-1 text-left text-sm font-medium"
-            onClick={() => setShowPast((value) => !value)}
-            aria-expanded={showPast}
-          >
-            {showPast ? (
-              <ChevronDown className="size-4 text-slate-400" aria-hidden />
-            ) : (
-              <ChevronRight className="size-4 text-slate-400" aria-hidden />
-            )}
-            Vergangene
-            <span className="hint font-normal">{past.length}</span>
-          </button>
-          {showPast && (
-            <ul className="divide-list mt-1">
-              {past.map((item) => (
-                <li key={item.id}>
-                  <CardRow item={item} answerCount={answerCount(item)} onOpen={onOpen} showWeek />
-                </li>
-              ))}
-            </ul>
-          )}
-        </div>
+      ) : (
+        <ul className="divide-list mt-2">
+          {items.map((item) => (
+            <li key={item.id} className="flex items-center gap-1">
+              <button
+                type="button"
+                onClick={() => onOpen(item)}
+                className="group flex min-w-0 flex-1 items-center gap-3 rounded-lg px-1 py-2.5 text-left transition hover:bg-slate-50 active:scale-[0.99] dark:hover:bg-slate-800/60"
+              >
+                <span className="min-w-0 flex-1">
+                  <span className="block truncate text-sm font-medium">
+                    {item.title || 'Ohne Titel'}
+                  </span>
+                  <span className="hint mt-0 block">
+                    {item.status === 'draft' ? (
+                      <span className="text-amber-700 dark:text-amber-300">
+                        Entwurf – erscheint nicht
+                      </span>
+                    ) : (
+                      'Bereit'
+                    )}
+                    {(item.kind === 'quiz' ||
+                      item.kind === 'bilderraetsel' ||
+                      item.kind === 'frage') &&
+                      answerCount(item) > 0 && (
+                        <>
+                          {' · '}
+                          {answerCount(item)} {answerCount(item) === 1 ? 'Antwort' : 'Antworten'}
+                        </>
+                      )}
+                  </span>
+                </span>
+                <Pencil
+                  className="size-4 shrink-0 text-slate-300 transition group-hover:text-slate-500 dark:text-slate-600 dark:group-hover:text-slate-300"
+                  aria-hidden
+                />
+              </button>
+              <button
+                type="button"
+                className="btn-ghost shrink-0 p-2"
+                onClick={() => onPreview(item)}
+                aria-label={`«${item.title || 'Ohne Titel'}» in der Vorschau anschauen`}
+                title="Karte in der echten Vorschau anschauen"
+              >
+                <Eye className="size-4" aria-hidden />
+              </button>
+            </li>
+          ))}
+        </ul>
       )}
     </section>
-  )
-}
-
-/** Eine Karte als Zeile ihrer Gruppe – der Tipp öffnet sie zum Bearbeiten. */
-function CardRow({
-  item,
-  answerCount,
-  onOpen,
-  showWeek = false,
-}: {
-  item: ImpulseItem
-  answerCount: number
-  onOpen: (item: ImpulseItem) => void
-  showWeek?: boolean
-}) {
-  return (
-    <button
-      type="button"
-      onClick={() => onOpen(item)}
-      className="group flex w-full items-center gap-3 rounded-lg px-1 py-2.5 text-left transition hover:bg-slate-50 active:scale-[0.99] dark:hover:bg-slate-800/60"
-    >
-      <span className="min-w-0 flex-1">
-        <span className="block truncate text-sm font-medium">{item.title || 'Ohne Titel'}</span>
-        <span className="hint mt-0 block">
-          {showWeek && item.week && <>{formatWeekRange(item.week)} · </>}
-          {item.status === 'draft' ? (
-            <span className="text-amber-700 dark:text-amber-300">Entwurf – erscheint nicht</span>
-          ) : (
-            'Bereit'
-          )}
-          {(item.kind === 'quiz' || item.kind === 'bilderraetsel' || item.kind === 'frage') &&
-            answerCount > 0 && (
-              <>
-                {' · '}
-                {answerCount} {answerCount === 1 ? 'Antwort' : 'Antworten'}
-              </>
-            )}
-        </span>
-      </span>
-      <Pencil
-        className="size-4 shrink-0 text-slate-300 transition group-hover:text-slate-500 dark:text-slate-600 dark:group-hover:text-slate-300"
-        aria-hidden
-      />
-    </button>
   )
 }

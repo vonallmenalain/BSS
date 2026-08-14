@@ -3,6 +3,7 @@ import { Check, Lightbulb, Link2, Maximize2, Puzzle, RotateCcw, Search, X } from
 import { useAuth } from '@/contexts/AuthContext'
 import { useToast } from '@/contexts/ToastContext'
 import { cn } from '@/lib/utils'
+import { formatWeekRange } from '@/lib/impulse'
 import { labeledLink, splitLinks } from '@/lib/links'
 import { ImpulseImageLightbox } from '@/components/impulse/ImpulseImageLightbox'
 import { answerImpulseQuiz } from '@/services/impulse'
@@ -152,6 +153,28 @@ export function ImpulseItemImage({ item, className }: { item: ImpulseItem; class
         <ImpulseImageLightbox url={image.url} alt={image.alt} onClose={() => setOpen(false)} />
       )}
     </>
+  )
+}
+
+/**
+ * Das Wochenthema als Feed-Karte – gross und ruhig, wie eh und je.
+ *
+ * Hier statt in der Seite, weil zwei Orte sie zeichnen: der
+ * Vollbild-Feed der AP's und die Vorschau der Redaktion.
+ */
+export function WocheDeckCard({ item }: { item: ImpulseItem }) {
+  return (
+    <article className="card p-6 text-center sm:p-8">
+      {item.week && <p className="hint">{formatWeekRange(item.week)}</p>}
+      <h2 className="mt-2 text-2xl leading-snug font-semibold text-balance">{item.title}</h2>
+      {item.body && (
+        <p className="mt-3 whitespace-pre-line text-slate-600 dark:text-slate-300">{item.body}</p>
+      )}
+      <div className="mt-5 flex flex-col items-center gap-1">
+        <SourceLink item={item} />
+        <ContributorLine item={item} />
+      </div>
+    </article>
   )
 }
 

@@ -6,7 +6,6 @@ import { cn } from '@/lib/utils'
 import { lockScroll } from '@/lib/scrollLock'
 import {
   IMPULSE_SECTIONS,
-  type ImpulseDeckSectionKey,
   type ImpulseSection,
   type ImpulseSectionKey,
 } from '@/lib/impulseSections'
@@ -45,7 +44,12 @@ export interface ImpulseDeckCard {
   id: string
   /** Die Inhalts-ID hinter der Karte – für das Vermerken «angeschaut». */
   itemId?: string
-  section: ImpulseDeckSectionKey
+  /*
+   * Im Feed der AP's liegen nur Feed-Bereiche; die Vorschau der
+   * Redaktion zeigt zusätzlich Wochenziel und Tages-Challenge als
+   * Karten – deshalb der breitere Schlüssel.
+   */
+  section: ImpulseSectionKey
   node: ReactNode
   /** Die Vertiefung der Karte – `null`/`undefined` heisst: keine. */
   deepening?: ReactNode | null
@@ -83,6 +87,7 @@ export function ImpulseFeedScreen({
   onDeepening,
   onClose,
   finale,
+  banner,
 }: {
   cards: ImpulseDeckCard[]
   /** Wo der Feed aufgeschlagen wird – gesetzt vor dem ersten Bild. */
@@ -105,6 +110,15 @@ export function ImpulseFeedScreen({
    * `target`-Ziel. Ohne `finale` endet der Feed mit der letzten Karte.
    */
   finale?: ReactNode
+  /**
+   * Eine Leiste über dem Feed – der Vorschau-Modus der Redaktion.
+   *
+   * Mit Leiste verschwindet der Menüknopf, die Leiste steht im Fluss
+   * (der Feed rollt darunter), und die Karten rücken nach oben auf:
+   * Der Platz, den sonst der schwebende Menüknopf braucht, gehört dann
+   * der Leiste.
+   */
+  banner?: ReactNode
 }) {
   const rootRef = useRef<HTMLDivElement>(null)
   const containerRef = useRef<HTMLDivElement>(null)
@@ -194,22 +208,28 @@ export function ImpulseFeedScreen({
       aria-modal="true"
       aria-label="Anti Doom – die Karten der Woche"
       data-testid="impulse-feed"
-      className="imp-screen fixed inset-0 z-40 overflow-hidden bg-slate-50 outline-none dark:bg-slate-950"
+      className="imp-screen fixed inset-0 z-40 flex flex-col overflow-hidden bg-slate-50 outline-none dark:bg-slate-950"
       style={{ transformOrigin: origin ? `${origin.x}px ${origin.y}px` : '50% 40%' }}
     >
-      {/* Der einzige Rest der Navigation: der Menüknopf oben links – ohne
-          hinterlegte Fläche, transparent über dem Farbschleier; erst der
-          Hover des Knopfs selbst zeichnet seinen Kreis. */}
-      <header className="pointer-events-none absolute inset-x-0 top-0 z-20 pt-safe">
-        <div className="flex items-center px-3 py-2">
-          <span className="pointer-events-auto">
-            <AppMenuButton />
-          </span>
-        </div>
-      </header>
+      {banner ? (
+        /* Der Vorschau-Modus: die Leiste steht im Fluss und nimmt dem
+           Feed ihre Höhe weg – nichts verschwindet hinter ihr. */
+        <div className="relative z-20 shrink-0">{banner}</div>
+      ) : (
+        /* Der einzige Rest der Navigation: der Menüknopf oben links – ohne
+           hinterlegte Fläche, transparent über dem Farbschleier; erst der
+           Hover des Knopfs selbst zeichnet seinen Kreis. */
+        <header className="pointer-events-none absolute inset-x-0 top-0 z-20 pt-safe">
+          <div className="flex items-center px-3 py-2">
+            <span className="pointer-events-auto">
+              <AppMenuButton />
+            </span>
+          </div>
+        </header>
+      )}
 
       {cards.length === 0 ? (
-        <div className="grid h-full place-items-center px-6 text-center">
+        <div className="grid min-h-0 flex-1 place-items-center px-6 text-center">
           <div>
             <Inbox className="mx-auto size-6 text-slate-400" aria-hidden />
             <p className="mt-2 text-sm font-medium">Diese Woche ist noch nichts aufgeschaltet</p>
@@ -224,7 +244,7 @@ export function ImpulseFeedScreen({
           onScroll={onScroll}
           tabIndex={0}
           aria-label="Karten der Woche"
-          className="no-scrollbar h-full snap-y snap-mandatory overflow-y-auto outline-none"
+          className="no-scrollbar min-h-0 flex-1 snap-y snap-mandatory overflow-y-auto outline-none"
         >
           {cards.map((card, cardIndex) => (
             <FeedCard
@@ -232,6 +252,7 @@ export function ImpulseFeedScreen({
               card={card}
               index={cardIndex}
               total={cards.length}
+              flush={Boolean(banner)}
               onDeepening={onDeepening ? () => onDeepening(card) : undefined}
             />
           ))}
@@ -250,7 +271,7 @@ export function ImpulseFeedScreen({
                   IMPULSE_SECTIONS.ziel.wash,
                 )}
               />
-              <CardPane theme={IMPULSE_SECTIONS.ziel} label="Geschafft">
+              <CardPane theme={IMPULSE_SECTIONS.ziel} label="Geschafft" flush={Boolean(banner)}>
                 {/* Der eine Überschwung des Bereichs – einmal pro Besuch,
                     wenn die Karte zum ersten Mal ins Bild rollt. */}
                 <div className={cn(celebrated && 'animate-imp-pop')}>{finale}</div>
@@ -282,11 +303,14 @@ function FeedCard({
   card,
   index,
   total,
+  flush = false,
   onDeepening,
 }: {
   card: ImpulseDeckCard
   index: number
   total: number
+  /** Vorschau-Modus mit Leiste: kein Menüknopf, dem die Karte Platz liesse. */
+  flush?: boolean
   /** Meldet, dass die Vertiefungsseite ins Bild gerollt ist. */
   onDeepening?: () => void
 }) {
@@ -334,18 +358,18 @@ function FeedCard({
           className="no-scrollbar flex h-full snap-x snap-mandatory overflow-x-auto overscroll-x-contain"
         >
           <div className="h-full w-full shrink-0 snap-start snap-always">
-            <CardPane theme={theme} label={theme.label} counter={`${index + 1}/${total}`}>
+            <CardPane theme={theme} label={theme.label} counter={`${index + 1}/${total}`} flush={flush}>
               {card.node}
             </CardPane>
           </div>
           <div className="h-full w-full shrink-0 snap-start snap-always">
-            <CardPane theme={theme} label={`${theme.label} · Vertiefung`}>
+            <CardPane theme={theme} label={`${theme.label} · Vertiefung`} flush={flush}>
               {card.deepening}
             </CardPane>
           </div>
         </div>
       ) : (
-        <CardPane theme={theme} label={theme.label} counter={`${index + 1}/${total}`}>
+        <CardPane theme={theme} label={theme.label} counter={`${index + 1}/${total}`} flush={flush}>
           {card.node}
         </CardPane>
       )}
@@ -404,18 +428,27 @@ function CardPane({
   theme,
   label,
   counter,
+  flush = false,
   children,
 }: {
   theme: ImpulseSection
   label: string
   counter?: string
+  /** Unter einer Vorschau-Leiste: ohne Notch-Luft und ohne Menüknopf-Platz. */
+  flush?: boolean
   children: ReactNode
 }) {
   return (
-    <div className="relative flex h-full flex-col overflow-y-auto px-4 pt-safe pb-10 sm:px-6">
+    <div
+      className={cn(
+        'relative flex h-full flex-col overflow-y-auto px-4 pb-10 sm:px-6',
+        flush ? 'pt-1' : 'pt-safe',
+      )}
+    >
       <p
         className={cn(
-          'mt-2.5 flex shrink-0 items-center gap-1.5 ps-11 text-xs font-medium',
+          'mt-2.5 flex shrink-0 items-center gap-1.5 text-xs font-medium',
+          !flush && 'ps-11',
           theme.text,
         )}
       >

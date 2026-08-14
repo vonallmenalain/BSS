@@ -23,7 +23,6 @@ import type {
   ImpulseQuiz,
   ImpulseStatus,
   ImpulseSubmission,
-  ImpulseSubmissionKind,
 } from '@/lib/types'
 
 /*
@@ -394,22 +393,42 @@ export async function setImpulseFavorite(
 }
 
 /**
- * Eine Einreichung für die Mitmach-Ecke – formlos, die Redaktion bringt
- * sie in Form. Angelegt wird immer als «offen»; die Regeln lassen nichts
- * anderes zu.
+ * Eine Einreichung für die Mitmach-Ecke – die fixfertige Karte.
+ *
+ * Eingereicht wird mit denselben Feldern wie in der Redaktion
+ * (`ImpulseItemFields`); der Titel wandert nach `text` (die Zeile in den
+ * Listen), alles Übrige nach `card`. Angelegt wird immer als «offen»;
+ * die Regeln lassen nichts anderes zu – veröffentlicht wird erst, wenn
+ * die Redaktion daraus einen Inhalt macht.
  */
 export async function createImpulseSubmission(
   user: { uid: string; displayName: string },
-  input: { kind: ImpulseSubmissionKind; text: string; sourceLabel: string; sourceUrl: string },
+  input: ImpulseItemInput,
 ): Promise<SaveOutcome> {
   return commit(
     addDoc(collection(db, COLLECTIONS.impulseSubmissions), {
       uid: user.uid,
       firstName: impulseFirstName(user.displayName),
       kind: input.kind,
-      text: input.text.trim(),
+      text: input.title.trim(),
       sourceLabel: input.sourceLabel.trim(),
       sourceUrl: input.sourceUrl.trim(),
+      card: {
+        body: input.body.trim(),
+        deepening: input.deepening.trim(),
+        imageUrl: input.kind === 'bilderraetsel' ? input.imageUrl.trim() : '',
+        imageAlt: input.kind === 'bilderraetsel' ? input.imageAlt.trim() : '',
+        quiz:
+          input.kind === 'quiz' || input.kind === 'bilderraetsel'
+            ? {
+                form: input.quiz.form,
+                options: input.quiz.options.map((option) => option.trim()),
+                answerIndex: input.quiz.answerIndex,
+                answerText: input.quiz.answerText.trim(),
+                explanation: input.quiz.explanation.trim(),
+              }
+            : null,
+      },
       status: 'open',
       createdAt: serverTimestamp(),
       updatedAt: serverTimestamp(),
@@ -437,21 +456,33 @@ export async function markImpulseSubmissionAccepted(id: string): Promise<SaveOut
 /**
  * Aus einer Einreichung das Redaktionsformular vorbefüllen.
  *
- * Die Einreichung trägt seit dem Ausbau der Mitmach-Ecke direkt ihre
- * Inhaltsart – das Formular öffnet in derselben Art, und die Redaktion
- * ergänzt, was der Art noch fehlt (beim Quiz die Antworten, beim
- * Bilderrätsel das Bild). Der «Gedanke» aus der ersten Fassung wird
- * weiterhin zur Feed-Karte. Alles landet als Entwurf im Fragenpool –
- * geplant wird wie gewohnt, und der Vorname wandert als
- * «Eingereicht von …» mit.
+ * Neue Einreichungen bringen die fixfertige Karte mit (`card`) – das
+ * Formular öffnet vollständig vorbefüllt, mitsamt Quiz und Bild; die
+ * Redaktion prüft, wählt die Woche und hakt «bereit» an. Alte
+ * Freitext-Einreichungen (ohne `card`) öffnen wie bisher mit Titel und
+ * Quelle, und der «Gedanke» aus der ersten Fassung wird zur Feed-Karte.
+ * `week` sagt, wo die Karte landen soll – die Redaktion übergibt die
+ * gerade angezeigte Woche; im Formular bleibt sie wählbar. Der Vorname
+ * wandert als «Eingereicht von …» mit.
  */
-export function submissionToInput(submission: ImpulseSubmission): ImpulseItemInput {
+export function submissionToInput(
+  submission: ImpulseSubmission,
+  week: string | null = null,
+): ImpulseItemInput {
   const kind: ImpulseKind = submission.kind === 'gedanke' ? 'feed' : submission.kind
-  const input = emptyImpulseItem(kind, null)
+  const input = emptyImpulseItem(kind, week)
   input.title = submission.text.trim()
   input.sourceLabel = submission.sourceLabel?.trim() ?? ''
   input.sourceUrl = submission.sourceUrl?.trim() ?? ''
   input.contributor = submission.firstName
+  const card = submission.card
+  if (card) {
+    input.body = card.body ?? ''
+    input.deepening = card.deepening ?? ''
+    input.imageUrl = card.imageUrl ?? ''
+    input.imageAlt = card.imageAlt ?? ''
+    if (card.quiz) input.quiz = { ...card.quiz, options: [...card.quiz.options] }
+  }
   return input
 }
 

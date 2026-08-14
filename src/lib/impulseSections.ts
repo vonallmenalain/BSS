@@ -302,6 +302,17 @@ export const IMPULSE_KIND_SECTION: Record<ImpulseDeckKind, ImpulseDeckSectionKey
   teilen: 'teilen',
 }
 
+/**
+ * Die Farb- und Zeichenwelt **jeder** Kartenart – auch der beiden, die
+ * sonst Kacheln sind (Wochenziel, Tages-Challenge). Redaktion und
+ * Vorschau beschriften damit ihre Gruppen und Karten.
+ */
+export const IMPULSE_KIND_THEME: Record<ImpulseKind, ImpulseSectionKey> = {
+  ...IMPULSE_KIND_SECTION,
+  wochenziel: 'ziel',
+  tageschallenge: 'challenge',
+}
+
 /** Ist der Routenteil ein Bereich? – `/impuls/quatsch` soll sauber zurückführen. */
 export function isImpulseSection(slug: string | undefined): slug is ImpulseSectionKey {
   return typeof slug === 'string' && slug in IMPULSE_SECTIONS

@@ -2949,16 +2949,19 @@ export interface ImpulseItem extends WithId {
  * Die AP's liefern selbst – und zwar für jede Kartenart: ein Wochenthema, eine
  * Quizfrage, ein Bilderrätsel, ein Wochenziel, eine Tages-Challenge, eine
  * Frage der Woche, eine Feed-Karte oder eine Teilen-Aufgabe. Eingereicht
- * wird formlos (Freitext plus Quelle); veröffentlicht wird nie direkt –
- * die Redaktion prüft, bringt die Idee im Redaktionsformular in Form und
- * macht daraus einen gewöhnlichen Inhalt («Eingereicht von …»). Es gibt
- * bewusst keinen Zustand «abgelehnt»: Was nicht passt, entfernt die
- * Redaktion still – eine angeschriebene Ablehnung entmutigte genau die,
- * die sich getraut haben (Leitgedanke 1).
+ * wird seit dem Formular-Umbau die **fixfertige Karte** – dieselben
+ * Felder wie in der Redaktion (`ImpulseItemFields`), abgelegt unter
+ * `card`. Veröffentlicht wird trotzdem nie direkt: Die Redaktion prüft,
+ * übernimmt die Karte vorbefüllt ins Redaktionsformular und macht daraus
+ * einen gewöhnlichen Inhalt («Eingereicht von …»). Es gibt bewusst
+ * keinen Zustand «abgelehnt»: Was nicht passt, entfernt die Redaktion
+ * still – eine angeschriebene Ablehnung entmutigte genau die, die sich
+ * getraut haben (Leitgedanke 1).
  *
  * `gedanke` ist die Alt-Art aus der ersten Fassung der Mitmach-Ecke
- * («Schriftstelle oder Gedanke» – wurde zur Feed-Karte); neue
- * Einreichungen tragen direkt eine der Inhaltsarten.
+ * («Schriftstelle oder Gedanke» – wurde zur Feed-Karte); Einreichungen
+ * ohne `card` stammen aus der Freitext-Zeit und werden weiterhin
+ * verstanden.
  */
 export type ImpulseSubmissionKind = ImpulseKind | 'gedanke'
 
@@ -2969,14 +2972,25 @@ export const IMPULSE_SUBMISSION_KIND_LABELS: Record<ImpulseSubmissionKind, strin
 
 export type ImpulseSubmissionStatus = 'open' | 'accepted'
 
+/** Die Kartenfelder einer Einreichung – was neben Titel und Quelle noch dazugehört. */
+export interface ImpulseSubmissionCard {
+  body: string
+  deepening: string
+  imageUrl: string
+  imageAlt: string
+  quiz: ImpulseQuiz | null
+}
+
 export interface ImpulseSubmission extends WithId {
   uid: string
   firstName: string
   kind: ImpulseSubmissionKind
-  /** Der Vorschlag, formlos – die Redaktion bringt ihn in Form. */
+  /** Der Titel bzw. die Frage der Karte – zugleich die Zeile in den Listen. */
   text: string
   sourceLabel?: string
   sourceUrl?: string
+  /** Die restlichen Kartenfelder – fehlt bei alten Freitext-Einreichungen. */
+  card?: ImpulseSubmissionCard
   /** `open` wartet auf die Redaktion; `accepted` ist übernommen. */
   status: ImpulseSubmissionStatus
   createdAt?: TS
