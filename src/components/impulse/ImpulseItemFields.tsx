@@ -1,5 +1,6 @@
-import { Plus, X } from 'lucide-react'
+import { Link2, Plus, X } from 'lucide-react'
 import { cn } from '@/lib/utils'
+import { scriptureLink } from '@/lib/scriptures'
 import type { ImpulseItemInput } from '@/services/impulse'
 import {
   IMPULSE_KIND_LABELS,
@@ -65,6 +66,12 @@ export function ImpulseItemFields({
   /* Nur die Feed-Karten kennen den Wisch nach links – also auch nur sie
      das Feld «Vertiefung». Wochenziel und Tages-Challenge sind Kacheln. */
   const hasDeepening = input.kind !== 'wochenziel' && input.kind !== 'tageschallenge'
+
+  /* Sieht die Quelle wie eine Schriftstelle aus, steht ihr Link in der
+     Evangeliumsbibliothek einen Tipp entfernt (`lib/scriptures`) – kein
+     Adressen-Abtippen, und nichts wird ungefragt eingesetzt. */
+  const suggestedUrl = scriptureLink(input.sourceLabel)
+  const showSuggestion = suggestedUrl !== null && input.sourceUrl.trim() !== suggestedUrl
 
   return (
     <>
@@ -258,6 +265,17 @@ export function ImpulseItemFields({
           />
         </div>
       </div>
+
+      {showSuggestion && (
+        <button
+          type="button"
+          className="btn-secondary btn-sm -mt-1"
+          onClick={() => setInput((value) => ({ ...value, sourceUrl: suggestedUrl }))}
+        >
+          <Link2 className="size-4" aria-hidden />
+          Link zu «{input.sourceLabel.trim()}» einsetzen
+        </button>
+      )}
 
       {(input.kind === 'quiz' || input.kind === 'bilderraetsel') && (
         <fieldset className="space-y-3 rounded-xl border border-slate-200 p-3 dark:border-slate-700">
