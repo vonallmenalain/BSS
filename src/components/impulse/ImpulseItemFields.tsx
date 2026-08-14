@@ -160,91 +160,6 @@ export function ImpulseItemFields({
         />
       </div>
 
-      {/* Die Vertiefung – die zweite Seite der Karte im Vollbild-Feed,
-          sauber von der Hauptkarte getrennt: eigener Titel (leer heisst:
-          der der Hauptkarte), eigener Text, eigene Quelle. Der Wisch
-          nach links zeigt sie, und der Pfeil «Vertiefen» erscheint nur,
-          wenn Text dasteht. */}
-      {hasDeepening && (
-        <fieldset className="space-y-3 rounded-xl border border-slate-200 p-3 dark:border-slate-700">
-          <legend className="label px-1">Vertiefung (optional)</legend>
-          <div>
-            <label className="label" htmlFor={`${idPrefix}-deepening-title`}>
-              Titel der Vertiefung
-            </label>
-            <input
-              id={`${idPrefix}-deepening-title`}
-              className="input"
-              value={input.deepeningTitle}
-              onChange={(event) =>
-                setInput((value) => ({ ...value, deepeningTitle: event.target.value }))
-              }
-              placeholder={
-                input.title.trim()
-                  ? `Wie die Hauptkarte: «${input.title.trim()}»`
-                  : 'Leer = Titel der Hauptkarte'
-              }
-            />
-            <p className="hint mt-1">
-              Leer gelassen steht der Titel der Hauptkarte auch über der Vertiefung – hier darf
-              er abweichen.
-            </p>
-          </div>
-          <div>
-            <label className="label" htmlFor={`${idPrefix}-deepening`}>
-              Text
-            </label>
-            <textarea
-              id={`${idPrefix}-deepening`}
-              className="input min-h-24"
-              value={input.deepening}
-              onChange={(event) =>
-                setInput((value) => ({ ...value, deepening: event.target.value }))
-              }
-              placeholder={
-                'Weiterführende Gedanken, Quellen und Links …\n' +
-                'Alma 32:27 – https://www.churchofjesuschrist.org/…'
-              }
-            />
-            <p className="hint mt-1">
-              Erscheint im Feed beim Wisch nach links; nur Karten mit Vertiefungstext zeigen den
-              pulsierenden Pfeil «Vertiefen». Eine Zeile, auf der nur eine Schriftstelle steht
-              («Alma 32:27»), wird von allein zum anklickbaren Verweis – mit dem Knopf unten
-              bekommt sie ihren Link auch fest in den Text.
-            </p>
-            {deepeningCandidates > 0 && (
-              <button
-                type="button"
-                className="btn-secondary btn-sm mt-1.5"
-                onClick={() =>
-                  setInput((value) => ({
-                    ...value,
-                    deepening: addScriptureLinks(value.deepening).text,
-                  }))
-                }
-              >
-                <Link2 className="size-4" aria-hidden />
-                {deepeningCandidates === 1
-                  ? 'Schriftstelle in der Vertiefung verlinken'
-                  : `${deepeningCandidates} Schriftstellen in der Vertiefung verlinken`}
-              </button>
-            )}
-          </div>
-          <SourceFields
-            heading="Quelle der Vertiefung (optional)"
-            hint="Leer gelassen zeigt die Vertiefung die Quelle der Hauptkarte."
-            idLabel={`${idPrefix}-deepening-source`}
-            idUrl={`${idPrefix}-deepening-source-url`}
-            labelValue={input.deepeningSourceLabel}
-            urlValue={input.deepeningSourceUrl}
-            onLabel={(next) =>
-              setInput((value) => ({ ...value, deepeningSourceLabel: next }))
-            }
-            onUrl={(next) => setInput((value) => ({ ...value, deepeningSourceUrl: next }))}
-          />
-        </fieldset>
-      )}
-
       {/* Das Bild des Bilderrätsels – aus der offiziellen Mediathek der
           Kirche verlinkt, nicht hochgeladen. */}
       {input.kind === 'bilderraetsel' && (
@@ -394,6 +309,93 @@ export function ImpulseItemFields({
               placeholder="Zwei, drei Sätze, warum die Antwort stimmt – der Lernmoment."
             />
           </div>
+        </fieldset>
+      )}
+
+      {/* Die Vertiefung – die zweite Seite der Karte im Vollbild-Feed,
+          sauber von der Hauptkarte getrennt: eigener Titel (leer heisst:
+          der der Hauptkarte), eigener Text, eigene Quelle. Bewusst das
+          letzte Stück des Formulars: Zuerst entsteht die Karte selbst
+          (samt Quiz und Bild), die Vertiefung kommt bei Bedarf zuunterst
+          dazu. Der Wisch nach links zeigt sie, und der Pfeil «Vertiefen»
+          erscheint nur, wenn Text dasteht. */}
+      {hasDeepening && (
+        <fieldset className="space-y-3 rounded-xl border border-slate-200 p-3 dark:border-slate-700">
+          <legend className="label px-1">Vertiefung (optional)</legend>
+          <div>
+            <label className="label" htmlFor={`${idPrefix}-deepening-title`}>
+              Titel der Vertiefung
+            </label>
+            <input
+              id={`${idPrefix}-deepening-title`}
+              className="input"
+              value={input.deepeningTitle}
+              onChange={(event) =>
+                setInput((value) => ({ ...value, deepeningTitle: event.target.value }))
+              }
+              placeholder={
+                input.title.trim()
+                  ? `Wie die Hauptkarte: «${input.title.trim()}»`
+                  : 'Leer = Titel der Hauptkarte'
+              }
+            />
+            <p className="hint mt-1">
+              Leer gelassen steht der Titel der Hauptkarte auch über der Vertiefung – hier darf
+              er abweichen.
+            </p>
+          </div>
+          <div>
+            <label className="label" htmlFor={`${idPrefix}-deepening`}>
+              Text
+            </label>
+            <textarea
+              id={`${idPrefix}-deepening`}
+              className="input min-h-24"
+              value={input.deepening}
+              onChange={(event) =>
+                setInput((value) => ({ ...value, deepening: event.target.value }))
+              }
+              placeholder={
+                'Weiterführende Gedanken, Quellen und Links …\n' +
+                'Alma 32:27 – https://www.churchofjesuschrist.org/…'
+              }
+            />
+            <p className="hint mt-1">
+              Erscheint im Feed beim Wisch nach links; nur Karten mit Vertiefungstext zeigen den
+              pulsierenden Pfeil «Vertiefen». Eine Zeile, auf der nur eine Schriftstelle steht
+              («Alma 32:27»), wird von allein zum anklickbaren Verweis – mit dem Knopf unten
+              bekommt sie ihren Link auch fest in den Text.
+            </p>
+            {deepeningCandidates > 0 && (
+              <button
+                type="button"
+                className="btn-secondary btn-sm mt-1.5"
+                onClick={() =>
+                  setInput((value) => ({
+                    ...value,
+                    deepening: addScriptureLinks(value.deepening).text,
+                  }))
+                }
+              >
+                <Link2 className="size-4" aria-hidden />
+                {deepeningCandidates === 1
+                  ? 'Schriftstelle in der Vertiefung verlinken'
+                  : `${deepeningCandidates} Schriftstellen in der Vertiefung verlinken`}
+              </button>
+            )}
+          </div>
+          <SourceFields
+            heading="Quelle der Vertiefung (optional)"
+            hint="Leer gelassen zeigt die Vertiefung die Quelle der Hauptkarte."
+            idLabel={`${idPrefix}-deepening-source`}
+            idUrl={`${idPrefix}-deepening-source-url`}
+            labelValue={input.deepeningSourceLabel}
+            urlValue={input.deepeningSourceUrl}
+            onLabel={(next) =>
+              setInput((value) => ({ ...value, deepeningSourceLabel: next }))
+            }
+            onUrl={(next) => setInput((value) => ({ ...value, deepeningSourceUrl: next }))}
+          />
         </fieldset>
       )}
     </>
