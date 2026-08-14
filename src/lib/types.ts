@@ -2888,6 +2888,33 @@ export interface ImpulseImage {
   url: string
   /** Was zu sehen ist – für Vorlesende und wenn das Bild nicht lädt. */
   alt?: string
+  /**
+   * Nur diesen Ausschnitt zeigen – fehlt er, gilt das ganze Bild.
+   *
+   * Die Redaktion zieht ihn im Zuschneidefenster neben dem Bild-Link
+   * (`ImpulseImageCropper`); gerechnet wird damit in `lib/impulseCrop`.
+   */
+  crop?: ImpulseImageCrop | null
+}
+
+/**
+ * Der Ausschnitt eines Bildes – vier Masse in Prozent des Originals,
+ * dazu sein Seitenverhältnis.
+ *
+ * Prozent, weil die Karte das Bild nicht erst vermessen soll; das
+ * Seitenverhältnis (Breite ÷ Höhe des Ausschnitts, in echten Bildpunkten),
+ * weil Prozent allein nicht sagen, wie hoch der Ausschnitt neben seiner
+ * Breite steht. Es wird beim Zuschneiden festgehalten, wo das Bild
+ * ohnehin offen liegt.
+ */
+export interface ImpulseImageCrop {
+  /** Die linke obere Ecke des Ausschnitts, 0–100. */
+  x: number
+  y: number
+  /** Breite und Höhe des Ausschnitts, 0–100. */
+  width: number
+  height: number
+  ratio: number
 }
 
 /**
@@ -2955,6 +2982,17 @@ export interface ImpulseItem extends WithId {
    * mit Knopf, die das Video draussen öffnet (siehe `lib/impulseVideo`).
    */
   videoUrl?: string | null
+  /**
+   * Braucht die Video-Karte zwei Wische statt einem?
+   *
+   * Standard ist einer: Das Video hat den Bildschirm für sich, und der
+   * nächste Wisch bringt schon die nächste Karte. Wo der Text dazu
+   * gehört – eine Frage zum Schauen, ein Gedanke danach –, setzt die
+   * Redaktion diesen Haken: Dann fährt er beim zweiten Wisch über das
+   * Video, wie bei jeder Bildkarte. Gilt nur für Video-Karten; Bilder
+   * tragen ihren Text immer auf der zweiten Seite.
+   */
+  videoTextPage?: boolean | null
   source?: ImpulseSource | null
   /**
    * «Eingereicht von Luca» – der Vorname, wenn der Inhalt aus der
@@ -3006,8 +3044,12 @@ export interface ImpulseSubmissionCard {
   deepeningSourceUrl?: string
   imageUrl: string
   imageAlt: string
+  /** Der gewählte Bildausschnitt – fehlt, wenn das ganze Bild gilt. */
+  imageCrop?: ImpulseImageCrop | null
   /** Der Videolink – bei der Video-Karte. */
   videoUrl?: string
+  /** Zwei Wische statt einem: der Text über dem Video. */
+  videoTextPage?: boolean
   quiz: ImpulseQuiz | null
 }
 

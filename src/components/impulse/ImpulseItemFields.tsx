@@ -1,4 +1,5 @@
-import { Link2, Plus, Search, X } from 'lucide-react'
+import { useState } from 'react'
+import { Crop, Link2, Plus, Search, X } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import {
   addScriptureLinks,
@@ -7,6 +8,7 @@ import {
   scriptureLink,
 } from '@/lib/scriptures'
 import { impulseVideoHost, impulseVideoSource } from '@/lib/impulseVideo'
+import { ImpulseCropPreview, ImpulseImageCropper } from '@/components/impulse/ImpulseImageCropper'
 import type { ImpulseItemInput } from '@/services/impulse'
 import {
   IMPULSE_KIND_LABELS,
@@ -42,6 +44,11 @@ export function ImpulseItemFields({
   /** Ein Feld neben der Art – die Redaktion stellt dort die Woche hin. */
   kindSibling?: React.ReactNode
 }) {
+  /* Das Zuschneidefenster hängt am Bild-Link – es kommt und geht mit dem
+     Knopf daneben (siehe `ImpulseImageCropper`). */
+  const [cropping, setCropping] = useState(false)
+  const imageUrl = input.imageUrl.trim()
+
   const quiz = input.quiz
   const setQuiz = (patch: Partial<ImpulseQuiz>) =>
     setInput((value) => ({ ...value, quiz: { ...value.quiz, ...patch } }))
@@ -188,6 +195,21 @@ export function ImpulseItemFields({
             />
             <p className="hint mt-1">{videoHint(input.videoUrl)}</p>
           </div>
+          {/* Ein Wisch oder zwei: Standard ist einer – das Video hat den
+              Bildschirm für sich, danach kommt die nächste Karte. Der
+              Haken holt den Text zurück, der sonst bei jeder Bildkarte
+              beim zweiten Wisch darüberfährt. */}
+          <label className="flex cursor-pointer items-center gap-2 text-sm">
+            <input
+              type="checkbox"
+              className="size-4"
+              checked={input.videoTextPage}
+              onChange={(event) =>
+                setInput((value) => ({ ...value, videoTextPage: event.target.checked }))
+              }
+            />
+            Text über dem Video – zweiter Wisch
+          </label>
         </fieldset>
       )}
 
@@ -209,14 +231,29 @@ export function ImpulseItemFields({
           <label className="label" htmlFor={`${idPrefix}-image-url`}>
             Bild-Link
           </label>
-          <input
-            id={`${idPrefix}-image-url`}
-            className="input"
-            type="url"
-            value={input.imageUrl}
-            onChange={(event) => setInput((value) => ({ ...value, imageUrl: event.target.value }))}
-            placeholder="https://www.churchofjesuschrist.org/media/…"
-          />
+          <div className="flex gap-2">
+            <input
+              id={`${idPrefix}-image-url`}
+              className="input min-w-0 flex-1"
+              type="url"
+              value={input.imageUrl}
+              onChange={(event) =>
+                /* Ein anderes Bild, ein anderer Ausschnitt: Die alten Masse
+                   gälten für ein Bild, das nicht mehr dasteht. */
+                setInput((value) => ({ ...value, imageUrl: event.target.value, imageCrop: null }))
+              }
+              placeholder="https://www.churchofjesuschrist.org/media/…"
+            />
+            <button
+              type="button"
+              className="btn-secondary shrink-0"
+              onClick={() => setCropping(true)}
+              disabled={!imageUrl}
+            >
+              <Crop className="size-4" aria-hidden />
+              Ausschnitt
+            </button>
+          </div>
           <p className="hint mt-1">
             Aus der Mediathek der Kirche: Bildadresse kopieren und hier einsetzen.
           </p>
@@ -237,14 +274,22 @@ export function ImpulseItemFields({
             }
           />
         </div>
-        {input.imageUrl.trim() && (
-          <img
-            src={input.imageUrl.trim()}
-            alt={input.imageAlt || 'Vorschau des Bildes'}
-            className="max-h-48 w-full rounded-lg border border-slate-200 object-cover dark:border-slate-700"
-          />
+        {/* Die Vorschau zeigt, was die Karte zeigt – mit Ausschnitt, wenn
+            einer gewählt ist. */}
+        {imageUrl && (
+          <ImpulseCropPreview url={imageUrl} alt={input.imageAlt} crop={input.imageCrop} />
         )}
       </fieldset>
+
+      {cropping && imageUrl && (
+        <ImpulseImageCropper
+          url={imageUrl}
+          alt={input.imageAlt}
+          crop={input.imageCrop}
+          onApply={(crop) => setInput((value) => ({ ...value, imageCrop: crop }))}
+          onClose={() => setCropping(false)}
+        />
+      )}
 
       <SourceFields
         heading={

@@ -380,6 +380,16 @@ bleibt und eine Spur näher rückt. So bekommt jedes Bild den Moment, den
 ein Bild braucht, und beim Bilderrätsel ist genau das die Aufgabe:
 erst schauen, dann fragen.
 
+Nicht jedes Bild will man ganz zeigen. Neben dem Bild-Link steht darum
+der Knopf **«Ausschnitt»**: Er öffnet das Bild gross, mit einem Rahmen
+zum Schieben und Ziehen, und darunter steht dasselbe so, wie es auf der
+Karte ankommt. Zugeschnitten wird dabei nichts – gespeichert werden vier
+Masse in Prozent, das Bild bleibt unangetastet in der Mediathek liegen.
+Der Ausschnitt gilt überall gleich: in der Karte, als Fläche im Feed und
+im Vollbild mit Zoom. Gerade beim Bilderrätsel zählt das Letzte: Was die
+Redaktion weggelassen hat, taucht auch beim Vergrössern nicht auf.
+Ohne Ausschnitt bleibt alles wie bisher – das ganze Bild, ungeschnitten.
+
 Die **Video-Karte** ist die konsequente Fortsetzung: eine Kartenart mit
 einem Link statt einer Datei – YouTube, Vimeo oder die direkte Adresse
 einer Videodatei (der Download-Link einer Videoseite der Kirche). Das
@@ -388,8 +398,19 @@ ist, und hält an, sobald man weiterwischt; Untertitel bleiben aus, und
 den Ton bedient die Leiste des Videos selbst. Was sich
 nicht einbetten lässt, wird zur Karte mit einem Knopf, der das Video
 draussen öffnet – ein ehrlicher Weg hinaus statt eines schwarzen
-Rechtecks. Auch die Video-Karte kennt Amen, Merken und die Vertiefung;
-gewertet wird wie überall die Teilnahme.
+Rechtecks.
+
+**Ein Wisch oder zwei.** Anders als die Bildkarte gehört der Video-Karte
+standardmässig nur ein Bildschirm: Das Video hat ihn für sich, und der
+nächste Wisch bringt schon die nächste Karte – kein Text, keine Zeile,
+nichts, was sich darüberschiebt. Wo der Text dazugehört – eine Frage
+zum Schauen, ein Gedanke danach –, setzt die Redaktion im Formular den
+Haken **«Text über dem Video – zweiter Wisch»**: Dann fährt er beim
+zweiten Wisch darüber, wie bei jeder Bildkarte, und mit ihm Titel,
+Quelle sowie Amen und Merken. Die Vertiefung bleibt in beiden Fällen
+erreichbar; auf der einstufigen Karte führt der Pfeil «Vertiefen»
+hinüber, weil dort das Wischen dem Video gehört. Gewertet wird wie
+überall die Teilnahme.
 
 ### 5.6 Die Mitmach-Ecke
 

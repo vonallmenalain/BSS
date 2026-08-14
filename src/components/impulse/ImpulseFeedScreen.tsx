@@ -72,6 +72,16 @@ export interface ImpulseDeckCard {
    * bekommt die zweistufige Karte – erst das Bild allein, dann der Text.
    */
   media?: ((state: { active: boolean; stage: ImpulseCardStage }) => ReactNode) | null
+  /**
+   * Die Fläche allein – eine Karte, ein Wisch.
+   *
+   * Der Weg der Video-Karte, wenn die Redaktion keinen Text dazu will:
+   * Das Video hat den Bildschirm für sich, und der nächste Wisch bringt
+   * schon die nächste Karte. Der Knoten (`node`) bleibt dann weg – mit
+   * ihm Titel, Quelle und die Handgriffe «Amen» und «Merken». Die
+   * Vertiefung bleibt: Sie liegt seitlich, nicht darüber.
+   */
+  mediaOnly?: boolean
   /** Die Vertiefung der Karte – `null`/`undefined` heisst: keine. */
   deepening?: ReactNode | null
 }
@@ -97,9 +107,12 @@ function targetIndex(cards: ImpulseDeckCard[], target: ImpulseDeckTarget): numbe
   return cards.findIndex((card) => card.section === target.section)
 }
 
-/** Wie viele Bildschirme eine Karte einnimmt – mit Bild oder Video zwei. */
+/**
+ * Wie viele Bildschirme eine Karte einnimmt – mit Bild oder Video zwei,
+ * ausser die Fläche steht für sich (`mediaOnly`): dann einer.
+ */
 function screensOf(card: ImpulseDeckCard): number {
-  return card.media ? 2 : 1
+  return card.media && !card.mediaOnly ? 2 : 1
 }
 
 /** Der Bildschirm, auf dem jede Karte beginnt – und wie viele es sind. */
@@ -401,6 +414,54 @@ function FeedCard({
     })
   }
 
+  /* Der Wisch-Hinweis: Nur Karten mit Vertiefung zeigen den Pfeil – er
+     pulst nach links, die Richtung des Fingers, und ist zugleich ein
+     Knopf für alle ohne Wischfläche. Auf einer Karte, die nur ihre
+     Fläche zeigt, ist er sogar der einzige Weg hinüber: Dort gehört das
+     Wischen dem Video. */
+  const deepeningArrows = hasDeepening && (
+    <>
+      {pane === 0 && (
+        <button
+          type="button"
+          onClick={() => goToPane(1)}
+          className={cn(
+            'absolute top-1/2 right-1 z-20 flex -translate-y-1/2 flex-col items-center gap-1 px-1 py-2',
+            theme.text,
+          )}
+          aria-label="Vertiefung öffnen"
+        >
+          <span
+            className="animate-imp-nudge grid size-8 place-items-center rounded-full border border-slate-200/70 bg-white/85 shadow-xs backdrop-blur-sm dark:border-slate-700/70 dark:bg-slate-900/85"
+            aria-hidden
+          >
+            <ArrowLeft className="size-4" />
+          </span>
+          <span className="text-[10px] font-medium">Vertiefen</span>
+        </button>
+      )}
+      {pane === 1 && (
+        <button
+          type="button"
+          onClick={() => goToPane(0)}
+          className={cn(
+            'absolute top-1/2 left-1 z-20 flex -translate-y-1/2 flex-col items-center gap-1 px-1 py-2',
+            theme.text,
+          )}
+          aria-label="Zurück zur Karte"
+        >
+          <span
+            className="grid size-8 place-items-center rounded-full border border-slate-200/70 bg-white/85 shadow-xs backdrop-blur-sm dark:border-slate-700/70 dark:bg-slate-900/85"
+            aria-hidden
+          >
+            <ArrowRight className="size-4" />
+          </span>
+          <span className="text-[10px] font-medium">Zurück</span>
+        </button>
+      )}
+    </>
+  )
+
   /* Die beiden Seiten einer Karte – die Karte selbst und ihre
      Vertiefung – samt der Pfeile, die den Wisch anbieten. */
   const body = (over = false) => (
@@ -440,49 +501,50 @@ function FeedCard({
         </CardPane>
       )}
 
-      {/* Der Wisch-Hinweis: Nur Karten mit Vertiefung zeigen den Pfeil –
-          er pulst nach links, die Richtung des Fingers, und ist zugleich
-          ein Knopf für alle ohne Wischfläche. */}
-      {hasDeepening && pane === 0 && (
-        <button
-          type="button"
-          onClick={() => goToPane(1)}
-          className={cn(
-            'absolute top-1/2 right-1 z-20 flex -translate-y-1/2 flex-col items-center gap-1 px-1 py-2',
-            theme.text,
-          )}
-          aria-label="Vertiefung öffnen"
-        >
-          <span
-            className="animate-imp-nudge grid size-8 place-items-center rounded-full border border-slate-200/70 bg-white/85 shadow-xs backdrop-blur-sm dark:border-slate-700/70 dark:bg-slate-900/85"
-            aria-hidden
-          >
-            <ArrowLeft className="size-4" />
-          </span>
-          <span className="text-[10px] font-medium">Vertiefen</span>
-        </button>
-      )}
-      {hasDeepening && pane === 1 && (
-        <button
-          type="button"
-          onClick={() => goToPane(0)}
-          className={cn(
-            'absolute top-1/2 left-1 z-20 flex -translate-y-1/2 flex-col items-center gap-1 px-1 py-2',
-            theme.text,
-          )}
-          aria-label="Zurück zur Karte"
-        >
-          <span
-            className="grid size-8 place-items-center rounded-full border border-slate-200/70 bg-white/85 shadow-xs backdrop-blur-sm dark:border-slate-700/70 dark:bg-slate-900/85"
-            aria-hidden
-          >
-            <ArrowRight className="size-4" />
-          </span>
-          <span className="text-[10px] font-medium">Zurück</span>
-        </button>
-      )}
+      {deepeningArrows}
     </>
   )
+
+  /*
+   * Die Karte, die nur ihre Fläche zeigt: ein Bildschirm, ein Wisch.
+   *
+   * Kein Text, keine Zeile – wie die erste Bühne einer Bildkarte, nur
+   * dass es keine zweite gibt; der nächste Wisch bringt die nächste
+   * Karte. Trägt sie eine Vertiefung, liegt die weiterhin seitlich
+   * daneben, und ihr Rollcontainer lässt Berührungen durch
+   * (`pointer-events-none`): Sonst läge er über dem Video, und dessen
+   * Bedienung – Ton, Pause, Vollbild – wäre nicht mehr zu erreichen.
+   * Darum führt hier der Pfeil hinüber statt der Wisch.
+   */
+  if (card.media && card.mediaOnly) {
+    return (
+      <section
+        aria-label={theme.label}
+        className="relative h-full snap-start snap-always overflow-hidden"
+      >
+        <div className="absolute inset-0">{card.media({ active, stage })}</div>
+        {hasDeepening && (
+          <div
+            ref={panesRef}
+            onScroll={onPaneScroll}
+            className="no-scrollbar pointer-events-none relative flex h-full snap-x snap-mandatory overflow-x-auto overscroll-x-contain"
+          >
+            {/* Die erste Seite ist die Fläche selbst – sie steht schon da. */}
+            <div className="h-full w-full shrink-0 snap-start snap-always" />
+            <div className="pointer-events-auto relative h-full w-full shrink-0 snap-start snap-always">
+              {/* Die Vertiefung deckt das Video zu, solange sie im Bild
+                  steht – Text auf laufenden Bildern liest niemand. */}
+              <div aria-hidden className="absolute inset-0 bg-white dark:bg-slate-950" />
+              <CardPane theme={theme} label={`${theme.label} · Vertiefung`} flush={flush}>
+                {card.deepening}
+              </CardPane>
+            </div>
+          </div>
+        )}
+        {deepeningArrows}
+      </section>
+    )
+  }
 
   /*
    * Die Karte mit Fläche: zwei Bildschirme hoch.

@@ -4,6 +4,7 @@ import { useAuth } from '@/contexts/AuthContext'
 import { useToast } from '@/contexts/ToastContext'
 import { cn } from '@/lib/utils'
 import { formatWeekRange } from '@/lib/impulse'
+import { cropFrameStyle, cropImageStyle, impulseCrop } from '@/lib/impulseCrop'
 import { labeledLink, splitLinks } from '@/lib/links'
 import { scriptureLink } from '@/lib/scriptures'
 import { ImpulseCardActions } from '@/components/impulse/ImpulseCardActions'
@@ -137,42 +138,78 @@ export function ImpulseDeepeningCard({ item }: { item: ImpulseItem }) {
  * geladen (die App speichert nur die Adresse). Ohne Bild bleibt die Karte
  * einfach ohne; ein kaputter Link zeigt den Alt-Text statt eines Lochs.
  *
- * Gezeigt wird immer das **ganze** Bild (kein Zuschnitt – beim Rätseln
- * zählt jedes Detail), und ein Tipp darauf öffnet es im Vollbild mit
- * Zoom (`ImpulseImageLightbox`); die kleine Lupe unten rechts sagt es an.
+ * Gezeigt wird das ganze Bild – oder der Ausschnitt, den die Redaktion
+ * gewählt hat (`lib/impulseCrop`). Abgeschnitten wird also nur, was
+ * jemand ausdrücklich weggelassen hat; von sich aus nimmt die Karte
+ * nichts weg, denn beim Rätseln zählt jedes Detail. Ein Tipp darauf
+ * öffnet das Bild im Vollbild mit Zoom (`ImpulseImageLightbox`) – im
+ * selben Ausschnitt, sonst stünde dort plötzlich die halbe Lösung; die
+ * kleine Lupe unten rechts sagt es an.
  */
-export function ImpulseItemImage({ item, className }: { item: ImpulseItem; className?: string }) {
+export function ImpulseItemImage({
+  item,
+  maxHeight = '16rem',
+}: {
+  item: ImpulseItem
+  /** Wie hoch das Bild in der Karte höchstens steht. */
+  maxHeight?: string
+}) {
   const [open, setOpen] = useState(false)
   const image = item.image
   if (!image?.url) return null
+  const crop = impulseCrop(image)
+  const frame =
+    'relative mx-auto block overflow-hidden rounded-xl border border-slate-200 bg-slate-100 dark:border-slate-800 dark:bg-slate-800'
+  const zoomBadge = (
+    <span
+      className="absolute end-2 bottom-2 grid size-7 place-items-center rounded-full bg-slate-900/55 text-white transition group-hover:bg-slate-900/75"
+      aria-hidden
+    >
+      <Maximize2 className="size-3.5" />
+    </span>
+  )
   return (
     <>
       <button
         type="button"
         onClick={() => setOpen(true)}
-        className="group relative mx-auto mt-3 block w-fit max-w-full cursor-zoom-in"
+        className="group mt-3 block w-full cursor-zoom-in"
         title="Bild vergrössern"
       >
-        <img
-          src={image.url}
-          alt={image.alt || 'Bild zum Rätsel'}
-          loading="lazy"
-          draggable={false}
-          className={cn(
-            'w-auto max-w-full rounded-xl border border-slate-200 bg-slate-100 object-contain dark:border-slate-800 dark:bg-slate-800',
-            className ?? 'max-h-64',
-          )}
-        />
-        <span
-          className="absolute end-2 bottom-2 grid size-7 place-items-center rounded-full bg-slate-900/55 text-white transition group-hover:bg-slate-900/75"
-          aria-hidden
-        >
-          <Maximize2 className="size-3.5" />
-        </span>
+        {crop ? (
+          <span className={frame} style={cropFrameStyle(crop, maxHeight)}>
+            <img
+              src={image.url}
+              alt={image.alt || 'Bild zum Rätsel'}
+              loading="lazy"
+              draggable={false}
+              className="max-w-none"
+              style={cropImageStyle(crop)}
+            />
+            {zoomBadge}
+          </span>
+        ) : (
+          <span className={cn(frame, 'w-fit max-w-full')}>
+            <img
+              src={image.url}
+              alt={image.alt || 'Bild zum Rätsel'}
+              loading="lazy"
+              draggable={false}
+              style={{ maxHeight }}
+              className="block w-auto max-w-full object-contain"
+            />
+            {zoomBadge}
+          </span>
+        )}
         <span className="sr-only">Bild vergrössern</span>
       </button>
       {open && (
-        <ImpulseImageLightbox url={image.url} alt={image.alt} onClose={() => setOpen(false)} />
+        <ImpulseImageLightbox
+          url={image.url}
+          alt={image.alt}
+          crop={crop}
+          onClose={() => setOpen(false)}
+        />
       )}
     </>
   )
@@ -181,26 +218,50 @@ export function ImpulseItemImage({ item, className }: { item: ImpulseItem; class
 /**
  * Das Bild einer Karte als ganze Fläche – so liegt es im Vollbild-Feed.
  *
- * Gezeigt wird das **ganze** Bild (`object-contain`): Beim Bilderrätsel
- * zählt jedes Detail, und auch sonst schneidet man einem Bild nicht die
- * Hälfte ab. Was dem Format zur Bildschirmfüllung fehlt, füllt eine
- * unscharf vergrösserte Kopie desselben Bildes – kein schwarzer Balken,
- * sondern der Ton des Bildes selbst.
+ * Gezeigt wird, was die Redaktion zeigen will: das ganze Bild oder ihr
+ * Ausschnitt – und beides ungeschnitten (`object-contain` bzw. der
+ * Rahmen des Ausschnitts). Von sich aus schneidet die Karte einem Bild
+ * nicht die Hälfte ab. Was dem Format zur Bildschirmfüllung fehlt, füllt
+ * eine unscharf vergrösserte Kopie desselben Bildes – kein schwarzer
+ * Balken, sondern der Ton des Bildes selbst.
+ *
+ * Der Ausschnitt misst sich an der Fläche, nicht an der Seite: Der Grund
+ * ist ein Grössen-Container (`container-type: size`), darum kann der
+ * Rahmen mit `cqw`/`cqh` so gross werden, wie es die Höhe **und** die
+ * Breite hergeben.
  */
 export function ImpulseImageBackdrop({ image }: { image: ImpulseImage }) {
+  const crop = impulseCrop(image)
   return (
-    <div className="absolute inset-0 overflow-hidden bg-slate-100 dark:bg-slate-900">
+    <div className="absolute inset-0 overflow-hidden bg-slate-100 [container-type:size] dark:bg-slate-900">
       <img
         src={image.url}
         alt=""
         aria-hidden
         className="absolute inset-0 size-full scale-110 object-cover blur-2xl saturate-150"
       />
-      <img
-        src={image.url}
-        alt={image.alt || 'Bild zur Karte'}
-        className="relative size-full object-contain"
-      />
+      {crop ? (
+        <div
+          className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 overflow-hidden"
+          style={{
+            aspectRatio: `${crop.ratio}`,
+            width: `min(100cqw, calc(100cqh * ${crop.ratio}))`,
+          }}
+        >
+          <img
+            src={image.url}
+            alt={image.alt || 'Bild zur Karte'}
+            className="max-w-none"
+            style={cropImageStyle(crop)}
+          />
+        </div>
+      ) : (
+        <img
+          src={image.url}
+          alt={image.alt || 'Bild zur Karte'}
+          className="relative size-full object-contain"
+        />
+      )}
     </div>
   )
 }

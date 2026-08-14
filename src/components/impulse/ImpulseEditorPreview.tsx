@@ -64,6 +64,9 @@ export function ImpulseEditorPreview({
             : image?.url
               ? () => <ImpulseImageBackdrop image={image} />
               : null
+        /* Wie im Feed: Die Video-Karte steht für sich, solange die
+           Redaktion keinen Text über dem Video will. */
+        const mediaOnly = raw.kind === 'video' && Boolean(videoSource) && !raw.videoTextPage
         const node = (() => {
           switch (item.kind) {
             case 'quiz':
@@ -101,6 +104,7 @@ export function ImpulseEditorPreview({
           itemId: item.id,
           section: IMPULSE_KIND_THEME[item.kind],
           media,
+          mediaOnly,
           node:
             item.status === 'draft' ? (
               <div>

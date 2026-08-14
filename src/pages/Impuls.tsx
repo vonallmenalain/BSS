@@ -319,24 +319,33 @@ export function Impuls() {
    * Die Fläche einer Karte – das Bild oder das Video, über den ganzen
    * Bildschirm. Wer eine hat, bekommt im Feed die zweistufige Karte:
    * erst die Fläche allein, dann der Text darüber.
+   *
+   * Die Ausnahme ist die Video-Karte: Sie steht standardmässig für sich
+   * allein, ein Wisch, und weiter geht's – der Text kommt nur dazu, wenn
+   * die Redaktion ihn will (`videoTextPage`).
    */
-  const mediaLayer = (item: ImpulseItem): ImpulseDeckCard['media'] => {
+  const mediaLayer = (
+    item: ImpulseItem,
+  ): { media: ImpulseDeckCard['media']; mediaOnly: boolean } => {
     const source = impulseVideoSource(item.videoUrl)
     if (item.kind === 'video' && source) {
-      return ({ active }) => (
-        <ImpulseVideoPlayer
-          source={source}
-          poster={item.image?.url ?? null}
-          title={item.title}
-          active={active}
-        />
-      )
+      return {
+        media: ({ active }) => (
+          <ImpulseVideoPlayer
+            source={source}
+            poster={item.image?.url ?? null}
+            title={item.title}
+            active={active}
+          />
+        ),
+        mediaOnly: !item.videoTextPage,
+      }
     }
     if (item.image?.url) {
       const image = item.image
-      return () => <ImpulseImageBackdrop image={image} />
+      return { media: () => <ImpulseImageBackdrop image={image} />, mediaOnly: false }
     }
-    return null
+    return { media: null, mediaOnly: false }
   }
 
   /** Eine Karte der laufenden Woche – lebendig, mit allen Handgriffen. */
@@ -437,14 +446,18 @@ export function Impuls() {
           viewWeek === todayKey &&
           (item.kind === 'quiz' || item.kind === 'bilderraetsel') &&
           !answerFor(item)
+        const { media, mediaOnly } = mediaLayer(item)
         return {
           id: `${item.kind}-${item.id}`,
           itemId: item.id,
           section: IMPULSE_KIND_SECTION[kind],
           node: viewWeek === todayKey ? liveNode(item) : pastNode(item),
           /* Bild oder Video füllen den Bildschirm – und machen aus der
-             Karte zwei Bühnen: erst die Fläche, dann der Text darüber. */
-          media: mediaLayer(item),
+             Karte zwei Bühnen: erst die Fläche, dann der Text darüber.
+             Nur die Video-Karte bleibt einstufig, wenn sie keinen Text
+             über dem Video tragen soll. */
+          media,
+          mediaOnly,
           /* Die zweite Seite der Karte – nur wenn die Redaktion eine
              Vertiefung erfasst hat; sonst gibt es sie gar nicht. */
           deepening: item.deepening && !spoiler ? <ImpulseDeepeningCard item={item} /> : null,
@@ -1413,7 +1426,7 @@ function PastQuiz({ item, answer }: { item: ImpulseItem; answer: ImpulseAnswer |
 
   return (
     <div>
-      <ImpulseItemImage item={item} className="max-h-40" />
+      <ImpulseItemImage item={item} maxHeight="10rem" />
       <p className={cn('text-sm font-medium', item.image?.url && 'mt-2')}>{item.title}</p>
       <p className="hint mt-0.5">
         Lösung: <span className="font-medium">{solution}</span>
