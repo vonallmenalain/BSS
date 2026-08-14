@@ -3,79 +3,34 @@ import { Check, Plus, Send, X } from 'lucide-react'
 import { Modal } from '@/components/ui/Modal'
 import { useAuth } from '@/contexts/AuthContext'
 import { useToast } from '@/contexts/ToastContext'
-import { createImpulseSubmission, deleteImpulseSubmission } from '@/services/impulse'
+import { readyProblems } from '@/lib/impulse'
+import { ImpulseItemFields } from '@/components/impulse/ImpulseItemFields'
 import {
-  IMPULSE_KIND_LABELS,
-  IMPULSE_SUBMISSION_KIND_LABELS,
-  type ImpulseKind,
-  type ImpulseSubmission,
-} from '@/lib/types'
+  createImpulseSubmission,
+  deleteImpulseSubmission,
+  emptyImpulseItem,
+  type ImpulseItemInput,
+} from '@/services/impulse'
+import { IMPULSE_SUBMISSION_KIND_LABELS, type ImpulseSubmission } from '@/lib/types'
 
 /**
- * Die Mitmach-Ecke: Die AP's liefern selbst – und zwar für jede
- * Kartenart des Bereichs: Impuls, Quizfrage, Bilderrätsel, Wochenziel,
- * Tages-Challenge, Frage der Woche, Feed-Karte oder Teilen-Aufgabe.
- * Eingereicht wird formlos (Freitext plus Quelle); die Redaktion prüft,
- * bringt die Idee im Redaktionsformular in Form – es öffnet gleich in
- * der eingereichten Art – und auf der fertigen Karte steht dann
- * «Eingereicht von …». Wer eine Frage baut, muss die Quelle genau
- * lesen – die lehrreichste Übung von allen, versteckt als Spiel.
+ * Die Mitmach-Ecke: Die AP's liefern selbst – und zwar die fixfertige
+ * Karte, im selben Formular, das auch die Redaktion benutzt
+ * (`ImpulseItemFields`): Wer die Art wechselt, bekommt die Felder der
+ * Art – das Bilderrätsel sein Bild, das Quiz seine Antworten samt
+ * Lösung. Wer eine Frage baut, muss die Quelle genau lesen – die
+ * lehrreichste Übung von allen, versteckt als Spiel.
+ *
+ * Veröffentlicht wird trotzdem nie direkt: Die Redaktion prüft,
+ * übernimmt die Karte vorbefüllt und plant die Woche – auf der fertigen
+ * Karte steht «Eingereicht von …». Halbfertiges ist erlaubt (die Liste
+ * unter dem Formular sagt, was der Redaktion noch fehlt); nur der Titel
+ * muss stehen.
  *
  * Zu sehen sind hier nur die **eigenen** Einreichungen samt Stand:
  * «Bei der Redaktion» oder «Übernommen». Einen Zustand «abgelehnt» gibt es
  * bewusst nicht – was nicht passt, verschwindet still (Leitgedanke 1).
  */
-
-/** Die wählbaren Arten – die Feed-Karte zuerst, sie ist die einfachste Tür. */
-const SUBMIT_KINDS: ImpulseKind[] = [
-  'feed',
-  'quiz',
-  'bilderraetsel',
-  'frage',
-  'wochenziel',
-  'tageschallenge',
-  'teilen',
-  'impuls',
-]
-
-/** Was das Textfeld je Art erbittet – Anschrift und Beispiel. */
-const SUBMIT_PROMPTS: Record<ImpulseKind, { label: string; placeholder: string }> = {
-  feed: {
-    label: 'Dein Vers, dein Zitat oder dein Gedanke',
-    placeholder: 'Schreib ihn auf, so wie er auf der Karte stehen soll …',
-  },
-  quiz: {
-    label: 'Deine Frage – mit der Lösung',
-    placeholder:
-      'Frage, mögliche Antworten und die Lösung – formlos, die Redaktion baut daraus die Quizkarte …',
-  },
-  bilderraetsel: {
-    label: 'Dein Bilderrätsel – Bild, Frage und Lösung',
-    placeholder:
-      'Beschreib das Bild (aus der Mediathek der Kirche), die Frage dazu und die Lösung …',
-  },
-  frage: {
-    label: 'Deine Frage der Woche',
-    placeholder: 'Eine offene Frage, auf die alle mit ein paar Sätzen antworten können …',
-  },
-  wochenziel: {
-    label: 'Dein Wochenziel',
-    placeholder: 'Eine Aufgabe für eine ganze Woche – mit einem Haken abzuhaken …',
-  },
-  tageschallenge: {
-    label: 'Deine Tages-Challenge',
-    placeholder: 'Eine kleine Aufgabe, die man jeden Tag der Woche schafft …',
-  },
-  teilen: {
-    label: 'Deine Teilen-Aufgabe',
-    placeholder: 'Eine Einladung, etwas mit der Familie oder mit Freunden zu besprechen …',
-  },
-  impuls: {
-    label: 'Dein Wochenthema',
-    placeholder: 'Titel und zwei, drei Sätze Hinführung – die Schriftstelle gehört in die Quelle …',
-  },
-}
-
 export function ImpulseSubmitCard({
   submissions,
   plain = false,
@@ -86,29 +41,37 @@ export function ImpulseSubmitCard({
 }) {
   const { profile } = useAuth()
   const toast = useToast()
-  const [open, setOpen] = useState(false)
-  const [kind, setKind] = useState<ImpulseKind>('feed')
-  const [text, setText] = useState('')
-  const [sourceLabel, setSourceLabel] = useState('')
-  const [sourceUrl, setSourceUrl] = useState('')
+  /* Die Feed-Karte zuerst – sie ist die einfachste Tür. */
+  const [input, setInput] = useState<ImpulseItemInput | null>(null)
   const [busy, setBusy] = useState(false)
 
   const uid = profile?.id ?? ''
   const mine = submissions.filter((submission) => submission.uid === uid)
 
+  /* Was der Karte noch fehlt – als Hinweis, nicht als Sperre: Die
+     Redaktion vervollständigt gern, nur der Titel muss stehen. */
+  const problems = input
+    ? readyProblems({
+        kind: input.kind,
+        title: input.title,
+        source: input.sourceLabel.trim()
+          ? { label: input.sourceLabel, url: input.sourceUrl }
+          : null,
+        quiz: input.kind === 'quiz' || input.kind === 'bilderraetsel' ? input.quiz : null,
+        image: input.imageUrl.trim() ? { url: input.imageUrl } : null,
+      })
+    : []
+
   const submit = async () => {
-    if (!profile || busy || !text.trim()) return
+    if (!profile || !input || busy || !input.title.trim()) return
     setBusy(true)
     try {
       const outcome = await createImpulseSubmission(
         { uid: profile.id, displayName: profile.displayName },
-        { kind, text, sourceLabel, sourceUrl },
+        input,
       )
       toast.saved('Eingereicht – die Redaktion schaut es an.', outcome)
-      setText('')
-      setSourceLabel('')
-      setSourceUrl('')
-      setOpen(false)
+      setInput(null)
     } catch (error) {
       console.error(error)
       toast.error('Die Einreichung konnte nicht gespeichert werden.')
@@ -137,10 +100,11 @@ export function ImpulseSubmitCard({
       )}
       <div className={plain ? 'flex flex-wrap items-center gap-3' : 'mt-2 flex flex-wrap items-center gap-3'}>
         <p className="min-w-0 flex-1 text-sm text-slate-600 dark:text-slate-300">
-          Deine Idee für jede Art von Karte – Feed, Quiz, Bilderrätsel, Challenge und mehr. Die
-          Redaktion schaut sie an, und auf der Karte steht dann dein Name.
+          Baue deine eigene Karte – Feed, Quiz, Bilderrätsel, Challenge und mehr, im selben
+          Formular wie die Redaktion. Sie schaut deine Karte an, und auf der fertigen Karte steht
+          dein Name.
         </p>
-        <button type="button" className="btn-secondary" onClick={() => setOpen(true)}>
+        <button type="button" className="btn-secondary" onClick={() => setInput(emptyImpulseItem('feed', null))}>
           <Plus className="size-4" aria-hidden />
           Einreichen
         </button>
@@ -181,92 +145,51 @@ export function ImpulseSubmitCard({
         </ul>
       )}
 
-      <Modal open={open} onClose={() => setOpen(false)} title="Einreichen" size="md">
-        <div className="space-y-4">
-          <div>
-            <label className="label" htmlFor="submission-kind">
-              Was bringst du mit?
-            </label>
-            <select
-              id="submission-kind"
-              className="input"
-              value={kind}
-              onChange={(event) => setKind(event.target.value as ImpulseKind)}
-            >
-              {SUBMIT_KINDS.map((value) => (
-                <option key={value} value={value}>
-                  {IMPULSE_KIND_LABELS[value]}
-                </option>
-              ))}
-            </select>
-          </div>
-
-          <div>
-            <label className="label" htmlFor="submission-text">
-              {SUBMIT_PROMPTS[kind].label}
-            </label>
-            <textarea
-              id="submission-text"
-              className="input min-h-24"
-              value={text}
-              onChange={(event) => setText(event.target.value)}
-              placeholder={SUBMIT_PROMPTS[kind].placeholder}
+      {input && (
+        <Modal
+          open
+          onClose={() => setInput(null)}
+          title="Karte einreichen"
+          description="Dieselben Felder wie in der Redaktion – deine Karte, fixfertig."
+          size="lg"
+          footer={
+            <>
+              <button
+                type="button"
+                className="btn-secondary"
+                onClick={() => setInput(null)}
+                disabled={busy}
+              >
+                Abbrechen
+              </button>
+              <button
+                type="button"
+                className="btn-primary"
+                onClick={() => void submit()}
+                disabled={busy || !input.title.trim()}
+              >
+                <Check className="size-4" aria-hidden />
+                Einreichen
+              </button>
+            </>
+          }
+        >
+          <div className="space-y-4">
+            <ImpulseItemFields
+              input={input}
+              setInput={setInput as React.Dispatch<React.SetStateAction<ImpulseItemInput>>}
+              idPrefix="submission"
             />
-            <p className="hint mt-1">
-              Formlos genügt – die Redaktion bringt deine Idee in Form, und die Karte trägt deinen
-              Namen.
-            </p>
+            {problems.length > 0 && (
+              <p className="hint">
+                Noch nicht fertig? Kein Problem – einreichen geht trotzdem, die Redaktion
+                vervollständigt. Es {problems.length === 1 ? 'fehlt' : 'fehlen'} noch:{' '}
+                {problems.map((problem) => problem.replace(/\.$/, '')).join(', ')}.
+              </p>
+            )}
           </div>
-
-          <div className="grid gap-3 sm:grid-cols-2">
-            <div>
-              <label className="label" htmlFor="submission-source">
-                Quelle (wenn vorhanden)
-              </label>
-              <input
-                id="submission-source"
-                className="input"
-                value={sourceLabel}
-                onChange={(event) => setSourceLabel(event.target.value)}
-                placeholder="Alma 37:6 · Generalkonferenz …"
-              />
-            </div>
-            <div>
-              <label className="label" htmlFor="submission-source-url">
-                Link (optional)
-              </label>
-              <input
-                id="submission-source-url"
-                className="input"
-                type="url"
-                value={sourceUrl}
-                onChange={(event) => setSourceUrl(event.target.value)}
-                placeholder="https://www.churchofjesuschrist.org/…"
-              />
-            </div>
-          </div>
-
-          <div className="flex items-center justify-end gap-2">
-            <button
-              type="button"
-              className="btn-secondary"
-              onClick={() => setOpen(false)}
-              disabled={busy}
-            >
-              Abbrechen
-            </button>
-            <button
-              type="button"
-              className="btn-primary"
-              onClick={() => void submit()}
-              disabled={busy || !text.trim()}
-            >
-              <Check className="size-4" aria-hidden />
-              Einreichen
-            </button>
-          </div>
-        </div>
-      </Modal>
+        </Modal>
+      )}
     </section>
   )
 }

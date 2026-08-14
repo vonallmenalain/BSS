@@ -27,11 +27,11 @@ import { cn } from '@/lib/utils'
 import { PageHeader } from '@/components/ui/Pickers'
 import { AppMenuButton } from '@/components/AppMenuButton'
 import {
-  ContributorLine,
   ImpulseDeepeningCard,
   ImpulseItemImage,
   QuizCard,
   SourceLink,
+  WocheDeckCard,
 } from '@/components/impulse/ImpulseCards'
 import { ChallengeCard, GoalCard, GroupCard } from '@/components/impulse/ImpulseProgressCards'
 import { ImpulseQuestionCard } from '@/components/impulse/ImpulseQuestionCard'
@@ -1128,23 +1128,6 @@ function FinaleAction({
 /* ------------------------------------------------------------------ */
 /* Die Karten des Feeds                                                */
 /* ------------------------------------------------------------------ */
-
-/** Das Wochenthema als Feed-Karte – gross und ruhig, wie eh und je. */
-function WocheDeckCard({ item }: { item: ImpulseItem }) {
-  return (
-    <article className="card p-6 text-center sm:p-8">
-      {item.week && <p className="hint">{formatWeekRange(item.week)}</p>}
-      <h2 className="mt-2 text-2xl leading-snug font-semibold text-balance">{item.title}</h2>
-      {item.body && (
-        <p className="mt-3 whitespace-pre-line text-slate-600 dark:text-slate-300">{item.body}</p>
-      )}
-      <div className="mt-5 flex flex-col items-center gap-1">
-        <SourceLink item={item} />
-        <ContributorLine item={item} />
-      </div>
-    </article>
-  )
-}
 
 /**
  * Die Frage der Woche im Rückblick – lesbar, nicht mehr beantwortbar.
