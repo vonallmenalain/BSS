@@ -49,6 +49,11 @@ export interface ImpulseItemInput {
   body: string
   /** Die Vertiefung – erscheint im Feed beim Wisch nach links. */
   deepening: string
+  /** Eigener Titel der Vertiefung – leer heisst: der der Hauptkarte. */
+  deepeningTitle: string
+  /** Eigene Quelle der Vertiefung – leer heisst: die der Hauptkarte. */
+  deepeningSourceLabel: string
+  deepeningSourceUrl: string
   sourceLabel: string
   sourceUrl: string
   /** Das Bild des Bilderrätsels – ein Link in die Mediathek der Kirche. */
@@ -82,6 +87,9 @@ export function emptyImpulseItem(
     title: '',
     body: '',
     deepening: '',
+    deepeningTitle: '',
+    deepeningSourceLabel: '',
+    deepeningSourceUrl: '',
     sourceLabel: '',
     sourceUrl: '',
     imageUrl: '',
@@ -101,6 +109,9 @@ export function toImpulseInput(item: ImpulseItem): ImpulseItemInput {
     title: item.title ?? '',
     body: item.body ?? '',
     deepening: item.deepening ?? '',
+    deepeningTitle: item.deepeningTitle ?? '',
+    deepeningSourceLabel: item.deepeningSource?.label ?? '',
+    deepeningSourceUrl: item.deepeningSource?.url ?? '',
     sourceLabel: item.source?.label ?? '',
     sourceUrl: item.source?.url ?? '',
     imageUrl: item.image?.url ?? '',
@@ -120,6 +131,7 @@ export async function saveImpulseItem(
   userId?: string | null,
 ): Promise<SaveOutcome> {
   const sourceLabel = input.sourceLabel.trim()
+  const deepeningSourceLabel = input.deepeningSourceLabel.trim()
   const imageUrl = input.imageUrl.trim()
   const data = {
     week: input.week,
@@ -128,6 +140,10 @@ export async function saveImpulseItem(
     title: input.title.trim(),
     body: input.body.trim(),
     deepening: input.deepening.trim() || null,
+    deepeningTitle: input.deepeningTitle.trim() || null,
+    deepeningSource: deepeningSourceLabel
+      ? { label: deepeningSourceLabel, url: input.deepeningSourceUrl.trim() }
+      : null,
     order: typeof input.order === 'number' && Number.isFinite(input.order) ? input.order : null,
     contributor: input.contributor.trim() || null,
     source: sourceLabel ? { label: sourceLabel, url: input.sourceUrl.trim() } : null,
@@ -413,27 +429,35 @@ export async function createImpulseSubmission(
       text: input.title.trim(),
       sourceLabel: input.sourceLabel.trim(),
       sourceUrl: input.sourceUrl.trim(),
-      card: {
-        body: input.body.trim(),
-        deepening: input.deepening.trim(),
-        imageUrl: input.kind === 'bilderraetsel' ? input.imageUrl.trim() : '',
-        imageAlt: input.kind === 'bilderraetsel' ? input.imageAlt.trim() : '',
-        quiz:
-          input.kind === 'quiz' || input.kind === 'bilderraetsel'
-            ? {
-                form: input.quiz.form,
-                options: input.quiz.options.map((option) => option.trim()),
-                answerIndex: input.quiz.answerIndex,
-                answerText: input.quiz.answerText.trim(),
-                explanation: input.quiz.explanation.trim(),
-              }
-            : null,
-      },
+      card: submissionCard(input),
       status: 'open',
       createdAt: serverTimestamp(),
       updatedAt: serverTimestamp(),
     }),
   )
+}
+
+/** Die Kartenfelder einer Einreichung, aus dem Formular gelesen. */
+function submissionCard(input: ImpulseItemInput) {
+  return {
+    body: input.body.trim(),
+    deepening: input.deepening.trim(),
+    deepeningTitle: input.deepeningTitle.trim(),
+    deepeningSourceLabel: input.deepeningSourceLabel.trim(),
+    deepeningSourceUrl: input.deepeningSourceUrl.trim(),
+    imageUrl: input.kind === 'bilderraetsel' ? input.imageUrl.trim() : '',
+    imageAlt: input.kind === 'bilderraetsel' ? input.imageAlt.trim() : '',
+    quiz:
+      input.kind === 'quiz' || input.kind === 'bilderraetsel'
+        ? {
+            form: input.quiz.form,
+            options: input.quiz.options.map((option) => option.trim()),
+            answerIndex: input.quiz.answerIndex,
+            answerText: input.quiz.answerText.trim(),
+            explanation: input.quiz.explanation.trim(),
+          }
+        : null,
+  }
 }
 
 /**
@@ -454,22 +478,7 @@ export async function updateImpulseSubmission(
       text: input.title.trim(),
       sourceLabel: input.sourceLabel.trim(),
       sourceUrl: input.sourceUrl.trim(),
-      card: {
-        body: input.body.trim(),
-        deepening: input.deepening.trim(),
-        imageUrl: input.kind === 'bilderraetsel' ? input.imageUrl.trim() : '',
-        imageAlt: input.kind === 'bilderraetsel' ? input.imageAlt.trim() : '',
-        quiz:
-          input.kind === 'quiz' || input.kind === 'bilderraetsel'
-            ? {
-                form: input.quiz.form,
-                options: input.quiz.options.map((option) => option.trim()),
-                answerIndex: input.quiz.answerIndex,
-                answerText: input.quiz.answerText.trim(),
-                explanation: input.quiz.explanation.trim(),
-              }
-            : null,
-      },
+      card: submissionCard(input),
       updatedAt: serverTimestamp(),
     }),
   )
@@ -486,6 +495,7 @@ export function submissionToItem(submission: ImpulseSubmission): ImpulseItem {
   const kind: ImpulseKind = submission.kind === 'gedanke' ? 'feed' : submission.kind
   const card = submission.card
   const sourceLabel = submission.sourceLabel?.trim() ?? ''
+  const deepeningSourceLabel = card?.deepeningSourceLabel?.trim() ?? ''
   return {
     id: `einreichung-${submission.id}`,
     week: null,
@@ -494,6 +504,10 @@ export function submissionToItem(submission: ImpulseSubmission): ImpulseItem {
     title: submission.text,
     body: card?.body || undefined,
     deepening: card?.deepening || null,
+    deepeningTitle: card?.deepeningTitle || null,
+    deepeningSource: deepeningSourceLabel
+      ? { label: deepeningSourceLabel, url: card?.deepeningSourceUrl?.trim() ?? '' }
+      : null,
     source: sourceLabel ? { label: sourceLabel, url: submission.sourceUrl?.trim() ?? '' } : null,
     image:
       kind === 'bilderraetsel' && card?.imageUrl
@@ -547,6 +561,9 @@ export function submissionToInput(
   if (card) {
     input.body = card.body ?? ''
     input.deepening = card.deepening ?? ''
+    input.deepeningTitle = card.deepeningTitle ?? ''
+    input.deepeningSourceLabel = card.deepeningSourceLabel ?? ''
+    input.deepeningSourceUrl = card.deepeningSourceUrl ?? ''
     input.imageUrl = card.imageUrl ?? ''
     input.imageAlt = card.imageAlt ?? ''
     if (card.quiz) input.quiz = { ...card.quiz, options: [...card.quiz.options] }

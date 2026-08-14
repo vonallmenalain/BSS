@@ -60,9 +60,13 @@ export function SourceLink({ item }: { item: ImpulseItem }) {
  */
 export function ImpulseDeepeningCard({ item }: { item: ImpulseItem }) {
   if (!item.deepening) return null
+  /* Eigener Titel und eigene Quelle, wenn die Redaktion sie gesetzt
+     hat – sonst erbt die Seite beides von der Hauptkarte. */
+  const title = item.deepeningTitle?.trim() || item.title
+  const source = item.deepeningSource ?? item.source
   return (
     <article className="card p-6">
-      <h3 className="text-base font-semibold text-balance">{item.title}</h3>
+      <h3 className="text-base font-semibold text-balance">{title}</h3>
       <div className="mt-3 space-y-1 text-sm text-slate-600 dark:text-slate-300">
         {item.deepening.split('\n').map((line, index) => {
           /* Eine Zeile «Alma 32:27 – https://…» trägt ihren Link selbst;
@@ -115,7 +119,7 @@ export function ImpulseDeepeningCard({ item }: { item: ImpulseItem }) {
         })}
       </div>
       <div className="mt-4">
-        <SourceLink item={item} />
+        <SourceLink item={{ ...item, source }} />
       </div>
     </article>
   )

@@ -72,19 +72,6 @@ export function ImpulseItemFields({
      das Feld «Vertiefung». Wochenziel und Tages-Challenge sind Kacheln. */
   const hasDeepening = input.kind !== 'wochenziel' && input.kind !== 'tageschallenge'
 
-  /* Sieht die Quelle wie eine Schriftstelle aus, steht ihr Link in der
-     Evangeliumsbibliothek einen Tipp entfernt (`lib/scriptures`) – kein
-     Adressen-Abtippen, und nichts wird ungefragt eingesetzt. */
-  const suggestedUrl = scriptureLink(input.sourceLabel)
-  const showSuggestion = suggestedUrl !== null && input.sourceUrl.trim() !== suggestedUrl
-
-  /* Alles andere – Konferenzansprachen, Lieder, Artikel – hat kein
-     herleitbares Adress-Schema: Dafür öffnet der Helfer die Suche der
-     Kirche mit der Quellenangabe; die gefundene Adresse wird kopiert
-     und hier eingesetzt. */
-  const showSearch =
-    suggestedUrl === null && input.sourceLabel.trim() !== '' && input.sourceUrl.trim() === ''
-
   /* Reine Schriftstellen-Zeilen in der Vertiefung («Alma 32:27») lassen
      sich mit einem Tipp verlinken – zur Form «Alma 32:27 – https://…»,
      die die Anzeige als beschrifteten Verweis zeigt. */
@@ -173,50 +160,89 @@ export function ImpulseItemFields({
         />
       </div>
 
-      {/* Die Vertiefung – die zweite Seite der Karte im Vollbild-Feed:
-          Der Wisch nach links zeigt sie, und der Pfeil «Vertiefen»
-          erscheint nur, wenn hier etwas steht. */}
+      {/* Die Vertiefung – die zweite Seite der Karte im Vollbild-Feed,
+          sauber von der Hauptkarte getrennt: eigener Titel (leer heisst:
+          der der Hauptkarte), eigener Text, eigene Quelle. Der Wisch
+          nach links zeigt sie, und der Pfeil «Vertiefen» erscheint nur,
+          wenn Text dasteht. */}
       {hasDeepening && (
-        <div>
-          <label className="label" htmlFor={`${idPrefix}-deepening`}>
-            Vertiefung (optional)
-          </label>
-          <textarea
-            id={`${idPrefix}-deepening`}
-            className="input min-h-24"
-            value={input.deepening}
-            onChange={(event) =>
-              setInput((value) => ({ ...value, deepening: event.target.value }))
-            }
-            placeholder={
-              'Weiterführende Gedanken, Quellen und Links …\n' +
-              'Alma 32:27 – https://www.churchofjesuschrist.org/…'
-            }
-          />
-          <p className="hint mt-1">
-            Erscheint im Feed beim Wisch nach links; nur Karten mit Vertiefung zeigen den
-            pulsierenden Pfeil «Vertiefen». Eine Zeile, auf der nur eine Schriftstelle steht
-            («Alma 32:27»), wird von allein zum anklickbaren Verweis – mit dem Knopf unten
-            bekommt sie ihren Link auch fest in den Text.
-          </p>
-          {deepeningCandidates > 0 && (
-            <button
-              type="button"
-              className="btn-secondary btn-sm mt-1.5"
-              onClick={() =>
-                setInput((value) => ({
-                  ...value,
-                  deepening: addScriptureLinks(value.deepening).text,
-                }))
+        <fieldset className="space-y-3 rounded-xl border border-slate-200 p-3 dark:border-slate-700">
+          <legend className="label px-1">Vertiefung (optional)</legend>
+          <div>
+            <label className="label" htmlFor={`${idPrefix}-deepening-title`}>
+              Titel der Vertiefung
+            </label>
+            <input
+              id={`${idPrefix}-deepening-title`}
+              className="input"
+              value={input.deepeningTitle}
+              onChange={(event) =>
+                setInput((value) => ({ ...value, deepeningTitle: event.target.value }))
               }
-            >
-              <Link2 className="size-4" aria-hidden />
-              {deepeningCandidates === 1
-                ? 'Schriftstelle in der Vertiefung verlinken'
-                : `${deepeningCandidates} Schriftstellen in der Vertiefung verlinken`}
-            </button>
-          )}
-        </div>
+              placeholder={
+                input.title.trim()
+                  ? `Wie die Hauptkarte: «${input.title.trim()}»`
+                  : 'Leer = Titel der Hauptkarte'
+              }
+            />
+            <p className="hint mt-1">
+              Leer gelassen steht der Titel der Hauptkarte auch über der Vertiefung – hier darf
+              er abweichen.
+            </p>
+          </div>
+          <div>
+            <label className="label" htmlFor={`${idPrefix}-deepening`}>
+              Text
+            </label>
+            <textarea
+              id={`${idPrefix}-deepening`}
+              className="input min-h-24"
+              value={input.deepening}
+              onChange={(event) =>
+                setInput((value) => ({ ...value, deepening: event.target.value }))
+              }
+              placeholder={
+                'Weiterführende Gedanken, Quellen und Links …\n' +
+                'Alma 32:27 – https://www.churchofjesuschrist.org/…'
+              }
+            />
+            <p className="hint mt-1">
+              Erscheint im Feed beim Wisch nach links; nur Karten mit Vertiefungstext zeigen den
+              pulsierenden Pfeil «Vertiefen». Eine Zeile, auf der nur eine Schriftstelle steht
+              («Alma 32:27»), wird von allein zum anklickbaren Verweis – mit dem Knopf unten
+              bekommt sie ihren Link auch fest in den Text.
+            </p>
+            {deepeningCandidates > 0 && (
+              <button
+                type="button"
+                className="btn-secondary btn-sm mt-1.5"
+                onClick={() =>
+                  setInput((value) => ({
+                    ...value,
+                    deepening: addScriptureLinks(value.deepening).text,
+                  }))
+                }
+              >
+                <Link2 className="size-4" aria-hidden />
+                {deepeningCandidates === 1
+                  ? 'Schriftstelle in der Vertiefung verlinken'
+                  : `${deepeningCandidates} Schriftstellen in der Vertiefung verlinken`}
+              </button>
+            )}
+          </div>
+          <SourceFields
+            heading="Quelle der Vertiefung (optional)"
+            hint="Leer gelassen zeigt die Vertiefung die Quelle der Hauptkarte."
+            idLabel={`${idPrefix}-deepening-source`}
+            idUrl={`${idPrefix}-deepening-source-url`}
+            labelValue={input.deepeningSourceLabel}
+            urlValue={input.deepeningSourceUrl}
+            onLabel={(next) =>
+              setInput((value) => ({ ...value, deepeningSourceLabel: next }))
+            }
+            onUrl={(next) => setInput((value) => ({ ...value, deepeningSourceUrl: next }))}
+          />
+        </fieldset>
       )}
 
       {/* Das Bild des Bilderrätsels – aus der offiziellen Mediathek der
@@ -267,67 +293,19 @@ export function ImpulseItemFields({
         </fieldset>
       )}
 
-      <div className="grid gap-3 sm:grid-cols-2">
-        <div>
-          <label className="label" htmlFor={`${idPrefix}-source`}>
-            {/* Aufgaben brauchen keine Fundstelle – Material schon
-                (siehe `readyProblems`). */}
-            {input.kind === 'impuls' || input.kind === 'quiz' ? 'Quelle' : 'Quelle (optional)'}
-          </label>
-          <input
-            id={`${idPrefix}-source`}
-            className="input"
-            value={input.sourceLabel}
-            onChange={(event) =>
-              setInput((value) => ({ ...value, sourceLabel: event.target.value }))
-            }
-            placeholder="Alma 32:21 · Generalkonferenz Okt. 2025 …"
-          />
-        </div>
-        <div>
-          <label className="label" htmlFor={`${idPrefix}-source-url`}>
-            Link zur Quelle
-          </label>
-          <input
-            id={`${idPrefix}-source-url`}
-            className="input"
-            type="url"
-            value={input.sourceUrl}
-            onChange={(event) =>
-              setInput((value) => ({ ...value, sourceUrl: event.target.value }))
-            }
-            placeholder="https://www.churchofjesuschrist.org/…"
-          />
-        </div>
-      </div>
-
-      {showSuggestion && (
-        <button
-          type="button"
-          className="btn-secondary btn-sm -mt-1"
-          onClick={() => setInput((value) => ({ ...value, sourceUrl: suggestedUrl }))}
-        >
-          <Link2 className="size-4" aria-hidden />
-          Link zu «{input.sourceLabel.trim()}» einsetzen
-        </button>
-      )}
-      {showSearch && (
-        <div className="-mt-1">
-          <a
-            className="btn-secondary btn-sm"
-            href={churchSearchLink(input.sourceLabel)}
-            target="_blank"
-            rel="noreferrer"
-          >
-            <Search className="size-4" aria-hidden />
-            «{input.sourceLabel.trim()}» auf churchofjesuschrist.org suchen
-          </a>
-          <p className="hint mt-1">
-            Öffnet die Suche der Kirche in einem neuen Tab – Treffer öffnen, Adresse kopieren
-            und oben als Link zur Quelle einsetzen.
-          </p>
-        </div>
-      )}
+      <SourceFields
+        heading={
+          /* Aufgaben brauchen keine Fundstelle – Material schon
+             (siehe `readyProblems`). */
+          input.kind === 'impuls' || input.kind === 'quiz' ? 'Quelle' : 'Quelle (optional)'
+        }
+        idLabel={`${idPrefix}-source`}
+        idUrl={`${idPrefix}-source-url`}
+        labelValue={input.sourceLabel}
+        urlValue={input.sourceUrl}
+        onLabel={(next) => setInput((value) => ({ ...value, sourceLabel: next }))}
+        onUrl={(next) => setInput((value) => ({ ...value, sourceUrl: next }))}
+      />
 
       {(input.kind === 'quiz' || input.kind === 'bilderraetsel') && (
         <fieldset className="space-y-3 rounded-xl border border-slate-200 p-3 dark:border-slate-700">
@@ -419,5 +397,99 @@ export function ImpulseItemFields({
         </fieldset>
       )}
     </>
+  )
+}
+
+/**
+ * Eine Quellenangabe mit Link – samt der beiden Helfer: Sieht die
+ * Angabe wie eine Schriftstelle aus, steht ihr Link einen Tipp entfernt
+ * (`scriptureLink`); alles andere führt zur Suche der Kirche, aus der
+ * sich die Adresse kopieren lässt. Zweimal im Formular im Einsatz –
+ * für die Hauptkarte und für die Vertiefung, die seit der Trennung ihre
+ * eigene Quelle tragen darf.
+ */
+function SourceFields({
+  heading,
+  hint,
+  idLabel,
+  idUrl,
+  labelValue,
+  urlValue,
+  onLabel,
+  onUrl,
+}: {
+  heading: string
+  /** Eine Zeile unter den Feldern – etwa, was «leer» bedeutet. */
+  hint?: string
+  idLabel: string
+  idUrl: string
+  labelValue: string
+  urlValue: string
+  onLabel: (value: string) => void
+  onUrl: (value: string) => void
+}) {
+  const suggestedUrl = scriptureLink(labelValue)
+  const showSuggestion = suggestedUrl !== null && urlValue.trim() !== suggestedUrl
+  const showSearch = suggestedUrl === null && labelValue.trim() !== '' && urlValue.trim() === ''
+
+  return (
+    <div className="space-y-2">
+      <div className="grid gap-3 sm:grid-cols-2">
+        <div>
+          <label className="label" htmlFor={idLabel}>
+            {heading}
+          </label>
+          <input
+            id={idLabel}
+            className="input"
+            value={labelValue}
+            onChange={(event) => onLabel(event.target.value)}
+            placeholder="Alma 32:21 · Generalkonferenz Okt. 2025 …"
+          />
+        </div>
+        <div>
+          <label className="label" htmlFor={idUrl}>
+            Link zur Quelle
+          </label>
+          <input
+            id={idUrl}
+            className="input"
+            type="url"
+            value={urlValue}
+            onChange={(event) => onUrl(event.target.value)}
+            placeholder="https://www.churchofjesuschrist.org/…"
+          />
+        </div>
+      </div>
+
+      {showSuggestion && (
+        <button
+          type="button"
+          className="btn-secondary btn-sm"
+          onClick={() => onUrl(suggestedUrl)}
+        >
+          <Link2 className="size-4" aria-hidden />
+          Link zu «{labelValue.trim()}» einsetzen
+        </button>
+      )}
+      {showSearch && (
+        <div>
+          <a
+            className="btn-secondary btn-sm"
+            href={churchSearchLink(labelValue)}
+            target="_blank"
+            rel="noreferrer"
+          >
+            <Search className="size-4" aria-hidden />
+            «{labelValue.trim()}» auf churchofjesuschrist.org suchen
+          </a>
+          <p className="hint mt-1">
+            Öffnet die Suche der Kirche in einem neuen Tab – Treffer öffnen, Adresse kopieren
+            und hier als Link zur Quelle einsetzen.
+          </p>
+        </div>
+      )}
+      {hint && <p className="hint mt-0">{hint}</p>}
+    </div>
   )
 }
