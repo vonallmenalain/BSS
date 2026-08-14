@@ -493,20 +493,16 @@ export function QuizCard({
            gewählt wird hier nicht, es wird gehandelt. Die Fundstelle
            bleibt bis zur Auflösung weg: «Joseph Smith –
            Lebensgeschichte» verriete Joseph Smith. */
-        <div className="mt-4">
-          <div className="space-y-2" role="group" aria-label="Antworten">
-            {quiz.options.map((option, index) => (
-              <QuizOption
-                key={index}
-                index={index}
-                option={option}
-                state="offen"
-                disabled={busy}
-                onClick={() => void choose(index)}
-              />
-            ))}
-          </div>
-          <p className="hint mt-2.5">Ein Tipp genügt – du hast einen Versuch.</p>
+        <div className="mt-4 space-y-2" role="group" aria-label="Antworten">
+          {quiz.options.map((option, index) => (
+            <QuizOption
+              key={index}
+              option={option}
+              state="offen"
+              disabled={busy}
+              onClick={() => void choose(index)}
+            />
+          ))}
         </div>
       ) : (
         <form className="mt-4 space-y-3" onSubmit={(event) => void submit(event)}>
@@ -553,20 +549,18 @@ export function QuizCard({
 }
 
 /**
- * Eine Antwortmöglichkeit – ohne Rahmen, mit ihrem Buchstaben davor.
+ * Eine Antwortmöglichkeit – ohne Rahmen, ohne Buchstaben, nur die
+ * Möglichkeit selbst.
  *
  * Vier Zustände in einer Gestalt: `offen` ist der Knopf vor der Antwort,
  * die übrigen drei zeichnen die Auflösung – die Lösung (`richtig`), der
  * eigene Fehlgriff (`daneben`) und alles Übrige, das zurücktritt
  * (`still`). Getragen wird die Zeile von einer ruhigen Fläche statt von
- * einem Strich: im Hellen ein Grau, im Dunkeln ein heller Hauch. Was die
- * Farbe sagt, sagt auch das Zeichen im Buchstabenfeld – Haken oder
- * Kreuz –, und die eigene Antwort ist angeschrieben.
+ * einem Strich: im Hellen ein Grau, im Dunkeln ein heller Hauch. Ein
+ * Zeichen bekommt erst die Auflösung – Haken oder Kreuz –, und die
+ * eigene Antwort ist angeschrieben.
  */
 type QuizOptionState = 'offen' | 'richtig' | 'daneben' | 'still'
-
-/** A, B, C … statt Radiopunkten – kürzer zu treffen und schneller zu lesen. */
-const OPTION_LETTERS = ['A', 'B', 'C', 'D', 'E', 'F', 'G', 'H']
 
 const OPTION_ROW: Record<QuizOptionState, string> = {
   offen:
@@ -576,22 +570,21 @@ const OPTION_ROW: Record<QuizOptionState, string> = {
   still: 'bg-slate-100/60 text-slate-500 dark:bg-white/[0.04] dark:text-slate-400',
 }
 
-const OPTION_BADGE: Record<QuizOptionState, string> = {
-  offen: 'bg-white text-slate-500 shadow-xs dark:bg-white/10 dark:text-slate-200',
+/* Nur die Auflösung trägt ein Zeichen. Die stillen Zeilen behalten das
+   leere Feld, damit die Möglichkeiten untereinander stehen bleiben. */
+const OPTION_BADGE: Record<Exclude<QuizOptionState, 'offen'>, string> = {
   richtig: 'bg-emerald-600 text-white dark:bg-emerald-400 dark:text-emerald-950',
   daneben: 'bg-rose-600 text-white dark:bg-rose-400 dark:text-rose-950',
-  still: 'bg-slate-200/80 text-slate-500 dark:bg-white/10 dark:text-slate-400',
+  still: '',
 }
 
 function QuizOption({
-  index,
   option,
   state,
   chosen = false,
   disabled = false,
   onClick,
 }: {
-  index: number
   option: string
   state: QuizOptionState
   /** Die eigene Antwort – angeschrieben, damit sie unverwechselbar ist. */
@@ -602,21 +595,18 @@ function QuizOption({
   const shape = 'flex w-full items-center gap-3 rounded-xl px-3.5 py-3 text-left text-sm transition'
   const content = (
     <>
-      <span
-        className={cn(
-          'grid size-6 shrink-0 place-items-center rounded-lg text-xs font-semibold',
-          OPTION_BADGE[state],
-        )}
-        aria-hidden
-      >
-        {state === 'richtig' ? (
-          <Check className="size-4" />
-        ) : state === 'daneben' ? (
-          <X className="size-4" />
-        ) : (
-          (OPTION_LETTERS[index] ?? index + 1)
-        )}
-      </span>
+      {state !== 'offen' && (
+        <span
+          className={cn('grid size-6 shrink-0 place-items-center rounded-lg', OPTION_BADGE[state])}
+          aria-hidden
+        >
+          {state === 'richtig' ? (
+            <Check className="size-4" />
+          ) : state === 'daneben' ? (
+            <X className="size-4" />
+          ) : null}
+        </span>
+      )}
       <span className="min-w-0 flex-1">
         {/* Was die Farbe zeigt, muss auch vorgelesen werden. */}
         {state === 'richtig' && <span className="sr-only">Richtige Antwort: </span>}
@@ -685,7 +675,6 @@ export function QuizResolution({
               return (
                 <QuizOption
                   key={index}
-                  index={index}
                   option={option}
                   state={isSolution ? 'richtig' : isChosen ? 'daneben' : 'still'}
                   chosen={isChosen}
