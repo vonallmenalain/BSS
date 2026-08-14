@@ -2921,6 +2921,16 @@ export interface ImpulseItem extends WithId {
    */
   deepening?: string | null
   /**
+   * Eigener Titel der Vertiefungsseite – leer heisst: Über der
+   * Vertiefung steht der Titel der Hauptkarte (der Normalfall).
+   */
+  deepeningTitle?: string | null
+  /**
+   * Eigene Quelle der Vertiefungsseite – ohne sie zeigt die Seite die
+   * Quelle der Hauptkarte, wie eh und je.
+   */
+  deepeningSource?: ImpulseSource | null
+  /**
    * Platz innerhalb der Art und Woche – für Arten mit mehreren Karten
    * (Feed, Quizfrage, Bilderrätsel).
    *
@@ -2976,6 +2986,10 @@ export type ImpulseSubmissionStatus = 'open' | 'accepted'
 export interface ImpulseSubmissionCard {
   body: string
   deepening: string
+  /** Eigener Titel und eigene Quelle der Vertiefung – fehlen bei älteren Einreichungen. */
+  deepeningTitle?: string
+  deepeningSourceLabel?: string
+  deepeningSourceUrl?: string
   imageUrl: string
   imageAlt: string
   quiz: ImpulseQuiz | null
