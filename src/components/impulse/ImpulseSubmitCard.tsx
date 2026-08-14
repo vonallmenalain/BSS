@@ -126,9 +126,8 @@ export function ImpulseSubmitCard({
       )}
       <div className={plain ? 'flex flex-wrap items-center gap-3' : 'mt-2 flex flex-wrap items-center gap-3'}>
         <p className="min-w-0 flex-1 text-sm text-slate-600 dark:text-slate-300">
-          Baue deine eigene Karte – Feed, Quiz, Bilderrätsel, Challenge und mehr. Die
-          Bischofschaft schaut deine Karte an und wird sie dann für alle veröffentlichen. Auf der
-          fertigen Karte steht dein Name.
+          Baue deine eigene Karte. Die Bischofschaft schaltet sie für alle auf – mit deinem Namen
+          darauf.
         </p>
         <button
           type="button"
@@ -200,7 +199,7 @@ export function ImpulseSubmitCard({
           open
           onClose={() => setEditor(null)}
           title={editor.id ? 'Deine Karte bearbeiten' : 'Karte einreichen'}
-          description="Baue die Karte so, wie sie nachher für alle aussehen soll."
+          description="So, wie sie nachher für alle aussieht."
           size="lg"
           footer={
             <>
@@ -227,11 +226,7 @@ export function ImpulseSubmitCard({
           <div className="space-y-4">
             <ImpulseItemFields input={editor.input} setInput={setInput} idPrefix="submission" />
             {problems.length > 0 && (
-              <p className="hint">
-                Noch nicht fertig? Kein Problem – einreichen geht trotzdem, die Bischofschaft
-                vervollständigt. Es {problems.length === 1 ? 'fehlt' : 'fehlen'} noch:{' '}
-                {problems.map((problem) => problem.replace(/\.$/, '')).join(', ')}.
-              </p>
+              <p className="hint">{problems.join(' ')} Einreichen geht trotzdem.</p>
             )}
           </div>
         </Modal>

@@ -293,6 +293,11 @@ ein Jugendlicher mit Namen, der nicht wiederkommt.
 Der Feed ist die niederschwelligste Tür: Karten im Vollbild, mit dem Daumen
 weiter – die Form von Reels, gefüllt mit Substanz.
 
+Wie viele Karten eine Woche trägt, entscheidet die Redaktion. Der Plan sind
+etwa fünf bis zehn; eine Obergrenze im Programm gibt es bewusst nicht –
+«endlich» meint die Woche, die zu Ende geht, nicht eine feste Zahl
+(Leitgedanke 6). Dasselbe gilt für Quizfragen und Bilderrätsel.
+
 Kartenarten:
 
 - **Schriftstelle** – ein Vers, gross gesetzt, mit Link zum Kapitel

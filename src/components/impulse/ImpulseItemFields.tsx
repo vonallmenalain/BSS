@@ -180,8 +180,7 @@ export function ImpulseItemFields({
               placeholder="https://www.churchofjesuschrist.org/media/…"
             />
             <p className="hint mt-1">
-              Aus der offiziellen Mediathek der Kirche (churchofjesuschrist.org/media): Bild
-              öffnen, Bildadresse kopieren, hier einsetzen.
+              Aus der Mediathek der Kirche: Bildadresse kopieren und hier einsetzen.
             </p>
           </div>
           <div>
@@ -292,7 +291,7 @@ export function ImpulseItemFields({
                 className="input"
                 value={quiz.answerText}
                 onChange={(event) => setQuiz({ answerText: event.target.value })}
-                placeholder="So steht sie nachher in der Auflösung"
+                placeholder="Die richtige Antwort"
               />
             </div>
           )}
@@ -306,7 +305,7 @@ export function ImpulseItemFields({
               className="input min-h-16"
               value={quiz.explanation}
               onChange={(event) => setQuiz({ explanation: event.target.value })}
-              placeholder="Zwei, drei Sätze, warum die Antwort stimmt – der Lernmoment."
+              placeholder="Zwei, drei Sätze, warum die Antwort stimmt."
             />
           </div>
         </fieldset>
@@ -339,10 +338,6 @@ export function ImpulseItemFields({
                   : 'Leer = Titel der Hauptkarte'
               }
             />
-            <p className="hint mt-1">
-              Leer gelassen steht der Titel der Hauptkarte auch über der Vertiefung – hier darf
-              er abweichen.
-            </p>
           </div>
           <div>
             <label className="label" htmlFor={`${idPrefix}-deepening`}>
@@ -360,12 +355,7 @@ export function ImpulseItemFields({
                 'Alma 32:27 – https://www.churchofjesuschrist.org/…'
               }
             />
-            <p className="hint mt-1">
-              Erscheint im Feed beim Wisch nach links; nur Karten mit Vertiefungstext zeigen den
-              pulsierenden Pfeil «Vertiefen». Eine Zeile, auf der nur eine Schriftstelle steht
-              («Alma 32:27»), wird von allein zum anklickbaren Verweis – mit dem Knopf unten
-              bekommt sie ihren Link auch fest in den Text.
-            </p>
+            <p className="hint mt-1">Die Vertiefung erscheint beim Wisch nach links.</p>
             {deepeningCandidates > 0 && (
               <button
                 type="button"
@@ -386,7 +376,7 @@ export function ImpulseItemFields({
           </div>
           <SourceFields
             heading="Quelle der Vertiefung (optional)"
-            hint="Leer gelassen zeigt die Vertiefung die Quelle der Hauptkarte."
+            hint="Leer = Quelle der Hauptkarte."
             idLabel={`${idPrefix}-deepening-source`}
             idUrl={`${idPrefix}-deepening-source-url`}
             labelValue={input.deepeningSourceLabel}
@@ -475,21 +465,15 @@ function SourceFields({
         </button>
       )}
       {showSearch && (
-        <div>
-          <a
-            className="btn-secondary btn-sm"
-            href={churchSearchLink(labelValue)}
-            target="_blank"
-            rel="noreferrer"
-          >
-            <Search className="size-4" aria-hidden />
-            «{labelValue.trim()}» auf churchofjesuschrist.org suchen
-          </a>
-          <p className="hint mt-1">
-            Öffnet die Suche der Kirche in einem neuen Tab – Treffer öffnen, Adresse kopieren
-            und hier als Link zur Quelle einsetzen.
-          </p>
-        </div>
+        <a
+          className="btn-secondary btn-sm"
+          href={churchSearchLink(labelValue)}
+          target="_blank"
+          rel="noreferrer"
+        >
+          <Search className="size-4" aria-hidden />
+          «{labelValue.trim()}» auf churchofjesuschrist.org suchen
+        </a>
       )}
       {hint && <p className="hint mt-0">{hint}</p>}
     </div>

@@ -104,6 +104,44 @@ export function impulseKindRank(kind: ImpulseKind): number {
 }
 
 /**
+ * Die drei Arten, die eine Woche genau einmal trägt – nicht aus
+ * Sparsamkeit, sondern weil ihr Haken an der **Woche** hängt und nicht an
+ * der Karte: das Wochenziel ist erledigt oder nicht, die Tages-Challenge
+ * hat ihre sieben Tage, die Teilen-Aufgabe ist besprochen oder nicht. Eine
+ * zweite von ihnen hätte keinen eigenen Haken – und die Kacheln zeigten
+ * sie gar nicht erst.
+ *
+ * Für alles andere gibt es **keine Obergrenze**: Wie viele Feed-Karten,
+ * Quizfragen, Bilderrätsel, Wochenthemen, Fragen oder Aufgaben eine Woche
+ * trägt, entscheidet die Redaktion – nicht eine Zahl im Code.
+ */
+export const IMPULSE_SINGLE_KINDS: readonly ImpulseKind[] = [
+  'wochenziel',
+  'tageschallenge',
+  'teilen',
+]
+
+/** Darf eine Woche mehrere Karten dieser Art tragen? */
+export function allowsMultiple(kind: ImpulseKind): boolean {
+  return !IMPULSE_SINGLE_KINDS.includes(kind)
+}
+
+/**
+ * Der Platz, an dem eine neue Karte dieser Art einsteigt: hinter der
+ * letzten. Gezählt wird über die vergebenen Plätze **und** die Zahl der
+ * Karten – so rutscht auch dann nichts nach vorn, wenn eine Karte noch
+ * ohne Platz dasteht oder die Reihe eine Lücke hat.
+ */
+export function nextImpulseOrder(
+  items: Pick<ImpulseItem, 'week' | 'kind' | 'order'>[],
+  week: string,
+  kind: ImpulseKind,
+): number {
+  const same = items.filter((item) => item.week === week && item.kind === kind)
+  return same.reduce((max, item) => Math.max(max, item.order ?? 0), same.length) + 1
+}
+
+/**
  * Was die AP's zu sehen bekommen: bereit, geplant – und die Woche hat
  * begonnen. Entwürfe und der Fragenpool bleiben der Redaktion; künftige
  * Wochen warten auf ihren Montag.

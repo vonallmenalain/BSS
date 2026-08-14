@@ -4,7 +4,7 @@ import { ConfirmDialog, Modal } from '@/components/ui/Modal'
 import { useAuth } from '@/contexts/AuthContext'
 import { useToast } from '@/contexts/ToastContext'
 import { cn } from '@/lib/utils'
-import { formatWeekRange, readyProblems } from '@/lib/impulse'
+import { allowsMultiple, formatWeekRange, readyProblems } from '@/lib/impulse'
 import { ImpulseItemFields } from '@/components/impulse/ImpulseItemFields'
 import {
   deleteImpulseItem,
@@ -84,8 +84,7 @@ export function ImpulseItemForm({
   const blocked = input.status === 'ready' && problems.length > 0
 
   /* Arten mit mehreren Karten je Woche tragen einen Platz. */
-  const hasOrder =
-    input.kind === 'feed' || input.kind === 'quiz' || input.kind === 'bilderraetsel'
+  const hasOrder = allowsMultiple(input.kind)
 
   const save = async () => {
     if (busy || blocked || !input.title.trim()) return

@@ -30,10 +30,12 @@ import { ImpulseEditorPreview } from '@/components/impulse/ImpulseEditorPreview'
 import { ImpulseItemForm } from '@/components/impulse/ImpulseItemForm'
 import { cn } from '@/lib/utils'
 import {
+  allowsMultiple,
   formatWeekRange,
   IMPULSE_KIND_ORDER,
   impulseWeekKey,
   itemsForWeek,
+  nextImpulseOrder,
   planDifficultyCleanup,
   upcomingWeekKeys,
 } from '@/lib/impulse'
@@ -141,10 +143,7 @@ export function ImpulsRedaktion() {
         kind,
         selectedWeek,
         // Arten mit mehreren Karten je Woche reihen sich hinten ein.
-        MULTI_KIND_LIMITS[kind]
-          ? itemsState.data.filter((item) => item.week === selectedWeek && item.kind === kind)
-              .length + 1
-          : null,
+        allowsMultiple(kind) ? nextImpulseOrder(itemsState.data, selectedWeek, kind) : null,
       ),
     })
   const openItem = (item: ImpulseItem) =>
@@ -755,22 +754,12 @@ const KIND_GROUP_LABELS: Record<ImpulseKind, string> = {
 }
 
 /**
- * Wie viele Karten einer Art in eine Woche passen – nur die Arten mit
- * mehreren Karten stehen hier. Der Feed bleibt endlich (höchstens zehn,
- * das Konzept plant etwa zehn je Woche), Quiz und Bilderrätsel dürfen je
- * drei tragen; alles andere gibt es einmal pro Woche.
- */
-const MULTI_KIND_LIMITS: Partial<Record<ImpulseKind, number>> = {
-  feed: 10,
-  quiz: 3,
-  bilderraetsel: 3,
-}
-
-/**
  * Eine Sparte der gewählten Woche: alle ihre Karten untereinander, jede
  * antippbar zum Bearbeiten, das Auge daneben öffnet die echte Vorschau –
- * und «Neu» legt eine weitere Karte dieser Art in dieser Woche an,
- * solange die Woche Platz hat (`MULTI_KIND_LIMITS`).
+ * und «Neu» legt eine weitere Karte dieser Art in dieser Woche an. Ohne
+ * Obergrenze: Wie viele Karten eine Woche trägt, entscheidet die
+ * Redaktion. Nur die drei Aufgaben-Arten bleiben bei einer je Woche,
+ * weil ihr Haken an der Woche hängt (`IMPULSE_SINGLE_KINDS`).
  */
 function WeekKindGroup({
   kind,
@@ -788,8 +777,9 @@ function WeekKindGroup({
   onCreate: () => void
 }) {
   const theme = IMPULSE_SECTIONS[IMPULSE_KIND_THEME[kind]]
-  const limit = MULTI_KIND_LIMITS[kind] ?? 1
-  const hasRoom = items.length < limit
+  /* «Neu» steht immer bereit – ausser bei den Arten, die eine Woche nur
+     einmal trägt, und dort nur, solange die eine schon dasteht. */
+  const hasRoom = allowsMultiple(kind) || items.length === 0
 
   return (
     <section className="card p-4 sm:p-5">
@@ -802,12 +792,7 @@ function WeekKindGroup({
         </span>
         <h3 className="min-w-0 flex-1 truncate text-sm font-semibold">
           {KIND_GROUP_LABELS[kind]}
-          {limit > 1 && items.length > 0 && (
-            <span className="hint font-normal">
-              {' '}
-              {items.length}/{limit}
-            </span>
-          )}
+          {items.length > 1 && <span className="hint font-normal"> {items.length}</span>}
         </h3>
         {hasRoom && items.length > 0 && (
           <button type="button" className="btn-secondary btn-sm shrink-0" onClick={onCreate}>
