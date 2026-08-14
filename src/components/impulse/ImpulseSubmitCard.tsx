@@ -1,35 +1,38 @@
 import { useState } from 'react'
-import { Check, Plus, Send, X } from 'lucide-react'
+import { Check, Eye, Pencil, Plus, Send, X } from 'lucide-react'
 import { Modal } from '@/components/ui/Modal'
 import { useAuth } from '@/contexts/AuthContext'
 import { useToast } from '@/contexts/ToastContext'
-import { readyProblems } from '@/lib/impulse'
+import { useNow } from '@/hooks/useNow'
+import { impulseWeekKey, readyProblems } from '@/lib/impulse'
+import { ImpulseEditorPreview } from '@/components/impulse/ImpulseEditorPreview'
 import { ImpulseItemFields } from '@/components/impulse/ImpulseItemFields'
 import {
   createImpulseSubmission,
   deleteImpulseSubmission,
   emptyImpulseItem,
+  submissionToInput,
+  submissionToItem,
+  updateImpulseSubmission,
   type ImpulseItemInput,
 } from '@/services/impulse'
 import { IMPULSE_SUBMISSION_KIND_LABELS, type ImpulseSubmission } from '@/lib/types'
 
 /**
  * Die Mitmach-Ecke: Die AP's liefern selbst – und zwar die fixfertige
- * Karte, im selben Formular, das auch die Redaktion benutzt
+ * Karte, im selben Formular, das auch die Bischofschaft benutzt
  * (`ImpulseItemFields`): Wer die Art wechselt, bekommt die Felder der
  * Art – das Bilderrätsel sein Bild, das Quiz seine Antworten samt
  * Lösung. Wer eine Frage baut, muss die Quelle genau lesen – die
  * lehrreichste Übung von allen, versteckt als Spiel.
  *
- * Veröffentlicht wird trotzdem nie direkt: Die Redaktion prüft,
- * übernimmt die Karte vorbefüllt und plant die Woche – auf der fertigen
- * Karte steht «Eingereicht von …». Halbfertiges ist erlaubt (die Liste
- * unter dem Formular sagt, was der Redaktion noch fehlt); nur der Titel
- * muss stehen.
- *
- * Zu sehen sind hier nur die **eigenen** Einreichungen samt Stand:
- * «Bei der Redaktion» oder «Übernommen». Einen Zustand «abgelehnt» gibt es
- * bewusst nicht – was nicht passt, verschwindet still (Leitgedanke 1).
+ * Die eigenen Einreichungen bleiben lebendig: Die **Vorschau** zeigt
+ * jede als echte Vollbild-Karte («so wird sie aussehen»), und solange
+ * eine Einreichung offen ist, lässt sie sich **bearbeiten** oder
+ * zurückziehen. Veröffentlicht wird nie direkt: Die Bischofschaft
+ * prüft, plant die Woche – und auf der fertigen Karte steht
+ * «Eingereicht von …». Einen Zustand «abgelehnt» gibt es bewusst nicht –
+ * was nicht passt, verschwindet still (Leitgedanke 1).
  */
 export function ImpulseSubmitCard({
   submissions,
@@ -41,37 +44,60 @@ export function ImpulseSubmitCard({
 }) {
   const { profile } = useAuth()
   const toast = useToast()
-  /* Die Feed-Karte zuerst – sie ist die einfachste Tür. */
-  const [input, setInput] = useState<ImpulseItemInput | null>(null)
+  const now = useNow()
+  const todayKey = impulseWeekKey(now)
+
+  /* Das Formular – neu (die Feed-Karte zuerst, sie ist die einfachste
+     Tür) oder als Nachbesserung einer offenen Einreichung. */
+  const [editor, setEditor] = useState<{ id: string | null; input: ImpulseItemInput } | null>(null)
   const [busy, setBusy] = useState(false)
+  /* Die eigene Karte in der echten Vorschau – nichts wird gespeichert. */
+  const [preview, setPreview] = useState<ImpulseSubmission | null>(null)
 
   const uid = profile?.id ?? ''
   const mine = submissions.filter((submission) => submission.uid === uid)
 
   /* Was der Karte noch fehlt – als Hinweis, nicht als Sperre: Die
-     Redaktion vervollständigt gern, nur der Titel muss stehen. */
-  const problems = input
+     Bischofschaft vervollständigt gern, nur der Titel muss stehen. */
+  const problems = editor
     ? readyProblems({
-        kind: input.kind,
-        title: input.title,
-        source: input.sourceLabel.trim()
-          ? { label: input.sourceLabel, url: input.sourceUrl }
+        kind: editor.input.kind,
+        title: editor.input.title,
+        source: editor.input.sourceLabel.trim()
+          ? { label: editor.input.sourceLabel, url: editor.input.sourceUrl }
           : null,
-        quiz: input.kind === 'quiz' || input.kind === 'bilderraetsel' ? input.quiz : null,
-        image: input.imageUrl.trim() ? { url: input.imageUrl } : null,
+        quiz:
+          editor.input.kind === 'quiz' || editor.input.kind === 'bilderraetsel'
+            ? editor.input.quiz
+            : null,
+        image: editor.input.imageUrl.trim() ? { url: editor.input.imageUrl } : null,
       })
     : []
 
+  const setInput: React.Dispatch<React.SetStateAction<ImpulseItemInput>> = (action) =>
+    setEditor((value) =>
+      value
+        ? { ...value, input: typeof action === 'function' ? action(value.input) : action }
+        : value,
+    )
+
   const submit = async () => {
-    if (!profile || !input || busy || !input.title.trim()) return
+    if (!profile || !editor || busy || !editor.input.title.trim()) return
     setBusy(true)
     try {
-      const outcome = await createImpulseSubmission(
-        { uid: profile.id, displayName: profile.displayName },
-        input,
+      const outcome = editor.id
+        ? await updateImpulseSubmission(editor.id, editor.input)
+        : await createImpulseSubmission(
+            { uid: profile.id, displayName: profile.displayName },
+            editor.input,
+          )
+      toast.saved(
+        editor.id
+          ? 'Deine Karte ist aktualisiert.'
+          : 'Eingereicht – die Bischofschaft schaut es an.',
+        outcome,
       )
-      toast.saved('Eingereicht – die Redaktion schaut es an.', outcome)
-      setInput(null)
+      setEditor(null)
     } catch (error) {
       console.error(error)
       toast.error('Die Einreichung konnte nicht gespeichert werden.')
@@ -100,11 +126,15 @@ export function ImpulseSubmitCard({
       )}
       <div className={plain ? 'flex flex-wrap items-center gap-3' : 'mt-2 flex flex-wrap items-center gap-3'}>
         <p className="min-w-0 flex-1 text-sm text-slate-600 dark:text-slate-300">
-          Baue deine eigene Karte – Feed, Quiz, Bilderrätsel, Challenge und mehr, im selben
-          Formular wie die Redaktion. Sie schaut deine Karte an, und auf der fertigen Karte steht
-          dein Name.
+          Baue deine eigene Karte – Feed, Quiz, Bilderrätsel, Challenge und mehr. Die
+          Bischofschaft schaut deine Karte an und wird sie dann für alle veröffentlichen. Auf der
+          fertigen Karte steht dein Name.
         </p>
-        <button type="button" className="btn-secondary" onClick={() => setInput(emptyImpulseItem('feed', null))}>
+        <button
+          type="button"
+          className="btn-secondary"
+          onClick={() => setEditor({ id: null, input: emptyImpulseItem('feed', null) })}
+        >
           <Plus className="size-4" aria-hidden />
           Einreichen
         </button>
@@ -115,49 +145,69 @@ export function ImpulseSubmitCard({
           {mine.map((submission) => (
             <li
               key={submission.id}
-              className="flex items-start gap-2 rounded-lg border border-slate-200 p-2.5 dark:border-slate-700"
+              className="rounded-lg border border-slate-200 p-2.5 dark:border-slate-700"
             >
-              <span className="min-w-0 flex-1">
-                <span className="block truncate text-sm">{submission.text}</span>
-                <span className="hint block">
-                  {IMPULSE_SUBMISSION_KIND_LABELS[submission.kind]}
-                  {' · '}
-                  {submission.status === 'accepted' ? (
-                    <span className="text-emerald-700 dark:text-emerald-300">übernommen</span>
-                  ) : (
-                    'bei der Redaktion'
-                  )}
-                </span>
+              <span className="block truncate text-sm">{submission.text}</span>
+              <span className="hint block">
+                {IMPULSE_SUBMISSION_KIND_LABELS[submission.kind]}
+                {' · '}
+                {submission.status === 'accepted' ? (
+                  <span className="text-emerald-700 dark:text-emerald-300">übernommen</span>
+                ) : (
+                  'bei der Bischofschaft'
+                )}
               </span>
-              {submission.status === 'open' && (
+              <div className="mt-2 flex flex-wrap items-center gap-1.5">
                 <button
                   type="button"
-                  className="btn-ghost shrink-0 p-1.5"
-                  onClick={() => void withdraw(submission)}
-                  aria-label="Einreichung zurückziehen"
-                  title="Einreichung zurückziehen"
+                  className="btn-ghost btn-sm"
+                  onClick={() => setPreview(submission)}
+                  title="So wird deine Karte aussehen"
                 >
-                  <X className="size-4" aria-hidden />
+                  <Eye className="size-4" aria-hidden />
+                  Vorschau
                 </button>
-              )}
+                {submission.status === 'open' && (
+                  <>
+                    <button
+                      type="button"
+                      className="btn-ghost btn-sm"
+                      onClick={() =>
+                        setEditor({ id: submission.id, input: submissionToInput(submission) })
+                      }
+                    >
+                      <Pencil className="size-4" aria-hidden />
+                      Bearbeiten
+                    </button>
+                    <button
+                      type="button"
+                      className="btn-ghost btn-sm text-rose-600 dark:text-rose-400"
+                      onClick={() => void withdraw(submission)}
+                    >
+                      <X className="size-4" aria-hidden />
+                      Zurückziehen
+                    </button>
+                  </>
+                )}
+              </div>
             </li>
           ))}
         </ul>
       )}
 
-      {input && (
+      {editor && (
         <Modal
           open
-          onClose={() => setInput(null)}
-          title="Karte einreichen"
-          description="Dieselben Felder wie in der Redaktion – deine Karte, fixfertig."
+          onClose={() => setEditor(null)}
+          title={editor.id ? 'Deine Karte bearbeiten' : 'Karte einreichen'}
+          description="Baue die Karte so, wie sie nachher für alle aussehen soll."
           size="lg"
           footer={
             <>
               <button
                 type="button"
                 className="btn-secondary"
-                onClick={() => setInput(null)}
+                onClick={() => setEditor(null)}
                 disabled={busy}
               >
                 Abbrechen
@@ -166,29 +216,34 @@ export function ImpulseSubmitCard({
                 type="button"
                 className="btn-primary"
                 onClick={() => void submit()}
-                disabled={busy || !input.title.trim()}
+                disabled={busy || !editor.input.title.trim()}
               >
                 <Check className="size-4" aria-hidden />
-                Einreichen
+                {editor.id ? 'Speichern' : 'Einreichen'}
               </button>
             </>
           }
         >
           <div className="space-y-4">
-            <ImpulseItemFields
-              input={input}
-              setInput={setInput as React.Dispatch<React.SetStateAction<ImpulseItemInput>>}
-              idPrefix="submission"
-            />
+            <ImpulseItemFields input={editor.input} setInput={setInput} idPrefix="submission" />
             {problems.length > 0 && (
               <p className="hint">
-                Noch nicht fertig? Kein Problem – einreichen geht trotzdem, die Redaktion
+                Noch nicht fertig? Kein Problem – einreichen geht trotzdem, die Bischofschaft
                 vervollständigt. Es {problems.length === 1 ? 'fehlt' : 'fehlen'} noch:{' '}
                 {problems.map((problem) => problem.replace(/\.$/, '')).join(', ')}.
               </p>
             )}
           </div>
         </Modal>
+      )}
+
+      {preview && (
+        <ImpulseEditorPreview
+          week={todayKey}
+          items={[submissionToItem(preview)]}
+          label="Deine Karte"
+          onClose={() => setPreview(null)}
+        />
       )}
     </section>
   )

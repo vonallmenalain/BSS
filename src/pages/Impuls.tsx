@@ -289,7 +289,14 @@ export function Impuls() {
     switch (item.kind) {
       case 'quiz':
       case 'bilderraetsel':
-        return <QuizCard item={item} answer={answerFor(item)} plain />
+        return (
+          <QuizCard
+            item={item}
+            answer={answerFor(item)}
+            plain
+            progressDocs={progressState.data}
+          />
+        )
       case 'frage':
         return (
           <ImpulseQuestionCard
@@ -308,10 +315,11 @@ export function Impuls() {
             week={todayKey}
             done={myWeek(todayKey).share === true}
             plain
+            progressDocs={progressState.data}
           />
         )
       default:
-        return <WocheDeckCard item={item} />
+        return <WocheDeckCard item={item} progressDocs={progressState.data} />
     }
   }
 
@@ -355,7 +363,9 @@ export function Impuls() {
           </div>
         )
       default:
-        return <WocheDeckCard item={item} />
+        /* Amen und Merken bleiben auch rückblickend lebendig – sie
+           hängen am Inhalt, nicht an der Woche. */
+        return <WocheDeckCard item={item} progressDocs={progressState.data} />
     }
   }
 

@@ -4,8 +4,9 @@ import { useAuth } from '@/contexts/AuthContext'
 import { useToast } from '@/contexts/ToastContext'
 import { cn } from '@/lib/utils'
 import { ContributorLine, SourceLink } from '@/components/impulse/ImpulseCards'
+import { ImpulseCardActions } from '@/components/impulse/ImpulseCardActions'
 import { setImpulseWeekShare } from '@/services/impulse'
-import type { ImpulseItem } from '@/lib/types'
+import type { ImpulseItem, ImpulseProgress } from '@/lib/types'
 
 /**
  * Die Teilen-Aufgabe – die Einladung, das Wochenthema aus der App
@@ -23,6 +24,7 @@ export function ImpulseShareCard({
   done,
   preview = false,
   plain = false,
+  progressDocs,
 }: {
   item: ImpulseItem
   week: string
@@ -30,6 +32,8 @@ export function ImpulseShareCard({
   preview?: boolean
   /** Ohne Bereichszeile – im Vollbild steht der Bereich schon im Kopf. */
   plain?: boolean
+  /** Mit Fortschrittsbestand trägt auch das Teilen «Amen» und «Merken». */
+  progressDocs?: ImpulseProgress[]
 }) {
   const { profile } = useAuth()
   const toast = useToast()
@@ -120,6 +124,15 @@ export function ImpulseShareCard({
           'Besprochen? Hier abhaken.'
         )}
       </button>
+
+      {progressDocs && (
+        <ImpulseCardActions
+          item={item}
+          progressDocs={progressDocs}
+          preview={preview}
+          centered={false}
+        />
+      )}
     </section>
   )
 }

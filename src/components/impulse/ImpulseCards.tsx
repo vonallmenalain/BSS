@@ -5,9 +5,10 @@ import { useToast } from '@/contexts/ToastContext'
 import { cn } from '@/lib/utils'
 import { formatWeekRange } from '@/lib/impulse'
 import { labeledLink, splitLinks } from '@/lib/links'
+import { ImpulseCardActions } from '@/components/impulse/ImpulseCardActions'
 import { ImpulseImageLightbox } from '@/components/impulse/ImpulseImageLightbox'
 import { answerImpulseQuiz } from '@/services/impulse'
-import type { ImpulseAnswer, ImpulseItem } from '@/lib/types'
+import type { ImpulseAnswer, ImpulseItem, ImpulseProgress } from '@/lib/types'
 
 /*
  * Die Karten des Bereichs «Anti Doom» – Wochenthema, Quizfrage und
@@ -160,9 +161,18 @@ export function ImpulseItemImage({ item, className }: { item: ImpulseItem; class
  * Das Wochenthema als Feed-Karte – gross und ruhig, wie eh und je.
  *
  * Hier statt in der Seite, weil zwei Orte sie zeichnen: der
- * Vollbild-Feed der AP's und die Vorschau der Redaktion.
+ * Vollbild-Feed der AP's und die Vorschau der Redaktion. Mit
+ * `progressDocs` trägt auch das Wochenthema «Amen» und «Merken».
  */
-export function WocheDeckCard({ item }: { item: ImpulseItem }) {
+export function WocheDeckCard({
+  item,
+  progressDocs,
+  preview = false,
+}: {
+  item: ImpulseItem
+  progressDocs?: ImpulseProgress[]
+  preview?: boolean
+}) {
   return (
     <article className="card p-6 text-center sm:p-8">
       {item.week && <p className="hint">{formatWeekRange(item.week)}</p>}
@@ -174,6 +184,9 @@ export function WocheDeckCard({ item }: { item: ImpulseItem }) {
         <SourceLink item={item} />
         <ContributorLine item={item} />
       </div>
+      {progressDocs && (
+        <ImpulseCardActions item={item} progressDocs={progressDocs} preview={preview} />
+      )}
     </article>
   )
 }
@@ -220,12 +233,15 @@ export function QuizCard({
   answer,
   preview = false,
   plain = false,
+  progressDocs,
 }: {
   item: ImpulseItem
   answer: ImpulseAnswer | null
   preview?: boolean
   /** Ohne Bereichszeile – im Vollbild steht der Bereich schon im Kopf. */
   plain?: boolean
+  /** Mit Fortschrittsbestand trägt auch das Quiz «Amen» und «Merken». */
+  progressDocs?: ImpulseProgress[]
 }) {
   const { profile } = useAuth()
   const toast = useToast()
@@ -392,6 +408,15 @@ export function QuizCard({
             </button>
           </div>
         </form>
+      )}
+
+      {progressDocs && (
+        <ImpulseCardActions
+          item={item}
+          progressDocs={progressDocs}
+          preview={preview}
+          centered={false}
+        />
       )}
     </section>
   )

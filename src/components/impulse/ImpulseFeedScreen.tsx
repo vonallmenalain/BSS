@@ -201,14 +201,20 @@ export function ImpulseFeedScreen({
   return createPortal(
     /* z-40, eine Ebene unter der Navigations-Schublade der Hülle (z-50):
        Der Menüknopf unten öffnet sie, und sie muss über dem Feed liegen –
-       als Portal käme der Feed sonst später im DOM und deckte sie zu. */
+       als Portal käme der Feed sonst später im DOM und deckte sie zu.
+       Die Vorschau (mit Leiste) dagegen muss ÜBER allem liegen – sie
+       wird auch aus den Vollbild-Räumen (z-50) heraus geöffnet, und ohne
+       Menüknopf gibt es unter ihr nichts mehr zu erreichen. */
     <div
       ref={rootRef}
       role="dialog"
       aria-modal="true"
       aria-label="Anti Doom – die Karten der Woche"
       data-testid="impulse-feed"
-      className="imp-screen fixed inset-0 z-40 flex flex-col overflow-hidden bg-slate-50 outline-none dark:bg-slate-950"
+      className={cn(
+        'imp-screen fixed inset-0 flex flex-col overflow-hidden bg-slate-50 outline-none dark:bg-slate-950',
+        banner ? 'z-[55]' : 'z-40',
+      )}
       style={{ transformOrigin: origin ? `${origin.x}px ${origin.y}px` : '50% 40%' }}
     >
       {banner ? (

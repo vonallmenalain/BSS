@@ -46,6 +46,7 @@ import {
   emptyImpulseItem,
   markImpulseSubmissionAccepted,
   submissionToInput,
+  submissionToItem,
   toImpulseInput,
   type ImpulseItemInput,
 } from '@/services/impulse'
@@ -153,9 +154,20 @@ export function ImpulsRedaktion() {
 
   /* Ein Schnappschuss der Karten – die Vorschau soll ruhig stehen,
      auch wenn der Bestand währenddessen weitertickt. */
-  const [preview, setPreview] = useState<{ week: string; items: ImpulseItem[] } | null>(null)
+  const [preview, setPreview] = useState<{
+    week: string
+    items: ImpulseItem[]
+    label?: string
+  } | null>(null)
   const previewWeek = () => setPreview({ week: selectedWeek, items: weekItems })
   const previewItem = (item: ImpulseItem) => setPreview({ week: selectedWeek, items: [item] })
+  /** Eine Einreichung so anschauen, wie sie als Karte aussehen würde. */
+  const previewSubmission = (submission: ImpulseSubmission) =>
+    setPreview({
+      week: selectedWeek,
+      items: [submissionToItem(submission)],
+      label: `Einreichung von ${submission.firstName}`,
+    })
 
   /* ---------------- Startpaket und Aufräumen ---------------- */
 
@@ -257,14 +269,22 @@ export function ImpulsRedaktion() {
   )
   const [showAccepted, setShowAccepted] = useState(false)
   const [removeSubmission, setRemoveSubmission] = useState<ImpulseSubmission | null>(null)
-  /* «Übernehmen» stellt die Karte in die gerade angezeigte Woche – im
-     Formular bleibt die Woche wählbar. */
-  const acceptSubmission = (submission: ImpulseSubmission) =>
+  /*
+   * Wohin eine Einreichung übernommen wird: je Einreichung wählbar –
+   * voreingestellt ist die oben angezeigte Woche, die leere Wahl ist der
+   * Fragenpool. Im Formular bleibt die Woche danach weiter änderbar.
+   */
+  const [submissionWeeks, setSubmissionWeeks] = useState<Record<string, string>>({})
+  const submissionWeek = (submission: ImpulseSubmission) =>
+    submissionWeeks[submission.id] ?? (weekChoices.includes(selectedWeek) ? selectedWeek : '')
+  const acceptSubmission = (submission: ImpulseSubmission) => {
+    const week = submissionWeek(submission)
     setEditor({
       itemId: null,
-      initial: submissionToInput(submission, selectedWeek),
+      initial: submissionToInput(submission, week === '' ? null : week),
       fromSubmissionId: submission.id,
     })
+  }
 
   /* Der Fragenpool: Karten ohne Woche – zugeklappt am Ende der Seite. */
   const pool = itemsState.data.filter((item) => item.week === null)
@@ -454,11 +474,11 @@ export function ImpulsRedaktion() {
               </span>
             </h2>
             <p className="hint mt-1 mb-3">
-              Hier landet alles, was die AP's einreichen – seit dem Formular-Umbau als fixfertige
-              Karte. «Übernehmen» öffnet die Karte vorbefüllt und stellt sie in die oben gewählte
-              Woche ({formatWeekRange(selectedWeek)}); im Formular lässt sich die Woche noch
-              ändern. Beim Speichern gilt die Einreichung als übernommen. Was nicht passt, wird
-              still entfernt; die Person sieht keine Ablehnung.
+              Hier landet alles, was die AP's einreichen – als fixfertige Karte. Das Auge zeigt
+              die Karte in der echten Vorschau; «Übernehmen» öffnet sie vorbefüllt in der daneben
+              gewählten Woche (im Formular weiter änderbar). Beim Speichern gilt die Einreichung
+              als übernommen. Was nicht passt, wird still entfernt; die Person sieht keine
+              Ablehnung.
             </p>
             {openSubmissions.length > 0 && (
               <ul className="divide-list">
@@ -482,24 +502,56 @@ export function ImpulsRedaktion() {
                     {submission.sourceLabel && (
                       <p className="hint mt-0.5">Quelle: {submission.sourceLabel}</p>
                     )}
-                    <div className="mt-2 flex items-center gap-1.5">
-                      <button
-                        type="button"
-                        className="btn-secondary btn-sm"
-                        onClick={() => acceptSubmission(submission)}
+                    {/* Wohin damit? Die Woche wählen, dann übernehmen –
+                        oder erst einmal anschauen. */}
+                    <div className="mt-2 space-y-1.5">
+                      <select
+                        className="input"
+                        aria-label={`Woche für die Einreichung von ${submission.firstName}`}
+                        value={submissionWeek(submission)}
+                        onChange={(event) =>
+                          setSubmissionWeeks((value) => ({
+                            ...value,
+                            [submission.id]: event.target.value,
+                          }))
+                        }
                       >
-                        <Check className="size-4" aria-hidden />
-                        In diese Woche übernehmen
-                      </button>
-                      <button
-                        type="button"
-                        className="btn-ghost btn-sm text-rose-600 dark:text-rose-400"
-                        onClick={() => setRemoveSubmission(submission)}
-                        aria-label={`Einreichung von ${submission.firstName} entfernen`}
-                      >
-                        <X className="size-4" aria-hidden />
-                        Entfernen
-                      </button>
+                        {weekChoices.map((week) => (
+                          <option key={week} value={week}>
+                            {formatWeekRange(week)}
+                            {week === todayKey ? ' · diese Woche' : ''}
+                          </option>
+                        ))}
+                        <option value="">Fragenpool – noch keine Woche</option>
+                      </select>
+                      <div className="flex flex-wrap items-center gap-1.5">
+                        <button
+                          type="button"
+                          className="btn-secondary btn-sm"
+                          onClick={() => acceptSubmission(submission)}
+                        >
+                          <Check className="size-4" aria-hidden />
+                          Übernehmen
+                        </button>
+                        <button
+                          type="button"
+                          className="btn-ghost btn-sm"
+                          onClick={() => previewSubmission(submission)}
+                          title="So sähe die Karte aus – nichts wird gespeichert"
+                        >
+                          <Eye className="size-4" aria-hidden />
+                          Vorschau
+                        </button>
+                        <button
+                          type="button"
+                          className="btn-ghost btn-sm text-rose-600 dark:text-rose-400"
+                          onClick={() => setRemoveSubmission(submission)}
+                          aria-label={`Einreichung von ${submission.firstName} entfernen`}
+                        >
+                          <X className="size-4" aria-hidden />
+                          Entfernen
+                        </button>
+                      </div>
                     </div>
                   </li>
                 ))}
@@ -678,6 +730,7 @@ export function ImpulsRedaktion() {
         <ImpulseEditorPreview
           week={preview.week}
           items={preview.items}
+          label={preview.label}
           onClose={() => setPreview(null)}
         />
       )}
