@@ -69,7 +69,7 @@ export function ImpulseShareCard({
   }
 
   return (
-    <section className="card p-5">
+    <section className={plain ? undefined : 'card p-5'}>
       {!plain && (
         <p className="hint flex items-center gap-1.5 font-medium">
           <HeartHandshake className="size-4" aria-hidden />

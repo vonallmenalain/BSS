@@ -28,14 +28,17 @@ import { PageHeader } from '@/components/ui/Pickers'
 import { AppMenuButton } from '@/components/AppMenuButton'
 import {
   ImpulseDeepeningCard,
+  ImpulseImageBackdrop,
   ImpulseItemImage,
   QuizCard,
   SourceLink,
+  VideoDeckCard,
   WocheDeckCard,
 } from '@/components/impulse/ImpulseCards'
 import { ChallengeCard, GoalCard, GroupCard } from '@/components/impulse/ImpulseProgressCards'
 import { ImpulseQuestionCard } from '@/components/impulse/ImpulseQuestionCard'
 import { ImpulseShareCard } from '@/components/impulse/ImpulseShareCard'
+import { ImpulseVideoPlayer } from '@/components/impulse/ImpulseVideoPlayer'
 import { ImpulseSubmitCard } from '@/components/impulse/ImpulseSubmitCard'
 import { ImpulseFeedCard } from '@/components/impulse/ImpulseFeedCard'
 import {
@@ -78,6 +81,7 @@ import {
   type ImpulseSectionKey,
 } from '@/lib/impulseSections'
 import { recordImpulseOpen, trackImpulseTime } from '@/lib/impulseUsage'
+import { impulseVideoSource } from '@/lib/impulseVideo'
 import {
   IMPULSE_KIND_LABELS,
   type ImpulseAnswer,
@@ -302,8 +306,42 @@ export function Impuls() {
 
   const deckWeekItems = viewWeek === todayKey ? thisWeekAll : itemsForWeek(visible, viewWeek)
 
+  /**
+   * Im Feed liegt das Bild als Fläche hinter der Karte (siehe
+   * `mediaLayer`) – die Karte selbst zeigt es darum nicht ein zweites
+   * Mal. Ausserhalb des Feeds, in den Räumen und im Rückblick, bleibt
+   * das Bild im Inhalt, wo es hingehört.
+   */
+  const withoutImage = (item: ImpulseItem): ImpulseItem =>
+    item.image?.url ? { ...item, image: null } : item
+
+  /**
+   * Die Fläche einer Karte – das Bild oder das Video, über den ganzen
+   * Bildschirm. Wer eine hat, bekommt im Feed die zweistufige Karte:
+   * erst die Fläche allein, dann der Text darüber.
+   */
+  const mediaLayer = (item: ImpulseItem): ImpulseDeckCard['media'] => {
+    const source = impulseVideoSource(item.videoUrl)
+    if (item.kind === 'video' && source) {
+      return ({ active }) => (
+        <ImpulseVideoPlayer
+          source={source}
+          poster={item.image?.url ?? null}
+          title={item.title}
+          active={active}
+        />
+      )
+    }
+    if (item.image?.url) {
+      const image = item.image
+      return () => <ImpulseImageBackdrop image={image} />
+    }
+    return null
+  }
+
   /** Eine Karte der laufenden Woche – lebendig, mit allen Handgriffen. */
-  const liveNode = (item: ImpulseItem) => {
+  const liveNode = (raw: ImpulseItem) => {
+    const item = withoutImage(raw)
     switch (item.kind) {
       case 'quiz':
       case 'bilderraetsel':
@@ -315,6 +353,8 @@ export function Impuls() {
             progressDocs={progressState.data}
           />
         )
+      case 'video':
+        return <VideoDeckCard item={item} progressDocs={progressState.data} />
       case 'frage':
         return (
           <ImpulseQuestionCard
@@ -348,15 +388,15 @@ export function Impuls() {
    * und Merken auf Feed-Karten bleiben lebendig – sie hängen am Inhalt,
    * nicht an der Woche.
    */
-  const pastNode = (item: ImpulseItem) => {
+  const pastNode = (raw: ImpulseItem) => {
+    const item = withoutImage(raw)
     switch (item.kind) {
       case 'quiz':
       case 'bilderraetsel':
-        return (
-          <div className="card p-5">
-            <PastQuiz item={item} answer={answerFor(item)} />
-          </div>
-        )
+        return <PastQuiz item={item} answer={answerFor(item)} />
+      case 'video':
+        return <VideoDeckCard item={item} progressDocs={progressState.data} />
+
       case 'frage': {
         const mine = myComments.some((comment) => comment.itemId === item.id)
         return (
@@ -372,13 +412,11 @@ export function Impuls() {
         return <ImpulseFeedCard item={item} progressDocs={progressState.data} />
       case 'teilen':
         return (
-          <div className="card p-5">
-            <PastTask
-              item={item}
-              label="Teilen"
-              note={myWeek(viewWeek).share === true ? 'besprochen' : null}
-            />
-          </div>
+          <PastTask
+            item={item}
+            label="Teilen"
+            note={myWeek(viewWeek).share === true ? 'besprochen' : null}
+          />
         )
       default:
         /* Amen und Merken bleiben auch rückblickend lebendig – sie
@@ -404,10 +442,12 @@ export function Impuls() {
           itemId: item.id,
           section: IMPULSE_KIND_SECTION[kind],
           node: viewWeek === todayKey ? liveNode(item) : pastNode(item),
+          /* Bild oder Video füllen den Bildschirm – und machen aus der
+             Karte zwei Bühnen: erst die Fläche, dann der Text darüber. */
+          media: mediaLayer(item),
           /* Die zweite Seite der Karte – nur wenn die Redaktion eine
              Vertiefung erfasst hat; sonst gibt es sie gar nicht. */
-          deepening:
-            item.deepening && !spoiler ? <ImpulseDeepeningCard item={item} /> : null,
+          deepening: item.deepening && !spoiler ? <ImpulseDeepeningCard item={item} /> : null,
         }
       }),
   )
@@ -1038,7 +1078,7 @@ function FeedFinale({
 }) {
   const shownWeeks = pastWeeks.slice(0, 3)
   return (
-    <article className="card p-6 text-center sm:p-8">
+    <article className="px-1 text-center">
       <span
         className="mx-auto grid size-12 place-items-center rounded-full bg-emerald-500 text-white"
         aria-hidden

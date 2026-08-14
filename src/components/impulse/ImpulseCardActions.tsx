@@ -79,18 +79,24 @@ export function ImpulseCardActions({
     }
   }
 
+  const CARD_ACTION =
+    'inline-flex shrink-0 items-center justify-center gap-2 rounded-full px-3.5 py-2 text-sm font-medium transition select-none active:scale-[0.98]'
+  const CARD_ACTION_OFF =
+    'bg-slate-900/[0.06] text-slate-700 hover:bg-slate-900/10 dark:bg-white/10 dark:text-slate-100 dark:hover:bg-white/15'
+  const CARD_ACTION_ON =
+    'bg-brand-600/15 text-brand-800 hover:bg-brand-600/20 dark:bg-brand-400/20 dark:text-brand-100'
+
   return (
     <>
+      {/* Zwei stille Knöpfe ohne Rahmen: Seit die Karten ohne Kachel
+          dastehen, wäre ein Strich um sie herum der einzige im Bild.
+          Eine getönte Fläche genügt – gedrückt trägt sie die Markenfarbe. */}
       <div className={cn('mt-5 flex gap-2', centered ? 'justify-center' : 'justify-start')}>
         <button
           type="button"
           onClick={() => void toggleAmen()}
           aria-pressed={amen}
-          className={cn(
-            'btn-secondary',
-            amen &&
-              'border-brand-500 bg-brand-50 text-brand-800 dark:border-brand-500 dark:bg-brand-950 dark:text-brand-200',
-          )}
+          className={cn(CARD_ACTION, amen ? CARD_ACTION_ON : CARD_ACTION_OFF)}
         >
           <HandHeart className={cn('size-4', amen && 'fill-current')} aria-hidden />
           Amen
@@ -99,11 +105,7 @@ export function ImpulseCardActions({
           type="button"
           onClick={() => void toggleFavorite()}
           aria-pressed={favorite}
-          className={cn(
-            'btn-secondary',
-            favorite &&
-              'border-brand-500 bg-brand-50 text-brand-800 dark:border-brand-500 dark:bg-brand-950 dark:text-brand-200',
-          )}
+          className={cn(CARD_ACTION, favorite ? CARD_ACTION_ON : CARD_ACTION_OFF)}
         >
           <Bookmark className={cn('size-4', favorite && 'fill-current')} aria-hidden />
           {favorite ? 'Gemerkt' : 'Merken'}

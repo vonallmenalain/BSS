@@ -6,7 +6,7 @@ import { useToast } from '@/contexts/ToastContext'
 import { useNow } from '@/hooks/useNow'
 import { cn } from '@/lib/utils'
 import { weekDays } from '@/lib/impulse'
-import { SourceLink } from '@/components/impulse/ImpulseCards'
+import { ImpulseItemImage, SourceLink } from '@/components/impulse/ImpulseCards'
 import { setImpulseChallengeDay, setImpulseWeekGoal } from '@/services/impulse'
 import type { ImpulseItem } from '@/lib/types'
 
@@ -75,7 +75,7 @@ export function GoalCard({
   }
 
   return (
-    <section className="card p-5">
+    <section className={plain ? undefined : 'card p-5'}>
       {!plain && (
         <p className="hint flex items-center gap-1.5 font-medium">
           <CheckCircle2 className="size-4" aria-hidden />
@@ -83,6 +83,7 @@ export function GoalCard({
         </p>
       )}
       <h2 className={plain ? 'text-lg font-semibold text-balance' : 'mt-2 text-lg font-semibold text-balance'}>{item.title}</h2>
+      <ImpulseItemImage item={item} />
       {item.body && (
         <p className="mt-2 text-sm whitespace-pre-line text-slate-600 dark:text-slate-300">
           {item.body}
@@ -190,7 +191,7 @@ export function ChallengeCard({
   }
 
   return (
-    <section className="card p-5">
+    <section className={plain ? undefined : 'card p-5'}>
       {!plain && (
         <p className="hint flex items-center gap-1.5 font-medium">
           <Repeat className="size-4" aria-hidden />
@@ -198,6 +199,7 @@ export function ChallengeCard({
         </p>
       )}
       <h2 className={plain ? 'text-lg font-semibold text-balance' : 'mt-2 text-lg font-semibold text-balance'}>{item.title}</h2>
+      <ImpulseItemImage item={item} />
       {item.body && (
         <p className="mt-2 text-sm whitespace-pre-line text-slate-600 dark:text-slate-300">
           {item.body}

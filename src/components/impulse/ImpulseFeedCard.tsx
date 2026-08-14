@@ -26,7 +26,7 @@ export function ImpulseFeedCard({
   preview?: boolean
 }) {
   return (
-    <section className="card p-6 text-center sm:p-8">
+    <section className="px-1 text-center">
       <h2 className="text-xl leading-snug font-semibold text-balance">{item.title}</h2>
       {item.body && (
         <p className="mt-3 text-sm whitespace-pre-line text-slate-600 dark:text-slate-300">

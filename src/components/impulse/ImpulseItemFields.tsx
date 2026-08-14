@@ -6,6 +6,7 @@ import {
   countScriptureLinkCandidates,
   scriptureLink,
 } from '@/lib/scriptures'
+import { impulseVideoHost, impulseVideoSource } from '@/lib/impulseVideo'
 import type { ImpulseItemInput } from '@/services/impulse'
 import {
   IMPULSE_KIND_LABELS,
@@ -108,7 +109,7 @@ export function ImpulseItemFields({
             ? 'Frage'
             : input.kind === 'bilderraetsel'
               ? 'Frage zum Bild'
-              : input.kind === 'impuls'
+              : input.kind === 'impuls' || input.kind === 'video'
                 ? 'Titel'
                 : input.kind === 'feed'
                   ? 'Text der Karte'
@@ -130,11 +131,13 @@ export function ImpulseItemFields({
                     ? 'Lies diese Woche ein Kapitel im Buch Mormon'
                     : input.kind === 'tageschallenge'
                       ? 'Lies jeden Tag einen Vers'
-                      : input.kind === 'teilen'
-                        ? 'Frag ein Familienmitglied, wann es Nephis Beispiel gefolgt ist …'
-                        : input.kind === 'feed'
-                          ? '«Blickt in jedem Gedanken auf mich …»'
-                          : 'Kraft aus den Schriften'
+                      : input.kind === 'video'
+                        ? '«Der Erlöser lebt» – zwei Minuten, die bleiben'
+                        : input.kind === 'teilen'
+                          ? 'Frag ein Familienmitglied, wann es Nephis Beispiel gefolgt ist …'
+                          : input.kind === 'feed'
+                            ? '«Blickt in jedem Gedanken auf mich …»'
+                            : 'Kraft aus den Schriften'
           }
         />
       </div>
@@ -155,57 +158,93 @@ export function ImpulseItemFields({
                 ? 'Zwei, drei Sätze, die zur Schriftstelle hinführen …'
                 : input.kind === 'teilen'
                   ? 'Ein Satz, warum sich dieses Gespräch lohnt …'
-                  : 'Ein Satz, der Lust macht, dranzubleiben …'
+                  : input.kind === 'video'
+                    ? 'Ein Satz, worauf beim Schauen zu achten ist …'
+                    : 'Ein Satz, der Lust macht, dranzubleiben …'
           }
         />
       </div>
 
-      {/* Das Bild des Bilderrätsels – aus der offiziellen Mediathek der
-          Kirche verlinkt, nicht hochgeladen. */}
-      {input.kind === 'bilderraetsel' && (
+      {/* Das Video der Video-Karte – ein Link, kein Upload. Was daraus
+          wird, liest `lib/impulseVideo` an der Adresse ab; die Zeile
+          darunter sagt es sofort, damit niemand erst in der Vorschau
+          merkt, dass sein Link hinausführt statt zu spielen. */}
+      {input.kind === 'video' && (
         <fieldset className="space-y-3 rounded-xl border border-slate-200 p-3 dark:border-slate-700">
-          <legend className="label px-1">Bild</legend>
+          <legend className="label px-1">Video</legend>
           <div>
-            <label className="label" htmlFor={`${idPrefix}-image-url`}>
-              Bild-Link
+            <label className="label" htmlFor={`${idPrefix}-video-url`}>
+              Videolink
             </label>
             <input
-              id={`${idPrefix}-image-url`}
+              id={`${idPrefix}-video-url`}
               className="input"
               type="url"
-              value={input.imageUrl}
+              value={input.videoUrl}
               onChange={(event) =>
-                setInput((value) => ({ ...value, imageUrl: event.target.value }))
+                setInput((value) => ({ ...value, videoUrl: event.target.value }))
               }
-              placeholder="https://www.churchofjesuschrist.org/media/…"
+              placeholder="https://www.youtube.com/watch?v=… oder https://…/video.mp4"
             />
-            <p className="hint mt-1">
-              Aus der Mediathek der Kirche: Bildadresse kopieren und hier einsetzen.
-            </p>
+            <p className="hint mt-1">{videoHint(input.videoUrl)}</p>
           </div>
-          <div>
-            <label className="label" htmlFor={`${idPrefix}-image-alt`}>
-              Bildbeschreibung (optional)
-            </label>
-            <input
-              id={`${idPrefix}-image-alt`}
-              className="input"
-              value={input.imageAlt}
-              onChange={(event) =>
-                setInput((value) => ({ ...value, imageAlt: event.target.value }))
-              }
-              placeholder="Ein Tempel bei Sonnenuntergang – ohne die Lösung zu verraten"
-            />
-          </div>
-          {input.imageUrl.trim() && (
-            <img
-              src={input.imageUrl.trim()}
-              alt={input.imageAlt || 'Vorschau des Bildes'}
-              className="max-h-48 w-full rounded-lg border border-slate-200 object-cover dark:border-slate-700"
-            />
-          )}
         </fieldset>
       )}
+
+      {/* Das Bild – aus der offiziellen Mediathek der Kirche verlinkt,
+          nicht hochgeladen. Jede Kartenart darf eines tragen: Beim
+          Bilderrätsel ist es das Rätsel selbst, beim Video das
+          Vorschaubild, sonst das Bild zum Thema. Im Vollbild-Feed füllt
+          es die erste Seite der Karte; der Text kommt beim zweiten Wisch
+          darüber. */}
+      <fieldset className="space-y-3 rounded-xl border border-slate-200 p-3 dark:border-slate-700">
+        <legend className="label px-1">
+          {input.kind === 'bilderraetsel'
+            ? 'Bild'
+            : input.kind === 'video'
+              ? 'Vorschaubild (optional)'
+              : 'Bild (optional)'}
+        </legend>
+        <div>
+          <label className="label" htmlFor={`${idPrefix}-image-url`}>
+            Bild-Link
+          </label>
+          <input
+            id={`${idPrefix}-image-url`}
+            className="input"
+            type="url"
+            value={input.imageUrl}
+            onChange={(event) => setInput((value) => ({ ...value, imageUrl: event.target.value }))}
+            placeholder="https://www.churchofjesuschrist.org/media/…"
+          />
+          <p className="hint mt-1">
+            Aus der Mediathek der Kirche: Bildadresse kopieren und hier einsetzen.
+          </p>
+        </div>
+        <div>
+          <label className="label" htmlFor={`${idPrefix}-image-alt`}>
+            Bildbeschreibung (optional)
+          </label>
+          <input
+            id={`${idPrefix}-image-alt`}
+            className="input"
+            value={input.imageAlt}
+            onChange={(event) => setInput((value) => ({ ...value, imageAlt: event.target.value }))}
+            placeholder={
+              input.kind === 'bilderraetsel'
+                ? 'Ein Tempel bei Sonnenuntergang – ohne die Lösung zu verraten'
+                : 'Was auf dem Bild zu sehen ist'
+            }
+          />
+        </div>
+        {input.imageUrl.trim() && (
+          <img
+            src={input.imageUrl.trim()}
+            alt={input.imageAlt || 'Vorschau des Bildes'}
+            className="max-h-48 w-full rounded-lg border border-slate-200 object-cover dark:border-slate-700"
+          />
+        )}
+      </fieldset>
 
       <SourceFields
         heading={
@@ -381,15 +420,32 @@ export function ImpulseItemFields({
             idUrl={`${idPrefix}-deepening-source-url`}
             labelValue={input.deepeningSourceLabel}
             urlValue={input.deepeningSourceUrl}
-            onLabel={(next) =>
-              setInput((value) => ({ ...value, deepeningSourceLabel: next }))
-            }
+            onLabel={(next) => setInput((value) => ({ ...value, deepeningSourceLabel: next }))}
             onUrl={(next) => setInput((value) => ({ ...value, deepeningSourceUrl: next }))}
           />
         </fieldset>
       )}
     </>
   )
+}
+
+/** Was aus dem eingesetzten Videolink wird – im Klartext unter dem Feld. */
+function videoHint(raw: string): string {
+  const source = impulseVideoSource(raw)
+  if (!raw.trim()) {
+    return 'YouTube, Vimeo – oder der direkte Link auf die Videodatei (…mp4), etwa aus der Mediathek der Kirche.'
+  }
+  if (!source) return 'Das ist noch keine gültige Adresse.'
+  switch (source.art) {
+    case 'datei':
+      return 'Videodatei – läuft in der App, im Vollbild und startet beim Wischen von selbst.'
+    case 'youtube':
+      return 'YouTube – wird in der Karte eingebettet und startet stumm beim Wischen.'
+    case 'vimeo':
+      return 'Vimeo – wird in der Karte eingebettet und startet stumm beim Wischen.'
+    default:
+      return `${impulseVideoHost(source)} lässt sich nicht einbetten: Die Karte zeigt einen Knopf, der das Video draussen öffnet. Besser läuft ein YouTube-Link oder der direkte Videolink (…mp4).`
+  }
 }
 
 /**
@@ -455,11 +511,7 @@ function SourceFields({
       </div>
 
       {showSuggestion && (
-        <button
-          type="button"
-          className="btn-secondary btn-sm"
-          onClick={() => onUrl(suggestedUrl)}
-        >
+        <button type="button" className="btn-secondary btn-sm" onClick={() => onUrl(suggestedUrl)}>
           <Link2 className="size-4" aria-hidden />
           Link zu «{labelValue.trim()}» einsetzen
         </button>
@@ -471,8 +523,8 @@ function SourceFields({
           target="_blank"
           rel="noreferrer"
         >
-          <Search className="size-4" aria-hidden />
-          «{labelValue.trim()}» auf churchofjesuschrist.org suchen
+          <Search className="size-4" aria-hidden />«{labelValue.trim()}» auf churchofjesuschrist.org
+          suchen
         </a>
       )}
       {hint && <p className="hint mt-0">{hint}</p>}

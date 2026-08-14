@@ -96,6 +96,7 @@ const IMPULSE_CHILDREN = [
   { to: '/anti-doom/woche', label: 'Wochenthema' },
   { to: '/anti-doom/quiz', label: 'Quizfrage' },
   { to: '/anti-doom/bilderraetsel', label: 'Bilderrätsel' },
+  { to: '/anti-doom/video', label: 'Video' },
   { to: '/anti-doom/frage', label: 'Frage der Woche' },
   { to: '/anti-doom/feed', label: 'Feed' },
   { to: '/anti-doom/teilen', label: 'Teilen' },

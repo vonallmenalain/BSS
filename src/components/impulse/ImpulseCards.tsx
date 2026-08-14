@@ -9,16 +9,23 @@ import { scriptureLink } from '@/lib/scriptures'
 import { ImpulseCardActions } from '@/components/impulse/ImpulseCardActions'
 import { ImpulseImageLightbox } from '@/components/impulse/ImpulseImageLightbox'
 import { answerImpulseQuiz } from '@/services/impulse'
-import type { ImpulseAnswer, ImpulseItem, ImpulseProgress } from '@/lib/types'
+import type { ImpulseAnswer, ImpulseImage, ImpulseItem, ImpulseProgress } from '@/lib/types'
 
 /*
- * Die Karten des Bereichs «Anti Doom» – Wochenthema, Quizfrage und
- * Bilderrätsel (dieselbe Mechanik wie das Quiz, nur mit Bild).
+ * Die Karten des Bereichs «Anti Doom» – Wochenthema, Quizfrage,
+ * Bilderrätsel (dieselbe Mechanik wie das Quiz, nur mit Bild) und Video.
  *
  * Sie stehen hier und nicht in der Seite, weil zwei Orte sie zeichnen:
  * der Bereich selbst und die Wochen-Vorschau der Redaktion. Beide sollen
  * pixelgleich aussehen – eine Vorschau, die anders aussieht als das
  * Original, wäre keine.
+ *
+ * **Ohne Kachel.** Im Vollbild (`plain`) tragen die Karten keinen Rahmen
+ * und keine eigene Fläche mehr: Der Text steht frei auf dem Farbverlauf
+ * des Bereichs – oder auf dem Bild, das im Feed die ganze Fläche füllt
+ * (`ImpulseImageBackdrop`, gelegt vom `ImpulseFeedScreen`). Ausserhalb
+ * des Vollbilds – in den Räumen und in der Redaktion – bleibt die Kachel,
+ * dort ordnet sie Listen.
  */
 
 /** «Eingereicht von Luca» – die Ehre der Mitmach-Ecke, still und klein. */
@@ -65,7 +72,7 @@ export function ImpulseDeepeningCard({ item }: { item: ImpulseItem }) {
   const title = item.deepeningTitle?.trim() || item.title
   const source = item.deepeningSource ?? item.source
   return (
-    <article className="card p-6">
+    <article className="px-1">
       <h3 className="text-base font-semibold text-balance">{title}</h3>
       <div className="mt-3 space-y-1 text-sm text-slate-600 dark:text-slate-300">
         {item.deepening.split('\n').map((line, index) => {
@@ -172,6 +179,70 @@ export function ImpulseItemImage({ item, className }: { item: ImpulseItem; class
 }
 
 /**
+ * Das Bild einer Karte als ganze Fläche – so liegt es im Vollbild-Feed.
+ *
+ * Gezeigt wird das **ganze** Bild (`object-contain`): Beim Bilderrätsel
+ * zählt jedes Detail, und auch sonst schneidet man einem Bild nicht die
+ * Hälfte ab. Was dem Format zur Bildschirmfüllung fehlt, füllt eine
+ * unscharf vergrösserte Kopie desselben Bildes – kein schwarzer Balken,
+ * sondern der Ton des Bildes selbst.
+ */
+export function ImpulseImageBackdrop({ image }: { image: ImpulseImage }) {
+  return (
+    <div className="absolute inset-0 overflow-hidden bg-slate-100 dark:bg-slate-900">
+      <img
+        src={image.url}
+        alt=""
+        aria-hidden
+        className="absolute inset-0 size-full scale-110 object-cover blur-2xl saturate-150"
+      />
+      <img
+        src={image.url}
+        alt={image.alt || 'Bild zur Karte'}
+        className="relative size-full object-contain"
+      />
+    </div>
+  )
+}
+
+/**
+ * Die Video-Karte: Das Video füllt den Bildschirm (siehe
+ * `ImpulseVideoPlayer`), hier steht nur, was darüber gehört – Titel,
+ * Ergänzung, Quelle. Kurz gehalten: Wer ein Video schaut, will lesen,
+ * worum es geht, und nicht einen zweiten Text daneben.
+ */
+export function VideoDeckCard({
+  item,
+  progressDocs,
+  preview = false,
+}: {
+  item: ImpulseItem
+  progressDocs?: ImpulseProgress[]
+  preview?: boolean
+}) {
+  return (
+    <section className="px-1">
+      <h2 className="text-2xl leading-snug font-semibold text-balance">{item.title}</h2>
+      {item.body && (
+        <p className="mt-2 whitespace-pre-line text-slate-600 dark:text-slate-300">{item.body}</p>
+      )}
+      <div className="mt-3 flex flex-col gap-1">
+        <SourceLink item={item} />
+        <ContributorLine item={item} />
+      </div>
+      {progressDocs && (
+        <ImpulseCardActions
+          item={item}
+          progressDocs={progressDocs}
+          preview={preview}
+          centered={false}
+        />
+      )}
+    </section>
+  )
+}
+
+/**
  * Das Wochenthema als Feed-Karte – gross und ruhig, wie eh und je.
  *
  * Hier statt in der Seite, weil zwei Orte sie zeichnen: der
@@ -188,7 +259,7 @@ export function WocheDeckCard({
   preview?: boolean
 }) {
   return (
-    <article className="card p-6 text-center sm:p-8">
+    <article className="px-1 text-center">
       {item.week && <p className="hint">{formatWeekRange(item.week)}</p>}
       <h2 className="mt-2 text-2xl leading-snug font-semibold text-balance">{item.title}</h2>
       {item.body && (
@@ -383,7 +454,7 @@ export function QuizCard({
   const KindIcon = riddle ? Puzzle : Search
 
   return (
-    <section className="card p-5">
+    <section className={plain ? undefined : 'card p-5'}>
       {!plain && (
         <p className="hint flex items-center gap-1.5 font-medium">
           <KindIcon className="size-4" aria-hidden />

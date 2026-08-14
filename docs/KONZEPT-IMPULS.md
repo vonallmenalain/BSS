@@ -365,11 +365,38 @@ Drei Bausteine, die den Vollbild-Feed vom Anschauen zum Weitertragen führen:
   bleibt die Karte, wie sie ist. In der Redaktion ist die Vertiefung ein
   Feld unterhalb der Hinführung.
 
+### 5.5b Bild und Video auf jeder Karte
+
+Das Bild war zuerst dem Bilderrätsel vorbehalten – dort ist es die Aufgabe.
+Inzwischen darf **jede Kartenart** eines tragen: das Wochenthema, die
+Feed-Karte, die Frage der Woche, die Aufgaben. Weiterhin verlinkt aus der
+offiziellen Mediathek der Kirche, nie hochgeladen; die App speichert nur
+die Adresse.
+
+Im Vollbild-Feed ist ein Bild kein Beiwerk, sondern die erste Seite der
+Karte: **Der erste Wisch zeigt das Bild allein** – ganz, ohne Text, ohne
+Zeile –, **der zweite holt den Text darüber**, während das Bild stehen
+bleibt und eine Spur näher rückt. So bekommt jedes Bild den Moment, den
+ein Bild braucht, und beim Bilderrätsel ist genau das die Aufgabe:
+erst schauen, dann fragen.
+
+Die **Video-Karte** ist die konsequente Fortsetzung: eine Kartenart mit
+einem Link statt einer Datei – YouTube, Vimeo oder die direkte Adresse
+einer Videodatei (der Download-Link einer Videoseite der Kirche). Das
+Video füllt den Bildschirm, startet stumm, sobald die Karte im Bild ist,
+und hält an, sobald man weiterwischt; ein Knopf schaltet den Ton dazu
+(anders lassen Browser ein Video nicht von selbst anlaufen). Was sich
+nicht einbetten lässt, wird zur Karte mit einem Knopf, der das Video
+draussen öffnet – ein ehrlicher Weg hinaus statt eines schwarzen
+Rechtecks. Auch die Video-Karte kennt Amen, Merken und die Vertiefung;
+gewertet wird wie überall die Teilnahme.
+
 ### 5.6 Die Mitmach-Ecke
 
 Die stärkste Form der Aneignung: Die Jugendlichen liefern selbst – und
-zwar **für jede Kartenart**: Impuls, Quizfrage, Bilderrätsel, Wochenziel,
-Tages-Challenge, Frage der Woche, Feed-Karte oder Teilen-Aufgabe.
+zwar **für jede Kartenart**: Impuls, Quizfrage, Bilderrätsel, Video,
+Wochenziel, Tages-Challenge, Frage der Woche, Feed-Karte oder
+Teilen-Aufgabe – samt Bild und, bei der Video-Karte, dem Videolink.
 
 - Eingereicht wird **formlos** (Art wählen, Freitext, Quelle) – die
   Redaktion prüft, öffnet ihr Formular gleich in der eingereichten Art
@@ -644,9 +671,17 @@ Thema.
   «Diese Woche dabei». Eine Bildschirmhöhe, keine Unterseitenpflicht.
 - **Feed im Vollbild**, Karte für Karte, vertikal gewischt – nur die Karte
   und der Menüknopf oben links, alle Kacheln sind verschwunden. Reihenfolge:
-  Wochenimpuls, Quiz, Bilderrätsel, Frage der Woche, Feed-Karten,
+  Wochenimpuls, Quiz, Bilderrätsel, Video, Frage der Woche, Feed-Karten,
   Teilen-Aufgabe. Ein Wisch nach links vertieft die Karte (wenn eine
-  Vertiefung erfasst ist); Reaktion und Merken als stille Knöpfe.
+  Vertiefung erfasst ist); Reaktion und Merken als stille Knöpfe. Karten
+  mit Bild oder Video sind **zwei Bildschirme** hoch (siehe
+  [5.5b](#55b-bild-und-video-auf-jeder-karte)).
+- **Ohne Kachel.** Im Vollbild steht der Text frei: kein Rahmen, keine
+  eigene Fläche, kein Schatten. Was die Karte trägt, ist der Farbverlauf
+  ihres Bereichs – oben satt, unten im Grund der App auslaufend (Farbe
+  ins Weiss, im Dunkelmodus Farbe ins Schwarz) – oder das Bild, das den
+  ganzen Bildschirm füllt. Kacheln bleiben dort, wo sie ordnen: in den
+  Listen der Räume und in der Redaktion.
 - **«Ansicht» oben rechts** wie überall: was der Einstieg zeigt
   (Serie, Gruppenleiste ein/aus), Schriftgrösse des Feeds.
 - **Dunkel von sich aus.** Der Bereich wird abends gelesen und lebt vom

@@ -80,6 +80,7 @@ export function ImpulseItemForm({
       : null,
     quiz: input.kind === 'quiz' || input.kind === 'bilderraetsel' ? input.quiz : null,
     image: input.imageUrl.trim() ? { url: input.imageUrl } : null,
+    videoUrl: input.videoUrl,
   })
   const blocked = input.status === 'ready' && problems.length > 0
 

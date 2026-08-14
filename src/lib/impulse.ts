@@ -93,6 +93,7 @@ export const IMPULSE_KIND_ORDER: ImpulseKind[] = [
   'tageschallenge',
   'quiz',
   'bilderraetsel',
+  'video',
   'frage',
   'feed',
   'teilen',
@@ -194,6 +195,7 @@ export function readyProblems(item: {
   source?: ImpulseSource | null
   quiz?: ImpulseQuiz | null
   image?: { url: string } | null
+  videoUrl?: string | null
 }): string[] {
   const problems: string[] = []
   if (!item.title.trim())
@@ -206,6 +208,11 @@ export function readyProblems(item: {
   if (sourceRequired && !item.source?.label.trim()) problems.push('Die Quelle fehlt.')
 
   if (item.kind === 'bilderraetsel' && !item.image?.url.trim()) problems.push('Das Bild fehlt.')
+
+  /* Die Video-Karte ist ihr Video – ohne Link bleibt eine leere Fläche.
+     Ein Bild darf jede Karte tragen, keine braucht eines: Beim Video ist
+     es das Vorschaubild, sonst das Bild zum Thema. */
+  if (item.kind === 'video' && !item.videoUrl?.trim()) problems.push('Der Videolink fehlt.')
 
   if (item.kind === 'quiz' || item.kind === 'bilderraetsel') {
     const quiz = item.quiz

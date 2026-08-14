@@ -4,17 +4,18 @@ import { formatWeekRange } from '@/lib/impulse'
 import { IMPULSE_KIND_THEME } from '@/lib/impulseSections'
 import {
   ImpulseDeepeningCard,
+  ImpulseImageBackdrop,
   QuizCard,
+  VideoDeckCard,
   WocheDeckCard,
 } from '@/components/impulse/ImpulseCards'
 import { ChallengeCard, GoalCard } from '@/components/impulse/ImpulseProgressCards'
 import { ImpulseFeedCard } from '@/components/impulse/ImpulseFeedCard'
 import { ImpulseQuestionCard } from '@/components/impulse/ImpulseQuestionCard'
 import { ImpulseShareCard } from '@/components/impulse/ImpulseShareCard'
-import {
-  ImpulseFeedScreen,
-  type ImpulseDeckCard,
-} from '@/components/impulse/ImpulseFeedScreen'
+import { ImpulseVideoPlayer } from '@/components/impulse/ImpulseVideoPlayer'
+import { impulseVideoSource } from '@/lib/impulseVideo'
+import { ImpulseFeedScreen, type ImpulseDeckCard } from '@/components/impulse/ImpulseFeedScreen'
 import type { ImpulseItem } from '@/lib/types'
 
 /**
@@ -44,12 +45,32 @@ export function ImpulseEditorPreview({
 }) {
   const cards = useMemo<ImpulseDeckCard[]>(
     () =>
-      items.map((item) => {
+      items.map((raw) => {
+        /* Wie im Feed: Bild und Video liegen als Fläche hinter der
+           Karte, nicht im Text. */
+        const item = raw.image?.url ? { ...raw, image: null } : raw
+        const videoSource = impulseVideoSource(raw.videoUrl)
+        const image = raw.image
+        const media: ImpulseDeckCard['media'] =
+          raw.kind === 'video' && videoSource
+            ? ({ active }) => (
+                <ImpulseVideoPlayer
+                  source={videoSource}
+                  poster={image?.url ?? null}
+                  title={raw.title}
+                  active={active}
+                />
+              )
+            : image?.url
+              ? () => <ImpulseImageBackdrop image={image} />
+              : null
         const node = (() => {
           switch (item.kind) {
             case 'quiz':
             case 'bilderraetsel':
               return <QuizCard item={item} answer={null} preview plain progressDocs={[]} />
+            case 'video':
+              return <VideoDeckCard item={item} progressDocs={[]} preview />
             case 'frage':
               return (
                 <ImpulseQuestionCard item={item} comments={[]} progressDocs={[]} preview plain />
@@ -79,6 +100,7 @@ export function ImpulseEditorPreview({
           id: `${item.kind}-${item.id}`,
           itemId: item.id,
           section: IMPULSE_KIND_THEME[item.kind],
+          media,
           node:
             item.status === 'draft' ? (
               <div>
@@ -110,9 +132,7 @@ export function ImpulseEditorPreview({
               <span className="font-semibold">Vorschau</span>
               <span className="mx-1.5">·</span>
               {label ?? formatWeekRange(week)}
-              <span className="block text-xs opacity-80">
-                Änderungen werden nicht gespeichert.
-              </span>
+              <span className="block text-xs opacity-80">Änderungen werden nicht gespeichert.</span>
             </p>
             <button
               type="button"
