@@ -239,7 +239,7 @@ export const STARTER_WEEKS: StarterWeek[] = [
     },
     frage: {
       title: 'Was hilft dir, Ja zu sagen, wenn ein Auftrag zu gross wirkt?',
-      body: 'Zwei, drei Sätze genügen – dein Beispiel hilft den anderen.',
+      body: '',
     },
     teilen: {
       title:

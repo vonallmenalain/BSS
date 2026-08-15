@@ -283,6 +283,12 @@ Stolz sagen können, dass ich etwas geschafft habe».
   (alle sieben Haken, mit Stand «1 von 7») und der «Anti Doom Scroller»
   (alle Karten der Woche samt Vertiefungen angeschaut). Ein Meilenstein
   erzählt, **was** jemand getan hat – eine Punktzahl erzählt nur, wie viel.
+  Jede Kachel lässt sich antippen: Ein kleines Fenster sagt in einem Satz,
+  wie der Meilenstein zustande kommt, und zählt seine Schritte auf – die
+  sieben Tage mit Datum, die Karten der Woche mit Titel (Vertiefungen als
+  eigene Zeile), die Frage der Woche. So beantwortet «21 von 22», welche
+  Karte die fehlende ist, und «Dabei!» sagt, wofür es das gibt. Das Offene
+  steht zuoberst, das Erledigte darunter – es mahnt nicht, es erklärt.
 - **Gruppenbild.** Eine Leiste: «Diese Woche dabei: 8 von 11» mit den Kürzeln
   bzw. Vornamen derer, die dabei waren – die Form der Anerkennung, die
   motiviert, ohne zu beschämen. Dazu, wenn gewünscht, ein **gemeinsames
