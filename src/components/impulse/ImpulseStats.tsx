@@ -1,11 +1,14 @@
-import { Award, Check } from 'lucide-react'
+import { useState } from 'react'
+import { Award, Check, ChevronRight } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import {
   formatWeekRange,
   weekKeyOffset,
+  type ImpulseMilestoneStep,
   type ImpulseWeekMilestone,
 } from '@/lib/impulse'
 import { IMPULSE_SECTIONS } from '@/lib/impulseSections'
+import { Modal } from '@/components/ui/Modal'
 import { ImpulseRing } from '@/components/impulse/ImpulseRing'
 import type { ImpulseAnswer, ImpulseProgress } from '@/lib/types'
 
@@ -19,6 +22,10 @@ import type { ImpulseAnswer, ImpulseProgress } from '@/lib/types'
  * wieder offen) und die eigenen Zahlen. Alles hier vergleicht mit
  * gestern, nicht mit dem Nachbarn (Leitgedanke 4) – und ein leerer
  * Stand mahnt nicht, er wartet.
+ *
+ * Jeder Meilenstein lässt sich antippen: Das Fenster dahinter beantwortet
+ * die Frage, die eine Zahl offenlässt – wie er zustande kommt und welche
+ * Karte, welcher Tag noch fehlt (`MilestoneModal`).
  *
  * Die Zahlen tragen Tintenfarbe, nicht Bereichsfarbe – Farbe markiert
  * hier Identität (welcher Bereich), nie Grösse. Jeder Balken ist direkt
@@ -46,6 +53,12 @@ export function ImpulseStats({
   /** Die Meilensteine der laufenden Woche – berechnet von der Seite. */
   milestones: ImpulseWeekMilestone[]
 }) {
+  /* Offen bleibt die **Kennung**, nicht der Meilenstein selbst: Er wird
+     bei jedem Rendern neu gerechnet, und so steht im Fenster immer der
+     frische Stand – auch wenn nebenher ein Haken dazukommt. */
+  const [openId, setOpenId] = useState<ImpulseWeekMilestone['id'] | null>(null)
+  const open = milestones.find((milestone) => milestone.id === openId) ?? null
+
   const weeks = progress?.weeks ?? {}
   const weekStates = Object.values(weeks)
   const goalsDone = weekStates.filter((state) => state?.goal === true).length
@@ -127,14 +140,22 @@ export function ImpulseStats({
         </div>
       </section>
 
-      {/* Die Meilensteine der Woche – erreicht oder unterwegs, nie «versäumt». */}
+      {/* Die Meilensteine der Woche – erreicht oder unterwegs, nie «versäumt».
+          Jede Karte lässt sich antippen; das Fenster darunter erzählt, wie
+          der Meilenstein zustande kommt und was noch fehlt. */}
       <section>
         <h2 className="mt-6 mb-2 text-sm font-semibold text-slate-500 dark:text-slate-400">
           Meilensteine pro Woche
         </h2>
         <div className="grid grid-cols-2 gap-3">
           {milestones.map((milestone) => (
-            <div key={milestone.id} className="card p-4" title={milestone.hint}>
+            <button
+              key={milestone.id}
+              type="button"
+              onClick={() => setOpenId(milestone.id)}
+              aria-haspopup="dialog"
+              className="card w-full p-4 text-left transition hover:-translate-y-0.5 hover:shadow-md active:scale-[0.98] active:shadow-xs"
+            >
               <div className="flex items-start gap-2">
                 <Award
                   className={cn(
@@ -148,6 +169,10 @@ export function ImpulseStats({
                 <p className="min-w-0 flex-1 text-xs font-semibold text-balance">
                   {milestone.label}
                 </p>
+                <ChevronRight
+                  className="size-3.5 shrink-0 text-slate-300 dark:text-slate-600"
+                  aria-hidden
+                />
               </div>
               {milestone.earned ? (
                 <p className="mt-2.5 flex items-center gap-1 text-xs font-medium text-amber-600 dark:text-amber-300">
@@ -169,9 +194,11 @@ export function ImpulseStats({
                    Karten hat) sagt die Karte einfach, worum es geht. */
                 <p className="hint mt-2.5">{milestone.hint}</p>
               )}
-            </div>
+            </button>
           ))}
         </div>
+        <p className="hint mt-2">Tippe auf einen Meilenstein – dort steht, was noch fehlt.</p>
+        <MilestoneModal milestone={open} onClose={() => setOpenId(null)} barClass={theme.bar} />
       </section>
 
       {/* Die eigenen Zahlen – alles, was je zusammengekommen ist. */}
@@ -195,6 +222,112 @@ export function ImpulseStats({
         </div>
       </section>
     </div>
+  )
+}
+
+/**
+ * Das Detailfenster zu einem Meilenstein.
+ *
+ * Eine Zahl wie «21 von 22» sagt nicht, welche Karte die fehlende ist –
+ * und «Dabei!» sagt nicht, wofür es das gibt. Genau das steht hier: ein
+ * Satz, wie der Meilenstein zustande kommt, und darunter die Schritte.
+ * Das Offene zuerst (das ist die Frage, mit der jemand hier hereinkommt),
+ * das Erledigte danach – damit sichtbar bleibt, was schon zählt, statt
+ * nur zu mahnen, was fehlt.
+ */
+function MilestoneModal({
+  milestone,
+  onClose,
+  barClass,
+}: {
+  /** Der offene Meilenstein – `null`, solange keiner gewählt ist. */
+  milestone: ImpulseWeekMilestone | null
+  onClose: () => void
+  barClass: string
+}) {
+  const openSteps = milestone?.steps.filter((step) => !step.done) ?? []
+  const doneSteps = milestone?.steps.filter((step) => step.done) ?? []
+
+  return (
+    <Modal
+      open={Boolean(milestone)}
+      onClose={onClose}
+      title={milestone?.label ?? ''}
+      size="sm"
+    >
+      {milestone && (
+        <div className="space-y-4">
+          {milestone.earned ? (
+            <p className="flex items-center gap-1.5 text-sm font-medium text-amber-600 dark:text-amber-300">
+              <Check className="size-4" aria-hidden />
+              Erreicht – diese Woche geschafft.
+            </p>
+          ) : milestone.progress.max > 1 ? (
+            <div className="flex items-center gap-2">
+              <Meter
+                share={milestone.progress.value / milestone.progress.max}
+                barClass={barClass}
+              />
+              <span className="tabular shrink-0 text-xs text-slate-500 dark:text-slate-400">
+                {milestone.progress.value} von {milestone.progress.max}
+              </span>
+            </div>
+          ) : (
+            <p className="text-sm text-slate-500 dark:text-slate-400">Noch offen.</p>
+          )}
+
+          <p className="text-sm text-slate-600 dark:text-slate-300">{milestone.how}</p>
+
+          {openSteps.length > 0 && (
+            <section>
+              <h3 className="label">Das fehlt noch</h3>
+              <StepList steps={openSteps} />
+            </section>
+          )}
+
+          {doneSteps.length > 0 && (
+            <section>
+              <h3 className="label">Schon dabei</h3>
+              <StepList steps={doneSteps} />
+            </section>
+          )}
+        </div>
+      )}
+    </Modal>
+  )
+}
+
+/** Die Schritte eines Meilensteins – Tage, Karten, die Frage der Woche. */
+function StepList({ steps }: { steps: ImpulseMilestoneStep[] }) {
+  return (
+    <ul className="mt-1.5 space-y-1.5">
+      {steps.map((step) => (
+        <li key={step.id} className="flex items-start gap-2 text-sm">
+          <span
+            className={cn(
+              'mt-0.5 grid size-4 shrink-0 place-items-center rounded-full border',
+              step.done
+                ? 'border-emerald-600 bg-emerald-600 text-white'
+                : 'border-slate-300 dark:border-slate-600',
+            )}
+            aria-hidden
+          >
+            {step.done && <Check className="size-3" />}
+          </span>
+          {/* Kartentitel sind ganze Sätze – zwei Zeilen genügen, um sie
+              wiederzuerkennen; sonst wird die Liste zur Wand. */}
+          <span className="line-clamp-2 min-w-0 flex-1">
+            <span className="sr-only">{step.done ? 'Erledigt: ' : 'Offen: '}</span>
+            <span className={step.done ? 'text-slate-500 dark:text-slate-400' : undefined}>
+              {step.label}
+            </span>
+            {step.note && (
+              <span className="text-xs text-slate-400 dark:text-slate-500"> · {step.note}</span>
+            )}
+          </span>
+        </li>
+      ))}
+    </ul>
   )
 }
 

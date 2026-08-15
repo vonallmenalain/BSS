@@ -1,5 +1,5 @@
 import { addDays, format, getISOWeek, getISOWeekYear, startOfISOWeek } from 'date-fns'
-import { formatDayMonth, formatDayMonthYear } from './dates.ts'
+import { formatDayMonth, formatDayMonthYear, formatDayShort } from './dates.ts'
 import type {
   ImpulseAnswer,
   ImpulseItem,
@@ -361,7 +361,22 @@ export function computeStreak(
  * bewusst weggefallen): Vier kleine Ziele für die laufende Woche, am
  * Montag wieder offen. Erzählt wird, **was** diese Woche geschah, samt
  * Stand («1 von 7») – ein leerer Stand mahnt nicht, er wartet.
+ *
+ * Jeder Meilenstein trägt seine Begründung bei sich: `how` sagt in einem
+ * Satz, wie er zustande kommt, und `steps` zählt auf, woraus er sich
+ * zusammensetzt – die einzelnen Tage, die einzelnen Karten. Damit kann
+ * die Anzeige beantworten, was «21 von 22» eigentlich heisst und welche
+ * Karte noch fehlt, statt nur eine Zahl hinzustellen.
  */
+export interface ImpulseMilestoneStep {
+  /** Eindeutig innerhalb des Meilensteins – reicht als Schlüssel. */
+  id: string
+  label: string
+  done: boolean
+  /** Ein kleiner Zusatz zur Zeile – «Vertiefung», «heute», «kommt noch». */
+  note?: string
+}
+
 export interface ImpulseWeekMilestone {
   id: 'dabei' | 'mitgeredet' | 'challenge' | 'scroller'
   label: string
@@ -369,25 +384,72 @@ export interface ImpulseWeekMilestone {
   earned: boolean
   /** Der Stand für die Anzeige – «1 von 7». */
   progress: { value: number; max: number }
+  /** Wie er zustande kommt – ein Satz für das Detailfenster. */
+  how: string
+  /** Woraus er sich zusammensetzt – leer, wo es nichts aufzuzählen gibt. */
+  steps: ImpulseMilestoneStep[]
 }
 
 export function impulseWeekMilestones(input: {
   /** Diese Woche eingeloggt – der erste Blick in den Bereich zählt. */
   seen: boolean
-  /** Bei der Frage der Woche geantwortet. */
-  answeredQuestion: boolean
-  /** Abgehakte Tage der Tages-Challenge dieser Woche. */
-  challengeDays: number
-  /** Angeschaute Feed-Karten dieser Woche – und wie viele es gibt. */
-  cardsSeen: number
-  cardsTotal: number
-  /** Angeschaute Vertiefungen dieser Woche – und wie viele es gibt. */
-  deepeningsSeen: number
-  deepeningsTotal: number
+  /** Die Frage der Woche – Titel und ob die eigene Antwort dasteht. */
+  question: { title: string; answered: boolean } | null
+  /** Die laufende Woche («2026-W33») – sie gibt die sieben Tage vor. */
+  week: string
+  /** Der heutige Tag («2026-08-11») – für «heute» und «kommt noch». */
+  today: string
+  /** Die abgehakten Tage der Tages-Challenge, als «2026-08-11». */
+  challengeDays: readonly string[]
+  /** Die Karten der Woche – mit Vertiefung, wo es eine gibt. */
+  cards: readonly {
+    id: string
+    title: string
+    seen: boolean
+    deepening: boolean
+    deepeningSeen: boolean
+  }[]
 }): ImpulseWeekMilestone[] {
-  const days = Math.min(input.challengeDays, 7)
-  const scrollerTotal = input.cardsTotal + input.deepeningsTotal
-  const scrollerSeen = Math.min(input.cardsSeen + input.deepeningsSeen, scrollerTotal)
+  /* Gezählt werden nur Haken, die zu dieser Woche gehören – ein Tag aus
+     einer anderen Woche hat hier nichts zu suchen. */
+  const checked = new Set(input.challengeDays)
+  const start = weekStart(input.week)
+  const dayDates = start ? Array.from({ length: 7 }, (_, index) => addDays(start, index)) : []
+  const daySteps: ImpulseMilestoneStep[] = dayDates.map((date) => {
+    const key = format(date, 'yyyy-MM-dd')
+    const done = checked.has(key)
+    return {
+      id: key,
+      label: formatDayShort(date),
+      done,
+      note: done
+        ? undefined
+        : key === input.today
+          ? 'heute'
+          : key > input.today
+            ? 'kommt noch'
+            : undefined,
+    }
+  })
+  const daysDone = daySteps.filter((step) => step.done).length
+
+  /* Karte und Vertiefung sind zwei Schritte – so summieren sich die
+     Zeilen genau auf den Nenner des Scrollers («21 von 22»). */
+  const cardSteps: ImpulseMilestoneStep[] = input.cards.flatMap((card) => [
+    { id: card.id, label: card.title, done: card.seen },
+    ...(card.deepening
+      ? [
+          {
+            id: `${card.id}:vertiefung`,
+            label: card.title,
+            done: card.deepeningSeen,
+            note: 'Vertiefung',
+          },
+        ]
+      : []),
+  ])
+  const scrollerSeen = cardSteps.filter((step) => step.done).length
+
   return [
     {
       id: 'dabei',
@@ -395,27 +457,47 @@ export function impulseWeekMilestones(input: {
       hint: 'Diese Woche in Anti Doom hineingeschaut.',
       earned: input.seen,
       progress: { value: input.seen ? 1 : 0, max: 1 },
+      how:
+        'Der erste Blick genügt: Einmal in dieser Woche «Anti Doom» geöffnet, ' +
+        'und der Meilenstein gehört dir. Am Montag beginnt die Woche neu.',
+      steps: [],
     },
     {
       id: 'mitgeredet',
       label: 'Mitgeredet',
       hint: 'Bei der Frage der Woche geantwortet.',
-      earned: input.answeredQuestion,
-      progress: { value: input.answeredQuestion ? 1 : 0, max: 1 },
+      earned: input.question?.answered === true,
+      progress: { value: input.question?.answered ? 1 : 0, max: 1 },
+      how: input.question
+        ? 'Sobald deine eigene Antwort bei der Frage der Woche steht. ' +
+          'Danach siehst du auch, was die anderen geschrieben haben.'
+        : 'Diese Woche ist keine Frage aufgeschaltet – der Meilenstein wartet auf die nächste.',
+      steps: input.question
+        ? [{ id: 'frage', label: input.question.title, done: input.question.answered }]
+        : [],
     },
     {
       id: 'challenge',
       label: 'Tageschallenge erreicht',
       hint: 'Alle sieben Tage der Tages-Challenge abgehakt.',
-      earned: days >= 7,
-      progress: { value: days, max: 7 },
+      earned: daysDone >= 7,
+      progress: { value: daysDone, max: 7 },
+      how:
+        'Für jeden Tag ein Haken auf der Tages-Challenge; alle sieben ergeben ' +
+        'den Meilenstein. Künftige Tage warten, bis sie da sind.',
+      steps: daySteps,
     },
     {
       id: 'scroller',
       label: 'Anti Doom Scroller',
       hint: 'Alle Karten der Woche samt Vertiefungen angeschaut.',
-      earned: scrollerTotal > 0 && scrollerSeen >= scrollerTotal,
-      progress: { value: scrollerSeen, max: scrollerTotal },
+      earned: cardSteps.length > 0 && scrollerSeen >= cardSteps.length,
+      progress: { value: scrollerSeen, max: cardSteps.length },
+      how: cardSteps.length
+        ? 'Jede Karte der Woche zählt, sobald sie im Feed offen war – Karten mit ' +
+          'Vertiefung zusätzlich mit ihrer Vertiefung.'
+        : 'Diese Woche stehen noch keine Karten – sobald welche da sind, zählt jede angeschaute mit.',
+      steps: cardSteps,
     },
   ]
 }

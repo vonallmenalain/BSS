@@ -312,15 +312,25 @@ test('computeStreak: die beste Serie überlebt den Riss', () => {
   assert.deepEqual(computeStreak(participated, '2026-W33'), { current: 2, best: 6 })
 })
 
+/* Die Woche 2026-W33 läuft von Montag, 10. August, bis Sonntag, 16. August. */
+const milestoneCards = (seen: number, deepeningsSeen: number) =>
+  Array.from({ length: 12 }, (_, index) => ({
+    id: `k${index}`,
+    title: `Karte ${index + 1}`,
+    seen: index < seen,
+    // Vier der zwölf Karten tragen eine Vertiefung.
+    deepening: index < 4,
+    deepeningSeen: index < deepeningsSeen,
+  }))
+
 test('impulseWeekMilestones: vier Ziele, jede Woche neu offen', () => {
   const open = impulseWeekMilestones({
     seen: false,
-    answeredQuestion: false,
-    challengeDays: 0,
-    cardsSeen: 0,
-    cardsTotal: 12,
-    deepeningsSeen: 0,
-    deepeningsTotal: 4,
+    question: { title: 'Was trägt dich?', answered: false },
+    week: '2026-W33',
+    today: '2026-08-16',
+    challengeDays: [],
+    cards: milestoneCards(0, 0),
   })
   assert.deepEqual(
     open.map((milestone) => milestone.id),
@@ -330,67 +340,104 @@ test('impulseWeekMilestones: vier Ziele, jede Woche neu offen', () => {
 
   const done = impulseWeekMilestones({
     seen: true,
-    answeredQuestion: true,
-    challengeDays: 7,
-    cardsSeen: 12,
-    cardsTotal: 12,
-    deepeningsSeen: 4,
-    deepeningsTotal: 4,
+    question: { title: 'Was trägt dich?', answered: true },
+    week: '2026-W33',
+    today: '2026-08-16',
+    challengeDays: [
+      '2026-08-10',
+      '2026-08-11',
+      '2026-08-12',
+      '2026-08-13',
+      '2026-08-14',
+      '2026-08-15',
+      '2026-08-16',
+    ],
+    cards: milestoneCards(12, 4),
   })
   assert.ok(done.every((milestone) => milestone.earned))
 })
 
-test('impulseWeekMilestones: die Tageschallenge zählt ihre Haken – höchstens sieben', () => {
+test('impulseWeekMilestones: die Tageschallenge zählt nur Haken ihrer eigenen Woche', () => {
   const three = impulseWeekMilestones({
     seen: true,
-    answeredQuestion: false,
-    challengeDays: 3,
-    cardsSeen: 0,
-    cardsTotal: 0,
-    deepeningsSeen: 0,
-    deepeningsTotal: 0,
+    question: null,
+    week: '2026-W33',
+    today: '2026-08-13',
+    // Der letzte Haken gehört zur Vorwoche und zählt hier nicht mit.
+    challengeDays: ['2026-08-10', '2026-08-11', '2026-08-12', '2026-08-03'],
+    cards: [],
   }).find((milestone) => milestone.id === 'challenge')
   assert.equal(three?.earned, false)
   assert.deepEqual(three?.progress, { value: 3, max: 7 })
 
-  const nine = impulseWeekMilestones({
-    seen: true,
-    answeredQuestion: false,
-    challengeDays: 9,
-    cardsSeen: 0,
-    cardsTotal: 0,
-    deepeningsSeen: 0,
-    deepeningsTotal: 0,
-  }).find((milestone) => milestone.id === 'challenge')
-  assert.equal(nine?.earned, true)
-  assert.deepEqual(nine?.progress, { value: 7, max: 7 })
+  // Die sieben Schritte tragen ihren Tag – künftige sind angeschrieben.
+  assert.equal(three?.steps.length, 7)
+  assert.deepEqual(
+    three?.steps.map((step) => step.done),
+    [true, true, true, false, false, false, false],
+  )
+  assert.equal(three?.steps[3].note, 'heute')
+  assert.equal(three?.steps[4].note, 'kommt noch')
 })
 
 test('impulseWeekMilestones: der Scroller braucht alle Karten und alle Vertiefungen', () => {
   const almost = impulseWeekMilestones({
     seen: true,
-    answeredQuestion: true,
-    challengeDays: 0,
-    cardsSeen: 12,
-    cardsTotal: 12,
-    deepeningsSeen: 3,
-    deepeningsTotal: 4,
+    question: { title: 'Was trägt dich?', answered: true },
+    week: '2026-W33',
+    today: '2026-08-16',
+    challengeDays: [],
+    cards: milestoneCards(12, 3),
   }).find((milestone) => milestone.id === 'scroller')
   assert.equal(almost?.earned, false)
   assert.deepEqual(almost?.progress, { value: 15, max: 16 })
 
+  // Was fehlt, steht namentlich da: die Vertiefung der vierten Karte.
+  const missing = almost?.steps.filter((step) => !step.done) ?? []
+  assert.equal(missing.length, 1)
+  assert.equal(missing[0].label, 'Karte 4')
+  assert.equal(missing[0].note, 'Vertiefung')
+
   // Eine Woche ohne Karten kennt keinen Scroller – erreicht ist sie nie.
   const empty = impulseWeekMilestones({
     seen: true,
-    answeredQuestion: true,
-    challengeDays: 0,
-    cardsSeen: 0,
-    cardsTotal: 0,
-    deepeningsSeen: 0,
-    deepeningsTotal: 0,
+    question: { title: 'Was trägt dich?', answered: true },
+    week: '2026-W33',
+    today: '2026-08-16',
+    challengeDays: [],
+    cards: [],
   }).find((milestone) => milestone.id === 'scroller')
   assert.equal(empty?.earned, false)
   assert.deepEqual(empty?.progress, { value: 0, max: 0 })
+  assert.deepEqual(empty?.steps, [])
+})
+
+test('impulseWeekMilestones: «Mitgeredet» nennt die Frage – und wartet ohne sie', () => {
+  const withQuestion = impulseWeekMilestones({
+    seen: true,
+    question: { title: 'Was hilft dir, Ja zu sagen?', answered: false },
+    week: '2026-W33',
+    today: '2026-08-13',
+    challengeDays: [],
+    cards: [],
+  }).find((milestone) => milestone.id === 'mitgeredet')
+  assert.equal(withQuestion?.earned, false)
+  assert.deepEqual(
+    withQuestion?.steps.map((step) => step.label),
+    ['Was hilft dir, Ja zu sagen?'],
+  )
+
+  const withoutQuestion = impulseWeekMilestones({
+    seen: true,
+    question: null,
+    week: '2026-W33',
+    today: '2026-08-13',
+    challengeDays: [],
+    cards: [],
+  }).find((milestone) => milestone.id === 'mitgeredet')
+  assert.equal(withoutQuestion?.earned, false)
+  assert.deepEqual(withoutQuestion?.steps, [])
+  assert.match(withoutQuestion?.how ?? '', /keine Frage/)
 })
 
 test('weekParticipants: Vornamen aus Fortschritt und Antworten, ohne Doppelte', () => {

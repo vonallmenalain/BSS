@@ -24,6 +24,7 @@ import {
   useImpulseSubmissions,
 } from '@/hooks/useFirestore'
 import { cn } from '@/lib/utils'
+import { toDateInput } from '@/lib/dates'
 import { PageHeader } from '@/components/ui/Pickers'
 import { AppMenuButton } from '@/components/AppMenuButton'
 import {
@@ -228,22 +229,34 @@ export function Impuls() {
    * Woche, die Tageschallenge zählt ihre Haken – und der «Anti Doom
    * Scroller» braucht alle Karten samt Vertiefungen; angeschaut wird im
    * Feed vermerkt (`onDeckActive`/`onDeckDeepening`).
+   *
+   * Übergeben werden nicht nur Zahlen, sondern die Einzelteile – Frage,
+   * Tage, Karten mit Titel. Daraus baut `impulseWeekMilestones` die
+   * Schritte, die «Mein Fortschritt» im Detailfenster aufzählt: welche
+   * Karte noch fehlt, welcher Tag noch offen ist.
    */
   const frageItem = thisWeekAll.find((item) => item.kind === 'frage') ?? null
   const deckItemsThisWeek = thisWeekAll.filter((item) => isDeckKind(item.kind))
-  const deepeningItemsThisWeek = deckItemsThisWeek.filter((item) => Boolean(item.deepening))
   const seenCardIds = new Set(myWeek(todayKey).cards ?? [])
   const seenDeepeningIds = new Set(myWeek(todayKey).deepened ?? [])
   const milestones = impulseWeekMilestones({
     seen: myProgress?.lastSeenWeek === todayKey,
-    answeredQuestion: frageItem
-      ? myComments.some((comment) => comment.itemId === frageItem.id)
-      : false,
-    challengeDays: (myWeek(todayKey).days ?? []).length,
-    cardsSeen: deckItemsThisWeek.filter((item) => seenCardIds.has(item.id)).length,
-    cardsTotal: deckItemsThisWeek.length,
-    deepeningsSeen: deepeningItemsThisWeek.filter((item) => seenDeepeningIds.has(item.id)).length,
-    deepeningsTotal: deepeningItemsThisWeek.length,
+    question: frageItem
+      ? {
+          title: frageItem.title,
+          answered: myComments.some((comment) => comment.itemId === frageItem.id),
+        }
+      : null,
+    week: todayKey,
+    today: toDateInput(now),
+    challengeDays: myWeek(todayKey).days ?? [],
+    cards: deckItemsThisWeek.map((item) => ({
+      id: item.id,
+      title: item.title,
+      seen: seenCardIds.has(item.id),
+      deepening: Boolean(item.deepening),
+      deepeningSeen: seenDeepeningIds.has(item.id),
+    })),
   })
   const milestonesEarned = milestones.filter((milestone) => milestone.earned).length
 
