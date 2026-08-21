@@ -769,8 +769,11 @@ ist eine einmalige Anweisung und keine Einstellung: Er schreibt das Gemerkte
 nicht um.
 
 **Neben der Suche steht, wessen Pendenzen gemeint sind.** Ein Auswahlfeld mit
-_Alle Zuständigen_ und darunter jedem Konto der Bischofschaft, mit der Zahl
-dahinter, die sagt, was einen erwartet – «Bischof · 7». Es beantwortet dieselbe
+_Alle Zuständigen_ und darunter den Konten mit **Vollzugriff** – Bischof,
+beide Ratgeber und die Sekretäre –, mit der Zahl dahinter, die sagt, was einen
+erwartet: «Bischof · 7». Ein AP-Zugang oder eine Assistenz der
+Abendmahlsversammlung steht nicht zur Wahl: Sie erreichen diese Liste gar
+nicht, und ein Name, hinter dem nie etwas steht, ist keine Auswahl. Es beantwortet dieselbe
 Frage wie _Meine_, bloss für jemand anderen: Wer wissen will, was beim Bischof
 liegt, wählt ihn und liest seine Liste. Gefragt wird dabei nicht nur, wer als
 zuständig eingetragen ist – eine Berufungsrunde gehört auch dem, der darin eine
