@@ -1,7 +1,7 @@
 import { useMemo, useState } from 'react'
 import { Search, UserPlus, X } from 'lucide-react'
 import { useData } from '@/contexts/DataContext'
-import { cn, colorForId, matchesSearch } from '@/lib/utils'
+import { cn, matchesSearch } from '@/lib/utils'
 import { Avatar, UserAvatar } from '@/components/ui/Avatar'
 import { FULL_ACCESS_ROLES, type Member } from '@/lib/types'
 
@@ -279,7 +279,7 @@ export function MemberPicker({
    */
   stacked?: boolean
 }) {
-  const { members, membersById } = useData()
+  const { members, membersById, personColor } = useData()
   const [search, setSearch] = useState('')
   const [open, setOpen] = useState(false)
 
@@ -330,7 +330,7 @@ export function MemberPicker({
               )
             }
             return (
-              <span key={id} className={cn('chip', colorForId(id))}>
+              <span key={id} className={cn('chip', personColor(id))}>
                 {name}
                 <button
                   type="button"

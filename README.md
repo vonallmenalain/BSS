@@ -428,7 +428,8 @@ Anwesenheit sind mehrere möglich, bei den übrigen dreien genau eine, und ein
 zweiter Griff nimmt die Wahl wieder zurück.
 
 **Eine Person ist ihr Kreis** – zwei Buchstaben in ihrer Farbe, wie überall in
-der App. Der Name steht nicht daneben: In einer Reihe aus fünf Knöpfen sagte er
+der App (siehe [«Die Farbe einer Person»](#die-farbe-einer-person)). Der Name
+steht nicht daneben: In einer Reihe aus fünf Knöpfen sagte er
 dasselbe ein zweites Mal und kostete dafür die halbe Breite. Gewählt ist, wer
 einen Rand in der Betonfarbe trägt; die übrigen Kreise sind zurückgenommen,
 behalten aber ihre Farbe. Ausgeschrieben steht der Name im Tooltip, für
@@ -2622,6 +2623,53 @@ Oberfläche: Ein AP-Zugang erreicht genau zwei Sammlungen (`apActivities`,
 `apMonths`) sowie lesend die Einstellungen – wegen des Gemeindenamens in der
 Kopfzeile. Jede andere Abfrage lehnt der Server ab. `npm run test:rules`
 prüft das in beide Richtungen.
+
+### Die Farbe einer Person
+
+**Der Kreis mit den zwei Buchstaben trägt überall denselben Ton** – an einer
+Zuweisung, unter einem zugeordneten Textstück, in der Traktandenliste, im
+Mitgliederverzeichnis. Genau darum geht es: eine Person auf einen Blick
+wiedererkennen, ohne den Namen zu lesen.
+
+Der Ton kam bis anhin aus einer Quersumme über die Kennung des Datensatzes.
+Das ist stabil – dieselbe Person, immer dieselbe Farbe –, sagt aber nichts
+darüber, welche Farbe sonst noch vergeben ist: Bei acht Tönen und einer
+Handvoll Konten trafen sich früher oder später zwei, und dann standen zwei
+Kreise in Bernstein nebeneinander.
+
+**Für die Konten wird der Ton deshalb vergeben statt gerechnet.** Zuerst die
+Ämter – jedes hat einen festen Ton, und der gehört dem Amt und nicht der
+Person:
+
+| Amt                | Ton         |
+| ------------------ | ----------- |
+| **Bischof**        | Himmelblau  |
+| **1. Ratgeber**    | Violett     |
+| **2. Ratgeber**    | Grün        |
+| **Finanzsekretär** | Bernstein   |
+| **Sekretär**       | Rosé        |
+
+Wer den Bischof ablöst, trägt dessen Ton; die Farben der übrigen bleiben, wo
+sie waren. Ein **leeres Amt gibt seinen Ton nicht her** – sonst wäre er beim
+Besetzen wieder weg. Alle weiteren Konten (Assistenz, AP-Zugänge, ein zweiter
+Sekretär, die alte Sammelrolle «Ratgeber») bekommen der Reihe nach den ersten
+Ton, den kein Amt für sich beansprucht.
+
+Acht Töne sind acht Töne: Ab dem neunten aktiven Konto fällt der Rest auf die
+Rechnung zurück und kann sich wiederholen. Die Bischofschaft kommt in der
+Reihenfolge zuerst und behält ihre Töne. Wartende und deaktivierte Konten
+zählen nicht mit.
+
+**Konto und Mitglied tragen denselben Ton.** Sobald ein Konto mit einem
+Mitglied verknüpft ist, gilt der vergebene Ton für beide Kennungen – der Kreis
+rechnet mit dem Mitglied, eine Zuweisung mit dem Konto, und beides soll gleich
+aussehen. Mitglieder ohne Konto behalten die Rechnung; für sie gibt es nichts
+zu koordinieren.
+
+Geprüft wird das in `tests/person-colors.test.ts` (`npm run test:import`): dass
+die fünf Ämter fünf verschiedene Töne haben, dass ein Amtswechsel die übrigen
+nicht verschiebt und dass die Vergabe nicht davon abhängt, wer zuerst in der
+Liste steht.
 
 ### Assistenz der Abendmahlsversammlung
 

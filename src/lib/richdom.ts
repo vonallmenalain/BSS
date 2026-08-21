@@ -7,6 +7,7 @@ import {
   marksOf,
   normalizeDoc,
   whoClasses,
+  whoHueOf,
   type RichBlock,
   type RichDoc,
   type RichMarks,
@@ -393,7 +394,7 @@ export function setSelectionOffsets(root: HTMLElement, start: number, end: numbe
  * vom verknüpften Mitglied, sobald eines eingetragen ist. Der Editor kennt
  * die Benutzerliste nicht – der Aufrufer gibt sie ihm als Funktion mit.
  */
-export type WhoBadgeFor = (uid: string) => { initials: string; colorId: string }
+export type WhoBadgeFor = (uid: string) => { initials: string; hue: number }
 
 function markedSpan(text: string, marks: RichMarks): HTMLElement {
   const span = document.createElement('span')
@@ -434,7 +435,9 @@ function runNodes(runs: RichRun[], whoBadge?: WhoBadgeFor): Node[] {
 
     const badge = whoBadge?.(uid)
     const wrapper = document.createElement('span')
-    wrapper.className = whoClasses(badge?.colorId ?? uid)
+    // Ohne Auskunft über die Person bleibt die Rechnung über die Kennung –
+    // dieselbe, die auch der Kreis ohne Konto dahinter nimmt.
+    wrapper.className = whoClasses(badge?.hue ?? whoHueOf(uid))
     wrapper.setAttribute('data-rt', encodeMarks({ who: uid }))
     wrapper.setAttribute('data-rt-initials', badge?.initials ?? '?')
     for (const entry of group) {

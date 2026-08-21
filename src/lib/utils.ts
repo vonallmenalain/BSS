@@ -61,10 +61,18 @@ const AVATAR_COLORS = [
 ]
 
 /**
- * Der Platz in der Farbreihe – dieselbe Rechnung für alles, was zu einer
- * Person gehört: den Kreis mit den Initialen und die Unterstreichung eines
- * ihr zugeordneten Textstücks (siehe `lib/richtext`). So trägt eine Person
- * überall denselben Farbton.
+ * Der Platz in der Farbreihe – die **Rückfallrechnung**.
+ *
+ * Sie gilt für alles, wozu es kein Konto gibt: ein Mitglied der Gemeinde,
+ * ein von Hand erfasster Name. Für die Konten der Bischofschaft wird der Ton
+ * dagegen vergeben statt gerechnet, damit sich Bischof, Ratgeber und
+ * Sekretäre sicher unterscheiden – acht Töne und eine Quersumme ergeben
+ * sonst früher oder später zweimal dasselbe (siehe `lib/personColors` und
+ * `personHue` im `DataContext`).
+ *
+ * Dieselbe Zahl steht hinter beidem, was zu einer Person gehört: dem Kreis
+ * mit den Initialen und der Unterstreichung eines ihr zugeordneten
+ * Textstücks (siehe `lib/richtext`).
  */
 export function colorIndexForId(id: string): number {
   let hash = 0
@@ -75,8 +83,13 @@ export function colorIndexForId(id: string): number {
   return Math.abs(hash) % AVATAR_COLORS.length
 }
 
+/** Die Klassen zu einem Farbton (0–7) – der Kreis mit den Initialen. */
+export function colorForHue(hue: number): string {
+  return AVATAR_COLORS[hue] ?? AVATAR_COLORS[0]
+}
+
 export function colorForId(id: string): string {
-  return AVATAR_COLORS[colorIndexForId(id)]
+  return colorForHue(colorIndexForId(id))
 }
 
 /** Text auf eine Maximallänge kürzen, ohne Wörter zu zerschneiden. */

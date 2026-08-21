@@ -18,6 +18,8 @@ import {
   type StoreState,
 } from '@/lib/collectionStore'
 import { codeOf, hymnKey } from '@/lib/hymnCode'
+import { personHues } from '@/lib/personColors'
+import { colorForHue, colorIndexForId } from '@/lib/utils'
 import {
   DEFAULT_SETTINGS,
   normalizeSettings,
@@ -49,6 +51,20 @@ interface DataContextValue {
   userName: (uid: string) => string
   /** Namen eines Mitglieds auflösen */
   memberName: (id: string) => string
+  /**
+   * Der Farbton einer Person (0–7) – für den Kreis mit den Initialen, die
+   * Marke an einer Zuweisung und die Unterstreichung eines zugeordneten
+   * Textstücks.
+   *
+   * Gefragt werden darf mit jeder Kennung, unter der eine Person vorkommt:
+   * der Konto-UID oder der Kennung ihres Mitgliedersatzes. Die Konten der
+   * Bischofschaft tragen einen vergebenen Ton, damit sie sich sicher
+   * unterscheiden; alles Übrige fällt auf die Rechnung zurück (siehe
+   * `lib/personColors`).
+   */
+  personHue: (id: string) => number
+  /** Derselbe Ton als fertige Klassen – der Normalfall in der Oberfläche. */
+  personColor: (id: string) => string
   /** Liedtitel zu einem Code – leer, wenn er nicht in der Liste steht */
   hymnTitle: (code: string | null | undefined) => string
   /**
@@ -141,12 +157,30 @@ export function DataProvider({ children }: { children: ReactNode }) {
     )
   }, [canViewAp, isAssistant])
 
+  /*
+   * Die Farbtöne der Mannschaft.
+   *
+   * Einmal für alle gerechnet und nicht an jedem Kreis neu: Die Vergabe
+   * schaut auf die ganze Liste – wer welchen Ton bekommt, hängt davon ab,
+   * wer sonst noch da ist.
+   */
+  const hues = useMemo(() => personHues(users), [users])
+
   const value = useMemo<DataContextValue>(() => {
     const usersById = new Map(users.map((u) => [u.id, u]))
     const membersById = new Map(members.map((m) => [m.id, m]))
     const hymnsByCode = new Map(hymns.map((hymn) => [hymnKey(codeOf(hymn)), hymn]))
     const hymnTitle = (code: string | null | undefined) =>
       code ? (hymnsByCode.get(hymnKey(code))?.title ?? '') : ''
+
+    /*
+     * Ein vergebener Ton, sonst die Rechnung.
+     *
+     * Gefragt wird mit irgendeiner Kennung: Der Kreis rechnet mit dem
+     * verknüpften Mitglied, eine Zuweisung mit dem Konto – beide stehen in
+     * der Zuordnung, und beide ergeben denselben Ton.
+     */
+    const personHue = (id: string) => hues.get(id) ?? colorIndexForId(id)
 
     return {
       users,
@@ -162,13 +196,24 @@ export function DataProvider({ children }: { children: ReactNode }) {
         const member = membersById.get(id)
         return member ? `${member.firstName} ${member.lastName}` : 'Unbekannt'
       },
+      personHue,
+      personColor: (id) => colorForHue(personHue(id)),
       hymnTitle,
       hymnLabel: (choice) => {
         if (!choice) return ''
         return choice.title || hymnTitle(choice.code ?? String(choice.number ?? ''))
       },
     }
-  }, [users, members, hymns, settings, usersState.loading, membersState.loading, readsDirectory])
+  }, [
+    users,
+    members,
+    hymns,
+    hues,
+    settings,
+    usersState.loading,
+    membersState.loading,
+    readsDirectory,
+  ])
 
   return <DataContext.Provider value={value}>{children}</DataContext.Provider>
 }
