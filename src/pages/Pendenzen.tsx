@@ -23,6 +23,7 @@ import { layoutToText } from '@/lib/layout'
 import { cn, matchesSearch } from '@/lib/utils'
 import {
   DEFAULT_PENDENZEN_DONE_SORT,
+  FULL_ACCESS_ROLES,
   lastEditedAt,
   normalizePendenzenSort,
   PENDENZEN_SORT_LABELS,
@@ -487,15 +488,32 @@ export function Pendenzen() {
    * darunter der eigene Name, und der Wechsel zu jemand anderem ist ein
    * einziger Schritt.
    *
-   * Ein Wert aus der Adresse, zu dem es kein Konto (mehr) gibt, gilt als
-   * «alle» – sonst stünde nach dem Löschen eines Kontos eine leere Liste da,
-   * die niemand erklären kann.
+   * Ein Wert aus der Adresse, zu dem es kein wählbares Konto (mehr) gibt,
+   * gilt als «alle» – sonst stünde nach dem Löschen eines Kontos eine leere
+   * Liste da, die niemand erklären kann.
    */
+  /**
+   * Wer zur Wahl steht: die Konten mit Vollzugriff.
+   *
+   * Zuständig für eine Pendenz ist die Bischofschaft – Bischof, beide
+   * Ratgeber und die Sekretäre. Ein AP-Zugang und eine Assistenz der
+   * Abendmahlsversammlung erreichen diese Liste gar nicht; sie in der Auswahl
+   * zu führen hiesse, einen Namen anzubieten, hinter dem nie etwas steht.
+   *
+   * Abgemeldete Konten fehlen ebenso: Was ihnen einmal zugewiesen war, steht
+   * weiterhin unter «Pendent» – bloss nicht mehr hinter einem Namen, den man
+   * heute noch wählen könnte.
+   */
+  const assignable = useMemo(
+    () => users.filter((user) => user.active && FULL_ACCESS_ROLES.includes(user.role)),
+    [users],
+  )
+
   const person = useMemo(() => {
     if (scope === 'mine') return profile?.id ?? null
     if (personValue === PERSON_ALL) return null
-    return users.some((user) => user.id === personValue) ? personValue : null
-  }, [scope, personValue, profile?.id, users])
+    return assignable.some((user) => user.id === personValue) ? personValue : null
+  }, [scope, personValue, profile?.id, assignable])
 
   /** Was der Ausschnitt hergibt – **ohne** die Einschränkung auf eine Person. */
   const statusPool = useMemo(() => {
@@ -513,11 +531,11 @@ export function Pendenzen() {
    */
   const personCounts = useMemo(() => {
     const counted = new Map<string, number>()
-    users.forEach((user) => {
+    assignable.forEach((user) => {
       counted.set(user.id, statusPool.filter((item) => itemOfUser(item, user.id)).length)
     })
     return counted
-  }, [users, statusPool, itemOfUser])
+  }, [assignable, statusPool, itemOfUser])
 
   const counts = useMemo(
     () => ({
@@ -918,7 +936,7 @@ export function Pendenzen() {
 
           <PersonSelect
             value={person}
-            users={users}
+            users={assignable}
             counts={personCounts}
             meId={profile?.id ?? null}
             onChange={(next) => {
@@ -1086,6 +1104,9 @@ export function Pendenzen() {
  * Das eigene Konto trägt seinen Namen und den Zusatz «(ich)» – so ist die
  * Auswahl mit dem Knopf «Meine» sichtbar dieselbe Frage, und wer von sich zu
  * jemand anderem wechselt, tut es in einem Schritt.
+ *
+ * Wer dasteht, entscheidet die Seite (`assignable`): die Konten mit
+ * Vollzugriff. Hier wird bloss noch gezeichnet.
  */
 function PersonSelect({
   value,
@@ -1096,6 +1117,7 @@ function PersonSelect({
 }: {
   /** Das gewählte Konto – oder `null` für die ganze Bischofschaft. */
   value: string | null
+  /** Die Konten, die zur Wahl stehen – siehe `assignable`. */
   users: AppUser[]
   /** Wie viele Pendenzen im gewählten Ausschnitt auf jedes Konto entfallen. */
   counts: Map<string, number>
@@ -1103,23 +1125,24 @@ function PersonSelect({
   onChange: (next: string | null) => void
 }) {
   /*
-   * Gezeigt werden die aktiven Konten – und immer auch das gewählte.
+   * Steht das gewählte Konto (noch) nicht in der Liste, zeigt das Feld
+   * «Alle Zuständigen».
    *
-   * Ein abgemeldetes Konto steht nicht mehr in der Auswahl; hat es aber noch
-   * Pendenzen und ist gerade gewählt, muss es dastehen, sonst zeigte das Feld
-   * einen anderen Namen als die Liste darunter.
+   * Das trifft den Augenblick, in dem die Konten noch geladen werden – ein
+   * `select` ohne passende Auswahlmöglichkeit stünde sonst leer da, und ein
+   * leeres Feld sieht aus wie ein Fehler.
    */
-  const options = users.filter((user) => user.active || user.id === value)
+  const known = value !== null && users.some((user) => user.id === value)
 
   return (
     <select
       className="input sm:w-56"
       aria-label="Zuständigkeit"
-      value={value ?? PERSON_ALL}
+      value={known ? (value as string) : PERSON_ALL}
       onChange={(event) => onChange(event.target.value === PERSON_ALL ? null : event.target.value)}
     >
       <option value={PERSON_ALL}>Alle Zuständigen</option>
-      {options.map((user) => {
+      {users.map((user) => {
         const count = counts.get(user.id)
         return (
           <option key={user.id} value={user.id}>
