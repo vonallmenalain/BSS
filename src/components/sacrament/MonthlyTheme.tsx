@@ -135,13 +135,7 @@ function MonthlyThemeDialog({
   }
 
   return (
-    <Modal
-      open
-      onClose={onClose}
-      title={`Monatsthema ${formatMonthKey(month)}`}
-      description="Steht an jedem Sonntag dieses Monats unter dem Datum – in allen Bereichen der Abendmahlsversammlung."
-      size="sm"
-    >
+    <Modal open onClose={onClose} title={`Monatsthema ${formatMonthKey(month)}`} size="sm">
       <form onSubmit={submit}>
         <label className="label" htmlFor="monatsthema">
           Thema
