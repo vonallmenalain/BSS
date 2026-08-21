@@ -7,6 +7,7 @@ import { useUrlState } from '@/hooks/useUrlState'
 import { MemberLink } from '@/components/ui/MemberLink'
 import { useCallings } from '@/hooks/useFirestore'
 import { EmptyState, SkeletonList } from '@/components/ui/Feedback'
+import { OtherResults } from '@/components/ui/OtherResults'
 import { PageHeader } from '@/components/ui/Pickers'
 import { CallingStatusBadge, MemberStatusBadge } from '@/components/ui/Badge'
 import { Avatar } from '@/components/ui/Avatar'
@@ -51,6 +52,16 @@ import {
 
 /** Woher der Weg kam – damit «Zurück» im Profil hierher führt. */
 const FROM_LABEL = 'Berufungen'
+
+/**
+ * Was an einer Berufung durchsucht wird.
+ *
+ * Das Unterkapitel zählt mit: «Sonnenstrahlen» ist der Name, unter dem in der
+ * PV nach einer Lehrerin gesucht wird – nicht «PV-Lehrer».
+ */
+function callingText(calling: Calling): string {
+  return `${calling.memberName} ${calling.position} ${ORGANIZATION_LABELS[calling.organization]} ${calling.group ?? ''}`
+}
 
 /**
  * Wonach die Liste «Ohne Berufung» geordnet wird.
@@ -200,27 +211,60 @@ export function Callings() {
     [running, withoutCalling, released, pool],
   )
 
+  const searching = search.trim() !== ''
+
   const visible = useMemo(() => {
     if (scope === 'without') return []
     const base = scope === 'active' ? running : scope === 'released' ? released : pool
 
-    if (!search.trim()) return base
-    return base.filter((calling) =>
-      matchesSearch(
-        // Das Unterkapitel zählt mit: «Sonnenstrahlen» ist der Name, unter
-        // dem in der PV nach einer Lehrerin gesucht wird – nicht «PV-Lehrer».
-        `${calling.memberName} ${calling.position} ${ORGANIZATION_LABELS[calling.organization]} ${calling.group ?? ''}`,
-        search,
-      ),
-    )
-  }, [pool, running, released, scope, search])
+    if (!searching) return base
+    return base.filter((calling) => matchesSearch(callingText(calling), search))
+  }, [pool, running, released, scope, search, searching])
 
   const visibleMembers = useMemo(() => {
-    if (!search.trim()) return withoutCalling
+    if (!searching) return withoutCalling
     return withoutCalling.filter((member) =>
       matchesSearch(`${member.firstName} ${member.lastName}`, search),
     )
-  }, [withoutCalling, search])
+  }, [withoutCalling, search, searching])
+
+  /*
+   * Was die Suche ausserhalb der eingestellten Filter findet.
+   *
+   * Die Filter sagen, welchen Ausschnitt man liest – die laufenden
+   * Berufungen, nur die Aktiven, eine Organisation. Die Suche fragt dagegen
+   * nach einer Person oder einer Bezeichnung, und die ist entweder erfasst
+   * oder nicht. Wer «Meier» sucht, während «Aktuell» und «Nur Aktive»
+   * eingestellt sind, soll erfahren, dass Meier vor zwei Jahren entlassen
+   * wurde, statt vor einer leeren Liste zu stehen.
+   *
+   * Gesucht wird deshalb im ganzen Bestand, ohne jede Einschränkung;
+   * abgezogen wird, was oben schon dasteht.
+   */
+  const otherCallings = useMemo(() => {
+    if (!searching || scope === 'without') return []
+    const shown = new Set(visible.map((calling) => calling.id))
+    return callings.filter(
+      (calling) => !shown.has(calling.id) && matchesSearch(callingText(calling), search),
+    )
+  }, [searching, scope, visible, callings, search])
+
+  /*
+   * Dasselbe für «Ohne Berufung» – dort stehen Personen und keine Berufungen.
+   *
+   * Weggenommen wird hier auf zwei Wegen: durch die Filter (nur Aktive, ein
+   * Geschlecht, ein Alter) und dadurch, dass jemand eine laufende Berufung
+   * **hat**. Beides ist eine Antwort auf die Suche: Wer nachsieht, ob Meier
+   * frei ist, will lesen, dass Meier bereits Sonntagsschullehrer ist.
+   */
+  const otherMembers = useMemo(() => {
+    if (!searching || scope !== 'without') return []
+    const shown = new Set(visibleMembers.map((member) => member.id))
+    return members.filter(
+      (member) =>
+        !shown.has(member.id) && matchesSearch(`${member.firstName} ${member.lastName}`, search),
+    )
+  }, [searching, scope, visibleMembers, members, search])
 
   /*
    * Nach Organisation bleibt die Liste in Sparten – jede andere Ordnung macht
@@ -300,7 +344,7 @@ export function Callings() {
             /* Die Suche gehört zum Bild: «Alle Filter entfernen» soll die
                ganze Liste zeigen und nicht den Ausschnitt, den ein vergessenes
                Suchwort davon übrig lässt. */
-            searching={Boolean(search.trim())}
+            searching={searching}
             onChange={setView}
             onReset={() => {
               setView(DEFAULT_CALLINGS_VIEW)
@@ -326,60 +370,92 @@ export function Callings() {
 
       {loading ? (
         <SkeletonList rows={4} />
-      ) : scope === 'without' ? (
-        <WithoutCallingSection
-          entries={visibleMembers}
-          callings={callings}
-          searching={Boolean(search.trim())}
-          hasMembers={members.length > 0}
-        />
-      ) : visible.length === 0 ? (
-        <div className="card">
-          <EmptyState
-            icon={Award}
-            title={callings.length === 0 ? 'Noch keine Berufungen erfasst' : 'Nichts gefunden'}
-            description={
-              callings.length === 0
-                ? 'Die Berufungen kommen aus dem LCR: «Einstellungen › Importe › Berufungen», eingefügt aus der Zwischenablage.'
-                : 'Passe die Suche an oder lockere unter «Ansicht» die Filter.'
-            }
-          />
-        </div>
-      ) : grouped ? (
-        <div className="space-y-5">
-          {byOrganization.map(([organization, entries]) => (
-            <CallingSection
-              key={organization}
-              title={ORGANIZATION_LABELS[organization]}
-              entries={sortCallings(entries)}
-              subgroups
+      ) : (
+        <>
+          {scope === 'without' ? (
+            <WithoutCallingSection
+              entries={visibleMembers}
+              callings={callings}
+              searching={searching}
+              hasMembers={members.length > 0}
             />
-          ))}
-
-          {outsideUnit.length > 0 && (
-            /* Die Linie trennt vom Organisationsplan darüber. Ist auf «nur
-               ausserhalb der Einheit» eingeschränkt, steht nichts darüber –
-               dann wäre sie ein Strich ohne Anlass. */
-            <div
-              className={cn(
-                byOrganization.length > 0 && 'border-t border-slate-200 pt-5 dark:border-slate-700',
-              )}
-            >
-              <CallingSection
-                title="Ausserhalb der Einheit"
-                hint="Pfahl, Seminar, Institut und Mission – nicht Teil des Organisationsplans der Gemeinde."
-                entries={sortCallings(outsideUnit)}
+          ) : visible.length === 0 ? (
+            <div className="card">
+              <EmptyState
+                icon={Award}
+                title={callings.length === 0 ? 'Noch keine Berufungen erfasst' : 'Nichts gefunden'}
+                description={
+                  callings.length === 0
+                    ? 'Die Berufungen kommen aus dem LCR: «Einstellungen › Importe › Berufungen», eingefügt aus der Zwischenablage.'
+                    : otherCallings.length > 0
+                      ? 'In diesem Ausschnitt passt nichts zur Suche – darunter steht, was sie sonst findet.'
+                      : 'Passe die Suche an oder lockere unter «Ansicht» die Filter.'
+                }
               />
             </div>
+          ) : grouped ? (
+            <div className="space-y-5">
+              {byOrganization.map(([organization, entries]) => (
+                <CallingSection
+                  key={organization}
+                  title={ORGANIZATION_LABELS[organization]}
+                  entries={sortCallings(entries)}
+                  subgroups
+                />
+              ))}
+
+              {outsideUnit.length > 0 && (
+                /* Die Linie trennt vom Organisationsplan darüber. Ist auf «nur
+                   ausserhalb der Einheit» eingeschränkt, steht nichts darüber –
+                   dann wäre sie ein Strich ohne Anlass. */
+                <div
+                  className={cn(
+                    byOrganization.length > 0 &&
+                      'border-t border-slate-200 pt-5 dark:border-slate-700',
+                  )}
+                >
+                  <CallingSection
+                    title="Ausserhalb der Einheit"
+                    hint="Pfahl, Seminar, Institut und Mission – nicht Teil des Organisationsplans der Gemeinde."
+                    entries={sortCallings(outsideUnit)}
+                  />
+                </div>
+              )}
+            </div>
+          ) : (
+            <CallingSection
+              title={`Nach ${CALLING_SORT_LABELS[view.sort]}`}
+              hint="Alle Sparten in einer Liste – die Organisation steht bei jedem Eintrag."
+              entries={sortCallings(visible)}
+              showOrganization
+            />
           )}
-        </div>
-      ) : (
-        <CallingSection
-          title={`Nach ${CALLING_SORT_LABELS[view.sort]}`}
-          hint="Alle Sparten in einer Liste – die Organisation steht bei jedem Eintrag."
-          entries={sortCallings(visible)}
-          showOrganization
-        />
+
+          {/* Was ausserhalb der Filter zur Suche passt: entlassene
+              Berufungen, eine andere Organisation, jemand, der nicht als
+              aktiv geführt ist. */}
+          {searching && scope !== 'without' && (
+            <OtherResults
+              items={sortCallings(otherCallings)}
+              listKey={`${search.trim()}|${JSON.stringify(view)}`}
+              pageSize={30}
+              hint="Diese Berufungen passen zur Suche, werden aber durch den Ausschnitt und die Filter unter «Ansicht» ausgeblendet."
+            >
+              {(page) => <CallingRows entries={page} showOrganization />}
+            </OtherResults>
+          )}
+
+          {searching && scope === 'without' && (
+            <OtherResults
+              items={otherMembers}
+              listKey={`${search.trim()}|${JSON.stringify(view)}`}
+              pageSize={30}
+              hint="Diese Personen passen zur Suche, stehen aber nicht in der Liste – weil eine laufende Berufung erfasst ist oder weil die Filter unter «Ansicht» sie wegnehmen."
+            >
+              {(page) => <MemberRows entries={page} callings={callings} />}
+            </OtherResults>
+          )}
+        </>
       )}
     </>
   )
@@ -444,37 +520,56 @@ function CallingSection({
                 <span className="tabular text-xs text-slate-400">{part.entries.length}</span>
               </h3>
             )}
-            <ul className="card divide-list overflow-hidden">
-              {part.entries.map((calling) => (
-                <li key={calling.id}>
-                  {/* Der Griff auf eine Zeile führt zur Person: Was die App hier
-                      beantworten kann, ist «wer ist das?» – und das steht im
-                      Profil, mitsamt allem, was diese Person sonst noch tut. */}
-                  <MemberLink
-                    memberId={calling.memberId}
-                    label={FROM_LABEL}
-                    className="group flex w-full items-center gap-3 px-4 py-3 text-left transition hover:bg-slate-50 dark:hover:bg-slate-800/60"
-                  >
-                    <Avatar name={calling.memberName} id={calling.memberId} size="md" />
-                    <div className="min-w-0 flex-1">
-                      <p className="truncate text-sm font-medium">{calling.position}</p>
-                      <p className="truncate text-xs text-slate-500 dark:text-slate-400">
-                        <span className="group-hover:underline">{calling.memberName}</span>
-                        {showOrganization && ` · ${ORGANIZATION_LABELS[calling.organization]}`}
-                        {showOrganization && calling.group && ` · ${calling.group}`}
-                        {callingPeriod(calling) && ` · ${callingPeriod(calling)}`}
-                      </p>
-                    </div>
-                    <CallingStatusBadge status={calling.status} />
-                    <ChevronRight className="size-4 shrink-0 text-slate-300" aria-hidden />
-                  </MemberLink>
-                </li>
-              ))}
-            </ul>
+            <CallingRows entries={part.entries} showOrganization={showOrganization} />
           </div>
         ))}
       </div>
     </section>
+  )
+}
+
+/**
+ * Die Zeilen selbst – ohne Überschrift.
+ *
+ * Sie stehen für sich, weil sie an zwei Orten gebraucht werden: in einer
+ * Sparte der Liste und unter den Treffern, die die Filter wegnehmen. Zwei
+ * Fassungen derselben Zeile liefen unweigerlich auseinander.
+ */
+function CallingRows({
+  entries,
+  showOrganization = false,
+}: {
+  entries: Calling[]
+  showOrganization?: boolean
+}) {
+  return (
+    <ul className="card divide-list overflow-hidden">
+      {entries.map((calling) => (
+        <li key={calling.id}>
+          {/* Der Griff auf eine Zeile führt zur Person: Was die App hier
+              beantworten kann, ist «wer ist das?» – und das steht im Profil,
+              mitsamt allem, was diese Person sonst noch tut. */}
+          <MemberLink
+            memberId={calling.memberId}
+            label={FROM_LABEL}
+            className="group flex w-full items-center gap-3 px-4 py-3 text-left transition hover:bg-slate-50 dark:hover:bg-slate-800/60"
+          >
+            <Avatar name={calling.memberName} id={calling.memberId} size="md" />
+            <div className="min-w-0 flex-1">
+              <p className="truncate text-sm font-medium">{calling.position}</p>
+              <p className="truncate text-xs text-slate-500 dark:text-slate-400">
+                <span className="group-hover:underline">{calling.memberName}</span>
+                {showOrganization && ` · ${ORGANIZATION_LABELS[calling.organization]}`}
+                {showOrganization && calling.group && ` · ${calling.group}`}
+                {callingPeriod(calling) && ` · ${callingPeriod(calling)}`}
+              </p>
+            </div>
+            <CallingStatusBadge status={calling.status} />
+            <ChevronRight className="size-4 shrink-0 text-slate-300" aria-hidden />
+          </MemberLink>
+        </li>
+      ))}
+    </ul>
   )
 }
 
@@ -524,8 +619,6 @@ function WithoutCallingSection({
   /** Ob überhaupt Mitglieder erfasst sind – sonst hiesse «alle haben eine». */
   hasMembers: boolean
 }) {
-  const lastCallings = useMemo(() => lastReleasedByMember(callings), [callings])
-
   if (entries.length === 0) {
     return (
       <div className="card">
@@ -559,40 +652,68 @@ function WithoutCallingSection({
         Mitglieder, zu denen keine laufende Berufung erfasst ist. Berufungen ausserhalb der Einheit
         – Pfahl, Seminar, Institut – zählen mit.
       </p>
-      <ul className="card divide-list overflow-hidden">
-        {entries.map((member) => {
-          const age = getAge(member.birthDate)
-          const last = lastCallings.get(member.id)
-          const period = last ? callingPeriod(last) : ''
-          const facts = [
-            age !== null ? `${age} Jahre` : null,
-            last ? `zuletzt ${last.position}${period ? ` (${period})` : ''}` : null,
-          ].filter(Boolean)
-
-          return (
-            <li key={member.id}>
-              <MemberLink
-                memberId={member.id}
-                label={FROM_LABEL}
-                className="group flex w-full items-center gap-3 px-4 py-3 text-left transition hover:bg-slate-50 dark:hover:bg-slate-800/60"
-              >
-                <Avatar name={`${member.firstName} ${member.lastName}`} id={member.id} size="md" />
-                <div className="min-w-0 flex-1">
-                  <p className="truncate text-sm font-medium group-hover:underline">
-                    {member.lastName}, {member.firstName}
-                  </p>
-                  <p className="truncate text-xs text-slate-500 dark:text-slate-400">
-                    {facts.length > 0 ? facts.join(' · ') : 'Noch keine Berufung erfasst'}
-                  </p>
-                </div>
-                {member.status !== 'active' && <MemberStatusBadge status={member.status} />}
-                <ChevronRight className="size-4 shrink-0 text-slate-300" aria-hidden />
-              </MemberLink>
-            </li>
-          )
-        })}
-      </ul>
+      <MemberRows entries={entries} callings={callings} />
     </section>
+  )
+}
+
+/**
+ * Personenzeilen der Liste «Ohne Berufung» – ohne Überschrift.
+ *
+ * Auch sie stehen für sich: Unter den Treffern, die die Filter wegnehmen,
+ * wird dieselbe Zeile gebraucht. Bei wem eine laufende Berufung erfasst ist,
+ * steht sie dort statt der zuletzt abgegebenen – das ist ja gerade der Grund,
+ * weshalb die Person oben fehlt.
+ */
+function MemberRows({ entries, callings }: { entries: Member[]; callings: Calling[] }) {
+  const lastCallings = useMemo(() => lastReleasedByMember(callings), [callings])
+  const currentCallings = useMemo(() => {
+    const current = new Map<string, Calling>()
+    activeCallings(callings).forEach((calling) => {
+      if (!current.has(calling.memberId)) current.set(calling.memberId, calling)
+    })
+    return current
+  }, [callings])
+
+  return (
+    <ul className="card divide-list overflow-hidden">
+      {entries.map((member) => {
+        const age = getAge(member.birthDate)
+        const running = currentCallings.get(member.id)
+        const last = lastCallings.get(member.id)
+        const period = last ? callingPeriod(last) : ''
+        const facts = [
+          age !== null ? `${age} Jahre` : null,
+          running
+            ? `${running.position} (${ORGANIZATION_LABELS[running.organization]})`
+            : last
+              ? `zuletzt ${last.position}${period ? ` (${period})` : ''}`
+              : null,
+        ].filter(Boolean)
+
+        return (
+          <li key={member.id}>
+            <MemberLink
+              memberId={member.id}
+              label={FROM_LABEL}
+              className="group flex w-full items-center gap-3 px-4 py-3 text-left transition hover:bg-slate-50 dark:hover:bg-slate-800/60"
+            >
+              <Avatar name={`${member.firstName} ${member.lastName}`} id={member.id} size="md" />
+              <div className="min-w-0 flex-1">
+                <p className="truncate text-sm font-medium group-hover:underline">
+                  {member.lastName}, {member.firstName}
+                </p>
+                <p className="truncate text-xs text-slate-500 dark:text-slate-400">
+                  {facts.length > 0 ? facts.join(' · ') : 'Noch keine Berufung erfasst'}
+                </p>
+              </div>
+              {member.status !== 'active' && <MemberStatusBadge status={member.status} />}
+              <ChevronRight className="size-4 shrink-0 text-slate-300" aria-hidden />
+            </MemberLink>
+          </li>
+        )
+      })}
+    </ul>
   )
 }
 

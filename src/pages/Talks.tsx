@@ -27,6 +27,7 @@ import { useUrlState } from '@/hooks/useUrlState'
 import { MemberLink } from '@/components/ui/MemberLink'
 import { Modal, ConfirmDialog } from '@/components/ui/Modal'
 import { EmptyState, SkeletonList } from '@/components/ui/Feedback'
+import { OtherResults } from '@/components/ui/OtherResults'
 import { SegmentedControl } from '@/components/ui/Pickers'
 import { MenuChips, MenuChoice, MenuDivider, MenuToggle, ViewMenu } from '@/components/ui/ViewMenu'
 import { SectionHeader, useSacrament } from '@/components/sacrament/SacramentLayout'
@@ -242,6 +243,25 @@ export function Talks() {
     [members, talks, settings.talkGapMonths, settings.talkMinAge, filter.onlyActive, filter.minAge],
   )
 
+  /*
+   * Dieselbe Bewertung, aber über die ganze Gemeinde.
+   *
+   * Zwei der Filter entscheiden schon, wer überhaupt bewertet wird – «nur
+   * Aktive» und das Mindestalter. Wer einen Namen sucht, den sie wegnehmen,
+   * fände ihn deshalb selbst dann nicht, wenn die Suche über die gefilterte
+   * Liste ginge. Für die Treffer neben der Auswahl braucht es darum den
+   * ungefilterten Stand (siehe `CandidateList`).
+   */
+  const allCandidates = useMemo(
+    () =>
+      rankTalkCandidates(members, talks, {
+        gapMonths: settings.talkGapMonths,
+        onlyActive: false,
+        minAge: 0,
+      }),
+    [members, talks, settings.talkGapMonths],
+  )
+
   /* Gehalten heisst: zugesagt und vorbei. Einen eigenen Status dafür gibt es
      nicht mehr – niemand hakt nach der Versammlung noch etwas ab. */
   const history = useMemo(
@@ -422,6 +442,7 @@ export function Talks() {
       ) : tab === 'vorschlaege' ? (
         <CandidateList
           candidates={candidates}
+          allCandidates={allCandidates}
           gapMonths={settings.talkGapMonths}
           minAge={settings.talkMinAge}
           filter={filter}
@@ -582,6 +603,7 @@ function TalkRow({
 
 function CandidateList({
   candidates,
+  allCandidates,
   gapMonths,
   minAge,
   filter,
@@ -589,6 +611,8 @@ function CandidateList({
   onAssign,
 }: {
   candidates: TalkCandidate[]
+  /** Dieselben Vorschläge ohne «nur Aktive» und ohne Mindestalter */
+  allCandidates: TalkCandidate[]
   gapMonths: number
   minAge: number
   filter: TalkCandidateFilter
@@ -601,6 +625,27 @@ function CandidateList({
     () => filterTalkCandidates(candidates, filter, gapMonths),
     [candidates, filter, gapMonths],
   )
+
+  const searching = filter.search.trim() !== ''
+
+  /*
+   * Wen die Suche findet, den die Filter aber wegnehmen.
+   *
+   * Die Filter stellen die Frage der Seite – wer ist erwachsen, aktiv und
+   * lange nicht dran gewesen? Ein gesuchter Name ist dagegen eine andere
+   * Frage: Man will wissen, wann diese Person zuletzt gesprochen hat. Sie
+   * fällt aber leicht durch jeden der Haken, und bisher stand dann nur
+   * «Kein Vorschlag passt zu diesen Filtern» da.
+   */
+  const otherHits = useMemo(() => {
+    if (!searching) return []
+    const shown = new Set(visible.map((candidate) => candidate.member.id))
+    return allCandidates.filter(
+      (candidate) =>
+        !shown.has(candidate.member.id) &&
+        matchesSearch(`${candidate.member.firstName} ${candidate.member.lastName}`, filter.search),
+    )
+  }, [searching, visible, allCandidates, filter.search])
   const years = useMemo(() => talkYearOptions(candidates), [candidates])
   const onHoldCount = useMemo(() => candidates.filter((c) => c.onHold).length, [candidates])
   const activeFilters = activeTalkFilterCount(filter)
@@ -734,9 +779,11 @@ function CandidateList({
             icon={Mic}
             title="Kein Vorschlag passt zu diesen Filtern"
             description={
-              onHoldCount > 0 && !filter.showOnHold
-                ? `${onHoldCount} ausgenommene Mitglieder sind ausgeblendet – der Filter blendet sie wieder ein.`
-                : 'Setze die Filter zurück oder wähle andere Jahre.'
+              otherHits.length > 0
+                ? 'Zu diesen Filtern passt niemand – darunter steht, wen die Suche sonst findet.'
+                : onHoldCount > 0 && !filter.showOnHold
+                  ? `${onHoldCount} ausgenommene Mitglieder sind ausgeblendet – der Filter blendet sie wieder ein.`
+                  : 'Setze die Filter zurück oder wähle andere Jahre.'
             }
             action={
               <button
@@ -750,91 +797,11 @@ function CandidateList({
           />
         </div>
       ) : (
-        <ul className="card divide-list overflow-hidden">
-          {visible
-            .slice(0, 60)
-            .map(({ member, age, monthsSince: months, alreadyPlanned, onHold, holdUntil }) => (
-              <li
-                key={member.id}
-                className={cn(
-                  'flex items-center gap-3 px-4 py-3',
-                  (alreadyPlanned || onHold) && 'opacity-50',
-                )}
-              >
-                <Avatar name={`${member.firstName} ${member.lastName}`} id={member.id} size="md" />
-
-                <div className="min-w-0 flex-1">
-                  <MemberLink
-                    memberId={member.id}
-                    label="Ansprachen"
-                    className="block truncate text-sm font-medium hover:underline"
-                  >
-                    {member.firstName} {member.lastName}
-                  </MemberLink>
-                  <p className="text-xs text-slate-500 dark:text-slate-400">
-                    {months === null ? (
-                      <span className="font-medium text-amber-600 dark:text-amber-400">
-                        Noch nie gesprochen
-                      </span>
-                    ) : (
-                      <>
-                        Zuletzt vor {months} Monaten
-                        {member.lastTalkDate && ` (${formatDate(member.lastTalkDate)})`}
-                      </>
-                    )}
-                    {age !== null && ` · ${age} Jahre`}
-                    {member.status !== 'active' && ' · inaktiv'}
-                    {alreadyPlanned && ' · bereits eingeplant'}
-                    {onHold &&
-                      (holdUntil
-                        ? ` · nicht anfragen bis ${formatDate(holdUntil)}`
-                        : ' · nicht anfragen')}
-                  </p>
-                </div>
-
-                <div className="flex shrink-0 items-center gap-1">
-                  <button
-                    type="button"
-                    className="btn-secondary btn-sm"
-                    onClick={() => onAssign(member)}
-                    // Ausgenommen heisst «nicht anfragen»: Wer es trotzdem
-                    // will, nimmt die Person nebenan wieder auf.
-                    disabled={alreadyPlanned || onHold}
-                  >
-                    <Plus className="size-3.5" aria-hidden />
-                    Anfragen
-                  </button>
-
-                  {/* Kein Löschen und kein Status: Wer im Moment nicht
-                      angefragt werden soll, ist mit einem Griff wieder da. */}
-                  <button
-                    type="button"
-                    className="btn-ghost btn-sm"
-                    onClick={() => void toggleHold(member, onHold)}
-                    aria-label={
-                      onHold
-                        ? `${member.firstName} ${member.lastName} wieder anfragen`
-                        : `${member.firstName} ${member.lastName} nicht mehr anfragen`
-                    }
-                    title={
-                      onHold
-                        ? 'Wieder in die Vorschläge aufnehmen'
-                        : 'Nicht anfragen – blendet die Person aus den Vorschlägen aus'
-                    }
-                  >
-                    {onHold ? (
-                      <RotateCcw className="size-3.5" aria-hidden />
-                    ) : (
-                      <UserMinus className="size-3.5" aria-hidden />
-                    )}
-                    <span className="hidden sm:inline">
-                      {onHold ? 'Wieder anfragen' : 'Nicht anfragen'}
-                    </span>
-                  </button>
-                </div>
-              </li>
-            ))}
-        </ul>
+        <CandidateRows
+          entries={visible.slice(0, 60)}
+          onAssign={onAssign}
+          onToggleHold={toggleHold}
+        />
       )}
 
       {visible.length > 60 && (
@@ -842,7 +809,123 @@ function CandidateList({
           {visible.length - 60} weitere ausgeblendet – grenze die Suche ein.
         </p>
       )}
+
+      {/* Wer zur Suche passt, aber durch die Filter fällt – inaktiv, zu
+          jung, im falschen Jahr oder ausgenommen. */}
+      {searching && (
+        <OtherResults
+          items={otherHits}
+          listKey={`${filter.search.trim()}|${JSON.stringify(filter)}`}
+          pageSize={30}
+          hint="Diese Personen passen zur Suche, werden aber durch die Filter ausgeblendet – etwa weil sie nicht als aktiv geführt sind, unter dem Mindestalter liegen oder erst kürzlich gesprochen haben."
+        >
+          {(page) => <CandidateRows entries={page} onAssign={onAssign} onToggleHold={toggleHold} />}
+        </OtherResults>
+      )}
     </>
+  )
+}
+
+/**
+ * Die Zeilen der Vorschlagsliste – ohne Rahmen darum.
+ *
+ * Sie stehen für sich, weil sie zweimal gebraucht werden: für die Vorschläge
+ * selbst und für die Treffer, die die Filter wegnehmen. Auch dort lässt sich
+ * anfragen – wer jemanden gezielt sucht, hat sich meist schon entschieden.
+ */
+function CandidateRows({
+  entries,
+  onAssign,
+  onToggleHold,
+}: {
+  entries: TalkCandidate[]
+  onAssign: (member: Member) => void
+  onToggleHold: (member: Member, onHold: boolean) => Promise<void>
+}) {
+  return (
+    <ul className="card divide-list overflow-hidden">
+      {entries.map(({ member, age, monthsSince: months, alreadyPlanned, onHold, holdUntil }) => (
+        <li
+          key={member.id}
+          className={cn(
+            'flex items-center gap-3 px-4 py-3',
+            (alreadyPlanned || onHold) && 'opacity-50',
+          )}
+        >
+          <Avatar name={`${member.firstName} ${member.lastName}`} id={member.id} size="md" />
+
+          <div className="min-w-0 flex-1">
+            <MemberLink
+              memberId={member.id}
+              label="Ansprachen"
+              className="block truncate text-sm font-medium hover:underline"
+            >
+              {member.firstName} {member.lastName}
+            </MemberLink>
+            <p className="text-xs text-slate-500 dark:text-slate-400">
+              {months === null ? (
+                <span className="font-medium text-amber-600 dark:text-amber-400">
+                  Noch nie gesprochen
+                </span>
+              ) : (
+                <>
+                  Zuletzt vor {months} Monaten
+                  {member.lastTalkDate && ` (${formatDate(member.lastTalkDate)})`}
+                </>
+              )}
+              {age !== null && ` · ${age} Jahre`}
+              {member.status !== 'active' && ' · inaktiv'}
+              {alreadyPlanned && ' · bereits eingeplant'}
+              {onHold &&
+                (holdUntil
+                  ? ` · nicht anfragen bis ${formatDate(holdUntil)}`
+                  : ' · nicht anfragen')}
+            </p>
+          </div>
+
+          <div className="flex shrink-0 items-center gap-1">
+            <button
+              type="button"
+              className="btn-secondary btn-sm"
+              onClick={() => onAssign(member)}
+              // Ausgenommen heisst «nicht anfragen»: Wer es trotzdem will,
+              // nimmt die Person nebenan wieder auf.
+              disabled={alreadyPlanned || onHold}
+            >
+              <Plus className="size-3.5" aria-hidden />
+              Anfragen
+            </button>
+
+            {/* Kein Löschen und kein Status: Wer im Moment nicht angefragt
+                werden soll, ist mit einem Griff wieder da. */}
+            <button
+              type="button"
+              className="btn-ghost btn-sm"
+              onClick={() => void onToggleHold(member, onHold)}
+              aria-label={
+                onHold
+                  ? `${member.firstName} ${member.lastName} wieder anfragen`
+                  : `${member.firstName} ${member.lastName} nicht mehr anfragen`
+              }
+              title={
+                onHold
+                  ? 'Wieder in die Vorschläge aufnehmen'
+                  : 'Nicht anfragen – blendet die Person aus den Vorschlägen aus'
+              }
+            >
+              {onHold ? (
+                <RotateCcw className="size-3.5" aria-hidden />
+              ) : (
+                <UserMinus className="size-3.5" aria-hidden />
+              )}
+              <span className="hidden sm:inline">
+                {onHold ? 'Wieder anfragen' : 'Nicht anfragen'}
+              </span>
+            </button>
+          </div>
+        </li>
+      ))}
+    </ul>
   )
 }
 

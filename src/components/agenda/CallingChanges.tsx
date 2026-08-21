@@ -229,9 +229,26 @@ export function CallingChangesTables({
     return matchesSearch(callingRowText(row, nameOf), query)
   }
 
+  /**
+   * Zeilen, die zur **Suche** passen, aber ein anderer Filter wegnimmt.
+   *
+   * Eine Suche endet nicht am Rand des Ausschnitts: Wer in einer Runde nach
+   * «Sonnenstrahlen» sucht und dabei die Farbe «später» weggeklickt hat, soll
+   * die Zeile trotzdem finden – sie steht dann unter der Tabelle, getrennt
+   * und benannt, statt stillschweigend zu fehlen.
+   *
+   * Das Erledigte bleibt aussen vor: Es hat seinen eigenen Knopf, der es
+   * zurückholt, und zählt hier so wenig als ausgeblendet wie oben.
+   */
+  const otherHit = (row: CallingMemberRow | CallingOpenRow) => {
+    if (!query || row.done) return false
+    if (visible(row)) return false
+    return matchesSearch(callingRowText(row, nameOf), query)
+  }
+
   /** Wie viele Zeilen Farbfilter, Suche und «Nur meine» wegnehmen. */
   const hiddenIn = (rows: (CallingMemberRow | CallingOpenRow)[]) =>
-    rows.filter((row) => !row.done && !visible(row)).length
+    rows.filter((row) => !row.done && !visible(row) && !otherHit(row)).length
 
   /**
    * Alles zeigen – Farben, Suche und «Nur meine».
@@ -307,6 +324,154 @@ export function CallingChangesTables({
       onDragEnd: dropDone,
     }
   }
+
+  /**
+   * Eine Zeile der Tabelle «Neue Berufungen».
+   *
+   * Als eigene Funktion, weil sie zweimal gezeichnet wird: in der Tabelle
+   * selbst und – bei einer Suche – unter den Treffern, die ein anderer Filter
+   * wegnimmt. Zwei Fassungen derselben Zeile liessen sich verschieden
+   * bearbeiten.
+   */
+  const memberRow = (row: CallingMemberRow, index: number) => (
+    <RowFrame
+      key={row.id}
+      row={row}
+      editable={editable}
+      position={index + 1}
+      onUrgency={(urgency) => changeMember(row.id, { urgency })}
+      onAssignees={(assignees) => changeMember(row.id, { assignees })}
+      onDone={
+        isCallingMemberRowEmpty(row) ? undefined : () => changeMember(row.id, { done: !row.done })
+      }
+      onRemove={
+        value.members.length > 1 || !isCallingMemberRowEmpty(row)
+          ? () => patch({ members: withoutRow(value.members, row.id, newCallingMemberRow) })
+          : undefined
+      }
+      {...handles('members', row.id, index, value.members.length)}
+    >
+      <Cell label="Name">
+        {/*
+              Steht ein Name da, steht er auch beim Schreiben als Verweis da
+              – ein Griff darauf führt zum Profil, wo die bisherigen
+              Berufungen stehen. Genau die schaut man in einer Runde nach.
+              Gesucht wird nur, solange die Zeile keinen Namen hat: Es ist
+              **eine** Person je Zeile. Geht es um ein Ehepaar, sind es zwei
+              Zeilen; was früher zu zweit erfasst wurde, bleibt stehen und
+              lässt sich einzeln entfernen.
+            */}
+        {!editable || row.memberIds.length > 0 ? (
+          <MemberNames
+            ids={row.memberIds}
+            onRemove={
+              editable
+                ? (id) =>
+                    changeMember(row.id, {
+                      memberIds: row.memberIds.filter((entry) => entry !== id),
+                    })
+                : undefined
+            }
+          />
+        ) : (
+          <MemberPicker
+            single
+            stacked
+            label=""
+            value={row.memberIds}
+            onChange={(next) => changeMember(row.id, { memberIds: next })}
+            placeholder="Name suchen …"
+          />
+        )}
+      </Cell>
+      <Cell label="Berufung">
+        <TextCell
+          id={fieldId(row.id, 'calling')}
+          label={`Berufung, Zeile ${index + 1}`}
+          value={row.calling}
+          onChange={(next) => changeMember(row.id, { calling: next })}
+          onMention={onMention}
+          memberRefs={memberRefs}
+          readOnly={!editable}
+          // Der Feldname und kein Beispielsatz – wie beim Titel eines
+          // Traktandums. Was in die Spalte gehört, sagt ihre
+          // Überschrift; ein Satz darunter wiederholte sie bloss
+          // umständlicher.
+          placeholder="Berufung"
+        />
+      </Cell>
+      <Cell label="Ideen und weiteres Vorgehen">
+        <TextCell
+          id={fieldId(row.id, 'ideas')}
+          label={`Ideen und weiteres Vorgehen, Zeile ${index + 1}`}
+          value={row.ideas}
+          onChange={(next) => changeMember(row.id, { ideas: next })}
+          onMention={onMention}
+          memberRefs={memberRefs}
+          readOnly={!editable}
+          placeholder="Was in Frage käme"
+        />
+      </Cell>
+    </RowFrame>
+  )
+
+  /** Dasselbe für die Tabelle «Offene Berufungen». */
+  const openRow = (row: CallingOpenRow, index: number) => (
+    <RowFrame
+      key={row.id}
+      row={row}
+      editable={editable}
+      position={index + 1}
+      onUrgency={(urgency) => changeOpen(row.id, { urgency })}
+      onAssignees={(assignees) => changeOpen(row.id, { assignees })}
+      onDone={
+        isCallingOpenRowEmpty(row) ? undefined : () => changeOpen(row.id, { done: !row.done })
+      }
+      onRemove={
+        value.open.length > 1 || !isCallingOpenRowEmpty(row)
+          ? () => patch({ open: withoutRow(value.open, row.id, newCallingOpenRow) })
+          : undefined
+      }
+      {...handles('open', row.id, index, value.open.length)}
+    >
+      <Cell label="Berufung">
+        <TextCell
+          id={fieldId(row.id, 'calling')}
+          label={`Offene Berufung, Zeile ${index + 1}`}
+          value={row.calling}
+          onChange={(next) => changeOpen(row.id, { calling: next })}
+          onMention={onMention}
+          memberRefs={memberRefs}
+          readOnly={!editable}
+          placeholder="Welche Aufgabe offen ist"
+        />
+      </Cell>
+      <Cell label="Name (Vorschläge)">
+        <TextCell
+          id={fieldId(row.id, 'candidates')}
+          label={`Vorschläge, Zeile ${index + 1}`}
+          value={row.candidates}
+          onChange={(next) => changeOpen(row.id, { candidates: next })}
+          onMention={onMention}
+          memberRefs={memberRefs}
+          readOnly={!editable}
+          placeholder="«@» setzt einen Namen ein"
+        />
+      </Cell>
+      <Cell label="Weiteres Vorgehen">
+        <TextCell
+          id={fieldId(row.id, 'next')}
+          label={`Weiteres Vorgehen, Zeile ${index + 1}`}
+          value={row.next}
+          onChange={(next) => changeOpen(row.id, { next })}
+          onMention={onMention}
+          memberRefs={memberRefs}
+          readOnly={!editable}
+          placeholder="Wer fragt an, bis wann"
+        />
+      </Cell>
+    </RowFrame>
+  )
 
   return (
     <div className="space-y-4">
@@ -393,94 +558,17 @@ export function CallingChangesTables({
         columns={['Name', 'Berufung', 'Ideen und weiteres Vorgehen']}
         editable={editable}
         hidden={hiddenIn(value.members)}
+        /* Die Nummern laufen weiter: Eine zweite Zeile «1» unter der Tabelle
+           wäre eine Zeile, die es zweimal gibt. */
+        others={value.members
+          .filter(otherHit)
+          .map((row, index) => memberRow(row, value.members.filter(visible).length + index))}
         onAdd={() => {
           showAll()
           patch({ members: [...value.members, newCallingMemberRow()] })
         }}
       >
-        {value.members.filter(visible).map((row, index) => (
-          <RowFrame
-            key={row.id}
-            row={row}
-            editable={editable}
-            position={index + 1}
-            onUrgency={(urgency) => changeMember(row.id, { urgency })}
-            onAssignees={(assignees) => changeMember(row.id, { assignees })}
-            onDone={
-              isCallingMemberRowEmpty(row)
-                ? undefined
-                : () => changeMember(row.id, { done: !row.done })
-            }
-            onRemove={
-              value.members.length > 1 || !isCallingMemberRowEmpty(row)
-                ? () => patch({ members: withoutRow(value.members, row.id, newCallingMemberRow) })
-                : undefined
-            }
-            {...handles('members', row.id, index, value.members.length)}
-          >
-            <Cell label="Name">
-              {/*
-                Steht ein Name da, steht er auch beim Schreiben als Verweis da
-                – ein Griff darauf führt zum Profil, wo die bisherigen
-                Berufungen stehen. Genau die schaut man in einer Runde nach.
-                Gesucht wird nur, solange die Zeile keinen Namen hat: Es ist
-                **eine** Person je Zeile. Geht es um ein Ehepaar, sind es zwei
-                Zeilen; was früher zu zweit erfasst wurde, bleibt stehen und
-                lässt sich einzeln entfernen.
-              */}
-              {!editable || row.memberIds.length > 0 ? (
-                <MemberNames
-                  ids={row.memberIds}
-                  onRemove={
-                    editable
-                      ? (id) =>
-                          changeMember(row.id, {
-                            memberIds: row.memberIds.filter((entry) => entry !== id),
-                          })
-                      : undefined
-                  }
-                />
-              ) : (
-                <MemberPicker
-                  single
-                  stacked
-                  label=""
-                  value={row.memberIds}
-                  onChange={(next) => changeMember(row.id, { memberIds: next })}
-                  placeholder="Name suchen …"
-                />
-              )}
-            </Cell>
-            <Cell label="Berufung">
-              <TextCell
-                id={fieldId(row.id, 'calling')}
-                label={`Berufung, Zeile ${index + 1}`}
-                value={row.calling}
-                onChange={(next) => changeMember(row.id, { calling: next })}
-                onMention={onMention}
-                memberRefs={memberRefs}
-                readOnly={!editable}
-                // Der Feldname und kein Beispielsatz – wie beim Titel eines
-                // Traktandums. Was in die Spalte gehört, sagt ihre
-                // Überschrift; ein Satz darunter wiederholte sie bloss
-                // umständlicher.
-                placeholder="Berufung"
-              />
-            </Cell>
-            <Cell label="Ideen und weiteres Vorgehen">
-              <TextCell
-                id={fieldId(row.id, 'ideas')}
-                label={`Ideen und weiteres Vorgehen, Zeile ${index + 1}`}
-                value={row.ideas}
-                onChange={(next) => changeMember(row.id, { ideas: next })}
-                onMention={onMention}
-                memberRefs={memberRefs}
-                readOnly={!editable}
-                placeholder="Was in Frage käme"
-              />
-            </Cell>
-          </RowFrame>
-        ))}
+        {value.members.filter(visible).map(memberRow)}
       </CallingTable>
 
       <CallingTable
@@ -488,67 +576,15 @@ export function CallingChangesTables({
         columns={['Berufung', 'Name (Vorschläge)', 'Weiteres Vorgehen']}
         editable={editable}
         hidden={hiddenIn(value.open)}
+        others={value.open
+          .filter(otherHit)
+          .map((row, index) => openRow(row, value.open.filter(visible).length + index))}
         onAdd={() => {
           showAll()
           patch({ open: [...value.open, newCallingOpenRow()] })
         }}
       >
-        {value.open.filter(visible).map((row, index) => (
-          <RowFrame
-            key={row.id}
-            row={row}
-            editable={editable}
-            position={index + 1}
-            onUrgency={(urgency) => changeOpen(row.id, { urgency })}
-            onAssignees={(assignees) => changeOpen(row.id, { assignees })}
-            onDone={
-              isCallingOpenRowEmpty(row) ? undefined : () => changeOpen(row.id, { done: !row.done })
-            }
-            onRemove={
-              value.open.length > 1 || !isCallingOpenRowEmpty(row)
-                ? () => patch({ open: withoutRow(value.open, row.id, newCallingOpenRow) })
-                : undefined
-            }
-            {...handles('open', row.id, index, value.open.length)}
-          >
-            <Cell label="Berufung">
-              <TextCell
-                id={fieldId(row.id, 'calling')}
-                label={`Offene Berufung, Zeile ${index + 1}`}
-                value={row.calling}
-                onChange={(next) => changeOpen(row.id, { calling: next })}
-                onMention={onMention}
-                memberRefs={memberRefs}
-                readOnly={!editable}
-                placeholder="Welche Aufgabe offen ist"
-              />
-            </Cell>
-            <Cell label="Name (Vorschläge)">
-              <TextCell
-                id={fieldId(row.id, 'candidates')}
-                label={`Vorschläge, Zeile ${index + 1}`}
-                value={row.candidates}
-                onChange={(next) => changeOpen(row.id, { candidates: next })}
-                onMention={onMention}
-                memberRefs={memberRefs}
-                readOnly={!editable}
-                placeholder="«@» setzt einen Namen ein"
-              />
-            </Cell>
-            <Cell label="Weiteres Vorgehen">
-              <TextCell
-                id={fieldId(row.id, 'next')}
-                label={`Weiteres Vorgehen, Zeile ${index + 1}`}
-                value={row.next}
-                onChange={(next) => changeOpen(row.id, { next })}
-                onMention={onMention}
-                memberRefs={memberRefs}
-                readOnly={!editable}
-                placeholder="Wer fragt an, bis wann"
-              />
-            </Cell>
-          </RowFrame>
-        ))}
+        {value.open.filter(visible).map(openRow)}
       </CallingTable>
 
       {/* Das Erledigte ganz unten – wo es nicht im Weg steht und trotzdem
@@ -619,6 +655,7 @@ function CallingTable({
   columns,
   editable,
   hidden,
+  others,
   onAdd,
   children,
 }: {
@@ -627,9 +664,18 @@ function CallingTable({
   editable: boolean
   /** Wie viele Zeilen Farbfilter und Suche gerade wegnehmen */
   hidden: number
+  /**
+   * Zeilen, die zur Suche passen, aber ein anderer Filter wegnimmt.
+   *
+   * Sie stehen abgesetzt unter der Tabelle: Der Farbfilter sagt, welchen
+   * Ausschnitt man bearbeitet – die Suche fragt, wo etwas steht, und das
+   * hört am Rand des Ausschnitts nicht auf.
+   */
+  others?: ReactNode[]
   onAdd: () => void
   children: ReactNode
 }) {
+  const otherCount = others?.length ?? 0
   return (
     <section>
       {/* Nur der Titel – ein Satz darunter, der ihn mit anderen Worten
@@ -655,6 +701,19 @@ function CallingTable({
         <p className="hint">
           {hidden} {hidden === 1 ? 'Zeile ist' : 'Zeilen sind'} ausgeblendet.
         </p>
+      )}
+
+      {otherCount > 0 && (
+        <div className="mt-3 border-t border-dashed border-slate-300 pt-2 dark:border-slate-700">
+          <p className="mb-1.5 text-xs text-slate-500 dark:text-slate-400">
+            <span className="font-semibold text-slate-600 dark:text-slate-300">
+              Weitere Treffer ausserhalb der Filter
+            </span>{' '}
+            <span className="tabular">{otherCount}</span> · Diese Zeilen passen zur Suche, werden
+            aber durch die Farbwahl oder «Nur meine» ausgeblendet.
+          </p>
+          <ul className="space-y-1.5">{others}</ul>
+        </div>
       )}
 
       {editable && (

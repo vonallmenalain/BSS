@@ -14,7 +14,7 @@ Abendmahlsversammlung, Berufungsverwaltung und Mitgliederdaten.
 | Bereich                   | Was die App leistet                                                                                 |
 | ------------------------- | --------------------------------------------------------------------------------------------------- |
 | **Sitzungen**             | Termin festlegen, Traktanden und Pendenzen sammeln, Sitzungsmodus zum Durchgehen, Protokoll drucken |
-| **Pendenzen**             | Was eine Sitzung überstanden hat, ohne erledigt zu werden – alles oder nur das eigene; dazu die Aufgaben der Monatsverantwortung |
+| **Pendenzen**             | Was eine Sitzung überstanden hat, ohne erledigt zu werden – alles, das eigene oder das einer bestimmten Person; dazu die Aufgaben der Monatsverantwortung |
 | **Notizen**               | Was nicht an eine Sitzung gehört – für alle sichtbar, speichert von selbst                          |
 | **Putzplan**              | Die Halbjahrestabelle der Gemeinde als Wochenplan – Grundlage für die Ansage am Sonntag             |
 | **Abendmahlsversammlung** | Ganzer Ablauf pro Sonntag: Leitung, Bekanntmachungen, Angelegenheiten, Ansprachen, Musik, Gebet     |
@@ -26,6 +26,11 @@ Abendmahlsversammlung, Berufungsverwaltung und Mitgliederdaten.
 welcher Ausschnitt, welche Filter, welche Reihenfolge –, steht dort und
 nirgends sonst. Über der Liste bleibt so Platz für die Liste. Am Telefon zieht
 das Menü als Blatt von unten auf, ab dem Tablet klappt es unter dem Knopf auf.
+
+**Eine Suche endet nicht am Rand des Filters.** Wo eine Freitextsuche neben
+einem Filter steht, führt jede Liste unter dem Ergebnis auf, was sonst noch
+passt – siehe [«Weitere Treffer ausserhalb der
+Filter»](#weitere-treffer-ausserhalb-der-filter).
 
 Traktandum und Pendenz sind derselbe Datensatz: Was in einer Sitzung offen
 bleibt, erscheint automatisch wieder – ohne Umtragen, und in der nächsten
@@ -356,6 +361,53 @@ Pendenzen** – «alle» heisst dort: alle meine.
 
 ---
 
+## Weitere Treffer ausserhalb der Filter
+
+**Ein Filter und eine Suche beantworten zwei verschiedene Fragen.** Der Filter
+sagt, welchen Ausschnitt man **gerade liest** – die offenen Pendenzen, die
+aktiven Mitglieder, die kommenden Wochen des Putzplans. Die Suche fragt
+dagegen, **wo etwas steht**, und diese Frage endet nicht am Rand des
+Ausschnitts.
+
+Bisher tat sie es doch: Wer unter _Pendent_ nach «Taufe» suchte, bekam nur die
+offenen Punkte dazu; dass letztes Jahr schon einmal etwas darüber besprochen
+und abgehakt wurde, erfuhr er nicht – er hätte erst den Filter zurückstellen
+müssen, um es überhaupt zu ahnen. Dasselbe bei den Mitgliedern: «Meier» blieb
+leer, solange nur die Aktiven eingestellt waren und Meier als inaktiv geführt
+wird.
+
+**Jetzt steht es darunter.** Sobald etwas im Suchfeld steht, führt die Liste
+unter dem Ergebnis einen abgesetzten Abschnitt:
+
+> **Weitere Treffer ausserhalb der Filter** · 3
+> Diese Einträge passen zur Suche, werden aber durch die Filter ausgeblendet.
+
+Getrennt durch eine gestrichelte Linie, mit einer Zahl daran und einem Satz,
+der **benennt, welcher Filter** es wegnimmt – «weil sie nicht als aktiv geführt
+sind», «weil sie in der Vergangenheit liegen», «weil sie jemand anderem
+gehören». Die Zeilen selbst sind dieselben wie oben und lassen sich genauso
+öffnen und bearbeiten. Sind es viele, kommt der Rest wie überall auf Knopfdruck
+nach.
+
+**Ohne Suchbegriff bleibt der Abschnitt weg.** Ein Filter ohne Suche ist genau
+das, worum gebeten wurde; alles Weggefilterte darunter aufzuführen hiesse, ihn
+wieder aufzuheben.
+
+Das gilt überall, wo eine Freitextsuche neben einem Filter steht:
+
+| Liste                       | Was unter dem Ergebnis erscheint                                                       |
+| --------------------------- | -------------------------------------------------------------------------------------- |
+| **Pendenzen**               | Was ausserhalb des Ausschnitts liegt – Erledigtes unter _Pendent_, Offenes unter _Erledigt_ – und was einer anderen Person gehört |
+| **Mitglieder**              | Wer durch Status, Geschlecht, Organisation oder Alter herausfällt – vor allem die Inaktiven |
+| **Berufungen**              | Entlassene Berufungen, andere Organisationen, Personen ausserhalb der Auswahl. Unter _Ohne Berufung_: wer bereits eine hat – mit der Berufung dabei |
+| **Sitzungen**               | Sitzungen und Traktanden ausserhalb des gewählten Zeitraums, meist im Archiv           |
+| **Putzplan**                | Wochen ausserhalb von _Kommend_ bzw. _Vergangen_ – etwa, wann dieselbe Gruppe zuletzt dran war |
+| **Ansprachen → Vorschläge** | Wer durch «nur Aktive», das Mindestalter, ein Jahr oder «nicht anfragen» herausfällt   |
+| **Berufungsrunde**          | Zeilen, die der Farbfilter oder «Nur meine» wegnimmt – abgesetzt unter der Tabelle     |
+| **`@`-Erwähnung**           | Namen, die nicht in der Vorauswahl der Aktiven stehen, mit dem Vermerk «inaktiv»       |
+
+---
+
 ## Sitzungen, Traktanden und Pendenzen
 
 **Sitzungen** in der Seitenleiste. Eine Sitzung wird geplant, gestartet,
@@ -681,11 +733,24 @@ Die Reihenfolge gilt für alle und bestimmt auch, in welcher Folge der
 Sitzungsmodus durchgeht. Zwischen den Gruppen wird nicht verschoben – eine
 Pendenz zu den neuen Traktanden zu ziehen hiesse, sie zurückzudatieren.
 
-### Pendenzenliste: Ausschnitt, Sortierung, Reihenfolge
+### Pendenzenliste: Ausschnitt, Zuständigkeit, Sortierung, Reihenfolge
 
 **Pendenzen** in der Seitenleiste sammelt, was über alle Sitzungen hinweg
-offen ist – in drei Ausschnitten: _Pendent_, _Meine_, _Erledigt_. Wonach die
-Liste geordnet ist, steht unter **Ansicht** oben rechts:
+offen ist – in vier Ausschnitten:
+
+| Ausschnitt   | Was darin steht                                                            |
+| ------------ | -------------------------------------------------------------------------- |
+| **Pendent**  | die Arbeitsliste: was eine Sitzung überstanden hat, ohne erledigt zu werden |
+| **Meine**    | derselbe Ausschnitt, eingeschränkt auf das eigene Konto                     |
+| **Erledigt** | das Archiv: was abgehakt wurde – auch das versehentlich Abgehakte           |
+| **Alle**     | beides zusammen, wirklich alles, was je als Pendenz erfasst wurde           |
+
+_Alle_ beantwortet die Frage, für die es bisher zwei Listen brauchte: «gab es
+dazu schon einmal etwas – gleich in welchem Zustand?» Von Hand sortiert wird
+dort nicht: Die Position hängt an der offenen Pendenz, und das Erledigte trägt
+keine (siehe unten).
+
+Wonach die Liste geordnet ist, steht unter **Ansicht** oben rechts:
 
 | Sortieren nach          | Was die Liste tut                                                     |
 | ----------------------- | --------------------------------------------------------------------- |
@@ -694,13 +759,34 @@ Liste geordnet ist, steht unter **Ansicht** oben rechts:
 | **Manuelle Sortierung** | die von Hand gelegte Reihenfolge – eine Liste, ohne Zwischentitel     |
 
 **Der Ausschnitt steht in der Adresse** (`?ansicht=pendent`, `?ansicht=meine`,
-`?ansicht=erledigt`) und lässt sich damit verlinken: Auf der Übersicht führen
+`?ansicht=erledigt`, `?ansicht=alle`) und lässt sich damit verlinken: Auf der Übersicht führen
 die Zahl **Meine** und das «Alle anzeigen» der Kachel **Meine Pendenzen**
 geradewegs nach _Meine_, die Zahl **Pendenzen** nach _Pendent_. Ohne Angabe
 gilt, was das Gerät sich zuletzt gemerkt hat – wer die Seite in der
 Seitenleiste aufruft, findet die Liste vor, die er verlassen hat. Ein Verweis
 ist eine einmalige Anweisung und keine Einstellung: Er schreibt das Gemerkte
 nicht um.
+
+**Neben der Suche steht, wessen Pendenzen gemeint sind.** Ein Auswahlfeld mit
+_Alle Zuständigen_ und darunter jedem Konto der Bischofschaft, mit der Zahl
+dahinter, die sagt, was einen erwartet – «Bischof · 7». Es beantwortet dieselbe
+Frage wie _Meine_, bloss für jemand anderen: Wer wissen will, was beim Bischof
+liegt, wählt ihn und liest seine Liste. Gefragt wird dabei nicht nur, wer als
+zuständig eingetragen ist – eine Berufungsrunde gehört auch dem, der darin eine
+Zeile trägt oder namentlich vorkommt (siehe [«Wann ein Eintrag ‹meiner›
+ist»](#wann-ein-eintrag-meiner-ist)).
+
+Die Auswahl wirkt in jedem Ausschnitt: _Erledigt_ mit einem Namen zeigt, was
+diese Person abgehakt hat, _Alle_ mit einem Namen alles, was je bei ihr lag.
+Das eigene Konto trägt den Zusatz **(ich)** – so ist sichtbar, dass der Knopf
+_Meine_ und dieses Feld dieselbe Frage stellen. Steht _Meine_ offen und wird
+jemand anderes gewählt, wechselt der Ausschnitt auf _Pendent_: Der Knopf trüge
+sonst einen Namen, den die Liste nicht mehr zeigt.
+
+Auch diese Wahl steht in der Adresse (`?person=<Konto>`), damit sich eine
+solche Liste verlinken lässt und «Zurück» aus einem Eintrag sie wiederfindet.
+Gemerkt wird sie nicht: Eine Zuständigkeit schaut man nach und ist danach
+wieder bei der ganzen Liste.
 
 **Die Sortierung gilt für alle.** Sie steht in den Einstellungen und nicht im
 Browser: Die Bischofschaft geht die Pendenzen gemeinsam durch, und «der dritte
@@ -727,10 +813,10 @@ Verlassen des Feldes ordnet sich die Liste in einem Zug neu.
 
 Eine neu erfasste Pendenz ist noch nicht einsortiert und steht **zuoberst** –
 dort, wo sie auch nach Erfassungsdatum stünde; ein Griff auf den Pfeil setzt
-sie an ihren Platz. Umsortiert wird nur unter _Pendent_ und ohne Suche: Ein
-Ausschnitt sagt nichts darüber, wo das Ausgeblendete steht. Im Archiv
-_Erledigt_ steht die Wahl gar nicht erst zur Verfügung – was erledigt ist,
-wird nachgeschlagen und nicht mehr geordnet.
+sie an ihren Platz. Umsortiert wird nur unter _Pendent_, ohne Suche und ohne
+Einschränkung auf eine Person: Ein Ausschnitt sagt nichts darüber, wo das
+Ausgeblendete steht. Unter _Erledigt_ und _Alle_ steht die Wahl gar nicht erst
+zur Verfügung – was erledigt ist, wird nachgeschlagen und nicht mehr geordnet.
 
 **Die gelegte Reihenfolge gilt auch in der Sitzung.** Steht «Manuelle
 Sortierung», folgt ihr die Pendenzengruppe jeder Sitzung – in der
@@ -1734,6 +1820,13 @@ beantworten könnte – seit wann, wie oft, was davor –, steht im Profil, und
 Organisation und Unterkapitel zu – «Sonnenstrahlen» findet die Lehrerinnen
 dieser Klasse –, in der Ansicht «Ohne Berufung» auf den Namen.
 
+**Auch hier reicht die Suche über die Filter hinaus.** Wer einen Namen sucht,
+den _Aktuell_ oder _Nur Aktive_ wegnimmt, findet ihn unter dem Ergebnis;
+unter _Ohne Berufung_ steht dort, wer bereits eine hat – mit der laufenden
+Berufung daneben, denn genau sie ist der Grund, weshalb die Person oben fehlt
+(siehe [«Weitere Treffer ausserhalb der
+Filter»](#weitere-treffer-ausserhalb-der-filter)).
+
 ---
 
 ## Mitglieder
@@ -1761,6 +1854,11 @@ zuerst.
 
 Die Suche steht in der Adresse, die Einstellungen im Browser: Wer ein Profil
 öffnet und zurückkommt, findet dieselbe Liste vor, die er verlassen hat.
+
+**Die Suche geht über die Filter hinaus.** Wer «Meier» sucht, während nur die
+Aktiven eingestellt sind, findet den inaktiven Meier unter dem Ergebnis –
+abgesetzt und benannt (siehe [«Weitere Treffer ausserhalb der
+Filter»](#weitere-treffer-ausserhalb-der-filter)).
 
 ### Filter nach Organisation
 
