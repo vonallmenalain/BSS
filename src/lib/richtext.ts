@@ -214,7 +214,15 @@ const WHO_DECORATIONS = [
   'decoration-orange-500 dark:decoration-orange-400',
 ]
 
-/** Der Platz in der Farbreihe zu einer `colorId` – siehe `colorIndexForId`. */
+/**
+ * Der Platz in der Farbreihe zu einer `colorId` – die **Rückfallrechnung**.
+ *
+ * Der Ton einer Person wird vergeben und nicht gerechnet, sobald ein Konto
+ * dahintersteht (siehe `lib/personColors`); gefragt wird deshalb `personHue`
+ * aus dem `DataContext`. Diese Rechnung bleibt für alles, wozu es kein Konto
+ * gibt – und weil sie dieselbe ist wie beim Kreis mit den Initialen, ergeben
+ * beide Wege denselben Ton.
+ */
 export function whoHueOf(colorId: string): number {
   return colorIndexForId(colorId)
 }
@@ -236,8 +244,7 @@ export function whoBadgeClass(hue: number): string {
 }
 
 /** Alle Klassen einer gezeichneten Zuordnung – Unterstreichung samt Kreis. */
-export function whoClasses(colorId: string): string {
-  const hue = whoHueOf(colorId)
+export function whoClasses(hue: number): string {
   return `rt-who ${whoBadgeClass(hue)} underline decoration-dotted decoration-2 underline-offset-2 ${whoDecorationClass(hue)}`
 }
 

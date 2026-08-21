@@ -15,7 +15,7 @@ import { MentionText } from '@/components/ui/MentionText'
 import { ConfirmDialog, Modal } from '@/components/ui/Modal'
 import { MemberPicker, PersonButton, SegmentedControl } from '@/components/ui/Pickers'
 import { formatDate } from '@/lib/dates'
-import { cn, colorForId } from '@/lib/utils'
+import { cn } from '@/lib/utils'
 import {
   addLayoutRow,
   canMergeLayoutField,
@@ -253,7 +253,7 @@ function FieldBody({
   onMention?: (member: Member) => void
   onChange: (patch: Partial<LayoutField>) => void
 }) {
-  const { users, membersById } = useData()
+  const { users, membersById, personColor } = useData()
   const ids = field.ids ?? []
 
   switch (field.kind) {
@@ -329,7 +329,7 @@ function FieldBody({
         return (
           <ChipRow empty="Niemand">
             {ids.map((id) => (
-              <span key={id} className={cn('chip', colorForId(id))}>
+              <span key={id} className={cn('chip', personColor(id))}>
                 {name(id)}
               </span>
             ))}

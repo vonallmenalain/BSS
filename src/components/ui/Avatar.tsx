@@ -1,4 +1,4 @@
-import { cn, colorForId, getInitials } from '@/lib/utils'
+import { cn, getInitials } from '@/lib/utils'
 import { useData } from '@/contexts/DataContext'
 
 const SIZES = {
@@ -29,12 +29,22 @@ export function Avatar({
    */
   initials?: string
 }) {
+  /*
+   * Der Ton kommt aus der Zuordnung der ganzen Mannschaft und nicht mehr aus
+   * einer Quersumme über die Kennung: Bischof, Ratgeber und Sekretäre
+   * unterscheiden sich damit sicher, statt bei acht Tönen früher oder später
+   * zweimal dasselbe zu tragen (siehe `lib/personColors`). Ohne Kennung –
+   * ein von Hand erfasster Name – bleibt es bei der Rechnung, jetzt über den
+   * Namen.
+   */
+  const { personColor } = useData()
+
   return (
     <span
       className={cn(
         'inline-flex shrink-0 items-center justify-center rounded-full font-semibold',
         SIZES[size],
-        colorForId(id ?? name),
+        personColor(id ?? name),
         className,
       )}
       title={title ?? name}

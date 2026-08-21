@@ -130,7 +130,7 @@ export function RichTextField({
   wrapperClassName?: string
   'aria-label'?: string
 }) {
-  const { members, users, usersById, membersById } = useData()
+  const { members, users, usersById, membersById, personHue } = useData()
   const listId = useId()
   const rootRef = useRef<HTMLDivElement>(null)
   const docRef = useRef<RichDoc>(docOfValue(value))
@@ -150,9 +150,9 @@ export function RichTextField({
       const name = member
         ? `${member.firstName} ${member.lastName}`
         : (user?.displayName ?? 'Unbekannt')
-      return { initials: getInitials(name), colorId: member?.id ?? uid }
+      return { initials: getInitials(name), hue: personHue(uid) }
     },
-    [usersById, membersById],
+    [usersById, membersById, personHue],
   )
 
   const [trigger, setTrigger] = useState<MentionTrigger | null>(null)

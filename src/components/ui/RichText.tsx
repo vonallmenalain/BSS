@@ -15,7 +15,6 @@ import {
   marksOf,
   richDocFor,
   whoDecorationClass,
-  whoHueOf,
   type RichBlock,
   type RichRun,
   type RichValue,
@@ -141,11 +140,12 @@ function renderRuns(runs: RichRun[], decorate: Decorator, keyBase: string): Reac
  */
 function WhoSpan({ uid, children }: { uid: string; children: ReactNode }) {
   const avatar = useUserAvatar(uid)
+  const { personHue } = useData()
   return (
     <span
       className={cn(
         'underline decoration-dotted decoration-2 underline-offset-2',
-        whoDecorationClass(whoHueOf(avatar.colorId)),
+        whoDecorationClass(personHue(uid)),
       )}
       title={`Zugeordnet: ${avatar.name}`}
     >
