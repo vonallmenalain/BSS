@@ -17,7 +17,7 @@ Abendmahlsversammlung, Berufungsverwaltung und Mitgliederdaten.
 | **Pendenzen**             | Was eine Sitzung überstanden hat, ohne erledigt zu werden – alles, das eigene oder das einer bestimmten Person; dazu die Aufgaben der Monatsverantwortung |
 | **Notizen**               | Was nicht an eine Sitzung gehört – für alle sichtbar, speichert von selbst                          |
 | **Putzplan**              | Die Halbjahrestabelle der Gemeinde als Wochenplan – Grundlage für die Ansage am Sonntag             |
-| **Abendmahlsversammlung** | Ganzer Ablauf pro Sonntag: Leitung, Bekanntmachungen, Angelegenheiten, Ansprachen, Musik, Gebet     |
+| **Abendmahlsversammlung** | Ganzer Ablauf pro Sonntag: Leitung, Bekanntmachungen, Angelegenheiten, Ansprachen, Musik, Gebet – dazu das Monatsthema, und Ansprachen/Musik/Gebet einzeln abgebbar |
 | **Aktivitäten AP's**      | Aktivitätenplan der Priestertumskollegien – teilbar mit Beratern, ohne Einblick in Personendaten    |
 | **Berufungen**            | Wer welche Aufgabe hat, gruppiert nach Organisation – und wer keine hat; Stand aus dem LCR          |
 | **Mitglieder**            | Stammdaten, Notizen, Suche – gefiltert nach Status, Geschlecht, Organisation (PV, JD/AP, JAE, AE) und Alter, sortiert wonach man will |
@@ -957,6 +957,30 @@ für alle Unterpunkte.
 | **Ansprachen**       | Programmplätze vergeben, Vorschlagsliste, Verlauf                                                   |
 | **Musik**            | Drei bis vier Lieder und Musikeinlagen                                                              |
 | **Gebet**            | Anfangs- und Schlussgebet, mit «zuletzt gebetet»                                                    |
+
+Die letzten drei lassen sich einzeln abgeben – siehe
+[«Assistenz der Abendmahlsversammlung»](#assistenz-der-abendmahlsversammlung).
+
+### Das Monatsthema
+
+**Ein Satz, der über dem ganzen Monat steht.** Die Bischofschaft gibt dem
+Monat ein Thema, und alle Sonntage darunter tragen es: Wer die Ansprachen
+anfragt, hat es beim Anfragen vor sich; wer die Lieder aussucht, ebenso.
+
+Es steht **unter dem Datum** – im Kopf des Bereichs und damit auf jeder
+Unterseite, weil es überall dieselbe Auskunft ist. Festgelegt wird es dort,
+wo es steht: Beim Vollzugriff steht neben dem Thema ein **Stift**; ist noch
+keines erfasst, steht an derselben Stelle ein unaufdringliches
+**«Monatsthema»**. Beides öffnet ein kleines Fenster für den Monat des
+gewählten Sonntags – für einen anderen Monat wechselt man den Sonntag, also
+dieselbe Bewegung, die man ohnehin macht. Ein leeres Feld entfernt das Thema
+wieder.
+
+Gefragt wird immer der **Monat des Sonntags**: Ein Thema für den September
+erscheint an jedem Septembersonntag, ohne dass es viermal eingetragen werden
+müsste. Gespeichert wird es bei den Einstellungen der Gemeinde – daraus folgt
+zugleich das Recht: **Ändern kann es der Vollzugriff, die Assistenz sieht es
+nur.**
 
 ### Wer sich um diesen Sonntag kümmert
 
@@ -2568,16 +2592,20 @@ Sie sind für die Berater und die Jugendführung gedacht: Der Aktivitätenplan
 wird mit ihnen geteilt, eine Aufgabe, die Einblick in Personendaten
 rechtfertigt, haben sie aber nicht.
 
-| Rolle                         | Zugriff                                   |
-| ----------------------------- | ----------------------------------------- |
-| **Bischof**                   | alles                                     |
-| **1. Ratgeber**               | alles                                     |
-| **2. Ratgeber**               | alles                                     |
-| **Finanzsekretär**            | alles                                     |
-| **Sekretär**                  | alles                                     |
-| **AP-Kalender · bearbeiten**  | nur «Aktivitäten AP's», mit Schreibrecht  |
-| **AP-Kalender · nur ansehen** | nur «Aktivitäten AP's», ohne Schreibrecht |
-| _Wartet auf Freigabe_         | nichts                                    |
+Und es gibt den **Assistenten** – für die Vorbereitung der
+Abendmahlsversammlung (siehe [«Assistenz»](#assistenz-der-abendmahlsversammlung)).
+
+| Rolle                         | Zugriff                                                            |
+| ----------------------------- | ------------------------------------------------------------------ |
+| **Bischof**                   | alles                                                              |
+| **1. Ratgeber**               | alles                                                              |
+| **2. Ratgeber**               | alles                                                              |
+| **Finanzsekretär**            | alles                                                              |
+| **Sekretär**                  | alles                                                              |
+| **Assistent**                 | nur die angehakten Bereiche: _Ansprachen_, _Musik_, _Gebet_        |
+| **AP-Kalender · bearbeiten**  | nur «Aktivitäten AP's», mit Schreibrecht                           |
+| **AP-Kalender · nur ansehen** | nur «Aktivitäten AP's», ohne Schreibrecht                          |
+| _Wartet auf Freigabe_         | nichts                                                             |
 
 Wozu dann überhaupt Rollen mit Vollzugriff? Sie halten fest, wer welche
 Aufgabe hat – etwa wer die Abendmahlsversammlung leitet oder präsidiert – und
@@ -2595,6 +2623,61 @@ Oberfläche: Ein AP-Zugang erreicht genau zwei Sammlungen (`apActivities`,
 Kopfzeile. Jede andere Abfrage lehnt der Server ab. `npm run test:rules`
 prüft das in beide Richtungen.
 
+### Assistenz der Abendmahlsversammlung
+
+**Die Vorbereitung des Sonntags lässt sich abgeben.** Ansprachen anfragen,
+die Lieder aussuchen, die Gebete verteilen – das ist Arbeit, für die man
+keinen Einblick in Sitzungen, Pendenzen und Berufungen braucht. Genau dafür
+ist die Rolle **Assistent** da.
+
+**Angehakt wird einzeln.** Die Rolle allein öffnet nichts; neben ihr stehen
+drei Haken:
+
+| Bereich        | Was damit offensteht                                                          |
+| -------------- | ----------------------------------------------------------------------------- |
+| **Ansprachen** | die ganze Ansprachenplanung – Programm, Vorschläge, Verlauf, Zuständigkeit    |
+| **Musik**      | Gemeindelieder und Musikeinlagen des Sonntags                                  |
+| **Gebet**      | Anfangs- und Schlussgebet samt Vorschlagsliste und Verlauf                     |
+
+Einer, zwei oder alle drei – der eine sucht nur die Lieder aus, die andere
+macht alles ausser der Musik. **Sind alle Haken weg, ist der Zugang
+entzogen**, ohne dass die Rolle geändert werden muss: Das Konto sieht dann
+denselben Wartebereich wie ein neues, mit einem Satz, der sagt, woran es
+liegt.
+
+**Was die Assistenz sieht, ist genau das, was der Vollzugriff sieht** – auf
+denselben Seiten, mit denselben Filtern und denselben Bearbeitungsrechten.
+Was sie **nicht** sieht: _Leitung_, _Bekanntmachungen_ und _Angelegenheiten_.
+Diese drei Reiter stehen für sie gar nicht erst da, ihre Adressen führen
+zurück in den eigenen Bereich, und die Zugriffsregeln lassen sie nichts
+davon ändern. Ebenso wenig sieht sie Übersicht, Sitzungen, Pendenzen,
+Notizen, Putzplan, Mitgliederverzeichnis, Berufungen, Einstellungen,
+AP-Kalender und Anti Doom – die Seitenleiste trägt für sie einen einzigen
+Eintrag.
+
+Namen aus der Gemeinde liest sie mit: Ohne sie liesse sich weder eine
+Ansprache noch ein Gebet vergeben. Ein Klick auf einen Namen führt allerdings
+nicht ins Profil – das Verzeichnis gehört ihr nicht, und der Name steht
+deshalb ohne Verweis da. Am Mitglied selbst darf sie genau das nachführen,
+was aus ihrer Arbeit entsteht: wann jemand zuletzt gesprochen hat und wer
+gerade nicht angefragt werden soll. Name, Adresse und Notizen bleiben
+unangetastet – auch das steht in den Zugriffsregeln und nicht bloss in der
+Oberfläche.
+
+> **Eine Grenze in der Datenbank.** Ein Sonntag ist **ein** Datensatz, und
+> darin stehen die Bekanntmachungen und die Angelegenheiten neben den
+> Liedern. Firestore kann Leserechte nur je Datensatz vergeben, nicht je
+> Feld. In der App bekommt die Assistenz diese beiden Bereiche nirgends zu
+> sehen, und ändern kann sie daran nichts; wer die Datenbank mit
+> Entwicklerwerkzeugen unmittelbar abfragt, bekommt den Datensatz allerdings
+> ganz. Soll auch das ausgeschlossen sein, müssten die beiden Listen in einen
+> eigenen Datensatz je Sonntag wandern.
+
+Geprüft wird das alles in `tests/firestore-rules.test.js` (`npm run
+test:rules`): dass die Assistenz liest, was sie braucht, dass sie an allem
+anderen scheitert, dass ein Konto ohne Haken nichts bekommt und dass sich
+niemand die Bereiche selbst setzen kann.
+
 ### Ein neues Konto freischalten
 
 Wer sich registriert, landet mit der Rolle «Wartet auf Freigabe» in der
@@ -2602,18 +2685,22 @@ Datenbank und sieht nichts. In der App der Bischofschaft steht das dann
 **zuoberst auf der Übersicht** – ein Klick darauf führt geradewegs zu
 **Einstellungen → Benutzer und Rollen**, wo das Konto in einem Kasten
 **«Neue Registrierungen»** steht. Ohne diesen Hinweis merkte es nur die
-wartende Person selbst. Zur Wahl stehen dort drei Zugriffsstufen –
-Vollzugriff, nur AP-Kalender mit Schreibrecht, nur AP-Kalender zum Ansehen –
-und bei Vollzugriff zusätzlich die Aufgabe in der Bischofschaft. Ein Klick
-auf **Freischalten** wirkt sofort; **Ablehnen** entfernt das Profil wieder.
+wartende Person selbst. Zur Wahl stehen dort vier Zugriffsstufen –
+Vollzugriff, Assistenz der Abendmahlsversammlung, nur AP-Kalender mit
+Schreibrecht, nur AP-Kalender zum Ansehen –, bei Vollzugriff zusätzlich die
+Aufgabe in der Bischofschaft und bei der Assistenz die drei Bereiche zum
+Anhaken (zu Beginn alle drei). Ein Klick auf **Freischalten** wirkt sofort;
+**Ablehnen** entfernt das Profil wieder.
 
 Freischalten darf jedes Konto mit Vollzugriff, nicht nur der Bischof. Die
 Zugriffsstufe lässt sich später jederzeit in der Liste darunter ändern.
 
 Diese Liste steht **nach Rollen** und nicht nach Namen: zuoberst die
 Bischofschaft mit Vollzugriff – Bischof, 1. und 2. Ratgeber, Finanzsekretär,
-Sekretär –, darunter die Konten, die den AP-Kalender bearbeiten dürfen, und
-zuunterst jene, die ihn nur ansehen. Innerhalb derselben Rolle bleibt es
+Sekretär –, darunter die Assistenz, dann die Konten, die den AP-Kalender
+bearbeiten dürfen, und zuunterst jene, die ihn nur ansehen. Bei einer
+Assistenz stehen die drei Bereichshaken gleich neben der Rollenwahl, und
+unter dem Namen steht, was sie damit sieht. Innerhalb derselben Rolle bleibt es
 alphabetisch. So steht beieinander, was dieselben Rechte hat, statt dass sich
 ein AP-Zugang zwischen die Bischofschaft schiebt, nur weil sein Name mit A
 beginnt.

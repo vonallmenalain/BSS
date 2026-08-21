@@ -13,6 +13,7 @@ import { Dashboard } from '@/pages/Dashboard'
 import { Meetings } from '@/pages/Meetings'
 import { MeetingDetail } from '@/pages/MeetingDetail'
 import { Pendenzen } from '@/pages/Pendenzen'
+import { ASSISTANT_AREA_PATHS, type AssistantArea } from '@/lib/types'
 
 // Selten genutzte Bereiche erst bei Bedarf laden – das hält den ersten
 // Aufruf im Sitzungszimmer schnell.
@@ -103,7 +104,7 @@ function LegacyImpulsRedirect() {
  * dorthin, dafür sorgt `RequireFullAccess`.
  */
 function RequireAuth({ children }: { children: ReactNode }) {
-  const { firebaseUser, loading, isApproved, canViewAp, canViewImpulse } = useAuth()
+  const { firebaseUser, loading, isApproved, canViewAp, canViewImpulse, isAssistant } = useAuth()
 
   /*
    * Hier und nicht tiefer: Diese Stelle sieht jedes angemeldete Konto, auch
@@ -115,7 +116,7 @@ function RequireAuth({ children }: { children: ReactNode }) {
 
   if (loading) return <LoadingScreen label="Anmeldung wird geprüft …" />
   if (!firebaseUser) return <Navigate to="/anmelden" replace />
-  if (!isApproved && !canViewAp && !canViewImpulse) return <PendingApproval />
+  if (!isApproved && !canViewAp && !canViewImpulse && !isAssistant) return <PendingApproval />
 
   return <>{children}</>
 }
@@ -129,9 +130,38 @@ function RequireAuth({ children }: { children: ReactNode }) {
  * Anti-Doom-Schalter trägt, zu «Anti Doom».
  */
 function RequireFullAccess() {
-  const { isApproved, canViewAp } = useAuth()
-  if (!isApproved) return <Navigate to={canViewAp ? '/ap' : '/anti-doom'} replace />
+  const { isApproved, homePath } = useAuth()
+  if (!isApproved) return <Navigate to={homePath} replace />
   return <Outlet />
+}
+
+/**
+ * Ein einzelner Bereich der Abendmahlsversammlung.
+ *
+ * Der Vollzugriff kommt überall durch; die Assistenz genau dort, wo ein
+ * Haken steht. Wie bei `RequireFullAccess` ist das keine Sperre, sondern der
+ * kurze Weg: Die Zugriffsregeln geben einem Konto ohne den Bereich ohnehin
+ * nichts heraus – die Weiche erspart die leere Seite hinter einem
+ * Lesezeichen und führt dorthin, wo das Konto zu Hause ist.
+ */
+function RequireSacramentArea({ area }: { area: AssistantArea }) {
+  const { canSeeSacramentArea, homePath } = useAuth()
+  if (!canSeeSacramentArea(area)) return <Navigate to={homePath} replace />
+  return <Outlet />
+}
+
+/**
+ * Der Einstieg in die Abendmahlsversammlung – für jedes Konto ein anderer.
+ *
+ * Der Vollzugriff beginnt unter «Leitung», wo alles zusammenläuft. Die
+ * Assistenz beginnt in ihrem ersten Bereich; «Leitung» wäre für sie eine
+ * Seite, die sie gar nicht öffnen darf.
+ */
+function SacramentIndex() {
+  const { isApproved, assistantAreas } = useAuth()
+  if (isApproved) return <Navigate to="/abendmahl/leitung" replace />
+  const first = assistantAreas[0]
+  return <Navigate to={first ? ASSISTANT_AREA_PATHS[first] : '/'} replace />
 }
 
 /**
@@ -143,8 +173,8 @@ function RequireFullAccess() {
  * dem Konto gehört.
  */
 function RequireImpulse() {
-  const { canViewImpulse, isApproved } = useAuth()
-  if (!canViewImpulse) return <Navigate to={isApproved ? '/' : '/ap'} replace />
+  const { canViewImpulse, homePath } = useAuth()
+  if (!canViewImpulse) return <Navigate to={homePath} replace />
   return <Outlet />
 }
 
@@ -258,9 +288,92 @@ export default function App() {
                     </Route>
                     {/* Der Bereich hiess einmal «Impuls» – alte Lesezeichen
                         und verschickte Links führen weiterhin ans Ziel. */}
-                    <Route path="impuls/redaktion" element={<Navigate to="/anti-doom/redaktion" replace />} />
+                    <Route
+                      path="impuls/redaktion"
+                      element={<Navigate to="/anti-doom/redaktion" replace />}
+                    />
                     <Route path="impuls/:bereich?" element={<LegacyImpulsRedirect />} />
                   </Route>
+
+                  {/* ---------- Abendmahlsversammlung ----------
+                    Ebenfalls ausserhalb von `RequireFullAccess`: Die Rolle
+                    «Assistent» erreicht genau die Bereiche, die an ihrem
+                    Konto angehakt sind – und sonst nichts. Jede Unterseite
+                    trägt deshalb ihre eigene Weiche; «Leitung»,
+                    «Bekanntmachungen» und «Angelegenheiten» bleiben beim
+                    Vollzugriff. */}
+                  <Route
+                    path="abendmahl"
+                    element={
+                      <Suspense fallback={<LoadingScreen />}>
+                        <SacramentLayout />
+                      </Suspense>
+                    }
+                  >
+                    <Route index element={<SacramentIndex />} />
+                    <Route element={<RequireFullAccess />}>
+                      <Route
+                        path="leitung"
+                        element={
+                          <Suspense fallback={<LoadingScreen />}>
+                            <Conducting />
+                          </Suspense>
+                        }
+                      />
+                      <Route
+                        path="bekanntmachungen"
+                        element={
+                          <Suspense fallback={<LoadingScreen />}>
+                            <Announcements />
+                          </Suspense>
+                        }
+                      />
+                      <Route
+                        path="angelegenheiten"
+                        element={
+                          <Suspense fallback={<LoadingScreen />}>
+                            <WardBusiness />
+                          </Suspense>
+                        }
+                      />
+                    </Route>
+                    <Route element={<RequireSacramentArea area="talks" />}>
+                      <Route
+                        path="ansprachen"
+                        element={
+                          <Suspense fallback={<LoadingScreen />}>
+                            <Talks />
+                          </Suspense>
+                        }
+                      />
+                    </Route>
+                    <Route element={<RequireSacramentArea area="music" />}>
+                      <Route
+                        path="musik"
+                        element={
+                          <Suspense fallback={<LoadingScreen />}>
+                            <Music />
+                          </Suspense>
+                        }
+                      />
+                    </Route>
+                    <Route element={<RequireSacramentArea area="prayers" />}>
+                      <Route
+                        path="gebet"
+                        element={
+                          <Suspense fallback={<LoadingScreen />}>
+                            <Prayers />
+                          </Suspense>
+                        }
+                      />
+                    </Route>
+                  </Route>
+
+                  {/* Alte Adresse aus früheren Versionen – Lesezeichen sollen weiter funktionieren. */}
+                  <Route
+                    path="ansprachen"
+                    element={<Navigate to="/abendmahl/ansprachen" replace />}
+                  />
 
                   <Route element={<RequireFullAccess />}>
                     <Route index element={<Dashboard />} />
@@ -300,72 +413,6 @@ export default function App() {
                         </Suspense>
                       }
                     />
-                    {/* ---------- Abendmahlsversammlung ---------- */}
-                    <Route
-                      path="abendmahl"
-                      element={
-                        <Suspense fallback={<LoadingScreen />}>
-                          <SacramentLayout />
-                        </Suspense>
-                      }
-                    >
-                      <Route index element={<Navigate to="leitung" replace />} />
-                      <Route
-                        path="leitung"
-                        element={
-                          <Suspense fallback={<LoadingScreen />}>
-                            <Conducting />
-                          </Suspense>
-                        }
-                      />
-                      <Route
-                        path="bekanntmachungen"
-                        element={
-                          <Suspense fallback={<LoadingScreen />}>
-                            <Announcements />
-                          </Suspense>
-                        }
-                      />
-                      <Route
-                        path="angelegenheiten"
-                        element={
-                          <Suspense fallback={<LoadingScreen />}>
-                            <WardBusiness />
-                          </Suspense>
-                        }
-                      />
-                      <Route
-                        path="ansprachen"
-                        element={
-                          <Suspense fallback={<LoadingScreen />}>
-                            <Talks />
-                          </Suspense>
-                        }
-                      />
-                      <Route
-                        path="musik"
-                        element={
-                          <Suspense fallback={<LoadingScreen />}>
-                            <Music />
-                          </Suspense>
-                        }
-                      />
-                      <Route
-                        path="gebet"
-                        element={
-                          <Suspense fallback={<LoadingScreen />}>
-                            <Prayers />
-                          </Suspense>
-                        }
-                      />
-                    </Route>
-
-                    {/* Alte Adresse aus früheren Versionen – Lesezeichen sollen weiter funktionieren. */}
-                    <Route
-                      path="ansprachen"
-                      element={<Navigate to="/abendmahl/ansprachen" replace />}
-                    />
-
                     <Route
                       path="berufungen"
                       element={

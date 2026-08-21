@@ -33,9 +33,12 @@ import {
   ADMIN_EMAIL,
   AP_ACCESS_ROLES,
   AP_WRITE_ROLES,
+  ASSISTANT_AREA_PATHS,
+  assistantAreasOf,
   BISHOPRIC_ROLES,
   FULL_ACCESS_ROLES,
   type AppUser,
+  type AssistantArea,
   type Role,
 } from '@/lib/types'
 
@@ -63,6 +66,34 @@ interface AuthContextValue {
   canEditAp: boolean
   /** Sieht ausschliesslich den AP-Kalender und sonst nichts von der App. */
   isApOnly: boolean
+  /**
+   * Assistenz der Abendmahlsversammlung – sieht einzelne Bereiche daraus.
+   *
+   * Welche, sagt `assistantAreas`; die Rolle allein öffnet nichts. Ein
+   * Konto mit der Rolle, aber ohne einen einzigen Bereich, kommt nicht in
+   * die App – der Zugang ist dann entzogen, ohne dass die Rolle geändert
+   * wurde.
+   */
+  isAssistant: boolean
+  /** Die freigeschalteten Bereiche – leer bei jedem anderen Konto. */
+  assistantAreas: AssistantArea[]
+  /**
+   * Darf dieser Bereich der Abendmahlsversammlung geöffnet werden?
+   *
+   * Vollzugriff darf alles; die Assistenz genau das, was angehakt ist.
+   * Gefragt wird an drei Stellen – im Menü, an der Route und in der
+   * Reiterleiste –, und drei Antworten darauf wären ein Fehler.
+   */
+  canSeeSacramentArea: (area: AssistantArea) => boolean
+  /**
+   * Wohin dieses Konto gehört, wenn es nichts anderes verlangt hat.
+   *
+   * Der Vollzugriff auf die Übersicht, ein AP-Zugang in den Kalender, die
+   * Assistenz in ihren ersten Bereich. Ohne diese eine Auskunft müsste jede
+   * Weiche die Frage neu beantworten – und eine davon käme zu einem anderen
+   * Schluss.
+   */
+  homePath: string
   /**
    * Darf den Bereich «Anti Doom» sehen – den geistigen Bereich für die AP’s.
    *
@@ -299,6 +330,40 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     const canViewAp = active && Boolean(role && AP_ACCESS_ROLES.includes(role))
     const isAdmin = firebaseUser?.email?.toLowerCase() === ADMIN_EMAIL
 
+    /*
+     * Die Bereiche der Assistenz.
+     *
+     * `assistantAreasOf` prüft Rolle und Aktivstatus gleich mit – ein Feld
+     * aus einer früheren Fassung öffnet damit nichts, solange die Rolle
+     * nicht dazu passt.
+     */
+    const assistantAreas = assistantAreasOf(profile)
+    const isAssistant = assistantAreas.length > 0
+
+    const canViewImpulse =
+      isAdmin ||
+      (active &&
+        role !== 'pending' &&
+        (profile?.impulse === true || profile?.impulseEditor === true))
+
+    /*
+     * Der Ort, an dem dieses Konto zu Hause ist.
+     *
+     * Die Reihenfolge ist die des Zugriffs: Wer alles sieht, beginnt auf der
+     * Übersicht; wer nur Bereiche der Abendmahlsversammlung hat, im ersten
+     * davon; wer nur den Kalender hat, dort. Bleibt nichts übrig, führt der
+     * Weg auf die Startseite – dort steht dann der Wartebereich.
+     */
+    const homePath = isApproved
+      ? '/'
+      : isAssistant
+        ? ASSISTANT_AREA_PATHS[assistantAreas[0]]
+        : canViewAp
+          ? '/ap'
+          : canViewImpulse
+            ? '/anti-doom'
+            : '/'
+
     return {
       firebaseUser,
       profile,
@@ -310,15 +375,15 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       canViewAp,
       canEditAp: active && Boolean(role && AP_WRITE_ROLES.includes(role)),
       isApOnly: canViewAp && !isApproved,
+      isAssistant,
+      assistantAreas,
+      canSeeSacramentArea: (area: AssistantArea) => isApproved || assistantAreas.includes(area),
+      homePath,
       // Ein wartendes Konto bleibt draussen, selbst wenn ein Feld gesetzt
       // sein sollte – freigeschaltet wird zuerst, der Schalter kommt danach.
       // Die Redaktion sieht den Bereich immer: Wer ihn pflegt, muss ihn
       // lesen können. Dieselben Bedingungen stehen in `firestore.rules`.
-      canViewImpulse:
-        isAdmin ||
-        (active &&
-          role !== 'pending' &&
-          (profile?.impulse === true || profile?.impulseEditor === true)),
+      canViewImpulse,
       canEditImpulse: isAdmin || (active && role !== 'pending' && profile?.impulseEditor === true),
       role,
       error,

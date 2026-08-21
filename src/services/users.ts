@@ -5,7 +5,13 @@ import { db, COLLECTIONS } from '@/lib/firebase'
 import { forgetDoc } from '@/lib/collectionStore'
 import { getInitials } from '@/lib/utils'
 import { commit, type SaveOutcome } from '@/lib/sync'
-import type { ApView, AppUser, Role } from '@/lib/types'
+import {
+  ASSISTANT_AREAS,
+  type ApView,
+  type AppUser,
+  type AssistantArea,
+  type Role,
+} from '@/lib/types'
 
 /**
  * Schaltet ein wartendes Konto frei bzw. ändert die Rolle.
@@ -18,6 +24,48 @@ export async function setUserRole(userId: string, role: Role): Promise<SaveOutco
   return commit(
     updateDoc(doc(db, COLLECTIONS.users, userId), {
       role,
+      updatedAt: serverTimestamp(),
+    }),
+  )
+}
+
+/**
+ * Welche Bereiche der Abendmahlsversammlung ein Assistenzkonto sieht.
+ *
+ * Wie Rolle und Aktivstatus Teil des Zugriffs – und deshalb allein Sache des
+ * Administrator-Kontos; `firestore.rules` sperrt das Feld gegen die eigene
+ * Hand. Geschrieben wird in der Reihenfolge von `ASSISTANT_AREAS`, damit in
+ * der Datenbank nicht steht, in welcher Reihenfolge jemand geklickt hat, und
+ * damit nichts hineingerät, was es gar nicht gibt.
+ */
+export async function setUserAssistantAreas(
+  userId: string,
+  areas: AssistantArea[],
+): Promise<SaveOutcome> {
+  return commit(
+    updateDoc(doc(db, COLLECTIONS.users, userId), {
+      assistantAreas: ASSISTANT_AREAS.filter((area) => areas.includes(area)),
+      updatedAt: serverTimestamp(),
+    }),
+  )
+}
+
+/**
+ * Rolle und Bereiche in einem Zug – beim Freischalten einer Assistenz.
+ *
+ * Zwei Schreibvorgänge nacheinander liessen für einen Augenblick eine
+ * Assistenz ohne Bereich zurück; sie sähe die App und in ihr nichts. Und
+ * bräche der zweite ab, bliebe genau dieser Zustand stehen.
+ */
+export async function setUserRoleWithAreas(
+  userId: string,
+  role: Role,
+  areas: AssistantArea[],
+): Promise<SaveOutcome> {
+  return commit(
+    updateDoc(doc(db, COLLECTIONS.users, userId), {
+      role,
+      assistantAreas: ASSISTANT_AREAS.filter((area) => areas.includes(area)),
       updatedAt: serverTimestamp(),
     }),
   )

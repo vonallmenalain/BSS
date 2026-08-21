@@ -77,12 +77,26 @@ function useStore<T>(name: string, enabled: boolean): StoreState<T> {
 }
 
 export function DataProvider({ children }: { children: ReactNode }) {
-  const { isApproved, canViewAp } = useAuth()
+  const { isApproved, canViewAp, isAssistant } = useAuth()
+
+  /*
+   * Wer die Stammdaten braucht: der Vollzugriff – und die Assistenz.
+   *
+   * Ansprachen, Musik und Gebet stehen alle auf denselben drei Listen:
+   * Wer im Team ist (für Namen an Zuweisungen), wer in der Gemeinde ist
+   * (für die Auswahl der Sprecher, Beter und Vortragenden) und welche
+   * Lieder es gibt. Ohne sie wäre die Ansicht der Assistenz nicht dieselbe
+   * wie die des Vollzugriffs, sondern eine mit lauter «Unbekannt».
+   *
+   * Dieselbe Grenze steht in `firestore.rules`; hier wird bloss nicht
+   * abonniert, was ohnehin nichts herausgäbe.
+   */
+  const readsDirectory = isApproved || isAssistant
 
   const [settings, setSettings] = useState<AppSettings>(DEFAULT_SETTINGS)
 
   /* Team ------------------------------------------------------------- */
-  const usersState = useStore<AppUser>(COLLECTIONS.users, isApproved)
+  const usersState = useStore<AppUser>(COLLECTIONS.users, readsDirectory)
   const users = useMemo(
     () =>
       [...usersState.data].sort((a, b) =>
@@ -92,7 +106,7 @@ export function DataProvider({ children }: { children: ReactNode }) {
   )
 
   /* Mitglieder ------------------------------------------------------- */
-  const membersState = useStore<Member>(COLLECTIONS.members, isApproved)
+  const membersState = useStore<Member>(COLLECTIONS.members, readsDirectory)
   const members = useMemo(
     () =>
       membersState.data
@@ -104,7 +118,7 @@ export function DataProvider({ children }: { children: ReactNode }) {
   )
 
   /* Liederliste ------------------------------------------------------ */
-  const hymnsState = useStore<Hymn>(COLLECTIONS.hymns, isApproved)
+  const hymnsState = useStore<Hymn>(COLLECTIONS.hymns, readsDirectory)
   const hymns = useMemo(
     () => [...hymnsState.data].sort((a, b) => (a.number ?? 0) - (b.number ?? 0)),
     [hymnsState.data],
@@ -114,7 +128,7 @@ export function DataProvider({ children }: { children: ReactNode }) {
   // Auch für Konten, die nur den AP-Kalender sehen: Der Name der Gemeinde
   // steht in der Kopfzeile, und ohne ihn stünde dort «Gemeinde».
   useEffect(() => {
-    if (!canViewAp) return
+    if (!canViewAp && !isAssistant) return
     return onSnapshot(
       doc(db, COLLECTIONS.settings, 'app'),
       (snapshot) => {
@@ -125,7 +139,7 @@ export function DataProvider({ children }: { children: ReactNode }) {
       },
       (error) => console.error('[data] Einstellungen konnten nicht geladen werden:', error),
     )
-  }, [canViewAp])
+  }, [canViewAp, isAssistant])
 
   const value = useMemo<DataContextValue>(() => {
     const usersById = new Map(users.map((u) => [u.id, u]))
@@ -142,7 +156,7 @@ export function DataProvider({ children }: { children: ReactNode }) {
       hymns,
       hymnsByCode,
       settings,
-      loading: isApproved && (usersState.loading || membersState.loading),
+      loading: readsDirectory && (usersState.loading || membersState.loading),
       userName: (id) => usersById.get(id)?.displayName ?? 'Unbekannt',
       memberName: (id) => {
         const member = membersById.get(id)
@@ -154,7 +168,7 @@ export function DataProvider({ children }: { children: ReactNode }) {
         return choice.title || hymnTitle(choice.code ?? String(choice.number ?? ''))
       },
     }
-  }, [users, members, hymns, settings, usersState.loading, membersState.loading, isApproved])
+  }, [users, members, hymns, settings, usersState.loading, membersState.loading, readsDirectory])
 
   return <DataContext.Provider value={value}>{children}</DataContext.Provider>
 }

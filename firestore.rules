@@ -13,6 +13,7 @@ rules_version = '2';
 //   executive_secretary – Exekutivsekretär
 //   secretary           – Sekretär
 //   counselor           – Sammelrolle früherer Versionen (weiterhin gültig)
+//   assistant           – Assistenz der Abendmahlsversammlung, Bereiche einzeln
 //   ap_editor           – nur der AP-Kalender, mit Schreibrecht
 //   ap_viewer           – nur der AP-Kalender, ausschliesslich lesend
 //   pending             – wartet auf Freigabe, kein Datenzugriff
@@ -32,6 +33,33 @@ rules_version = '2';
 // Einstellungen (für den Namen der Gemeinde in der Kopfzeile). Alles
 // Übrige bleibt ihnen verschlossen, und zwar hier und nicht erst in der
 // Oberfläche.
+//
+// Die dritte Ausnahme ist die **Assistenz** der Abendmahlsversammlung. Die
+// Vorbereitung des Sonntags lässt sich abgeben – Ansprachen anfragen, die
+// Lieder aussuchen, die Gebete verteilen –, ohne den Einblick abzugeben, den
+// «Leitung», «Bekanntmachungen» und «Angelegenheiten» mit sich brächten.
+// Welche der drei Bereiche offenstehen, steht am Konto im Feld
+// `assistantAreas` (`talks`, `music`, `prayers`); die Rolle allein öffnet
+// nichts. Vergeben wird das Feld – wie `role` und `active` – allein vom
+// Administrator-Konto, und die Selbst-Update-Regel sperrt es gegen die
+// eigene Hand.
+//
+// Die Assistenz erreicht damit genau: `talks` (mit dem Haken «Ansprachen»),
+// `prayers` (mit «Gebet»), die Sonntage in `sacramentMeetings` (alle drei
+// brauchen sie) und lesend Team, Mitglieder, Lieder und Einstellungen. In
+// `sacramentMeetings` und `members` darf sie nur die Felder anfassen, die zu
+// ihrem Bereich gehören – die Bekanntmachungen und die Angelegenheiten eines
+// Sonntags bleiben unangetastet, ebenso die Stammdaten eines Mitglieds.
+// Alles Übrige – Sitzungen, Pendenzen, Notizen, Berufungen, Putzplan,
+// AP-Kalender, Anti Doom – bleibt ihr verschlossen.
+//
+// Eine Grenze hat das: `sacramentMeetings` ist **ein** Dokument je Sonntag,
+// und darin stehen die Bekanntmachungen und die Angelegenheiten neben den
+// Liedern. Feldweise lesen können Firestore-Regeln nicht. In der App sieht
+// die Assistenz diese beiden Bereiche nirgends, und ändern kann sie daran
+// nichts; wer die Datenbank unmittelbar abfragt, bekommt das Dokument
+// allerdings ganz. Wo das nicht genügt, müssten die beiden Listen in ein
+// eigenes Dokument je Sonntag wandern.
 //
 // Dazu kommt `calendarFeeds`: die Links, unter denen der Plan als Kalender
 // abonniert werden kann. Lesen dürfen sie beide AP-Rollen – wer den Plan
@@ -110,6 +138,44 @@ service cloud.firestore {
     }
 
     /*
+     * Assistenz der Abendmahlsversammlung – und welche Bereiche.
+     *
+     * Die Rolle allein öffnet nichts: Gefragt wird immer nach einem der drei
+     * Bereiche («talks», «music», «prayers»), und die Antwort steht in
+     * `assistantAreas` am Konto. Eine leere Liste heisst «nichts» – so lässt
+     * sich der Zugang entziehen, ohne die Rolle zu ändern.
+     *
+     * `hasAny` statt `in`: Damit lässt sich in einem Zug fragen, ob
+     * **irgendeiner** der genannten Bereiche offensteht – gebraucht bei den
+     * Sonntagen, die alle drei Bereiche brauchen.
+     */
+    function assistantSees(areas) {
+      return hasProfile()
+        && userDoc().active == true
+        && userDoc().role == 'assistant'
+        && userDoc().get('assistantAreas', []).hasAny(areas);
+    }
+
+    /** Irgendein Bereich der Abendmahlsversammlung steht offen. */
+    function assistantAny() {
+      return assistantSees(['talks', 'music', 'prayers']);
+    }
+
+    /**
+     * Welche Felder ein Schreibvorgang überhaupt anfasst.
+     *
+     * `diff().affectedKeys()` nennt genau die Felder, die sich ändern – beim
+     * Anlegen gibt es nichts zu vergleichen, dann zählen alle mitgeschickten.
+     * Damit lässt sich sagen: «Du darfst dieses Dokument anfassen, aber nur
+     * an diesen Stellen.»
+     */
+    function touchedKeys() {
+      return resource == null
+        ? request.resource.data.keys()
+        : request.resource.data.diff(resource.data).affectedKeys();
+    }
+
+    /*
      * Darf den Bereich «Impuls» sehen.
      *
      * Anders als beim AP-Kalender entscheidet keine Rolle, sondern der
@@ -182,8 +248,11 @@ service cloud.firestore {
     match /users/{userId} {
       // Jeder Angemeldete sieht sein eigenes Profil (um die Rolle zu erfahren),
       // Freigeschaltete sehen das ganze Team (für Zuweisungen und Namen).
-      allow get: if signedIn() && (request.auth.uid == userId || approved());
-      allow list: if approved();
+      // Die Assistenz liest das Team mit: An einer Ansprache steht, wer sie
+      // angefragt hat, und am Sonntag, wer für ihn zuständig ist – ohne die
+      // Namen stünde dort «Unbekannt».
+      allow get: if signedIn() && (request.auth.uid == userId || approved() || assistantAny());
+      allow list: if approved() || assistantAny();
 
       // Ein neues Konto legt sein eigenes Profil an – zwingend als `pending`.
       // Damit kann sich niemand selbst Rechte geben. Auch die beiden
@@ -194,7 +263,8 @@ service cloud.firestore {
         && request.resource.data.role == 'pending'
         && request.resource.data.active == true
         && !('impulse' in request.resource.data)
-        && !('impulseEditor' in request.resource.data);
+        && !('impulseEditor' in request.resource.data)
+        && !('assistantAreas' in request.resource.data);
 
       // Das eigene Profil darf jede und jeder pflegen (Name, Verknüpfung,
       // Ansichts-Einstellungen) – aber weder Rolle noch Aktivstatus anfassen,
@@ -206,7 +276,8 @@ service cloud.firestore {
         && unchanged('role')
         && unchanged('active')
         && unchanged('impulse')
-        && unchanged('impulseEditor');
+        && unchanged('impulseEditor')
+        && unchanged('assistantAreas');
 
       // Benutzer verwalten – freischalten, Rollen zuweisen, deaktivieren,
       // löschen – darf ausschliesslich der Administrator. Damit genügt ein
@@ -288,24 +359,68 @@ service cloud.firestore {
 
     /* ---------------- Mitglieder ---------------- */
 
+    /*
+     * Das Mitgliederverzeichnis.
+     *
+     * Die Assistenz liest es: Ohne die Gemeinde liesse sich weder eine
+     * Ansprache noch ein Gebet vergeben, und die Vorschlagslisten leben
+     * davon. Schreiben darf sie genau das, was aus ihrer Arbeit entsteht –
+     * wer wann zuletzt gesprochen hat und wer gerade nicht angefragt werden
+     * soll. Name, Adresse, Notizen und alles Übrige bleiben unangetastet
+     * (siehe `services/talks` und `services/prayers`).
+     */
     match /members/{memberId} {
-      allow read, write: if approved();
+      allow read: if approved() || assistantAny();
+      allow write: if approved();
+
+      allow update: if (assistantSees(['talks'])
+          && touchedKeys().hasOnly([
+               'availableForTalks', 'talkHoldUntil', 'talkAvailabilityChangedAt',
+               'talkHold', 'lastTalkDate', 'talkCount', 'updatedAt'
+             ]))
+        || (assistantSees(['prayers'])
+          && touchedKeys().hasOnly([
+               'availableForPrayers', 'prayerHoldUntil', 'prayerAvailabilityChangedAt',
+               'updatedAt'
+             ]));
     }
 
     /* ---------------- Ansprachen und Zeugnisse ---------------- */
 
     match /talks/{talkId} {
-      allow read, write: if approved();
+      allow read, write: if approved() || assistantSees(['talks']);
     }
 
     /* ---------------- Abendmahlsversammlung ---------------- */
 
+    /*
+     * Die Sonntage – ein Dokument je Datum.
+     *
+     * Gelesen wird es von jeder Assistenz: Alle drei Bereiche brauchen die
+     * Auskunft, was an diesem Sonntag stattfindet, und die Lieder stehen
+     * ohnehin darin. Geschrieben wird feldweise – «Musik» rührt die Lieder
+     * und die Musikeinlagen an, «Ansprachen» die Angaben zum Programm.
+     * `announcements`, `business`, `notes`, der Vorsitz und die Begrüssungen
+     * stehen im selben Dokument und bleiben unangetastet.
+     *
+     * `date` und `updatedAt` schreibt jeder Vorgang mit (siehe
+     * `saveSacramentMeeting`) – sie stehen deshalb in beiden Listen.
+     */
     match /sacramentMeetings/{dateKey} {
-      allow read, write: if approved();
+      allow read: if approved() || assistantAny();
+      allow write: if approved();
+
+      allow create, update: if (assistantSees(['music'])
+          && touchedKeys().hasOnly(['hymns', 'musicalNumbers', 'date', 'updatedAt']))
+        || (assistantSees(['talks'])
+          && touchedKeys().hasOnly([
+               'talkSlots', 'kind', 'kindLabel', 'meets', 'plansTalks', 'responsibleId',
+               'date', 'updatedAt'
+             ]));
     }
 
     match /prayers/{prayerId} {
-      allow read, write: if approved();
+      allow read, write: if approved() || assistantSees(['prayers']);
     }
 
     // Wiederkehrende Bekanntmachungen gelten für viele Sonntage zugleich.
@@ -321,8 +436,12 @@ service cloud.firestore {
 
     /* ---------------- Gesangbuch ---------------- */
 
+    // Die Liederliste liest auch die Assistenz «Musik» – ohne sie stünde im
+    // Feld eine Nummer ohne Titel. Gepflegt wird sie über den Import und
+    // damit vom Vollzugriff.
     match /hymns/{number} {
-      allow read, write: if approved();
+      allow read: if approved() || assistantAny();
+      allow write: if approved();
     }
 
     /* ---------------- Berufungen ---------------- */
@@ -566,8 +685,12 @@ service cloud.firestore {
 
     // Lesen darf auch, wer nur den AP-Kalender sieht: Der Name der Gemeinde
     // steht in der Kopfzeile. Ändern darf ihn nur der Vollzugriff.
+    // Lesen darf auch die Assistenz: Dort stehen der Name der Gemeinde, die
+    // Zeit der Versammlung, die Zahl der Ansprachenplätze – und das
+    // Monatsthema. Ändern darf all das nur der Vollzugriff; damit ist das
+    // Monatsthema für die Assistenz von selbst nur zum Lesen da.
     match /settings/{docId} {
-      allow read: if apAccess();
+      allow read: if apAccess() || assistantAny();
       allow write: if approved();
     }
 

@@ -33,8 +33,10 @@ import { saveSettings } from '@/services/settings'
 import {
   deleteUserProfile,
   setUserActive,
+  setUserAssistantAreas,
   setUserImpulse,
   setUserRole,
+  setUserRoleWithAreas,
   updateUserProfile,
 } from '@/services/users'
 import { formatRelative } from '@/lib/dates'
@@ -50,11 +52,15 @@ import {
   ADMIN_EMAIL,
   AP_ONLY_ROLES,
   ASSIGNABLE_ROLES,
+  ASSISTANT_AREA_LABELS,
+  ASSISTANT_AREAS,
+  assistantAreasOf,
   ROLE_LABELS,
   roleRank,
   type AccessLevel,
   type AppSettings,
   type AppUser,
+  type AssistantArea,
   type Role,
 } from '@/lib/types'
 
@@ -759,6 +765,51 @@ function BackupSection() {
 }
 
 /* ------------------------------------------------------------------ */
+/* Assistenz: welche Bereiche                                          */
+/* ------------------------------------------------------------------ */
+
+/**
+ * Die drei Bereiche als Haken – beim Freischalten und in der Kontozeile.
+ *
+ * Ein und dieselbe Reihe an beiden Orten: Was beim Freischalten angehakt
+ * wird, lässt sich später an derselben Stelle wieder umstellen, und die
+ * Reihenfolge bleibt dieselbe (siehe `ASSISTANT_AREAS`).
+ */
+function AssistantAreaChecks({
+  name,
+  areas,
+  onChange,
+}: {
+  /** Hält die Haken zweier Konten auseinander. */
+  name: string
+  areas: AssistantArea[]
+  onChange: (next: AssistantArea[]) => void
+}) {
+  const toggle = (area: AssistantArea, on: boolean) =>
+    onChange(ASSISTANT_AREAS.filter((entry) => (entry === area ? on : areas.includes(entry))))
+
+  return (
+    <div className="flex flex-wrap gap-x-4 gap-y-1.5">
+      {ASSISTANT_AREAS.map((area) => (
+        <label
+          key={area}
+          className="flex cursor-pointer items-center gap-1.5 text-sm text-slate-600 dark:text-slate-300"
+        >
+          <input
+            type="checkbox"
+            className="size-4"
+            name={`${name}-${area}`}
+            checked={areas.includes(area)}
+            onChange={(event) => toggle(area, event.target.checked)}
+          />
+          {ASSISTANT_AREA_LABELS[area]}
+        </label>
+      ))}
+    </div>
+  )
+}
+
+/* ------------------------------------------------------------------ */
 /* Neue Registrierungen                                                */
 /* ------------------------------------------------------------------ */
 
@@ -798,6 +849,10 @@ function PendingUserCard({ user }: { user: AppUser }) {
   const toast = useToast()
   const [level, setLevel] = useState<AccessLevel>('full')
   const [role, setRole] = useState<Role>('secretary')
+  /* Zu Beginn stehen alle drei Bereiche offen: Wer eine Assistenz
+     freischaltet, meint meistens die ganze Vorbereitung – und wegnehmen ist
+     leichter, als drei Haken zu suchen. */
+  const [areas, setAreas] = useState<AssistantArea[]>(ASSISTANT_AREAS)
   const [busy, setBusy] = useState(false)
   const [confirmReject, setConfirmReject] = useState(false)
 
@@ -808,8 +863,18 @@ function PendingUserCard({ user }: { user: AppUser }) {
         : (ACCESS_LEVELS.find((option) => option.value === level)?.role ?? 'ap_viewer')
     setBusy(true)
     try {
-      const outcome = await setUserRole(user.id, target)
-      toast.saved(`${user.displayName} freigeschaltet: ${ROLE_LABELS[target]}`, outcome)
+      /* Bei der Assistenz gehören Rolle und Bereiche zusammen – ohne einen
+         einzigen Bereich sähe sie die App und in ihr nichts. */
+      const outcome =
+        target === 'assistant'
+          ? await setUserRoleWithAreas(user.id, target, areas)
+          : await setUserRole(user.id, target)
+      toast.saved(
+        target === 'assistant'
+          ? `${user.displayName} freigeschaltet: Assistenz für ${areas.map((area) => ASSISTANT_AREA_LABELS[area]).join(', ')}`
+          : `${user.displayName} freigeschaltet: ${ROLE_LABELS[target]}`,
+        outcome,
+      )
     } catch (error) {
       console.error(error)
       toast.error('Freigabe fehlgeschlagen.')
@@ -858,6 +923,17 @@ function PendingUserCard({ user }: { user: AppUser }) {
         ))}
       </fieldset>
 
+      {level === 'assistant' && (
+        <div className="mt-3">
+          <span className="label">Welche Bereiche?</span>
+          <AssistantAreaChecks name={`bereiche-${user.id}`} areas={areas} onChange={setAreas} />
+          <p className="hint">
+            Ohne einen einzigen Bereich kommt das Konto nicht in die App – der Zugang ist dann
+            entzogen, ohne dass sich die Rolle ändert.
+          </p>
+        </div>
+      )}
+
       {level === 'full' && (
         <div className="mt-3">
           <label className="label" htmlFor={`role-${user.id}`}>
@@ -891,7 +967,7 @@ function PendingUserCard({ user }: { user: AppUser }) {
           type="button"
           className="btn-primary"
           onClick={() => void approve()}
-          disabled={busy}
+          disabled={busy || (level === 'assistant' && areas.length === 0)}
         >
           <Check className="size-4" aria-hidden />
           Freischalten
@@ -1015,6 +1091,21 @@ function UserRow({
     }
   }
 
+  const changeAreas = async (areas: AssistantArea[]) => {
+    try {
+      const outcome = await setUserAssistantAreas(user.id, areas)
+      toast.saved(
+        areas.length === 0
+          ? `${user.displayName} sieht keinen Bereich mehr – der Zugang ist entzogen.`
+          : `${user.displayName}: ${areas.map((area) => ASSISTANT_AREA_LABELS[area]).join(', ')}`,
+        outcome,
+      )
+    } catch (error) {
+      console.error(error)
+      toast.error('Die Bereiche konnten nicht geändert werden.')
+    }
+  }
+
   const changeImpulse = async (impulse: boolean) => {
     try {
       const outcome = await setUserImpulse(user.id, impulse)
@@ -1031,6 +1122,8 @@ function UserRow({
   }
 
   const apOnly = AP_ONLY_ROLES.includes(user.role)
+  const isAssistant = user.role === 'assistant'
+  const areas = assistantAreasOf({ ...user, active: true })
   /*
    * Das Administrator-Konto sieht «Anti Doom» immer – ein Haken, der nichts
    * bewirkt, würde nur in die Irre führen. Er fehlt deshalb an dieser Zeile.
@@ -1050,6 +1143,10 @@ function UserRow({
           {user.email}
           {apOnly &&
             (user.impulse ? ' · sieht AP-Kalender und Anti Doom' : ' · sieht nur den AP-Kalender')}
+          {isAssistant &&
+            (areas.length === 0
+              ? ' · sieht nichts – kein Bereich freigeschaltet'
+              : ` · sieht ${areas.map((area) => ASSISTANT_AREA_LABELS[area]).join(', ')}`)}
         </p>
       </div>
 
@@ -1075,9 +1172,14 @@ function UserRow({
               </option>
             ))}
           </optgroup>
-          {/* Sich selbst auf den AP-Kalender zu beschränken oder den Zugang ganz
-              zu entziehen wäre eine Sackgasse – beides steht nur für andere
-              Konten zur Wahl. */}
+          {/* Sich selbst auf einen Ausschnitt zu beschränken oder den Zugang
+              ganz zu entziehen wäre eine Sackgasse – beides steht nur für
+              andere Konten zur Wahl. */}
+          {!isSelf && (
+            <optgroup label="Nur Abendmahlsversammlung">
+              <option value="assistant">{ROLE_LABELS.assistant}</option>
+            </optgroup>
+          )}
           {!isSelf && (
             <optgroup label="Nur Aktivitäten AP’s">
               {AP_ONLY_ROLES.map((role) => (
@@ -1100,6 +1202,18 @@ function UserRow({
         </span>
       )}
 
+      {/* Welche Bereiche eine Assistenz sieht, steht am Konto und nicht an
+          der Rolle: Der eine sucht nur die Lieder aus, die andere macht
+          alles ausser der Musik. Die Haken stehen deshalb gleich neben der
+          Rollenwahl – wie der Anti-Doom-Schalter darunter. */}
+      {canManage && isAssistant && (
+        <AssistantAreaChecks
+          name={`bereiche-${user.id}`}
+          areas={areas}
+          onChange={(next) => void changeAreas(next)}
+        />
+      )}
+
       {/* «Anti Doom» hängt am Konto und nicht an der Rolle – der Haken steht
           deshalb neben der Rollenwahl. Gesetzt wird er nur hier; die
           Zugriffsregeln lassen niemanden das eigene Feld anfassen. */}
@@ -1119,8 +1233,10 @@ function UserRow({
       )}
 
       {/* Ein AP-Zugang erreicht das Mitgliederverzeichnis gar nicht – für ihn
-          gäbe es nichts, was die Verknüpfung beantworten könnte. Die eigene
-          Verknüpfung darf jede Person selbst setzen; fremde nur der Admin. */}
+          gäbe es nichts, was die Verknüpfung beantworten könnte. Die
+          Assistenz erreicht es und wird deshalb wie der Vollzugriff
+          behandelt. Die eigene Verknüpfung darf jede Person selbst setzen;
+          fremde nur der Admin. */}
       {!apOnly && (canManage || isSelf) && <MemberLinkField user={user} />}
 
       {canManage && !isSelf && (
