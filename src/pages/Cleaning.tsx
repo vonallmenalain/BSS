@@ -3,6 +3,7 @@ import { Brush, CalendarRange, Pencil, Plus, Trash2 } from 'lucide-react'
 import { useToast } from '@/contexts/ToastContext'
 import { useCleaningWeeks } from '@/hooks/useFirestore'
 import { EmptyState, SkeletonList } from '@/components/ui/Feedback'
+import { OtherResults } from '@/components/ui/OtherResults'
 import { PageHeader, SegmentedControl } from '@/components/ui/Pickers'
 import { Modal, ConfirmDialog } from '@/components/ui/Modal'
 import { formatDateLong, toDateInput } from '@/lib/dates'
@@ -36,6 +37,12 @@ export function Cleaning() {
 
   const today = toDateInput(new Date())
 
+  /** Eine Woche zum Ändern öffnen – aus beiden Listen derselbe Weg. */
+  const openWeek = (week: CleaningWeek) => {
+    setEditWeek(week)
+    setFormOpen(true)
+  }
+
   const counts = useMemo(
     () => ({
       upcoming: weeks.filter((week) => week.endDate >= today).length,
@@ -44,6 +51,8 @@ export function Cleaning() {
     }),
     [weeks, today],
   )
+
+  const searching = search.trim() !== ''
 
   const visible = useMemo(() => {
     let result = weeks
@@ -57,6 +66,28 @@ export function Cleaning() {
     }
     return result
   }, [weeks, scope, search, today])
+
+  /*
+   * Was die Suche ausserhalb des gewählten Zeitraums findet.
+   *
+   * «Kommend» sagt, welchen Teil des Plans man liest; die Suche fragt nach
+   * einer Gruppe oder einem Namen. Wer nachschaut, wann die Familie Meier
+   * dran ist, und nichts findet, soll lesen, dass sie im März dran **war** –
+   * statt erst auf «Alle» umzustellen, um es zu erfahren.
+   *
+   * Das Vergangene rückwärts, wie unter «Vergangen»: Das zuletzt Gewesene
+   * interessiert zuerst.
+   */
+  const otherHits = useMemo(() => {
+    if (!searching) return []
+    const shown = new Set(visible.map((week) => week.id))
+    const rest = weeks.filter(
+      (week) => !shown.has(week.id) && matchesSearch(`${week.group} ${week.team}`, search),
+    )
+    // Steht oben das Kommende, ist das Übrige Vergangenheit – und die liest
+    // sich von hinten.
+    return scope === 'upcoming' ? [...rest].reverse() : rest
+  }, [searching, visible, weeks, search, scope])
 
   /** Die Woche, in der heute liegt – sie steht hervorgehoben in der Liste. */
   const currentId = useMemo(
@@ -124,46 +155,26 @@ export function Cleaning() {
           />
         </div>
       ) : (
-        <ul className="card divide-list overflow-hidden">
-          {visible.map((week) => (
-            <li key={week.id}>
-              <button
-                type="button"
-                onClick={() => {
-                  setEditWeek(week)
-                  setFormOpen(true)
-                }}
-                className={cn(
-                  'flex w-full items-center gap-3 px-4 py-3 text-left transition hover:bg-slate-50 dark:hover:bg-slate-800/60',
-                  week.id === currentId && 'bg-brand-50/60 dark:bg-brand-950/40',
-                )}
-              >
-                <span
-                  className={cn(
-                    'grid size-9 shrink-0 place-items-center rounded-lg text-xs font-semibold',
-                    week.id === currentId
-                      ? 'bg-brand-600 text-white'
-                      : 'bg-slate-100 text-slate-500 dark:bg-slate-800 dark:text-slate-400',
-                  )}
-                >
-                  {week.group.replace(/[^\d]/g, '') || '–'}
-                </span>
+        <WeekRows weeks={visible} currentId={currentId} onEdit={openWeek} />
+      )}
 
-                <div className="min-w-0 flex-1">
-                  <p className="truncate text-sm font-medium">{week.team}</p>
-                  <p className="mt-0.5 truncate text-xs text-slate-500 dark:text-slate-400">
-                    {week.group && `${week.group} · `}
-                    {period(week)}
-                    {week.note?.trim() && ` · ${week.note.trim()}`}
-                    {week.id === currentId && ' · diese Woche'}
-                  </p>
-                </div>
-
-                <Pencil className="size-4 shrink-0 text-slate-300" aria-hidden />
-              </button>
-            </li>
-          ))}
-        </ul>
+      {/* Was ausserhalb des gewählten Zeitraums zur Suche passt – meist die
+          Wochen, in denen dieselbe Gruppe schon einmal dran war. */}
+      {!loading && searching && (
+        <OtherResults
+          items={otherHits}
+          listKey={`${scope}|${search.trim()}`}
+          pageSize={30}
+          hint={
+            scope === 'upcoming'
+              ? 'Diese Wochen passen zur Suche, liegen aber in der Vergangenheit.'
+              : scope === 'past'
+                ? 'Diese Wochen passen zur Suche, liegen aber noch vor uns.'
+                : 'Diese Wochen passen zur Suche, werden aber durch die Auswahl ausgeblendet.'
+          }
+        >
+          {(page) => <WeekRows weeks={page} currentId={currentId} onEdit={openWeek} />}
+        </OtherResults>
       )}
 
       <WeekForm
@@ -255,6 +266,63 @@ interface FormState {
 }
 
 const EMPTY: FormState = { startDate: '', endDate: '', group: '', team: '', note: '' }
+
+/**
+ * Die Zeilen des Plans – ohne Rahmen darum.
+ *
+ * Sie stehen für sich, weil sie zweimal gebraucht werden: für den gewählten
+ * Zeitraum und für die Treffer, die daneben liegen. Die laufende Woche bleibt
+ * dabei in beiden Listen hervorgehoben.
+ */
+function WeekRows({
+  weeks,
+  currentId,
+  onEdit,
+}: {
+  weeks: CleaningWeek[]
+  currentId: string | null
+  onEdit: (week: CleaningWeek) => void
+}) {
+  return (
+    <ul className="card divide-list overflow-hidden">
+      {weeks.map((week) => (
+        <li key={week.id}>
+          <button
+            type="button"
+            onClick={() => onEdit(week)}
+            className={cn(
+              'flex w-full items-center gap-3 px-4 py-3 text-left transition hover:bg-slate-50 dark:hover:bg-slate-800/60',
+              week.id === currentId && 'bg-brand-50/60 dark:bg-brand-950/40',
+            )}
+          >
+            <span
+              className={cn(
+                'grid size-9 shrink-0 place-items-center rounded-lg text-xs font-semibold',
+                week.id === currentId
+                  ? 'bg-brand-600 text-white'
+                  : 'bg-slate-100 text-slate-500 dark:bg-slate-800 dark:text-slate-400',
+              )}
+            >
+              {week.group.replace(/[^\d]/g, '') || '–'}
+            </span>
+
+            <div className="min-w-0 flex-1">
+              <p className="truncate text-sm font-medium">{week.team}</p>
+              <p className="mt-0.5 truncate text-xs text-slate-500 dark:text-slate-400">
+                {week.group && `${week.group} · `}
+                {period(week)}
+                {week.note?.trim() && ` · ${week.note.trim()}`}
+                {week.id === currentId && ' · diese Woche'}
+              </p>
+            </div>
+
+            <Pencil className="size-4 shrink-0 text-slate-300" aria-hidden />
+          </button>
+        </li>
+      ))}
+    </ul>
+  )
+}
 
 function WeekForm({
   open,

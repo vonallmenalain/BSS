@@ -1,4 +1,5 @@
 import {
+  Fragment,
   useCallback,
   useId,
   useLayoutEffect,
@@ -120,14 +121,29 @@ export function MentionField({
     field.setSelectionRange(from, to)
   }, [autoFocus])
 
-  const results = useMemo(() => {
-    if (!trigger) return []
+  /*
+   * Vorgeschlagen wird, wer aktiv ist – gefunden werden soll trotzdem jeder.
+   *
+   * Ohne Suchbegriff stehen die Aktiven da: Das ist die Liste, aus der man
+   * gewöhnlich jemanden erwähnt. Sobald aber ein Name getippt wird, ist die
+   * Frage eine andere – man meint diese eine Person, und ob sie als aktiv
+   * geführt wird, ändert daran nichts. Wer nicht in der Vorauswahl steht,
+   * kommt deshalb darunter, abgesetzt und als «inaktiv» gekennzeichnet.
+   */
+  const { results, firstOther } = useMemo(() => {
+    if (!trigger) return { results: [] as Member[], firstOther: -1 }
     const query = trigger.query.trim()
-    const pool = members.filter((member) => member.status === 'active')
-    const list = query
-      ? pool.filter((member) => matchesSearch(`${member.firstName} ${member.lastName}`, query))
-      : pool
-    return list.slice(0, 6)
+    const active = members.filter((member) => member.status === 'active')
+    if (!query) return { results: active.slice(0, 6), firstOther: -1 }
+
+    const hit = (member: Member) => matchesSearch(`${member.firstName} ${member.lastName}`, query)
+    const found = active.filter(hit).slice(0, 6)
+    const others = members.filter((member) => member.status !== 'active' && hit(member)).slice(0, 4)
+
+    return {
+      results: [...found, ...others],
+      firstOther: others.length > 0 ? found.length : -1,
+    }
   }, [members, trigger])
 
   /*
@@ -256,27 +272,44 @@ export function MentionField({
           className="absolute z-20 mt-1 max-h-56 w-full overflow-y-auto rounded-lg border border-slate-200 bg-white py-1 shadow-lg dark:border-slate-700 dark:bg-slate-800"
         >
           {results.map((member, index) => (
-            <li key={member.id}>
-              <button
-                type="button"
-                role="option"
-                aria-selected={index === active}
-                onMouseDown={(event) => event.preventDefault()}
-                onMouseEnter={() => setActive(index)}
-                onClick={() => choose(member)}
-                className={cn(
-                  'flex w-full items-center gap-2 px-3 py-2 text-left text-sm transition',
-                  index === active
-                    ? 'bg-slate-100 dark:bg-slate-700'
-                    : 'hover:bg-slate-50 dark:hover:bg-slate-700/60',
-                )}
-              >
-                <Avatar name={`${member.firstName} ${member.lastName}`} id={member.id} size="sm" />
-                <span className="min-w-0 flex-1 truncate">
-                  {member.firstName} {member.lastName}
-                </span>
-              </button>
-            </li>
+            <Fragment key={member.id}>
+              {index === firstOther && (
+                <li
+                  role="presentation"
+                  className="mt-1 border-t border-dashed border-slate-300 px-3 pt-1.5 pb-0.5 text-xs text-slate-500 dark:border-slate-600 dark:text-slate-400"
+                >
+                  Weitere Treffer ausserhalb der Vorauswahl
+                </li>
+              )}
+              <li>
+                <button
+                  type="button"
+                  role="option"
+                  aria-selected={index === active}
+                  onMouseDown={(event) => event.preventDefault()}
+                  onMouseEnter={() => setActive(index)}
+                  onClick={() => choose(member)}
+                  className={cn(
+                    'flex w-full items-center gap-2 px-3 py-2 text-left text-sm transition',
+                    index === active
+                      ? 'bg-slate-100 dark:bg-slate-700'
+                      : 'hover:bg-slate-50 dark:hover:bg-slate-700/60',
+                  )}
+                >
+                  <Avatar
+                    name={`${member.firstName} ${member.lastName}`}
+                    id={member.id}
+                    size="sm"
+                  />
+                  <span className="min-w-0 flex-1 truncate">
+                    {member.firstName} {member.lastName}
+                  </span>
+                  {member.status !== 'active' && (
+                    <span className="shrink-0 text-xs text-slate-400">inaktiv</span>
+                  )}
+                </button>
+              </li>
+            </Fragment>
           ))}
         </ul>
       )}

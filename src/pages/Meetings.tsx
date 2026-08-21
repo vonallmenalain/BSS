@@ -12,6 +12,7 @@ import { useToast } from '@/contexts/ToastContext'
 import { Modal } from '@/components/ui/Modal'
 import { MeetingStatusBadge } from '@/components/ui/Badge'
 import { EmptyState, SkeletonList } from '@/components/ui/Feedback'
+import { OtherResults } from '@/components/ui/OtherResults'
 import { AssigneePicker, PageHeader } from '@/components/ui/Pickers'
 import { AddButton, MenuChoice, MenuDivider, MenuToggle, ViewMenu } from '@/components/ui/ViewMenu'
 import { Highlight } from '@/components/ui/Highlight'
@@ -204,17 +205,31 @@ export function Meetings() {
       else hits.set(item.meetingId, [item])
     }
 
-    const meetingsHit = inScope.filter(
-      (meeting) =>
-        hits.has(meeting.id) || matchesSearch(`${meeting.title} ${meeting.location ?? ''}`, term),
+    const hit = (meeting: Meeting) =>
+      hits.has(meeting.id) || matchesSearch(`${meeting.title} ${meeting.location ?? ''}`, term)
+
+    const meetingsHit = inScope.filter(hit)
+
+    /*
+     * Was ausserhalb des gewählten Zeitraums liegt.
+     *
+     * Der Zeitraum sagt, welchen Teil des Kalenders man liest; die Suche
+     * fragt, wo etwas besprochen wurde – und die Antwort darauf liegt fast
+     * immer in der Vergangenheit. Bisher fiel sie unter «Anstehend»
+     * stillschweigend weg, und man musste erst umstellen, um sie zu finden.
+     */
+    const shown = new Set(meetingsHit.map((meeting) => meeting.id))
+    const outside = [...upcoming, ...past].filter(
+      (meeting) => !shown.has(meeting.id) && hit(meeting),
     )
 
     return {
       meetings: meetingsHit,
+      outside,
       items: hits,
       count: meetingsHit.reduce((sum, meeting) => sum + (hits.get(meeting.id)?.length ?? 0), 0),
     }
-  }, [searching, term, allItems, inScope])
+  }, [searching, term, allItems, inScope, upcoming, past])
 
   const visible = found ? found.meetings : inScope
 
@@ -312,67 +327,111 @@ export function Meetings() {
 
       {loading ? (
         <SkeletonList rows={3} />
-      ) : visible.length === 0 ? (
-        <div className="card">
-          {searching ? (
-            <EmptyState
-              icon={Search}
-              title="Nichts gefunden"
-              description={`Zu «${term}» steht in den angezeigten Sitzungen nichts. Vielleicht hilft ein anderer Zeitraum – gesucht wird nur, was die Ansicht zeigt.`}
-            />
-          ) : (
-            <EmptyState
-              icon={CalendarDays}
-              title={
-                filter === 'past' ? 'Noch keine vergangenen Sitzungen' : 'Keine Sitzung geplant'
-              }
-              description={
-                filter === 'past'
-                  ? 'Abgeschlossene Sitzungen erscheinen hier als Protokoll.'
-                  : 'Lege den nächsten Termin fest.'
-              }
-              action={
-                filter !== 'past' && (
-                  <button type="button" className="btn-primary" onClick={() => setFormOpen(true)}>
-                    <Plus className="size-4" aria-hidden />
-                    Sitzung planen
-                  </button>
-                )
-              }
-            />
-          )}
-        </div>
       ) : (
         <>
-          <ul className="space-y-2">
-            {page.map((meeting) => (
-              <MeetingRow
-                key={meeting.id}
-                meeting={meeting}
-                openCount={itemCounts.get(meeting.id) ?? 0}
-                items={
-                  found
-                    ? (found.items.get(meeting.id) ?? [])
-                    : compact
-                      ? (itemsByMeeting.get(meeting.id) ?? [])
-                      : undefined
-                }
-                manualPendenzen={manualPendenzen}
-                view={view}
-                term={term}
-                onOpenItem={setOpenItem}
-              />
-            ))}
-          </ul>
+          {visible.length === 0 ? (
+            <div className="card">
+              {searching ? (
+                <EmptyState
+                  icon={Search}
+                  title="Nichts gefunden"
+                  description={
+                    found && found.outside.length > 0
+                      ? `Zu «${term}» steht im gewählten Zeitraum nichts – darunter steht, was daneben liegt.`
+                      : `Zu «${term}» steht in den Sitzungen nichts.`
+                  }
+                />
+              ) : (
+                <EmptyState
+                  icon={CalendarDays}
+                  title={
+                    filter === 'past' ? 'Noch keine vergangenen Sitzungen' : 'Keine Sitzung geplant'
+                  }
+                  description={
+                    filter === 'past'
+                      ? 'Abgeschlossene Sitzungen erscheinen hier als Protokoll.'
+                      : 'Lege den nächsten Termin fest.'
+                  }
+                  action={
+                    filter !== 'past' && (
+                      <button
+                        type="button"
+                        className="btn-primary"
+                        onClick={() => setFormOpen(true)}
+                      >
+                        <Plus className="size-4" aria-hidden />
+                        Sitzung planen
+                      </button>
+                    )
+                  }
+                />
+              )}
+            </div>
+          ) : (
+            <>
+              <ul className="space-y-2">
+                {page.map((meeting) => (
+                  <MeetingRow
+                    key={meeting.id}
+                    meeting={meeting}
+                    openCount={itemCounts.get(meeting.id) ?? 0}
+                    items={
+                      found
+                        ? (found.items.get(meeting.id) ?? [])
+                        : compact
+                          ? (itemsByMeeting.get(meeting.id) ?? [])
+                          : undefined
+                    }
+                    manualPendenzen={manualPendenzen}
+                    view={view}
+                    term={term}
+                    onOpenItem={setOpenItem}
+                  />
+                ))}
+              </ul>
 
-          {rest > 0 && (
-            <button
-              type="button"
-              className="btn-secondary mt-3 w-full"
-              onClick={() => setShown((current) => current + pageSize)}
+              {rest > 0 && (
+                <button
+                  type="button"
+                  className="btn-secondary mt-3 w-full"
+                  onClick={() => setShown((current) => current + pageSize)}
+                >
+                  Weitere anzeigen · noch {rest}
+                </button>
+              )}
+            </>
+          )}
+
+          {/* Treffer ausserhalb des gewählten Zeitraums – meist im Archiv. */}
+          {found && (
+            <OtherResults
+              items={found.outside}
+              listKey={`${filter}|${term}`}
+              hint={
+                filter === 'upcoming'
+                  ? 'Diese Sitzungen passen zur Suche, liegen aber in der Vergangenheit.'
+                  : filter === 'past'
+                    ? 'Diese Sitzungen passen zur Suche, stehen aber noch an.'
+                    : 'Diese Sitzungen passen zur Suche, werden aber durch den Zeitraum ausgeblendet.'
+              }
             >
-              Weitere anzeigen · noch {rest}
-            </button>
+              {(rows) => (
+                <ul className="space-y-2">
+                  {rows.map((meeting) => (
+                    <MeetingRow
+                      key={meeting.id}
+                      meeting={meeting}
+                      openCount={itemCounts.get(meeting.id) ?? 0}
+                      items={found.items.get(meeting.id) ?? []}
+                      manualPendenzen={manualPendenzen}
+                      view={view}
+                      term={term}
+                      onOpenItem={setOpenItem}
+                    />
+                  ))}
+                </ul>
+              )}
+            </OtherResults>
           )}
         </>
       )}

@@ -2,6 +2,7 @@ import { useMemo } from 'react'
 import { Mail, Phone, RotateCcw, Search, Users } from 'lucide-react'
 import { useData } from '@/contexts/DataContext'
 import { EmptyState, SkeletonList } from '@/components/ui/Feedback'
+import { OtherResults } from '@/components/ui/OtherResults'
 import { PageHeader } from '@/components/ui/Pickers'
 import { MemberStatusBadge } from '@/components/ui/Badge'
 import { Avatar } from '@/components/ui/Avatar'
@@ -31,6 +32,7 @@ import {
   MEMBER_STATUS_SCOPE_LABELS,
   MEMBERS_FILTER_RESET,
   type Gender,
+  type Member,
   type MemberOrganization,
   type MemberSort,
   type MembersView,
@@ -83,6 +85,8 @@ export function Members() {
     [settings.singlesImportedAt],
   )
 
+  const searching = search.trim() !== ''
+
   const visible = useMemo(() => {
     const filter: MemberFilter = {
       search,
@@ -95,6 +99,25 @@ export function Members() {
     }
     return sortMembers(filterMembers(members, filter), view.sort, view.direction, lastPrayer)
   }, [members, search, view, lastPrayer, jaeImportedAt])
+
+  /*
+   * Wen die Suche findet, den die Filter aber wegnehmen.
+   *
+   * Der Filter sagt, welchen Ausschnitt der Gemeinde man liest; die Suche
+   * fragt nach einer bestimmten Person – und die ist entweder da oder nicht,
+   * ganz gleich, ob sie als aktiv geführt wird. Wer «Meier» sucht und nur die
+   * Aktiven eingestellt hat, soll nicht erst den Filter zurückstellen müssen,
+   * um zu erfahren, dass es einen inaktiven Meier gibt.
+   *
+   * Gesucht wird deshalb ein zweites Mal, mit **derselben** Suche und ohne
+   * jeden Filter; abgezogen wird, was oben schon dasteht.
+   */
+  const otherHits = useMemo(() => {
+    if (!searching) return []
+    const shown = new Set(visible.map((member) => member.id))
+    const found = filterMembers(members, { search }).filter((member) => !shown.has(member.id))
+    return sortMembers(found, view.sort, view.direction, lastPrayer)
+  }, [searching, visible, members, search, view.sort, view.direction, lastPrayer])
 
   return (
     <>
@@ -125,102 +148,147 @@ export function Members() {
 
       {loading ? (
         <SkeletonList rows={5} />
-      ) : visible.length === 0 ? (
-        <div className="card">
-          <EmptyState
-            icon={Users}
-            title={members.length === 0 ? 'Noch keine Mitglieder' : 'Nichts gefunden'}
-            description={
-              members.length === 0
-                ? 'Die Mitgliederliste kommt aus dem LCR: «Einstellungen › Importe › Mitglieder».'
-                : 'Passe die Suche an oder lockere unter «Ansicht» die Filter.'
-            }
-          />
-        </div>
       ) : (
         <>
-          <p className="mb-2 text-xs text-slate-500 dark:text-slate-400">
-            {visible.length} von {members.length} angezeigt
-          </p>
-          <ul className="card divide-list overflow-hidden">
-            {visible.map((member) => {
-              const age = getAge(member.birthDate)
-              const months = monthsSince(member.lastTalkDate)
-              return (
-                <li key={member.id}>
-                  <MemberLink
-                    memberId={member.id}
-                    label="Mitglieder"
-                    className="flex items-center gap-3 px-4 py-3 transition hover:bg-slate-50 dark:hover:bg-slate-800/60"
-                  >
-                    <Avatar
-                      name={`${member.firstName} ${member.lastName}`}
-                      id={member.id}
-                      size="lg"
+          {visible.length === 0 ? (
+            <div className="card">
+              <EmptyState
+                icon={Users}
+                title={members.length === 0 ? 'Noch keine Mitglieder' : 'Nichts gefunden'}
+                description={
+                  members.length === 0
+                    ? 'Die Mitgliederliste kommt aus dem LCR: «Einstellungen › Importe › Mitglieder».'
+                    : otherHits.length > 0
+                      ? 'In diesem Ausschnitt passt niemand zur Suche – darunter steht, wen sie sonst findet.'
+                      : 'Passe die Suche an oder lockere unter «Ansicht» die Filter.'
+                }
+              />
+            </div>
+          ) : (
+            <>
+              <p className="mb-2 text-xs text-slate-500 dark:text-slate-400">
+                {visible.length} von {members.length} angezeigt
+              </p>
+              <ul className="card divide-list overflow-hidden">
+                {visible.map((member) => (
+                  <MemberRow
+                    key={member.id}
+                    member={member}
+                    lastPrayer={view.sort === 'lastPrayer' ? lastPrayer : undefined}
+                  />
+                ))}
+              </ul>
+            </>
+          )}
+
+          {/* Was ausserhalb der Filter zur Suche passt – inaktive
+              Mitglieder, ein anderes Alter, eine andere Organisation. */}
+          {searching && (
+            <OtherResults
+              items={otherHits}
+              listKey={`${search.trim()}|${JSON.stringify(view)}`}
+              pageSize={30}
+              hint="Diese Personen passen zur Suche, werden aber durch die Filter unter «Ansicht» ausgeblendet – etwa weil sie nicht als aktiv geführt sind."
+            >
+              {(page) => (
+                <ul className="card divide-list overflow-hidden">
+                  {page.map((member) => (
+                    <MemberRow
+                      key={member.id}
+                      member={member}
+                      lastPrayer={view.sort === 'lastPrayer' ? lastPrayer : undefined}
                     />
-
-                    <div className="min-w-0 flex-1">
-                      <div className="flex flex-wrap items-center gap-2">
-                        <span className="truncate text-sm font-medium">
-                          {member.lastName}, {member.firstName}
-                        </span>
-                        {member.status !== 'active' && <MemberStatusBadge status={member.status} />}
-                      </div>
-                      <p className="mt-0.5 flex flex-wrap items-center gap-x-3 text-xs text-slate-500 dark:text-slate-400">
-                        {age !== null && <span>{age} Jahre</span>}
-                        {member.city && <span>{member.city}</span>}
-                        <span>
-                          {member.lastTalkDate
-                            ? `Ansprache ${formatDate(member.lastTalkDate)}${
-                                months !== null ? ` (vor ${months} Mt.)` : ''
-                              }`
-                            : 'Noch keine Ansprache'}
-                        </span>
-                        {/* Wer nach dem Gebet ordnet, will auch sehen, wonach
-                            geordnet wurde – sonst steht die Liste in einer
-                            Reihenfolge, die sie nicht ausweist. */}
-                        {view.sort === 'lastPrayer' && (
-                          <span>
-                            {lastPrayer.has(member.id)
-                              ? `Gebet ${formatDate(lastPrayer.get(member.id)!)}`
-                              : 'Noch kein Gebet'}
-                          </span>
-                        )}
-                      </p>
-                    </div>
-
-                    <div className="hidden shrink-0 items-center gap-1 sm:flex">
-                      {member.email && (
-                        <a
-                          href={`mailto:${member.email}`}
-                          onClick={(event) => event.stopPropagation()}
-                          className="btn-ghost p-2"
-                          aria-label={`E-Mail an ${member.firstName} ${member.lastName}`}
-                          title={member.email}
-                        >
-                          <Mail className="size-4" aria-hidden />
-                        </a>
-                      )}
-                      {(member.mobile || member.phone) && (
-                        <a
-                          href={telHref(member.mobile || member.phone) ?? '#'}
-                          onClick={(event) => event.stopPropagation()}
-                          className="btn-ghost p-2"
-                          aria-label={`Anrufen: ${member.firstName} ${member.lastName}`}
-                          title={formatPhone(member.mobile || member.phone)}
-                        >
-                          <Phone className="size-4" aria-hidden />
-                        </a>
-                      )}
-                    </div>
-                  </MemberLink>
-                </li>
-              )
-            })}
-          </ul>
+                  ))}
+                </ul>
+              )}
+            </OtherResults>
+          )}
         </>
       )}
     </>
+  )
+}
+
+/* ------------------------------------------------------------------ */
+/* Eine Zeile                                                          */
+/* ------------------------------------------------------------------ */
+
+/**
+ * Ein Mitglied in der Liste.
+ *
+ * Beide Listen zeichnen dieselbe Zeile – die des Ausschnitts und die der
+ * Treffer daneben. Zwei Fassungen davon liefen unweigerlich auseinander.
+ *
+ * `lastPrayer` steht nur da, wo danach geordnet wird: Wer nach dem Gebet
+ * sortiert, will auch sehen, wonach – sonst steht die Liste in einer
+ * Reihenfolge, die sie nicht ausweist.
+ */
+function MemberRow({ member, lastPrayer }: { member: Member; lastPrayer?: Map<string, Date> }) {
+  const age = getAge(member.birthDate)
+  const months = monthsSince(member.lastTalkDate)
+
+  return (
+    <li>
+      <MemberLink
+        memberId={member.id}
+        label="Mitglieder"
+        className="flex items-center gap-3 px-4 py-3 transition hover:bg-slate-50 dark:hover:bg-slate-800/60"
+      >
+        <Avatar name={`${member.firstName} ${member.lastName}`} id={member.id} size="lg" />
+
+        <div className="min-w-0 flex-1">
+          <div className="flex flex-wrap items-center gap-2">
+            <span className="truncate text-sm font-medium">
+              {member.lastName}, {member.firstName}
+            </span>
+            {member.status !== 'active' && <MemberStatusBadge status={member.status} />}
+          </div>
+          <p className="mt-0.5 flex flex-wrap items-center gap-x-3 text-xs text-slate-500 dark:text-slate-400">
+            {age !== null && <span>{age} Jahre</span>}
+            {member.city && <span>{member.city}</span>}
+            <span>
+              {member.lastTalkDate
+                ? `Ansprache ${formatDate(member.lastTalkDate)}${
+                    months !== null ? ` (vor ${months} Mt.)` : ''
+                  }`
+                : 'Noch keine Ansprache'}
+            </span>
+            {lastPrayer && (
+              <span>
+                {lastPrayer.has(member.id)
+                  ? `Gebet ${formatDate(lastPrayer.get(member.id)!)}`
+                  : 'Noch kein Gebet'}
+              </span>
+            )}
+          </p>
+        </div>
+
+        <div className="hidden shrink-0 items-center gap-1 sm:flex">
+          {member.email && (
+            <a
+              href={`mailto:${member.email}`}
+              onClick={(event) => event.stopPropagation()}
+              className="btn-ghost p-2"
+              aria-label={`E-Mail an ${member.firstName} ${member.lastName}`}
+              title={member.email}
+            >
+              <Mail className="size-4" aria-hidden />
+            </a>
+          )}
+          {(member.mobile || member.phone) && (
+            <a
+              href={telHref(member.mobile || member.phone) ?? '#'}
+              onClick={(event) => event.stopPropagation()}
+              className="btn-ghost p-2"
+              aria-label={`Anrufen: ${member.firstName} ${member.lastName}`}
+              title={formatPhone(member.mobile || member.phone)}
+            >
+              <Phone className="size-4" aria-hidden />
+            </a>
+          )}
+        </div>
+      </MemberLink>
+    </li>
   )
 }
 

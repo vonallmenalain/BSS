@@ -43,6 +43,35 @@ export function useOwnItem(): (item: AgendaItem) => boolean {
 }
 
 /**
+ * Dieselbe Frage für **irgendjemanden** aus der Bischofschaft.
+ *
+ * «Meine» ist der häufige Fall und hat deshalb einen eigenen Knopf; die Frage
+ * dahinter ist aber nicht an das eigene Konto gebunden. Wer wissen will, was
+ * beim Bischof liegt, stellt sie über ihn – und bekommt genau dieselbe
+ * Antwort, die der Bischof unter «Meine» bekäme: das ihm Zugewiesene und die
+ * Berufungsrunden, in denen er eine Zeile trägt oder namentlich vorkommt.
+ *
+ * Die Verknüpfung zum Mitglied steht am Konto («Einstellungen → Benutzer und
+ * Rollen»). Fehlt sie, zählt auch hier allein die ausdrückliche Zuweisung –
+ * ein Name im Text ist dann bloss ein Name.
+ */
+export function useItemOfUser(): (item: AgendaItem, userId: string) => boolean {
+  const { usersById, membersById } = useData()
+
+  return useCallback(
+    (item: AgendaItem, userId: string) => {
+      const linkedId = usersById.get(userId)?.memberId
+      const linked = linkedId ? membersById.get(linkedId) : undefined
+      const member: Mention | null = linked
+        ? { id: linked.id, name: `${linked.firstName} ${linked.lastName}` }
+        : null
+      return isOwnItem(item, userId, member)
+    },
+    [usersById, membersById],
+  )
+}
+
+/**
  * Dieselbe Frage an eine **Zeile** einer Berufungsrunde.
  *
  * Eine Runde ist ein Eintrag mit zwanzig Zeilen, die untereinander verteilt

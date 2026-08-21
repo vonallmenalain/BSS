@@ -1,6 +1,7 @@
 import { useCallback, useMemo, useState, type DragEvent } from 'react'
 import { useSearchParams } from 'react-router-dom'
 import { Check, CheckCircle2, Plus, Repeat, Search } from 'lucide-react'
+import { useAuth } from '@/contexts/AuthContext'
 import { useData } from '@/contexts/DataContext'
 import { useToast } from '@/contexts/ToastContext'
 import { useDoneItems, useMeetings, useOpenItems } from '@/hooks/useFirestore'
@@ -9,11 +10,11 @@ import { AgendaItemRow } from '@/components/agenda/AgendaItemRow'
 import { MonthlyDutiesDialog } from '@/components/agenda/MonthlyDuties'
 import { FOCUS_PARAM } from '@/components/agenda/MeetingFocus'
 import { EmptyState, SkeletonList } from '@/components/ui/Feedback'
+import { OtherResults } from '@/components/ui/OtherResults'
 import { PageHeader, SegmentedControl } from '@/components/ui/Pickers'
 import { AddButton, MenuSection, MenuToggle, ViewMenu } from '@/components/ui/ViewMenu'
 import { useLocalStorage } from '@/hooks/useLocalStorage'
-import { useOwnItem } from '@/hooks/useOwnItem'
-import { useUrlState } from '@/hooks/useUrlState'
+import { useItemOfUser, useOwnItem } from '@/hooks/useOwnItem'
 import { savePendenzenOrder } from '@/services/agenda'
 import { saveSettings } from '@/services/settings'
 import { formatDateLong, formatDateShort, toDate, toDateInput } from '@/lib/dates'
@@ -27,6 +28,7 @@ import {
   PENDENZEN_SORT_LABELS,
   toItemKind,
   type AgendaItem,
+  type AppUser,
   type MeetingStatus,
   type PendenzenSort,
   type PendenzenSortState,
@@ -34,10 +36,17 @@ import {
 } from '@/lib/types'
 
 /** Welcher Ausschnitt gezeigt wird. */
-type Scope = 'open' | 'mine' | 'done'
+type Scope = 'open' | 'mine' | 'done' | 'all'
 
-/** «Alle» hiess der offene Ausschnitt früher – alte Merkwerte fallen zurück. */
-const SCOPES: Scope[] = ['open', 'mine', 'done']
+/**
+ * Die vier Ausschnitte.
+ *
+ * _Pendent_ ist die Arbeitsliste, _Meine_ der Griff daraus, _Erledigt_ das
+ * Archiv – und _Alle_ die beiden zusammen: wirklich alles, was je als Pendenz
+ * erfasst wurde. Das war lange nur über zwei Listen zu haben, und wer nicht
+ * wusste, ob ein Punkt noch offen ist, musste beide durchsehen.
+ */
+const SCOPES: Scope[] = ['open', 'mine', 'done', 'all']
 
 /**
  * Der Ausschnitt steht in der Adresse – und damit lässt er sich verlinken.
@@ -57,6 +66,7 @@ const SCOPE_VALUES: Record<Scope, string> = {
   open: 'pendent',
   mine: 'meine',
   done: 'erledigt',
+  all: 'alle',
 }
 
 const SCOPE_PARAM_VALUES = Object.values(SCOPE_VALUES)
@@ -65,6 +75,20 @@ const SCOPE_PARAM_VALUES = Object.values(SCOPE_VALUES)
 function toScope(value: string): Scope {
   return SCOPES.find((scope) => SCOPE_VALUES[scope] === value) ?? 'open'
 }
+
+/**
+ * Wessen Pendenzen – auch das steht in der Adresse.
+ *
+ * «Meine» beantwortet die Frage nur für das eigene Konto; gefragt wird aber
+ * genauso oft nach jemand anderem («was liegt beim Bischof?»). Deshalb steht
+ * neben den Ausschnitten eine Auswahl mit allen Konten der Bischofschaft –
+ * und die getroffene Wahl gehört in die Adresse, damit sich eine solche Liste
+ * verlinken lässt und «Zurück» aus einem Eintrag sie wiederfindet.
+ *
+ * `alle` ist die Vorgabe und steht deshalb nicht in der Adresse.
+ */
+const PERSON_PARAM = 'person'
+const PERSON_ALL = 'alle'
 
 /**
  * Die beiden Datumsfelder, nach denen sortiert **und** gruppiert wird.
@@ -190,10 +214,17 @@ function groupByDay(items: AgendaItem[], dateOf: (item: AgendaItem) => Date | nu
  * dieselbe Liste, und «der dritte Punkt» soll bei allen der dritte sein.
  *
  * «Erledigt» ist das Gegenstück und der Weg zurück: Wer versehentlich
- * abhakt, findet den Punkt dort zuoberst und öffnet ihn wieder.
+ * abhakt, findet den Punkt dort zuoberst und öffnet ihn wieder. «Alle» legt
+ * beides zusammen – für die Frage, ob es zu einer Sache überhaupt einmal
+ * etwas gab, gleich in welchem Zustand.
+ *
+ * **Wessen Pendenzen** sagt die Auswahl neben der Suche: die ganze
+ * Bischofschaft oder eine Person daraus. «Meine» ist der Griff auf das eigene
+ * Konto und bleibt als Knopf stehen, weil es der häufigste ist.
  */
 export function Pendenzen() {
-  const { userName, memberName, settings } = useData()
+  const { users, userName, memberName, settings } = useData()
+  const { profile } = useAuth()
   const toast = useToast()
 
   /*
@@ -206,23 +237,78 @@ export function Pendenzen() {
    * Ein Verweis ist eine einmalige Anweisung und keine Einstellung – deshalb
    * schreibt er das Gemerkte nicht um.
    */
+  const [searchParams, setSearchParams] = useSearchParams()
+
   const [remembered, remember] = useLocalStorage<Scope>('bss:pendenzen:scope', 'open')
   const fallback = SCOPES.includes(remembered) ? remembered : 'open'
-  const [scopeValue, setScopeValue] = useUrlState(
-    SCOPE_PARAM,
-    SCOPE_VALUES[fallback],
-    SCOPE_PARAM_VALUES,
-  )
-  const scope = toScope(scopeValue)
+  const scopeValue = searchParams.get(SCOPE_PARAM)
+  const scope =
+    scopeValue !== null && SCOPE_PARAM_VALUES.includes(scopeValue) ? toScope(scopeValue) : fallback
 
-  const setScope = (next: Scope) => {
-    remember(next)
-    setScopeValue(SCOPE_VALUES[next])
+  /*
+   * Wessen Pendenzen – die Auswahl neben der Suche.
+   *
+   * Sie steht in der Adresse und nicht im Browser: Eine Zuständigkeit ist
+   * nichts, was man einmal einstellt und dauerhaft behält – man schaut nach,
+   * was beim Bischof liegt, und ist danach wieder bei der ganzen Liste. Der
+   * Ausschnitt daneben wird gemerkt, weil er sagt, welche Liste man liest;
+   * die Person sagt bloss, wen man gerade sucht.
+   */
+  const personValue = searchParams.get(PERSON_PARAM) ?? PERSON_ALL
+
+  /**
+   * Ausschnitt und Zuständigkeit – beide in **einer** Änderung der Adresse.
+   *
+   * Zwei Änderungen nacheinander wären am Ende eine: Die zweite geht vom
+   * Stand vor der ersten aus und überschriebe sie (siehe `useSearchParams`).
+   * Genau das trifft den Wechsel von «Meine» zu jemand anderem, wo sich
+   * beides zugleich ändert.
+   *
+   * Geschrieben wird mit `replace`, wie bei jeder Einstellung der Ansicht:
+   * Das Umschalten eines Reiters ist kein Schritt, den man einzeln
+   * zurücknehmen möchte (siehe `hooks/useUrlState`).
+   */
+  const setView = (next: { scope?: Scope; person?: string | null }) => {
+    if (next.scope !== undefined) remember(next.scope)
+    setSearchParams(
+      (params) => {
+        const merged = new URLSearchParams(params)
+        if (next.scope !== undefined) {
+          // Der Vorgabewert steht nicht in der Adresse – so bleibt sie sauber.
+          if (next.scope === fallback) merged.delete(SCOPE_PARAM)
+          else merged.set(SCOPE_PARAM, SCOPE_VALUES[next.scope])
+        }
+        if (next.person !== undefined) {
+          if (next.person === null) merged.delete(PERSON_PARAM)
+          else merged.set(PERSON_PARAM, next.person)
+        }
+        return merged
+      },
+      { replace: true },
+    )
   }
 
+  /*
+   * Ein Griff auf «Meine» räumt eine gewählte Person weg.
+   *
+   * Sonst stünde sie weiterhin in der Adresse und käme beim nächsten Wechsel
+   * auf «Pendent» unversehens zurück – die Liste wäre eingeschränkt, ohne
+   * dass jemand danach gefragt hätte.
+   */
+  const setScope = (next: Scope) =>
+    setView({ scope: next, person: next === 'mine' ? null : undefined })
+
+  const [search, setSearch] = useState('')
+  const searching = search.trim() !== ''
+
   const { data: items, loading: openLoading } = useOpenItems()
-  // Das Archiv wird erst gelesen, wenn jemand hinsieht.
-  const { data: doneItems, loading: doneLoading } = useDoneItems(scope === 'done')
+  /*
+   * Das Archiv wird erst gelesen, wenn jemand hinsieht – oder wenn gesucht
+   * wird: Eine Suche endet nicht am Rand des Ausschnitts, und was sie im
+   * Erledigten findet, steht unter der Liste (siehe `OtherResults`).
+   */
+  const doneEnabled = scope === 'done' || scope === 'all' || searching
+  const { data: doneItems, loading: doneLoading } = useDoneItems(doneEnabled)
   // Weit zurück, damit auch alte Einträge ihre Sitzung benennen können.
   const { data: meetings } = useMeetings(200)
 
@@ -253,14 +339,27 @@ export function Pendenzen() {
       ? { ...stored, field: DEFAULT_PENDENZEN_DONE_SORT.field }
       : stored
   }, [settings.pendenzenDoneSort])
-  const sort = scope === 'done' ? doneSort : openSort
+
+  /*
+   * Welche der beiden Sortierungen gilt.
+   *
+   * «Alle» folgt der Arbeitsliste – es ist ihre Erweiterung und nicht das
+   * Archiv. Von Hand gelegt wird sie trotzdem nicht: Die Position hängt an
+   * der offenen Pendenz, und das Erledigte trägt keine. Nebeneinander stünde
+   * das halbe Archiv zuoberst, als wäre es eben erst hereingekommen.
+   */
+  const sort = useMemo(() => {
+    if (scope === 'done') return doneSort
+    if (scope === 'all' && openSort.field === 'manual') {
+      return { ...openSort, field: DEFAULT_PENDENZEN_DONE_SORT.field }
+    }
+    return openSort
+  }, [scope, doneSort, openSort])
 
   const [detail, setDetail] = useLocalStorage<Detail>('bss:pendenzen:umfang', 'titles')
-  const [search, setSearch] = useState('')
   const [formOpen, setFormOpen] = useState(false)
   /* Die Aufgaben der Monatsverantwortung – die Vorlagen dahinter. */
   const [dutiesOpen, setDutiesOpen] = useState(false)
-  const [searchParams, setSearchParams] = useSearchParams()
 
   /**
    * «Reihenfolge anpassen» – die Pfeile und das Ziehen.
@@ -276,19 +375,7 @@ export function Pendenzen() {
    */
   const [reordering, setReordering] = useState(false)
 
-  const searching = search.trim() !== ''
   const manual = sort.field === 'manual'
-
-  /*
-   * Umsortiert wird nur an der **vollständigen** Liste.
-   *
-   * Geschrieben wird die Position jedes Eintrags; ein Ausschnitt sagt aber
-   * nichts darüber, wo das Ausgeblendete steht. Wer unter «Meine» oder in
-   * einer Suche zöge, schriebe eine Reihenfolge, die es so nie gab. Deshalb
-   * fehlen dort die Griffe – und das Menü sagt, was zu tun ist.
-   */
-  const sortable = manual && scope === 'open' && !searching
-  const reorder = sortable && reordering
 
   const changeSort = (next: PendenzenSortState) => {
     // Aus der gelegten Reihenfolge heraus braucht es die Griffe nicht mehr;
@@ -389,13 +476,71 @@ export function Pendenzen() {
    */
   const ownItem = useOwnItem()
 
+  /** Dieselbe Frage, gestellt über irgendein Konto der Bischofschaft. */
+  const itemOfUser = useItemOfUser()
+
+  /*
+   * Die gewählte Person – oder `null` für die ganze Bischofschaft.
+   *
+   * Unter «Meine» ist es das eigene Konto: Der Knopf **ist** die Auswahl,
+   * bloss mit einem Griff statt mit zweien. Damit steht in der Auswahl
+   * darunter der eigene Name, und der Wechsel zu jemand anderem ist ein
+   * einziger Schritt.
+   *
+   * Ein Wert aus der Adresse, zu dem es kein Konto (mehr) gibt, gilt als
+   * «alle» – sonst stünde nach dem Löschen eines Kontos eine leere Liste da,
+   * die niemand erklären kann.
+   */
+  const person = useMemo(() => {
+    if (scope === 'mine') return profile?.id ?? null
+    if (personValue === PERSON_ALL) return null
+    return users.some((user) => user.id === personValue) ? personValue : null
+  }, [scope, personValue, profile?.id, users])
+
+  /** Was der Ausschnitt hergibt – **ohne** die Einschränkung auf eine Person. */
+  const statusPool = useMemo(() => {
+    if (scope === 'done') return doneItems
+    if (scope === 'all') return [...pendenzen, ...doneItems]
+    return pendenzen
+  }, [scope, doneItems, pendenzen])
+
+  /*
+   * Wie viele Pendenzen auf jede Person entfallen – für die Auswahl.
+   *
+   * Gezählt wird im gewählten Ausschnitt und nicht im ganzen Bestand: Neben
+   * einem Namen soll stehen, was einen erwartet, wenn man ihn wählt. Wer im
+   * Archiv steht, liest dort die erledigten Punkte je Person.
+   */
+  const personCounts = useMemo(() => {
+    const counted = new Map<string, number>()
+    users.forEach((user) => {
+      counted.set(user.id, statusPool.filter((item) => itemOfUser(item, user.id)).length)
+    })
+    return counted
+  }, [users, statusPool, itemOfUser])
+
   const counts = useMemo(
     () => ({
       open: pendenzen.length,
       mine: pendenzen.filter(ownItem).length,
+      // Ohne Zahl, solange das Archiv nicht gelesen ist: Eine 0, die später
+      // aufspringt, wäre eine falsche Auskunft.
+      done: doneEnabled ? doneItems.length : undefined,
+      all: doneEnabled ? pendenzen.length + doneItems.length : undefined,
     }),
-    [pendenzen, ownItem],
+    [pendenzen, ownItem, doneEnabled, doneItems],
   )
+
+  /*
+   * Umsortiert wird nur an der **vollständigen** Liste.
+   *
+   * Geschrieben wird die Position jedes Eintrags; ein Ausschnitt sagt aber
+   * nichts darüber, wo das Ausgeblendete steht. Wer unter «Meine», bei einer
+   * Person oder in einer Suche zöge, schriebe eine Reihenfolge, die es so nie
+   * gab. Deshalb fehlen dort die Griffe – und das Menü sagt, was zu tun ist.
+   */
+  const sortable = manual && scope === 'open' && !searching && person === null
+  const reorder = sortable && reordering
 
   /** Was durchsucht wird – der ganze Eintrag, nicht bloss sein Titel. */
   const haystack = useCallback(
@@ -423,10 +568,14 @@ export function Pendenzen() {
   )
 
   /** Der Ausschnitt, aus dem die Liste gezeichnet wird. */
-  const pool = useMemo(
-    () => (scope === 'done' ? doneItems : scope === 'mine' ? pendenzen.filter(ownItem) : pendenzen),
-    [scope, doneItems, pendenzen, ownItem],
-  )
+  const pool = useMemo(() => {
+    if (person === null) return statusPool
+    // Für das eigene Konto dieselbe Frage wie die Kachel «Meine Pendenzen»
+    // auf der Übersicht – zwei Antworten darauf wären ein Fehler.
+    const belongs =
+      person === profile?.id ? ownItem : (item: AgendaItem) => itemOfUser(item, person)
+    return statusPool.filter(belongs)
+  }, [statusPool, person, profile?.id, ownItem, itemOfUser])
 
   /*
    * Die Liste bleibt stehen, solange jemand in ihr schreibt.
@@ -476,44 +625,72 @@ export function Pendenzen() {
     [dates, dateField],
   )
 
-  const visible = useMemo(() => {
-    const found = search.trim()
-      ? pool.filter((item) => matchesSearch(haystack(item), search))
-      : pool
+  /** Eine Liste in die eingestellte Reihenfolge bringen. */
+  const order = useCallback(
+    (list: AgendaItem[]) => {
+      /*
+       * Die von Hand gelegte Reihenfolge.
+       *
+       * Ein Eintrag ohne Position wurde noch nie einsortiert – er steht
+       * zuoberst, dort, wo er auch nach «Erfassungsdatum» stünde. So beginnt
+       * die Ansicht mit derselben Liste, die man vorher gesehen hat, und eine
+       * eben erfasste Pendenz verschwindet nicht am Ende. Ein Griff auf den
+       * Pfeil setzt sie dorthin, wo sie hingehört.
+       */
+      if (sort.field === 'manual') {
+        const platz = (item: AgendaItem) =>
+          typeof item.pendenzOrder === 'number' ? item.pendenzOrder : null
+        const erfasst = (item: AgendaItem) => dateOf(item)?.getTime() ?? 0
+        return [...list].sort((a, b) => {
+          const links = platz(a)
+          const rechts = platz(b)
+          if (links === null && rechts === null) return erfasst(b) - erfasst(a)
+          if (links === null) return -1
+          if (rechts === null) return 1
+          return links - rechts
+        })
+      }
 
-    /*
-     * Die von Hand gelegte Reihenfolge.
-     *
-     * Ein Eintrag ohne Position wurde noch nie einsortiert – er steht
-     * zuoberst, dort, wo er auch nach «Erfassungsdatum» stünde. So beginnt die
-     * Ansicht mit derselben Liste, die man vorher gesehen hat, und eine eben
-     * erfasste Pendenz verschwindet nicht am Ende. Ein Griff auf den Pfeil
-     * setzt sie dorthin, wo sie hingehört.
-     */
-    if (sort.field === 'manual') {
-      const platz = (item: AgendaItem) =>
-        typeof item.pendenzOrder === 'number' ? item.pendenzOrder : null
-      const erfasst = (item: AgendaItem) => dateOf(item)?.getTime() ?? 0
-      return [...found].sort((a, b) => {
-        const links = platz(a)
-        const rechts = platz(b)
-        if (links === null && rechts === null) return erfasst(b) - erfasst(a)
-        if (links === null) return -1
-        if (rechts === null) return 1
-        return links - rechts
+      // Ohne Datum ans Ende, in beiden Richtungen: Es steht nicht «vor» dem
+      // ältesten Eintrag, es fehlt schlicht.
+      return [...list].sort((a, b) => {
+        const at = dateOf(a)?.getTime()
+        const bt = dateOf(b)?.getTime()
+        if (at === undefined) return bt === undefined ? 0 : 1
+        if (bt === undefined) return -1
+        return sort.dir === 'asc' ? at - bt : bt - at
       })
-    }
+    },
+    [sort, dateOf],
+  )
 
-    // Ohne Datum ans Ende, in beiden Richtungen: Es steht nicht «vor» dem
-    // ältesten Eintrag, es fehlt schlicht.
-    return [...found].sort((a, b) => {
-      const at = dateOf(a)?.getTime()
-      const bt = dateOf(b)?.getTime()
-      if (at === undefined) return bt === undefined ? 0 : 1
-      if (bt === undefined) return -1
-      return sort.dir === 'asc' ? at - bt : bt - at
-    })
-  }, [pool, search, haystack, sort, dateOf])
+  const visible = useMemo(
+    () => order(searching ? pool.filter((item) => matchesSearch(haystack(item), search)) : pool),
+    [pool, searching, search, haystack, order],
+  )
+
+  /*
+   * Was die Suche ausserhalb des Ausschnitts findet.
+   *
+   * Der Ausschnitt sagt, welche Liste man liest; die Suche fragt, wo etwas
+   * steht – und diese Frage endet nicht am Rand des Ausschnitts. Wer unter
+   * «Pendent» nach «Taufe» sucht, will erfahren, dass es dazu auch etwas
+   * Erledigtes gibt oder dass es bei jemand anderem liegt, statt erst den
+   * Filter zurückstellen zu müssen, um es überhaupt zu ahnen.
+   *
+   * Gesucht wird deshalb in **allem**, was diese Seite je zeigt – offene und
+   * erledigte Pendenzen –, und abgezogen wird, was oben schon dasteht. Neue
+   * Traktanden bleiben aussen vor: Sie gehören ihrer Sitzung und nicht dieser
+   * Liste; kein Filter dieser Seite nimmt sie weg.
+   */
+  const otherHits = useMemo(() => {
+    if (!searching) return []
+    const shown = new Set(visible.map((item) => item.id))
+    const everything = [...pendenzen, ...doneItems]
+    return order(
+      everything.filter((item) => !shown.has(item.id) && matchesSearch(haystack(item), search)),
+    )
+  }, [searching, visible, pendenzen, doneItems, search, haystack, order])
 
   /*
    * Umsortieren – mit den Pfeilen und durch Ziehen.
@@ -556,7 +733,7 @@ export function Pendenzen() {
    * «Nur Titel» auf «Alles» umstellt, bekäme kurz 200 aufgeklappte Einträge.
    */
   const pageSize = PAGE_SIZE[detail]
-  const listKey = `${scope}|${detail}|${sort.field}|${sort.dir}|${search.trim()}`
+  const listKey = `${scope}|${person ?? PERSON_ALL}|${detail}|${sort.field}|${sort.dir}|${search.trim()}`
   const [shown, setShown] = useState(pageSize)
   const [shownFor, setShownFor] = useState(listKey)
   if (shownFor !== listKey) {
@@ -579,7 +756,88 @@ export function Pendenzen() {
   }, [visible, shown, sort.field, dateOf])
   const rest = Math.max(0, visible.length - shown)
 
-  const loading = scope === 'done' ? doneLoading : openLoading
+  const loading = scope === 'done' || scope === 'all' ? doneLoading : openLoading
+
+  /**
+   * Eine Zeile der Liste.
+   *
+   * Beide Listen zeichnen sie – die des Ausschnitts und die der Treffer
+   * daneben. Zwei Fassungen davon wären zwei Fassungen desselben Eintrags,
+   * und die eine liesse sich anders bearbeiten als die andere.
+   */
+  const renderRow = (item: AgendaItem, options: { place?: number } = {}) => {
+    const place = options.place
+    return (
+      <AgendaItemRow
+        key={item.id}
+        item={item}
+        /* Die Nummer steht nur an der vollständigen, von Hand gelegten
+           Liste: Dort ist sie die Reihenfolge, auf die sich alle beziehen.
+           In einem Ausschnitt zählte sie bloss den Ausschnitt. */
+        position={sortable && place !== undefined ? place + 1 : undefined}
+        expanded={isExpanded(item.id)}
+        onToggle={() => toggleOpen(item.id)}
+        /* Unter «Meine» steht eine Berufungsrunde, weil eine ihrer Zeilen
+           mich angeht – aufgeklappt sind dann auch diese Zeilen gemeint und
+           nicht die ganze Runde. Der Knopf «Nur meine» darin schaltet die
+           übrigen dazu. */
+        ownRowsOnly={scope === 'mine'}
+        onMove={
+          reorder && place !== undefined ? (delta) => void move(place, place + delta) : undefined
+        }
+        first={place === 0}
+        last={place === visible.length - 1}
+        onDragStart={
+          reorder
+            ? (event: DragEvent<HTMLElement>) => {
+                setDragId(item.id)
+                event.dataTransfer.effectAllowed = 'move'
+              }
+            : undefined
+        }
+        onDragOver={
+          reorder
+            ? (event: DragEvent<HTMLElement>) => {
+                if (!dragId) return
+                event.preventDefault()
+                event.dataTransfer.dropEffect = 'move'
+                setOverId(item.id)
+              }
+            : undefined
+        }
+        onDrop={
+          reorder
+            ? (event: DragEvent<HTMLElement>) => {
+                event.preventDefault()
+                drop(item.id)
+              }
+            : undefined
+        }
+        onDragEnd={
+          reorder
+            ? () => {
+                setDragId(null)
+                setOverId(null)
+              }
+            : undefined
+        }
+        dragging={dragId === item.id}
+        dropTarget={overId === item.id && dragId !== item.id}
+        nextMeeting={nextMeetingRef}
+        meetingLabel={item.meetingId ? meetingLabels.get(item.meetingId) : undefined}
+        meetingHref={
+          item.meetingId ? `/sitzungen/${item.meetingId}?${FOCUS_PARAM}=${item.id}` : undefined
+        }
+        meetingDate={(id) => meetingLabels.get(id)}
+      />
+    )
+  }
+
+  /** Was der Suche entgeht – benannt, damit niemand raten muss, warum. */
+  const otherHint = [
+    scope === 'done' ? 'noch offene Pendenzen' : scope === 'all' ? null : 'bereits Erledigtes',
+    person !== null ? 'Pendenzen anderer Zuständiger' : null,
+  ].filter(Boolean) as string[]
 
   return (
     <>
@@ -588,7 +846,9 @@ export function Pendenzen() {
         subtitle={
           scope === 'done'
             ? 'Abgeschlossene Traktanden und Pendenzen aus früheren Sitzungen'
-            : undefined
+            : scope === 'all'
+              ? 'Offene und erledigte Pendenzen in einer Liste'
+              : undefined
         }
         actions={
           <>
@@ -611,7 +871,7 @@ export function Pendenzen() {
               onSortChange={changeSort}
               // Gelegt wird die Reihenfolge der offenen Punkte – im Archiv
               // steht die Wahl deshalb gar nicht erst zur Verfügung.
-              manualAllowed={scope !== 'done'}
+              manualAllowed={scope === 'open' || scope === 'mine'}
               sortable={sortable}
               reordering={reordering}
               onReorderingChange={setReordering}
@@ -627,27 +887,52 @@ export function Pendenzen() {
         <SegmentedControl<Scope>
           value={scope}
           onChange={setScope}
+          wrap
           options={[
             { value: 'open', label: 'Pendent', count: counts.open },
             { value: 'mine', label: 'Meine', count: counts.mine },
-            // Ohne Zahl: Das Archiv wird erst gelesen, wenn es gewählt ist –
-            // eine 0, die später aufspringt, wäre eine falsche Auskunft.
-            { value: 'done', label: 'Erledigt' },
+            // Ohne Zahl, solange das Archiv nicht gelesen ist: Eine 0, die
+            // später aufspringt, wäre eine falsche Auskunft.
+            { value: 'done', label: 'Erledigt', count: counts.done },
+            { value: 'all', label: 'Alle', count: counts.all },
           ]}
         />
 
-        <div className="relative">
-          <Search
-            className="pointer-events-none absolute top-1/2 left-3 size-4 -translate-y-1/2 text-slate-400"
-            aria-hidden
-          />
-          <input
-            type="search"
-            className="input pl-9"
-            aria-label={scope === 'done' ? 'Erledigtes durchsuchen' : 'Pendenzen durchsuchen'}
-            placeholder="Titel, Beschreibung, Zuständige …"
-            value={search}
-            onChange={(event) => setSearch(event.target.value)}
+        {/* Suche und Zuständigkeit nebeneinander: Beide schneiden aus
+            derselben Liste, und am Telefon stehen sie untereinander. */}
+        <div className="flex flex-col gap-2 sm:flex-row">
+          <div className="relative flex-1">
+            <Search
+              className="pointer-events-none absolute top-1/2 left-3 size-4 -translate-y-1/2 text-slate-400"
+              aria-hidden
+            />
+            <input
+              type="search"
+              className="input pl-9"
+              aria-label={scope === 'done' ? 'Erledigtes durchsuchen' : 'Pendenzen durchsuchen'}
+              placeholder="Titel, Beschreibung, Zuständige …"
+              value={search}
+              onChange={(event) => setSearch(event.target.value)}
+            />
+          </div>
+
+          <PersonSelect
+            value={person}
+            users={users}
+            counts={personCounts}
+            meId={profile?.id ?? null}
+            onChange={(next) => {
+              /*
+               * «Meine» ist das eigene Konto – wählt jemand ein anderes,
+               * trägt der Knopf nicht mehr, was die Liste zeigt. Dann tritt
+               * an seine Stelle der Ausschnitt, aus dem «Meine» geschnitten
+               * ist: die offenen Pendenzen.
+               */
+              setView({
+                scope: scope === 'mine' && next !== profile?.id ? 'open' : undefined,
+                person: next,
+              })
+            }}
           />
         </div>
 
@@ -655,153 +940,116 @@ export function Pendenzen() {
             soll nicht raten müssen, warum sie fehlen. */}
         {manual && reordering && !sortable && (
           <p className="hint">
-            Umsortiert wird unter «Pendent» und ohne Suche – ein Ausschnitt sagt nichts über die
-            Reihenfolge der ganzen Liste.
+            Umsortiert wird unter «Pendent», ohne Suche und ohne Einschränkung auf eine Person – ein
+            Ausschnitt sagt nichts über die Reihenfolge der ganzen Liste.
           </p>
         )}
       </div>
 
       {loading ? (
         <SkeletonList rows={4} />
-      ) : visible.length === 0 ? (
-        <div className="card">
-          <EmptyState
-            icon={CheckCircle2}
-            title={
-              searching
-                ? 'Nichts gefunden'
-                : scope === 'done'
-                  ? 'Noch nichts erledigt'
-                  : 'Keine offenen Pendenzen'
-            }
-            description={
-              searching
-                ? 'Kein Eintrag passt zur Suche.'
-                : scope === 'done'
-                  ? 'Hier steht, was abgeschlossen wurde – auch das versehentlich Abgehakte.'
-                  : 'Alles erledigt – sehr gut.'
-            }
-            action={
-              !searching &&
-              scope !== 'done' && (
-                <button type="button" className="btn-primary" onClick={() => setFormOpen(true)}>
-                  <Plus className="size-4" aria-hidden />
-                  Pendenz erfassen
-                </button>
-              )
-            }
-          />
-        </div>
       ) : (
-        /* Ein Abschnitt je Tag: Die Überschrift ist das Datum, nach dem
-           sortiert wird – erfasst oder zuletzt bearbeitet. Von Hand gelegt
-           steht die Liste ohne Überschrift da, in einem Stück. */
+        /* Steht der Fokus in der Liste, wird in ihr geschrieben – dann hält
+           sie den Stand von diesem Augenblick fest und ordnet sich nicht um
+           (siehe oben). React meldet den Wechsel bis hierher hoch; ein Sprung
+           von einem Feld ins nächste bleibt dabei innerhalb der Liste und
+           zählt nicht als Verlassen. */
         <div
-          className="space-y-5"
-          /* Steht der Fokus in der Liste, wird in ihr geschrieben – dann hält
-             sie den Stand von diesem Augenblick fest und ordnet sich nicht um
-             (siehe oben). React meldet den Wechsel bis hierher hoch; ein
-             Sprung von einem Feld ins nächste bleibt dabei innerhalb der
-             Liste und zählt nicht als Verlassen. */
           onFocus={() => setHeld((current) => current ?? { field: dateField, dates: freshDates })}
           onBlur={(event) => {
             if (event.currentTarget.contains(event.relatedTarget)) return
             setHeld(null)
           }}
         >
-          {groups.map((group) => (
-            <section key={group.key}>
-              {group.label && (
-                <div className="mb-2 flex flex-wrap items-baseline gap-x-2">
-                  <h2 className="text-sm font-semibold">{group.label}</h2>
-                  <span className="tabular text-xs text-slate-400">{group.items.length}</span>
-                </div>
-              )}
-
-              {/* Aufgeklappt steht alles da und lässt sich unmittelbar ändern –
-                  für Titel und Beschreibung genügt ein Griff in den Text. */}
-              <ul className="space-y-2">
-                {group.items.map((item, index) => {
-                  /* Der Platz in der ganzen Liste – nicht der im Abschnitt. */
-                  const place = group.offset + index
-                  return (
-                    <AgendaItemRow
-                      key={item.id}
-                      item={item}
-                      /* Die Nummer steht nur an der vollständigen, von Hand
-                         gelegten Liste: Dort ist sie die Reihenfolge, auf die
-                         sich alle beziehen. In einem Ausschnitt zählte sie
-                         bloss den Ausschnitt. */
-                      position={sortable ? place + 1 : undefined}
-                      expanded={isExpanded(item.id)}
-                      onToggle={() => toggleOpen(item.id)}
-                      /* Unter «Meine» steht eine Berufungsrunde, weil eine
-                         ihrer Zeilen mich angeht – aufgeklappt sind dann auch
-                         diese Zeilen gemeint und nicht die ganze Runde. Der
-                         Knopf «Nur meine» darin schaltet die übrigen dazu. */
-                      ownRowsOnly={scope === 'mine'}
-                      onMove={reorder ? (delta) => void move(place, place + delta) : undefined}
-                      first={place === 0}
-                      last={place === visible.length - 1}
-                      onDragStart={
-                        reorder
-                          ? (event: DragEvent<HTMLElement>) => {
-                              setDragId(item.id)
-                              event.dataTransfer.effectAllowed = 'move'
-                            }
-                          : undefined
-                      }
-                      onDragOver={
-                        reorder
-                          ? (event: DragEvent<HTMLElement>) => {
-                              if (!dragId) return
-                              event.preventDefault()
-                              event.dataTransfer.dropEffect = 'move'
-                              setOverId(item.id)
-                            }
-                          : undefined
-                      }
-                      onDrop={
-                        reorder
-                          ? (event: DragEvent<HTMLElement>) => {
-                              event.preventDefault()
-                              drop(item.id)
-                            }
-                          : undefined
-                      }
-                      onDragEnd={
-                        reorder
-                          ? () => {
-                              setDragId(null)
-                              setOverId(null)
-                            }
-                          : undefined
-                      }
-                      dragging={dragId === item.id}
-                      dropTarget={overId === item.id && dragId !== item.id}
-                      nextMeeting={nextMeetingRef}
-                      meetingLabel={item.meetingId ? meetingLabels.get(item.meetingId) : undefined}
-                      meetingHref={
-                        item.meetingId
-                          ? `/sitzungen/${item.meetingId}?${FOCUS_PARAM}=${item.id}`
-                          : undefined
-                      }
-                      meetingDate={(id) => meetingLabels.get(id)}
-                    />
+          {visible.length === 0 ? (
+            <div className="card">
+              <EmptyState
+                icon={CheckCircle2}
+                title={
+                  searching
+                    ? 'Nichts gefunden'
+                    : scope === 'done'
+                      ? 'Noch nichts erledigt'
+                      : scope === 'all'
+                        ? 'Noch keine Pendenzen'
+                        : 'Keine offenen Pendenzen'
+                }
+                description={
+                  searching
+                    ? otherHits.length > 0
+                      ? 'In diesem Ausschnitt passt nichts zur Suche – darunter steht, was daneben liegt.'
+                      : 'Kein Eintrag passt zur Suche.'
+                    : scope === 'done'
+                      ? 'Hier steht, was abgeschlossen wurde – auch das versehentlich Abgehakte.'
+                      : scope === 'all'
+                        ? 'Weder offen noch erledigt – hier ist noch nichts erfasst.'
+                        : 'Alles erledigt – sehr gut.'
+                }
+                action={
+                  !searching &&
+                  scope !== 'done' && (
+                    <button type="button" className="btn-primary" onClick={() => setFormOpen(true)}>
+                      <Plus className="size-4" aria-hidden />
+                      Pendenz erfassen
+                    </button>
                   )
-                })}
-              </ul>
-            </section>
-          ))}
+                }
+              />
+            </div>
+          ) : (
+            /* Ein Abschnitt je Tag: Die Überschrift ist das Datum, nach dem
+               sortiert wird – erfasst oder zuletzt bearbeitet. Von Hand
+               gelegt steht die Liste ohne Überschrift da, in einem Stück. */
+            <div className="space-y-5">
+              {groups.map((group) => (
+                <section key={group.key}>
+                  {group.label && (
+                    <div className="mb-2 flex flex-wrap items-baseline gap-x-2">
+                      <h2 className="text-sm font-semibold">{group.label}</h2>
+                      <span className="tabular text-xs text-slate-400">{group.items.length}</span>
+                    </div>
+                  )}
 
-          {rest > 0 && (
-            <button
-              type="button"
-              className="btn-secondary w-full"
-              onClick={() => setShown((current) => current + pageSize)}
+                  {/* Aufgeklappt steht alles da und lässt sich unmittelbar
+                      ändern – für Titel und Beschreibung genügt ein Griff in
+                      den Text. */}
+                  <ul className="space-y-2">
+                    {group.items.map((item, index) =>
+                      /* Der Platz in der ganzen Liste – nicht der im Abschnitt. */
+                      renderRow(item, { place: group.offset + index }),
+                    )}
+                  </ul>
+                </section>
+              ))}
+
+              {rest > 0 && (
+                <button
+                  type="button"
+                  className="btn-secondary w-full"
+                  onClick={() => setShown((current) => current + pageSize)}
+                >
+                  Weitere anzeigen · noch {rest}
+                </button>
+              )}
+            </div>
+          )}
+
+          {/* Was die Suche daneben findet – ohne Nummern und ohne Griffe:
+              Diese Einträge stehen ausserhalb der Reihenfolge, um die es
+              hier geht. */}
+          {searching && (
+            <OtherResults
+              items={otherHits}
+              listKey={listKey}
+              pageSize={pageSize}
+              hint={
+                otherHint.length > 0
+                  ? `Diese Pendenzen passen zur Suche, liegen aber ausserhalb der Auswahl – ${otherHint.join(' und ')}.`
+                  : undefined
+              }
             >
-              Weitere anzeigen · noch {rest}
-            </button>
+              {(page) => <ul className="space-y-2">{page.map((item) => renderRow(item))}</ul>}
+            </OtherResults>
           )}
         </div>
       )}
@@ -820,6 +1068,68 @@ export function Pendenzen() {
 
       <MonthlyDutiesDialog open={dutiesOpen} onClose={() => setDutiesOpen(false)} />
     </>
+  )
+}
+
+/* ------------------------------------------------------------------ */
+/* Wessen Pendenzen                                                    */
+/* ------------------------------------------------------------------ */
+
+/**
+ * Die Auswahl der Person – ein Feld zum Aufklappen neben der Suche.
+ *
+ * Kein Knopf je Mitglied der Bischofschaft: Das wären fünf bis sieben weitere
+ * Knöpfe über einer Liste, die ohnehin schon vier trägt, und am Telefon
+ * stünden sie in drei Zeilen. Aufgeklappt ist es eine Zeile, und die Zahl
+ * hinter jedem Namen sagt, was einen erwartet, bevor man wählt.
+ *
+ * Das eigene Konto trägt seinen Namen und den Zusatz «(ich)» – so ist die
+ * Auswahl mit dem Knopf «Meine» sichtbar dieselbe Frage, und wer von sich zu
+ * jemand anderem wechselt, tut es in einem Schritt.
+ */
+function PersonSelect({
+  value,
+  users,
+  counts,
+  meId,
+  onChange,
+}: {
+  /** Das gewählte Konto – oder `null` für die ganze Bischofschaft. */
+  value: string | null
+  users: AppUser[]
+  /** Wie viele Pendenzen im gewählten Ausschnitt auf jedes Konto entfallen. */
+  counts: Map<string, number>
+  meId: string | null
+  onChange: (next: string | null) => void
+}) {
+  /*
+   * Gezeigt werden die aktiven Konten – und immer auch das gewählte.
+   *
+   * Ein abgemeldetes Konto steht nicht mehr in der Auswahl; hat es aber noch
+   * Pendenzen und ist gerade gewählt, muss es dastehen, sonst zeigte das Feld
+   * einen anderen Namen als die Liste darunter.
+   */
+  const options = users.filter((user) => user.active || user.id === value)
+
+  return (
+    <select
+      className="input sm:w-56"
+      aria-label="Zuständigkeit"
+      value={value ?? PERSON_ALL}
+      onChange={(event) => onChange(event.target.value === PERSON_ALL ? null : event.target.value)}
+    >
+      <option value={PERSON_ALL}>Alle Zuständigen</option>
+      {options.map((user) => {
+        const count = counts.get(user.id)
+        return (
+          <option key={user.id} value={user.id}>
+            {user.displayName}
+            {user.id === meId ? ' (ich)' : ''}
+            {count === undefined ? '' : ` · ${count}`}
+          </option>
+        )
+      })}
+    </select>
   )
 }
 
