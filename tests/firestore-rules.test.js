@@ -40,6 +40,12 @@ const SECRETARY = 'uid-sekretaer'
 const AP_EDITOR = 'uid-ap-schreibend'
 const AP_VIEWER = 'uid-ap-lesend'
 const IMPULSE_AP = 'uid-impuls-ap'
+/** Assistenz mit allen drei Bereichen. */
+const ASSISTANT_ALL = 'uid-assistenz-alle'
+/** Assistenz allein für die Musik – die Probe aufs Exempel. */
+const ASSISTANT_MUSIC = 'uid-assistenz-musik'
+/** Assistenz ohne einen einzigen Bereich – der entzogene Zugang. */
+const ASSISTANT_NONE = 'uid-assistenz-ohne'
 const PENDING = 'uid-wartend'
 
 /** Die Anmelde-E-Mail des Administrator-Kontos – wie in firestore.rules. */
@@ -70,6 +76,35 @@ async function seed() {
         active: true,
       })
     }
+
+    /*
+     * Die Assistenz der Abendmahlsversammlung.
+     *
+     * Drei Konten, weil drei Fragen zu beantworten sind: Was sieht eine
+     * Assistenz mit allen Bereichen? Was sieht eine mit nur einem – und was
+     * gerade nicht? Und was sieht eine, der alle Haken genommen wurden?
+     */
+    await setDoc(doc(db, 'users', ASSISTANT_ALL), {
+      email: `${ASSISTANT_ALL}@example.ch`,
+      displayName: 'Assistenz (alles)',
+      role: 'assistant',
+      active: true,
+      assistantAreas: ['talks', 'music', 'prayers'],
+    })
+    await setDoc(doc(db, 'users', ASSISTANT_MUSIC), {
+      email: `${ASSISTANT_MUSIC}@example.ch`,
+      displayName: 'Assistenz (Musik)',
+      role: 'assistant',
+      active: true,
+      assistantAreas: ['music'],
+    })
+    await setDoc(doc(db, 'users', ASSISTANT_NONE), {
+      email: `${ASSISTANT_NONE}@example.ch`,
+      displayName: 'Assistenz (ohne Bereich)',
+      role: 'assistant',
+      active: true,
+      assistantAreas: [],
+    })
 
     // Ein AP mit dem Impuls-Schalter – das Konto, für das der Bereich da ist.
     await setDoc(doc(db, 'users', IMPULSE_AP), {
@@ -259,6 +294,9 @@ const asSecretary = () => testEnv.authenticatedContext(SECRETARY).firestore()
 const asApEditor = () => testEnv.authenticatedContext(AP_EDITOR).firestore()
 const asApViewer = () => testEnv.authenticatedContext(AP_VIEWER).firestore()
 const asImpulseAp = () => testEnv.authenticatedContext(IMPULSE_AP).firestore()
+const asAssistant = () => testEnv.authenticatedContext(ASSISTANT_ALL).firestore()
+const asMusicAssistant = () => testEnv.authenticatedContext(ASSISTANT_MUSIC).firestore()
+const asAssistantWithoutArea = () => testEnv.authenticatedContext(ASSISTANT_NONE).firestore()
 const asPending = () => testEnv.authenticatedContext(PENDING).firestore()
 const asAnonymous = () => testEnv.unauthenticatedContext().firestore()
 
@@ -411,6 +449,178 @@ describe('Abendmahlsversammlung', () => {
       setDoc(doc(asSecretary(), 'hymns', '3'), { number: 3, title: 'Kommt, Heilige' }),
     )
     await assertFails(setDoc(doc(asPending(), 'hymns', '4'), { number: 4, title: 'Versuch' }))
+  })
+})
+
+describe('Assistenz der Abendmahlsversammlung', () => {
+  it('lässt sie lesen, was alle drei Bereiche brauchen', async () => {
+    for (const as of [asAssistant, asMusicAssistant]) {
+      await assertSucceeds(getDoc(doc(as(), 'sacramentMeetings', '2026-08-09')))
+      await assertSucceeds(getDocs(collection(as(), 'members')))
+      await assertSucceeds(getDocs(collection(as(), 'hymns')))
+      await assertSucceeds(getDocs(collection(as(), 'users')))
+      await assertSucceeds(getDoc(doc(as(), 'settings', 'app')))
+    }
+  })
+
+  it('hält sie aus allem heraus, was nicht der Sonntag ist', async () => {
+    for (const as of [asAssistant, asMusicAssistant]) {
+      await assertFails(getDocs(collection(as(), 'agendaItems')))
+      await assertFails(getDocs(collection(as(), 'meetings')))
+      await assertFails(getDocs(collection(as(), 'notes')))
+      await assertFails(getDocs(collection(as(), 'callings')))
+      await assertFails(getDocs(collection(as(), 'cleaningWeeks')))
+      await assertFails(getDocs(collection(as(), 'monthlyDuties')))
+      await assertFails(getDocs(collection(as(), 'announcementSeries')))
+      await assertFails(getDocs(collection(as(), 'apActivities')))
+      await assertFails(getDocs(collection(as(), 'impulseItems')))
+      await assertFails(getDocs(collection(as(), 'accessLog')))
+    }
+  })
+
+  it('gibt einem Konto ohne einen einzigen Bereich gar nichts', async () => {
+    await assertFails(getDoc(doc(asAssistantWithoutArea(), 'sacramentMeetings', '2026-08-09')))
+    await assertFails(getDocs(collection(asAssistantWithoutArea(), 'members')))
+    await assertFails(getDocs(collection(asAssistantWithoutArea(), 'talks')))
+    await assertFails(getDocs(collection(asAssistantWithoutArea(), 'prayers')))
+    // Das eigene Profil bleibt lesbar – sonst wüsste die App nicht, warum.
+    await assertSucceeds(getDoc(doc(asAssistantWithoutArea(), 'users', ASSISTANT_NONE)))
+  })
+
+  it('öffnet Ansprachen und Gebete nur mit dem passenden Haken', async () => {
+    await assertSucceeds(getDocs(collection(asAssistant(), 'talks')))
+    await assertSucceeds(getDocs(collection(asAssistant(), 'prayers')))
+
+    await assertFails(getDocs(collection(asMusicAssistant(), 'talks')))
+    await assertFails(getDocs(collection(asMusicAssistant(), 'prayers')))
+  })
+
+  it('lässt die Musik-Assistenz Lieder setzen – und sonst nichts am Sonntag', async () => {
+    await assertSucceeds(
+      setDoc(
+        doc(asMusicAssistant(), 'sacramentMeetings', '2026-08-09'),
+        { hymns: { opening: { number: 2, title: 'Der Geist aus den Höhen' } }, musicalNumbers: [] },
+        { merge: true },
+      ),
+    )
+
+    // Die Bekanntmachungen und die Angelegenheiten stehen im selben
+    // Dokument – anfassen darf sie die Assistenz trotzdem nicht.
+    await assertFails(
+      setDoc(
+        doc(asMusicAssistant(), 'sacramentMeetings', '2026-08-09'),
+        { announcements: [{ id: 'a1', text: 'Eingeschmuggelt' }] },
+        { merge: true },
+      ),
+    )
+    await assertFails(
+      setDoc(
+        doc(asMusicAssistant(), 'sacramentMeetings', '2026-08-09'),
+        { business: [{ id: 'b1', kind: 'calling' }] },
+        { merge: true },
+      ),
+    )
+    // Auch nicht versteckt neben einer erlaubten Änderung.
+    await assertFails(
+      setDoc(
+        doc(asMusicAssistant(), 'sacramentMeetings', '2026-08-09'),
+        { hymns: {}, notes: 'heimlich' },
+        { merge: true },
+      ),
+    )
+    await assertFails(deleteDoc(doc(asMusicAssistant(), 'sacramentMeetings', '2026-08-09')))
+  })
+
+  it('lässt die Ansprachen-Assistenz die Programmangaben setzen', async () => {
+    await assertSucceeds(
+      setDoc(
+        doc(asAssistant(), 'sacramentMeetings', '2026-08-09'),
+        { talkSlots: 4, kind: 'regular', responsibleId: BISHOP },
+        { merge: true },
+      ),
+    )
+    // Die Lieder gehören zur Musik – die hat dieses Konto zwar auch, die
+    // Musik-Assistenz darf umgekehrt aber keine Programmangaben setzen.
+    await assertFails(
+      setDoc(
+        doc(asMusicAssistant(), 'sacramentMeetings', '2026-08-09'),
+        { talkSlots: 5 },
+        { merge: true },
+      ),
+    )
+  })
+
+  it('lässt sie am Mitglied nur nachführen, was aus ihrer Arbeit entsteht', async () => {
+    await assertSucceeds(
+      updateDoc(doc(asAssistant(), 'members', 'mitglied-1'), {
+        availableForTalks: false,
+        talkHoldUntil: null,
+      }),
+    )
+    await assertSucceeds(
+      updateDoc(doc(asAssistant(), 'members', 'mitglied-1'), { availableForPrayers: false }),
+    )
+
+    // Stammdaten sind tabu – und ein Mitglied anlegen oder löschen auch.
+    await assertFails(updateDoc(doc(asAssistant(), 'members', 'mitglied-1'), { lastName: 'Neu' }))
+    await assertFails(
+      updateDoc(doc(asAssistant(), 'members', 'mitglied-1'), {
+        availableForTalks: true,
+        notes: 'heimlich',
+      }),
+    )
+    await assertFails(deleteDoc(doc(asAssistant(), 'members', 'mitglied-1')))
+
+    // Ohne den Haken «Ansprachen» geht auch das Nachführen nicht.
+    await assertFails(
+      updateDoc(doc(asMusicAssistant(), 'members', 'mitglied-1'), { availableForTalks: true }),
+    )
+  })
+
+  it('lässt sie das Monatsthema lesen, aber nicht setzen', async () => {
+    await assertSucceeds(getDoc(doc(asAssistant(), 'settings', 'app')))
+    await assertFails(
+      setDoc(
+        doc(asAssistant(), 'settings', 'app'),
+        { sacramentThemes: { '2026-09': 'Selbst gesetzt' } },
+        { merge: true },
+      ),
+    )
+    await assertSucceeds(
+      setDoc(
+        doc(asBishop(), 'settings', 'app'),
+        { sacramentThemes: { '2026-09': 'Glaube an Jesus Christus' } },
+        { merge: true },
+      ),
+    )
+  })
+
+  it('hindert sie daran, sich selbst Bereiche zu geben', async () => {
+    await assertFails(
+      updateDoc(doc(asMusicAssistant(), 'users', ASSISTANT_MUSIC), {
+        assistantAreas: ['talks', 'music', 'prayers'],
+      }),
+    )
+    // Auch nicht versteckt neben einer erlaubten Änderung.
+    await assertFails(
+      updateDoc(doc(asMusicAssistant(), 'users', ASSISTANT_MUSIC), {
+        displayName: 'Neuer Name',
+        assistantAreas: ['talks'],
+      }),
+    )
+    // Und den eigenen Namen darf sie weiterhin ändern.
+    await assertSucceeds(
+      updateDoc(doc(asMusicAssistant(), 'users', ASSISTANT_MUSIC), { displayName: 'Neuer Name' }),
+    )
+  })
+
+  it('lässt allein den Administrator die Bereiche setzen', async () => {
+    await assertFails(
+      updateDoc(doc(asSecretary(), 'users', ASSISTANT_MUSIC), { assistantAreas: ['talks'] }),
+    )
+    await assertSucceeds(
+      updateDoc(doc(asBishop(), 'users', ASSISTANT_MUSIC), { assistantAreas: ['music'] }),
+    )
   })
 })
 

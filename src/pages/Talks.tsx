@@ -620,6 +620,7 @@ function CandidateList({
   onAssign: (member: Member) => void
 }) {
   const toast = useToast()
+  const { isApproved: fullAccess } = useAuth()
 
   const visible = useMemo(
     () => filterTalkCandidates(candidates, filter, gapMonths),
@@ -678,10 +679,14 @@ function CandidateList({
           icon={Mic}
           title="Keine Kandidaten"
           description="Erfasse zuerst Mitglieder – dann erscheinen hier Vorschläge."
+          /* Der Weg ins Verzeichnis nur für den, dem es offensteht: Eine
+             Assistenz landete dort wieder auf dieser Seite. */
           action={
-            <Link to="/mitglieder" className="btn-primary">
-              Zu den Mitgliedern
-            </Link>
+            fullAccess && (
+              <Link to="/mitglieder" className="btn-primary">
+                Zu den Mitgliedern
+              </Link>
+            )
           }
         />
       </div>

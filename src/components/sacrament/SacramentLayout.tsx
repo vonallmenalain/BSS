@@ -1,6 +1,7 @@
 import { createContext, useCallback, useContext, useMemo, type ReactNode } from 'react'
 import { NavLink, Outlet, useSearchParams } from 'react-router-dom'
 import { ChevronLeft, ChevronRight, TriangleAlert, UserCog } from 'lucide-react'
+import { useAuth } from '@/contexts/AuthContext'
 import { useData } from '@/contexts/DataContext'
 import { useSacramentMeeting } from '@/hooks/useFirestore'
 import { useLocalStorage } from '@/hooks/useLocalStorage'
@@ -14,7 +15,8 @@ import {
 import { cn } from '@/lib/utils'
 import { sacramentDocId, sundayProgram } from '@/services/sacrament'
 import { SundayProgramBadge } from '@/components/sacrament/SundayProgram'
-import { type SacramentMeeting } from '@/lib/types'
+import { MonthlyTheme } from '@/components/sacrament/MonthlyTheme'
+import { type AssistantArea, type SacramentMeeting } from '@/lib/types'
 
 /* ------------------------------------------------------------------ */
 /* Gewählter Sonntag                                                   */
@@ -42,13 +44,22 @@ export function useSacrament(): SacramentContextValue {
   return context
 }
 
-const SUBPAGES = [
+/**
+ * Die Reiter des Bereichs.
+ *
+ * `area` sagt, ob die Seite auch einer Assistenz offensteht und unter
+ * welchem Haken – die drei ohne Angabe («Leitung», «Bekanntmachungen»,
+ * «Angelegenheiten») bleiben beim Vollzugriff. Dieselbe Frage stellt die
+ * Route (siehe `App.tsx`); beantwortet wird sie an einer Stelle, in
+ * `canSeeSacramentArea`.
+ */
+const SUBPAGES: { to: string; label: string; area?: AssistantArea }[] = [
   { to: 'leitung', label: 'Leitung' },
   { to: 'bekanntmachungen', label: 'Bekanntmachungen' },
   { to: 'angelegenheiten', label: 'Angelegenheiten' },
-  { to: 'ansprachen', label: 'Ansprachen' },
-  { to: 'musik', label: 'Musik' },
-  { to: 'gebet', label: 'Gebet' },
+  { to: 'ansprachen', label: 'Ansprachen', area: 'talks' },
+  { to: 'musik', label: 'Musik', area: 'music' },
+  { to: 'gebet', label: 'Gebet', area: 'prayers' },
 ]
 
 /**
@@ -61,6 +72,7 @@ const SUBPAGES = [
  */
 export function SacramentLayout() {
   const { settings, userName } = useData()
+  const { isApproved, canSeeSacramentArea } = useAuth()
   const [searchParams, setSearchParams] = useSearchParams()
   const [remembered, setRemembered] = useLocalStorage<string>('bss:abendmahl:sonntag', '')
 
@@ -102,6 +114,12 @@ export function SacramentLayout() {
 
   const { meeting, loading } = useSacramentMeeting(sacramentDocId(date))
 
+  /* Ohne Vollzugriff stehen nur die freigeschalteten Bereiche da. */
+  const pages = useMemo(
+    () => SUBPAGES.filter((page) => isApproved || (page.area && canSeeSacramentArea(page.area))),
+    [isApproved, canSeeSacramentArea],
+  )
+
   const value = useMemo<SacramentContextValue>(
     () => ({ date, dateKey: sacramentDocId(date), setDate, meeting, loading }),
     [date, setDate, meeting, loading],
@@ -131,12 +149,15 @@ export function SacramentLayout() {
                 </span>
               )}
             </p>
+            {/* Das Thema des Monats – eine Zeile tiefer, weil es dem Monat
+                gehört und nicht diesem einen Sonntag. */}
+            <MonthlyTheme date={date} />
           </div>
           <SundayPicker date={date} onChange={setDate} weekday={settings.sacramentWeekday} />
         </div>
 
         <nav className="no-scrollbar no-print -mx-4 flex gap-1 overflow-x-auto px-4 sm:mx-0 sm:px-0">
-          {SUBPAGES.map((page) => (
+          {pages.map((page) => (
             <NavLink
               key={page.to}
               // Der gewählte Sonntag steht in der Adresse und muss beim

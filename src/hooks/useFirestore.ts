@@ -258,8 +258,12 @@ export function useAllItems(limitCount = 500, enabled = true) {
  * bleiben sie stehen; gelesen werden sie nicht mehr.
  */
 export function useTalks(limitCount = 300) {
-  const { isApproved } = useAuth()
-  const state = useCollection<Talk>(COLLECTIONS.talks, isApproved)
+  // Auch für die Assistenz «Ansprachen»: Sie arbeitet genau an dieser Liste.
+  const { isApproved, assistantAreas } = useAuth()
+  const state = useCollection<Talk>(
+    COLLECTIONS.talks,
+    isApproved || assistantAreas.includes('talks'),
+  )
   return useMemo(
     () => ({
       ...state,
@@ -311,9 +315,17 @@ export function useMemberCallings(memberId: string | undefined) {
 /* Abendmahlsversammlung                                               */
 /* ------------------------------------------------------------------ */
 
+/*
+ * Die Sonntage – für den Vollzugriff und für jede Assistenz.
+ *
+ * Alle drei Bereiche brauchen sie: Die Lieder und die Musikeinlagen stehen
+ * im Sonntagsdokument, die Ansprachenplanung liest daraus, was an diesem
+ * Sonntag stattfindet und wie viele Plätze es gibt, und das Gebet braucht
+ * dieselbe Auskunft.
+ */
 function useSacramentStore() {
-  const { isApproved } = useAuth()
-  return useCollection<SacramentMeeting>(COLLECTIONS.sacramentMeetings, isApproved)
+  const { isApproved, isAssistant } = useAuth()
+  return useCollection<SacramentMeeting>(COLLECTIONS.sacramentMeetings, isApproved || isAssistant)
 }
 
 /**
@@ -390,8 +402,17 @@ export function useMonthlyDuties() {
  * reicht damit für die Frage «wann hat diese Person zuletzt gebetet?».
  */
 export function usePrayers(limitCount = 400) {
-  const { isApproved } = useAuth()
-  const state = useCollection<Prayer>(COLLECTIONS.prayers, isApproved)
+  /*
+   * Auch für die Assistenz «Gebet» – und für die Assistenz «Ansprachen»:
+   * Unter «Mitglieder» steht das letzte Gebet neben der letzten Ansprache,
+   * und die Vorschlagslisten der beiden Bereiche lesen dieselbe Frage
+   * («wer war lange nicht dran?»).
+   */
+  const { isApproved, assistantAreas } = useAuth()
+  const state = useCollection<Prayer>(
+    COLLECTIONS.prayers,
+    isApproved || assistantAreas.includes('prayers'),
+  )
   return useMemo(
     () => ({ ...state, data: capped(byDate(state.data, 'date'), limitCount) }),
     [state, limitCount],

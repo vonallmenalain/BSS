@@ -31,6 +31,14 @@ export interface WithId {
  * keine Aufgabe, die Einblick in Personendaten rechtfertigt. Sie sehen
  * deshalb **nur** den AP-Kalender – die einen mit, die anderen ohne
  * Schreibrecht.
+ *
+ * Die dritte Ausnahme ist die **Assistenz**. Die Vorbereitung der
+ * Abendmahlsversammlung ist Arbeit, die sich abgeben lässt: Ansprachen
+ * anfragen, die Lieder aussuchen, die Gebete verteilen. Wer das übernimmt,
+ * braucht dafür dieselbe Ansicht wie die Bischofschaft – und sonst nichts.
+ * Welche der drei Bereiche offenstehen, steht am Konto (`assistantAreas`)
+ * und nicht an der Rolle: Der eine sucht nur die Lieder aus, die andere
+ * macht alles ausser der Musik.
  */
 export type Role =
   | 'bishop'
@@ -40,6 +48,8 @@ export type Role =
   | 'secretary'
   /** Sammelrolle aus früheren Versionen – bleibt lesbar, wird nicht mehr vergeben. */
   | 'counselor'
+  /** Einzelne Bereiche der Abendmahlsversammlung – siehe `assistantAreas` */
+  | 'assistant'
   /** Nur der AP-Kalender, mit Schreibrecht */
   | 'ap_editor'
   /** Nur der AP-Kalender, ausschliesslich lesend */
@@ -53,9 +63,66 @@ export const ROLE_LABELS: Record<Role, string> = {
   executive_secretary: 'Finanzsekretär',
   secretary: 'Sekretär',
   counselor: 'Ratgeber',
+  assistant: 'Assistent',
   ap_editor: 'AP-Kalender · bearbeiten',
   ap_viewer: 'AP-Kalender · nur ansehen',
   pending: 'Wartet auf Freigabe',
+}
+
+/* ------------------------------------------------------------------ */
+/* Assistenz: welche Bereiche offenstehen                              */
+/* ------------------------------------------------------------------ */
+
+/**
+ * Die Bereiche der Abendmahlsversammlung, die einer Assistenz einzeln
+ * offenstehen.
+ *
+ * Genau diese drei und keine weiteren: Es sind die Zulieferer des Sonntags –
+ * Arbeit, die man abgeben kann, ohne den Einblick abzugeben, den «Leitung»,
+ * «Bekanntmachungen» und «Angelegenheiten» mit sich brächten. Dort steht,
+ * wer entlassen und wer berufen wird, und das ist nicht die Sache dessen,
+ * der die Lieder aussucht.
+ *
+ * Dieselben Bezeichner stehen in `firestore.rules` – beide müssen zusammen
+ * geändert werden.
+ */
+export type AssistantArea = 'talks' | 'music' | 'prayers'
+
+export const ASSISTANT_AREAS: AssistantArea[] = ['talks', 'music', 'prayers']
+
+export const ASSISTANT_AREA_LABELS: Record<AssistantArea, string> = {
+  talks: 'Ansprachen',
+  music: 'Musik',
+  prayers: 'Gebet',
+}
+
+/** Wohin der Bereich führt – dieselben Adressen wie im Menü. */
+export const ASSISTANT_AREA_PATHS: Record<AssistantArea, string> = {
+  talks: '/abendmahl/ansprachen',
+  music: '/abendmahl/musik',
+  prayers: '/abendmahl/gebet',
+}
+
+/**
+ * Die Bereiche eines Kontos – in fester Reihenfolge und ohne Unfug.
+ *
+ * Gelesen wird aus einem frei beschreibbaren Feld: Was dort steht, kann aus
+ * einer früheren Fassung stammen oder von Hand hineingeraten sein. Deshalb
+ * wird gefiltert statt vertraut, und die Reihenfolge kommt aus
+ * `ASSISTANT_AREAS` – so stehen die Bereiche überall gleich, gleich in
+ * welcher Reihenfolge sie angeklickt wurden.
+ *
+ * Ohne die Rolle `assistant` ist die Antwort leer, auch wenn das Feld etwas
+ * enthält: Ein Vollzugriff sieht ohnehin alles, und ein wartendes Konto darf
+ * nicht dadurch hereinkommen, dass jemand einmal einen Haken gesetzt hat.
+ */
+export function assistantAreasOf(
+  user: Pick<AppUser, 'role' | 'active' | 'assistantAreas'> | null | undefined,
+): AssistantArea[] {
+  if (!user || user.role !== 'assistant' || user.active !== true) return []
+  const stored = user.assistantAreas
+  if (!Array.isArray(stored)) return []
+  return ASSISTANT_AREAS.filter((area) => stored.includes(area))
 }
 
 /** Rollen, die in der Benutzerverwaltung zur Auswahl stehen (in dieser Reihenfolge). */
@@ -113,6 +180,9 @@ export const ROLE_ORDER: Role[] = [
   'counselor',
   'executive_secretary',
   'secretary',
+  // Die Assistenz steht zwischen Vollzugriff und AP-Zugang: Sie sieht mehr
+  // als der Kalender und weniger als die Bischofschaft.
+  'assistant',
   'ap_editor',
   'ap_viewer',
   'pending',
@@ -147,7 +217,7 @@ export const ADMIN_EMAIL = 'alain.sc2@gmail.com'
  * zweite; welche Aufgabe jemand in der Bischofschaft hat, lässt sich danach
  * jederzeit umstellen, ohne dass sich am Zugriff etwas ändert.
  */
-export type AccessLevel = 'full' | 'ap_write' | 'ap_read'
+export type AccessLevel = 'full' | 'assistant' | 'ap_write' | 'ap_read'
 
 export const ACCESS_LEVELS: { value: AccessLevel; role: Role; label: string; hint: string }[] = [
   {
@@ -155,6 +225,12 @@ export const ACCESS_LEVELS: { value: AccessLevel; role: Role; label: string; hin
     role: 'secretary',
     label: 'Vollzugriff',
     hint: 'Sieht und bearbeitet alles – für die Bischofschaft und die Sekretäre.',
+  },
+  {
+    value: 'assistant',
+    role: 'assistant',
+    label: 'Assistenz · Abendmahlsversammlung',
+    hint: 'Sieht ausschliesslich die Bereiche, die danach angehakt werden – Ansprachen, Musik, Gebet –, und darin dasselbe wie der Vollzugriff.',
   },
   {
     value: 'ap_write',
@@ -461,6 +537,18 @@ export interface AppUser extends WithId {
   initials?: string
   /** optionale Verknüpfung zum Mitgliederdatensatz */
   memberId?: string | null
+  /**
+   * Welche Bereiche der Abendmahlsversammlung diesem Konto offenstehen.
+   *
+   * Gilt allein für die Rolle `assistant`; bei jeder anderen steht das Feld
+   * still (siehe `assistantAreasOf`). Es gehört zum Zugriff und ist deshalb
+   * wie `role` und `active` gegen die eigene Hand verriegelt – setzen kann es
+   * allein das Administrator-Konto (siehe `firestore.rules`).
+   *
+   * Eine leere Liste heisst «nichts» und nicht «alles»: Wer alle Haken
+   * entfernt, hat den Zugang entzogen, ohne die Rolle zu ändern.
+   */
+  assistantAreas?: AssistantArea[]
   /** Gemerkte Darstellung des Aktivitätenplans – gilt auf jedem Gerät */
   apView?: ApView
   /**
@@ -1828,7 +1916,41 @@ export interface AppSettings {
    * schreiben (siehe `lib/organizations`).
    */
   singlesImportedAt?: Partial<Record<SinglesKind, TS | null>>
+  /**
+   * Das Monatsthema der Abendmahlsversammlung – je Monat («2026-09») ein Satz.
+   *
+   * Es gehört dem Monat und nicht dem einzelnen Sonntag: Die Bischofschaft
+   * legt ein Thema fest, und die vier oder fünf Sonntage darunter tragen es
+   * alle. Am Sonntag gespeichert müsste es viermal eingetragen und viermal
+   * geändert werden, und beim ersten vergessenen stünde eine falsche Angabe.
+   *
+   * Es steht in den Einstellungen und nicht in einer eigenen Sammlung: Es ist
+   * eine Zeile Text je Monat, die überall gebraucht wird, wo ein Sonntag
+   * dasteht – und die Einstellungen liegen ohnehin auf jedem Gerät. Damit
+   * bekommt es zugleich die Rechte, die es braucht: Lesen darf sie jeder,
+   * der die App benutzt, ändern nur der Vollzugriff. Die Assistenz sieht das
+   * Thema deshalb, ohne dass es dafür eine eigene Regel bräuchte.
+   *
+   * Ein leerer Wert bedeutet «kein Thema» und wird beim Speichern entfernt,
+   * damit die Einstellungen nicht mit leeren Monaten volllaufen.
+   */
+  sacramentThemes?: Record<string, string>
   updatedAt?: TS
+}
+
+/**
+ * Das Thema, das an einem bestimmten Sonntag gilt.
+ *
+ * Gefragt wird mit einem Datum und geantwortet aus dem Monat dazu – die
+ * Umrechnung steht in `lib/monthlyDuties` (`monthKey`), damit «welcher
+ * Monat?» in der ganzen App dieselbe Antwort hat. Leer heisst: für diesen
+ * Monat ist nichts festgelegt.
+ */
+export function sacramentThemeFor(
+  themes: Record<string, string> | undefined,
+  monthKey: string,
+): string {
+  return themes?.[monthKey]?.trim() ?? ''
 }
 
 /**
@@ -1861,6 +1983,7 @@ export const DEFAULT_SETTINGS: AppSettings = {
   customSundayKinds: [],
   pendenzenSort: DEFAULT_PENDENZEN_SORT,
   pendenzenDoneSort: DEFAULT_PENDENZEN_DONE_SORT,
+  sacramentThemes: {},
 }
 
 /**
@@ -1889,6 +2012,18 @@ export function normalizeSettings(input: Partial<AppSettings> | null | undefined
     talkGapMonths: count(merged.talkGapMonths, DEFAULT_SETTINGS.talkGapMonths, 1, 120),
     talkMinAge: count(merged.talkMinAge, DEFAULT_SETTINGS.talkMinAge, 0, 30),
     prayerGapMonths: count(merged.prayerGapMonths, DEFAULT_SETTINGS.prayerGapMonths, 1, 120),
+    /*
+     * Monatsthemen: nur echte Monate mit echtem Text.
+     *
+     * Ein geleertes Feld schriebe sonst `''` in die Einstellungen, und die
+     * Anzeige müsste an jeder Stelle prüfen, ob das Thema eines ist. Hier
+     * fällt es weg – der Monat steht dann wieder ohne Thema da.
+     */
+    sacramentThemes: Object.fromEntries(
+      Object.entries(merged.sacramentThemes ?? {})
+        .map(([month, theme]) => [month, typeof theme === 'string' ? theme.trim() : ''] as const)
+        .filter(([month, theme]) => /^\d{4}-\d{2}$/.test(month) && theme !== ''),
+    ),
   }
 }
 

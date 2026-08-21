@@ -36,7 +36,7 @@ import { useNow } from '@/hooks/useNow'
 import { useImpulseItems, useImpulseProgress } from '@/hooks/useFirestore'
 import { impulseWeekKey, visibleImpulseItems } from '@/lib/impulse'
 import { UserAvatar } from '@/components/ui/Avatar'
-import { ROLE_LABELS } from '@/lib/types'
+import { ASSISTANT_AREA_LABELS, ASSISTANT_AREA_PATHS, ROLE_LABELS } from '@/lib/types'
 import { UpdatePrompt } from '@/components/UpdatePrompt'
 import { NotificationsModal } from '@/components/NotificationsModal'
 
@@ -110,7 +110,8 @@ const IMPULSE_CHILDREN = [
 
 export function Layout() {
   const { settings } = useData()
-  const { isApproved, canViewAp, canViewImpulse, profile, signOut } = useAuth()
+  const { isApproved, canViewAp, canViewImpulse, isAssistant, assistantAreas, profile, signOut } =
+    useAuth()
 
   /*
    * Der Punkt am Eintrag «Anti Doom»: Die laufende Woche hat Inhalt, und
@@ -143,7 +144,8 @@ export function Layout() {
    * sonst in der Kopfzeile wohnt (Benachrichtigungen, Darstellung,
    * Abmelden).
    */
-  const immersive = location.pathname === '/anti-doom' || location.pathname.startsWith('/anti-doom/')
+  const immersive =
+    location.pathname === '/anti-doom' || location.pathname.startsWith('/anti-doom/')
   const openMenu = useCallback(() => setMenuOpen(true), [])
 
   /*
@@ -205,6 +207,26 @@ export function Layout() {
     children: IMPULSE_CHILDREN,
   }
 
+  /*
+   * Die Abendmahlsversammlung für die Assistenz.
+   *
+   * Dasselbe Menü wie beim Vollzugriff, bloss auf die freigeschalteten
+   * Bereiche gekürzt – «Leitung», «Bekanntmachungen» und «Angelegenheiten»
+   * stehen gar nicht erst da. Der Eintrag führt in den ersten Bereich und
+   * nicht auf «Leitung»: Diese Seite darf sie nicht öffnen.
+   */
+  const assistantItem: NavItem = {
+    to: assistantAreas[0] ? ASSISTANT_AREA_PATHS[assistantAreas[0]] : '/abendmahl',
+    label: 'Abendmahlsversammlung',
+    shortLabel: 'Sonntag',
+    icon: Church,
+    primary: true,
+    children: assistantAreas.map((area) => ({
+      to: ASSISTANT_AREA_PATHS[area],
+      label: ASSISTANT_AREA_LABELS[area],
+    })),
+  }
+
   const navItems: NavItem[] = isApproved
     ? [
         { to: '/', label: 'Übersicht', shortLabel: 'Start', icon: LayoutDashboard, primary: true },
@@ -238,9 +260,11 @@ export function Layout() {
         { to: '/berufungen', label: 'Berufungen', shortLabel: 'Berufung', icon: Award },
         { to: '/einstellungen', label: 'Einstellungen', shortLabel: 'Mehr', icon: Settings },
       ]
-    : // Ohne Vollzugriff sind der Kalender und – mit Schalter – «Anti Doom»
-      // der ganze Inhalt; dann gehören sie auch in die untere Leiste.
+    : // Ohne Vollzugriff sind der Kalender, die freigeschalteten Bereiche der
+      // Abendmahlsversammlung und – mit Schalter – «Anti Doom» der ganze
+      // Inhalt; dann gehören sie auch in die untere Leiste.
       [
+        ...(isAssistant ? [assistantItem] : []),
         ...(canViewAp ? [{ ...apItem, primary: true }] : []),
         ...(canViewImpulse ? [{ ...impulsItem, primary: true }] : []),
       ]
