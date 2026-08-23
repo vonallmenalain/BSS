@@ -35,6 +35,7 @@ import {
   AP_WRITE_ROLES,
   ASSISTANT_AREA_PATHS,
   assistantAreasOf,
+  assistantWriteOf,
   BISHOPRIC_ROLES,
   FULL_ACCESS_ROLES,
   type AppUser,
@@ -78,6 +79,12 @@ interface AuthContextValue {
   /** Die freigeschalteten Bereiche – leer bei jedem anderen Konto. */
   assistantAreas: AssistantArea[]
   /**
+   * Die Bereiche, in denen die Assistenz auch schreiben darf.
+   *
+   * Immer eine Teilmenge von `assistantAreas`; ohne die Rolle leer.
+   */
+  assistantWriteAreas: AssistantArea[]
+  /**
    * Darf dieser Bereich der Abendmahlsversammlung geöffnet werden?
    *
    * Vollzugriff darf alles; die Assistenz genau das, was angehakt ist.
@@ -85,6 +92,19 @@ interface AuthContextValue {
    * Reiterleiste –, und drei Antworten darauf wären ein Fehler.
    */
   canSeeSacramentArea: (area: AssistantArea) => boolean
+  /**
+   * Darf in diesem Bereich auch geändert werden?
+   *
+   * Das Gegenstück zu `canSeeSacramentArea`: Sehen und Ändern sind bei der
+   * Assistenz zwei Fragen, und jede Sparte beantwortet sie für sich. Der
+   * Vollzugriff bejaht beide, für jeden Bereich.
+   *
+   * Es ist die Höflichkeit der Oberfläche und nicht die Sperre: Was jemand
+   * tatsächlich schreiben darf, entscheiden die Zugriffsregeln. Ohne diese
+   * Auskunft stünden dort aber Knöpfe, die beim Drücken bloss «Speichern
+   * fehlgeschlagen» sagen.
+   */
+  canEditSacramentArea: (area: AssistantArea) => boolean
   /**
    * Wohin dieses Konto gehört, wenn es nichts anderes verlangt hat.
    *
@@ -338,6 +358,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
      * nicht dazu passt.
      */
     const assistantAreas = assistantAreasOf(profile)
+    const assistantWriteAreas = assistantWriteOf(profile)
     const isAssistant = assistantAreas.length > 0
 
     const canViewImpulse =
@@ -377,7 +398,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       isApOnly: canViewAp && !isApproved,
       isAssistant,
       assistantAreas,
+      assistantWriteAreas,
       canSeeSacramentArea: (area: AssistantArea) => isApproved || assistantAreas.includes(area),
+      canEditSacramentArea: (area: AssistantArea) =>
+        isApproved || assistantWriteAreas.includes(area),
       homePath,
       // Ein wartendes Konto bleibt draussen, selbst wenn ein Feld gesetzt
       // sein sollte – freigeschaltet wird zuerst, der Schalter kommt danach.

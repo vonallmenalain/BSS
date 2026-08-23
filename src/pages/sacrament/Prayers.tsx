@@ -1,5 +1,6 @@
 import { useMemo, useState } from 'react'
 import { CalendarOff, HandHeart, History, RotateCcw } from 'lucide-react'
+import { useAuth } from '@/contexts/AuthContext'
 import { useData } from '@/contexts/DataContext'
 import { useToast } from '@/contexts/ToastContext'
 import { usePrayers } from '@/hooks/useFirestore'
@@ -61,9 +62,17 @@ const SUGGESTION_COUNT = 20
 export function Prayers() {
   const { date } = useSacrament()
   const { members, settings } = useData()
+  const { canEditSacramentArea } = useAuth()
   const { data: prayers, loading } = usePrayers(400)
   const toast = useToast()
   const [tab, setTab] = useUrlState<Tab>('ansicht', 'zuteilen', TABS)
+
+  /*
+   * Eine Assistenz kann das Gebet auch bloss zum Nachschauen haben (siehe
+   * `AuthContext`). Wer nachliest, sieht dieselben Namen und dieselbe
+   * Reihenfolge – nur die Knöpfe fehlen, die zuteilen oder überspringen.
+   */
+  const readOnly = !canEditSacramentArea('prayers')
 
   const dateKey = toDateInput(date)
 
@@ -131,7 +140,7 @@ export function Prayers() {
 
   return (
     <>
-      <SectionHeader title="Gebet" />
+      <SectionHeader title="Gebet" readOnly={readOnly} />
 
       <SegmentedControl<Tab>
         className="mb-4"
@@ -161,6 +170,7 @@ export function Prayers() {
                   meta={describe}
                   compact
                   placeholder="Name eingeben"
+                  disabled={readOnly}
                 />
               </section>
             ))}
@@ -169,8 +179,9 @@ export function Prayers() {
           <section className="card p-4">
             <h3 className="mb-1 text-sm font-semibold">Vorschläge</h3>
             <p className="hint mb-3 mt-0">
-              Wer am längsten nicht gebetet hat, steht zuoberst. Ein Griff auf «Anfang» oder
-              «Schluss» teilt zu.
+              {readOnly
+                ? 'Wer am längsten nicht gebetet hat, steht zuoberst.'
+                : 'Wer am längsten nicht gebetet hat, steht zuoberst. Ein Griff auf «Anfang» oder «Schluss» teilt zu.'}
             </p>
 
             {candidates.length === 0 ? (
@@ -188,6 +199,7 @@ export function Prayers() {
                     assigned={PRAYER_SLOTS.filter((slot) => assigned.get(slot) === member.id)}
                     onAssign={(slot) => void assign(slot, member)}
                     onHold={() => void hold(member, PRAYER_HOLD_DAYS)}
+                    readOnly={readOnly}
                   />
                 ))}
               </ul>
@@ -222,14 +234,16 @@ export function Prayers() {
                             ? `bis ${formatDate(member.prayerHoldUntil)}`
                             : 'auf Weiteres'}
                         </span>
-                        <button
-                          type="button"
-                          className="btn-ghost btn-sm shrink-0"
-                          onClick={() => void hold(member, 0)}
-                        >
-                          <RotateCcw className="size-3.5" aria-hidden />
-                          <span className="hidden sm:inline">Wieder anzeigen</span>
-                        </button>
+                        {!readOnly && (
+                          <button
+                            type="button"
+                            className="btn-ghost btn-sm shrink-0"
+                            onClick={() => void hold(member, 0)}
+                          >
+                            <RotateCcw className="size-3.5" aria-hidden />
+                            <span className="hidden sm:inline">Wieder anzeigen</span>
+                          </button>
+                        )}
                       </li>
                     ))}
                   </ul>
@@ -297,6 +311,7 @@ function CandidateRow({
   assigned,
   onAssign,
   onHold,
+  readOnly = false,
 }: {
   member: Member
   meta: string
@@ -306,6 +321,12 @@ function CandidateRow({
   assigned: PrayerSlot[]
   onAssign: (slot: PrayerSlot) => void
   onHold: () => void
+  /**
+   * Nur nachschauen: Statt der drei Knöpfe steht dann bloss da, für welchen
+   * Platz jemand schon eingeteilt ist – die Auskunft, wegen der die Liste
+   * auch dem offensteht, der nichts ändern darf.
+   */
+  readOnly?: boolean
 }) {
   return (
     <li className={cn('flex flex-wrap items-center gap-x-3 gap-y-2 py-2', dimmed && 'opacity-60')}>
@@ -325,29 +346,44 @@ function CandidateRow({
         </p>
       </div>
 
-      <div className="flex shrink-0 items-center gap-1">
-        {PRAYER_SLOTS.map((slot) => (
-          <button
-            key={slot}
-            type="button"
-            className={cn('btn-sm', assigned.includes(slot) ? 'btn-primary' : 'btn-secondary')}
-            onClick={() => onAssign(slot)}
-            aria-label={`${member.firstName} ${member.lastName} für ${PRAYER_SLOT_LABELS[slot]}`}
-          >
-            {PRAYER_SLOT_SHORT[slot]}
-          </button>
-        ))}
+      {readOnly ? (
+        assigned.length > 0 && (
+          <div className="flex shrink-0 items-center gap-1">
+            {assigned.map((slot) => (
+              <span
+                key={slot}
+                className="badge bg-brand-100 text-brand-800 dark:bg-brand-950 dark:text-brand-200"
+              >
+                {PRAYER_SLOT_LABELS[slot]}
+              </span>
+            ))}
+          </div>
+        )
+      ) : (
+        <div className="flex shrink-0 items-center gap-1">
+          {PRAYER_SLOTS.map((slot) => (
+            <button
+              key={slot}
+              type="button"
+              className={cn('btn-sm', assigned.includes(slot) ? 'btn-primary' : 'btn-secondary')}
+              onClick={() => onAssign(slot)}
+              aria-label={`${member.firstName} ${member.lastName} für ${PRAYER_SLOT_LABELS[slot]}`}
+            >
+              {PRAYER_SLOT_SHORT[slot]}
+            </button>
+          ))}
 
-        <button
-          type="button"
-          className="btn-ghost btn-sm"
-          onClick={onHold}
-          title={`Für ${PRAYER_HOLD_DAYS} Tage nicht mehr vorschlagen`}
-        >
-          <CalendarOff className="size-3.5" aria-hidden />
-          <span className="hidden sm:inline">Heute nicht</span>
-        </button>
-      </div>
+          <button
+            type="button"
+            className="btn-ghost btn-sm"
+            onClick={onHold}
+            title={`Für ${PRAYER_HOLD_DAYS} Tage nicht mehr vorschlagen`}
+          >
+            <CalendarOff className="size-3.5" aria-hidden />
+            <span className="hidden sm:inline">Heute nicht</span>
+          </button>
+        </div>
+      )}
     </li>
   )
 }

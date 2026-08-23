@@ -264,6 +264,7 @@ export function MemberPicker({
   single = false,
   placeholder = 'Name eingeben …',
   stacked = false,
+  readOnly = false,
 }: {
   value: string[]
   onChange: (next: string[]) => void
@@ -278,6 +279,12 @@ export function MemberPicker({
    * wäre keiner davon zu lesen.
    */
   stacked?: boolean
+  /**
+   * Nur zum Nachschauen: Die Namen bleiben stehen, das Suchfeld und die
+   * Kreuze verschwinden. Ein ausgegrautes Feld daneben führte bloss in
+   * Versuchung – zu sehen gibt es hier, wer eingeteilt ist.
+   */
+  readOnly?: boolean
 }) {
   const { members, membersById, personColor } = useData()
   const [search, setSearch] = useState('')
@@ -318,35 +325,43 @@ export function MemberPicker({
                 >
                   <Avatar name={name} id={id} size="sm" />
                   <span className="min-w-0 flex-1 truncate text-sm font-medium">{name}</span>
-                  <button
-                    type="button"
-                    onClick={() => remove(id)}
-                    className="btn-ghost shrink-0 p-1"
-                    aria-label={`${name} entfernen`}
-                  >
-                    <X className="size-3.5" aria-hidden />
-                  </button>
+                  {!readOnly && (
+                    <button
+                      type="button"
+                      onClick={() => remove(id)}
+                      className="btn-ghost shrink-0 p-1"
+                      aria-label={`${name} entfernen`}
+                    >
+                      <X className="size-3.5" aria-hidden />
+                    </button>
+                  )}
                 </div>
               )
             }
             return (
               <span key={id} className={cn('chip', personColor(id))}>
                 {name}
-                <button
-                  type="button"
-                  onClick={() => remove(id)}
-                  className="-mr-1 rounded-full p-0.5 opacity-60 transition hover:opacity-100"
-                  aria-label="Entfernen"
-                >
-                  <X className="size-3" aria-hidden />
-                </button>
+                {!readOnly && (
+                  <button
+                    type="button"
+                    onClick={() => remove(id)}
+                    className="-mr-1 rounded-full p-0.5 opacity-60 transition hover:opacity-100"
+                    aria-label="Entfernen"
+                  >
+                    <X className="size-3" aria-hidden />
+                  </button>
+                )}
               </span>
             )
           })}
         </div>
       )}
 
-      {(!single || value.length === 0) && (
+      {/* Nichts ausgewählt und nichts auszuwählen – dann steht dort statt
+          eines leeren Feldes, dass eben niemand eingeteilt ist. */}
+      {readOnly && value.length === 0 && <p className="text-sm text-slate-400">–</p>}
+
+      {!readOnly && (!single || value.length === 0) && (
         <div className="relative">
           <Search
             className="pointer-events-none absolute top-1/2 left-3 size-4 -translate-y-1/2 text-slate-400"

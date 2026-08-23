@@ -161,6 +161,29 @@ service cloud.firestore {
       return assistantSees(['talks', 'music', 'prayers']);
     }
 
+    /*
+     * Darf die Assistenz in diesem Bereich auch **schreiben**?
+     *
+     * Sehen und Ändern sind hier zwei Fragen: Wer die Lieder aussucht, soll
+     * die Ansprachen nachschauen können, ohne sie umzustellen. Welche
+     * Sparten offenstehen, sagt `assistantAreas`; welche davon beschreibbar
+     * sind, `assistantWrite`.
+     *
+     * Fehlt `assistantWrite` ganz, gilt jeder offene Bereich als
+     * beschreibbar – das ist der Altbestand aus der Zeit vor dieser
+     * Unterscheidung, und ein Konto soll nicht dadurch stillgelegt werden,
+     * dass die App dazugelernt hat. Eine **leere** Liste heisst dagegen
+     * ausdrücklich «nur lesen».
+     *
+     * Gefragt wird immer nach genau einem Bereich – nur dann sagen die
+     * beiden `hasAny` etwas über dieselbe Sparte aus. Dieselbe Regel steht
+     * in `assistantWriteOf` (src/lib/types.ts).
+     */
+    function assistantWrites(areas) {
+      return assistantSees(areas)
+        && userDoc().get('assistantWrite', userDoc().get('assistantAreas', [])).hasAny(areas);
+    }
+
     /**
      * Welche Felder ein Schreibvorgang überhaupt anfasst.
      *
@@ -264,7 +287,8 @@ service cloud.firestore {
         && request.resource.data.active == true
         && !('impulse' in request.resource.data)
         && !('impulseEditor' in request.resource.data)
-        && !('assistantAreas' in request.resource.data);
+        && !('assistantAreas' in request.resource.data)
+        && !('assistantWrite' in request.resource.data);
 
       // Das eigene Profil darf jede und jeder pflegen (Name, Verknüpfung,
       // Ansichts-Einstellungen) – aber weder Rolle noch Aktivstatus anfassen,
@@ -277,7 +301,8 @@ service cloud.firestore {
         && unchanged('active')
         && unchanged('impulse')
         && unchanged('impulseEditor')
-        && unchanged('assistantAreas');
+        && unchanged('assistantAreas')
+        && unchanged('assistantWrite');
 
       // Benutzer verwalten – freischalten, Rollen zuweisen, deaktivieren,
       // löschen – darf ausschliesslich der Administrator. Damit genügt ein
@@ -373,12 +398,12 @@ service cloud.firestore {
       allow read: if approved() || assistantAny();
       allow write: if approved();
 
-      allow update: if (assistantSees(['talks'])
+      allow update: if (assistantWrites(['talks'])
           && touchedKeys().hasOnly([
                'availableForTalks', 'talkHoldUntil', 'talkAvailabilityChangedAt',
                'talkHold', 'lastTalkDate', 'talkCount', 'updatedAt'
              ]))
-        || (assistantSees(['prayers'])
+        || (assistantWrites(['prayers'])
           && touchedKeys().hasOnly([
                'availableForPrayers', 'prayerHoldUntil', 'prayerAvailabilityChangedAt',
                'updatedAt'
@@ -388,7 +413,8 @@ service cloud.firestore {
     /* ---------------- Ansprachen und Zeugnisse ---------------- */
 
     match /talks/{talkId} {
-      allow read, write: if approved() || assistantSees(['talks']);
+      allow read: if approved() || assistantSees(['talks']);
+      allow write: if approved() || assistantWrites(['talks']);
     }
 
     /* ---------------- Abendmahlsversammlung ---------------- */
@@ -410,9 +436,9 @@ service cloud.firestore {
       allow read: if approved() || assistantAny();
       allow write: if approved();
 
-      allow create, update: if (assistantSees(['music'])
+      allow create, update: if (assistantWrites(['music'])
           && touchedKeys().hasOnly(['hymns', 'musicalNumbers', 'date', 'updatedAt']))
-        || (assistantSees(['talks'])
+        || (assistantWrites(['talks'])
           && touchedKeys().hasOnly([
                'talkSlots', 'kind', 'kindLabel', 'meets', 'plansTalks', 'responsibleId',
                'date', 'updatedAt'
@@ -420,7 +446,8 @@ service cloud.firestore {
     }
 
     match /prayers/{prayerId} {
-      allow read, write: if approved() || assistantSees(['prayers']);
+      allow read: if approved() || assistantSees(['prayers']);
+      allow write: if approved() || assistantWrites(['prayers']);
     }
 
     // Wiederkehrende Bekanntmachungen gelten für viele Sonntage zugleich.

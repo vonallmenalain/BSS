@@ -1,4 +1,5 @@
 import { Music2, Plus, Trash2 } from 'lucide-react'
+import { useAuth } from '@/contexts/AuthContext'
 import { useToast } from '@/contexts/ToastContext'
 import { MemberPicker } from '@/components/ui/Pickers'
 import { HymnField } from '@/components/sacrament/HymnField'
@@ -25,7 +26,16 @@ interface MusicDraft {
  */
 export function Music() {
   const { date, meeting } = useSacrament()
+  const { canEditSacramentArea } = useAuth()
   const toast = useToast()
+
+  /*
+   * Eine Assistenz kann diesen Bereich auch bloss zum Nachschauen haben
+   * (siehe `AuthContext`). Dann steht alles da, was dasteht – nur ohne die
+   * Knöpfe, die etwas daran ändern. Die Zugriffsregeln sagen ohnehin nein;
+   * hier geht es darum, gar nicht erst dagegen zu laufen.
+   */
+  const readOnly = !canEditSacramentArea('music')
 
   /*
    * Geschrieben wird, was dasteht – auch die eben angelegte, noch leere
@@ -66,7 +76,7 @@ export function Music() {
 
   return (
     <>
-      <SectionHeader title="Musik" />
+      <SectionHeader title="Musik" readOnly={readOnly} />
 
       {draft.conflict && <ConflictNotice onDiscard={draft.reset} />}
 
@@ -79,6 +89,7 @@ export function Music() {
             value={current.hymns[slot]}
             onChange={(next) => setHymn(slot, next)}
             optional={slot === 'intermediate'}
+            readOnly={readOnly}
             hint={
               slot === 'sacrament'
                 ? 'Das Abendmahlslied handelt vom Erlöser und seinem Opfer.'
@@ -96,14 +107,16 @@ export function Music() {
             <h3 className="text-sm font-semibold">Musikeinlagen</h3>
             <p className="hint">Chor, Solo oder Instrumentalstück statt eines Gemeindeliedes.</p>
           </div>
-          <button
-            type="button"
-            className="btn-secondary btn-sm"
-            onClick={() => changeNumbers([...current.numbers, newMusicalNumber()])}
-          >
-            <Plus className="size-3.5" aria-hidden />
-            Musikeinlage
-          </button>
+          {!readOnly && (
+            <button
+              type="button"
+              className="btn-secondary btn-sm"
+              onClick={() => changeNumbers([...current.numbers, newMusicalNumber()])}
+            >
+              <Plus className="size-3.5" aria-hidden />
+              Musikeinlage
+            </button>
+          )}
         </div>
 
         {current.numbers.length === 0 ? (
@@ -116,25 +129,33 @@ export function Music() {
             {current.numbers.map((entry, index) => (
               <li key={entry.id} className="space-y-2 py-3 first:pt-0">
                 <div className="flex items-start gap-2">
-                  <input
-                    className="input"
-                    value={entry.title}
-                    onChange={(event) =>
-                      changeNumbers(
-                        replaceInList(current.numbers, { ...entry, title: event.target.value }),
-                      )
-                    }
-                    placeholder="Titel des Stücks"
-                    aria-label={`Titel der Musikeinlage ${index + 1}`}
-                  />
-                  <button
-                    type="button"
-                    className="btn-ghost shrink-0 p-2 text-rose-600 dark:text-rose-400"
-                    onClick={() => removeNumber(entry)}
-                    aria-label="Musikeinlage entfernen"
-                  >
-                    <Trash2 className="size-4" aria-hidden />
-                  </button>
+                  {readOnly ? (
+                    <p className="flex-1 text-sm font-medium">
+                      {entry.title || <span className="text-slate-400">Ohne Titel</span>}
+                    </p>
+                  ) : (
+                    <>
+                      <input
+                        className="input"
+                        value={entry.title}
+                        onChange={(event) =>
+                          changeNumbers(
+                            replaceInList(current.numbers, { ...entry, title: event.target.value }),
+                          )
+                        }
+                        placeholder="Titel des Stücks"
+                        aria-label={`Titel der Musikeinlage ${index + 1}`}
+                      />
+                      <button
+                        type="button"
+                        className="btn-ghost shrink-0 p-2 text-rose-600 dark:text-rose-400"
+                        onClick={() => removeNumber(entry)}
+                        aria-label="Musikeinlage entfernen"
+                      >
+                        <Trash2 className="size-4" aria-hidden />
+                      </button>
+                    </>
+                  )}
                 </div>
 
                 <MemberPicker
@@ -144,19 +165,29 @@ export function Music() {
                   }
                   label="Wer trägt vor?"
                   placeholder="Mitglied suchen …"
+                  readOnly={readOnly}
                 />
 
-                <input
-                  className="input text-sm"
-                  value={entry.performers ?? ''}
-                  onChange={(event) =>
-                    changeNumbers(
-                      replaceInList(current.numbers, { ...entry, performers: event.target.value }),
-                    )
-                  }
-                  placeholder="Weitere Mitwirkende"
-                  aria-label={`Weitere Mitwirkende der Musikeinlage ${index + 1}`}
-                />
+                {readOnly ? (
+                  entry.performers && (
+                    <p className="text-sm text-slate-600 dark:text-slate-300">{entry.performers}</p>
+                  )
+                ) : (
+                  <input
+                    className="input text-sm"
+                    value={entry.performers ?? ''}
+                    onChange={(event) =>
+                      changeNumbers(
+                        replaceInList(current.numbers, {
+                          ...entry,
+                          performers: event.target.value,
+                        }),
+                      )
+                    }
+                    placeholder="Weitere Mitwirkende"
+                    aria-label={`Weitere Mitwirkende der Musikeinlage ${index + 1}`}
+                  />
+                )}
               </li>
             ))}
           </ul>

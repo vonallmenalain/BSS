@@ -5,6 +5,7 @@ import { useToast } from '@/contexts/ToastContext'
 import { Modal, ConfirmDialog } from '@/components/ui/Modal'
 import { AgendaItemEditor } from '@/components/agenda/AgendaItemEditor'
 import { DeferMenu } from '@/components/agenda/DeferMenu'
+import { ItemMeta } from '@/components/agenda/ItemMeta'
 import { deleteAgendaItem, setItemStatus } from '@/services/agenda'
 import { hasOpenCallingRows } from '@/lib/callingChanges'
 import { ITEM_KIND_LABELS, toItemKind, type AgendaItem, type CallingChanges } from '@/lib/types'
@@ -110,35 +111,53 @@ export function AgendaItemDialog({
               onCallingChanges={setLive}
             />
 
-            {!readOnly && (
-              <div className="flex flex-wrap items-center gap-2 border-t border-slate-200 pt-3 dark:border-slate-800">
-                {/* Eine Berufungsrunde wird zeilenweise erledigt; als Ganzes
-                    ist sie erst fertig, wenn keine Zeile mehr offen ist
-                    (siehe `hasOpenCallingRows`) – bis dahin steht hier kein
-                    Knopf. */}
-                {!openRows && (
+            {/* Die Fusszeile steht auch dann da, wenn nichts zu ändern ist:
+                Woher der Eintrag kommt und wer zuletzt daran war, ist gerade
+                für den eine Auskunft, der bloss nachliest. */}
+            <div className="flex flex-wrap items-center gap-2 border-t border-slate-200 pt-3 dark:border-slate-800">
+              {!readOnly && (
+                <>
+                  {/* Eine Berufungsrunde wird zeilenweise erledigt; als Ganzes
+                      ist sie erst fertig, wenn keine Zeile mehr offen ist
+                      (siehe `hasOpenCallingRows`) – bis dahin steht hier kein
+                      Knopf. */}
+                  {!openRows && (
+                    <button
+                      type="button"
+                      className={isDone ? 'btn-secondary btn-sm' : 'btn-success btn-sm'}
+                      onClick={() => void toggleDone()}
+                    >
+                      <Check className="size-4" aria-hidden />
+                      {isDone ? 'Wieder offen' : 'Erledigt'}
+                    </button>
+                  )}
+
+                  <DeferMenu
+                    itemId={item.id}
+                    nextMeeting={nextMeeting ?? null}
+                    className="btn-sm"
+                  />
+                </>
+              )}
+
+              {/* Die Herkunft gehört neben das Löschen und nicht zu den
+                  Knöpfen links: Beides sagt etwas über den Eintrag als
+                  Ganzes, während links steht, was mit ihm zu tun ist. */}
+              <div className="ml-auto flex flex-wrap items-center justify-end gap-x-3 gap-y-1">
+                <ItemMeta item={item} className="text-xs text-slate-400 dark:text-slate-500" />
+
+                {!readOnly && (
                   <button
                     type="button"
-                    className={isDone ? 'btn-secondary btn-sm' : 'btn-success btn-sm'}
-                    onClick={() => void toggleDone()}
+                    className="btn-ghost btn-sm text-rose-600 dark:text-rose-400"
+                    onClick={() => setConfirmDelete(true)}
                   >
-                    <Check className="size-4" aria-hidden />
-                    {isDone ? 'Wieder offen' : 'Erledigt'}
+                    <Trash2 className="size-4" aria-hidden />
+                    Löschen
                   </button>
                 )}
-
-                <DeferMenu itemId={item.id} nextMeeting={nextMeeting ?? null} className="btn-sm" />
-
-                <button
-                  type="button"
-                  className="btn-ghost btn-sm ml-auto text-rose-600 dark:text-rose-400"
-                  onClick={() => setConfirmDelete(true)}
-                >
-                  <Trash2 className="size-4" aria-hidden />
-                  Löschen
-                </button>
               </div>
-            )}
+            </div>
           </div>
         )}
       </Modal>

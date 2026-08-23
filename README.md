@@ -420,6 +420,16 @@ einen Eintrag öffnet ihn dort in einem Fenster und lässt ihn ändern, ohne das
 die Liste verlassen werden muss; erledigen, verschieben und löschen stehen
 darin ebenfalls. Ein «@»-Name im Eintrag führt weiterhin zur Person.
 
+**Wer den Punkt eingetragen hat, steht in der Fusszeile des Fensters** – klein
+und grau, links neben «Löschen»: _Erstellt von Alain · 14.08.2026, 19:30_ und,
+falls seither jemand daran war, _Zuletzt bearbeitet von Josh · 20.08.2026,
+09:12_. Die Frage kommt im Sitzungszimmer regelmässig auf, und sie war bisher
+nur im aufgeklappten Eintrag zu beantworten. Blieb der Punkt seit dem Erfassen
+unangetastet, steht die zweite Hälfte nicht da – sie sagte zweimal dasselbe.
+Bei Einträgen aus der Zeit vor dieser Angabe fehlt der Name des Bearbeiters;
+nachträglich lässt sich nicht ermitteln, wer damals getippt hat, und ein
+geratener Name wäre schlimmer als keiner.
+
 **Zuoberst stehen die vier Angaben, die zu Beginn festgehalten werden**:
 Anwesenheit, Anfangsgebet, Schlussgebet und geistiger Gedanke – je eine Zeile
 mit den Konten der Bischofschaft und der Sekretäre als Knöpfe. Ein Griff je
@@ -2730,8 +2740,9 @@ die Lieder aussuchen, die Gebete verteilen – das ist Arbeit, für die man
 keinen Einblick in Sitzungen, Pendenzen und Berufungen braucht. Genau dafür
 ist die Rolle **Assistent** da.
 
-**Angehakt wird einzeln.** Die Rolle allein öffnet nichts; neben ihr stehen
-drei Haken:
+**Vergeben wird je Sparte einzeln.** Die Rolle allein öffnet nichts; neben ihr
+steht für jeden der drei Bereiche eine Auswahl aus dreien – _Kein Zugriff_,
+_Nur lesen_ oder _Bearbeiten_:
 
 | Bereich        | Was damit offensteht                                                          |
 | -------------- | ----------------------------------------------------------------------------- |
@@ -2739,14 +2750,29 @@ drei Haken:
 | **Musik**      | Gemeindelieder und Musikeinlagen des Sonntags                                  |
 | **Gebet**      | Anfangs- und Schlussgebet samt Vorschlagsliste und Verlauf                     |
 
-Einer, zwei oder alle drei – der eine sucht nur die Lieder aus, die andere
-macht alles ausser der Musik. **Sind alle Haken weg, ist der Zugang
-entzogen**, ohne dass die Rolle geändert werden muss: Das Konto sieht dann
-denselben Wartebereich wie ein neues, mit einem Satz, der sagt, woran es
-liegt.
+Einer, zwei oder alle drei, und jeder für sich: Der eine sucht die Lieder aus
+und liest bei den Ansprachen bloss mit, die andere macht alles ausser der
+Musik. **Sind alle drei auf «Kein Zugriff», ist der Zugang entzogen**, ohne
+dass die Rolle geändert werden muss: Das Konto sieht dann denselben
+Wartebereich wie ein neues, mit einem Satz, der sagt, woran es liegt.
+
+**«Nur lesen» heisst: dieselbe Seite ohne Handgriffe.** Der Bereich steht
+vollständig da – Programm, Vorschläge, Verlauf, Filter und Suche –, aber die
+Knöpfe zum Zuteilen, Umstellen, Anlegen und Löschen fehlen, Eingabefelder
+werden zu Zeilen, und neben der Überschrift steht ein Kennzeichen **«Nur
+lesen»**. Das ist die Höflichkeit der Oberfläche; die Sperre selbst steht in
+den Zugriffsregeln (`assistantWrites`), und sie gilt auch für den, der die
+Datenbank unmittelbar anspricht.
+
+> **Bestehende Konten verlieren nichts.** Ein Assistenzkonto aus der Zeit vor
+> dieser Unterscheidung trägt das Feld `assistantWrite` gar nicht – und darf
+> dann in allen offenen Bereichen arbeiten, genau wie bisher. Erst wer die
+> Auswahl einmal anfasst, legt sie fest; eine **leere** Liste heisst
+> ausdrücklich «nur lesen» und nicht «alles».
 
 **Was die Assistenz sieht, ist genau das, was der Vollzugriff sieht** – auf
-denselben Seiten, mit denselben Filtern und denselben Bearbeitungsrechten.
+denselben Seiten und mit denselben Filtern; ob sie darin auch arbeitet, sagt
+die Auswahl oben.
 Was sie **nicht** sieht: _Leitung_, _Bekanntmachungen_ und _Angelegenheiten_.
 Diese drei Reiter stehen für sie gar nicht erst da, ihre Adressen führen
 zurück in den eigenen Bereich, und die Zugriffsregeln lassen sie nichts
@@ -2775,8 +2801,11 @@ Oberfläche.
 
 Geprüft wird das alles in `tests/firestore-rules.test.js` (`npm run
 test:rules`): dass die Assistenz liest, was sie braucht, dass sie an allem
-anderen scheitert, dass ein Konto ohne Haken nichts bekommt und dass sich
-niemand die Bereiche selbst setzen kann.
+anderen scheitert, dass ein Konto ohne Bereich nichts bekommt, dass eine nur
+lesende Assistenz an jeder Änderung scheitert, während dieselbe Person die
+Musik weiterhin pflegt – und dass sich niemand Bereiche oder Schreibrechte
+selbst setzen kann. Die Umrechnung zwischen der Auswahl und den beiden Listen
+am Konto steht in `tests/roles.test.ts` (`npm run test:import`).
 
 ### Ein neues Konto freischalten
 
@@ -2788,8 +2817,9 @@ Datenbank und sieht nichts. In der App der Bischofschaft steht das dann
 wartende Person selbst. Zur Wahl stehen dort vier Zugriffsstufen –
 Vollzugriff, Assistenz der Abendmahlsversammlung, nur AP-Kalender mit
 Schreibrecht, nur AP-Kalender zum Ansehen –, bei Vollzugriff zusätzlich die
-Aufgabe in der Bischofschaft und bei der Assistenz die drei Bereiche zum
-Anhaken (zu Beginn alle drei). Ein Klick auf **Freischalten** wirkt sofort;
+Aufgabe in der Bischofschaft und bei der Assistenz je Bereich die Wahl
+zwischen _Kein Zugriff_, _Nur lesen_ und _Bearbeiten_ (zu Beginn alle drei zum
+Bearbeiten). Ein Klick auf **Freischalten** wirkt sofort;
 **Ablehnen** entfernt das Profil wieder.
 
 Freischalten darf jedes Konto mit Vollzugriff, nicht nur der Bischof. Die
@@ -2799,8 +2829,9 @@ Diese Liste steht **nach Rollen** und nicht nach Namen: zuoberst die
 Bischofschaft mit Vollzugriff – Bischof, 1. und 2. Ratgeber, Finanzsekretär,
 Sekretär –, darunter die Assistenz, dann die Konten, die den AP-Kalender
 bearbeiten dürfen, und zuunterst jene, die ihn nur ansehen. Bei einer
-Assistenz stehen die drei Bereichshaken gleich neben der Rollenwahl, und
-unter dem Namen steht, was sie damit sieht. Innerhalb derselben Rolle bleibt es
+Assistenz steht die Auswahl der drei Bereiche gleich neben der Rollenwahl, und
+unter dem Namen steht, was sie damit darf – «Musik (bearbeiten), Ansprachen
+(nur lesen)». Innerhalb derselben Rolle bleibt es
 alphabetisch. So steht beieinander, was dieselben Rechte hat, statt dass sich
 ein AP-Zugang zwischen die Bischofschaft schiebt, nur weil sein Name mit A
 beginnt.
@@ -2977,7 +3008,8 @@ gehört zum Betrieb der App und nicht zum Bestand der Gemeinde.
 src/
 ├── components/
 │   ├── agenda/          Traktanden und Pendenzen: Zeile, Karte, Editor,
-│   │                    Sitzungsmodus, Erfassen, Verschieben, Monatspendenzen
+│   │                    Sitzungsmodus, Erfassen, Verschieben, Herkunft,
+│   │                    Monatspendenzen
 │   ├── ap/              Aktivitäten AP: Zeile, Formular, Termine erzeugen
 │   ├── sacrament/       Abendmahlsversammlung: Rahmen mit Sonntagswahl, Lied- und Personenfelder
 │   ├── ui/              Bausteine: Modal, Badges, Avatare, Auswahlfelder,
