@@ -1,15 +1,12 @@
-import { ChevronDown, ChevronUp, ClipboardList, Plus, Trash2 } from 'lucide-react'
+import { ClipboardList, Plus } from 'lucide-react'
 import { useToast } from '@/contexts/ToastContext'
 import { EmptyState } from '@/components/ui/Feedback'
 import { BusinessFields } from '@/components/sacrament/BusinessFields'
 import { ConflictNotice, SectionHeader, useSacrament } from '@/components/sacrament/SacramentLayout'
+import { ReorderControls, useReorder } from '@/components/sacrament/Reorder'
 import { useAutoDraft } from '@/components/sacrament/useDraft'
-import {
-  moveInList,
-  newBusinessEntry,
-  replaceInList,
-  saveSacramentMeeting,
-} from '@/services/sacrament'
+import { cn } from '@/lib/utils'
+import { newBusinessEntry, replaceInList, saveSacramentMeeting } from '@/services/sacrament'
 import type { BusinessEntry } from '@/lib/types'
 
 /**
@@ -30,6 +27,10 @@ import type { BusinessEntry } from '@/lib/types'
  * Wortlaut für den Sonntag und sonst nichts. Früher liessen sich Einträge
  * aus den Berufungen übernehmen und blieben mit ihnen verknüpft – das ist
  * weggefallen.
+ *
+ * Die Reihenfolge ist die, in der am Pult vorgelesen wird, und wird von Hand
+ * gelegt: mit den Pfeilen an jeder Zeile (auch am Telefon) oder durch Ziehen
+ * am Griff. Genauso steht sie unter «Leitung».
  */
 export function WardBusiness() {
   const { date, meeting } = useSacrament()
@@ -60,6 +61,8 @@ export function WardBusiness() {
     change(entries.filter((e) => e.id !== entry.id))
     toast.undo('Eintrag entfernt.', () => change(before))
   }
+
+  const reorder = useReorder(entries, (entry) => entry.id, change)
 
   return (
     <>
@@ -99,46 +102,37 @@ export function WardBusiness() {
         </div>
       ) : (
         <ul className="space-y-2">
-          {entries.map((entry, index) => (
-            <li key={entry.id} className="card p-3">
-              <div className="flex items-start gap-2">
-                <BusinessFields
-                  entry={entry}
-                  index={index}
-                  onChange={(next) => change(replaceInList(entries, next))}
-                />
+          {entries.map((entry, index) => {
+            const { dragProps, dragging, dropTarget } = reorder.row(entry.id)
+            return (
+              <li
+                key={entry.id}
+                {...dragProps}
+                className={cn(
+                  'card p-3 transition',
+                  dragging && 'opacity-40',
+                  dropTarget && 'border-brand-500 border-dashed',
+                )}
+              >
+                <div className="flex items-start gap-2">
+                  <BusinessFields
+                    entry={entry}
+                    index={index}
+                    onChange={(next) => change(replaceInList(entries, next))}
+                  />
 
-                <div className="flex shrink-0 flex-col gap-1">
-                  <button
-                    type="button"
-                    className="btn-ghost p-1.5"
-                    onClick={() => change(moveInList(entries, index, -1))}
-                    disabled={index === 0}
-                    aria-label="Nach oben"
-                  >
-                    <ChevronUp className="size-4" aria-hidden />
-                  </button>
-                  <button
-                    type="button"
-                    className="btn-ghost p-1.5"
-                    onClick={() => change(moveInList(entries, index, 1))}
-                    disabled={index === entries.length - 1}
-                    aria-label="Nach unten"
-                  >
-                    <ChevronDown className="size-4" aria-hidden />
-                  </button>
-                  <button
-                    type="button"
-                    className="btn-ghost p-1.5 text-rose-600 dark:text-rose-400"
-                    onClick={() => remove(entry)}
-                    aria-label="Entfernen"
-                  >
-                    <Trash2 className="size-4" aria-hidden />
-                  </button>
+                  <ReorderControls
+                    label={`Eintrag ${index + 1}`}
+                    first={index === 0}
+                    last={index === entries.length - 1}
+                    onMove={(delta) => reorder.move(index, delta)}
+                    onGrab={() => reorder.grab(entry.id)}
+                    onRemove={() => remove(entry)}
+                  />
                 </div>
-              </div>
-            </li>
-          ))}
+              </li>
+            )
+          })}
         </ul>
       )}
 

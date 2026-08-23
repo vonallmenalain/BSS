@@ -1,31 +1,17 @@
-import { useEffect, useState, type FormEvent } from 'react'
-import {
-  CalendarClock,
-  ChevronDown,
-  ChevronUp,
-  Megaphone,
-  Pencil,
-  Plus,
-  Repeat,
-  Sparkles,
-  Trash2,
-} from 'lucide-react'
+import { useEffect, useMemo, useState, type FormEvent } from 'react'
+import { CalendarClock, Megaphone, Pencil, Plus, Repeat, Sparkles, Trash2 } from 'lucide-react'
 import { useAuth } from '@/contexts/AuthContext'
 import { useToast } from '@/contexts/ToastContext'
 import { EmptyState } from '@/components/ui/Feedback'
 import { Modal, ConfirmDialog } from '@/components/ui/Modal'
 import { ConflictNotice, SectionHeader, useSacrament } from '@/components/sacrament/SacramentLayout'
+import { ReorderControls, useReorder } from '@/components/sacrament/Reorder'
 import { useAutoDraft } from '@/components/sacrament/useDraft'
 import { useSundayAnnouncements } from '@/hooks/useAnnouncements'
 import { cn, uid } from '@/lib/utils'
 import { formatDate } from '@/lib/dates'
-import { isSeriesEntry, seriesAppliesTo } from '@/lib/series'
-import {
-  moveInList,
-  newAnnouncement,
-  replaceInList,
-  saveSacramentMeeting,
-} from '@/services/sacrament'
+import { announcementKey, isSeriesEntry, seriesAppliesTo } from '@/lib/series'
+import { newAnnouncement, replaceInList, saveSacramentMeeting } from '@/services/sacrament'
 import {
   createSeries,
   deleteSeries,
@@ -45,6 +31,20 @@ import {
 } from '@/lib/types'
 
 /**
+ * Was auf dieser Seite laufend geschrieben wird.
+ *
+ * Zwei Dinge, und sie gehören zusammen: die erfassten Einträge und die
+ * Reihenfolge, in der die Bekanntmachungen dieses Sonntags stehen. Getrennt
+ * gespeichert liefen sie auseinander – wer eine Zeile verschiebt und gleich
+ * darauf eine zweite tippt, schriebe sonst zweimal denselben Sonntag.
+ */
+interface AnnouncementDraft {
+  entries: AnnouncementEntry[]
+  /** Schlüsselband über beide Arten – siehe `announcementKey` */
+  order: string[]
+}
+
+/**
  * Bekanntmachungen für einen Sonntag.
  *
  * Das Handbuch verlangt, sie auf ein Minimum zu beschränken – deshalb steht
@@ -55,26 +55,59 @@ import {
  * Sonntag und werden laufend gespeichert: kurz nach dem letzten Tastendruck
  * und spätestens beim Verlassen der Seite. Die **wiederkehrenden** gehören
  * einer Serie – «jeden 3. Sonntag im Monat» – und werden bei jedem Aufruf
- * dazugerechnet, statt in den Sonntag geschrieben zu werden. Sie stehen
- * hinten, tragen ein Kennzeichen und lassen sich für diesen Sonntag
- * anpassen oder streichen, ohne die Serie anzutasten.
+ * dazugerechnet, statt in den Sonntag geschrieben zu werden. Sie tragen ein
+ * Kennzeichen und lassen sich für diesen Sonntag anpassen oder streichen,
+ * ohne die Serie anzutasten.
+ *
+ * **Die Reihenfolge legt die Bischofschaft.** Ohne Zutun stehen die
+ * erfassten Einträge vorn und die Serien dahinter – was diesen Sonntag
+ * besonders macht, gehört nach vorn. Verschoben wird über beide Arten
+ * hinweg: mit den Pfeilen an jeder Zeile (auch am Telefon) oder durch Ziehen
+ * am Griff. Eine Serie nach vorn zu holen ändert nichts an ihr; festgehalten
+ * wird allein die Reihenfolge dieses Sonntags.
  */
 export function Announcements() {
   const { date, dateKey, meeting } = useSacrament()
   const { profile } = useAuth()
   const toast = useToast()
 
-  const draft = useAutoDraft<AnnouncementEntry[]>(
-    meeting?.announcements ?? [],
-    (value) => saveSacramentMeeting(date, { announcements: value }),
+  const server = useMemo<AnnouncementDraft>(
+    () => ({
+      entries: meeting?.announcements ?? [],
+      order: meeting?.announcementOrder ?? [],
+    }),
+    [meeting],
+  )
+
+  const draft = useAutoDraft<AnnouncementDraft>(
+    server,
+    (value) =>
+      saveSacramentMeeting(date, { announcements: value.entries, announcementOrder: value.order }),
     { onError: () => toast.error('Speichern fehlgeschlagen.') },
   )
 
-  const entries = draft.value
-  const change = draft.set
+  const entries = draft.value.entries
+  /** Die erfassten Einträge ändern – die gelegte Reihenfolge bleibt stehen. */
+  const change = (next: AnnouncementEntry[]) => draft.set({ ...draft.value, entries: next })
 
-  const { entries: combined, series, resolve } = useSundayAnnouncements(dateKey, entries)
+  const {
+    entries: combined,
+    series,
+    resolve,
+  } = useSundayAnnouncements(dateKey, entries, draft.value.order)
   const generated = combined.filter(isSeriesEntry)
+
+  /*
+   * Umsortiert wird die **ganze** Liste, erfasste Einträge und Serien
+   * miteinander. Geschrieben wird dabei nicht die Liste, sondern ihre
+   * Reihenfolge – ein Band aus Schlüsseln. Anders ginge es auch nicht: Eine
+   * Serie steht gar nicht im Sonntag, und sie dafür hineinzuschreiben hiesse,
+   * sie von der Serie abzuhängen. So bleibt sie, was sie ist, und steht
+   * trotzdem dort, wo sie vorgelesen werden soll.
+   */
+  const reorder = useReorder(combined, announcementKey, (next) =>
+    draft.set({ ...draft.value, order: next.map(announcementKey) }),
+  )
 
   const [formOpen, setFormOpen] = useState(false)
   const [editSeries, setEditSeries] = useState<AnnouncementSeries | null>(null)
@@ -84,10 +117,11 @@ export function Announcements() {
    * Eine Serie an diesem Sonntag von Hand übernehmen.
    *
    * Sie wird zu einem gewöhnlichen Eintrag: Er trägt die Serien-ID, tritt
-   * damit an ihre Stelle und lässt sich frei ändern und verschieben. Die
-   * Serie selbst bleibt unberührt und erscheint an allen anderen Sonntagen
-   * weiter – wer nur diesen einen anders formulieren will, soll dafür nicht
-   * die ganze Serie umschreiben müssen.
+   * damit an ihre Stelle und lässt sich frei ändern. Die Serie selbst bleibt
+   * unberührt und erscheint an allen anderen Sonntagen weiter – wer nur
+   * diesen einen anders formulieren will, soll dafür nicht die ganze Serie
+   * umschreiben müssen. Ihren Platz in der Liste behält der Eintrag: In der
+   * Reihenfolge steht die Serie und nicht die ID des Eintrags.
    */
   const detach = (entry: AnnouncementEntry) => {
     if (!entry.seriesId) return
@@ -160,124 +194,134 @@ export function Announcements() {
           />
         </div>
       ) : (
+        /*
+         * Eine Liste, nicht zwei.
+         *
+         * Erfasste und wiederkehrende Bekanntmachungen standen früher in zwei
+         * Blöcken untereinander – und damit liess sich zwischen ihnen nichts
+         * verschieben. Am Pult ist es ohnehin eine Liste: eine Nummer nach der
+         * anderen, ganz gleich, woher der Text kommt.
+         */
         <ul className="space-y-2">
-          {entries.map((entry, index) => (
-            <li key={entry.id} className="card p-3">
-              <div className="flex items-start gap-2">
-                <span className="tabular mt-2 grid size-6 shrink-0 place-items-center rounded-full bg-slate-100 text-xs font-semibold dark:bg-slate-800">
-                  {index + 1}
-                </span>
+          {combined.map((entry, index) => {
+            const key = announcementKey(entry)
+            const recurring = isSeriesEntry(entry)
+            const source = entry.seriesId
+              ? series.find((item) => item.id === entry.seriesId)
+              : undefined
+            const { dragProps, dragging, dropTarget } = reorder.row(key)
 
-                <div className="min-w-0 flex-1 space-y-2">
-                  {entry.seriesId && (
-                    <p className="flex items-center gap-1.5 text-xs text-slate-500 dark:text-slate-400">
-                      <Repeat className="size-3.5" aria-hidden />
-                      Aus einer Serie übernommen – gilt nur für diesen Sonntag.
-                    </p>
-                  )}
-                  {/* Ein Feld, nicht zwei. Was am Pult gesagt wird, steht
-                      hier vollständig – mehrzeilig, wenn es mehrzeilig ist.
-                      Der frühere Zusatz «Einzelheiten für die Person am
-                      Pult» daneben verlangte eine Entscheidung, die niemand
-                      treffen wollte: Gehört das Datum noch in den Wortlaut
-                      oder schon darunter? */}
-                  <textarea
-                    className="input min-h-20 resize-y"
-                    value={entry.text}
-                    onChange={(event) =>
-                      change(replaceInList(entries, { ...entry, text: event.target.value }))
-                    }
-                    placeholder="Bekanntmachung"
-                    aria-label={`Bekanntmachung ${index + 1}`}
-                  />
-                </div>
-
-                <div className="flex shrink-0 flex-col gap-1">
-                  <button
-                    type="button"
-                    className="btn-ghost p-1.5"
-                    onClick={() => change(moveInList(entries, index, -1))}
-                    disabled={index === 0}
-                    aria-label="Nach oben"
-                  >
-                    <ChevronUp className="size-4" aria-hidden />
-                  </button>
-                  <button
-                    type="button"
-                    className="btn-ghost p-1.5"
-                    onClick={() => change(moveInList(entries, index, 1))}
-                    disabled={index === entries.length - 1}
-                    aria-label="Nach unten"
-                  >
-                    <ChevronDown className="size-4" aria-hidden />
-                  </button>
-                  <button
-                    type="button"
-                    className="btn-ghost p-1.5 text-rose-600 dark:text-rose-400"
-                    onClick={() => remove(entry)}
-                    aria-label="Entfernen"
-                  >
-                    <Trash2 className="size-4" aria-hidden />
-                  </button>
-                </div>
-              </div>
-            </li>
-          ))}
-
-          {generated.map((entry, index) => {
-            const source = series.find((item) => item.id === entry.seriesId)
             return (
               <li
                 key={entry.id}
-                className="card border-brand-200 dark:border-brand-900 border-dashed p-3"
+                {...dragProps}
+                className={cn(
+                  'card p-3 transition',
+                  dragging && 'opacity-40',
+                  dropTarget
+                    ? 'border-brand-500 border-dashed'
+                    : recurring && 'border-brand-200 dark:border-brand-900 border-dashed',
+                )}
               >
                 <div className="flex items-start gap-2">
-                  <span className="tabular mt-2 grid size-6 shrink-0 place-items-center rounded-full bg-slate-100 text-xs font-semibold dark:bg-slate-800">
-                    {entries.length + index + 1}
-                  </span>
-
-                  <div className="min-w-0 flex-1">
-                    <p className="text-brand-700 dark:text-brand-300 flex items-center gap-1.5 text-xs font-medium">
-                      <Repeat className="size-3.5" aria-hidden />
-                      Wiederkehrend
-                      {source && ` · ${rhythmLabel(source)}`}
-                    </p>
-                    <p className="mt-1 text-sm font-medium whitespace-pre-line">{entry.text}</p>
-                    {entry.details?.trim() && (
-                      <p className="mt-0.5 text-sm whitespace-pre-line text-slate-500 dark:text-slate-400">
-                        {entry.details}
-                      </p>
-                    )}
+                  {/* Die Nummer und darunter, was sie ändert: der Griff und
+                      die beiden Pfeile. Sie stehen beisammen, weil sie
+                      dieselbe Frage beantworten – an welcher Stelle wird
+                      dieser Eintrag vorgelesen. */}
+                  <div className="mt-1 flex shrink-0 flex-col items-center">
+                    <span className="tabular grid size-6 place-items-center rounded-full bg-slate-100 text-xs font-semibold dark:bg-slate-800">
+                      {index + 1}
+                    </span>
+                    <ReorderControls
+                      label={`Bekanntmachung ${index + 1}`}
+                      first={index === 0}
+                      last={index === combined.length - 1}
+                      onMove={(delta) => reorder.move(index, delta)}
+                      onGrab={() => reorder.grab(key)}
+                    />
                   </div>
 
-                  <div className="flex shrink-0 flex-col gap-1">
-                    <button
-                      type="button"
-                      className="btn-ghost p-1.5"
-                      onClick={() => source && setEditSeries(source)}
-                      aria-label="Serie bearbeiten"
-                      title="Serie bearbeiten – wirkt auf alle Sonntage"
-                    >
-                      <Pencil className="size-4" aria-hidden />
-                    </button>
-                    <button
-                      type="button"
-                      className="btn-ghost p-1.5"
-                      onClick={() => detach(entry)}
-                      aria-label="Nur für diesen Sonntag anpassen"
-                      title="Nur für diesen Sonntag anpassen"
-                    >
-                      <Sparkles className="size-4" aria-hidden />
-                    </button>
-                    <button
-                      type="button"
-                      className="btn-ghost p-1.5 text-rose-600 dark:text-rose-400"
-                      onClick={() => source && setRemoveSeries(source)}
-                      aria-label="Entfernen"
-                    >
-                      <Trash2 className="size-4" aria-hidden />
-                    </button>
-                  </div>
+                  {recurring ? (
+                    <>
+                      <div className="min-w-0 flex-1">
+                        <p className="text-brand-700 dark:text-brand-300 flex items-center gap-1.5 text-xs font-medium">
+                          <Repeat className="size-3.5" aria-hidden />
+                          Wiederkehrend
+                          {source && ` · ${rhythmLabel(source)}`}
+                        </p>
+                        <p className="mt-1 text-sm font-medium whitespace-pre-line">{entry.text}</p>
+                        {entry.details?.trim() && (
+                          <p className="mt-0.5 text-sm whitespace-pre-line text-slate-500 dark:text-slate-400">
+                            {entry.details}
+                          </p>
+                        )}
+                      </div>
+
+                      <div className="flex shrink-0 flex-col gap-1">
+                        <button
+                          type="button"
+                          className="btn-ghost p-1.5"
+                          onClick={() => source && setEditSeries(source)}
+                          aria-label="Serie bearbeiten"
+                          title="Serie bearbeiten – wirkt auf alle Sonntage"
+                        >
+                          <Pencil className="size-4" aria-hidden />
+                        </button>
+                        <button
+                          type="button"
+                          className="btn-ghost p-1.5"
+                          onClick={() => detach(entry)}
+                          aria-label="Nur für diesen Sonntag anpassen"
+                          title="Nur für diesen Sonntag anpassen"
+                        >
+                          <Sparkles className="size-4" aria-hidden />
+                        </button>
+                        <button
+                          type="button"
+                          className="btn-ghost p-1.5 text-rose-600 dark:text-rose-400"
+                          onClick={() => source && setRemoveSeries(source)}
+                          aria-label="Entfernen"
+                        >
+                          <Trash2 className="size-4" aria-hidden />
+                        </button>
+                      </div>
+                    </>
+                  ) : (
+                    <>
+                      <div className="min-w-0 flex-1 space-y-2">
+                        {entry.seriesId && (
+                          <p className="flex items-center gap-1.5 text-xs text-slate-500 dark:text-slate-400">
+                            <Repeat className="size-3.5" aria-hidden />
+                            Aus einer Serie übernommen – gilt nur für diesen Sonntag.
+                          </p>
+                        )}
+                        {/* Ein Feld, nicht zwei. Was am Pult gesagt wird, steht
+                            hier vollständig – mehrzeilig, wenn es mehrzeilig ist.
+                            Der frühere Zusatz «Einzelheiten für die Person am
+                            Pult» daneben verlangte eine Entscheidung, die niemand
+                            treffen wollte: Gehört das Datum noch in den Wortlaut
+                            oder schon darunter? */}
+                        <textarea
+                          className="input min-h-20 resize-y"
+                          value={entry.text}
+                          onChange={(event) =>
+                            change(replaceInList(entries, { ...entry, text: event.target.value }))
+                          }
+                          placeholder="Bekanntmachung"
+                          aria-label={`Bekanntmachung ${index + 1}`}
+                        />
+                      </div>
+
+                      <button
+                        type="button"
+                        className="btn-ghost shrink-0 p-1.5 text-rose-600 dark:text-rose-400"
+                        onClick={() => remove(entry)}
+                        aria-label="Entfernen"
+                      >
+                        <Trash2 className="size-4" aria-hidden />
+                      </button>
+                    </>
+                  )}
                 </div>
               </li>
             )

@@ -15,9 +15,13 @@ import type { AnnouncementEntry, AnnouncementSeries, CleaningWeek } from '@/lib/
  * Die Serien werden **nicht** in den Sonntag geschrieben. Wer den Wortlaut
  * ändert, ändert ihn damit für jeden künftigen Sonntag; und ein Sonntag,
  * den niemand geöffnet hat, trägt die Bekanntmachung trotzdem.
+ *
+ * Die Reihenfolge dagegen gehört dem Sonntag: `order` ist sein
+ * `announcementOrder` und ordnet beide Arten miteinander – eine Serie lässt
+ * sich damit nach vorn holen, ohne sie anzutasten.
  */
 export interface SundayAnnouncements {
-  /** Erfasste Einträge, danach die fälligen Serien */
+  /** Erfasste Einträge und fällige Serien in der Folge, in der sie vorgelesen werden */
   entries: AnnouncementEntry[]
   /** Alle Serien, unabhängig vom Sonntag */
   series: AnnouncementSeries[]
@@ -28,9 +32,14 @@ export interface SundayAnnouncements {
   resolve: SeriesTextResolver
 }
 
+/** Damit ein weggelassenes Argument nicht bei jedem Rendern eine neue Liste ist. */
+const NO_ORDER: string[] = []
+
 export function useSundayAnnouncements(
   dateKey: string,
   stored: AnnouncementEntry[],
+  /** Die von Hand gelegte Reihenfolge – leer heisst: erfasste zuerst, Serien danach */
+  order: string[] = NO_ORDER,
 ): SundayAnnouncements {
   const { data: series } = useAnnouncementSeries()
   const { data: weeks } = useCleaningWeeks()
@@ -63,8 +72,8 @@ export function useSundayAnnouncements(
   )
 
   const entries = useMemo(
-    () => announcementsFor(dateKey, stored, series, resolve),
-    [dateKey, stored, series, resolve],
+    () => announcementsFor(dateKey, stored, series, resolve, order),
+    [dateKey, stored, series, resolve, order],
   )
 
   const dueSeries = useMemo(

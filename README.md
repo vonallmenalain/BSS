@@ -956,8 +956,8 @@ für alle Unterpunkte.
 | Unterpunkt           | Wofür                                                                                               |
 | -------------------- | --------------------------------------------------------------------------------------------------- |
 | **Leitung**          | Der ganze Ablauf auf einer Seite – zum Leiten am Pult, auf Knopfdruck änderbar                      |
-| **Bekanntmachungen** | Liste pro Sonntag und wiederkehrende Serien; ein mehrzeiliges Feld je Eintrag, speichert von selbst |
-| **Angelegenheiten**  | Bestätigungen, Entlassungen, Segnungen, Konfirmierungen                                             |
+| **Bekanntmachungen** | Liste pro Sonntag und wiederkehrende Serien in **einer** Reihenfolge, von Hand zu legen             |
+| **Angelegenheiten**  | Bestätigungen, Entlassungen, Segnungen, Konfirmierungen – ebenfalls in gelegter Reihenfolge        |
 | **Ansprachen**       | Programmplätze vergeben, Vorschlagsliste, Verlauf                                                   |
 | **Musik**            | Drei bis vier Lieder und Musikeinlagen                                                              |
 | **Gebet**            | Anfangs- und Schlussgebet, mit «zuletzt gebetet»                                                    |
@@ -1071,6 +1071,13 @@ Konto in der App hat er nicht. Ein einmal erfasster Name ist an jedem Sonntag
 wählbar und lässt sich im selben Fenster wieder aus der Auswahl nehmen, ohne
 aus schon erfassten Programmen zu verschwinden. Der Knopf **Bearbeiten**
 blendet die Eingabefelder ein; gespeichert wird laufend, ohne Speichern-Knopf.
+
+Beim Bearbeiten lassen sich **Bekanntmachungen und Angelegenheiten auch hier
+umsortieren** – mit den Pfeilen an jeder Zeile oder durch Ziehen am Griff. Bei
+den Bekanntmachungen zählen die wiederkehrenden mit: Ihr Wortlaut gehört der
+Serie und wird unter «Bekanntmachungen» geändert, ihre Stelle im Ablauf gehört
+dem Sonntag und lässt sich hier legen (siehe
+[«Bekanntmachungen: die Reihenfolge»](#bekanntmachungen-die-reihenfolge)).
 
 Ohne **Bearbeiten** steht da nur der Ablauf – so, wie er in der Versammlung
 gebraucht wird: keine erklärenden Sätze, keine Verweise in andere Bereiche und
@@ -1253,6 +1260,39 @@ Gesperrt ist damit nichts: Wer im Zuteilungsfenster ausdrücklich nach einer
 ausgenommenen Person sucht, findet sie samt Vermerk und kann sie eintragen.
 Der Vermerk hält sie aus den **Vorschlägen** heraus, nicht aus dem Programm.
 
+### Bekanntmachungen: die Reihenfolge
+
+**Was hier steht, steht in der Folge, in der es am Pult vorgelesen wird** –
+unter «Bekanntmachungen» wie unter «Leitung». Die Nummer an jeder Zeile ist
+genau diese Stelle im Ablauf.
+
+**Erfasste und wiederkehrende stehen in einer Liste.** Früher waren es zwei
+Blöcke untereinander, und zwischen ihnen liess sich nichts verschieben: Eine
+Serie blieb hinten, auch wenn sie zuerst gesagt werden sollte. Jetzt ist es
+eine Liste – die Serien tragen weiterhin ihr Kennzeichen und den gestrichelten
+Rand, stehen aber dort, wo man sie hinlegt.
+
+**Umsortiert wird auf zwei Wegen:** mit den **Pfeilen** unter der Nummer (auch
+am Telefon) oder durch **Ziehen** am Griff darüber, am Zeigergerät. Ohne Zutun
+gilt die gewohnte Folge – erfasste zuerst, Serien danach; ein neu erfasster
+Eintrag und eine neu fällige Serie kommen unten dazu.
+
+**Eine Serie zu verschieben ändert nichts an ihr.** Festgehalten wird nur die
+Reihenfolge dieses einen Sonntags; an allen anderen Sonntagen steht die Serie,
+wo sie stand. Das ist der Unterschied zu **Nur für diesen Sonntag anpassen**
+(dem Sternchen): Dort wird aus der Serie ein gewöhnlicher Eintrag, weil der
+_Wortlaut_ abweichen soll. Wer bloss die Stelle im Ablauf ändern will, braucht
+das nicht – und der übernommene Eintrag behält übrigens den Platz der Serie.
+
+**Dieselbe Liste steht unter «Leitung».** Der Knopf **Bearbeiten** zeigt sie
+mit denselben Pfeilen und demselben Griff; der Wortlaut einer Serie wird
+weiterhin unter «Bekanntmachungen» geändert, ihre Stelle im Ablauf hier oder
+dort. Wer am Samstagabend das Blatt durchgeht und merkt, dass der Dank ans
+Putzteam zuoberst gehört, muss dafür den Bereich nicht wechseln.
+
+Die gelegte Reihenfolge gehört dem Sonntag und gilt damit für alle, die ihn
+öffnen.
+
 ### Angelegenheiten: Art, Person, Aufgabe
 
 Ein Eintrag hat drei Spalten, mehr braucht er nicht:
@@ -1274,6 +1314,11 @@ das LCR und der Import von dort; diese Liste ist der Wortlaut für den Sonntag
 und sonst nichts. Früher liessen sich Einträge aus dem Bereich «Berufungen»
 übernehmen und blieben mit ihnen verknüpft – das ist weggefallen, zusammen
 mit dem Feld «Betroffene Mitglieder».
+
+**Die Reihenfolge legt die Bischofschaft** – mit den Pfeilen an jeder Zeile
+oder durch Ziehen am Griff, unter «Angelegenheiten» wie unter «Leitung →
+Bearbeiten». Vorgelesen wird von oben nach unten, und beide Seiten zeigen
+dieselbe Folge.
 
 Einträge aus früheren Fassungen tragen statt Person und Aufgabe einen
 Freitext. Er bleibt lesbar stehen und wird darunter angezeigt, bis jemand die
@@ -1318,13 +1363,17 @@ Vergangene Sonntage werden in den ersten beiden Fällen nie angetastet: Was
 einmal von der Kanzel gesagt wurde, lässt sich nicht nachträglich streichen.
 
 **Nur für diesen Sonntag anpassen** (das Sternchen) macht aus der Serie an
-diesem einen Sonntag einen gewöhnlichen Eintrag: frei änderbar und
-verschiebbar, während die Serie an allen anderen Sonntagen bleibt, wie sie
-war.
+diesem einen Sonntag einen gewöhnlichen Eintrag: frei änderbar, während die
+Serie an allen anderen Sonntagen bleibt, wie sie war. Den Platz in der Liste
+behält er dabei. Fürs blosse Verschieben braucht es das Sternchen nicht – das
+geht auch an der Serie selbst.
 
-Serien stehen in der Liste hinter den erfassten Einträgen – was diesen Sonntag
-besonders macht, gehört nach vorn. Sie erscheinen genauso unter **Leitung**,
-dort nur zum Vorlesen.
+Ohne Zutun stehen Serien hinter den erfassten Einträgen – was diesen Sonntag
+besonders macht, gehört nach vorn. **Festgenagelt sind sie dort nicht:** Die
+Liste lässt sich über beide Arten hinweg umstellen (siehe
+[«Bekanntmachungen: die Reihenfolge»](#bekanntmachungen-die-reihenfolge)). Sie
+erscheinen genauso unter **Leitung** – dort zum Vorlesen und, beim Bearbeiten,
+zum Verschieben.
 
 ---
 

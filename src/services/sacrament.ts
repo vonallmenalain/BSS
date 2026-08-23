@@ -83,6 +83,7 @@ export function emptySacramentMeeting(date: Date): SacramentMeeting {
     announcements: [],
     business: [],
     programOrder: [],
+    announcementOrder: [],
     notes: '',
   }
 }

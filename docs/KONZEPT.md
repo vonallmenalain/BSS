@@ -230,6 +230,14 @@ altes Programm lesbar bleibt. An der Berufung selbst ändert der Eintrag
 nichts – sie kommt aus dem LCR. Die frühere Übernahme aus dem Bereich
 «Berufungen», samt Verknüpfung, ist deshalb weggefallen.
 
+Die Reihenfolge wird von Hand gelegt – mit Pfeilen oder durch Ziehen, in den
+beiden Bereichen selbst wie im Bearbeitungsmodus der «Leitung». Bei den
+Bekanntmachungen zählen die wiederkehrenden mit: Sie stehen zwar nicht im
+Sonntag, sondern werden bei jedem Aufruf dazugerechnet, lassen sich aber
+trotzdem einordnen. Festgehalten wird dafür ein Band aus Schlüsseln am
+Sonntag – kein Eingriff in die Serie, die an allen anderen Sonntagen bleibt,
+wo sie war.
+
 **Musik.** Anfangs-, Abendmahls- und Schlusslied, dazu das freiwillige
 Zwischenlied und beliebig viele Musikeinlagen mit den vortragenden
 Mitgliedern. Erfasst wird nur die Liednummer – den Titel liefert die
