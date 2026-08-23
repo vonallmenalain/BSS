@@ -46,6 +46,10 @@ const ASSISTANT_ALL = 'uid-assistenz-alle'
 const ASSISTANT_MUSIC = 'uid-assistenz-musik'
 /** Assistenz ohne einen einzigen Bereich – der entzogene Zugang. */
 const ASSISTANT_NONE = 'uid-assistenz-ohne'
+/** Assistenz, die alle drei Bereiche sieht und keinen davon ändern darf. */
+const ASSISTANT_READER = 'uid-assistenz-lesend'
+/** Assistenz, die die Musik bearbeitet und die Ansprachen nur mitliest. */
+const ASSISTANT_MIXED = 'uid-assistenz-gemischt'
 const PENDING = 'uid-wartend'
 
 /** Die Anmelde-E-Mail des Administrator-Kontos – wie in firestore.rules. */
@@ -104,6 +108,31 @@ async function seed() {
       role: 'assistant',
       active: true,
       assistantAreas: [],
+    })
+
+    /*
+     * Und zwei Konten für die zweite Frage: nicht «welcher Bereich?»,
+     * sondern «und wie viel darin?». Das eine sieht alles und ändert
+     * nichts, das andere arbeitet an der Musik und liest bei den
+     * Ansprachen bloss mit. Die drei Konten oben tragen bewusst **kein**
+     * Feld `assistantWrite` – sie sind zugleich die Probe darauf, dass der
+     * Altbestand weiterhin arbeiten darf.
+     */
+    await setDoc(doc(db, 'users', ASSISTANT_READER), {
+      email: `${ASSISTANT_READER}@example.ch`,
+      displayName: 'Assistenz (nur lesend)',
+      role: 'assistant',
+      active: true,
+      assistantAreas: ['talks', 'music', 'prayers'],
+      assistantWrite: [],
+    })
+    await setDoc(doc(db, 'users', ASSISTANT_MIXED), {
+      email: `${ASSISTANT_MIXED}@example.ch`,
+      displayName: 'Assistenz (Musik schreibend, Ansprachen lesend)',
+      role: 'assistant',
+      active: true,
+      assistantAreas: ['talks', 'music'],
+      assistantWrite: ['music'],
     })
 
     // Ein AP mit dem Impuls-Schalter – das Konto, für das der Bereich da ist.
@@ -297,6 +326,8 @@ const asImpulseAp = () => testEnv.authenticatedContext(IMPULSE_AP).firestore()
 const asAssistant = () => testEnv.authenticatedContext(ASSISTANT_ALL).firestore()
 const asMusicAssistant = () => testEnv.authenticatedContext(ASSISTANT_MUSIC).firestore()
 const asAssistantWithoutArea = () => testEnv.authenticatedContext(ASSISTANT_NONE).firestore()
+const asReadingAssistant = () => testEnv.authenticatedContext(ASSISTANT_READER).firestore()
+const asMixedAssistant = () => testEnv.authenticatedContext(ASSISTANT_MIXED).firestore()
 const asPending = () => testEnv.authenticatedContext(PENDING).firestore()
 const asAnonymous = () => testEnv.unauthenticatedContext().firestore()
 
@@ -624,6 +655,101 @@ describe('Assistenz der Abendmahlsversammlung', () => {
   })
 })
 
+describe('Assistenz: lesen oder auch schreiben', () => {
+  it('lässt die nur lesende Assistenz alles sehen', async () => {
+    await assertSucceeds(getDoc(doc(asReadingAssistant(), 'sacramentMeetings', '2026-08-09')))
+    await assertSucceeds(getDocs(collection(asReadingAssistant(), 'talks')))
+    await assertSucceeds(getDocs(collection(asReadingAssistant(), 'prayers')))
+    await assertSucceeds(getDocs(collection(asReadingAssistant(), 'members')))
+    await assertSucceeds(getDocs(collection(asReadingAssistant(), 'hymns')))
+  })
+
+  it('hält sie von jeder Änderung ab – in allen drei Bereichen', async () => {
+    /*
+     * Die Werte weichen bewusst von dem ab, was schon dasteht: Ein
+     * Schreibvorgang, der nichts ändert, fasst kein einziges Feld an – die
+     * Regeln lassen ihn deshalb durch, ohne dass daraus etwas folgt.
+     * Geprüft werden soll hier aber die verweigerte Änderung.
+     */
+    await assertFails(
+      setDoc(
+        doc(asReadingAssistant(), 'sacramentMeetings', '2026-08-09'),
+        { hymns: { opening: { number: 19, title: 'Wir danken dir, Herr, für Propheten' } } },
+        { merge: true },
+      ),
+    )
+    await assertFails(
+      setDoc(
+        doc(asReadingAssistant(), 'sacramentMeetings', '2026-08-09'),
+        { talkSlots: 6 },
+        { merge: true },
+      ),
+    )
+    await assertFails(
+      setDoc(doc(asReadingAssistant(), 'talks', 'ansprache-neu'), {
+        date: '2026-08-09',
+        slot: 1,
+        memberId: 'mitglied-1',
+        status: 'asked',
+      }),
+    )
+    await assertFails(
+      setDoc(doc(asReadingAssistant(), 'prayers', 'gebet-neu'), {
+        date: '2026-08-09',
+        slot: 'opening',
+        memberId: 'mitglied-1',
+      }),
+    )
+    await assertFails(
+      updateDoc(doc(asReadingAssistant(), 'members', 'mitglied-1'), { availableForTalks: true }),
+    )
+  })
+
+  it('trennt die Sparten: Musik bearbeiten, Ansprachen bloss mitlesen', async () => {
+    await assertSucceeds(
+      setDoc(
+        doc(asMixedAssistant(), 'sacramentMeetings', '2026-08-09'),
+        { hymns: { closing: { number: 100, title: 'Ich weiss, mein Gott lebt' } } },
+        { merge: true },
+      ),
+    )
+
+    // Sehen darf sie die Ansprachen – ändern nicht.
+    await assertSucceeds(getDocs(collection(asMixedAssistant(), 'talks')))
+    await assertFails(
+      setDoc(
+        doc(asMixedAssistant(), 'sacramentMeetings', '2026-08-09'),
+        { talkSlots: 7 },
+        { merge: true },
+      ),
+    )
+    await assertFails(
+      updateDoc(doc(asMixedAssistant(), 'members', 'mitglied-1'), { availableForTalks: true }),
+    )
+  })
+
+  it('hindert sie daran, sich das Schreibrecht selbst zu geben', async () => {
+    await assertFails(
+      updateDoc(doc(asReadingAssistant(), 'users', ASSISTANT_READER), {
+        assistantWrite: ['talks', 'music', 'prayers'],
+      }),
+    )
+    // Auch nicht versteckt neben einer erlaubten Änderung.
+    await assertFails(
+      updateDoc(doc(asReadingAssistant(), 'users', ASSISTANT_READER), {
+        displayName: 'Neuer Name',
+        assistantWrite: ['music'],
+      }),
+    )
+    await assertFails(
+      updateDoc(doc(asSecretary(), 'users', ASSISTANT_READER), { assistantWrite: ['music'] }),
+    )
+    await assertSucceeds(
+      updateDoc(doc(asBishop(), 'users', ASSISTANT_READER), { assistantWrite: [] }),
+    )
+  })
+})
+
 describe('Rollen und Rechteausweitung', () => {
   it('hindert ein wartendes Konto daran, sich selbst freizuschalten', async () => {
     await assertFails(updateDoc(doc(asPending(), 'users', PENDING), { role: 'bishop' }))
@@ -800,6 +926,25 @@ describe('Impuls-Schalter', () => {
       }),
     )
   })
+
+  it('lässt ein neues Konto sein Profil nicht mit Bereichen anlegen', async () => {
+    const neu = testEnv.authenticatedContext('uid-bereich-neu').firestore()
+    for (const patch of [
+      { assistantAreas: ['music'] },
+      { assistantWrite: ['music'] },
+      { assistantAreas: [], assistantWrite: ['talks'] },
+    ]) {
+      await assertFails(
+        setDoc(doc(neu, 'users', 'uid-bereich-neu'), {
+          email: 'bereich-neu@example.ch',
+          displayName: 'Neu',
+          role: 'pending',
+          active: true,
+          ...patch,
+        }),
+      )
+    }
+  })
 })
 
 /* ------------------------------------------------------------------ */
@@ -930,13 +1075,9 @@ describe('Impuls', () => {
     })
 
     it('wegräumen darf allein die Redaktion', async () => {
-      await assertFails(
-        deleteDoc(doc(asImpulseAp(), 'impulseAnswers', `frage-1_${IMPULSE_AP}`)),
-      )
+      await assertFails(deleteDoc(doc(asImpulseAp(), 'impulseAnswers', `frage-1_${IMPULSE_AP}`)))
       // Das Administrator-Konto ist die Redaktion – und räumt zugleich auf.
-      await assertSucceeds(
-        deleteDoc(doc(asBishop(), 'impulseAnswers', `frage-1_${IMPULSE_AP}`)),
-      )
+      await assertSucceeds(deleteDoc(doc(asBishop(), 'impulseAnswers', `frage-1_${IMPULSE_AP}`)))
     })
   })
 
@@ -1024,7 +1165,10 @@ describe('Impuls', () => {
 
     it('kein Beitrag auf fremden Namen, unter fremder ID oder schon ausgeblendet', async () => {
       await assertFails(
-        setDoc(doc(asImpulseAp(), 'impulseComments', 'frage-woche-1_uid-fremd'), comment(IMPULSE_AP)),
+        setDoc(
+          doc(asImpulseAp(), 'impulseComments', 'frage-woche-1_uid-fremd'),
+          comment(IMPULSE_AP),
+        ),
       )
       await assertFails(
         setDoc(
@@ -1159,18 +1303,12 @@ describe('Impuls', () => {
           text: 'Umgeschrieben',
         }),
       )
-      await assertFails(
-        deleteDoc(doc(asImpulseAp(), 'impulseSubmissions', 'einreichung-fremd')),
-      )
+      await assertFails(deleteDoc(doc(asImpulseAp(), 'impulseSubmissions', 'einreichung-fremd')))
     })
 
     it('zurückziehen darf die Person selbst, aufräumen die Redaktion', async () => {
-      await assertSucceeds(
-        deleteDoc(doc(asImpulseAp(), 'impulseSubmissions', 'einreichung-1')),
-      )
-      await assertSucceeds(
-        deleteDoc(doc(asBishop(), 'impulseSubmissions', 'einreichung-fremd')),
-      )
+      await assertSucceeds(deleteDoc(doc(asImpulseAp(), 'impulseSubmissions', 'einreichung-1')))
+      await assertSucceeds(deleteDoc(doc(asBishop(), 'impulseSubmissions', 'einreichung-fremd')))
     })
 
     it('ohne Schalter keine Sicht auf die Mitmach-Ecke', async () => {
@@ -1593,16 +1731,12 @@ describe('Zugriffsprotokoll', () => {
   })
 
   it('lässt Nichtangemeldete gar nichts schreiben', async () => {
-    await assertFails(
-      setDoc(doc(asAnonymous(), 'accessLog', 'neu-anonym'), entry('irgendwer')),
-    )
+    await assertFails(setDoc(doc(asAnonymous(), 'accessLog', 'neu-anonym'), entry('irgendwer')))
   })
 
   it('hindert jeden daran, einen Eintrag auf einen fremden Namen zu legen', async () => {
     // Fremde UID …
-    await assertFails(
-      setDoc(doc(withEmail(SECRETARY), 'accessLog', 'gefaelscht-1'), entry(BISHOP)),
-    )
+    await assertFails(setDoc(doc(withEmail(SECRETARY), 'accessLog', 'gefaelscht-1'), entry(BISHOP)))
     // … und die eigene UID mit fremder Adresse.
     await assertFails(
       setDoc(

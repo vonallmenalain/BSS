@@ -100,6 +100,7 @@ const TABS: readonly Tab[] = ['programm', 'vorschlaege', 'verlauf']
 export function Talks() {
   const { settings, members } = useData()
   const { date: selectedDate } = useSacrament()
+  const { canEditSacramentArea } = useAuth()
   const { data: talks, loading } = useTalks(400)
   const { data: sacramentMeetings } = useSacramentMeetings(40)
   const toast = useToast()
@@ -121,6 +122,15 @@ export function Talks() {
   /** Sonntag, dessen Programm gerade festgelegt wird – derselbe Dialog wie unter «Leitung» */
   const [programFor, setProgramFor] = useState<Date | null>(null)
   const [responsibleFor, setResponsibleFor] = useState<Date | null>(null)
+
+  /*
+   * Eine Assistenz kann die Ansprachen auch bloss zum Nachschauen haben
+   * (siehe `AuthContext`). Die Seite bleibt dann vollständig – Programm,
+   * Vorschläge, Verlauf –, nur die Handgriffe fehlen: zuteilen, umstellen,
+   * jemanden ausnehmen. Die Zugriffsregeln sagen ohnehin nein; hier geht es
+   * darum, gar nicht erst dagegen zu laufen.
+   */
+  const readOnly = !canEditSacramentArea('talks')
 
   const meetingByKey = useMemo(
     () => new Map(sacramentMeetings.map((meeting) => [meeting.id, meeting])),
@@ -276,17 +286,20 @@ export function Talks() {
     <>
       <SectionHeader
         title="Ansprachen und Zeugnisse"
+        readOnly={readOnly}
         actions={
-          <button
-            type="button"
-            className="btn-primary"
-            onClick={() =>
-              setAssignFor({ date: schedule[0]?.date ?? new Date(), slot: 1, kind: 'talk' })
-            }
-          >
-            <Plus className="size-4" aria-hidden />
-            <span className="hidden sm:inline">Zuteilen</span>
-          </button>
+          readOnly ? undefined : (
+            <button
+              type="button"
+              className="btn-primary"
+              onClick={() =>
+                setAssignFor({ date: schedule[0]?.date ?? new Date(), slot: 1, kind: 'talk' })
+              }
+            >
+              <Plus className="size-4" aria-hidden />
+              <span className="hidden sm:inline">Zuteilen</span>
+            </button>
+          )
         }
       />
 
@@ -337,20 +350,24 @@ export function Talks() {
                         Vollständig
                       </span>
                     )}
-                    <ResponsibleButton
-                      meeting={sunday.meeting}
-                      onClick={() => setResponsibleFor(sunday.date)}
-                      size="sm"
-                    />
-                    <button
-                      type="button"
-                      className="btn-ghost btn-sm"
-                      onClick={() => setProgramFor(sunday.date)}
-                      title="Programm des Sonntags festlegen"
-                    >
-                      <CalendarCog className="size-3.5" aria-hidden />
-                      Programm
-                    </button>
+                    {!readOnly && (
+                      <>
+                        <ResponsibleButton
+                          meeting={sunday.meeting}
+                          onClick={() => setResponsibleFor(sunday.date)}
+                          size="sm"
+                        />
+                        <button
+                          type="button"
+                          className="btn-ghost btn-sm"
+                          onClick={() => setProgramFor(sunday.date)}
+                          title="Programm des Sonntags festlegen"
+                        >
+                          <CalendarCog className="size-3.5" aria-hidden />
+                          Programm
+                        </button>
+                      </>
+                    )}
                   </div>
                 </div>
 
@@ -373,19 +390,21 @@ export function Talks() {
                           first={slot === 1}
                           last={slot === sunday.slots.length}
                           onMove={(delta) => void moveTalk(sunday.slots, slot, delta)}
+                          readOnly={readOnly}
                         />
                       ) : (
-                        <button
-                          type="button"
-                          onClick={() => setAssignFor({ date: sunday.date, slot, kind: 'talk' })}
-                          className="flex w-full items-center gap-3 rounded-lg border border-dashed border-slate-300 px-3 py-2.5 text-sm text-slate-500 transition hover:border-slate-400 hover:bg-slate-50 dark:border-slate-700 dark:text-slate-400 dark:hover:bg-slate-800/50"
-                        >
-                          <span className="tabular grid size-7 shrink-0 place-items-center rounded-full bg-slate-100 text-xs font-semibold dark:bg-slate-800">
-                            {slot}
-                          </span>
-                          <CalendarPlus className="size-4" aria-hidden />
-                          {extra ? 'Zusätzlichen Platz vergeben' : 'Ansprache vergeben'}
-                        </button>
+                        /* Ein offener Platz ist auch für den eine Auskunft,
+                           der nichts vergeben darf – er sagt, dass hier noch
+                           jemand fehlt. Nur ist er dann kein Knopf. */
+                        <EmptySlot
+                          slot={slot}
+                          extra={extra}
+                          onAssign={
+                            readOnly
+                              ? undefined
+                              : () => setAssignFor({ date: sunday.date, slot, kind: 'talk' })
+                          }
+                        />
                       )}
                     </li>
                   ))}
@@ -395,7 +414,7 @@ export function Talks() {
                     Standard – etwa eine zusätzliche Ansprache oder ein Zeugnis.
                     An einem Sonntag ohne Ansprachen stünden die Knöpfe für
                     etwas, das gar nicht vorgesehen ist. */}
-                {sunday.program.plansTalks && (
+                {sunday.program.plansTalks && !readOnly && (
                   <div className="mt-3 flex flex-wrap items-center gap-2 border-t border-slate-100 pt-3 dark:border-slate-800">
                     <button
                       type="button"
@@ -447,6 +466,7 @@ export function Talks() {
           minAge={settings.talkMinAge}
           filter={filter}
           onFilter={setFilter}
+          readOnly={readOnly}
           onAssign={(member) => {
             // Den nächsten freien Programmplatz vorschlagen. Sind alle
             // Positionen belegt – etwa durch Platzhalter –, kommt der Eintrag
@@ -471,42 +491,50 @@ export function Talks() {
         <HistoryList talks={history} />
       )}
 
-      <AssignDialog
-        open={Boolean(assignFor)}
-        onClose={() => {
-          setAssignFor(null)
-          setPresetMember(null)
-        }}
-        date={assignFor?.date ?? new Date()}
-        slot={assignFor?.slot ?? 1}
-        kind={assignFor?.kind ?? 'talk'}
-        presetMember={presetMember}
-      />
+      {/* Sämtliche Fenster dieser Seite ändern etwas – wer nur nachschaut,
+          erreicht sie nicht, und deshalb stehen sie gar nicht erst da. */}
+      {!readOnly && (
+        <>
+          <AssignDialog
+            open={Boolean(assignFor)}
+            onClose={() => {
+              setAssignFor(null)
+              setPresetMember(null)
+            }}
+            date={assignFor?.date ?? new Date()}
+            slot={assignFor?.slot ?? 1}
+            kind={assignFor?.kind ?? 'talk'}
+            presetMember={presetMember}
+          />
 
-      {editTalk && (
-        <EditTalkDialog
-          /* Für eine andere Ansprache baut sich der Dialog neu auf – sonst
-             blieben Art, Thema und Notiz der vorigen im Formular stehen. */
-          key={editTalk.id}
-          talk={editTalk}
-          suggestions={candidates.map((candidate) => candidate.member)}
-          onClose={() => setEditTalkId(null)}
-        />
+          {editTalk && (
+            <EditTalkDialog
+              /* Für eine andere Ansprache baut sich der Dialog neu auf – sonst
+                 blieben Art, Thema und Notiz der vorigen im Formular stehen. */
+              key={editTalk.id}
+              talk={editTalk}
+              suggestions={candidates.map((candidate) => candidate.member)}
+              onClose={() => setEditTalkId(null)}
+            />
+          )}
+
+          <SundayProgramDialog
+            open={Boolean(programFor)}
+            date={programFor ?? new Date()}
+            meeting={programFor ? (meetingByKey.get(sacramentDocId(programFor)) ?? null) : null}
+            onClose={() => setProgramFor(null)}
+          />
+
+          <SundayResponsibleDialog
+            open={Boolean(responsibleFor)}
+            date={responsibleFor ?? new Date()}
+            meeting={
+              responsibleFor ? (meetingByKey.get(sacramentDocId(responsibleFor)) ?? null) : null
+            }
+            onClose={() => setResponsibleFor(null)}
+          />
+        </>
       )}
-
-      <SundayProgramDialog
-        open={Boolean(programFor)}
-        date={programFor ?? new Date()}
-        meeting={programFor ? (meetingByKey.get(sacramentDocId(programFor)) ?? null) : null}
-        onClose={() => setProgramFor(null)}
-      />
-
-      <SundayResponsibleDialog
-        open={Boolean(responsibleFor)}
-        date={responsibleFor ?? new Date()}
-        meeting={responsibleFor ? (meetingByKey.get(sacramentDocId(responsibleFor)) ?? null) : null}
-        onClose={() => setResponsibleFor(null)}
-      />
     </>
   )
 }
@@ -519,12 +547,19 @@ function TalkRow({
   first,
   last,
   onMove,
+  readOnly = false,
 }: {
   talk: Talk
   onEdit: () => void
   first: boolean
   last: boolean
   onMove: (delta: number) => void
+  /**
+   * Nur nachschauen: Die Zeile sagt dasselbe, ist aber kein Knopf mehr, und
+   * die Pfeile zum Umstellen fehlen. Die Telefonnummer bleibt – anrufen
+   * ändert nichts am Programm.
+   */
+  readOnly?: boolean
 }) {
   const { membersById } = useData()
   const member = membersById.get(talk.memberId)
@@ -534,34 +569,46 @@ function TalkRow({
   const placeholder = isTalkPlaceholder(talk)
   const name = talkSpeakerLabel(talk)
 
-  return (
-    <div className="flex items-center gap-1 rounded-lg border border-slate-200 pr-1 dark:border-slate-700">
-      <button
-        type="button"
-        onClick={onEdit}
-        className="flex min-w-0 flex-1 items-center gap-3 rounded-lg px-3 py-2.5 text-left transition hover:bg-slate-50 dark:hover:bg-slate-800/50"
-      >
-        <span className="tabular grid size-7 shrink-0 place-items-center rounded-full bg-slate-100 text-xs font-semibold dark:bg-slate-800">
-          {talk.slot}
-        </span>
-        <Avatar name={name} id={talk.memberId || undefined} size="sm" />
-        <span className="min-w-0 flex-1">
-          <span className="block truncate text-sm font-medium">
-            <span className={cn(placeholder && 'text-amber-600 dark:text-amber-400')}>{name}</span>
-            {kind === 'testimony' && (
-              <span className="ml-1.5 align-middle text-xs font-normal text-slate-500 dark:text-slate-400">
-                · {TALK_KIND_LABELS.testimony}
-              </span>
-            )}
-          </span>
-          {talk.topic && (
-            <span className="block truncate text-xs text-slate-500 dark:text-slate-400">
-              {talk.topic}
+  /* Dasselbe Innere in einem Knopf oder in einem schlichten Feld – der
+     Inhalt hängt nicht daran, ob man ihn anfassen darf. */
+  const inner = (
+    <>
+      <span className="tabular grid size-7 shrink-0 place-items-center rounded-full bg-slate-100 text-xs font-semibold dark:bg-slate-800">
+        {talk.slot}
+      </span>
+      <Avatar name={name} id={talk.memberId || undefined} size="sm" />
+      <span className="min-w-0 flex-1">
+        <span className="block truncate text-sm font-medium">
+          <span className={cn(placeholder && 'text-amber-600 dark:text-amber-400')}>{name}</span>
+          {kind === 'testimony' && (
+            <span className="ml-1.5 align-middle text-xs font-normal text-slate-500 dark:text-slate-400">
+              · {TALK_KIND_LABELS.testimony}
             </span>
           )}
         </span>
-        <TalkStatusBadge status={talk.status} />
-      </button>
+        {talk.topic && (
+          <span className="block truncate text-xs text-slate-500 dark:text-slate-400">
+            {talk.topic}
+          </span>
+        )}
+      </span>
+      <TalkStatusBadge status={talk.status} />
+    </>
+  )
+
+  return (
+    <div className="flex items-center gap-1 rounded-lg border border-slate-200 pr-1 dark:border-slate-700">
+      {readOnly ? (
+        <div className="flex min-w-0 flex-1 items-center gap-3 px-3 py-2.5">{inner}</div>
+      ) : (
+        <button
+          type="button"
+          onClick={onEdit}
+          className="flex min-w-0 flex-1 items-center gap-3 rounded-lg px-3 py-2.5 text-left transition hover:bg-slate-50 dark:hover:bg-slate-800/50"
+        >
+          {inner}
+        </button>
+      )}
 
       {member?.mobile && (
         <a
@@ -575,27 +622,82 @@ function TalkRow({
       )}
 
       {/* Dieselbe Reihenfolge wie im Ablauf unter «Leitung». */}
-      <div className="flex shrink-0 flex-col">
-        <button
-          type="button"
-          className="btn-ghost p-0.5"
-          onClick={() => onMove(-1)}
-          disabled={first}
-          aria-label={`${name} nach vorne`}
-        >
-          <ChevronUp className="size-4" aria-hidden />
-        </button>
-        <button
-          type="button"
-          className="btn-ghost p-0.5"
-          onClick={() => onMove(1)}
-          disabled={last}
-          aria-label={`${name} nach hinten`}
-        >
-          <ChevronDown className="size-4" aria-hidden />
-        </button>
-      </div>
+      {!readOnly && (
+        <div className="flex shrink-0 flex-col">
+          <button
+            type="button"
+            className="btn-ghost p-0.5"
+            onClick={() => onMove(-1)}
+            disabled={first}
+            aria-label={`${name} nach vorne`}
+          >
+            <ChevronUp className="size-4" aria-hidden />
+          </button>
+          <button
+            type="button"
+            className="btn-ghost p-0.5"
+            onClick={() => onMove(1)}
+            disabled={last}
+            aria-label={`${name} nach hinten`}
+          >
+            <ChevronDown className="size-4" aria-hidden />
+          </button>
+        </div>
+      )}
     </div>
+  )
+}
+
+/* ------------------------------------------------------------------ */
+
+/**
+ * Ein Platz, hinter dem noch niemand steht.
+ *
+ * Ohne `onAssign` ist es kein Knopf mehr, sondern bloss die Auskunft, dass
+ * hier jemand fehlt – dieselbe Zeile, ohne die Einladung, sie anzufassen.
+ */
+function EmptySlot({
+  slot,
+  extra,
+  onAssign,
+}: {
+  slot: number
+  /** Über die vorgesehene Anzahl hinaus */
+  extra: boolean
+  onAssign?: () => void
+}) {
+  const inner = (
+    <>
+      <span className="tabular grid size-7 shrink-0 place-items-center rounded-full bg-slate-100 text-xs font-semibold dark:bg-slate-800">
+        {slot}
+      </span>
+      <CalendarPlus className="size-4" aria-hidden />
+      {onAssign
+        ? extra
+          ? 'Zusätzlichen Platz vergeben'
+          : 'Ansprache vergeben'
+        : extra
+          ? 'Zusätzlicher Platz – noch offen'
+          : 'Noch offen'}
+    </>
+  )
+
+  const shell =
+    'flex w-full items-center gap-3 rounded-lg border border-dashed border-slate-300 px-3 py-2.5 text-sm text-slate-500 dark:border-slate-700 dark:text-slate-400'
+
+  if (!onAssign) return <div className={shell}>{inner}</div>
+
+  return (
+    <button
+      type="button"
+      onClick={onAssign}
+      className={cn(
+        shell,
+        'transition hover:border-slate-400 hover:bg-slate-50 dark:hover:bg-slate-800/50',
+      )}
+    >
+      {inner}
+    </button>
   )
 }
 
@@ -609,6 +711,7 @@ function CandidateList({
   filter,
   onFilter,
   onAssign,
+  readOnly = false,
 }: {
   candidates: TalkCandidate[]
   /** Dieselben Vorschläge ohne «nur Aktive» und ohne Mindestalter */
@@ -618,6 +721,12 @@ function CandidateList({
   filter: TalkCandidateFilter
   onFilter: (next: TalkCandidateFilter) => void
   onAssign: (member: Member) => void
+  /**
+   * Nur nachschauen: Suchen, filtern und nachsehen, wer wann zuletzt
+   * gesprochen hat, bleibt – das ist die Frage, die diese Liste beantwortet.
+   * Anfragen und Ausnehmen fallen weg.
+   */
+  readOnly?: boolean
 }) {
   const toast = useToast()
   const { isApproved: fullAccess } = useAuth()
@@ -806,6 +915,7 @@ function CandidateList({
           entries={visible.slice(0, 60)}
           onAssign={onAssign}
           onToggleHold={toggleHold}
+          readOnly={readOnly}
         />
       )}
 
@@ -824,7 +934,14 @@ function CandidateList({
           pageSize={30}
           hint="Diese Personen passen zur Suche, werden aber durch die Filter ausgeblendet – etwa weil sie nicht als aktiv geführt sind, unter dem Mindestalter liegen oder erst kürzlich gesprochen haben."
         >
-          {(page) => <CandidateRows entries={page} onAssign={onAssign} onToggleHold={toggleHold} />}
+          {(page) => (
+            <CandidateRows
+              entries={page}
+              onAssign={onAssign}
+              onToggleHold={toggleHold}
+              readOnly={readOnly}
+            />
+          )}
         </OtherResults>
       )}
     </>
@@ -842,10 +959,12 @@ function CandidateRows({
   entries,
   onAssign,
   onToggleHold,
+  readOnly = false,
 }: {
   entries: TalkCandidate[]
   onAssign: (member: Member) => void
   onToggleHold: (member: Member, onHold: boolean) => Promise<void>
+  readOnly?: boolean
 }) {
   return (
     <ul className="card divide-list overflow-hidden">
@@ -888,46 +1007,48 @@ function CandidateRows({
             </p>
           </div>
 
-          <div className="flex shrink-0 items-center gap-1">
-            <button
-              type="button"
-              className="btn-secondary btn-sm"
-              onClick={() => onAssign(member)}
-              // Ausgenommen heisst «nicht anfragen»: Wer es trotzdem will,
-              // nimmt die Person nebenan wieder auf.
-              disabled={alreadyPlanned || onHold}
-            >
-              <Plus className="size-3.5" aria-hidden />
-              Anfragen
-            </button>
+          {!readOnly && (
+            <div className="flex shrink-0 items-center gap-1">
+              <button
+                type="button"
+                className="btn-secondary btn-sm"
+                onClick={() => onAssign(member)}
+                // Ausgenommen heisst «nicht anfragen»: Wer es trotzdem will,
+                // nimmt die Person nebenan wieder auf.
+                disabled={alreadyPlanned || onHold}
+              >
+                <Plus className="size-3.5" aria-hidden />
+                Anfragen
+              </button>
 
-            {/* Kein Löschen und kein Status: Wer im Moment nicht angefragt
+              {/* Kein Löschen und kein Status: Wer im Moment nicht angefragt
                 werden soll, ist mit einem Griff wieder da. */}
-            <button
-              type="button"
-              className="btn-ghost btn-sm"
-              onClick={() => void onToggleHold(member, onHold)}
-              aria-label={
-                onHold
-                  ? `${member.firstName} ${member.lastName} wieder anfragen`
-                  : `${member.firstName} ${member.lastName} nicht mehr anfragen`
-              }
-              title={
-                onHold
-                  ? 'Wieder in die Vorschläge aufnehmen'
-                  : 'Nicht anfragen – blendet die Person aus den Vorschlägen aus'
-              }
-            >
-              {onHold ? (
-                <RotateCcw className="size-3.5" aria-hidden />
-              ) : (
-                <UserMinus className="size-3.5" aria-hidden />
-              )}
-              <span className="hidden sm:inline">
-                {onHold ? 'Wieder anfragen' : 'Nicht anfragen'}
-              </span>
-            </button>
-          </div>
+              <button
+                type="button"
+                className="btn-ghost btn-sm"
+                onClick={() => void onToggleHold(member, onHold)}
+                aria-label={
+                  onHold
+                    ? `${member.firstName} ${member.lastName} wieder anfragen`
+                    : `${member.firstName} ${member.lastName} nicht mehr anfragen`
+                }
+                title={
+                  onHold
+                    ? 'Wieder in die Vorschläge aufnehmen'
+                    : 'Nicht anfragen – blendet die Person aus den Vorschlägen aus'
+                }
+              >
+                {onHold ? (
+                  <RotateCcw className="size-3.5" aria-hidden />
+                ) : (
+                  <UserMinus className="size-3.5" aria-hidden />
+                )}
+                <span className="hidden sm:inline">
+                  {onHold ? 'Wieder anfragen' : 'Nicht anfragen'}
+                </span>
+              </button>
+            </div>
+          )}
         </li>
       ))}
     </ul>

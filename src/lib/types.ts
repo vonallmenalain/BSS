@@ -125,6 +125,97 @@ export function assistantAreasOf(
   return ASSISTANT_AREAS.filter((area) => stored.includes(area))
 }
 
+/**
+ * Was ein Bereich einem Konto erlaubt.
+ *
+ * Drei Zustände und nicht zwei: Ein Bereich kann zu sein, offenstehen oder
+ * offenstehen **und** beschreibbar sein. Die Trennung von Sehen und Ändern
+ * ist der Grund, weshalb es diese Rolle überhaupt gibt – wer die Lieder
+ * aussucht, soll die Ansprachen sehen können, ohne sie umzustellen.
+ */
+export type AreaAccess = 'none' | 'read' | 'write'
+
+export const AREA_ACCESS_LABELS: Record<AreaAccess, string> = {
+  none: 'Kein Zugriff',
+  read: 'Nur lesen',
+  write: 'Bearbeiten',
+}
+
+/**
+ * Welche Bereiche dieses Konto auch **ändern** darf.
+ *
+ * Immer eine Teilmenge von `assistantAreasOf`: Was nicht offensteht, lässt
+ * sich auch nicht beschreiben – sonst hinge an einem vergessenen Eintrag ein
+ * Schreibrecht auf etwas, das gar nicht zu sehen ist.
+ *
+ * Fehlt das Feld ganz, gilt jeder offene Bereich als beschreibbar. Das ist
+ * der Altbestand: Bis es die Unterscheidung gab, durfte eine Assistenz in
+ * ihren Bereichen arbeiten – ein fehlendes Feld darf ihr das nicht über
+ * Nacht wegnehmen. Eine leere Liste heisst dagegen ausdrücklich «nur
+ * lesen», und zwar überall.
+ *
+ * Dieselbe Unterscheidung steht in `firestore.rules` (`assistantWrites`) –
+ * beide müssen zusammen geändert werden.
+ */
+export function assistantWriteOf(
+  user: Pick<AppUser, 'role' | 'active' | 'assistantAreas' | 'assistantWrite'> | null | undefined,
+): AssistantArea[] {
+  const areas = assistantAreasOf(user)
+  const stored = user?.assistantWrite
+  if (!Array.isArray(stored)) return areas
+  return areas.filter((area) => stored.includes(area))
+}
+
+/** In welcher Reihenfolge die drei Zustände zur Wahl stehen. */
+export const AREA_ACCESS_ORDER: AreaAccess[] = ['none', 'read', 'write']
+
+/** Was jeder der drei Bereiche diesem Konto erlaubt – für die Benutzerverwaltung. */
+export function assistantAccessOf(
+  user: Pick<AppUser, 'role' | 'active' | 'assistantAreas' | 'assistantWrite'> | null | undefined,
+): Record<AssistantArea, AreaAccess> {
+  const areas = assistantAreasOf(user)
+  const write = assistantWriteOf(user)
+  return {
+    talks: !areas.includes('talks') ? 'none' : write.includes('talks') ? 'write' : 'read',
+    music: !areas.includes('music') ? 'none' : write.includes('music') ? 'write' : 'read',
+    prayers: !areas.includes('prayers') ? 'none' : write.includes('prayers') ? 'write' : 'read',
+  }
+}
+
+/**
+ * Die Bereiche eines Kontos als Satz – «Musik (bearbeiten), Gebet (nur lesen)».
+ *
+ * Steht an zwei Stellen: in der Kontozeile der Benutzerverwaltung und in der
+ * Meldung nach dem Freischalten. Beide sagen dasselbe, also sagt es eine
+ * Stelle. Leer bleibt der Satz, wenn kein Bereich offensteht – dann ist der
+ * Zugang entzogen, und das steht dort ausgeschrieben.
+ */
+export function assistantAccessSummary(access: Record<AssistantArea, AreaAccess>): string {
+  return ASSISTANT_AREAS.filter((area) => access[area] !== 'none')
+    .map(
+      (area) =>
+        `${ASSISTANT_AREA_LABELS[area]} (${access[area] === 'write' ? 'bearbeiten' : 'nur lesen'})`,
+    )
+    .join(', ')
+}
+
+/**
+ * Aus der Wahl je Bereich die beiden Listen, wie sie am Konto stehen.
+ *
+ * Die Oberfläche fragt je Bereich nach einem der drei Zustände; gespeichert
+ * werden zwei Listen. Diese Umrechnung steht hier und nicht in der Ansicht,
+ * damit sie beim Freischalten und beim späteren Ändern dieselbe ist.
+ */
+export function assistantListsFrom(access: Record<AssistantArea, AreaAccess>): {
+  areas: AssistantArea[]
+  write: AssistantArea[]
+} {
+  return {
+    areas: ASSISTANT_AREAS.filter((area) => access[area] !== 'none'),
+    write: ASSISTANT_AREAS.filter((area) => access[area] === 'write'),
+  }
+}
+
 /** Rollen, die in der Benutzerverwaltung zur Auswahl stehen (in dieser Reihenfolge). */
 export const ASSIGNABLE_ROLES: Role[] = [
   'bishop',
@@ -230,7 +321,7 @@ export const ACCESS_LEVELS: { value: AccessLevel; role: Role; label: string; hin
     value: 'assistant',
     role: 'assistant',
     label: 'Assistenz · Abendmahlsversammlung',
-    hint: 'Sieht ausschliesslich die Bereiche, die danach angehakt werden – Ansprachen, Musik, Gebet –, und darin dasselbe wie der Vollzugriff.',
+    hint: 'Sieht ausschliesslich die Bereiche, die danach gewählt werden – Ansprachen, Musik, Gebet –, je Bereich nur lesend oder auch bearbeitend.',
   },
   {
     value: 'ap_write',
@@ -549,6 +640,24 @@ export interface AppUser extends WithId {
    * entfernt, hat den Zugang entzogen, ohne die Rolle zu ändern.
    */
   assistantAreas?: AssistantArea[]
+  /**
+   * Welche dieser Bereiche das Konto auch **ändern** darf.
+   *
+   * Immer eine Teilmenge von `assistantAreas` (siehe `assistantWriteOf`):
+   * Wer die Musik bearbeiten darf, sieht sie zwangsläufig auch. Damit lässt
+   * sich je Sparte einzeln festlegen, ob jemand mitarbeitet oder bloss
+   * nachschaut – die eine sucht die Lieder aus und liest bei den Ansprachen
+   * nur mit.
+   *
+   * Fehlt das Feld, sind alle offenen Bereiche beschreibbar: So war es,
+   * bevor es die Unterscheidung gab, und ein Konto verliert nichts dadurch,
+   * dass die App dazugelernt hat. Eine leere Liste heisst «nur lesen».
+   *
+   * Gehört zum Zugriff und ist deshalb wie `role`, `active` und
+   * `assistantAreas` gegen die eigene Hand verriegelt – setzen kann es
+   * allein das Administrator-Konto (siehe `firestore.rules`).
+   */
+  assistantWrite?: AssistantArea[]
   /** Gemerkte Darstellung des Aktivitätenplans – gilt auf jedem Gerät */
   apView?: ApView
   /**

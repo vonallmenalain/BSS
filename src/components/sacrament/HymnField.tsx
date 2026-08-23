@@ -31,12 +31,23 @@ export function HymnField({
   onChange,
   optional = false,
   hint,
+  readOnly = false,
 }: {
   label: string
   value: HymnChoice | undefined
   onChange: (next: HymnChoice | undefined) => void
   optional?: boolean
   hint?: string
+  /**
+   * Nur zum Nachschauen – für eine Assistenz, die die Musik lesen, aber
+   * nicht ändern darf.
+   *
+   * Dann steht das Lied als Zeile da statt in zwei Feldern: Ein gesperrtes
+   * Eingabefeld sieht aus, als wäre gerade etwas kaputt, und die Hinweise
+   * darunter («Merken», «noch keine Liederliste») richten sich an den, der
+   * einträgt – nicht an den, der nachliest.
+   */
+  readOnly?: boolean
 }) {
   const { hymns, hymnsByCode } = useData()
   const toast = useToast()
@@ -79,6 +90,23 @@ export function HymnField({
   }
 
   const canRemember = Boolean(parseHymnCode(code)) && !known && title.trim().length > 2
+
+  if (readOnly) {
+    return (
+      <div className="flex flex-wrap items-baseline gap-x-2 rounded-lg border border-slate-200 px-3 py-2 dark:border-slate-700">
+        <span className="text-xs text-slate-500 dark:text-slate-400">{label}</span>
+        {code || title ? (
+          <span className="text-sm font-medium">
+            <span className="tabular">{code}</span>
+            {code && title && ' · '}
+            {title}
+          </span>
+        ) : (
+          <span className="text-sm text-slate-400">–</span>
+        )}
+      </div>
+    )
+  }
 
   return (
     <div className="rounded-lg border border-slate-200 p-3 dark:border-slate-700">

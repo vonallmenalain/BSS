@@ -51,15 +51,20 @@ import {
   ACCESS_LEVELS,
   ADMIN_EMAIL,
   AP_ONLY_ROLES,
+  AREA_ACCESS_LABELS,
+  AREA_ACCESS_ORDER,
   ASSIGNABLE_ROLES,
   ASSISTANT_AREA_LABELS,
   ASSISTANT_AREAS,
-  assistantAreasOf,
+  assistantAccessOf,
+  assistantAccessSummary,
+  assistantListsFrom,
   ROLE_LABELS,
   roleRank,
   type AccessLevel,
   type AppSettings,
   type AppUser,
+  type AreaAccess,
   type AssistantArea,
   type Role,
 } from '@/lib/types'
@@ -769,40 +774,47 @@ function BackupSection() {
 /* ------------------------------------------------------------------ */
 
 /**
- * Die drei Bereiche als Haken – beim Freischalten und in der Kontozeile.
+ * Die drei Bereiche mit ihrem Zugriff – beim Freischalten und in der
+ * Kontozeile.
  *
- * Ein und dieselbe Reihe an beiden Orten: Was beim Freischalten angehakt
+ * Ein und dieselbe Reihe an beiden Orten: Was beim Freischalten gewählt
  * wird, lässt sich später an derselben Stelle wieder umstellen, und die
  * Reihenfolge bleibt dieselbe (siehe `ASSISTANT_AREAS`).
+ *
+ * Je Bereich eine Auswahl aus dreien statt eines Hakens: «Musik bearbeiten,
+ * Ansprachen nur lesen» ist der Fall, für den es diese Rolle gibt – wer die
+ * Lieder aussucht, muss sehen, worüber gesprochen wird, ohne daran zu
+ * rühren. Mit zwei Haken je Bereich stünden hier sechs Kästchen, von denen
+ * zwei einander widersprechen könnten.
  */
-function AssistantAreaChecks({
+function AssistantAreaAccess({
   name,
-  areas,
+  access,
   onChange,
 }: {
-  /** Hält die Haken zweier Konten auseinander. */
+  /** Hält die Felder zweier Konten auseinander. */
   name: string
-  areas: AssistantArea[]
-  onChange: (next: AssistantArea[]) => void
+  access: Record<AssistantArea, AreaAccess>
+  onChange: (next: Record<AssistantArea, AreaAccess>) => void
 }) {
-  const toggle = (area: AssistantArea, on: boolean) =>
-    onChange(ASSISTANT_AREAS.filter((entry) => (entry === area ? on : areas.includes(entry))))
-
   return (
-    <div className="flex flex-wrap gap-x-4 gap-y-1.5">
+    <div className="flex flex-wrap gap-x-4 gap-y-2">
       {ASSISTANT_AREAS.map((area) => (
-        <label
-          key={area}
-          className="flex cursor-pointer items-center gap-1.5 text-sm text-slate-600 dark:text-slate-300"
-        >
-          <input
-            type="checkbox"
-            className="size-4"
+        <label key={area} className="flex items-center gap-1.5 text-sm">
+          <span className="text-slate-600 dark:text-slate-300">{ASSISTANT_AREA_LABELS[area]}</span>
+          <select
+            className="input w-auto py-1 text-sm"
             name={`${name}-${area}`}
-            checked={areas.includes(area)}
-            onChange={(event) => toggle(area, event.target.checked)}
-          />
-          {ASSISTANT_AREA_LABELS[area]}
+            value={access[area]}
+            onChange={(event) => onChange({ ...access, [area]: event.target.value as AreaAccess })}
+            aria-label={`Zugriff auf ${ASSISTANT_AREA_LABELS[area]}`}
+          >
+            {AREA_ACCESS_ORDER.map((value) => (
+              <option key={value} value={value}>
+                {AREA_ACCESS_LABELS[value]}
+              </option>
+            ))}
+          </select>
         </label>
       ))}
     </div>
@@ -849,12 +861,18 @@ function PendingUserCard({ user }: { user: AppUser }) {
   const toast = useToast()
   const [level, setLevel] = useState<AccessLevel>('full')
   const [role, setRole] = useState<Role>('secretary')
-  /* Zu Beginn stehen alle drei Bereiche offen: Wer eine Assistenz
-     freischaltet, meint meistens die ganze Vorbereitung – und wegnehmen ist
-     leichter, als drei Haken zu suchen. */
-  const [areas, setAreas] = useState<AssistantArea[]>(ASSISTANT_AREAS)
+  /* Zu Beginn steht jeder Bereich offen, und zwar zum Bearbeiten: Wer eine
+     Assistenz freischaltet, meint meistens die ganze Vorbereitung – und
+     wegnehmen ist leichter, als drei Felder zu suchen. */
+  const [access, setAccess] = useState<Record<AssistantArea, AreaAccess>>({
+    talks: 'write',
+    music: 'write',
+    prayers: 'write',
+  })
   const [busy, setBusy] = useState(false)
   const [confirmReject, setConfirmReject] = useState(false)
+
+  const lists = assistantListsFrom(access)
 
   const approve = async () => {
     const target =
@@ -863,15 +881,15 @@ function PendingUserCard({ user }: { user: AppUser }) {
         : (ACCESS_LEVELS.find((option) => option.value === level)?.role ?? 'ap_viewer')
     setBusy(true)
     try {
-      /* Bei der Assistenz gehören Rolle und Bereiche zusammen – ohne einen
-         einzigen Bereich sähe sie die App und in ihr nichts. */
+      /* Bei der Assistenz gehören Rolle, Bereiche und Schreibrechte zusammen –
+         ohne einen einzigen Bereich sähe sie die App und in ihr nichts. */
       const outcome =
         target === 'assistant'
-          ? await setUserRoleWithAreas(user.id, target, areas)
+          ? await setUserRoleWithAreas(user.id, target, lists.areas, lists.write)
           : await setUserRole(user.id, target)
       toast.saved(
         target === 'assistant'
-          ? `${user.displayName} freigeschaltet: Assistenz für ${areas.map((area) => ASSISTANT_AREA_LABELS[area]).join(', ')}`
+          ? `${user.displayName} freigeschaltet: Assistenz für ${assistantAccessSummary(access)}`
           : `${user.displayName} freigeschaltet: ${ROLE_LABELS[target]}`,
         outcome,
       )
@@ -925,11 +943,12 @@ function PendingUserCard({ user }: { user: AppUser }) {
 
       {level === 'assistant' && (
         <div className="mt-3">
-          <span className="label">Welche Bereiche?</span>
-          <AssistantAreaChecks name={`bereiche-${user.id}`} areas={areas} onChange={setAreas} />
+          <span className="label">Welche Bereiche – und wie viel darin?</span>
+          <AssistantAreaAccess name={`bereiche-${user.id}`} access={access} onChange={setAccess} />
           <p className="hint">
-            Ohne einen einzigen Bereich kommt das Konto nicht in die App – der Zugang ist dann
-            entzogen, ohne dass sich die Rolle ändert.
+            «Nur lesen» zeigt den Bereich vollständig, aber ohne Knöpfe zum Ändern. Ohne einen
+            einzigen Bereich kommt das Konto nicht in die App – der Zugang ist dann entzogen, ohne
+            dass sich die Rolle ändert.
           </p>
         </div>
       )}
@@ -967,7 +986,7 @@ function PendingUserCard({ user }: { user: AppUser }) {
           type="button"
           className="btn-primary"
           onClick={() => void approve()}
-          disabled={busy || (level === 'assistant' && areas.length === 0)}
+          disabled={busy || (level === 'assistant' && lists.areas.length === 0)}
         >
           <Check className="size-4" aria-hidden />
           Freischalten
@@ -1091,13 +1110,14 @@ function UserRow({
     }
   }
 
-  const changeAreas = async (areas: AssistantArea[]) => {
+  const changeAccess = async (next: Record<AssistantArea, AreaAccess>) => {
+    const lists = assistantListsFrom(next)
     try {
-      const outcome = await setUserAssistantAreas(user.id, areas)
+      const outcome = await setUserAssistantAreas(user.id, lists.areas, lists.write)
       toast.saved(
-        areas.length === 0
+        lists.areas.length === 0
           ? `${user.displayName} sieht keinen Bereich mehr – der Zugang ist entzogen.`
-          : `${user.displayName}: ${areas.map((area) => ASSISTANT_AREA_LABELS[area]).join(', ')}`,
+          : `${user.displayName}: ${assistantAccessSummary(next)}`,
         outcome,
       )
     } catch (error) {
@@ -1123,7 +1143,10 @@ function UserRow({
 
   const apOnly = AP_ONLY_ROLES.includes(user.role)
   const isAssistant = user.role === 'assistant'
-  const areas = assistantAreasOf({ ...user, active: true })
+  /* Ein deaktiviertes Konto behält seine Bereiche in der Anzeige: Wer es
+     wieder aktiviert, soll dieselbe Einteilung vorfinden. */
+  const access = assistantAccessOf({ ...user, active: true })
+  const summary = assistantAccessSummary(access)
   /*
    * Das Administrator-Konto sieht «Anti Doom» immer – ein Haken, der nichts
    * bewirkt, würde nur in die Irre führen. Er fehlt deshalb an dieser Zeile.
@@ -1144,9 +1167,7 @@ function UserRow({
           {apOnly &&
             (user.impulse ? ' · sieht AP-Kalender und Anti Doom' : ' · sieht nur den AP-Kalender')}
           {isAssistant &&
-            (areas.length === 0
-              ? ' · sieht nichts – kein Bereich freigeschaltet'
-              : ` · sieht ${areas.map((area) => ASSISTANT_AREA_LABELS[area]).join(', ')}`)}
+            (summary === '' ? ' · sieht nichts – kein Bereich freigeschaltet' : ` · ${summary}`)}
         </p>
       </div>
 
@@ -1202,15 +1223,16 @@ function UserRow({
         </span>
       )}
 
-      {/* Welche Bereiche eine Assistenz sieht, steht am Konto und nicht an
-          der Rolle: Der eine sucht nur die Lieder aus, die andere macht
-          alles ausser der Musik. Die Haken stehen deshalb gleich neben der
-          Rollenwahl – wie der Anti-Doom-Schalter darunter. */}
+      {/* Welche Bereiche eine Assistenz sieht – und in welchen sie auch
+          arbeitet –, steht am Konto und nicht an der Rolle: Der eine sucht
+          die Lieder aus und liest bei den Ansprachen bloss mit, die andere
+          macht alles ausser der Musik. Die Auswahl steht deshalb gleich
+          neben der Rollenwahl – wie der Anti-Doom-Schalter darunter. */}
       {canManage && isAssistant && (
-        <AssistantAreaChecks
+        <AssistantAreaAccess
           name={`bereiche-${user.id}`}
-          areas={areas}
-          onChange={(next) => void changeAreas(next)}
+          access={access}
+          onChange={(next) => void changeAccess(next)}
         />
       )}
 

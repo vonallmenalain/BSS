@@ -30,28 +30,51 @@ export async function setUserRole(userId: string, role: Role): Promise<SaveOutco
 }
 
 /**
- * Welche Bereiche der Abendmahlsversammlung ein Assistenzkonto sieht.
+ * Welche Bereiche der Abendmahlsversammlung ein Assistenzkonto sieht – und
+ * welche davon es auch ändern darf.
+ *
+ * Beide Listen gehen zusammen weg: Sie beantworten je Sparte dieselbe Frage
+ * («was darf diese Person hier?»), und getrennt geschrieben stünde zwischen
+ * den beiden Vorgängen ein Stand da, den niemand gewollt hat.
  *
  * Wie Rolle und Aktivstatus Teil des Zugriffs – und deshalb allein Sache des
- * Administrator-Kontos; `firestore.rules` sperrt das Feld gegen die eigene
- * Hand. Geschrieben wird in der Reihenfolge von `ASSISTANT_AREAS`, damit in
- * der Datenbank nicht steht, in welcher Reihenfolge jemand geklickt hat, und
- * damit nichts hineingerät, was es gar nicht gibt.
+ * Administrator-Kontos; `firestore.rules` sperrt beide Felder gegen die
+ * eigene Hand.
  */
 export async function setUserAssistantAreas(
   userId: string,
   areas: AssistantArea[],
+  write: AssistantArea[],
 ): Promise<SaveOutcome> {
-  return commit(
-    updateDoc(doc(db, COLLECTIONS.users, userId), {
-      assistantAreas: ASSISTANT_AREAS.filter((area) => areas.includes(area)),
-      updatedAt: serverTimestamp(),
-    }),
-  )
+  return commit(updateDoc(doc(db, COLLECTIONS.users, userId), assistantFields(areas, write)))
 }
 
 /**
- * Rolle und Bereiche in einem Zug – beim Freischalten einer Assistenz.
+ * Die beiden Listen, wie sie am Konto stehen sollen.
+ *
+ * Geschrieben wird in der Reihenfolge von `ASSISTANT_AREAS`, damit in der
+ * Datenbank nicht steht, in welcher Reihenfolge jemand geklickt hat, und
+ * damit nichts hineingerät, was es gar nicht gibt. Das Schreibrecht wird
+ * zusätzlich auf die offenen Bereiche zurückgeschnitten: Ein Bereich, der
+ * niemandem offensteht, darf auch nicht beschreibbar zurückbleiben – sonst
+ * erwachte das Recht wieder, sobald der Haken erneut gesetzt wird.
+ *
+ * `assistantWrite` wird **immer** geschrieben, auch als leere Liste: Das
+ * fehlende Feld bedeutet «alles beschreibbar» (siehe `assistantWriteOf`),
+ * und genau das wäre das Gegenteil dessen, was «nur lesen» sagen will.
+ */
+function assistantFields(areas: AssistantArea[], write: AssistantArea[]) {
+  const open = ASSISTANT_AREAS.filter((area) => areas.includes(area))
+  return {
+    assistantAreas: open,
+    assistantWrite: open.filter((area) => write.includes(area)),
+    updatedAt: serverTimestamp(),
+  }
+}
+
+/**
+ * Rolle, Bereiche und Schreibrechte in einem Zug – beim Freischalten einer
+ * Assistenz.
  *
  * Zwei Schreibvorgänge nacheinander liessen für einen Augenblick eine
  * Assistenz ohne Bereich zurück; sie sähe die App und in ihr nichts. Und
@@ -61,12 +84,12 @@ export async function setUserRoleWithAreas(
   userId: string,
   role: Role,
   areas: AssistantArea[],
+  write: AssistantArea[],
 ): Promise<SaveOutcome> {
   return commit(
     updateDoc(doc(db, COLLECTIONS.users, userId), {
       role,
-      assistantAreas: ASSISTANT_AREAS.filter((area) => areas.includes(area)),
-      updatedAt: serverTimestamp(),
+      ...assistantFields(areas, write),
     }),
   )
 }

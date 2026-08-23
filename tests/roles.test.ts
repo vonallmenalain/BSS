@@ -2,7 +2,11 @@ import assert from 'node:assert/strict'
 import { test } from 'node:test'
 
 import {
+  assistantAccessOf,
+  assistantAccessSummary,
   assistantAreasOf,
+  assistantListsFrom,
+  assistantWriteOf,
   ROLE_LABELS,
   ROLE_ORDER,
   roleRank,
@@ -119,6 +123,68 @@ test('ohne die Rolle bleibt das Feld still', () => {
   assert.deepEqual(assistantAreasOf(assistant(areas, { role: 'pending' })), [])
   assert.deepEqual(assistantAreasOf(assistant(areas, { active: false })), [])
   assert.deepEqual(assistantAreasOf(null), [])
+})
+
+/* ------------------------------------------------------------------ */
+/* Assistenz: lesen oder auch schreiben                                */
+/* ------------------------------------------------------------------ */
+
+test('ohne das Feld darf die Assistenz überall arbeiten, wo sie hinkommt', () => {
+  // Der Altbestand: Bis es die Unterscheidung gab, hiess «sieht» auch «darf».
+  assert.deepEqual(assistantWriteOf(assistant(['talks', 'music'])), ['talks', 'music'])
+})
+
+test('eine leere Liste heisst «nur lesen» – und nicht «alles»', () => {
+  const user = assistant(['talks', 'music'], { assistantWrite: [] })
+  assert.deepEqual(assistantAreasOf(user), ['talks', 'music'])
+  assert.deepEqual(assistantWriteOf(user), [])
+})
+
+test('das Schreibrecht gilt je Sparte einzeln', () => {
+  const user = assistant(['talks', 'music'], { assistantWrite: ['music'] })
+  assert.deepEqual(assistantWriteOf(user), ['music'])
+  assert.deepEqual(assistantAccessOf(user), {
+    talks: 'read',
+    music: 'write',
+    prayers: 'none',
+  })
+})
+
+test('geschrieben wird nur, was auch offensteht', () => {
+  // Ein Schreibrecht auf einen Bereich ohne Zugang wäre ein Widerspruch –
+  // und ein schlafendes Recht, sobald der Haken wieder gesetzt wird.
+  const user = assistant(['music'], { assistantWrite: ['talks', 'music'] })
+  assert.deepEqual(assistantWriteOf(user), ['music'])
+  assert.deepEqual(assistantListsFrom(assistantAccessOf(user)), {
+    areas: ['music'],
+    write: ['music'],
+  })
+})
+
+test('ohne die Rolle sagt auch das Schreibrecht nichts', () => {
+  const patch = { assistantWrite: ['talks', 'music', 'prayers'] }
+  assert.deepEqual(assistantWriteOf(assistant(['talks'], { ...patch, role: 'secretary' })), [])
+  assert.deepEqual(assistantWriteOf(assistant(['talks'], { ...patch, active: false })), [])
+  assert.deepEqual(assistantWriteOf(null), [])
+})
+
+test('die Wahl je Bereich wird zu den beiden Listen', () => {
+  assert.deepEqual(assistantListsFrom({ talks: 'read', music: 'write', prayers: 'none' }), {
+    areas: ['talks', 'music'],
+    write: ['music'],
+  })
+  assert.deepEqual(assistantListsFrom({ talks: 'none', music: 'none', prayers: 'none' }), {
+    areas: [],
+    write: [],
+  })
+})
+
+test('der Satz zur Kontozeile nennt Bereich und Umfang', () => {
+  assert.equal(
+    assistantAccessSummary({ talks: 'read', music: 'write', prayers: 'none' }),
+    'Ansprachen (nur lesen), Musik (bearbeiten)',
+  )
+  assert.equal(assistantAccessSummary({ talks: 'none', music: 'none', prayers: 'none' }), '')
 })
 
 /* ------------------------------------------------------------------ */

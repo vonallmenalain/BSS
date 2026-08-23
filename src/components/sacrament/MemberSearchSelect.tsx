@@ -133,6 +133,22 @@ export function MemberSearchSelect({
     )
   }
 
+  /*
+   * Gesperrt und noch niemand gewählt.
+   *
+   * Ein leeres, ausgegrautes Suchfeld sähe aus, als wäre gerade etwas kaputt –
+   * und die Vorschlagsliste darunter wäre eine Einladung ins Leere. Wer nur
+   * nachschaut, will hier bloss wissen, dass noch niemand dasteht.
+   */
+  if (disabled) {
+    return (
+      <div>
+        {label && <span className="label">{label}</span>}
+        <p className="text-sm text-slate-400">Noch niemand eingeteilt</p>
+      </div>
+    )
+  }
+
   const term = search.trim()
   const showResults = !compact || active || term.length > 0
 
