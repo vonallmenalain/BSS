@@ -2,6 +2,7 @@ import assert from 'node:assert/strict'
 import { test } from 'node:test'
 
 import {
+  announcementKey,
   announcementsFor,
   endedBefore,
   isLastWeekOfMonth,
@@ -152,6 +153,107 @@ test('gibt jedem Sonntag eine eigene ID für denselben Serieneintrag', () => {
   const [first] = announcementsFor('2026-08-16', [], [series()], plain)
   const [second] = announcementsFor('2026-09-20', [], [series()], plain)
   assert.notEqual(first.id, second.id)
+})
+
+/* ------------------------------------------------------------------ */
+/* Reihenfolge                                                         */
+/* ------------------------------------------------------------------ */
+
+/*
+ * Die Reihenfolge steht am Sonntag (`announcementOrder`) und nicht an den
+ * Einträgen: Nur so lassen sich erfasste Bekanntmachungen und Serien
+ * miteinander ordnen – eine Serie wird ja gar nicht in den Sonntag
+ * geschrieben.
+ */
+
+test('nimmt für eine Serie ihre ID als Schlüssel, nicht die des Eintrags', () => {
+  const [entry] = announcementsFor('2026-08-16', [], [series()], plain)
+  assert.equal(announcementKey(entry), 'serie:s1')
+
+  // Derselbe Schlüssel an einem anderen Sonntag – die ID des Eintrags nicht.
+  const [other] = announcementsFor('2026-09-20', [], [series()], plain)
+  assert.equal(announcementKey(other), 'serie:s1')
+  assert.notEqual(entry.id, other.id)
+})
+
+test('nimmt für einen erfassten Eintrag seine eigene ID', () => {
+  assert.equal(announcementKey({ id: 'a1', text: 'Gemeindeausflug' }), 'a1')
+})
+
+test('lässt die gewohnte Folge stehen, solange nichts gelegt wurde', () => {
+  const stored = [{ id: 'a1', text: 'Gemeindeausflug' }]
+  const result = announcementsFor('2026-08-16', stored, [series()], plain, [])
+
+  assert.deepEqual(
+    result.map((entry) => entry.text),
+    ['Gemeindeausflug', 'Tempeltag der Gemeinde'],
+  )
+})
+
+test('holt eine Serie vor die erfassten Einträge', () => {
+  const stored = [{ id: 'a1', text: 'Gemeindeausflug' }]
+  const result = announcementsFor('2026-08-16', stored, [series()], plain, ['serie:s1', 'a1'])
+
+  assert.deepEqual(
+    result.map((entry) => entry.text),
+    ['Tempeltag der Gemeinde', 'Gemeindeausflug'],
+  )
+})
+
+test('stellt hinten an, was in der Reihenfolge fehlt – in natürlicher Folge', () => {
+  const stored = [
+    { id: 'a1', text: 'Erste' },
+    { id: 'a2', text: 'Zweite' },
+    { id: 'a3', text: 'Dritte' },
+  ]
+  // Nur die dritte ist gelegt: Sie steht vorn, der Rest folgt wie erfasst.
+  const result = announcementsFor('2026-08-09', stored, [], plain, ['a3'])
+
+  assert.deepEqual(
+    result.map((entry) => entry.text),
+    ['Dritte', 'Erste', 'Zweite'],
+  )
+})
+
+test('stört sich nicht an Schlüsseln, zu denen es nichts mehr gibt', () => {
+  const stored = [{ id: 'a2', text: 'Zweite' }]
+  const result = announcementsFor('2026-08-09', stored, [], plain, ['a1', 'a2'])
+
+  assert.deepEqual(
+    result.map((entry) => entry.text),
+    ['Zweite'],
+  )
+})
+
+test('behält den Platz der Serie, wenn sie für diesen Sonntag übernommen wird', () => {
+  const order = ['serie:s1', 'a1']
+  const stored = [
+    { id: 'a1', text: 'Gemeindeausflug' },
+    // Der übernommene Eintrag trägt eine neue ID, aber die Serien-ID – und
+    // damit denselben Schlüssel wie die Serie zuvor.
+    { id: 'a2', text: 'Tempeltag – ausnahmsweise am Freitag', seriesId: 's1' },
+  ]
+  const result = announcementsFor('2026-08-16', stored, [series()], plain, order)
+
+  assert.deepEqual(
+    result.map((entry) => entry.text),
+    ['Tempeltag – ausnahmsweise am Freitag', 'Gemeindeausflug'],
+  )
+})
+
+test('ordnet mehrere Serien untereinander', () => {
+  const weekly = series({ id: 's2', text: 'Dank ans Putzteam', rhythm: 'weekly', weeks: [] })
+  const stored = [{ id: 'a1', text: 'Gemeindeausflug' }]
+  const result = announcementsFor('2026-08-16', stored, [series(), weekly], plain, [
+    'serie:s2',
+    'a1',
+    'serie:s1',
+  ])
+
+  assert.deepEqual(
+    result.map((entry) => entry.text),
+    ['Dank ans Putzteam', 'Gemeindeausflug', 'Tempeltag der Gemeinde'],
+  )
 })
 
 /* ------------------------------------------------------------------ */

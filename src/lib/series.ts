@@ -66,6 +66,22 @@ export function isSeriesEntry(entry: AnnouncementEntry): boolean {
 }
 
 /**
+ * Der Schlüssel, unter dem eine Bekanntmachung in der Reihenfolge steht.
+ *
+ * Für eine Serie ist es ihre eigene ID und nicht die des errechneten
+ * Eintrags: Die trägt den Sonntag in sich (`seriesEntryId`) und wäre an
+ * jedem Sonntag eine andere – die gelegte Reihenfolge hielte keine Woche.
+ *
+ * Aus demselben Grund zählt der Schlüssel einer Serie auch für einen
+ * Eintrag, der «nur für diesen Sonntag» aus ihr übernommen wurde: Er tritt
+ * an ihre Stelle und behält damit ihren Platz, obwohl er eine neue ID
+ * bekommen hat.
+ */
+export function announcementKey(entry: AnnouncementEntry): string {
+  return entry.seriesId ? `serie:${entry.seriesId}` : entry.id
+}
+
+/**
  * Wie eine Serie an einem bestimmten Sonntag klingt.
  *
  * `null` bedeutet: Die Serie ist zwar fällig, ihr Text liess sich aber
@@ -79,22 +95,27 @@ export type SeriesTextResolver = (
 ) => { text: string; details: string } | null
 
 /**
- * Die Bekanntmachungen eines Sonntags: erfasste zuerst, Serien danach.
+ * Die Bekanntmachungen eines Sonntags – erfasste und wiederkehrende in einer
+ * Liste, in der Folge, in der sie am Pult vorgelesen werden.
  *
- * Serien stehen hinten, weil sie das Wiederkehrende sind – was diesen
- * Sonntag besonders macht, gehört nach vorn. Wer eine Serie an einem
- * einzelnen Sonntag anders einordnen will, passt sie dort an; sie wird
- * damit zu einem gewöhnlichen Eintrag und lässt sich frei verschieben.
+ * Ohne `order` gilt die gewohnte Folge: erfasste zuerst, Serien danach. Das
+ * ist der Normalfall – was diesen Sonntag besonders macht, gehört nach vorn.
+ *
+ * `order` ist die von Hand gelegte Reihenfolge (`announcementOrder` am
+ * Sonntag) und zählt für **beide** Arten: Eine Serie lässt sich damit nach
+ * vorn holen, ohne sie anzutasten. Was in `order` fehlt, steht hinten – ein
+ * neu erfasster Eintrag und eine neu fällige Serie kommen unten dazu.
  *
  * Eine Serie, die an diesem Sonntag bereits von Hand angepasst wurde,
  * erscheint **nicht** zusätzlich: Der angepasste Eintrag trägt ihre ID und
- * tritt an ihre Stelle.
+ * tritt an ihre Stelle – auch in der Reihenfolge (siehe `announcementKey`).
  */
 export function announcementsFor(
   dateKey: string,
   stored: AnnouncementEntry[],
   series: AnnouncementSeries[],
   resolve: SeriesTextResolver,
+  order: string[] = [],
 ): AnnouncementEntry[] {
   const detached = new Set(stored.flatMap((entry) => (entry.seriesId ? [entry.seriesId] : [])))
 
@@ -113,7 +134,34 @@ export function announcementsFor(
     ]
   })
 
-  return [...stored, ...generated]
+  return sortByOrder([...stored, ...generated], order)
+}
+
+/**
+ * Die gelegte Reihenfolge auf die Liste anwenden.
+ *
+ * Sortiert wird stabil und über den Rang im Schlüsselband; was dort fehlt,
+ * bekommt den grösstmöglichen Rang und behält untereinander seine
+ * natürliche Folge. Damit ändert eine leere Reihenfolge nichts – und ein
+ * neuer Eintrag steht unten, statt irgendwo zwischen den anderen
+ * aufzutauchen.
+ */
+function sortByOrder(entries: AnnouncementEntry[], order: string[]): AnnouncementEntry[] {
+  if (order.length === 0) return entries
+
+  const rank = new Map<string, number>()
+  order.forEach((key, index) => {
+    if (!rank.has(key)) rank.set(key, index)
+  })
+
+  return entries
+    .map((entry, natural) => ({
+      entry,
+      natural,
+      rank: rank.get(announcementKey(entry)) ?? Number.MAX_SAFE_INTEGER,
+    }))
+    .sort((a, b) => a.rank - b.rank || a.natural - b.natural)
+    .map((item) => item.entry)
 }
 
 /**

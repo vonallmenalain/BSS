@@ -24,6 +24,7 @@ import { HymnField } from '@/components/sacrament/HymnField'
 import { LeaderField } from '@/components/sacrament/LeaderField'
 import { MemberSearchSelect } from '@/components/sacrament/MemberSearchSelect'
 import { ConflictNotice, SectionHeader, useSacrament } from '@/components/sacrament/SacramentLayout'
+import { ReorderControls, useReorder } from '@/components/sacrament/Reorder'
 import {
   SundayProgramBadge,
   SundayProgramDialog,
@@ -36,7 +37,7 @@ import {
 import { useAutoDraft } from '@/components/sacrament/useDraft'
 import { formatDate, formatDateLong, toDate, toDateInput } from '@/lib/dates'
 import { lockScroll } from '@/lib/scrollLock'
-import { isSeriesEntry } from '@/lib/series'
+import { announcementKey, isSeriesEntry } from '@/lib/series'
 import { cn } from '@/lib/utils'
 import { formatHymn } from '@/services/hymns'
 import { lastPrayerByMember, rankPrayerCandidates, setPrayer } from '@/services/prayers'
@@ -102,6 +103,8 @@ interface MeetingDraft {
   visitors: string
   notes: string
   announcements: AnnouncementEntry[]
+  /** Reihenfolge über erfasste Bekanntmachungen und Serien hinweg */
+  announcementOrder: string[]
   business: BusinessEntry[]
   hymns: Partial<Record<HymnSlot, HymnChoice>>
   musicalNumbers: MusicalNumber[]
@@ -385,6 +388,7 @@ export function Conducting() {
       visitors: meeting?.visitors ?? '',
       notes: meeting?.notes ?? '',
       announcements: meeting?.announcements ?? [],
+      announcementOrder: meeting?.announcementOrder ?? [],
       business: meeting?.business ?? [],
       hymns: meeting?.hymns ?? {},
       musicalNumbers: meeting?.musicalNumbers ?? [],
@@ -403,6 +407,7 @@ export function Conducting() {
         visitors: value.visitors,
         notes: value.notes,
         announcements: value.announcements,
+        announcementOrder: value.announcementOrder,
         business: value.business,
         hymns: value.hymns,
         musicalNumbers: value.musicalNumbers,
@@ -415,10 +420,11 @@ export function Conducting() {
 
   /*
    * Wiederkehrende Bekanntmachungen gehören genauso ins Blatt am Pult wie
-   * die erfassten – hier stehen sie nur zum Vorlesen. Geändert werden sie
-   * unter «Bekanntmachungen», wo auch die Serie selbst zu Hause ist.
+   * die erfassten – ihr Wortlaut wird unter «Bekanntmachungen» geändert, wo
+   * auch die Serie selbst zu Hause ist. Ihr **Platz** in der Liste lässt
+   * sich dagegen hier legen: Er gehört dem Sonntag und nicht der Serie.
    */
-  const sunday = useSundayAnnouncements(dateKey, current.announcements)
+  const sunday = useSundayAnnouncements(dateKey, current.announcements, current.announcementOrder)
 
   const setHymn = (slot: HymnSlot, choice: HymnChoice | undefined) => {
     const hymns = { ...current.hymns }
@@ -641,9 +647,10 @@ export function Conducting() {
       title: 'Bekanntmachungen',
       content: editing ? (
         <AnnouncementEditor
+          all={sunday.entries}
           entries={current.announcements}
-          recurring={sunday.entries.filter(isSeriesEntry)}
           onChange={(next) => change({ announcements: next })}
+          onOrder={(next) => change({ announcementOrder: next })}
         />
       ) : (
         <ol className={view.rows}>
@@ -1408,17 +1415,32 @@ function TopicInput({ topic, onSave }: { topic: string; onSave: (next: string) =
   )
 }
 
+/**
+ * Bekanntmachungen im Bearbeitungsmodus – erfasste und wiederkehrende in
+ * einer Liste.
+ *
+ * Die wiederkehrenden stehen zum Lesen da: Ihr Wortlaut gehört der Serie und
+ * wird unter «Bekanntmachungen» geändert. **Verschieben** lassen sie sich
+ * hier trotzdem, mitten unter die erfassten – der Platz in der Liste gehört
+ * dem Sonntag. Festgehalten wird dabei nicht die Liste, sondern ihre
+ * Reihenfolge: ein Band aus Schlüsseln (siehe `announcementKey`).
+ */
 function AnnouncementEditor({
+  all,
   entries,
-  recurring,
   onChange,
+  onOrder,
 }: {
+  /** Erfasste und errechnete Einträge in der Folge, in der sie vorgelesen werden */
+  all: AnnouncementEntry[]
+  /** Nur die erfassten – sie allein werden in den Sonntag geschrieben */
   entries: AnnouncementEntry[]
-  /** Errechnete Serien-Einträge – hier nur sichtbar, bearbeitet werden sie unter «Bekanntmachungen» */
-  recurring: AnnouncementEntry[]
   onChange: (next: AnnouncementEntry[]) => void
+  onOrder: (next: string[]) => void
 }) {
   const toast = useToast()
+
+  const reorder = useReorder(all, announcementKey, (next) => onOrder(next.map(announcementKey)))
 
   // Löschen ohne Rückfrage, aber mit Reue: «Rückgängig» stellt den Stand von
   // unmittelbar vor dem Löschen wieder her.
@@ -1430,46 +1452,62 @@ function AnnouncementEditor({
 
   return (
     <div className="no-print space-y-2">
-      {entries.map((entry, index) => (
-        <div key={entry.id} className="flex items-start gap-2">
-          <div className="min-w-0 flex-1">
-            {/* Ein Feld, mehrzeilig – wie unter «Bekanntmachungen». */}
-            <textarea
-              className="input min-h-16 resize-y"
-              value={entry.text}
-              onChange={(event) =>
-                onChange(replaceInList(entries, { ...entry, text: event.target.value }))
-              }
-              placeholder="Bekanntmachung"
-              aria-label={`Bekanntmachung ${index + 1}`}
-            />
-          </div>
-          <ListButtons
-            index={index}
-            length={entries.length}
-            onMove={(delta) => onChange(moveInList(entries, index, delta))}
-            onRemove={() => remove(entry)}
+      {all.map((entry, index) => {
+        const key = announcementKey(entry)
+        const { dragProps, dragging, dropTarget } = reorder.row(key)
+        const controls = (
+          <ReorderControls
+            label={`Bekanntmachung ${index + 1}`}
+            first={index === 0}
+            last={index === all.length - 1}
+            onMove={(delta) => reorder.move(index, delta)}
+            onGrab={() => reorder.grab(key)}
+            onRemove={isSeriesEntry(entry) ? undefined : () => remove(entry)}
           />
-        </div>
-      ))}
+        )
 
-      {recurring.map((entry) => (
-        <div
-          key={entry.id}
-          className="rounded-lg border border-dashed border-slate-300 px-3 py-2 text-sm dark:border-slate-700"
-        >
-          <p className="flex items-center gap-1.5 text-xs text-slate-500 dark:text-slate-400">
-            <Repeat className="size-3.5" aria-hidden />
-            Wiederkehrend – zu ändern unter «Bekanntmachungen»
-          </p>
-          <p className="mt-0.5 whitespace-pre-line">{entry.text}</p>
-          {entry.details?.trim() && (
-            <p className="text-xs whitespace-pre-line text-slate-500 dark:text-slate-400">
-              {entry.details}
-            </p>
-          )}
-        </div>
-      ))}
+        return (
+          <div
+            key={entry.id}
+            {...dragProps}
+            className={cn(
+              'flex items-start gap-2 rounded-lg border border-transparent transition',
+              dragging && 'opacity-40',
+              dropTarget && 'border-brand-500 border-dashed',
+            )}
+          >
+            {isSeriesEntry(entry) ? (
+              <div className="min-w-0 flex-1 rounded-lg border border-dashed border-slate-300 px-3 py-2 text-sm dark:border-slate-700">
+                <p className="flex items-center gap-1.5 text-xs text-slate-500 dark:text-slate-400">
+                  <Repeat className="size-3.5" aria-hidden />
+                  Wiederkehrend – der Wortlaut ist unter «Bekanntmachungen» zu ändern
+                </p>
+                <p className="mt-0.5 whitespace-pre-line">{entry.text}</p>
+                {entry.details?.trim() && (
+                  <p className="text-xs whitespace-pre-line text-slate-500 dark:text-slate-400">
+                    {entry.details}
+                  </p>
+                )}
+              </div>
+            ) : (
+              <div className="min-w-0 flex-1">
+                {/* Ein Feld, mehrzeilig – wie unter «Bekanntmachungen». */}
+                <textarea
+                  className="input min-h-16 resize-y"
+                  value={entry.text}
+                  onChange={(event) =>
+                    onChange(replaceInList(entries, { ...entry, text: event.target.value }))
+                  }
+                  placeholder="Bekanntmachung"
+                  aria-label={`Bekanntmachung ${index + 1}`}
+                />
+              </div>
+            )}
+
+            {controls}
+          </div>
+        )
+      })}
 
       <button
         type="button"
@@ -1492,6 +1530,8 @@ function BusinessEditor({
 }) {
   const toast = useToast()
 
+  const reorder = useReorder(entries, (entry) => entry.id, onChange)
+
   // Löschen ohne Rückfrage, aber mit Reue: «Rückgängig» stellt den Stand von
   // unmittelbar vor dem Löschen wieder her.
   const remove = (entry: BusinessEntry) => {
@@ -1502,21 +1542,34 @@ function BusinessEditor({
 
   return (
     <div className="no-print space-y-2">
-      {entries.map((entry, index) => (
-        <div key={entry.id} className="flex items-start gap-2">
-          <BusinessFields
-            entry={entry}
-            index={index}
-            onChange={(next) => onChange(replaceInList(entries, next))}
-          />
-          <ListButtons
-            index={index}
-            length={entries.length}
-            onMove={(delta) => onChange(moveInList(entries, index, delta))}
-            onRemove={() => remove(entry)}
-          />
-        </div>
-      ))}
+      {entries.map((entry, index) => {
+        const { dragProps, dragging, dropTarget } = reorder.row(entry.id)
+        return (
+          <div
+            key={entry.id}
+            {...dragProps}
+            className={cn(
+              'flex items-start gap-2 rounded-lg border border-transparent transition',
+              dragging && 'opacity-40',
+              dropTarget && 'border-brand-500 border-dashed',
+            )}
+          >
+            <BusinessFields
+              entry={entry}
+              index={index}
+              onChange={(next) => onChange(replaceInList(entries, next))}
+            />
+            <ReorderControls
+              label={`Eintrag ${index + 1}`}
+              first={index === 0}
+              last={index === entries.length - 1}
+              onMove={(delta) => reorder.move(index, delta)}
+              onGrab={() => reorder.grab(entry.id)}
+              onRemove={() => remove(entry)}
+            />
+          </div>
+        )
+      })}
 
       <button
         type="button"
@@ -1571,49 +1624,6 @@ function MusicalNumberEditor({
         placeholder="Weitere Mitwirkende"
         aria-label="Weitere Mitwirkende der Musikeinlage"
       />
-    </div>
-  )
-}
-
-function ListButtons({
-  index,
-  length,
-  onMove,
-  onRemove,
-}: {
-  index: number
-  length: number
-  onMove: (delta: number) => void
-  onRemove: () => void
-}) {
-  return (
-    <div className="flex shrink-0 flex-col gap-0.5">
-      <button
-        type="button"
-        className="btn-ghost p-1.5"
-        onClick={() => onMove(-1)}
-        disabled={index === 0}
-        aria-label="Nach oben"
-      >
-        <ChevronUp className="size-4" aria-hidden />
-      </button>
-      <button
-        type="button"
-        className="btn-ghost p-1.5"
-        onClick={() => onMove(1)}
-        disabled={index === length - 1}
-        aria-label="Nach unten"
-      >
-        <ChevronDown className="size-4" aria-hidden />
-      </button>
-      <button
-        type="button"
-        className="btn-ghost p-1.5 text-rose-600 dark:text-rose-400"
-        onClick={onRemove}
-        aria-label="Entfernen"
-      >
-        <Trash2 className="size-4" aria-hidden />
-      </button>
     </div>
   )
 }

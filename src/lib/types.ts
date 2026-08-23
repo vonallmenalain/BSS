@@ -2399,6 +2399,22 @@ export interface SacramentMeeting extends WithId {
    */
   programOrder: string[]
 
+  /**
+   * Reihenfolge der Bekanntmachungen an diesem Sonntag.
+   *
+   * Einträge sind Schlüssel: die ID des erfassten Eintrags oder
+   * «serie:abc123» für eine wiederkehrende Bekanntmachung (siehe
+   * `announcementKey` in `lib/series`). Nur so lassen sich die beiden
+   * Arten miteinander ordnen – die Serien stehen ja nicht in
+   * `announcements`, sie werden bei jedem Aufruf dazugerechnet.
+   *
+   * Was fehlt, steht hinten: Ein neu erfasster Eintrag und eine neu
+   * fällige Serie kommen unten dazu, und ein Sonntag, an dem niemand
+   * umgestellt hat, bleibt bei der gewohnten Folge – erfasste zuerst,
+   * Serien danach.
+   */
+  announcementOrder?: string[]
+
   notes?: string
   createdAt?: TS
   updatedAt?: TS
