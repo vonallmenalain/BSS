@@ -273,20 +273,21 @@ export function ApFeedDialog({ open, onClose }: { open: boolean; onClose: () => 
  * trägt, ist keine Nachlässigkeit, sondern der Stand der Dinge: Der Plan
  * selbst steht unter `/ap` jedem offen, ein Token schützte hier also nichts
  * mehr – es machte den Link bloss lang und seine Weitergabe zu einem Vorgang.
+ *
+ * «Link», und darunter nichts. Ein Feld mit einer Adresse und zwei Knöpfen
+ * zum Kopieren erklärt sich; was damit zu tun ist, steht als Anleitung weiter
+ * unten im selben Dialog. Ein Absatz dazwischen sagte dasselbe ein zweites
+ * Mal – und stünde ausgerechnet zwischen dem Link und dem Weg zu seiner
+ * Einrichtung.
  */
 function PublicLink() {
   return (
     <section className="border-brand-200 bg-brand-50/60 dark:border-brand-900 dark:bg-brand-950/30 space-y-2 rounded-xl border p-4">
       <h3 className="flex items-center gap-2 text-sm font-semibold">
         <Globe className="size-4" aria-hidden />
-        Der Link für alle
+        Link
       </h3>
       <LinkRow token={null} />
-      <p className="text-xs text-slate-600 dark:text-slate-300">
-        Der ganze Plan, ohne Anmeldung – zum Weitergeben an die AP’s, die Eltern und die Berater.
-        Wer ihn einrichtet, hat den Plan von da an im eigenen Kalender und bekommt jede Änderung von
-        selbst.
-      </p>
     </section>
   )
 }
