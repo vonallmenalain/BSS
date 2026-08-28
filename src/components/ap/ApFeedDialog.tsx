@@ -5,6 +5,7 @@ import {
   Calendar,
   Check,
   Copy,
+  Globe,
   Link2,
   Loader2,
   Plus,
@@ -40,20 +41,25 @@ import {
  * es damit auch im Kalender jeder Person, die den Link eingerichtet hat –
  * ohne dass jemand etwas exportiert, verschickt oder einliest.
  *
- * Der Link **ist** die Berechtigung. Ein Kalenderprogramm kann sich nirgends
- * anmelden; es ruft eine Adresse ab, und was zurückkommt, zeigt es an. Wer
- * den Link hat, sieht den Plan. Deshalb gibt es mehrere davon – einen für
- * die Berater, einen für die Jugendführung, einen für eine einzelne Person –
- * und deshalb lässt sich jeder einzeln widerrufen, ohne allen anderen den
- * Kalender wegzunehmen.
+ * **Zuoberst steht der Link für alle** – `/api/ap.ics`, ohne Token. Seit der
+ * Plan unter `/ap` jedem offensteht, ist er die Antwort auf die Frage, mit
+ * der man diesen Dialog überhaupt öffnet: «Wie bekomme ich das in meinen
+ * Kalender?» Ein Token schützte hier nichts mehr; es machte den Link bloss
+ * lang und seine Weitergabe zu einem Vorgang.
  *
- * Der Dialog hat deshalb zwei Gesichter, und `canEditAp` entscheidet welches.
- * **Mit Schreibrecht** ist er eine Verwaltung: anlegen, widerrufen, löschen,
- * und zu jedem Link, wann er zuletzt abgerufen wurde. **Ohne** bleibt genau
- * das übrig, wofür ein Berater ihn öffnet – die Liste der gültigen Links und
- * daneben der Knopf zum Kopieren. Widerrufene fehlen dort ganz: Sie erzählen
- * der Verwaltung etwas, dem Kopierenden bieten sie nur die Gelegenheit, den
- * falschen zu erwischen.
+ * Die **vergebenen Links** stehen darunter und bleiben – nicht als Schutz,
+ * sondern für das, was sie zusätzlich können: nur bestimmte Arten zeigen,
+ * und festhalten, wann ein Kalenderprogramm zuletzt vorbeikam. Jeder lässt
+ * sich einzeln widerrufen, ohne allen anderen den Kalender wegzunehmen.
+ *
+ * Der Dialog hat deshalb drei Gesichter. **Ohne Konto** bleiben der
+ * öffentliche Link und die Anleitung – mehr braucht es nicht, und die Liste
+ * der vergebenen Links geben die Zugriffsregeln ohnehin nicht heraus.
+ * **Mit Konto, ohne Schreibrecht** kommen die gültigen Links dazu, zum
+ * Kopieren; widerrufene fehlen dort ganz: Sie erzählen der Verwaltung etwas,
+ * dem Kopierenden bieten sie nur die Gelegenheit, den falschen zu erwischen.
+ * **Mit Schreibrecht** wird daraus eine Verwaltung: anlegen, widerrufen,
+ * löschen, und zu jedem Link, wann er zuletzt abgerufen wurde.
  *
  * Wann ein Kalenderprogramm den Link holt, bestimmt es selbst – Google meist
  * alle paar Stunden. Der Dialog sagt das nicht mehr dazu: Es steht nur der
@@ -63,8 +69,10 @@ import {
  * beantwortet dieselbe Frage später ohnehin genauer.
  */
 export function ApFeedDialog({ open, onClose }: { open: boolean; onClose: () => void }) {
-  const { profile, canEditAp } = useAuth()
+  const { profile, canEditAp, canViewAp } = useAuth()
   const toast = useToast()
+  /* Ohne Konto bleibt der Hook still: Er hängt selbst an `canViewAp` und
+     fragt die Sammlung gar nicht erst ab (siehe `hooks/useFirestore`). */
   const { data: all, loading } = useCalendarFeeds()
 
   /*
@@ -141,6 +149,9 @@ export function ApFeedDialog({ open, onClose }: { open: boolean; onClose: () => 
       <div className="space-y-6">
         {fresh && <FreshLink token={fresh} />}
 
+        {/* ---------- Der Link für alle ---------- */}
+        <PublicLink />
+
         {/* ---------- Neuen Link anlegen ---------- */}
         {canEditAp && (
           <section className="space-y-3 rounded-xl border border-slate-200 p-4 dark:border-slate-700">
@@ -209,34 +220,40 @@ export function ApFeedDialog({ open, onClose }: { open: boolean; onClose: () => 
           </section>
         )}
 
-        {/* ---------- Bestehende Links ---------- */}
-        <section className="space-y-3">
-          <h3 className="text-sm font-semibold">
-            {canEditAp ? 'Vergebene Links' : 'Verfügbare Links'}
-          </h3>
+        {/* ---------- Bestehende Links ----------
+            Nur mit Konto: Ohne Anmeldung geben die Zugriffsregeln die Liste
+            nicht heraus – und wer bloss abonnieren will, hat oben bereits,
+            was er braucht. Eine leere Überschrift wäre dort ein Versprechen
+            ohne Inhalt. */}
+        {canViewAp && (
+          <section className="space-y-3">
+            <h3 className="text-sm font-semibold">
+              {canEditAp ? 'Vergebene Links' : 'Verfügbare Links'}
+            </h3>
 
-          {loading && feeds.length === 0 ? (
-            <p className="hint">Wird geladen …</p>
-          ) : feeds.length === 0 ? (
-            <div className="card">
-              <EmptyState
-                icon={Link2}
-                title="Noch kein Link vergeben"
-                description={
-                  canEditAp
-                    ? 'Lege oben einen an. Wer ihn einrichtet, hat den Plan von da an im eigenen Kalender.'
-                    : 'Sobald die Bischofschaft einen Link vergeben hat, steht er hier zum Kopieren bereit.'
-                }
-              />
-            </div>
-          ) : (
-            <ul className="space-y-3">
-              {feeds.map((feed) => (
-                <FeedRow key={feed.id} feed={feed} canManage={canEditAp} />
-              ))}
-            </ul>
-          )}
-        </section>
+            {loading && feeds.length === 0 ? (
+              <p className="hint">Wird geladen …</p>
+            ) : feeds.length === 0 ? (
+              <div className="card">
+                <EmptyState
+                  icon={Link2}
+                  title="Noch kein eigener Link vergeben"
+                  description={
+                    canEditAp
+                      ? 'Für den ganzen Plan genügt der Link oben. Ein eigener lohnt sich, wenn er nur bestimmte Arten zeigen soll oder widerrufbar sein muss.'
+                      : 'Für den ganzen Plan genügt der Link oben. Eigene Links vergibt die Bischofschaft – sie stünden hier.'
+                  }
+                />
+              </div>
+            ) : (
+              <ul className="space-y-3">
+                {feeds.map((feed) => (
+                  <FeedRow key={feed.id} feed={feed} canManage={canEditAp} />
+                ))}
+              </ul>
+            )}
+          </section>
+        )}
 
         <Instructions />
       </div>
@@ -247,6 +264,32 @@ export function ApFeedDialog({ open, onClose }: { open: boolean; onClose: () => 
 /* ------------------------------------------------------------------ */
 /* Bausteine                                                           */
 /* ------------------------------------------------------------------ */
+
+/**
+ * Der Link für alle – ohne Token, ohne Anmeldung.
+ *
+ * Er steht zuoberst und in jedem der drei Gesichter des Dialogs, denn er ist
+ * die Antwort auf die Frage, mit der man ihn öffnet. Dass er kein Geheimnis
+ * trägt, ist keine Nachlässigkeit, sondern der Stand der Dinge: Der Plan
+ * selbst steht unter `/ap` jedem offen, ein Token schützte hier also nichts
+ * mehr – es machte den Link bloss lang und seine Weitergabe zu einem Vorgang.
+ */
+function PublicLink() {
+  return (
+    <section className="border-brand-200 bg-brand-50/60 dark:border-brand-900 dark:bg-brand-950/30 space-y-2 rounded-xl border p-4">
+      <h3 className="flex items-center gap-2 text-sm font-semibold">
+        <Globe className="size-4" aria-hidden />
+        Der Link für alle
+      </h3>
+      <LinkRow token={null} />
+      <p className="text-xs text-slate-600 dark:text-slate-300">
+        Der ganze Plan, ohne Anmeldung – zum Weitergeben an die AP’s, die Eltern und die Berater.
+        Wer ihn einrichtet, hat den Plan von da an im eigenen Kalender und bekommt jede Änderung von
+        selbst.
+      </p>
+    </section>
+  )
+}
 
 /** Der eben angelegte Link – gross, weil man genau ihn gerade sucht. */
 function FreshLink({ token }: { token: string }) {
@@ -272,7 +315,7 @@ function FreshLink({ token }: { token: string }) {
  * stattdessen eine Datei herunter, und die wäre eine einmalige Kopie statt
  * eines Abos.
  */
-function LinkRow({ token }: { token: string }) {
+function LinkRow({ token }: { token: string | null }) {
   const toast = useToast()
   const url = apFeedUrl(token)
 

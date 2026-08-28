@@ -570,10 +570,12 @@ Frontend.
 Anmeldung, nur zum Lesen. Er ist das Anschlagbrett der AP's und wird den
 Jugendlichen, ihren Eltern und den Beratern als Link geschickt; ein
 Anschlagbrett, für das man sich anmelden muss, wird nicht gelesen. Offen sind
-dafür genau zwei Sammlungen (`apActivities`, `apMonths`) und nur lesend.
-Geändert wird der Plan weiterhin nur mit Rolle, und alles Übrige – Mitglieder,
-Berufungen, Sitzungen, selbst die Einstellungen – bleibt verschlossen. Die
-Regeltests prüfen beide Hälften.
+dafür genau zwei Sammlungen (`apActivities`, `apMonths`) und nur lesend; dazu
+gibt die Netlify-Function denselben Plan unter `/api/ap.ics` auch ohne Token
+als Kalender heraus, damit ihn abonnieren kann, wer ihn lesen darf. Geändert
+wird der Plan weiterhin nur mit Rolle, und alles Übrige – Mitglieder,
+Berufungen, Sitzungen, die Liste der vergebenen Kalender-Links, selbst die
+Einstellungen – bleibt verschlossen. Die Regeltests prüfen beide Hälften.
 
 Innerhalb der Bischofschaft gibt es keine weitere Abstufung: Alle Rollen lesen
 und schreiben dasselbe, und jede Person kann ihre eigene Rolle korrigieren –
@@ -636,12 +638,14 @@ immer dasselbe: Termin verstrichen.
 - Berufungen als Organisationsplan, Stand aus dem LCR – mit der Ansicht «ohne
   Berufung» und dem Weg von jeder Zeile zur Person
 - Einstellungen für Gemeinde, Sitzungsrhythmus und Abendmahlsversammlung
-- Aktivitätenplan der AP als abonnierbarer Kalender (`.ics`): widerrufbare
-  Links, die Google Calendar, Apple Kalender und Outlook selbstständig
-  abholen – ausgeliefert von einer Netlify-Function mit Dienstkonto, dem
-  einzigen serverseitigen Teil der App
-- Derselbe Plan öffentlich unter `/ap`: ohne Anmeldung zu lesen, nicht zu
-  ändern – die einzige Seite der App, die kein Konto verlangt
+- Aktivitätenplan der AP als abonnierbarer Kalender (`.ics`): ein Link für
+  alle ohne Token, daneben zugeschnittene und widerrufbare Links, die Google
+  Calendar, Apple Kalender und Outlook selbstständig abholen – ausgeliefert
+  von einer Netlify-Function mit Dienstkonto, dem einzigen serverseitigen
+  Teil der App
+- Derselbe Plan öffentlich unter `/ap`: ohne Anmeldung zu lesen und zu
+  abonnieren, nicht zu ändern – die einzige Seite der App, die kein Konto
+  verlangt
 - PWA: installierbar, offline speichern mit Warteschlange und Konflikthinweis,
   Update-Hinweis
 - Firestore-Sicherheitsregeln und Indizes

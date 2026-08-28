@@ -2988,18 +2988,23 @@ export interface ApMonth extends WithId {
  * abonnieren: Die Programme holen die Datei von sich aus immer wieder und
  * zeigen so den Stand aus der App, ohne dass jemand etwas exportiert.
  *
- * Der Link **ist** die Berechtigung, und das ist eine bewusste Entscheidung:
- * Google und Apple können sich nirgends anmelden – sie rufen eine URL ab,
- * sonst nichts. Deshalb steckt die Berechtigung im Token, und deshalb ist es
- * lang genug, um nicht erraten zu werden. Wer den Link hat, sieht den Plan;
- * wer ihn weitergibt, gibt den Plan weiter.
+ * **Für den ganzen Plan braucht es das hier nicht mehr.** Seit die Seite
+ * unter `/ap` jedem offensteht, gibt die Function den Plan auch ohne Token
+ * heraus – `/api/ap.ics`, der Link für den Aushang. Ein Token schützte
+ * daran nichts mehr, was nicht ohnehin offenstünde.
  *
- * Zwei Dinge halten den Preis dafür klein. Erstens reicht der Link **nur**
- * an den Aktivitätenplan: Er ist kein Zugang zur App und erst recht keiner
- * zu Personendaten. Zweitens lässt er sich einzeln widerrufen – deshalb gibt
- * es mehrere davon, je einen für die Berater, die Jugendführung oder eine
- * einzelne Person. Verschwindet ein Telefon, verschwindet ein Link, und die
- * übrigen bleiben.
+ * Ein Datensatz hier ist deshalb kein Schutz, sondern ein **Zuschnitt**: Er
+ * zeigt wahlweise nur bestimmte Arten (`kinds`) – der Kalender einer
+ * Beraterin muss die ausgefallenen Abende nicht enthalten –, und an ihm
+ * steht, wann ein Kalenderprogramm zuletzt vorbeikam (`lastFetchedAt`). Das
+ * beantwortet die einzige Frage, die bei einem Abo aufkommt: «Holt Google
+ * den Link überhaupt?»
+ *
+ * Das Token bleibt lang und zufällig, und der Link lässt sich weiterhin
+ * einzeln widerrufen. Beides kostet nichts und bleibt richtig, sollte der
+ * Plan je wieder hinter die Anmeldung wandern: Google und Apple können sich
+ * nirgends anmelden – sie rufen eine URL ab, sonst nichts, und was sie
+ * dürfen, muss deshalb in der Adresse stecken.
  *
  * Deshalb benennt ein Link, **wer** ihn bekommen hat, und nicht, was er
  * zeigt: Ein Link «Nur Aktivitäten», den sich acht Leute teilen, lässt sich

@@ -13,9 +13,15 @@ import type { ApActivityKind, CalendarFeed } from '@/lib/types'
  * etwas tut. Ausgeliefert wird die Datei von der Netlify-Function
  * `netlify/functions/ap-ics.mts`; hier entstehen nur die Links dorthin.
  *
- * Warum überhaupt ein Token in der URL: Ein Kalenderprogramm kann sich
- * nirgends anmelden. Es ruft eine Adresse ab, und was zurückkommt, zeigt es
- * an. Die Berechtigung muss deshalb in der Adresse stecken – siehe
+ * Der Plan steht seit der Öffnung von `/ap` jedem offen, und mit ihm der
+ * Feed: `/api/ap.ics` ohne alles gibt den ganzen Plan heraus. Das ist der
+ * Link für den Aushang und für die Gruppe der Jugendführung.
+ *
+ * Die Links mit Token bleiben daneben bestehen – nicht mehr als Schutz,
+ * sondern für das, was sie können: nur bestimmte Arten zeigen, und
+ * festhalten, wann ein Kalenderprogramm zuletzt vorbeikam. Warum überhaupt
+ * ein Token in der URL steht: Ein Kalenderprogramm kann sich nirgends
+ * anmelden. Es ruft eine Adresse ab, und was zurückkommt, zeigt es an – siehe
  * `CalendarFeed` in `lib/types` für die Abwägung dahinter.
  */
 
@@ -49,9 +55,25 @@ export function newFeedToken(): string {
     .replace(/=+$/, '')
 }
 
-/** Die Adresse zum Abonnieren – «https://…/api/ap.ics?token=…». */
-export function apFeedUrl(token: string, origin: string = window.location.origin): string {
-  return `${origin}${AP_FEED_PATH}?token=${encodeURIComponent(token)}`
+/**
+ * Die Adresse zum Abonnieren.
+ *
+ * Ohne Token – «https://…/api/ap.ics» – ist es der öffentliche Feed: der
+ * ganze Plan, für jeden, der den Link hat. Das ist seit der Öffnung von
+ * `/ap` der Link, den man weitergibt; ein Token schützte nichts mehr, was
+ * nicht ohnehin offenstünde.
+ *
+ * Mit Token – «…?token=…» – ist es einer der vergebenen Links. Die gibt es
+ * weiterhin, aber für das, was sie zusätzlich können: nur bestimmte Arten
+ * zeigen, und verraten, wann ein Kalenderprogramm zuletzt vorbeikam.
+ */
+export function apFeedUrl(
+  token: string | null = null,
+  origin: string = window.location.origin,
+): string {
+  return token
+    ? `${origin}${AP_FEED_PATH}?token=${encodeURIComponent(token)}`
+    : `${origin}${AP_FEED_PATH}`
 }
 
 /**
@@ -61,7 +83,10 @@ export function apFeedUrl(token: string, origin: string = window.location.origin
  * fragt nach dem Abonnieren – mit «https://» lädt der Browser stattdessen
  * eine Datei herunter, und die wäre eine einmalige Kopie statt eines Abos.
  */
-export function apFeedWebcalUrl(token: string, origin: string = window.location.origin): string {
+export function apFeedWebcalUrl(
+  token: string | null = null,
+  origin: string = window.location.origin,
+): string {
   return apFeedUrl(token, origin).replace(/^https?:/, 'webcal:')
 }
 
