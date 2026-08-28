@@ -24,6 +24,7 @@ import {
   ChevronDown,
   Tent,
   Sparkles,
+  LogIn,
 } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { useAuth } from '@/contexts/AuthContext'
@@ -110,8 +111,16 @@ const IMPULSE_CHILDREN = [
 
 export function Layout() {
   const { settings } = useData()
-  const { isApproved, canViewAp, canViewImpulse, isAssistant, assistantAreas, profile, signOut } =
-    useAuth()
+  const {
+    isApproved,
+    canViewAp,
+    canViewImpulse,
+    isAssistant,
+    assistantAreas,
+    isGuest,
+    profile,
+    signOut,
+  } = useAuth()
 
   /*
    * Der Punkt am Eintrag «Anti Doom»: Die laufende Woche hat Inhalt, und
@@ -302,7 +311,13 @@ export function Layout() {
               </button>
             )}
 
-            <NavLink to="/" className="flex min-w-0 items-center gap-2.5">
+            {/* Ohne Konto führt die Marke zurück auf den Plan und nicht auf
+                die Übersicht – die gäbe es dort nur als Umleitung zur
+                Anmeldung. Und statt des Gemeindenamens steht «Aktivitätenplan»:
+                Die Einstellungen bleiben angemeldeten Konten vorbehalten, der
+                Name der Gemeinde steht also gar nicht zur Verfügung – und was
+                die Seite ist, sagt er ohnehin besser. */}
+            <NavLink to={isGuest ? '/ap' : '/'} className="flex min-w-0 items-center gap-2.5">
               <span className="bg-brand-600 grid size-8 shrink-0 place-items-center rounded-lg text-sm font-bold text-white">
                 BS
               </span>
@@ -311,7 +326,7 @@ export function Layout() {
                   Bischofschaft
                 </span>
                 <span className="block truncate text-[11px] leading-tight text-slate-500 dark:text-slate-400">
-                  {settings.wardName}
+                  {isGuest ? 'Aktivitätenplan' : settings.wardName}
                 </span>
               </span>
             </NavLink>
@@ -351,14 +366,27 @@ export function Layout() {
               <ThemeIcon className="size-5" aria-hidden />
             </button>
 
-            <UserMenu />
+            {/* Wer kein Konto hat, bekommt den Weg dorthin: Der Plan steht
+                offen, alles andere hinter der Anmeldung. */}
+            {isGuest ? (
+              <NavLink to="/anmelden" className="btn-secondary">
+                <LogIn className="size-4" aria-hidden />
+                <span className="hidden sm:inline">Anmelden</span>
+                <span className="sr-only sm:hidden">Anmelden</span>
+              </NavLink>
+            ) : (
+              <UserMenu />
+            )}
           </div>
         </header>
       )}
 
       <div className="mx-auto flex w-full max-w-7xl flex-1 px-safe">
-        {/* ---------- Seitennavigation (Desktop) ---------- */}
-        {!immersive && (
+        {/* ---------- Seitennavigation (Desktop) ----------
+            Wie die untere Leiste nur, wenn es etwas zu navigieren gibt: Ohne
+            Konto stünde hier sonst eine leere Spalte samt Trennlinie, und der
+            Plan begänne 14 Rem vom linken Rand entfernt, ohne Grund. */}
+        {!immersive && navItems.length > 0 && (
           <nav className="no-print sticky top-14 hidden h-[calc(100dvh-3.5rem)] w-56 shrink-0 flex-col gap-0.5 overflow-y-auto border-r border-slate-200 px-3 py-4 lg:flex dark:border-slate-800">
             {/* Name, Rolle und Abmelden stehen nur noch im Benutzermenü oben
                 rechts – einmal genügt, und die Navigation bleibt ruhig. */}
@@ -433,7 +461,10 @@ export function Layout() {
             'min-w-0 flex-1 px-4 sm:px-6',
             immersive
               ? 'pt-safe-5 pb-10'
-              : 'py-5 pb-24 lg:pb-8 landscape-short:py-3 landscape-short:pb-16',
+              : navItems.length > 0
+                ? 'py-5 pb-24 lg:pb-8 landscape-short:py-3 landscape-short:pb-16'
+                : // Ohne untere Leiste braucht es auch den Platz für sie nicht.
+                  'py-5 pb-10 landscape-short:py-3',
           )}
         >
           {/* Bricht eine Seite beim Zeichnen, bleibt die Navigation stehen –
@@ -446,8 +477,11 @@ export function Layout() {
         </main>
       </div>
 
-      {/* ---------- Untere Leiste (Handy) ---------- */}
-      {!immersive && (
+      {/* ---------- Untere Leiste (Handy) ----------
+          Nur, wenn es etwas zu navigieren gibt: Der öffentliche Plan ist die
+          ganze App für den, der ihn aufruft – eine leere Leiste am unteren
+          Rand wäre ein Möbelstück ohne Zweck. */}
+      {!immersive && navItems.length > 0 && (
         <nav className="no-print fixed inset-x-0 bottom-0 z-40 border-t border-slate-200 bg-white/95 px-safe backdrop-blur-md pb-safe lg:hidden dark:border-slate-800 dark:bg-slate-900/95">
           <div className="flex items-stretch">
             {navItems

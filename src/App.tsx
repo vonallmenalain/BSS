@@ -1,5 +1,13 @@
 import { lazy, Suspense, type ReactNode } from 'react'
-import { BrowserRouter, Routes, Route, Navigate, Outlet, useParams } from 'react-router-dom'
+import {
+  BrowserRouter,
+  Routes,
+  Route,
+  Navigate,
+  Outlet,
+  useLocation,
+  useParams,
+} from 'react-router-dom'
 import { AuthProvider, useAuth } from '@/contexts/AuthContext'
 import { DataProvider } from '@/contexts/DataContext'
 import { ToastProvider } from '@/contexts/ToastContext'
@@ -58,10 +66,30 @@ const ImportSingles = lazy(() =>
   import('@/pages/ImportSingles').then((m) => ({ default: m.ImportSingles })),
 )
 
-/* Aktivitäten AP – der einzige Bereich, den auch Konten ohne Vollzugriff sehen. */
+/* Aktivitäten AP – der einzige Bereich, der ohne Anmeldung offensteht. */
 const ApActivities = lazy(() =>
   import('@/pages/ApActivities').then((m) => ({ default: m.ApActivities })),
 )
+
+/**
+ * Die Adressen, die ohne Anmeldung offenstehen.
+ *
+ * Bisher genau eine: der Aktivitätenplan unter `/ap`. Er ist das
+ * Anschlagbrett der AP's – er wird den Jugendlichen, ihren Eltern und den
+ * Beratern als Link geschickt, und ein Anschlagbrett, für das man sich
+ * anmelden muss, wird nicht gelesen. Dass der Plan wirklich offensteht,
+ * entscheidet nicht diese Liste, sondern `firestore.rules`; hier steht bloss,
+ * dass die App nicht vorher zur Anmeldung umleitet.
+ *
+ * Der Link ist derselbe, ob angemeldet oder nicht: Wer ihn weitergibt, muss
+ * nicht überlegen, an wen. Was jemand darf, entscheidet sich auf der Seite –
+ * ohne Schreibrecht gibt es dort nichts zu ändern.
+ */
+const PUBLIC_PATHS = ['/ap']
+
+function isPublicPath(pathname: string): boolean {
+  return PUBLIC_PATHS.some((path) => pathname === path || pathname.startsWith(`${path}/`))
+}
 
 /* «Anti Doom» – der geistige Bereich für die AP's (docs/KONZEPT-IMPULS.md).
    Sichtbar nur mit dem Schalter am Konto – und immer für das
@@ -102,21 +130,38 @@ function LegacyImpulsRedirect() {
  * «Freigeschaltet» heisst hier nicht mehr zwingend «Vollzugriff»: Wer nur
  * den AP-Kalender sehen darf, kommt ebenfalls in die App – aber nur bis
  * dorthin, dafür sorgt `RequireFullAccess`.
+ *
+ * Und eine Adresse kommt ganz ohne Konto durch: der Aktivitätenplan (siehe
+ * `PUBLIC_PATHS`). Die Weiche steht hier und nicht in einem zweiten
+ * Routenbaum neben diesem, damit es die Seite nur einmal gibt – dieselbe
+ * Adresse, dieselbe Hülle, angemeldet wie nicht. Wer dabei was sieht,
+ * entscheidet weiter unten das Schreibrecht und in letzter Instanz
+ * `firestore.rules`.
+ *
+ * Auch ein Konto, das noch auf die Freigabe wartet, sieht dort den Plan
+ * statt des Wartezimmers. Er steht der ganzen Welt offen – ausgerechnet dem
+ * Wartenden die Tür zu weisen, wäre eine Schikane ohne Gewinn.
  */
 function RequireAuth({ children }: { children: ReactNode }) {
   const { firebaseUser, loading, isApproved, canViewAp, canViewImpulse, isAssistant } = useAuth()
+  const { pathname } = useLocation()
+  const publicPage = isPublicPath(pathname)
 
   /*
    * Hier und nicht tiefer: Diese Stelle sieht jedes angemeldete Konto, auch
    * eines, das noch auf die Freigabe wartet. Dass jemand sich anmeldet und
    * wieder geht, ohne je etwas zu sehen, gehört ins Protokoll – es ist die
    * Zeile, wegen der man es aufschlägt.
+   *
+   * Ein Besuch ohne Konto schreibt nichts: Das Protokoll führt Konten, und
+   * ein Anschlagbrett zählt seine Leser nicht (siehe `hooks/useAccessLog`).
    */
   useAccessLog()
 
   if (loading) return <LoadingScreen label="Anmeldung wird geprüft …" />
-  if (!firebaseUser) return <Navigate to="/anmelden" replace />
-  if (!isApproved && !canViewAp && !canViewImpulse && !isAssistant) return <PendingApproval />
+  if (!firebaseUser) return publicPage ? <>{children}</> : <Navigate to="/anmelden" replace />
+  if (!isApproved && !canViewAp && !canViewImpulse && !isAssistant && !publicPage)
+    return <PendingApproval />
 
   return <>{children}</>
 }
@@ -247,7 +292,12 @@ export default function App() {
                   {/* ---------- Aktivitäten AP ----------
                     Steht ausserhalb von `RequireFullAccess`: Berater und
                     Jugendführung erreichen genau diesen Bereich – und sonst
-                    nichts. */}
+                    nichts.
+
+                    Und ausserhalb der Anmeldung: `/ap` steht in
+                    `PUBLIC_PATHS`, `RequireAuth` lässt die Adresse deshalb
+                    auch ohne Konto durch. Derselbe Link, dieselbe Seite –
+                    ohne Schreibrecht bloss ohne die Knöpfe. */}
                   <Route
                     path="ap"
                     element={

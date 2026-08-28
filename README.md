@@ -18,7 +18,7 @@ Abendmahlsversammlung, Berufungsverwaltung und Mitgliederdaten.
 | **Notizen**               | Was nicht an eine Sitzung gehört – für alle sichtbar, speichert von selbst                          |
 | **Putzplan**              | Die Halbjahrestabelle der Gemeinde als Wochenplan – Grundlage für die Ansage am Sonntag             |
 | **Abendmahlsversammlung** | Ganzer Ablauf pro Sonntag: Leitung, Bekanntmachungen, Angelegenheiten, Ansprachen, Musik, Gebet – dazu das Monatsthema, und Ansprachen/Musik/Gebet einzeln abgebbar |
-| **Aktivitäten AP's**      | Aktivitätenplan der Priestertumskollegien – teilbar mit Beratern, ohne Einblick in Personendaten    |
+| **Aktivitäten AP's**      | Aktivitätenplan der Priestertumskollegien – öffentlich unter `/ap` zu lesen, geändert nur mit Konto |
 | **Berufungen**            | Wer welche Aufgabe hat, gruppiert nach Organisation – und wer keine hat; Stand aus dem LCR          |
 | **Mitglieder**            | Stammdaten, Notizen, Suche – gefiltert nach Status, Geschlecht, Organisation (PV, JD/AP, JAE, AE) und Alter, sortiert wonach man will |
 
@@ -1441,7 +1441,9 @@ Dank an niemanden wäre schlimmer als gar keiner.
 
 ## Aktivitäten AP's
 
-**Aktivitäten AP's** in der Seitenleiste, unter der Abendmahlsversammlung.
+**Aktivitäten AP's** in der Seitenleiste, unter der Abendmahlsversammlung – und
+für alle anderen **`bss.alae.app/ap`**, ohne Anmeldung (siehe [«Wer den Plan
+sieht»](#wer-den-plan-sieht)).
 
 Der Jahresplan der Priestertumskollegien – bisher eine Excel-Tabelle, die
 herumgereicht wurde. Die Seite beantwortet zuerst die Frage, die sich jede
@@ -1676,15 +1678,46 @@ Welches Kollegium einen Monat führt, steht neben der Monatsüberschrift
 
 ### Wer den Plan sieht
 
-Dieser Bereich ist der einzige, der über die Bischofschaft hinaus geteilt
-wird. Berater und Jugendführung bekommen einen Zugang, der **nur** den
-AP-Kalender zeigt – wahlweise mit Schreibrecht oder nur zum Ansehen. Wie das
-eingerichtet wird, steht unter [Rollen](#rollen).
+**Jeder.** Der Plan steht unter `bss.alae.app/ap` offen – ohne Anmeldung, ohne
+Konto, ohne Link mit Token. Er ist das Anschlagbrett der AP's: Er wird den
+Jugendlichen, ihren Eltern und den Beratern geschickt, und ein Anschlagbrett,
+für das man sich anmelden muss, wird nicht gelesen.
 
-Der Unterschied ist sichtbar und nicht bloss gemeint: Ohne Schreibrecht gibt
-es keinen Umschalter, keine Knöpfe zum Anlegen und keine Zeile, die sich
-öffnen liesse. Durchgesetzt wird das nicht in der Oberfläche, sondern in den
-Zugriffsregeln.
+Es ist dieselbe Adresse für alle. Wer angemeldet ist, ruft `/ap` auf und sieht
+den Plan wie bisher – der Link taugt also gleichermassen für die Gruppe der
+Jugendführung wie für den Aushang. Wer nicht angemeldet ist, sieht dieselbe
+Seite, bloss ohne alles, was ein Konto braucht:
+
+|                              | ohne Anmeldung | AP-Kalender · nur ansehen | AP-Kalender · bearbeiten |
+| ---------------------------- | -------------- | ------------------------- | ------------------------ |
+| Plan lesen, Ansicht wählen   | ja             | ja                        | ja                       |
+| **Abonnieren** (Kalender)    | –              | Links kopieren            | anlegen und widerrufen   |
+| Bearbeitungsmodus            | –              | –                         | ja                       |
+| Alles Übrige in der App      | –              | –                         | –                        |
+
+Oben rechts steht statt des Benutzermenüs ein Knopf **Anmelden**; Seitenleiste
+und untere Leiste fehlen, denn ohne Konto gibt es nichts, wohin sie führen
+könnten. Jede andere Adresse führt weiterhin zur Anmeldung.
+
+**Was damit öffentlich ist.** Genau das, was auf dem ausgedruckten Plan stünde:
+Datum, Anlass, Treffpunkt, Zeit, Zuständigkeit, die Bemerkung – und welches
+Kollegium den Monat führt. Wer einen Termin erfasst, schreibt damit ins
+Schaufenster. Alles andere bleibt zu: Mitgliederliste, Berufungen, Sitzungen,
+Ansprachen, sogar die Einstellungen (deshalb steht in der Kopfzeile
+«Aktivitätenplan» statt des Gemeindenamens). Durchgesetzt wird das nicht in der
+Oberfläche, sondern in `firestore.rules`; `npm run test:rules` prüft beide
+Hälften – dass der Plan offen ist und dass sonst nichts mitkommt.
+
+**Geändert wird weiterhin nur mit Konto.** Berater und Jugendführung, die den
+Plan pflegen sollen, bekommen dafür einen Zugang, der **nur** den AP-Kalender
+zeigt – wahlweise mit Schreibrecht oder nur zum Ansehen. Wie das eingerichtet
+wird, steht unter [Rollen](#rollen). Der Unterschied ist sichtbar und nicht
+bloss gemeint: Ohne Schreibrecht gibt es keinen Umschalter, keine Knöpfe zum
+Anlegen und keine Zeile, die sich öffnen liesse.
+
+**Suchmaschinen bleibt die Seite verwehrt.** Die App schickt für alle Adressen
+`X-Robots-Tag: noindex, nofollow, noarchive` (siehe `netlify.toml`) – öffentlich
+heisst hier «wer den Link hat», nicht «wer danach sucht».
 
 ### Im eigenen Kalender abonnieren
 
@@ -1727,15 +1760,17 @@ Dinge halten den Preis dafür klein:
 > Kalender zu nehmen – und damit wäre der Widerruf-Knopf wertlos. Was ein
 > Link zeigt, sagt die Auswahl der Arten daneben.
 
-**Wer was darf.** Den Knopf **Abonnieren** sieht jeder, der den Plan sieht –
-auch ein Zugang zum blossen Ansehen. Dahinter unterscheidet sich, was er
-zeigt:
+**Wer was darf.** Den Knopf **Abonnieren** sieht jedes angemeldete Konto, das
+den Plan sieht – auch ein Zugang zum blossen Ansehen. Ohne Anmeldung fehlt er:
+Der Plan steht offen, ein Feed-Link ist dagegen eine Berechtigung, die einzeln
+widerrufen wird, und eine Liste davon gehört nicht ins Schaufenster. Dahinter
+unterscheidet sich, was er zeigt:
 
-| | Ansehen | Pflegen |
-|---|---|---|
-| Bestehende Links sehen und kopieren | ✓ | ✓ |
-| Widerrufene Links sehen | – | ✓ |
-| Link anlegen, widerrufen, löschen | – | ✓ |
+| | Ohne Anmeldung | Ansehen | Pflegen |
+|---|---|---|---|
+| Bestehende Links sehen und kopieren | – | ✓ | ✓ |
+| Widerrufene Links sehen | – | – | ✓ |
+| Link anlegen, widerrufen, löschen | – | – | ✓ |
 
 So holt sich ein Berater den Link selbst, wenn er ein neues Telefon hat,
 ohne dafür jemanden fragen zu müssen – ausstellen kann er aber keinen.
@@ -2685,6 +2720,12 @@ Oberfläche: Ein AP-Zugang erreicht genau zwei Sammlungen (`apActivities`,
 `apMonths`) sowie lesend die Einstellungen – wegen des Gemeindenamens in der
 Kopfzeile. Jede andere Abfrage lehnt der Server ab. `npm run test:rules`
 prüft das in beide Richtungen.
+
+Die beiden AP-Rollen sind deshalb **keine Rollen zum Lesen mehr**: Der Plan
+selbst steht unter `/ap` ohnehin jedem offen (siehe [«Wer den Plan
+sieht»](#wer-den-plan-sieht)). Was sie hinzugeben, ist das Schreibrecht
+(`ap_editor`) und der Zugang zu den Kalender-Abos – für jemanden, der den Plan
+bloss lesen will, braucht es heute kein Konto mehr.
 
 ### Die Farbe einer Person
 

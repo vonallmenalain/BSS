@@ -566,6 +566,15 @@ starten als `pending` und sehen nichts – erst ein freigeschaltetes Konto
 vergibt eine Rolle. Durchgesetzt wird das in `firestore.rules`, nicht im
 Frontend.
 
+**Eine Ausnahme: der Aktivitätenplan.** Er steht unter `/ap` offen – ohne
+Anmeldung, nur zum Lesen. Er ist das Anschlagbrett der AP's und wird den
+Jugendlichen, ihren Eltern und den Beratern als Link geschickt; ein
+Anschlagbrett, für das man sich anmelden muss, wird nicht gelesen. Offen sind
+dafür genau zwei Sammlungen (`apActivities`, `apMonths`) und nur lesend.
+Geändert wird der Plan weiterhin nur mit Rolle, und alles Übrige – Mitglieder,
+Berufungen, Sitzungen, selbst die Einstellungen – bleibt verschlossen. Die
+Regeltests prüfen beide Hälften.
+
 Innerhalb der Bischofschaft gibt es keine weitere Abstufung: Alle Rollen lesen
 und schreiben dasselbe, und jede Person kann ihre eigene Rolle korrigieren –
 mangels Rechteunterschied ist damit keine Rechteausweitung verbunden. Ein
@@ -631,6 +640,8 @@ immer dasselbe: Termin verstrichen.
   Links, die Google Calendar, Apple Kalender und Outlook selbstständig
   abholen – ausgeliefert von einer Netlify-Function mit Dienstkonto, dem
   einzigen serverseitigen Teil der App
+- Derselbe Plan öffentlich unter `/ap`: ohne Anmeldung zu lesen, nicht zu
+  ändern – die einzige Seite der App, die kein Konto verlangt
 - PWA: installierbar, offline speichern mit Warteschlange und Konflikthinweis,
   Update-Hinweis
 - Firestore-Sicherheitsregeln und Indizes

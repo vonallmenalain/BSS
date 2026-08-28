@@ -49,6 +49,12 @@
     Permissions-Policy = "camera=(), microphone=(), geolocation=(), interest-cohort=()"
     Strict-Transport-Security = "max-age=31536000; includeSubDomains"
     # Die App enthält Personendaten – Suchmaschinen und Archive fernhalten.
+    #
+    # Das gilt auch für den öffentlichen Aktivitätenplan unter «/ap»: Er ist
+    # ohne Anmeldung zu lesen, aber nicht zu finden. «Öffentlich» heisst hier
+    # «wer den Link hat» – ein Plan mit Vornamen und Treffpunkten gehört
+    # nicht in einen Suchindex und schon gar nicht in ein Archiv, das ihn
+    # aufbewahrt, wenn er längst geändert ist.
     X-Robots-Tag = "noindex, nofollow, noarchive"
 
 # Gehashte Assets sind unveränderlich und dürfen lange gecacht werden.

@@ -503,7 +503,9 @@ describe('Assistenz der Abendmahlsversammlung', () => {
       await assertFails(getDocs(collection(as(), 'cleaningWeeks')))
       await assertFails(getDocs(collection(as(), 'monthlyDuties')))
       await assertFails(getDocs(collection(as(), 'announcementSeries')))
-      await assertFails(getDocs(collection(as(), 'apActivities')))
+      // `apActivities` steht hier bewusst nicht mehr: Der Aktivitätenplan
+      // ist öffentlich (siehe «Der Plan steht offen»), und was die ganze
+      // Welt lesen darf, ist der Assistenz nicht vorzuenthalten.
       await assertFails(getDocs(collection(as(), 'impulseItems')))
       await assertFails(getDocs(collection(as(), 'accessLog')))
     }
@@ -1499,11 +1501,13 @@ describe('Benachrichtigungen', () => {
 
 /*
  * Der AP-Kalender ist der einzige Bereich, der über die Bischofschaft
- * hinaus geteilt wird. Die Regeln müssen deshalb zwei Dinge zugleich
+ * hinaus geteilt wird – seit der Plan unter `/ap` öffentlich ist, sogar
+ * ohne jede Anmeldung. Die Regeln müssen deshalb zwei Dinge zugleich
  * leisten: den Kalender öffnen und alles andere zuhalten. Genau das prüfen
  * die folgenden Tests – und zwar in beide Richtungen, denn ein Zugang, der
  * versehentlich die Mitgliederliste mitbringt, wäre der teuerste Fehler in
- * dieser Datenbank.
+ * dieser Datenbank. Was ohne Konto offensteht und was nicht, steht zuunterst
+ * unter «Der Plan steht offen».
  */
 describe('Aktivitäten AP', () => {
   it('lässt beide AP-Rollen den Kalender lesen', async () => {
@@ -1654,12 +1658,13 @@ describe('Aktivitäten AP', () => {
     await assertFails(setDoc(doc(asApEditor(), 'settings', 'app'), { wardName: 'Anders' }))
   })
 
-  it('gibt einem wartenden Konto auch den AP-Kalender nicht', async () => {
-    await assertFails(getDocs(collection(asPending(), 'apActivities')))
+  it('lässt ein wartendes Konto den Plan lesen, aber nichts daran ändern', async () => {
+    // Lesen darf ihn jeder – auch ohne Konto. Ein wartendes Konto deshalb
+    // erst recht; die Schranke steht beim Schreiben.
+    await assertSucceeds(getDocs(collection(asPending(), 'apActivities')))
     await assertFails(
       setDoc(doc(asPending(), 'apActivities', 'versuch'), { date: '2026-01-07', kind: 'activity' }),
     )
-    await assertFails(getDocs(collection(asAnonymous(), 'apActivities')))
   })
 
   it('lässt den Vollzugriff den Kalender ebenfalls führen', async () => {
@@ -1674,6 +1679,71 @@ describe('Aktivitäten AP', () => {
     await assertFails(updateDoc(doc(asApViewer(), 'users', AP_VIEWER), { role: 'ap_editor' }))
     // Auch nicht bei jemand anderem.
     await assertFails(updateDoc(doc(asApEditor(), 'users', PENDING), { role: 'secretary' }))
+  })
+
+  /*
+   * Der Plan steht offen – und sonst nichts.
+   *
+   * `/ap` ist die eine Seite, die ohne Anmeldung erreichbar ist: das
+   * Anschlagbrett der AP's. Das ist eine Entscheidung der Bischofschaft und
+   * hier bloss festgehalten. Die Tests darunter prüfen deshalb beides, und
+   * das zweite ist das wichtigere: Was offensteht, ist der Plan – nicht die
+   * Tür daneben.
+   */
+  describe('Der Plan steht offen', () => {
+    it('lässt jeden ohne Anmeldung den Plan lesen', async () => {
+      await assertSucceeds(getDocs(collection(asAnonymous(), 'apActivities')))
+      await assertSucceeds(getDoc(doc(asAnonymous(), 'apActivities', 'aktivitaet-1')))
+      await assertSucceeds(getDocs(collection(asAnonymous(), 'apMonths')))
+      await assertSucceeds(getDoc(doc(asAnonymous(), 'apMonths', '2026-01')))
+    })
+
+    it('lässt ohne Anmeldung nichts daran ändern', async () => {
+      await assertFails(
+        setDoc(doc(asAnonymous(), 'apActivities', 'eingeschmuggelt'), {
+          date: '2026-04-01',
+          kind: 'activity',
+          title: 'Von aussen',
+        }),
+      )
+      await assertFails(
+        updateDoc(doc(asAnonymous(), 'apActivities', 'aktivitaet-1'), { title: 'Umbenannt' }),
+      )
+      await assertFails(deleteDoc(doc(asAnonymous(), 'apActivities', 'aktivitaet-1')))
+      await assertFails(
+        setDoc(doc(asAnonymous(), 'apMonths', '2026-05'), {
+          month: '2026-05',
+          leadership: 'Von aussen',
+        }),
+      )
+    })
+
+    it('gibt ohne Anmeldung ausser dem Plan gar nichts heraus', async () => {
+      // Die eigentliche Zusage: Der Plan ist offen, die Gemeinde ist es nicht.
+      for (const name of [
+        'members',
+        'users',
+        'callings',
+        'agendaItems',
+        'meetings',
+        'notes',
+        'talks',
+        'prayers',
+        'sacramentMeetings',
+        'cleaningWeeks',
+        'announcementSeries',
+        'monthlyDuties',
+        'impulseItems',
+        'calendarFeeds',
+        'accessLog',
+      ]) {
+        await assertFails(getDocs(collection(asAnonymous(), name)))
+      }
+      // Auch die Einstellungen nicht: Der Gemeindename in der Kopfzeile ist
+      // kein Grund, den Rest davon der Öffentlichkeit hinzulegen. Die Seite
+      // schreibt dort «Aktivitätenplan» und kommt ohne aus.
+      await assertFails(getDoc(doc(asAnonymous(), 'settings', 'app')))
+    })
   })
 })
 

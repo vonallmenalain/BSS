@@ -61,6 +61,18 @@ interface AuthContextValue {
   isBishop: boolean
   /** Das Administrator-Konto – verwaltet als Einziges Benutzer und Rollen. */
   isAdmin: boolean
+  /**
+   * Niemand ist angemeldet – der öffentliche Blick auf den Aktivitätenplan.
+   *
+   * Genau eine Seite steht ohne Konto offen (`/ap`), und sie steht offen,
+   * weil der Plan das Anschlagbrett der AP's ist (siehe `firestore.rules`).
+   * Alles andere führt weiterhin zur Anmeldung.
+   *
+   * Erst wahr, wenn die Anmeldung geprüft ist: Solange `loading` gilt, weiss
+   * niemand, ob da ein Konto ist – und die Hülle der App soll nicht erst als
+   * Besuch erscheinen und einen Augenblick später als angemeldetes Konto.
+   */
+  isGuest: boolean
   /** Darf «Aktivitäten AP’s» sehen – Vollzugriff eingeschlossen. */
   canViewAp: boolean
   /** Darf im AP-Kalender auch schreiben. */
@@ -389,6 +401,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       firebaseUser,
       profile,
       loading,
+      isGuest: !loading && !firebaseUser,
       isApproved,
       isBishopric: Boolean(role && BISHOPRIC_ROLES.includes(role)),
       isBishop: role === 'bishop',
