@@ -44,11 +44,13 @@ rules_version = '2';
 // Sammlungen und bleibt verschlossen wie zuvor.
 //
 // Geschrieben wird darin weiterhin nur mit Rolle (`apWrite()`); die
-// Öffentlichkeit sieht den Plan, sie ändert ihn nicht. Auch die Links, unter
-// denen der Plan als Kalender abonniert werden kann (`calendarFeeds`),
-// bleiben angemeldeten Konten vorbehalten: Ein Link ist die Berechtigung
-// und lässt sich einzeln widerrufen – etwas anderes als eine Seite, die
-// ohnehin offensteht.
+// Öffentlichkeit sieht den Plan, sie ändert ihn nicht.
+//
+// Abonnieren kann ihn ebenfalls jeder: Die Netlify-Function gibt den Plan
+// unter `/api/ap.ics` auch ohne Token heraus. Die **Liste** der vergebenen
+// Links (`calendarFeeds`) bleibt dagegen angemeldeten Konten vorbehalten –
+// nicht weil sie den Plan schützte, sondern weil dort steht, wer welchen
+// Link hat und wann er zuletzt abgerufen wurde.
 //
 // Die dritte Ausnahme ist die **Assistenz** der Abendmahlsversammlung. Die
 // Vorbereitung des Sonntags lässt sich abgeben – Ansprachen anfragen, die
@@ -539,13 +541,16 @@ service cloud.firestore {
      * Die Links, unter denen der Plan als Kalender abonniert werden kann.
      *
      * Lesen darf sie jedes Konto, das den Plan sieht – auch `ap_viewer`;
-     * ohne Anmeldung dagegen niemand, obwohl der Plan selbst offensteht.
-     * Das ist kein Widerspruch, sondern der Unterschied zwischen einer
-     * Seite und einer Berechtigung: Ein Feed-Link trägt sein Token, wer ihn
-     * liest, kann ihn weitergeben, und widerrufen wird er einzeln. Eine
-     * Liste dieser Links gehört deshalb nicht ins Schaufenster – wer den
-     * Plan bloss lesen will, findet ihn unter `/ap`, dafür braucht er
-     * keinen Link.
+     * ohne Anmeldung dagegen niemand, obwohl der Plan selbst offensteht und
+     * sich unter `/api/ap.ics` auch ohne Token abonnieren lässt.
+     *
+     * Das ist kein Widerspruch: Was hier steht, ist nicht der Plan, sondern
+     * die Buchführung über ihn – wer welchen Link bekommen hat, was er
+     * zeigt, wann er zuletzt abgerufen wurde und ob er noch gilt. «Bruder
+     * Müller, seit drei Monaten nicht mehr abgerufen» ist eine Auskunft über
+     * eine Person und gehört nicht ins Schaufenster. Wer bloss abonnieren
+     * will, braucht diese Liste nicht: Der öffentliche Link steht im Dialog
+     * «Abonnieren» und kommt ohne sie aus.
      *
      * Vergeben, widerrufen und löschen darf sie weiterhin nur, wer den Plan
      * auch pflegen darf. Wer bloss zusieht, kopiert einen bestehenden Link –
@@ -553,8 +558,8 @@ service cloud.firestore {
      *
      * Ausgeliefert wird der Feed nicht von hier, sondern von der
      * Netlify-Function. Die arbeitet mit einem Dienstkonto und geht damit an
-     * diesen Regeln vorbei; sie prüft dafür das Token – ein Kalenderprogramm
-     * kann sich nirgends anmelden.
+     * diesen Regeln vorbei; steht ein Token in der Adresse, prüft sie es –
+     * ein Kalenderprogramm kann sich nirgends anmelden.
      */
     match /calendarFeeds/{feedId} {
       allow read: if apAccess();

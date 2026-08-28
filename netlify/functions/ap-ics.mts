@@ -32,16 +32,24 @@ import { buildApIcs, type IcsActivity } from '../../src/lib/apIcs.ts'
  * Schreibvorgang – steht in wenigen Dutzend Zeilen darunter und hat dafür
  * keine einzige Abhängigkeit, die brechen könnte.
  *
- * ## Was sie prüft
+ * ## Zwei Adressen, ein Plan
  *
- * Das Token aus der Adresse gegen die Sammlung `calendarFeeds`. Es ist die
- * ganze Berechtigung – ein Kalender kann sich nirgends anmelden, also muss
- * sie in der Adresse stecken. Ein unbekanntes oder widerrufenes Token
- * bekommt 404 und keine Auskunft darüber, welches von beidem zutraf.
+ * **Ohne Token** – `/api/ap.ics` – kommt der ganze Plan heraus. Das ist der
+ * Link, den man weitergibt, seit die Seite unter `/ap` ohnehin jedem
+ * offensteht: Ein Token schützte hier nichts mehr, es machte den Link bloss
+ * lang und den Weg dorthin umständlich. Wer den Plan lesen darf – und das
+ * darf jeder –, darf ihn auch abonnieren.
  *
- * Das Dienstkonto geht an den Sicherheitsregeln vorbei. Diese Function ist
- * damit der einzige Weg, auf dem ein Abruf ohne Anmeldung an Daten kommt –
- * und sie gibt ausschliesslich den Aktivitätenplan heraus, nie etwas anderes.
+ * **Mit Token** – `/api/ap.ics?token=…` – wird das Token gegen die Sammlung
+ * `calendarFeeds` geprüft. Diese Links bleiben, weil sie etwas können, was
+ * der öffentliche nicht kann: Sie zeigen wahlweise nur bestimmte Arten von
+ * Terminen, und an ihnen steht, wann ein Kalenderprogramm zuletzt vorbeikam.
+ * Ein unbekanntes oder widerrufenes Token bekommt 404 und keine Auskunft
+ * darüber, welches von beidem zutraf.
+ *
+ * Das Dienstkonto geht an den Sicherheitsregeln vorbei. Es gibt
+ * ausschliesslich den Aktivitätenplan heraus, nie etwas anderes – die
+ * Abfragen darunter nennen die Sammlungen einzeln beim Namen.
  */
 
 /* ------------------------------------------------------------------ */
@@ -73,6 +81,24 @@ const MAX_ACTIVITIES = 5000
  * alle zehn Minuten genügt.
  */
 const TOUCH_AFTER_MS = 10 * 60 * 1000
+
+/**
+ * Wie lange der öffentliche Feed gemerkt wird.
+ *
+ * Ohne Token kann die Adresse jeder abrufen, auch mehrmals in der Minute –
+ * und jeder Abruf läse sonst den ganzen Plan aus Firestore. Ein
+ * Kalenderprogramm schaut alle paar Stunden vorbei; zehn Minuten Verzug
+ * bemerkt dort niemand, und die Datenbank bleibt verschont.
+ *
+ * Gemerkt wird im Speicher der laufenden Function. Sie friert zwischen den
+ * Abrufen ein und startet irgendwann neu – der Vorrat gilt also nur für eine
+ * warme Instanz und ist keine Zusage, sondern eine Erleichterung. Genau die
+ * Abrufe, die kurz hintereinander kommen, fängt er ab.
+ */
+const PUBLIC_CACHE_MS = 10 * 60 * 1000
+
+/** Der zuletzt gebaute öffentliche Feed – siehe `PUBLIC_CACHE_MS`. */
+let publicFeed: { ics: string; builtAt: number } | null = null
 
 const FIRESTORE = 'https://firestore.googleapis.com/v1'
 const TOKEN_ENDPOINT = 'https://oauth2.googleapis.com/token'
@@ -376,8 +402,18 @@ function fail(status: number, message: string): Response {
 }
 
 export default async function handler(request: Request): Promise<Response> {
+  /*
+   * Kein Token heisst nicht «unvollständig», sondern «der öffentliche Feed».
+   *
+   * Bis der Plan öffentlich wurde, war das hier ein Fehler (400). Heute ist
+   * es der Normalfall: `/api/ap.ics` ohne alles gibt den ganzen Plan heraus,
+   * und ein Token schränkt ihn höchstens noch ein.
+   */
   const token = new URL(request.url).searchParams.get('token')?.trim()
-  if (!token) return fail(400, 'Es fehlt der Parameter «token».')
+
+  if (!token && publicFeed && Date.now() - publicFeed.builtAt < PUBLIC_CACHE_MS) {
+    return new Response(publicFeed.ics, { status: 200, headers: ICS_HEADERS })
+  }
 
   let client: Client
   try {
@@ -390,27 +426,37 @@ export default async function handler(request: Request): Promise<Response> {
   }
 
   try {
-    /* ---- Das Abo heraussuchen ---- */
+    /* ---- Das Abo heraussuchen – wenn eines genannt ist ---- */
 
-    const [feed] = await runQuery(client, {
-      from: [{ collectionId: 'calendarFeeds' }],
-      where: equals('token', token),
-      limit: 1,
-    })
+    let feed: FirestoreDocument | null = null
+    let wanted: Set<string> | null = null
 
-    /*
-     * Unbekannt und widerrufen ergeben dieselbe Antwort.
-     *
-     * Ein «403 – widerrufen» bestätigte, dass es das Token einmal gab, und
-     * ein Unterschied in der Antwortzeit täte dasselbe. 404 sagt nur, dass
-     * hier nichts zu holen ist.
-     */
-    if (!feed || field(feed, 'active') !== true) {
-      return fail(404, 'Dieser Kalender-Link ist nicht (mehr) gültig.')
+    if (token) {
+      ;[feed] = await runQuery(client, {
+        from: [{ collectionId: 'calendarFeeds' }],
+        where: equals('token', token),
+        limit: 1,
+      })
+
+      /*
+       * Unbekannt und widerrufen ergeben dieselbe Antwort.
+       *
+       * Ein «403 – widerrufen» bestätigte, dass es das Token einmal gab, und
+       * ein Unterschied in der Antwortzeit täte dasselbe. 404 sagt nur, dass
+       * hier nichts zu holen ist.
+       *
+       * Ein widerrufener Link führt bewusst **nicht** auf den öffentlichen
+       * Feed: Wer widerruft, will diesen Kalender leerlaufen lassen – ihn
+       * stattdessen kommentarlos weiterzubedienen wäre das Gegenteil dessen,
+       * was der Knopf verspricht.
+       */
+      if (!feed || field(feed, 'active') !== true) {
+        return fail(404, 'Dieser Kalender-Link ist nicht (mehr) gültig.')
+      }
+
+      const kinds = field(feed, 'kinds')
+      wanted = Array.isArray(kinds) && kinds.length > 0 ? new Set(kinds as string[]) : null
     }
-
-    const kinds = field(feed, 'kinds')
-    const wanted = Array.isArray(kinds) && kinds.length > 0 ? new Set(kinds as string[]) : null
 
     /* ---- Termine, Monate und der Gemeindename ---- */
 
@@ -468,12 +514,18 @@ export default async function handler(request: Request): Promise<Response> {
       leadership,
     })
 
-    // Erst antworten wäre schöner, geht aber nicht: Nach der Antwort friert
-    // die Function ein. Der Vermerk ist ein einzelner Schreibvorgang und
-    // scheitert im Zweifel lautlos – der Kalender hängt nicht daran.
-    await touch(client, feed).catch((error) => {
-      console.warn('[ap-ics] Abrufzeitpunkt nicht vermerkt:', error)
-    })
+    if (feed) {
+      // Erst antworten wäre schöner, geht aber nicht: Nach der Antwort friert
+      // die Function ein. Der Vermerk ist ein einzelner Schreibvorgang und
+      // scheitert im Zweifel lautlos – der Kalender hängt nicht daran.
+      await touch(client, feed).catch((error) => {
+        console.warn('[ap-ics] Abrufzeitpunkt nicht vermerkt:', error)
+      })
+    } else {
+      // Der öffentliche Feed hat keinen Ort, an dem ein Abruf vermerkt werden
+      // könnte – er hat dafür einen Vorrat für den nächsten (`PUBLIC_CACHE_MS`).
+      publicFeed = { ics, builtAt: Date.now() }
+    }
 
     return new Response(ics, { status: 200, headers: ICS_HEADERS })
   } catch (error) {

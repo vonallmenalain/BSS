@@ -195,8 +195,8 @@ base64 -w0 dienstkonto.json
 > abhandengekommen, lässt sich der Schlüssel in der Firebase-Konsole
 > zurückziehen und ein neuer erzeugen.
 
-Ohne diesen Wert läuft die App vollständig – nur die Kalender-Links
-antworten mit einer Fehlermeldung.
+Ohne diesen Wert läuft die App vollständig – nur der Kalender antwortet mit
+einer Fehlermeldung, der Link für alle wie die vergebenen.
 
 ---
 
@@ -316,16 +316,24 @@ FIRESTORE_EMULATOR_HOST=127.0.0.1:8080
 ```
 
 Ist dieser Wert gesetzt, spricht die Function mit dem Emulator statt mit dem
-Produktivprojekt und braucht kein `FIREBASE_SERVICE_ACCOUNT`. Danach in der
-App einen Link anlegen (**Aktivitäten AP's → Abonnieren**) und ihn abrufen:
+Produktivprojekt und braucht kein `FIREBASE_SERVICE_ACCOUNT`. Der Link für
+alle geht sofort:
+
+```bash
+curl "http://localhost:8888/api/ap.ics"
+```
+
+Für einen zugeschnittenen Link vorher in der App einen anlegen
+(**Aktivitäten AP's → Abonnieren**) und ihn mitgeben:
 
 ```bash
 curl "http://localhost:8888/api/ap.ics?token=DEIN-TOKEN"
 ```
 
-Ein unbekanntes oder widerrufenes Token bekommt `404`, ein gültiges den
-Kalender als `text/calendar`. In der Produktion ist die Variable nicht
-gesetzt, und dann führt kein Weg am Dienstkonto vorbei.
+Ohne Token kommt der ganze Plan; ein unbekanntes oder widerrufenes Token
+bekommt `404`, ein gültiges den Kalender als `text/calendar`. In der
+Produktion ist die Variable nicht gesetzt, und dann führt kein Weg am
+Dienstkonto vorbei.
 
 ---
 
@@ -1688,12 +1696,14 @@ den Plan wie bisher – der Link taugt also gleichermassen für die Gruppe der
 Jugendführung wie für den Aushang. Wer nicht angemeldet ist, sieht dieselbe
 Seite, bloss ohne alles, was ein Konto braucht:
 
-|                              | ohne Anmeldung | AP-Kalender · nur ansehen | AP-Kalender · bearbeiten |
-| ---------------------------- | -------------- | ------------------------- | ------------------------ |
-| Plan lesen, Ansicht wählen   | ja             | ja                        | ja                       |
-| **Abonnieren** (Kalender)    | –              | Links kopieren            | anlegen und widerrufen   |
-| Bearbeitungsmodus            | –              | –                         | ja                       |
-| Alles Übrige in der App      | –              | –                         | –                        |
+|                                | ohne Anmeldung | AP-Kalender · nur ansehen | AP-Kalender · bearbeiten |
+| ------------------------------ | -------------- | ------------------------- | ------------------------ |
+| Plan lesen, Ansicht wählen     | ja             | ja                        | ja                       |
+| **Abonnieren** (Link für alle) | ja             | ja                        | ja                       |
+| Vergebene Links sehen          | –              | ja                        | ja                       |
+| Links anlegen und widerrufen   | –              | –                         | ja                       |
+| Bearbeitungsmodus              | –              | –                         | ja                       |
+| Alles Übrige in der App        | –              | –                         | –                        |
 
 Oben rechts steht statt des Benutzermenüs ein Knopf **Anmelden**; Seitenleiste
 und untere Leiste fehlen, denn ohne Konto gibt es nichts, wohin sie führen
@@ -1707,6 +1717,13 @@ Ansprachen, sogar die Einstellungen (deshalb steht in der Kopfzeile
 «Aktivitätenplan» statt des Gemeindenamens). Durchgesetzt wird das nicht in der
 Oberfläche, sondern in `firestore.rules`; `npm run test:rules` prüft beide
 Hälften – dass der Plan offen ist und dass sonst nichts mitkommt.
+
+**Abonnieren geht ebenfalls ohne Konto.** Hinter **Abonnieren** steht zuoberst
+der Link für alle – `bss.alae.app/api/ap.ics`, ohne Token. Nicht öffentlich ist
+die **Liste der vergebenen Links**: Dort steht, wer welchen bekommen hat und
+wann er zuletzt abgerufen wurde, und das ist eine Auskunft über Personen. Mehr
+dazu unter [«Im eigenen Kalender
+abonnieren»](#im-eigenen-kalender-abonnieren).
 
 **Geändert wird weiterhin nur mit Konto.** Berater und Jugendführung, die den
 Plan pflegen sollen, bekommen dafür einen Zugang, der **nur** den AP-Kalender
@@ -1727,6 +1744,18 @@ der Aktivitätenplan im eigenen Kalender neben allem anderen – und bleibt dort
 aktuell: Neue Termine erscheinen, geänderte rücken, gelöschte verschwinden.
 Niemand muss etwas exportieren, verschicken oder einlesen.
 
+**Der Link für alle** steht zuoberst im Dialog und braucht kein Konto:
+
+```
+https://bss.alae.app/api/ap.ics
+```
+
+Das ist der Link, den man weitergibt – an die AP's, die Eltern, die Berater.
+Den Knopf **Abonnieren** sieht deshalb jeder, der den Plan sieht, auch ohne
+Anmeldung. Ein Token wäre hier kein Schutz mehr, seit der Plan unter `/ap`
+ohnehin offensteht; es machte den Link bloss lang und seine Weitergabe zu
+einem Vorgang.
+
 **Ein Abo ist kein Export.** Der Kalender holt sich die Termine unter dem
 Link immer wieder selbst. Nur eben nicht sofort: Wann er nachschaut,
 bestimmt er selbst. Google meist alle paar Stunden, im ungünstigen Fall erst
@@ -1742,59 +1771,57 @@ Ende fehlt, wird geschätzt – dann anderthalb Stunden, die übliche Länge
 eines Mittwochabends. Und was gar keine Zeit trägt, steht als ganztägiger
 Balken über dem Tag; eine erfundene Stunde wäre schlechter als gar keine.
 
-**Der Link ist die Berechtigung.** Ein Kalenderprogramm kann sich nirgends
-anmelden – es ruft eine Adresse ab, und was zurückkommt, zeigt es an. Deshalb
-steckt die Berechtigung im Link selbst, und deshalb ist er lang und zufällig.
-Wer ihn hat, sieht den Plan; wer ihn weitergibt, gibt den Plan weiter. Zwei
-Dinge halten den Preis dafür klein:
+**Wozu es daneben noch eigene Links gibt.** Der Link für alle zeigt den
+ganzen Plan und ist anonym – zwei Dinge kann er deshalb nicht, und dafür
+lassen sich eigene Links anlegen:
 
-- Der Link reicht **nur** an den Aktivitätenplan. Er ist kein Zugang zur App
-  und erst recht keiner zu den Mitgliederdaten.
-- Es gibt **mehrere** davon – je einen für die Berater, die Jugendführung
-  oder eine einzelne Person. Verschwindet ein Telefon, wird ein Link
-  widerrufen, und die übrigen bleiben.
+- **Zuschneiden.** Ein Link zeigt wahlweise nur bestimmte Arten. «Fällt aus»
+  erklärt im Plan eine Lücke; im eigenen Terminkalender will man sie
+  vielleicht nicht sehen.
+- **Nachsehen, ob er ankommt.** Zu jedem eigenen Link steht, wann ein
+  Kalenderprogramm ihn zuletzt geholt hat – die verlässlichste Antwort auf
+  «warum sehe ich den Kalender nicht?». Beim Link für alle gibt es diese
+  Zeile nicht; er wird nirgends vermerkt.
 
-> Deshalb einen Link nach der **Person oder Gruppe** benennen, die ihn
-> bekommt, und nicht nach seinem Inhalt. Ein Link «Nur Aktivitäten», den
-> sich acht Leute teilen, lässt sich nicht widerrufen, ohne allen achten den
-> Kalender zu nehmen – und damit wäre der Widerruf-Knopf wertlos. Was ein
-> Link zeigt, sagt die Auswahl der Arten daneben.
+Widerrufen lässt sich ein eigener Link ebenfalls, und das war früher sein
+eigentlicher Zweck. Heute ist es der kleinere: Der Plan steht ohnehin offen,
+ein Widerruf nimmt also niemandem etwas weg, was er nicht anderswo bekäme.
 
-**Wer was darf.** Den Knopf **Abonnieren** sieht jedes angemeldete Konto, das
-den Plan sieht – auch ein Zugang zum blossen Ansehen. Ohne Anmeldung fehlt er:
-Der Plan steht offen, ein Feed-Link ist dagegen eine Berechtigung, die einzeln
-widerrufen wird, und eine Liste davon gehört nicht ins Schaufenster. Dahinter
-unterscheidet sich, was er zeigt:
+> Einen Link deshalb weiterhin nach der **Person oder Gruppe** benennen, die
+> ihn bekommt, und nicht nach seinem Inhalt. Ein Link «Nur Aktivitäten», den
+> sich acht Leute teilen, lässt sich nicht einzeln zurücknehmen. Was ein Link
+> zeigt, sagt die Auswahl der Arten daneben.
+
+**Wer was darf.** Den Knopf **Abonnieren** sieht jeder, der den Plan sieht –
+also alle, auch ohne Anmeldung. Dahinter unterscheidet sich, was er zeigt:
 
 | | Ohne Anmeldung | Ansehen | Pflegen |
 |---|---|---|---|
-| Bestehende Links sehen und kopieren | – | ✓ | ✓ |
+| Den Link für alle kopieren | ✓ | ✓ | ✓ |
+| Vergebene Links sehen und kopieren | – | ✓ | ✓ |
 | Widerrufene Links sehen | – | – | ✓ |
 | Link anlegen, widerrufen, löschen | – | – | ✓ |
 
-So holt sich ein Berater den Link selbst, wenn er ein neues Telefon hat,
+Die **Liste** der vergebenen Links bleibt den Konten vorbehalten, und zwar
+nicht, weil sie den Plan schützte: Dort steht, wer welchen Link bekommen hat
+und wann er zuletzt abgerufen wurde – «Bruder Müller, seit drei Monaten nicht
+mehr abgerufen» ist eine Auskunft über eine Person und gehört nicht ins
+Schaufenster. Wer bloss abonnieren will, braucht die Liste nicht; er nimmt den
+Link zuoberst. Durchgesetzt wird das in den Zugriffsregeln und nicht bloss in
+der Oberfläche.
+
+So holt sich ein Berater seinen Link selbst, wenn er ein neues Telefon hat,
 ohne dafür jemanden fragen zu müssen – ausstellen kann er aber keinen.
-Durchgesetzt wird das in den Zugriffsregeln und nicht bloss in der
-Oberfläche.
 
-Das ist eine Abwägung: Wer den Link lesen kann, kann ihn weitergeben. Nur
-sieht ein solches Konto den ganzen Plan ohnehin schon; neu ist allein, dass
-es dauerhaften, sich selbst nachführenden Zugang verschenken könnte. Bei
-einem Plan aus Vornamen und Anlässen wiegt das leichter als der tägliche
-Umweg über die Bischofschaft.
-
-In der Verwaltung steht zu jedem Link, wann er zuletzt abgerufen wurde. Das
-ist die verlässlichste Antwort auf «warum sehe ich den Kalender nicht?»:
-Steht dort **noch nie abgerufen**, hat das Kalenderprogramm den Link gar
+Steht bei einem Link **noch nie abgerufen**, hat das Kalenderprogramm ihn gar
 nicht geholt – dann liegt es am Abo und nicht an den Terminen.
 
-Wahlweise lässt sich ein Link auf einzelne Arten einschränken. «Fällt aus»
-etwa erklärt im Plan eine Lücke; im eigenen Terminkalender will man sie
-vielleicht nicht sehen.
-
 Ausgeliefert wird der Kalender von einer kleinen Netlify-Function
-(`netlify/functions/ap-ics.mts`). Was sie dafür braucht, steht unter
-[Netlify](#netlify).
+(`netlify/functions/ap-ics.mts`) – mit Token wie ohne. Was sie dafür braucht,
+steht unter [Netlify](#netlify). Den Link für alle merkt sie sich dabei für
+zehn Minuten: Eine Adresse, die jeder abrufen kann, soll nicht bei jedem
+Aufruf den ganzen Plan aus der Datenbank lesen. Ein Kalenderprogramm schaut
+ohnehin nur alle paar Stunden vorbei.
 
 ---
 

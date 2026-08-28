@@ -103,13 +103,13 @@ import {
  *
  * Und er ist der einzige, der ganz **ohne Anmeldung** offensteht: Unter
  * `/ap` liest ihn, wer den Link hat – die AP's selbst, ihre Eltern, die
- * Berater. Für sie ist die Seite dieselbe, bloss ohne alles, was ein Konto
- * braucht: kein Bearbeitungsmodus (den gibt `canEditAp`) und kein
- * **Abonnieren** (die Feed-Links stehen nur angemeldeten Konten offen,
- * siehe `firestore.rules`). Übrig bleibt der Plan, und genau darum geht es.
+ * Berater. Für sie ist die Seite dieselbe, bloss ohne den
+ * Bearbeitungsmodus; den gibt `canEditAp`. **Abonnieren** steht auch ihnen
+ * offen: Dahinter wartet der Link für alle, und den gibt es seit der Öffnung
+ * des Plans ohne Token (siehe `ApFeedDialog`).
  */
 export function ApActivities() {
-  const { canEditAp, canViewAp } = useAuth()
+  const { canEditAp } = useAuth()
   const { data: activities, loading } = useApActivities()
   const { data: months } = useApMonths()
   /* Minütlich: Ob ein Termin noch läuft, entscheidet sich an seiner Endzeit –
@@ -257,29 +257,23 @@ export function ApActivities() {
              * den Plan gerade jemandem zeigt. Auf schmalen Bildschirmen
              * bleibt nur das Symbol; die Kopfzeile trägt sonst vier Knöpfe.
              *
-             * Der Knopf steht jedem Konto offen, das den Plan sieht – auch
-             * ohne Schreibrecht. Es kommt dahinter zur Liste der bestehenden
-             * Links und kopiert sich einen; anlegen und widerrufen bleibt der
-             * Verwaltung vorbehalten (siehe `ApFeedDialog`).
-             *
-             * Nicht dabei ist der Besuch ohne Konto: Die Feed-Links sind
-             * Berechtigungen und nicht Teil des Plans – die Zugriffsregeln
-             * geben sie ohne Anmeldung nicht heraus, und ein Knopf, hinter
-             * dem dann «keine Berechtigung» stünde, wäre ein Versprechen,
-             * das die Seite nicht hält.
+             * Der Knopf steht jedem offen, der den Plan sieht – also allen,
+             * auch ohne Anmeldung. Dahinter steht zuoberst der Link für alle
+             * (`/api/ap.ics`, ohne Token), und das ist es, wofür der Knopf
+             * gedrückt wird. Was ein Konto zusätzlich sieht – die vergebenen
+             * Links, und mit Schreibrecht deren Verwaltung –, entscheidet der
+             * Dialog (siehe `ApFeedDialog`).
              */}
-            {canViewAp && (
-              <button
-                type="button"
-                className="btn-secondary"
-                onClick={() => setFeedOpen(true)}
-                title="Den Plan in Google Calendar oder Apple Kalender abonnieren"
-              >
-                <CalendarSync className="size-4" aria-hidden />
-                <span className="hidden lg:inline">Abonnieren</span>
-                <span className="sr-only lg:hidden">Kalender abonnieren</span>
-              </button>
-            )}
+            <button
+              type="button"
+              className="btn-secondary"
+              onClick={() => setFeedOpen(true)}
+              title="Den Plan in Google Calendar oder Apple Kalender abonnieren"
+            >
+              <CalendarSync className="size-4" aria-hidden />
+              <span className="hidden lg:inline">Abonnieren</span>
+              <span className="sr-only lg:hidden">Kalender abonnieren</span>
+            </button>
 
             {canEditAp &&
               (editMode ? (
@@ -456,10 +450,7 @@ export function ApActivities() {
         activities={activities}
       />
 
-      {/* Nur mit Konto – und deshalb gar nicht erst gezeichnet: Der Dialog
-          fragt beim Öffnen die Feed-Links ab, und die stehen ohne Anmeldung
-          nicht offen. */}
-      {canViewAp && <ApFeedDialog open={feedOpen} onClose={() => setFeedOpen(false)} />}
+      <ApFeedDialog open={feedOpen} onClose={() => setFeedOpen(false)} />
     </>
   )
 }
