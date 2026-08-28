@@ -1,4 +1,5 @@
 import { useState, type FormEvent } from 'react'
+import { Link } from 'react-router-dom'
 import { AlertCircle, Eye, EyeOff, Loader2 } from 'lucide-react'
 import { useAuth } from '@/contexts/AuthContext'
 import { useToast } from '@/contexts/ToastContext'
@@ -202,6 +203,20 @@ export function Login() {
             )}
           </div>
         </div>
+
+        {/*
+         * Der Weg zum Plan, ohne Konto.
+         *
+         * Wer den Link zum Aktivitätenplan weitergibt, gibt ihn oft an
+         * jemanden, der die App nicht kennt – und wer von dort aus einmal
+         * hier landet (ein altes Lesezeichen, ein Tippfehler), soll nicht
+         * vor einem Anmeldeformular stehen, das er gar nicht braucht.
+         */}
+        <p className="mt-4 text-center text-sm">
+          <Link to="/ap" className="text-brand-600 dark:text-brand-300 hover:underline">
+            Aktivitätenplan der AP’s ansehen
+          </Link>
+        </p>
 
         <p className="mt-4 text-center text-xs text-slate-400">
           Neue Konten werden erst nach Freigabe durch die Bischofschaft aktiv.

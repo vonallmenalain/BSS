@@ -452,22 +452,26 @@ export function useCleaningWeeks(limitCount = 400) {
 /**
  * Der Aktivitätenplan der Priestertumskollegien.
  *
- * Freigegeben ist er auch für Konten, die sonst nichts sehen – deshalb hängt
- * er an `canViewAp` und nicht an `isApproved`.
+ * Als einzige Sammlung hängt er an keiner Bedingung: Der Plan ist das
+ * Anschlagbrett der AP's und steht jedem offen, angemeldet oder nicht
+ * (siehe `firestore.rules`). Eine Bedingung stünde hier deshalb nur im Weg –
+ * sie müsste die öffentliche Seite eigens wieder erlauben, und dann sagte
+ * sie nichts mehr.
+ *
+ * Gelesen wird er trotzdem nur dort, wo er gebraucht wird: Das Abonnement
+ * beginnt mit der ersten Ansicht, die diesen Hook aufruft.
  */
 export function useApActivities(limitCount = 600) {
-  const { canViewAp } = useAuth()
-  const state = useCollection<ApActivity>(COLLECTIONS.apActivities, canViewAp)
+  const state = useCollection<ApActivity>(COLLECTIONS.apActivities)
   return useMemo(
     () => ({ ...state, data: capped(byDate(state.data, 'date', 'asc'), limitCount) }),
     [state, limitCount],
   )
 }
 
-/** Welches Kollegium welchen Monat führt. */
+/** Welches Kollegium welchen Monat führt – wie der Plan selbst öffentlich. */
 export function useApMonths() {
-  const { canViewAp } = useAuth()
-  const state = useCollection<ApMonth>(COLLECTIONS.apMonths, canViewAp)
+  const state = useCollection<ApMonth>(COLLECTIONS.apMonths)
   return useMemo(
     () => ({
       ...state,
@@ -480,10 +484,12 @@ export function useApMonths() {
 /**
  * Die Links, unter denen der Plan als Kalender abonniert werden kann.
  *
- * Hängt an `canViewAp` wie der Plan selbst: Wer ihn sieht, darf ihn sich
- * auch in den eigenen Kalender holen und braucht dafür den Link. Anlegen und
- * widerrufen bleibt dem Schreibrecht vorbehalten – das entscheidet nicht
- * dieser Hook, sondern `firestore.rules`.
+ * Hängt an `canViewAp` – anders als der Plan selbst, der offensteht. Ein
+ * Link ist die Berechtigung und wird einzeln widerrufen; die Liste davon
+ * gehört den Konten, nicht der öffentlichen Seite. Wer ihn sieht, darf ihn
+ * sich in den eigenen Kalender holen; anlegen und widerrufen bleibt dem
+ * Schreibrecht vorbehalten – das entscheidet nicht dieser Hook, sondern
+ * `firestore.rules`.
  *
  * Zuletzt angelegte zuoberst – der eben erzeugte Link ist der, den man sucht.
  */

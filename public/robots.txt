@@ -1,3 +1,7 @@
 # Die App enthält Personendaten und gehört nicht in Suchmaschinen.
+#
+# Auch «/ap» nicht, obwohl der Aktivitätenplan dort ohne Anmeldung offensteht:
+# «Öffentlich» heisst, wer den Link hat – nicht, wer danach sucht. Dieselbe
+# Absage steht als Kopfzeile in `netlify.toml`.
 User-agent: *
 Disallow: /

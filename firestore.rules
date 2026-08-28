@@ -34,6 +34,22 @@ rules_version = '2';
 // Übrige bleibt ihnen verschlossen, und zwar hier und nicht erst in der
 // Oberfläche.
 //
+// **Der Plan selbst ist öffentlich.** `apActivities` und `apMonths` darf
+// jeder lesen, auch ohne Anmeldung – das ist die Seite unter `/ap`, die
+// den AP's, ihren Eltern und den Beratern geschickt wird, ohne dass sich
+// dafür jemand ein Konto einrichten müsste. Ein Aktivitätenplan hängt
+// sonst am Anschlagbrett; er trägt Datum, Anlass, Treffpunkt und Vornamen,
+// und genau dafür wird er verschickt. Was er nicht trägt – Adressen,
+// Geburtsdaten, Berufungen, alles Seelsorgerische –, steht in anderen
+// Sammlungen und bleibt verschlossen wie zuvor.
+//
+// Geschrieben wird darin weiterhin nur mit Rolle (`apWrite()`); die
+// Öffentlichkeit sieht den Plan, sie ändert ihn nicht. Auch die Links, unter
+// denen der Plan als Kalender abonniert werden kann (`calendarFeeds`),
+// bleiben angemeldeten Konten vorbehalten: Ein Link ist die Berechtigung
+// und lässt sich einzeln widerrufen – etwas anderes als eine Seite, die
+// ohnehin offensteht.
+//
 // Die dritte Ausnahme ist die **Assistenz** der Abendmahlsversammlung. Die
 // Vorbereitung des Sonntags lässt sich abgeben – Ansprachen anfragen, die
 // Lieder aussuchen, die Gebete verteilen –, ohne den Einblick abzugeben, den
@@ -487,29 +503,49 @@ service cloud.firestore {
 
     /* ---------------- Aktivitäten AP ---------------- */
 
-    // Der Aktivitätenplan der Priestertumskollegien – der einzige Bereich,
-    // den auch Konten ohne Vollzugriff erreichen.
+    /*
+     * Der Aktivitätenplan der Priestertumskollegien – der einzige Bereich,
+     * der ohne Anmeldung offensteht.
+     *
+     * `read: if true` ist hier keine vergessene Bedingung, sondern der
+     * Zweck: Die Seite unter `/ap` ist das Anschlagbrett der AP's. Sie wird
+     * den Jugendlichen, ihren Eltern und den Beratern als Link geschickt,
+     * und ein Anschlagbrett, für das man sich anmelden muss, wird nicht
+     * gelesen. Entschieden hat das die Bischofschaft; die Regel schreibt es
+     * bloss auf.
+     *
+     * Was damit offensteht, ist genau das, was auch auf dem ausgedruckten
+     * Plan stünde: Datum, Anlass, Treffpunkt, Zeit, Zuständigkeit, die
+     * Bemerkung dazu – und welches Kollegium den Monat führt. Personendaten
+     * im eigentlichen Sinn stehen in `members`, `callings`, `agendaItems`
+     * und den übrigen Sammlungen, und die bleiben verschlossen. Wer einen
+     * Termin erfasst, schreibt damit ins Schaufenster; das steht so auch im
+     * README, damit es niemanden überrascht.
+     *
+     * Geändert wird der Plan weiterhin nur mit Rolle. Lesen ist offen,
+     * schreiben nicht – und zwischen beidem liegt der ganze Unterschied.
+     */
     match /apActivities/{activityId} {
-      allow read: if apAccess();
+      allow read: if true;
       allow write: if apWrite();
     }
 
     match /apMonths/{month} {
-      allow read: if apAccess();
+      allow read: if true;
       allow write: if apWrite();
     }
 
     /*
      * Die Links, unter denen der Plan als Kalender abonniert werden kann.
      *
-     * Lesen darf sie jeder, der den Plan sieht – auch `ap_viewer`. Das ist
-     * eine Abwägung und keine Nachlässigkeit: Ein Link trägt die
-     * Berechtigung im Token, wer ihn liest, kann ihn also weitergeben. Nur
-     * sieht ein solches Konto den ganzen Plan ohnehin schon; neu wäre allein,
-     * dass es dauerhaften, sich selbst nachführenden Zugang verschenken
-     * könnte. Bei einem Aktivitätenplan, der Vornamen und Anlässe enthält,
-     * wiegt das leichter als der tägliche Umweg, für jeden neuen Zugang
-     * jemanden aus der Bischofschaft zu fragen.
+     * Lesen darf sie jedes Konto, das den Plan sieht – auch `ap_viewer`;
+     * ohne Anmeldung dagegen niemand, obwohl der Plan selbst offensteht.
+     * Das ist kein Widerspruch, sondern der Unterschied zwischen einer
+     * Seite und einer Berechtigung: Ein Feed-Link trägt sein Token, wer ihn
+     * liest, kann ihn weitergeben, und widerrufen wird er einzeln. Eine
+     * Liste dieser Links gehört deshalb nicht ins Schaufenster – wer den
+     * Plan bloss lesen will, findet ihn unter `/ap`, dafür braucht er
+     * keinen Link.
      *
      * Vergeben, widerrufen und löschen darf sie weiterhin nur, wer den Plan
      * auch pflegen darf. Wer bloss zusieht, kopiert einen bestehenden Link –
@@ -517,8 +553,8 @@ service cloud.firestore {
      *
      * Ausgeliefert wird der Feed nicht von hier, sondern von der
      * Netlify-Function. Die arbeitet mit einem Dienstkonto und geht damit an
-     * diesen Regeln vorbei – sie ist der einzige Weg, auf dem ein Abruf ohne
-     * Anmeldung an den Plan kommt, und sie prüft dafür das Token.
+     * diesen Regeln vorbei; sie prüft dafür das Token – ein Kalenderprogramm
+     * kann sich nirgends anmelden.
      */
     match /calendarFeeds/{feedId} {
       allow read: if apAccess();
