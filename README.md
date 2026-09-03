@@ -13,8 +13,8 @@ Abendmahlsversammlung, Berufungsverwaltung und Mitgliederdaten.
 
 | Bereich                   | Was die App leistet                                                                                 |
 | ------------------------- | --------------------------------------------------------------------------------------------------- |
-| **Sitzungen**             | Termin festlegen, Traktanden und Pendenzen sammeln, Sitzungsmodus zum Durchgehen, Protokoll drucken |
-| **Pendenzen**             | Was eine Sitzung überstanden hat, ohne erledigt zu werden – alles, das eigene oder das einer bestimmten Person; dazu die Aufgaben der Monatsverantwortung |
+| **Sitzungen**             | Termin festlegen, Traktanden und Pendenzen sammeln, Sitzungsmodus zum Durchgehen, Protokoll drucken – ständige Pendenzen zuoberst |
+| **Pendenzen**             | Was eine Sitzung überstanden hat, ohne erledigt zu werden – alles, das eigene oder das einer bestimmten Person; dazu die ständigen Pendenzen und die Aufgaben der Monatsverantwortung |
 | **Notizen**               | Was nicht an eine Sitzung gehört – für alle sichtbar, speichert von selbst                          |
 | **Putzplan**              | Die Halbjahrestabelle der Gemeinde als Wochenplan – Grundlage für die Ansage am Sonntag             |
 | **Abendmahlsversammlung** | Ganzer Ablauf pro Sonntag: Leitung, Bekanntmachungen, Angelegenheiten, Ansprachen, Musik, Gebet – dazu das Monatsthema, und Ansprachen/Musik/Gebet einzeln abgebbar |
@@ -467,11 +467,83 @@ alles Unerledigte **auf die nächste geplante Sitzung** und ist von da an eine
 Pendenz; dort steht es unter **Pendenzen** und nicht unter den neuen
 Traktanden. Steht noch keine nächste Sitzung fest, bleibt es im Sammelkorb und
 erscheint so lange unter «Pendenzen»; die nächste Sitzung holt es mit einem
-Griff zurück («_n_ Pendenzen» in der Werkzeugleiste). Die beiden Gruppen stehen unter eigenen
-Überschriften, **zuerst die neuen Traktanden, danach die Pendenzen** – in
-dieser Reihenfolge geht eine Sitzung durch, und der erste Teil ist nicht eine
-Wiederholung der letzten. Angeschrieben wird nur die Pendenz: dass sie pendent
-ist, sagt schon das Wort.
+Griff zurück («_n_ Pendenzen» in der Werkzeugleiste). Angeschrieben wird nur
+die Pendenz: dass sie pendent ist, sagt schon das Wort.
+
+**Eine Sitzung hat drei Abschnitte, und sie stehen in der Reihenfolge, in der
+sie durchgegangen werden:**
+
+1. **Ständige Pendenzen** – was in jeder Sitzung drankommt (siehe
+   [«Ständige Pendenzen»](#ständige-pendenzen)).
+2. **Traktanden** – für diese Sitzung neu erfasst.
+3. **Pendenzen** – aus früheren Sitzungen liegengeblieben.
+
+Zuoberst steht der feste Teil: Er ist kurz, er kommt jedes Mal dran, und er
+wird abgearbeitet, bevor das Gespräch beginnt – zwischen den übrigen Pendenzen
+käme man an manchen Abenden gar nicht mehr zu ihm. Danach folgt das Neue, und
+zuletzt das Liegengebliebene; umgekehrt wäre der erste Teil jeder Sitzung eine
+Wiederholung der letzten. Dieselbe Folge gilt in der Listenansicht, im
+Sitzungsmodus und im gedruckten Protokoll; ein Abschnitt ohne Einträge steht
+gar nicht erst da.
+
+### Ständige Pendenzen
+
+Manches steht in **jeder** Sitzung: die Ansprachen für den nächsten Monat, die
+Liste der Kranken, die Zahlen des Kollegiums. Bisher hiess das entweder «jedes
+Mal neu erfassen» – zwanzig gleichlautende Einträge im Archiv – oder «nie
+abhaken», womit an der Pendenz kein Fortschritt mehr abzulesen war.
+
+**Eine ständige Pendenz wird nicht abgeschlossen, sondern rückt weiter.** Ein
+Griff auf **Erledigt** setzt sie nicht auf «erledigt», sondern auf ihre
+nächste Runde: auf die nächste geplante Sitzung oder auf den nächsten
+eingestellten Zeitraum. Es bleibt derselbe Eintrag, mit demselben Titel,
+derselben Beschreibung, denselben Zuständigen und demselben Verlauf – in dem
+nun eine Zeile mehr steht.
+
+**Wie oft, sagen drei Knöpfe:**
+
+| Wahl                  | Was sie bedeutet                                             |
+| --------------------- | ------------------------------------------------------------ |
+| **Jede Sitzung**      | die nächste geplante Sitzung – gleich, wann sie stattfindet  |
+| **1× pro Monat**      | einen Monat später, und dort die erste Sitzung ab diesem Tag |
+| **Benutzerdefiniert** | alle _n_ Tage, Wochen oder Monate                            |
+
+Für Sitzungen gibt es bewusst nur «jede Sitzung». Alles Seltenere ist ein
+Zeitraum, und der lässt sich rechnen, ohne zu wissen, wann die übernächste
+Sitzung angesetzt wird – die ist im Augenblick des Abhakens meist noch gar
+nicht geplant.
+
+**Erfasst** wird sie im Fenster **+ Pendenz**, mit dem Haken **Ständige
+Pendenz** unter der Monatsverantwortung. Beide Haken schliessen einander aus:
+Sie beantworten dieselbe Frage – was geschieht beim Abhaken? – und geben
+verschiedene Antworten.
+
+**Beide Richtungen stehen offen.** Am aufgeklappten Eintrag (und im
+Sitzungsmodus) steht der Knopf **Ständige Pendenz**: Er macht aus einer
+gewöhnlichen Pendenz eine ständige, ändert den Takt einer bestehenden – und
+**Aufheben** darin macht daraus wieder eine gewöhnliche Pendenz, die sich
+abschliessen lässt. Gelöscht wird dabei nie etwas; Titel, Beschreibung,
+Zuständige und Verlauf bleiben, wie sie sind. Eine ständige Pendenz taucht nie
+im Archiv auf – wer sie wirklich abschliessen will, hebt zuerst den Takt auf
+und hakt sie dann ab.
+
+**Solange sie wartet, steht sie nirgends im Weg.** Eine monatliche Pendenz,
+die eben abgehakt wurde, wandert entweder gleich in die erste Sitzung, die
+spät genug liegt, oder sie wartet im Sammelkorb – dort wird sie von
+«Pendenzen übernehmen» übergangen, bis ihr Tag gekommen ist, und sie zählt
+auch nicht zu den offenen Punkten auf der Übersicht. In der Pendenzenliste
+steht sie weiterhin, mit ihrem Takt und dem Tag daneben: «↻ Jeden Monat ab
+01.10.2026».
+
+**Der Unterschied zur Monatspendenz** (siehe [«Monatspendenzen»](#monatspendenzen-was-zur-leitung-des-monats-gehört)):
+
+|                     | Ständige Pendenz              | Monatspendenz         |
+| ------------------- | ----------------------------- | --------------------- |
+| **Was wiederkehrt** | derselbe Eintrag              | jeden Monat ein neuer |
+| **Zuständig**       | wer ausgewählt wurde          | wer den Monat führt   |
+| **Sitzung**         | ja – zuoberst                 | keine                 |
+| **Im Protokoll**    | ja                            | nein                  |
+| **Takt**            | Sitzung, Tage, Wochen, Monate | immer der Monat       |
 
 ### Drei Status
 
@@ -881,6 +953,11 @@ dem Titel, der Beschreibung und dem Monat, für den sie gilt.
 | **Sitzung**          | die nächste          | keine                        |
 | **Im Protokoll**     | ja                   | nein                         |
 | **Nach dem Abhaken** | erledigt             | im nächsten Monat wieder da  |
+
+> Soll eine Aufgabe wiederkehren, aber bei denselben Leuten bleiben und in der
+> Sitzung stehen, ist die [ständige Pendenz](#ständige-pendenzen) das Richtige.
+> Die Monatsverantwortung ist für das gedacht, was **mit dem Monat die Person
+> wechselt**.
 
 **Sie steht in keiner Sitzung.** Nicht auf der Traktandenliste, nicht im
 Sitzungsmodus, nicht im gedruckten Protokoll – und «Pendenzen übernehmen»

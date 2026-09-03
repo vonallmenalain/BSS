@@ -4,10 +4,12 @@ import { formatDate } from '@/lib/dates'
 import { useAuth } from '@/contexts/AuthContext'
 import { useToast } from '@/contexts/ToastContext'
 import { AssigneeAvatars } from '@/components/ui/Avatar'
-import { KindBadge, StatusBadge } from '@/components/ui/Badge'
+import { KindBadge, StandingBadge, StatusBadge } from '@/components/ui/Badge'
 import { RichText } from '@/components/ui/RichText'
+import { useStandingRound } from '@/hooks/useStanding'
 import { setItemStatus } from '@/services/agenda'
 import { hasOpenCallingRows } from '@/lib/callingChanges'
+import { dayKey, normalizeStanding, standingWaits } from '@/lib/standing'
 import { toItemKind, type AgendaItem } from '@/lib/types'
 
 interface Props {
@@ -45,13 +47,25 @@ export function AgendaItemCard({
 }: Props) {
   const { profile } = useAuth()
   const toast = useToast()
+  const standingRound = useStandingRound()
 
   const isDone = item.status === 'done'
   /** Offene Zeilen einer Berufungsrunde – dann wird hier nicht abgehakt. */
   const openRows = !isDone && hasOpenCallingRows(item.callingChanges)
 
+  /** Der Takt einer ständigen Pendenz – sie wird abgehakt, aber nie erledigt. */
+  const standing = normalizeStanding(item.standing)
+  // Der Tag steht nur an der Pendenz ohne Sitzung: Steht sie in einer, sagt
+  // deren Datum bereits, wann es weitergeht – zweimal dasselbe nebeneinander
+  // liest sich wie ein Fehler.
+  const standingWaiting =
+    standing !== null && !item.meetingId && standingWaits(item, dayKey(new Date()))
+
   const toggleDone = async () => {
     if (!profile) return
+    // Eine ständige Pendenz rückt eine Runde weiter, statt zuzugehen
+    // (siehe `hooks/useStanding`).
+    if (!isDone && (await standingRound(item))) return
     try {
       const outcome = await setItemStatus(item.id, isDone ? 'pending' : 'done', {
         id: profile.id,
@@ -123,7 +137,11 @@ export function AgendaItemCard({
 
           {/* Kennzeichnungen */}
           <div className="mt-2 flex flex-wrap items-center gap-1.5">
-            <KindBadge kind={toItemKind(item)} />
+            {standing ? (
+              <StandingBadge rule={standing} waiting={standingWaiting} />
+            ) : (
+              <KindBadge kind={toItemKind(item)} />
+            )}
             {item.status !== 'pending' && <StatusBadge status={item.status} />}
             {item.deferCount > 0 && !isDone && (
               <span

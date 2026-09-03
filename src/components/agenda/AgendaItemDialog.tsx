@@ -5,9 +5,13 @@ import { useToast } from '@/contexts/ToastContext'
 import { Modal, ConfirmDialog } from '@/components/ui/Modal'
 import { AgendaItemEditor } from '@/components/agenda/AgendaItemEditor'
 import { DeferMenu } from '@/components/agenda/DeferMenu'
+import { StandingButton } from '@/components/agenda/Standing'
 import { ItemMeta } from '@/components/agenda/ItemMeta'
+import { useStandingRound } from '@/hooks/useStanding'
 import { deleteAgendaItem, setItemStatus } from '@/services/agenda'
 import { hasOpenCallingRows } from '@/lib/callingChanges'
+import { isDutyItem } from '@/lib/monthlyDuties'
+import { isStanding } from '@/lib/standing'
 import { ITEM_KIND_LABELS, toItemKind, type AgendaItem, type CallingChanges } from '@/lib/types'
 
 /**
@@ -38,6 +42,7 @@ export function AgendaItemDialog({
 }) {
   const { profile } = useAuth()
   const toast = useToast()
+  const standingRound = useStandingRound()
   const [confirmDelete, setConfirmDelete] = useState(false)
 
   const kind = item ? toItemKind(item) : 'traktandum'
@@ -60,6 +65,9 @@ export function AgendaItemDialog({
 
   const toggleDone = async () => {
     if (!item || !profile) return
+    // Eine ständige Pendenz rückt eine Runde weiter, statt zuzugehen
+    // (siehe `hooks/useStanding`).
+    if (!isDone && (await standingRound(item))) return
     try {
       await setItemStatus(item.id, isDone ? 'pending' : 'done', {
         id: profile.id,
@@ -88,7 +96,7 @@ export function AgendaItemDialog({
       <Modal
         open={item !== null}
         onClose={onClose}
-        title={ITEM_KIND_LABELS[kind]}
+        title={item && isStanding(item) ? 'Ständige Pendenz' : ITEM_KIND_LABELS[kind]}
         /* So breit wie die App: Im Fenster steht dasselbe wie im
            aufgeklappten Eintrag – ein Raster, eine Berufungsrunde, eine
            Tabelle. Schmaler gedrängt wäre es dieselbe Arbeit auf halber
@@ -137,6 +145,11 @@ export function AgendaItemDialog({
                     nextMeeting={nextMeeting ?? null}
                     className="btn-sm"
                   />
+
+                  {/* Beide Richtungen – zur ständigen Pendenz und zurück.
+                      Nicht an der Monatspendenz: Die kehrt bereits auf ihre
+                      eigene Weise wieder (siehe `lib/monthlyDuties`). */}
+                  {!isDutyItem(item) && <StandingButton item={item} className="btn-sm" />}
                 </>
               )}
 

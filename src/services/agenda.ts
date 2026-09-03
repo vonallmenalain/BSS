@@ -16,6 +16,19 @@ import {
 import { auth, db, COLLECTIONS } from '@/lib/firebase'
 import { forgetDoc } from '@/lib/collectionStore'
 import { isDutyItem } from '@/lib/monthlyDuties'
+import {
+  advanceStanding,
+  dayKey,
+  formatDayKey,
+  nextStandingRound,
+  normalizeStanding,
+  sectionOf,
+  serializeStanding,
+  standingLabel,
+  standingWaits,
+  type StandingMeeting,
+  type StandingRound,
+} from '@/lib/standing'
 import { stripUndefined, uid } from '@/lib/utils'
 import { commit, type SaveOutcome } from '@/lib/sync'
 import type {
@@ -25,8 +38,16 @@ import type {
   ItemKind,
   ItemLayout,
   ItemStatus,
+  MeetingSection,
+  StandingRule,
 } from '@/lib/types'
-import { ITEM_KIND_LABELS, ITEM_STATUS_LABELS, OPEN_STATUS_QUERY, toItemKind } from '@/lib/types'
+import {
+  ITEM_KIND_LABELS,
+  ITEM_STATUS_LABELS,
+  MEETING_SECTION_ORDER,
+  OPEN_STATUS_QUERY,
+  toItemKind,
+} from '@/lib/types'
 
 const itemsRef = collection(db, COLLECTIONS.agendaItems)
 
@@ -59,6 +80,14 @@ export interface AgendaItemInput {
   layout?: ItemLayout | null
   /** Die beiden Berufungstabellen statt der Beschreibung – siehe `lib/callingChanges` */
   callingChanges?: CallingChanges | null
+  /**
+   * Der Takt einer ständigen Pendenz – siehe `lib/standing`.
+   *
+   * Gesetzt heisst: Der Eintrag wird nie abgeschlossen, sondern beim Abhaken
+   * auf seine nächste Runde gesetzt. `null` (oder weggelassen) ist die
+   * gewöhnliche Pendenz.
+   */
+  standing?: StandingRule | null
 }
 
 function historyEntry(action: string, actor: Actor): HistoryEntry {
@@ -103,6 +132,9 @@ export async function createAgendaItem(input: AgendaItemInput, actor: Actor): Pr
       memberRefs: input.memberRefs ?? [],
       layout: input.layout ?? null,
       callingChanges: input.callingChanges ?? null,
+      // Ohne Datum: Eine eben erfasste ständige Pendenz ist sofort dran und
+      // nicht erst in der übernächsten Runde.
+      standing: input.standing ? serializeStanding({ ...input.standing, dueFrom: null }) : null,
       deferCount: 0,
       history: [historyEntry(`${ITEM_KIND_LABELS[kind]} erstellt`, actor)],
       createdAt: serverTimestamp(),
@@ -173,6 +205,106 @@ export async function setItemStatus(
       ...touch(),
     }),
   )
+}
+
+/* ------------------------------------------------------------------ */
+/* Ständige Pendenzen                                                  */
+/* ------------------------------------------------------------------ */
+
+/**
+ * Aus einer Pendenz eine ständige machen – oder aus einer ständigen wieder
+ * eine gewöhnliche.
+ *
+ * Beide Richtungen, und beide sind ein Griff: Was sich als einmalige Aufgabe
+ * herausstellt, soll sich abschliessen lassen, und was sich als Dauerbrenner
+ * herausstellt, soll aufhören, jedes Mal neu erfasst zu werden.
+ *
+ * Mit dem Takt wird der Eintrag zur **Pendenz**, auch wenn er als Traktandum
+ * begonnen hat: «Ständige Pendenz» ist das Wort dafür, und in der Sitzung
+ * steht er von da an im ersten Abschnitt. Der Weg zurück lässt `kind` in
+ * Ruhe – eine Pendenz bleibt eine Pendenz, ein Traktandum wird sie nicht
+ * wieder (siehe `ItemKind`).
+ *
+ * Das Datum der nächsten Runde wird beim Einschalten geräumt: Wer eine
+ * Pendenz jetzt zur ständigen macht, meint sie jetzt und nicht erst in einem
+ * Monat.
+ */
+export async function setStanding(
+  id: string,
+  rule: StandingRule | null,
+  actor: Actor,
+): Promise<SaveOutcome> {
+  const patch: Record<string, unknown> = {
+    standing: rule ? serializeStanding({ ...rule, dueFrom: null }) : null,
+    history: arrayUnion(
+      historyEntry(
+        rule ? `Ständige Pendenz: ${standingLabel(rule)}` : 'Ständige Pendenz aufgehoben',
+        actor,
+      ),
+    ),
+    ...touch(),
+  }
+  if (rule) patch.kind = 'pendenz' satisfies ItemKind
+  return commit(updateDoc(doc(db, COLLECTIONS.agendaItems, id), patch))
+}
+
+/**
+ * «Erledigt» an einer ständigen Pendenz – die Runde ist zu Ende, die Pendenz
+ * nicht.
+ *
+ * Sie wird nicht abgeschlossen, sondern weitergesetzt: auf die nächste
+ * Sitzung oder auf den nächsten Zeitraum (siehe `lib/standing`). Der Eintrag
+ * bleibt derselbe – mit seinem Titel, seiner Beschreibung und seinem Verlauf,
+ * in dem nun eine Zeile mehr steht. Erledigt gemeldet wird nichts: `status`
+ * bleibt `pending`, und damit taucht die Pendenz nie im Archiv auf. Wer sie
+ * wirklich abschliessen will, hebt zuerst den Takt auf (`setStanding(null)`).
+ *
+ * `deferCount` bleibt unangetastet. Es zählt, wie oft ein Punkt **vertagt**
+ * wurde – die Wiederkehr einer ständigen Pendenz ist das Gegenteil davon, und
+ * ein Zähler, der jede Woche um eins stiege, machte aus dem Kennzeichen für
+ * Liegengebliebenes eine Anzeige der Zeit.
+ *
+ * Zurück kommt die Runde, damit der Aufrufer sagen kann, wann es weitergeht.
+ */
+export async function completeStandingRound(
+  item: Pick<AgendaItem, 'id' | 'standing' | 'meetingId'>,
+  meetings: StandingMeeting[],
+  actor: Actor,
+  now = new Date(),
+): Promise<{ outcome: SaveOutcome; round: StandingRound }> {
+  const rule = normalizeStanding(item.standing)
+  if (!rule) throw new Error('Kein Takt – das ist keine ständige Pendenz.')
+
+  const round = nextStandingRound(rule, {
+    fromMeetingId: item.meetingId ?? null,
+    meetings,
+    today: dayKey(now),
+  })
+
+  const outcome = await commit(
+    updateDoc(doc(db, COLLECTIONS.agendaItems, item.id), {
+      standing: serializeStanding(advanceStanding(rule, round, now)),
+      meetingId: round.meetingId,
+      // Sie war schon eine Pendenz; ausgeschrieben steht es hier trotzdem,
+      // weil ein Altbestand ohne `kind` sonst weiter aus der Vorgeschichte
+      // abgeleitet würde.
+      kind: 'pendenz' satisfies ItemKind,
+      status: 'pending' satisfies ItemStatus,
+      completedAt: null,
+      completedBy: null,
+      history: arrayUnion(
+        historyEntry(
+          round.dueFrom
+            ? `Erledigt – wieder fällig ab ${formatDayKey(round.dueFrom)}`
+            : 'Erledigt – wieder in der nächsten Sitzung',
+          actor,
+        ),
+      ),
+      ...touch(),
+    }),
+  )
+
+  return { outcome, round }
 }
 
 /**
@@ -311,8 +443,17 @@ export async function savePendenzenOrder(items: AgendaItem[]): Promise<SaveOutco
  * Die Art wird dabei nicht angetastet: Wer als Pendenz im Sammelkorb lag,
  * erscheint in der neuen Sitzung als Pendenz, und was noch nie traktandiert
  * war, bleibt ein Traktandum.
+ *
+ * `meetingDay` ist der Tag der Sitzung («2026-08-04»). Er entscheidet über
+ * die ständigen Pendenzen, die gerade auf ihre nächste Runde warten: Eine
+ * monatliche Pendenz, die eben abgehakt wurde, gehört in die Sitzung vom
+ * Oktober und nicht in die von übermorgen. Ohne Angabe zählt der heutige Tag.
  */
-export async function carryOverOpenItems(meetingId: string, actor: Actor): Promise<number> {
+export async function carryOverOpenItems(
+  meetingId: string,
+  actor: Actor,
+  meetingDay: string = dayKey(new Date()),
+): Promise<number> {
   const snapshot = await getDocs(
     query(itemsRef, where('meetingId', '==', null), where('status', 'in', OPEN_STATUS_QUERY)),
   )
@@ -331,6 +472,15 @@ export async function carryOverOpenItems(meetingId: string, actor: Actor): Promi
      * (siehe `lib/monthlyDuties`).
      */
     if (isDutyItem(data)) return
+    /*
+     * Und ebenso die ständigen Pendenzen, die noch warten.
+     *
+     * Sie liegen im Sammelkorb, weil ihre nächste Runde noch nicht begonnen
+     * hat – nicht, weil ihnen eine Sitzung fehlt. In diese hineinzuziehen
+     * hiesse, den Takt zu übergehen, den jemand eben eingestellt hat
+     * (siehe `lib/standing`).
+     */
+    if (standingWaits(data, meetingDay)) return
     const index = taken++
     batch.update(item.ref, {
       meetingId,
@@ -353,17 +503,21 @@ export async function deleteAgendaItem(id: string): Promise<SaveOutcome> {
 }
 
 /**
- * Sortierung für die Sitzungsansicht: zuerst die neuen Traktanden, danach die
- * Pendenzen – innerhalb der beiden Gruppen nach `order`.
+ * Sortierung für die Sitzungsansicht: zuerst die ständigen Pendenzen, danach
+ * die neuen Traktanden, zuletzt die übrigen Pendenzen – innerhalb der drei
+ * Abschnitte nach `order`.
  *
- * Mit `manualPendenzen` folgt die zweite Gruppe stattdessen der von Hand
- * gelegten Reihenfolge der Pendenzenliste (`pendenzOrder`). Es ist dieselbe
- * Liste, bloss auf eine Sitzung eingeschränkt: Wer sie unter «Pendenzen»
- * geordnet hat, will sie am Sitzungstisch nicht anders vorfinden.
+ * Die Reihenfolge ist der Ablauf einer Sitzung. Zuoberst steht, was jedes Mal
+ * drankommt: die ständigen Pendenzen. Sie sind der feste Teil, sie sind kurz,
+ * und sie werden abgearbeitet, bevor das Gespräch beginnt – stünden sie zwischen
+ * den übrigen Pendenzen, käme man an manchen Abenden gar nicht zu ihnen. Danach
+ * folgt das Neue, und zuletzt das, was aus früheren Sitzungen liegengeblieben
+ * ist; umgekehrt wäre der erste Teil jeder Sitzung eine Wiederholung der letzten.
  *
- * Die Sitzung beginnt mit dem, was ansteht, und arbeitet danach ab, was
- * liegengeblieben ist. Umgekehrt wäre der erste Teil jeder Sitzung eine
- * Wiederholung der letzten.
+ * Mit `manualPendenzen` folgen die beiden Pendenzenabschnitte stattdessen der
+ * von Hand gelegten Reihenfolge der Pendenzenliste (`pendenzOrder`). Es ist
+ * dieselbe Liste, bloss auf eine Sitzung eingeschränkt: Wer sie unter
+ * «Pendenzen» geordnet hat, will sie am Sitzungstisch nicht anders vorfinden.
  *
  * Erledigtes bleibt bewusst stehen, wo es steht. Früher rutschte es ans Ende;
  * seit sich die Reihenfolge von Hand festlegen lässt, wäre das ein Ärgernis:
@@ -371,13 +525,14 @@ export async function deleteAgendaItem(id: string): Promise<SaveOutcome> {
  * wäre woanders.
  */
 export function sortForMeeting(items: AgendaItem[], manualPendenzen = false): AgendaItem[] {
-  const rank = (item: AgendaItem) => (toItemKind(item) === 'traktandum' ? 0 : 1)
+  const rank = (item: AgendaItem) => MEETING_SECTION_ORDER.indexOf(sectionOf(item))
   return [...items].sort((a, b) => {
     const group = rank(a) - rank(b)
     if (group !== 0) return group
     // Die Pendenzen einer Sitzung sind ein Ausschnitt der Pendenzenliste.
-    // Ist die dort von Hand gelegt, gilt sie auch hier.
-    if (manualPendenzen && rank(a) === 1) {
+    // Ist die dort von Hand gelegt, gilt sie auch hier – für die ständigen
+    // wie für die übrigen, denn beide stehen dort in derselben Liste.
+    if (manualPendenzen && toItemKind(a) === 'pendenz') {
       const place = pendenzPlace(a) - pendenzPlace(b)
       if (place !== 0) return place
     }
@@ -427,18 +582,22 @@ export function reorderWithinPendenzen(all: AgendaItem[], ordered: AgendaItem[])
   return all.map((item) => (moving.has(item.id) ? (queue.shift() ?? item) : item))
 }
 
-/** Die Reihenfolge der beiden Gruppen – neue Traktanden zuerst. */
-export const ITEM_KIND_ORDER: ItemKind[] = ['traktandum', 'pendenz']
-
-/** Dieselbe Liste, aufgeteilt in neue Traktanden und Pendenzen. */
-export function groupByKind(
+/**
+ * Dieselbe Liste, aufgeteilt in die drei Abschnitte der Sitzung.
+ *
+ * Ein leerer Abschnitt bleibt eine leere Liste und verschwindet nicht: Wer
+ * zeichnet, entscheidet, ob er eine Überschrift ohne Inhalt hinstellt – und
+ * beim Suchen ist «hier ist nichts» durchaus eine Auskunft.
+ */
+export function groupBySection(
   items: AgendaItem[],
   manualPendenzen = false,
-): Record<ItemKind, AgendaItem[]> {
+): Record<MeetingSection, AgendaItem[]> {
   const sorted = sortForMeeting(items, manualPendenzen)
   return {
-    traktandum: sorted.filter((item) => toItemKind(item) === 'traktandum'),
-    pendenz: sorted.filter((item) => toItemKind(item) === 'pendenz'),
+    standing: sorted.filter((item) => sectionOf(item) === 'standing'),
+    traktandum: sorted.filter((item) => sectionOf(item) === 'traktandum'),
+    pendenz: sorted.filter((item) => sectionOf(item) === 'pendenz'),
   }
 }
 

@@ -47,8 +47,7 @@ import { formatDateLong, formatDateShort, formatTime, toDate } from '@/lib/dates
 import {
   assignToMeeting,
   carryOverOpenItems,
-  groupByKind,
-  ITEM_KIND_ORDER,
+  groupBySection,
   reorderItems,
   reorderWithinPendenzen,
   savePendenzenOrder,
@@ -63,13 +62,15 @@ import {
   suggestNextMeetingDate,
   updateMeeting,
 } from '@/services/meetings'
+import { dayKey } from '@/lib/standing'
 import {
-  ITEM_KIND_PLURAL,
+  MEETING_SECTION_ORDER,
+  MEETING_SECTION_PLURAL,
   normalizePendenzenSort,
   toItemKind,
   type AgendaItem,
-  type ItemKind,
   type Meeting,
+  type MeetingSection,
 } from '@/lib/types'
 
 type ViewMode = 'focus' | 'list'
@@ -146,7 +147,7 @@ export function MeetingDetail() {
     () => sortForMeeting(items, manualPendenzen),
     [items, manualPendenzen],
   )
-  const groups = useMemo(() => groupByKind(items, manualPendenzen), [items, manualPendenzen])
+  const groups = useMemo(() => groupBySection(items, manualPendenzen), [items, manualPendenzen])
   const actor = profile ? { id: profile.id, name: profile.displayName } : null
 
   /** Der aufgeklappte Eintrag – dieselbe Angabe wie im Sitzungsmodus. */
@@ -187,14 +188,17 @@ export function MeetingDetail() {
    * Die übrigen Pendenzen behalten dabei ihre Plätze (siehe
    * `reorderWithinPendenzen`).
    */
-  const saveOrder = async (kind: ItemKind, ordered: AgendaItem[]) => {
+  const saveOrder = async (section: MeetingSection, ordered: AgendaItem[]) => {
     try {
-      if (kind === 'pendenz' && manualPendenzen) {
+      // Die ständigen Pendenzen stehen in der Pendenzenliste wie alle anderen
+      // – wer sie hier zieht, ordnet dieselbe Liste.
+      if (section !== 'traktandum' && manualPendenzen) {
         await savePendenzenOrder(reorderWithinPendenzen(allPendenzen, ordered))
         return
       }
-      const all =
-        kind === 'traktandum' ? [...ordered, ...groups.pendenz] : [...groups.traktandum, ...ordered]
+      const all = MEETING_SECTION_ORDER.flatMap((each) =>
+        each === section ? ordered : groups[each],
+      )
       await reorderItems(all.map((item) => item.id))
     } catch (error) {
       console.error(error)
@@ -227,7 +231,13 @@ export function MeetingDetail() {
   const handleCarryOver = async () => {
     if (!actor) return
     try {
-      const count = await carryOverOpenItems(meetingId, actor)
+      const count = await carryOverOpenItems(
+        meetingId,
+        actor,
+        // Wonach sich entscheidet, ob eine ständige Pendenz schon wieder
+        // fällig ist: der Tag **dieser** Sitzung und nicht der heutige.
+        dayKey(toDate(meeting.date) ?? new Date()),
+      )
       toast.success(
         count === 0
           ? 'Es warten keine Pendenzen.'
@@ -433,10 +443,21 @@ export function MeetingDetail() {
         </div>
       ) : (
         <div className="space-y-5">
-          {/* Erst das Neue, danach das Liegengebliebene – dieselbe Folge wie
-              im Sitzungsmodus. */}
+          {/* Erst das Ständige, dann das Neue, zuletzt das Liegengebliebene –
+              dieselbe Folge wie im Sitzungsmodus (siehe `sortForMeeting`). */}
           <ItemGroup
-            kind="traktandum"
+            section="standing"
+            hint="Steht in jeder Sitzung – wird nicht abgeschlossen, sondern rückt weiter"
+            items={groups.standing}
+            openId={openId}
+            onToggle={toggleOpen}
+            onReorder={(ordered) => void saveOrder('standing', ordered)}
+            readOnly={isClosed}
+            nextMeeting={nextMeetingRef}
+            meetingDate={(id) => meetingDates.get(id)}
+          />
+          <ItemGroup
+            section="traktandum"
             hint="Für diese Sitzung neu erfasst"
             items={groups.traktandum}
             openId={openId}
@@ -447,7 +468,7 @@ export function MeetingDetail() {
             meetingDate={(id) => meetingDates.get(id)}
           />
           <ItemGroup
-            kind="pendenz"
+            section="pendenz"
             hint="Aus früheren Sitzungen übernommen"
             items={groups.pendenz}
             openId={openId}
@@ -548,14 +569,16 @@ export function MeetingDetail() {
 /* ------------------------------------------------------------------ */
 
 /**
- * Eine der beiden Gruppen der Sitzungsliste.
+ * Einer der drei Abschnitte der Sitzungsliste.
  *
- * Umsortiert wird nur innerhalb der Gruppe: Eine Pendenz zwischen die neuen
- * Traktanden zu ziehen hiesse, sie zurückzudatieren – und genau die
- * Unterscheidung soll die Liste ja zeigen.
+ * Umsortiert wird nur innerhalb des Abschnitts: Eine Pendenz zwischen die
+ * neuen Traktanden zu ziehen hiesse, sie zurückzudatieren – und genau die
+ * Unterscheidung soll die Liste ja zeigen. Aus einer gewöhnlichen Pendenz
+ * eine ständige zu machen, ist keine Frage der Reihenfolge, sondern ein
+ * eigener Griff am Eintrag (siehe `components/agenda/Standing`).
  */
 function ItemGroup({
-  kind,
+  section,
   hint,
   items,
   openId,
@@ -565,7 +588,7 @@ function ItemGroup({
   nextMeeting,
   meetingDate,
 }: {
-  kind: ItemKind
+  section: MeetingSection
   hint: string
   items: AgendaItem[]
   openId: string | null
@@ -601,7 +624,7 @@ function ItemGroup({
   return (
     <section>
       <div className="mb-2 flex flex-wrap items-baseline gap-x-2">
-        <h2 className="text-sm font-semibold">{ITEM_KIND_PLURAL[kind]}</h2>
+        <h2 className="text-sm font-semibold">{MEETING_SECTION_PLURAL[section]}</h2>
         <span className="tabular text-xs text-slate-400">{items.length}</span>
         <span className="text-xs text-slate-500 dark:text-slate-400">· {hint}</span>
       </div>
@@ -871,7 +894,7 @@ function PrintProtocol({
     closingPrayer?: string
     spiritualThought?: string
   }
-  groups: Record<ItemKind, AgendaItem[]>
+  groups: Record<MeetingSection, AgendaItem[]>
   userName: (id: string) => string
   memberName: (id: string) => string
 }) {
@@ -904,12 +927,12 @@ function PrintProtocol({
         </p>
       )}
 
-      {ITEM_KIND_ORDER.map((kind) =>
-        groups[kind].length === 0 ? null : (
-          <section key={kind} className="mt-4">
-            <h2 className="text-sm font-bold uppercase">{ITEM_KIND_PLURAL[kind]}</h2>
+      {MEETING_SECTION_ORDER.map((section) =>
+        groups[section].length === 0 ? null : (
+          <section key={section} className="mt-4">
+            <h2 className="text-sm font-bold uppercase">{MEETING_SECTION_PLURAL[section]}</h2>
             <ol className="mt-1 space-y-3">
-              {groups[kind].map((item, index) => (
+              {groups[section].map((item, index) => (
                 <li key={item.id}>
                   <p className="font-semibold">
                     {index + 1}. <RichText text={item.title} rich={item.titleRich} />

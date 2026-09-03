@@ -1,5 +1,7 @@
 import type { ReactNode } from 'react'
+import { Repeat } from 'lucide-react'
 import { cn } from '@/lib/utils'
+import { formatDayKey, standingTitle } from '@/lib/standing'
 import {
   ITEM_KIND_LABELS,
   ITEM_STATUS_LABELS,
@@ -12,6 +14,7 @@ import {
   type ItemStatus,
   type MeetingStatus,
   type MemberStatus,
+  type StandingRule,
   type TalkStatus,
 } from '@/lib/types'
 
@@ -67,6 +70,40 @@ const ITEM_KIND_STYLES: Record<ItemKind, string> = {
 export function KindBadge({ kind }: { kind: ItemKind }) {
   if (kind === 'traktandum') return null
   return <Badge className={ITEM_KIND_STYLES[kind]}>{ITEM_KIND_LABELS[kind]}</Badge>
+}
+
+/* ------------------------------------------------------------------ */
+/* Ständige Pendenz                                                    */
+/* ------------------------------------------------------------------ */
+
+/**
+ * Der Takt einer ständigen Pendenz – «↻ Jede Sitzung».
+ *
+ * Er tritt an die Stelle des Etiketts «Pendenz»: Beide sagen, worunter der
+ * Eintrag steht, und dieses sagt es genauer. Wartet die Pendenz gerade auf
+ * ihre nächste Runde, steht der Tag dahinter – sonst stünde in einer Liste
+ * eine Aufgabe, von der niemand wüsste, warum sie heute nicht in der Sitzung
+ * steht.
+ *
+ * Dieselbe Farbe wie die Pendenz, aus demselben Grund: Auffallen soll, was
+ * nicht neu ist.
+ */
+export function StandingBadge({ rule, waiting }: { rule: StandingRule; waiting?: boolean }) {
+  const due = waiting && rule.dueFrom ? formatDayKey(rule.dueFrom) : null
+  return (
+    <Badge
+      className="bg-amber-100 text-amber-800 dark:bg-amber-950 dark:text-amber-200"
+      title={
+        due
+          ? `Ständige Pendenz – ${standingTitle(rule).toLowerCase()}, wieder fällig ab ${due}`
+          : `Ständige Pendenz – sie wird nicht abgeschlossen, sondern kehrt ${standingTitle(rule).toLowerCase()} wieder`
+      }
+    >
+      <Repeat className="size-3" aria-hidden />
+      {standingTitle(rule)}
+      {due && <span className="tabular font-normal opacity-80">ab {due}</span>}
+    </Badge>
+  )
 }
 
 /* ------------------------------------------------------------------ */

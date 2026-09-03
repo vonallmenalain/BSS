@@ -54,6 +54,7 @@ import {
   upcomingWeekdays,
 } from '@/lib/dates'
 import { isDutyItem } from '@/lib/monthlyDuties'
+import { dayKey, standingWaits } from '@/lib/standing'
 import { cn } from '@/lib/utils'
 import { sortForMeeting, sortForPendenzen } from '@/services/agenda'
 import {
@@ -149,9 +150,10 @@ export function Dashboard() {
 
   const myItems = useMemo(() => sortForPendenzen(pendenzen.filter(ownItem)), [pendenzen, ownItem])
 
-  // Dieselbe Reihenfolge wie in der Sitzung: zuerst die neuen Traktanden,
-  // danach die Pendenzen aus früheren Sitzungen – diese in der Reihenfolge
-  // der Pendenzenliste, wenn sie dort von Hand gelegt ist.
+  // Dieselbe Reihenfolge wie in der Sitzung: zuerst die ständigen Pendenzen,
+  // danach die neuen Traktanden, zuletzt die Pendenzen aus früheren Sitzungen
+  // – diese in der Reihenfolge der Pendenzenliste, wenn sie dort von Hand
+  // gelegt ist.
   const manualPendenzen = normalizePendenzenSort(settings.pendenzenSort).field === 'manual'
   const meetingItems = useMemo(
     () =>
@@ -163,8 +165,12 @@ export function Dashboard() {
   )
 
   /* Ohne die Monatspendenzen: Die warten auf keine Sitzung, sondern
-     gehören dem Monat (siehe `lib/monthlyDuties`). */
-  const unassignedCount = pendenzen.filter((item) => !item.meetingId && !isDutyItem(item)).length
+     gehören dem Monat (siehe `lib/monthlyDuties`). Und ohne die ständigen
+     Pendenzen, die noch auf ihre nächste Runde warten – sie liegen ebenfalls
+     ohne Sitzung da, sind aber schlicht noch nicht dran. */
+  const unassignedCount = pendenzen.filter(
+    (item) => !item.meetingId && !isDutyItem(item) && !standingWaits(item, dayKey(new Date())),
+  ).length
 
   /* Ansprachen: die nächsten Sonntage und ihre Lücken ---------------- */
   const talkGaps = useMemo(() => {
