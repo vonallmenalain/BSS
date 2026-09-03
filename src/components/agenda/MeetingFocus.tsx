@@ -4,19 +4,26 @@ import { Check, ChevronLeft, ChevronRight, Plus, Trash2 } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { useAuth } from '@/contexts/AuthContext'
 import { useToast } from '@/contexts/ToastContext'
-import { KindBadge, StatusBadge } from '@/components/ui/Badge'
+import { KindBadge, StandingBadge, StatusBadge } from '@/components/ui/Badge'
 import { ConfirmDialog } from '@/components/ui/Modal'
 import { EmptyState } from '@/components/ui/Feedback'
 import { AgendaItemEditor } from '@/components/agenda/AgendaItemEditor'
 import { DeferMenu } from '@/components/agenda/DeferMenu'
+import { StandingButton } from '@/components/agenda/Standing'
+import { useStandingRound } from '@/hooks/useStanding'
 import { deleteAgendaItem, setItemStatus } from '@/services/agenda'
 import { hasOpenCallingRows } from '@/lib/callingChanges'
+import { isDutyItem } from '@/lib/monthlyDuties'
+import { normalizeStanding, sectionOf } from '@/lib/standing'
 import {
   ITEM_KIND_LABELS,
-  ITEM_KIND_PLURAL,
+  MEETING_SECTION_COUNTED,
+  MEETING_SECTION_LABELS,
+  MEETING_SECTION_ORDER,
   toItemKind,
   type AgendaItem,
   type ItemStatus,
+  type MeetingSection,
 } from '@/lib/types'
 
 interface Props {
@@ -35,9 +42,10 @@ export const FOCUS_PARAM = 'traktandum'
  * Daumenreichweite.
  *
  * Der Ablauf ist bewusst linear – während der Sitzung will man nicht suchen,
- * sondern der Reihe nach durchgehen: zuerst die neuen Traktanden, danach die
- * Pendenzen aus früheren Sitzungen. Die Leiste oben zeigt trotzdem jederzeit,
- * wo man steht, und erlaubt den direkten Sprung.
+ * sondern der Reihe nach durchgehen: zuerst die ständigen Pendenzen, danach
+ * die neuen Traktanden, zuletzt die Pendenzen aus früheren Sitzungen. Die
+ * Leiste oben zeigt trotzdem jederzeit, wo man steht, und erlaubt den
+ * direkten Sprung.
  *
  * Bearbeitet wird ohne Umweg: Titel und Beschreibung sind Text, in den man
  * hineingreift, die Zuständigen stehen darunter. Einen Bearbeiten-Stift gibt
@@ -51,6 +59,7 @@ export const FOCUS_PARAM = 'traktandum'
 export function MeetingFocus({ items, onAdd, nextMeeting, readOnly = false }: Props) {
   const { profile } = useAuth()
   const toast = useToast()
+  const standingRound = useStandingRound()
   const [searchParams, setSearchParams] = useSearchParams()
   const [confirmDelete, setConfirmDelete] = useState(false)
 
@@ -88,27 +97,38 @@ export function MeetingFocus({ items, onAdd, nextMeeting, readOnly = false }: Pr
 
   const doneCount = useMemo(() => items.filter((item) => item.status === 'done').length, [items])
 
-  /*
-   * Wo man innerhalb der eigenen Gruppe steht.
+  /**
+   * Die Nummer jedes Punktes innerhalb seines Abschnitts.
    *
-   * «Punkt 7 von 12» sagt in einer Sitzung wenig; «Pendenz 2 von 8» sagt,
-   * dass die neuen Traktanden durch sind und noch sechs Altlasten warten.
+   * Die Liste kommt sortiert an – erst die ständigen Pendenzen, dann die
+   * Traktanden, dann die übrigen Pendenzen (siehe `sortForMeeting`) –, und
+   * jeder Abschnitt zählt von vorn. «Punkt 7 von 12» sagt in einer Sitzung
+   * wenig; «Pendenz 2 von 8» sagt, dass das Neue durch ist und noch sechs
+   * Altlasten warten.
    */
-  const place = useMemo(() => {
-    const kind = current ? toItemKind(current) : 'traktandum'
-    const group = items.filter((item) => toItemKind(item) === kind)
-    return {
-      kind,
-      position: current ? group.findIndex((item) => item.id === current.id) + 1 : 0,
-      total: group.length,
-    }
-  }, [items, current])
+  const numbers = useMemo(() => {
+    const counted: Record<MeetingSection, number> = { standing: 0, traktandum: 0, pendenz: 0 }
+    return items.map((item) => {
+      const section = sectionOf(item)
+      counted[section] += 1
+      return { section, number: counted[section] }
+    })
+  }, [items])
 
-  /** Wie viele neue Traktanden vorne stehen – die Pendenzen beginnen danach. */
-  const newCount = useMemo(
-    () => items.filter((item) => toItemKind(item) === 'traktandum').length,
-    [items],
-  )
+  /** Wie viele Punkte je Abschnitt – für «2 von 8». */
+  const totals = useMemo(() => {
+    const counted: Record<MeetingSection, number> = { standing: 0, traktandum: 0, pendenz: 0 }
+    numbers.forEach(({ section }) => {
+      counted[section] += 1
+    })
+    return counted
+  }, [numbers])
+
+  const place = useMemo(() => {
+    const at = numbers[index]
+    const section = at?.section ?? MEETING_SECTION_ORDER[0]
+    return { section, position: at?.number ?? 0, total: totals[section] }
+  }, [numbers, totals, index])
 
   /* Tastatursteuerung – am Laptop geht das Durchgehen so am schnellsten. */
   useEffect(() => {
@@ -146,6 +166,7 @@ export function MeetingFocus({ items, onAdd, nextMeeting, readOnly = false }: Pr
 
   const actor = profile ? { id: profile.id, name: profile.displayName } : null
   const kind = toItemKind(current)
+  const standing = normalizeStanding(current.standing)
 
   /*
    * Eine Berufungsrunde wird zeilenweise erledigt – im Menü rechts an jeder
@@ -154,14 +175,25 @@ export function MeetingFocus({ items, onAdd, nextMeeting, readOnly = false }: Pr
    */
   const openRows = current.status !== 'done' && hasOpenCallingRows(current.callingChanges)
 
+  /** Weiterrücken nach dem Abhaken – das ist der übliche Ablauf. */
+  const advance = () => {
+    if (index < items.length - 1) window.setTimeout(() => step(1), 250)
+  }
+
   const changeStatus = async (status: ItemStatus) => {
     if (!actor) return
+    /*
+     * Eine ständige Pendenz wird nicht abgeschlossen, sondern auf ihre
+     * nächste Runde gesetzt (siehe `hooks/useStanding`). Weitergerückt wird
+     * trotzdem: Für den Ablauf der Sitzung ist der Punkt erledigt.
+     */
+    if (status === 'done' && (await standingRound(current))) {
+      advance()
+      return
+    }
     try {
       await setItemStatus(current.id, status, actor)
-      // Nach «erledigt» automatisch weiterrücken – das ist der übliche Ablauf.
-      if (status === 'done' && index < items.length - 1) {
-        window.setTimeout(() => step(1), 250)
-      }
+      if (status === 'done') advance()
     } catch (error) {
       console.error(error)
       toast.error('Status konnte nicht geändert werden.')
@@ -185,7 +217,7 @@ export function MeetingFocus({ items, onAdd, nextMeeting, readOnly = false }: Pr
       <div className="card p-3">
         <div className="mb-2 flex items-center justify-between text-sm">
           <span className="font-medium">
-            {place.position} von {place.total} {ITEM_KIND_PLURAL[place.kind]}
+            {place.position} von {place.total} {MEETING_SECTION_COUNTED[place.section]}
           </span>
           <span className="text-slate-500 dark:text-slate-400">
             {doneCount} erledigt · {items.length - doneCount} offen
@@ -199,22 +231,22 @@ export function MeetingFocus({ items, onAdd, nextMeeting, readOnly = false }: Pr
           />
         </div>
 
-        {/* Die Leiste zählt je Gruppe von vorn und lässt zwischen ihnen eine
-            Lücke – so ist auch hier zu sehen, wo das Neue aufhört. */}
+        {/* Die Leiste zählt je Abschnitt von vorn und lässt zwischen ihnen
+            eine Lücke – so ist auch hier zu sehen, wo das Ständige aufhört
+            und wo das Neue. */}
         <div className="no-scrollbar -mx-1 flex gap-1 overflow-x-auto px-1">
           {items.map((item, itemIndex) => {
             const isDone = item.status === 'done'
-            const isPendenz = toItemKind(item) === 'pendenz'
-            // Die Liste kommt sortiert an: erst die Traktanden, dann die
-            // Pendenzen. Daraus ergibt sich die Nummer innerhalb der Gruppe.
-            const number = isPendenz ? itemIndex + 1 - newCount : itemIndex + 1
-            const first = isPendenz && itemIndex === newCount && itemIndex > 0
+            const { section, number } = numbers[itemIndex]
+            // Ein Abschnittswechsel bekommt Luft davor. Beim ersten Punkt
+            // wäre sie ein Einzug ohne Gegenstück.
+            const first = itemIndex > 0 && numbers[itemIndex - 1].section !== section
             return (
               <button
                 key={item.id}
                 type="button"
                 onClick={() => goTo(item)}
-                title={`${ITEM_KIND_LABELS[isPendenz ? 'pendenz' : 'traktandum']} ${number}: ${item.title}`}
+                title={`${MEETING_SECTION_LABELS[section]} ${number}: ${item.title}`}
                 className={cn(
                   'tabular grid size-8 shrink-0 place-items-center rounded-lg text-xs font-semibold transition',
                   first && 'ml-3',
@@ -222,9 +254,9 @@ export function MeetingFocus({ items, onAdd, nextMeeting, readOnly = false }: Pr
                     ? 'bg-brand-600 text-white'
                     : isDone
                       ? 'bg-emerald-100 text-emerald-700 dark:bg-emerald-950 dark:text-emerald-300'
-                      : isPendenz
-                        ? 'bg-amber-100 text-amber-800 hover:bg-amber-200 dark:bg-amber-950 dark:text-amber-200'
-                        : 'bg-slate-100 text-slate-600 hover:bg-slate-200 dark:bg-slate-800 dark:text-slate-300 dark:hover:bg-slate-700',
+                      : section === 'traktandum'
+                        ? 'bg-slate-100 text-slate-600 hover:bg-slate-200 dark:bg-slate-800 dark:text-slate-300 dark:hover:bg-slate-700'
+                        : 'bg-amber-100 text-amber-800 hover:bg-amber-200 dark:bg-amber-950 dark:text-amber-200',
                 )}
               >
                 {isDone && itemIndex !== index ? (
@@ -255,7 +287,9 @@ export function MeetingFocus({ items, onAdd, nextMeeting, readOnly = false }: Pr
             gar keine Zeile. */}
         {(kind === 'pendenz' || current.status !== 'pending' || current.deferCount > 0) && (
           <div className="mb-3 flex flex-wrap items-center gap-1.5">
-            <KindBadge kind={kind} />
+            {/* Der Takt tritt an die Stelle des Etiketts «Pendenz»: Beide
+                sagen, worunter der Punkt steht, und dieses sagt es genauer. */}
+            {standing ? <StandingBadge rule={standing} /> : <KindBadge kind={kind} />}
             {current.status !== 'pending' && <StatusBadge status={current.status} />}
             {current.deferCount > 0 && (
               <span className="badge bg-amber-100 text-amber-800 dark:bg-amber-950 dark:text-amber-200">
@@ -297,6 +331,12 @@ export function MeetingFocus({ items, onAdd, nextMeeting, readOnly = false }: Pr
               </button>
 
               <DeferMenu itemId={current.id} nextMeeting={nextMeeting} compact />
+
+              {/* Am Sitzungstisch fällt auf, dass ein Punkt zum dritten Mal
+                  dasteht – deshalb steht der Weg zur ständigen Pendenz auch
+                  hier. Nicht an der Monatspendenz: Die kehrt bereits auf ihre
+                  eigene Weise wieder (siehe `lib/monthlyDuties`). */}
+              {!isDutyItem(current) && <StandingButton item={current} compact />}
 
               <button
                 type="button"

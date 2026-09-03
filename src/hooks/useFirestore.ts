@@ -10,6 +10,7 @@ import {
 import { toDate } from '@/lib/dates'
 import { impulseKindRank } from '@/lib/impulse'
 import { isDutyItem, monthLeaders } from '@/lib/monthlyDuties'
+import { dayKey, standingWaits } from '@/lib/standing'
 import {
   isWithdrawnTalk,
   OPEN_STATUSES,
@@ -161,17 +162,26 @@ export function useMeetingItems(meetingId: string | undefined) {
  * auf keine. Sie gehören dem Monat und der Person, die ihn führt – in eine
  * Traktandenliste übernommen wären sie an genau dem Ort, an dem sie nie
  * stehen sollten (siehe `lib/monthlyDuties`).
+ *
+ * Und ohne die ständigen Pendenzen, deren nächste Runde noch nicht begonnen
+ * hat: Auch sie liegen ohne Sitzung da, aber nicht, weil ihnen eine fehlt –
+ * sie sind schlicht noch nicht dran (siehe `lib/standing`).
  */
 export function useUnassignedItems() {
   const state = useAgendaStore()
+  const today = dayKey(new Date())
   return useMemo(
     () => ({
       ...state,
       data: state.data.filter(
-        (item) => !item.meetingId && !isDutyItem(item) && OPEN_STATUSES.includes(item.status),
+        (item) =>
+          !item.meetingId &&
+          !isDutyItem(item) &&
+          !standingWaits(item, today) &&
+          OPEN_STATUSES.includes(item.status),
       ),
     }),
-    [state],
+    [state, today],
   )
 }
 

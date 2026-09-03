@@ -1107,6 +1107,125 @@ export interface CallingChanges {
   open: CallingOpenRow[]
 }
 
+/* ------------------------------------------------------------------ */
+/* Ständige Pendenzen                                                  */
+/* ------------------------------------------------------------------ */
+
+/**
+ * In welchem Takt eine ständige Pendenz wiederkehrt.
+ *
+ * `meeting` ist der eine Takt, der nicht am Kalender hängt: **jede Sitzung**.
+ * Er braucht kein Datum – die nächste Sitzung ist die nächste Sitzung, ob sie
+ * nun in drei Tagen oder in drei Wochen stattfindet.
+ *
+ * Die übrigen drei sind Zeiträume und werden gerechnet: ein Tag ist ein Tag,
+ * gleich ob dazwischen eine Sitzung liegt. Etwas wie «jede zweite Sitzung»
+ * gibt es bewusst nicht – im Augenblick des Abhakens ist meist nur die
+ * nächste Sitzung geplant, und die übernächste wäre damit geraten. Wer eine
+ * Pendenz seltener als jede Sitzung braucht, meint ohnehin einen Zeitraum.
+ */
+export type StandingUnit = 'meeting' | 'day' | 'week' | 'month'
+
+/** Einzahl – «alle 1 Woche» schreibt niemand, gebraucht wird «jede Woche». */
+export const STANDING_UNIT_LABELS: Record<StandingUnit, string> = {
+  meeting: 'Sitzung',
+  day: 'Tag',
+  week: 'Woche',
+  month: 'Monat',
+}
+
+export const STANDING_UNIT_PLURAL: Record<StandingUnit, string> = {
+  meeting: 'Sitzungen',
+  day: 'Tage',
+  week: 'Wochen',
+  month: 'Monate',
+}
+
+/** Die Zeiträume – alles ausser «jede Sitzung», zur Wahl unter «Benutzerdefiniert». */
+export const STANDING_PERIOD_UNITS: StandingUnit[] = ['day', 'week', 'month']
+
+/**
+ * Der Takt einer ständigen Pendenz – und wo sie darin gerade steht.
+ *
+ * Steht das Feld am Eintrag, hört die Pendenz nicht auf: «Erledigt» schliesst
+ * sie nicht ab, sondern setzt sie auf ihre nächste Runde (siehe
+ * `lib/standing`). Sie bleibt derselbe Datensatz – mit demselben Titel,
+ * derselben Beschreibung und demselben Verlauf –, und genau das ist der
+ * Unterschied zur Monatspendenz: Dort entsteht Monat für Monat ein **neuer**
+ * Eintrag aus einer Vorlage, weil jeden Monat eine andere Person zuständig
+ * ist. Eine ständige Pendenz gehört immer denselben Leuten; es gibt nichts zu
+ * vervielfältigen.
+ */
+export interface StandingRule {
+  /**
+   * Alle wie viele Einheiten – mindestens 1.
+   *
+   * Bei `meeting` immer 1: «jede Sitzung». Eine andere Zahl stünde dort für
+   * einen Takt, der sich im Voraus nicht ausrechnen lässt.
+   */
+  every: number
+  unit: StandingUnit
+  /**
+   * Frühestens ab diesem Tag wieder fällig – «2026-08-04».
+   *
+   * Fehlt das Feld (oder steht `null`), ist die Pendenz sofort wieder dran.
+   * Das ist der Normalfall bei «jede Sitzung» ohne geplante Folgesitzung: Sie
+   * wartet im Sammelkorb und kommt mit der nächsten Sitzung mit, wann immer
+   * sie angesetzt wird.
+   */
+  dueFrom?: string | null
+  /** Wie oft sie schon abgehakt wurde – macht sichtbar, dass sie wirklich läuft. */
+  doneCount?: number
+  /** Wann zuletzt abgehakt – als ISO-Text, wie die Einträge im Verlauf. */
+  lastDoneAt?: string | null
+}
+
+/* ------------------------------------------------------------------ */
+/* Die drei Abschnitte einer Sitzung                                   */
+/* ------------------------------------------------------------------ */
+
+/**
+ * Worunter ein Eintrag in der Sitzung steht.
+ *
+ * Nicht dasselbe wie `ItemKind`: Eine ständige Pendenz **ist** eine Pendenz –
+ * sie trägt `kind: 'pendenz'` und steht in der Pendenzenliste. Am
+ * Sitzungstisch bekommt sie trotzdem einen eigenen Abschnitt, und zwar den
+ * ersten: Was jedes Mal drankommt, ist der feste Teil der Sitzung und wird
+ * abgearbeitet, bevor das Neue beginnt. Danach folgt, was für diese Sitzung
+ * erfasst wurde, und zuletzt, was aus früheren Sitzungen liegengeblieben ist.
+ */
+export type MeetingSection = 'standing' | 'traktandum' | 'pendenz'
+
+/** Die Reihenfolge, in der eine Sitzung durchgeht. */
+export const MEETING_SECTION_ORDER: MeetingSection[] = ['standing', 'traktandum', 'pendenz']
+
+export const MEETING_SECTION_LABELS: Record<MeetingSection, string> = {
+  standing: 'Ständige Pendenz',
+  traktandum: 'Traktandum',
+  pendenz: 'Pendenz',
+}
+
+/** Mehrzahl – für die Überschriften der Sitzung und des Protokolls. */
+export const MEETING_SECTION_PLURAL: Record<MeetingSection, string> = {
+  standing: 'Ständige Pendenzen',
+  traktandum: 'Traktanden',
+  pendenz: 'Pendenzen',
+}
+
+/**
+ * Dieselbe Mehrzahl, wie sie **gezählt** dasteht: «1 von 8 …».
+ *
+ * Zwei der drei stehen unverändert – «Traktanden» und «Pendenzen» sind
+ * bereits die Form, die nach «von acht» kommt. Der ständigen Pendenz fehlte
+ * dort das Beugungs-n, und «1 von 2 Ständige Pendenzen» liest sich, als hätte
+ * es jemand aus zwei Sätzen zusammengesetzt.
+ */
+export const MEETING_SECTION_COUNTED: Record<MeetingSection, string> = {
+  standing: 'ständigen Pendenzen',
+  traktandum: 'Traktanden',
+  pendenz: 'Pendenzen',
+}
+
 export interface AgendaItem extends WithId {
   title: string
   description?: string
@@ -1187,6 +1306,23 @@ export interface AgendaItem extends WithId {
    * Fehlt das Feld, bleibt alles beim Alten.
    */
   callingChanges?: CallingChanges | null
+
+  /**
+   * Eine Pendenz, die nicht aufhört.
+   *
+   * Manches steht in jeder Sitzung: die Ansprachen für den nächsten Monat,
+   * die Liste der Kranken, die Zahlen des Kollegiums. Bisher hiess das
+   * entweder «jedes Mal neu erfassen» oder «nie abhaken» – im einen Fall
+   * zwanzig gleichlautende Einträge im Archiv, im anderen eine Pendenz, an
+   * der der Fortschritt nicht mehr abzulesen war.
+   *
+   * Steht hier ein Takt, geschieht beim Abhaken etwas anderes: Der Eintrag
+   * wird nicht abgeschlossen, sondern auf seine nächste Runde gesetzt –
+   * auf die nächste Sitzung oder auf den nächsten Zeitraum (siehe
+   * `lib/standing`). Fehlt das Feld oder steht `null`, ist es eine
+   * gewöhnliche Pendenz; das ist zugleich der Weg zurück.
+   */
+  standing?: StandingRule | null
 
   /*
    * Eine eigene Notizliste je Traktandum gab es einmal; sie ist weggefallen.

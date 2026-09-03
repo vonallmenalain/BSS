@@ -6,6 +6,7 @@ import { AssigneePicker } from '@/components/ui/Pickers'
 import { UserAvatar } from '@/components/ui/Avatar'
 import { LayoutGrid } from '@/components/agenda/LayoutGrid'
 import { CallingChangesTables } from '@/components/agenda/CallingChanges'
+import { StandingFields } from '@/components/agenda/Standing'
 import { useAuth } from '@/contexts/AuthContext'
 import { useData } from '@/contexts/DataContext'
 import { useToast } from '@/contexts/ToastContext'
@@ -16,6 +17,7 @@ import { createMonthlyDuty } from '@/services/monthlyDuties'
 import { emptyLayout, serializeLayout } from '@/lib/layout'
 import { emptyCallingChanges, serializeCallingChanges } from '@/lib/callingChanges'
 import { formatMonthKey } from '@/lib/monthlyDuties'
+import { DEFAULT_STANDING } from '@/lib/standing'
 import { richValueOf, type RichValue } from '@/lib/richtext'
 import { cn } from '@/lib/utils'
 import {
@@ -24,6 +26,7 @@ import {
   type ItemKind,
   type ItemLayout,
   type ItemStatus,
+  type StandingRule,
 } from '@/lib/types'
 
 interface Props {
@@ -134,6 +137,21 @@ export function AgendaItemForm({
   const [monthly, setMonthly] = useState(false)
   const isMonthly = monthly && kind === 'pendenz'
 
+  /*
+   * «Ständige Pendenz» – der Haken darunter, und der zweite, der aus dem
+   * Eintrag etwas anderes macht.
+   *
+   * Er steht ebenfalls nur bei der Pendenz: Ein Traktandum ist ein Thema für
+   * **diese** Sitzung; was in jeder Sitzung steht, ist keines mehr.
+   *
+   * Beide Haken schliessen einander aus. Sie beantworten dieselbe Frage –
+   * «was geschieht, wenn ich sie abhake?» – und geben zwei verschiedene
+   * Antworten: die eine legt Monat für Monat eine neue Pendenz an, die andere
+   * setzt dieselbe auf ihre nächste Runde.
+   */
+  const [standing, setStandingRule] = useState<StandingRule | null>(null)
+  const isStanding = standing !== null && kind === 'pendenz'
+
   const month = useCurrentMonth()
   const { leaders } = useMonthLeaders()
   const leader = leaders.get(month) ?? null
@@ -153,6 +171,7 @@ export function AgendaItemForm({
     setForm(EMPTY)
     setKind(defaultKind)
     setMonthly(false)
+    setStandingRule(null)
     lastLayout.current = null
     lastCallingChanges.current = null
   }, [open, defaultKind])
@@ -183,7 +202,30 @@ export function AgendaItemForm({
    */
   const chooseMonthly = (next: boolean) => {
     setMonthly(next)
-    if (next) setShape('text')
+    if (next) {
+      setShape('text')
+      setStandingRule(null)
+    }
+  }
+
+  /*
+   * Der Takt bleibt erhalten, solange das Fenster offen ist.
+   *
+   * Wer den Haken versehentlich löst, nachdem er «alle 3 Wochen» eingestellt
+   * hat, soll ihn nicht ein zweites Mal einstellen müssen. Gestalt und
+   * Zuständige bleiben dagegen stehen: Eine ständige Pendenz ist ein
+   * gewöhnlicher Eintrag, der nicht aufhört – kein anderer Datensatz.
+   */
+  const lastStanding = useRef<StandingRule>(DEFAULT_STANDING)
+
+  const chooseStanding = (next: boolean) => {
+    if (!next) {
+      if (standing) lastStanding.current = standing
+      setStandingRule(null)
+      return
+    }
+    setStandingRule(lastStanding.current)
+    setMonthly(false)
   }
 
   /*
@@ -244,6 +286,7 @@ export function AgendaItemForm({
         meetingId,
         layout: form.layout ? serializeLayout(form.layout) : null,
         callingChanges: form.callingChanges ? serializeCallingChanges(form.callingChanges) : null,
+        standing: isStanding ? standing : null,
       }
       const id = await createAgendaItem(payload, { id: profile.id, name: profile.displayName })
       toast.success(
@@ -266,16 +309,24 @@ export function AgendaItemForm({
       open={open}
       onClose={onClose}
       title={
-        isMonthly ? 'Neue Monatspendenz' : kind === 'pendenz' ? 'Neue Pendenz' : 'Neues Traktandum'
+        isMonthly
+          ? 'Neue Monatspendenz'
+          : isStanding
+            ? 'Neue ständige Pendenz'
+            : kind === 'pendenz'
+              ? 'Neue Pendenz'
+              : 'Neues Traktandum'
       }
       description={
         isMonthly
           ? 'Fällt jeden Monat an – bei dem, der den Monat führt.'
-          : meetingId
-            ? kind === 'pendenz'
-              ? 'Steht in der nächsten Sitzung unter den Pendenzen.'
-              : 'Steht in der nächsten Sitzung unter den Traktanden.'
-            : 'Landet im Sammelkorb und kann später einer Sitzung zugeordnet werden.'
+          : isStanding
+            ? 'Kehrt wieder, statt abgeschlossen zu werden – zuoberst in der Sitzung.'
+            : meetingId
+              ? kind === 'pendenz'
+                ? 'Steht in der nächsten Sitzung unter den Pendenzen.'
+                : 'Steht in der nächsten Sitzung unter den Traktanden.'
+              : 'Landet im Sammelkorb und kann später einer Sitzung zugeordnet werden.'
       }
       size="lg"
       footer={
@@ -357,6 +408,43 @@ export function AgendaItemForm({
               )}
             </span>
           </label>
+        )}
+
+        {/* Der zweite Weg, eine Aufgabe wiederkehren zu lassen – und der
+            häufigere. Er steht unter der Monatsverantwortung, weil beide
+            dieselbe Frage beantworten: Was geschieht beim Abhaken? Hier
+            geschieht das Einfachere – die Pendenz bleibt dieselbe und rückt
+            eine Runde weiter. */}
+        {kind === 'pendenz' && !isMonthly && (
+          <div className="rounded-lg border border-slate-200 p-3 text-sm dark:border-slate-700">
+            <label className="flex cursor-pointer items-start gap-2">
+              <input
+                type="checkbox"
+                className="checkbox mt-0.5"
+                checked={isStanding}
+                onChange={(event) => chooseStanding(event.target.checked)}
+              />
+              <span>
+                Ständige Pendenz
+                <span className="block text-xs text-slate-500 dark:text-slate-400">
+                  Kehrt immer wieder: «Erledigt» schliesst sie nicht ab, sondern setzt sie auf die
+                  nächste Runde. In der Sitzung steht sie zuoberst, vor den neuen Traktanden.
+                </span>
+              </span>
+            </label>
+
+            {/* Der Takt steht eingerückt unter dem Haken – er gehört zu ihm
+                und nicht zum Formular daneben. */}
+            {isStanding && standing && (
+              <div className="mt-3 pl-6">
+                <StandingFields
+                  value={standing}
+                  onChange={setStandingRule}
+                  idPrefix="new-standing"
+                />
+              </div>
+            )}
+          </div>
         )}
 
         {/* Die Haken stehen oben rechts, weil sie über die Gestalt des ganzen

@@ -14,16 +14,19 @@ import { cn } from '@/lib/utils'
 import { useAuth } from '@/contexts/AuthContext'
 import { useToast } from '@/contexts/ToastContext'
 import { AssigneeAvatars } from '@/components/ui/Avatar'
-import { StatusBadge } from '@/components/ui/Badge'
+import { StandingBadge, StatusBadge } from '@/components/ui/Badge'
 import { ConfirmDialog } from '@/components/ui/Modal'
 import { RichText } from '@/components/ui/RichText'
 import { AgendaItemEditor } from '@/components/agenda/AgendaItemEditor'
 import { DeferMenu } from '@/components/agenda/DeferMenu'
+import { StandingButton } from '@/components/agenda/Standing'
 import { AuthorChip } from '@/components/agenda/AuthorChip'
+import { useStandingRound } from '@/hooks/useStanding'
 import { deleteAgendaItem, setItemStatus } from '@/services/agenda'
 import { callingRowCounts } from '@/lib/callingChanges'
 import { formatDate } from '@/lib/dates'
 import { formatMonthKey, isDutyItem } from '@/lib/monthlyDuties'
+import { dayKey, normalizeStanding, standingWaits } from '@/lib/standing'
 import {
   ITEM_KIND_LABELS,
   lastEditedAt,
@@ -117,10 +120,27 @@ export function AgendaItemRow({
 }: Props) {
   const { profile } = useAuth()
   const toast = useToast()
+  const standingRound = useStandingRound()
   const [confirmDelete, setConfirmDelete] = useState(false)
 
   const isDone = item.status === 'done'
   const kind = toItemKind(item)
+
+  /*
+   * Eine ständige Pendenz.
+   *
+   * Sie trägt statt des Etiketts «Pendenz» ihren Takt, und «Erledigt»
+   * schliesst sie nicht ab, sondern setzt sie eine Runde weiter (siehe
+   * `hooks/useStanding`). Wartet sie gerade auf diese Runde, steht der Tag
+   * dahinter – sonst wäre in der Liste nicht zu erklären, warum sie in der
+   * nächsten Sitzung fehlt.
+   */
+  const standing = normalizeStanding(item.standing)
+  // Der Tag steht nur an der Pendenz ohne Sitzung: Steht sie in einer, sagt
+  // deren Datum bereits, wann es weitergeht – zweimal dasselbe nebeneinander
+  // liest sich wie ein Fehler.
+  const standingWaiting =
+    standing !== null && !item.meetingId && standingWaits(item, dayKey(new Date()))
 
   /*
    * Eine Aufgabe der Monatsverantwortung.
@@ -164,6 +184,9 @@ export function AgendaItemRow({
 
   const toggleDone = async () => {
     if (!profile) return
+    // Eine ständige Pendenz wird nicht abgeschlossen, sondern weitergesetzt.
+    // «Wieder offen» gibt es an ihr nicht – sie ist nie zu.
+    if (!isDone && (await standingRound(item))) return
     try {
       await setItemStatus(item.id, isDone ? 'pending' : 'done', {
         id: profile.id,
@@ -237,6 +260,7 @@ export function AgendaItemRow({
               {/* «Pendent» neben «Pendenz» sagt dasselbe zweimal – angeschrieben
                   wird nur, was vom Normalfall abweicht. */}
               {item.status !== 'pending' && <StatusBadge status={item.status} />}
+              {standing && <StandingBadge rule={standing} waiting={standingWaiting} />}
               {dutyMonth && <DutyBadge month={dutyMonth} />}
               {item.deferCount > 0 && (
                 <span className="badge bg-amber-100 text-amber-800 dark:bg-amber-950 dark:text-amber-200">
@@ -272,6 +296,7 @@ export function AgendaItemRow({
                   vor dem Start der Sitzung, «Erledigt» danach. «Pendent» ist
                   der Normalfall und bleibt ungeschrieben. */}
               {item.status !== 'pending' && <StatusBadge status={item.status} />}
+              {standing && <StandingBadge rule={standing} waiting={standingWaiting} />}
               {dutyMonth && <DutyBadge month={dutyMonth} />}
               {item.deferCount > 0 && !isDone && (
                 <span
@@ -380,6 +405,11 @@ export function AgendaItemRow({
                   type="button"
                   className={isDone ? 'btn-secondary btn-sm' : 'btn-success btn-sm'}
                   onClick={() => void toggleDone()}
+                  title={
+                    standing && !isDone
+                      ? 'Diese Runde ist erledigt – die Pendenz kehrt wieder.'
+                      : undefined
+                  }
                 >
                   <Check className="size-4" aria-hidden />
                   {isDone ? 'Wieder offen' : 'Erledigt'}
@@ -387,6 +417,12 @@ export function AgendaItemRow({
               )}
 
               {!duty && <DeferMenu itemId={item.id} nextMeeting={nextMeeting} className="btn-sm" />}
+
+              {/* Der Weg in beide Richtungen: aus einer Pendenz eine ständige
+                  machen – und aus einer ständigen wieder eine gewöhnliche.
+                  Nicht an der Monatspendenz: Die kehrt bereits wieder, und
+                  zwar auf ihre eigene Weise (siehe `lib/monthlyDuties`). */}
+              {!duty && <StandingButton item={item} className="btn-sm" />}
 
               <button
                 type="button"

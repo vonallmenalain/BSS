@@ -29,11 +29,11 @@ import {
 import { isDutyItem } from '@/lib/monthlyDuties'
 import { cn, matchesSearch } from '@/lib/utils'
 import { searchSnippet } from '@/lib/search'
-import { groupByKind } from '@/services/agenda'
+import { groupBySection } from '@/services/agenda'
 import { createMeeting, suggestNextMeetingDate } from '@/services/meetings'
 import {
   DEFAULT_MEETINGS_VIEW,
-  ITEM_KIND_PLURAL,
+  MEETING_SECTION_PLURAL,
   MEETING_DETAIL_LABELS,
   MEETING_LIST_MODE_LABELS,
   MEETING_SCOPE_LABELS,
@@ -487,7 +487,7 @@ function MeetingRow({
   const searching = Boolean(term)
 
   const grouped = useMemo(
-    () => (items ? groupByKind(items, manualPendenzen) : null),
+    () => (items ? groupBySection(items, manualPendenzen) : null),
     [items, manualPendenzen],
   )
 
@@ -495,7 +495,9 @@ function MeetingRow({
      «Noch nichts traktandiert» wäre dort keine Auskunft, sondern ein
      Missverständnis. */
   const groups =
-    grouped && searching && grouped.traktandum.length + grouped.pendenz.length === 0
+    grouped &&
+    searching &&
+    grouped.standing.length + grouped.traktandum.length + grouped.pendenz.length === 0
       ? null
       : grouped
 
@@ -557,9 +559,23 @@ function MeetingRow({
               überflogen werden. Der Schalter für die Pendenzen gilt der
               Übersicht und nicht der Suche; eine gefundene Pendenz zu
               verschweigen, wäre die falsche Antwort. */}
+          {/* Die ständigen Pendenzen stehen voran – der feste Teil der
+              Sitzung. Ohne sie steht dort keine leere Überschrift: Anders als
+              die Traktanden hat nicht jede Sitzung welche. */}
+          {(searching ? groups.standing.length > 0 : view.showPendenzen) &&
+            groups.standing.length > 0 && (
+              <ItemGroup
+                title={MEETING_SECTION_PLURAL.standing}
+                items={groups.standing}
+                detail={searching ? 'titles' : view.pendenzenDetail}
+                empty="Keine ständigen Pendenzen."
+                term={term}
+                onOpen={onOpenItem}
+              />
+            )}
           {(!searching || groups.traktandum.length > 0) && (
             <ItemGroup
-              title={ITEM_KIND_PLURAL.traktandum}
+              title={MEETING_SECTION_PLURAL.traktandum}
               items={groups.traktandum}
               detail={searching ? 'titles' : view.agendaDetail}
               empty="Noch nichts traktandiert."
@@ -569,7 +585,7 @@ function MeetingRow({
           )}
           {(searching ? groups.pendenz.length > 0 : view.showPendenzen) && (
             <ItemGroup
-              title={ITEM_KIND_PLURAL.pendenz}
+              title={MEETING_SECTION_PLURAL.pendenz}
               items={groups.pendenz}
               detail={searching ? 'titles' : view.pendenzenDetail}
               empty="Keine Pendenzen."

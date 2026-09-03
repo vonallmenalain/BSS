@@ -110,9 +110,9 @@ Gespeichert wird beim Antippen. Das war einmal ein Fenster – für vier Angaben
 die in einer halben Minute festgehalten sind, ein Umweg.
 
 **Durchführen (Sitzungsmodus).** Fortschrittsbalken, Sprungleiste über alle
-Punkte – zuerst die neuen Traktanden, dann die Pendenzen –, dann das aktuelle
-Thema in voller Breite und unmittelbar bearbeitbar: Titel, Beschreibung,
-Zuständige. Darunter die Aktionsleiste – _Erledigt_, _Auf nächste Sitzung_,
+Punkte – zuerst die ständigen Pendenzen, dann die neuen Traktanden, zuletzt
+die übrigen Pendenzen –, dann das aktuelle Thema in voller Breite und
+unmittelbar bearbeitbar: Titel, Beschreibung, Zuständige. Darunter die Aktionsleiste – _Erledigt_, _Auf nächste Sitzung_,
 _Löschen_ – und Vor/Zurück. Nach «Erledigt» rückt die App von
 selbst zum nächsten Punkt. Am Laptop geht das Blättern auch mit den
 Pfeiltasten.
@@ -122,12 +122,25 @@ solange nicht abgehakt ist, _Erledigt_ danach. Der Start der Sitzung macht
 aus allem Neuen Pendentes – ab da ist jeder Punkt schlicht offen.
 
 **Reihenfolge.** In der Listenansicht mit Pfeilen oder durch Ziehen und
-Ablegen, innerhalb der beiden Gruppen. Eine Zeile ist zugeklappt schmal und
-zeigt den Titel; ein Klick klappt sie auf, und dann steht alles da.
+Ablegen, innerhalb des eigenen Abschnitts. Eine Zeile ist zugeklappt schmal
+und zeigt den Titel; ein Klick klappt sie auf, und dann steht alles da.
 
 Eine eigene Notizliste je Traktandum gab es einmal; sie ist weggefallen. Zwei
 Textfelder nebeneinander beantworten dieselbe Frage zweimal, und in der
 Sitzung schreibt niemand zweimal.
+
+**Ständige Pendenzen.** Manches steht in jeder Sitzung – die Ansprachen für
+den nächsten Monat, die Liste der Kranken. Eine ständige Pendenz wird beim
+Abhaken nicht abgeschlossen, sondern auf ihre nächste Runde gesetzt: auf die
+nächste Sitzung oder auf den nächsten eingestellten Zeitraum (jede Sitzung,
+1× pro Monat, oder alle _n_ Tage/Wochen/Monate). Es bleibt derselbe Eintrag,
+mit allem, was darin steht – und deshalb ist das etwas anderes als die
+Monatspendenz, bei der Monat für Monat ein **neuer** Eintrag entsteht, weil
+die zuständige Person wechselt. In der Sitzung steht sie im ersten Abschnitt:
+Was jedes Mal drankommt, ist der feste Teil und wird abgearbeitet, bevor das
+Gespräch beginnt. Der Weg führt in beide Richtungen – aus einer Pendenz wird
+eine ständige und aus einer ständigen wieder eine gewöhnliche, die sich
+abschliessen lässt.
 
 **Verschieben.** Ein Ziel, ein Klick: auf die nächste Sitzung. Früher waren es
 fünf – eine Woche, ein Monat, drei Monate, freies Datum –, und vier davon
@@ -516,6 +529,9 @@ agendaItems/{id}       Traktandum bzw. Pendenz
                        ├─ status     neu | pendent | erledigt
                        ├─ assignees  UIDs der Zuständigen
                        ├─ memberRefs mit «@» erwähnte Mitglieder
+                       ├─ standing   Takt einer ständigen Pendenz
+                       │             (Sitzung | Tag | Woche | Monat,
+                       │              ab wann wieder fällig, wie oft schon)
                        ├─ dueDate, priority, order, deferCount
                        └─ history[]
 members/{id}           Stammdaten, Status, Notiz, lastTalkDate, talkCount
