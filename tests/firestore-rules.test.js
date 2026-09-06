@@ -537,8 +537,9 @@ describe('Assistenz der Abendmahlsversammlung', () => {
       ),
     )
 
-    // Der Organist gehört zur Musik: Er spielt alle Lieder, und wer die
-    // Lieder aussucht, teilt ihn ein – als Mitglied oder als blosser Name.
+    // Organist und Dirigent gehören zur Musik: Beide tragen die Lieder, und
+    // wer die Lieder aussucht, teilt sie ein – als Mitglied oder als
+    // blosser Name.
     await assertSucceeds(
       setDoc(
         doc(asMusicAssistant(), 'sacramentMeetings', '2026-08-09'),
@@ -549,7 +550,24 @@ describe('Assistenz der Abendmahlsversammlung', () => {
     await assertSucceeds(
       setDoc(
         doc(asMusicAssistant(), 'sacramentMeetings', '2026-08-09'),
-        { organistId: null, organistName: 'Besuch aus Thun' },
+        { choristerId: null, choristerName: 'Besuch aus Thun' },
+        { merge: true },
+      ),
+    )
+    await assertSucceeds(
+      setDoc(
+        doc(asMusicAssistant(), 'sacramentMeetings', '2026-08-09'),
+        { organistId: null, organistName: null, choristerId: 'mitglied-1', choristerName: 'Muster, Max' },
+        { merge: true },
+      ),
+    )
+
+    // `conductingId` sieht aus wie der Dirigent, ist aber die Leitung der
+    // Versammlung – die bleibt dem Vollzugriff vorbehalten.
+    await assertFails(
+      setDoc(
+        doc(asMusicAssistant(), 'sacramentMeetings', '2026-08-09'),
+        { conductingId: BISHOP },
         { merge: true },
       ),
     )

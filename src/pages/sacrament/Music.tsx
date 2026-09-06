@@ -1,5 +1,5 @@
-import { useCallback, useId, useMemo, useState } from 'react'
-import { CalendarRange, FileDown, Music2, Piano, Plus, Trash2 } from 'lucide-react'
+import { useCallback, useId, useMemo, useState, type ReactNode } from 'react'
+import { CalendarRange, FileDown, Music2, Plus, Trash2 } from 'lucide-react'
 import { useAuth } from '@/contexts/AuthContext'
 import { useData } from '@/contexts/DataContext'
 import { useToast } from '@/contexts/ToastContext'
@@ -8,12 +8,20 @@ import { useUrlState } from '@/hooks/useUrlState'
 import { MemberPicker } from '@/components/ui/Pickers'
 import { HymnField } from '@/components/sacrament/HymnField'
 import { MusicExportDialog } from '@/components/sacrament/MusicExport'
-import { OrganistField } from '@/components/sacrament/OrganistField'
+import { MusicPersonField } from '@/components/sacrament/MusicPersonField'
 import { ConflictNotice, SectionHeader, useSacrament } from '@/components/sacrament/SacramentLayout'
 import { SundayProgramBadge } from '@/components/sacrament/SundayProgram'
 import { useAutoDraft } from '@/components/sacrament/useDraft'
 import { formatDateLong } from '@/lib/dates'
-import { scheduledOrganists, sundaysOf, type MusicRow } from '@/lib/organist'
+import {
+  MUSIC_ROLE_LABELS,
+  MUSIC_ROLE_PLURAL,
+  MUSIC_ROLE_VERB,
+  MUSIC_ROLES,
+  scheduledMusicPeople,
+  sundaysOf,
+  type MusicRow,
+} from '@/lib/musicRoles'
 import { cn } from '@/lib/utils'
 import { sundayProgram } from '@/lib/sunday'
 import { newMusicalNumber, replaceInList, saveSacramentMeeting } from '@/services/sacrament'
@@ -33,16 +41,17 @@ interface MusicDraft {
 /**
  * Musik einer Abendmahlsversammlung.
  *
- * Zuoberst steht, wer spielt: **ein** Organist je Sonntag, und er spielt
- * alle Lieder. Darunter die drei Lieder, die immer dazugehören (Anfang,
- * Abendmahl, Schluss), das freiwillige Zwischenlied und die Musikeinlagen –
- * mit den Mitgliedern, die vortragen. Die Reihenfolge von Zwischenlied und
- * Musikeinlagen zwischen den Ansprachen wird unter «Leitung» festgelegt.
+ * Zuoberst stehen die beiden, die sie tragen: **ein** Organist und **ein**
+ * Dirigent je Sonntag, beide für die ganze Versammlung. Darunter die drei
+ * Lieder, die immer dazugehören (Anfang, Abendmahl, Schluss), das
+ * freiwillige Zwischenlied und die Musikeinlagen – mit den Mitgliedern, die
+ * vortragen. Die Reihenfolge von Zwischenlied und Musikeinlagen zwischen den
+ * Ansprachen wird unter «Leitung» festgelegt.
  *
- * Über allem liegt ein Filter: Wer einen Organisten wählt, sieht statt des
- * einen Sonntags dessen sämtliche Sonntage mit ihren Liedern – die Antwort
- * auf «wann bin ich eingeteilt?». Denselben Ausschnitt gibt der Knopf
- * **Exportieren** aufs Papier, zum Weiterreichen an die Organisten.
+ * Über allem liegt ein Filter: Wer eine Person wählt, sieht statt des einen
+ * Sonntags deren sämtliche Sonntage mit den Liedern – die Antwort auf «wann
+ * bin ich eingeteilt?». Er steht auch dem offen, der bloss nachschaut.
+ * Denselben Ausschnitt gibt der Knopf **Exportieren** aufs Papier.
  *
  * Gespeichert wird laufend, wie überall in diesem Bereich: kurz nach der
  * letzten Eingabe und spätestens beim Verlassen der Seite.
@@ -55,17 +64,16 @@ export function Music() {
   const toast = useToast()
   const filterId = useId()
 
-  /* Der gewählte Organist steht in der Adresse – so führt «Zurück»
-     dorthin zurück, wo man war (siehe `hooks/useUrlState`). */
-  const [filter, setFilter] = useUrlState<string>('organist', '')
+  /* Die gewählte Person steht in der Adresse – so führt «Zurück» dorthin
+     zurück, wo man war (siehe `hooks/useUrlState`). */
+  const [filter, setFilter] = useUrlState<string>('person', '')
   const [exportOpen, setExportOpen] = useState(false)
 
   /*
    * Eine Assistenz kann diesen Bereich auch bloss zum Nachschauen haben
-   * (siehe `AuthContext`). Dann steht alles da, was dasteht – der Organist
-   * und alle Lieder –, nur ohne die Knöpfe, die etwas daran ändern. Die
-   * Zugriffsregeln sagen ohnehin nein; hier geht es darum, gar nicht erst
-   * dagegen zu laufen.
+   * (siehe `AuthContext`). Dann steht alles da, was dasteht – wer spielt,
+   * wer dirigiert und alle Lieder –, nur ohne die Knöpfe, die etwas daran
+   * ändern. Filter und Ausdruck bleiben offen: Beide lesen bloss.
    */
   const readOnly = !canEditSacramentArea('music')
 
@@ -95,12 +103,12 @@ export function Music() {
   )
 
   /** Zur Wahl steht, wer irgendwann einmal eingeteilt ist – sonst niemand. */
-  const organists = useMemo(
-    () => scheduledOrganists(meetings, resolveName),
+  const people = useMemo(
+    () => scheduledMusicPeople(meetings, MUSIC_ROLES, resolveName),
     [meetings, resolveName],
   )
 
-  const chosen = organists.find((entry) => entry.key === filter) ?? null
+  const chosen = people.find((entry) => entry.key === filter) ?? null
   const filtered = useMemo(
     () => (chosen ? sundaysOf(meetings, [chosen.key], resolveName) : []),
     [chosen, meetings, resolveName],
@@ -134,7 +142,7 @@ export function Music() {
    * Adresse, und zwei getrennte Aufrufe gingen vom selben Stand aus – der
    * zweite überschriebe den ersten (siehe `setDate` in `SacramentLayout`).
    */
-  const open = (next: Date) => setDate(next, (params) => params.delete('organist'))
+  const open = (next: Date) => setDate(next, (params) => params.delete('person'))
 
   return (
     <>
@@ -150,11 +158,12 @@ export function Music() {
 
       {/* Der Filter steht unter dem Datum und über allem Übrigen: Er
           entscheidet, ob hier ein Sonntag steht oder die Sonntage einer
-          Person. */}
-      <div className="no-print card mb-4 flex flex-wrap items-end gap-3 p-3">
-        <div className="min-w-52 flex-1">
+          Person. Am Telefon liegt der Hinweis unter dem Feld, ab dem Tablet
+          daneben – dafür der Umbruch und die Mindestbreiten. */}
+      <div className="no-print card mb-4 flex flex-wrap items-end gap-x-4 gap-y-2 p-3">
+        <div className="min-w-56 flex-1">
           <label className="label" htmlFor={filterId}>
-            Organist
+            Organist oder Dirigent
           </label>
           <select
             id={filterId}
@@ -167,33 +176,44 @@ export function Music() {
             onChange={(event) => setFilter(event.target.value)}
           >
             <option value="">Alle – dieser Sonntag</option>
-            {organists.map((entry) => (
-              <option key={entry.key} value={entry.key}>
-                {entry.name}
-              </option>
-            ))}
+            {MUSIC_ROLES.map((role) => {
+              const group = people.filter((entry) => entry.role === role)
+              if (group.length === 0) return null
+              return (
+                <optgroup key={role} label={MUSIC_ROLE_PLURAL[role]}>
+                  {group.map((entry) => (
+                    <option key={entry.key} value={entry.key}>
+                      {entry.name}
+                    </option>
+                  ))}
+                </optgroup>
+              )
+            })}
           </select>
         </div>
-        <p className="hint mt-0 max-w-xs flex-1 basis-48">
+        <p className="hint mt-0 min-w-48 flex-1">
           {chosen
-            ? `Alle Sonntage mit ${chosen.name} an der Orgel.`
+            ? `Alle Sonntage, an denen ${chosen.name} ${MUSIC_ROLE_VERB[chosen.role]}.`
             : 'Eine Person wählen, um deren Sonntage und Lieder zu sehen.'}
         </p>
       </div>
 
       {chosen ? (
-        <OrganistSundays rows={filtered} name={chosen.name} onOpen={open} />
+        <PersonSundays rows={filtered} name={chosen.name} onOpen={open} />
       ) : (
         <>
           {draft.conflict && <ConflictNotice onDiscard={draft.reset} />}
 
-          <section className="card mb-4 p-4">
-            <h3 className="mb-3 flex items-center gap-2 text-sm font-semibold">
-              <Piano className="size-4 text-slate-400" aria-hidden />
-              Organist
-            </h3>
-            <OrganistField date={date} meeting={meeting} readOnly={readOnly} />
-          </section>
+          {/* Zwei Angaben derselben Art – am Telefon untereinander, ab dem
+              Tablet nebeneinander. Wie die beiden Gebetsplätze. */}
+          <div className="mb-4 grid items-start gap-4 md:grid-cols-2">
+            {MUSIC_ROLES.map((role) => (
+              <section key={role} className="card p-4">
+                <h3 className="mb-3 text-sm font-semibold">{MUSIC_ROLE_LABELS[role]}</h3>
+                <MusicPersonField role={role} date={date} meeting={meeting} readOnly={readOnly} />
+              </section>
+            ))}
+          </div>
 
           <section className="card mb-4 space-y-3 p-4">
             <h3 className="text-sm font-semibold">Gemeindelieder</h3>
@@ -338,17 +358,18 @@ export function Music() {
 }
 
 /* ------------------------------------------------------------------ */
-/* Die Sonntage eines Organisten                                       */
+/* Die Sonntage einer Person                                           */
 /* ------------------------------------------------------------------ */
 
 /**
- * Was der Filter zeigt: jeder Sonntag dieser Person mit seinen Liedern.
+ * Was der Filter zeigt: jeder Sonntag dieser Person, mit den Liedern und mit
+ * dem, wer sonst noch dran ist.
  *
- * Vergangene Sonntage bleiben stehen, nur zurückgenommen – die Frage
- * lautet «wann bin ich eingeteilt?», und die Antwort beginnt nicht bei
- * null, bloss weil ein Monat vorbei ist.
+ * Vergangene Sonntage bleiben stehen, nur zurückgenommen – die Frage lautet
+ * «wann bin ich eingeteilt?», und die Antwort beginnt nicht bei null, bloss
+ * weil ein Monat vorbei ist.
  */
-function OrganistSundays({
+function PersonSundays({
   rows,
   name,
   onOpen,
@@ -371,8 +392,8 @@ function OrganistSundays({
 
   return (
     <section className="card">
-      <header className="flex flex-wrap items-center gap-2 border-b border-slate-200 px-4 py-3 dark:border-slate-800">
-        <CalendarRange className="size-4 text-slate-400" aria-hidden />
+      <header className="flex flex-wrap items-center gap-x-2 gap-y-1 border-b border-slate-200 px-4 py-3 dark:border-slate-800">
+        <CalendarRange className="size-4 shrink-0 text-slate-400" aria-hidden />
         <h3 className="text-sm font-semibold">{name}</h3>
         <span className="text-xs text-slate-500 dark:text-slate-400">
           {rows.length} {rows.length === 1 ? 'Sonntag' : 'Sonntage'}
@@ -383,12 +404,13 @@ function OrganistSundays({
         {rows.map((row) => {
           const past = row.date < today
           const program = sundayProgram(row.date, row.meeting)
+          const empty = HYMN_SLOTS.every((slot) => !row.hymns[slot])
           return (
             <li key={row.dateKey} className={cn('px-4 py-3', past && 'opacity-60')}>
               <div className="flex flex-wrap items-center gap-2">
                 <button
                   type="button"
-                  className="text-sm font-medium hover:underline"
+                  className="text-left text-sm font-medium hover:underline"
                   onClick={() => onOpen(row.date)}
                   title="Diesen Sonntag öffnen"
                 >
@@ -397,40 +419,48 @@ function OrganistSundays({
                 <SundayProgramBadge program={program} />
               </div>
 
-              <dl className="mt-1.5 grid gap-x-4 gap-y-1 sm:grid-cols-2">
+              {/* Beschriftung und Wert – am Telefon untereinander, ab dem
+                  Tablet in zwei Spalten. Wer und was stehen in derselben
+                  Aufstellung: Es ist dieselbe Frage. */}
+              <dl className="mt-1.5 grid gap-x-6 gap-y-1 sm:grid-cols-2">
+                {MUSIC_ROLES.map((role) => {
+                  const person = row.people[role]
+                  if (!person) return null
+                  return (
+                    <Line key={role} label={MUSIC_ROLE_LABELS[role]}>
+                      {person.name}
+                    </Line>
+                  )
+                })}
+
                 {HYMN_SLOTS.map((slot) => {
                   const choice = row.hymns[slot]
                   if (!choice) return null
                   const code = choice.code ?? (choice.number != null ? String(choice.number) : '')
                   return (
-                    <div key={slot} className="flex gap-2 text-sm">
-                      <dt className="w-32 shrink-0 text-xs text-slate-500 dark:text-slate-400">
-                        {HYMN_SLOT_LABELS[slot]}
-                      </dt>
-                      <dd className="min-w-0">
-                        <span className="tabular font-medium">{code}</span>
-                        {code && hymnLabel(choice) && ' · '}
-                        {hymnLabel(choice)}
-                      </dd>
-                    </div>
+                    <Line key={slot} label={HYMN_SLOT_LABELS[slot]}>
+                      <span className="tabular font-medium">{code}</span>
+                      {code && hymnLabel(choice) && ' · '}
+                      {hymnLabel(choice)}
+                    </Line>
                   )
                 })}
               </dl>
 
-              {HYMN_SLOTS.every((slot) => !row.hymns[slot]) && (
-                <p className="mt-1 text-sm text-slate-400">Noch keine Lieder erfasst.</p>
-              )}
+              {empty && <p className="mt-1 text-sm text-slate-400">Noch keine Lieder erfasst.</p>}
 
               {row.numbers.length > 0 && (
                 <p className="mt-1.5 flex items-start gap-2 text-xs text-slate-500 dark:text-slate-400">
                   <Music2 className="mt-0.5 size-3.5 shrink-0" aria-hidden />
-                  {row.numbers
-                    .map((entry) =>
-                      [entry.title.trim() || 'Musikeinlage', entry.performers?.trim()]
-                        .filter(Boolean)
-                        .join(' – '),
-                    )
-                    .join(' · ')}
+                  <span className="min-w-0">
+                    {row.numbers
+                      .map((entry) =>
+                        [entry.title.trim() || 'Musikeinlage', entry.performers?.trim()]
+                          .filter(Boolean)
+                          .join(' – '),
+                      )
+                      .join(' · ')}
+                  </span>
                 </p>
               )}
             </li>
@@ -438,5 +468,15 @@ function OrganistSundays({
         })}
       </ul>
     </section>
+  )
+}
+
+/** Eine Zeile der Aufstellung: Beschriftung links, Wert rechts daneben. */
+function Line({ label, children }: { label: string; children: ReactNode }) {
+  return (
+    <div className="flex gap-2 text-sm">
+      <dt className="w-28 shrink-0 text-xs text-slate-500 dark:text-slate-400">{label}</dt>
+      <dd className="min-w-0 flex-1">{children}</dd>
+    </div>
   )
 }

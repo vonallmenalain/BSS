@@ -2652,6 +2652,23 @@ export interface SacramentMeeting extends WithId {
    */
   organistName?: string | null
 
+  /**
+   * Wer an diesem Sonntag dirigiert – ebenfalls genau eine Person.
+   *
+   * **Nicht zu verwechseln mit `conductingId`.** Das ist, wer die
+   * Versammlung am Pult leitet; hier steht, wer vor der Gemeinde den Takt
+   * gibt. Zwei verschiedene Personen, zwei verschiedene Aufgaben – und
+   * deshalb ein Feldname, der sich vom anderen deutlich unterscheidet:
+   * «chorister» ist die Bezeichnung der Kirche für genau diese Berufung
+   * (im Deutschen «Dirigent»).
+   *
+   * Sonst gilt Wort für Wort, was beim Organisten steht: Kennung aufs
+   * Mitglied, wo es eines gibt.
+   */
+  choristerId?: string | null
+  /** Der ausgeschriebene Name – wie `organistName`, aus denselben Gründen. */
+  choristerName?: string | null
+
   hymns: Partial<Record<HymnSlot, HymnChoice>>
   musicalNumbers: MusicalNumber[]
   announcements: AnnouncementEntry[]

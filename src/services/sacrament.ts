@@ -11,6 +11,7 @@ import { toDate, toDateInput, weekdaysInMonth } from '@/lib/dates'
 import { stripUndefined, uid } from '@/lib/utils'
 import { commit, type SaveOutcome } from '@/lib/sync'
 import { planProgramOrder } from '@/lib/program'
+import { musicRoleFields, type MusicRole } from '@/lib/musicRoles'
 import { updateTalkSlots } from '@/services/talks'
 import {
   HYMN_SLOTS,
@@ -314,27 +315,21 @@ export async function saveResponsible(
 }
 
 /**
- * Festlegen, wer an einem Sonntag die Orgel spielt.
+ * Festlegen, wer an einem Sonntag spielt oder dirigiert.
  *
- * Genau eine Person je Sonntag – sie spielt alle Lieder. Geschrieben werden
- * immer beide Angaben: die Kennung des Mitglieds (oder `null`) und der
- * ausgeschriebene Name. Ein Name ohne Kennung ist der Besuch, der einspringt;
- * eine Kennung ohne Namen gäbe es nur als halb geschriebenen Stand, deshalb
- * gehen die beiden Felder nie getrennt zur Datenbank.
+ * Je eine Person und je Rolle – sie gilt für die ganze Versammlung.
+ * Geschrieben werden immer beide Angaben: die Kennung des Mitglieds (oder
+ * `null`) und der ausgeschriebene Name. Ein Name ohne Kennung ist der
+ * Besuch, der einspringt; eine Kennung ohne Namen gäbe es nur als halb
+ * geschriebenen Stand, deshalb gehen die beiden Felder nie getrennt zur
+ * Datenbank (siehe `musicRoleFields`).
  */
-export async function saveOrganist(
+export async function saveMusicPerson(
   date: Date,
-  organist: { memberId?: string | null; name?: string } | null,
+  role: MusicRole,
+  person: { memberId?: string | null; name?: string } | null,
 ): Promise<SaveOutcome> {
-  const name = organist?.name?.trim() ?? ''
-  const memberId = organist?.memberId ?? null
-  // Ohne Namen und ohne Mitglied ist der Platz frei – beide Felder auf
-  // `null`, damit am Sonntag kein halber Eintrag zurückbleibt.
-  const empty = !name && !memberId
-  return saveSacramentMeeting(date, {
-    organistId: empty ? null : memberId,
-    organistName: empty ? null : name,
-  })
+  return saveSacramentMeeting(date, musicRoleFields(role, person))
 }
 
 /**

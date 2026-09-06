@@ -1054,7 +1054,7 @@ für alle Unterpunkte.
 | **Bekanntmachungen** | Liste pro Sonntag und wiederkehrende Serien in **einer** Reihenfolge, von Hand zu legen             |
 | **Angelegenheiten**  | Bestätigungen, Entlassungen, Segnungen, Konfirmierungen – ebenfalls in gelegter Reihenfolge        |
 | **Ansprachen**       | Programmplätze vergeben, Vorschlagsliste, Verlauf                                                   |
-| **Musik**            | Organist, drei bis vier Lieder und Musikeinlagen – mit Filter nach Organist und Ausdruck            |
+| **Musik**            | Organist und Dirigent, drei bis vier Lieder und Musikeinlagen – mit Filter nach Person und Ausdruck |
 | **Gebet**            | Anfangs- und Schlussgebet, mit «zuletzt gebetet»                                                    |
 
 Die letzten drei lassen sich einzeln abgeben – siehe
@@ -1355,22 +1355,27 @@ Gesperrt ist damit nichts: Wer im Zuteilungsfenster ausdrücklich nach einer
 ausgenommenen Person sucht, findet sie samt Vermerk und kann sie eintragen.
 Der Vermerk hält sie aus den **Vorschlägen** heraus, nicht aus dem Programm.
 
-### Musik: der Organist, der Filter und der Ausdruck
+### Musik: wer spielt, wer dirigiert – Filter und Ausdruck
 
-**Ein Organist je Sonntag.** Er spielt alle Lieder der Versammlung – deshalb
-steht er zuoberst unter «Musik» und nicht bei jedem einzelnen Lied. Das Feld
-ist dasselbe wie bei «Wer trägt vor?»: Ein Griff hinein zeigt die Vorschläge,
-ohne dass etwas getippt werden müsste.
+**Zwei Personen je Sonntag: ein Organist und ein Dirigent.** Beide tragen die
+ganze Versammlung – deshalb stehen sie zuoberst unter «Musik» und nicht bei
+jedem einzelnen Lied. Nebeneinander am Bildschirm, untereinander am Telefon.
 
-Zuoberst in den Vorschlägen stehen die Mitglieder mit der **Berufung
-«Organist»** – gesucht wird nach dem Wortstamm, «Organistin» und
-«Musik – Organist» zählen also mit. Darunter, wer schon einmal eingeteilt war.
-Gesucht werden kann trotzdem in der ganzen Gemeinde, und wer gar nicht im
-Verzeichnis steht – der Besuch, der einspringt –, lässt sich als **blosser
-Name** eintragen: Der Knopf darunter heisst dann **«…» ohne Mitglied
-eintragen**, und an einem so erfassten Namen hängt keine Berufung. Ein Mitglied
-wird ausschliesslich dann zugeordnet, wenn es in der Vorschlagsliste angetippt
-wird.
+> Der **Dirigent** ist nicht, wer die Versammlung leitet. Das steht weiterhin
+> unter «Leitung» und ist meist eine andere Person; im Datensatz heissen die
+> beiden deshalb `choristerId` und `conductingId` und haben nichts miteinander
+> zu tun.
+
+Das Feld ist dasselbe wie bei «Wer trägt vor?»: Ein Griff hinein zeigt die
+Vorschläge, ohne dass etwas getippt werden müsste. Zuoberst stehen die
+Mitglieder mit der passenden **Berufung** – gesucht wird nach dem Wortstamm,
+«Organistin», «Musik – Organist» und «Dirigentin» zählen also mit. Darunter,
+wer schon einmal eingeteilt war. Gesucht werden kann trotzdem in der ganzen
+Gemeinde, und wer gar nicht im Verzeichnis steht – der Besuch, der einspringt
+–, lässt sich als **blosser Name** eintragen: Der Knopf darunter heisst dann
+**«…» ohne Mitglied eintragen**, und an einem so erfassten Namen hängt keine
+Berufung. Ein Mitglied wird ausschliesslich dann zugeordnet, wenn es in der
+Vorschlagsliste angetippt wird.
 
 Gespeichert wird sofort, ohne Speichern-Knopf. Mitgeschrieben wird beides: der
 Verweis aufs Mitglied und der ausgeschriebene Name – so bleibt ein Programm von
@@ -1379,8 +1384,8 @@ steht, und «alle Sonntage dieser Person» stimmt weiterhin, wenn sie heiratet
 und anders heisst.
 
 **Ändern darf, wer die Musik bearbeiten darf.** Für alle anderen – die
-Assistenz «Musik» mit «Nur lesen» – steht der Name einfach da, zusammen mit
-allen Liedern.
+Assistenz «Musik» mit «Nur lesen» – stehen die Namen einfach da, zusammen mit
+allen Liedern. Filter und Ausdruck sind auch dort offen: Beide lesen bloss.
 
 > Die **Berufungen** liest nur der Vollzugriff; dort stehen auch laufende
 > Berufungsvorgänge, die niemanden ausserhalb der Bischofschaft etwas angehen
@@ -1389,36 +1394,44 @@ allen Liedern.
 > die ganze Gemeinde hat sie trotzdem.
 
 **Der Filter unter dem Datum.** Über den Liedern steht ein Auswahlfeld
-**Organist**. Ohne Auswahl gilt, was immer galt: Hier steht der eine gewählte
-Sonntag. Wird eine Person gewählt, tritt an seine Stelle die Liste **all ihrer
-Sonntage** mit den Liedern jedes einzelnen – die Antwort auf «wann bin ich
+**Organist oder Dirigent**, mit den Eingeteilten in zwei Gruppen. Ohne Auswahl
+gilt, was immer galt: Hier steht der eine gewählte Sonntag. Wird eine Person
+gewählt, tritt an seine Stelle die Liste **all ihrer Sonntage** – mit beiden
+Namen und den Liedern jedes einzelnen. Das ist die Antwort auf «wann bin ich
 eingeteilt?». Vergangene Sonntage bleiben darin stehen, nur zurückgenommen.
 Ein Griff auf ein Datum öffnet diesen Sonntag und löst den Filter.
+
+Dieselbe Person kann in beiden Gruppen stehen: Wer an einem Sonntag spielt und
+an einem anderen dirigiert, hat zwei Einträge – und der Filter beantwortet
+beide Fragen getrennt.
 
 Zur Wahl stehen die Personen, die **irgendwann eingeteilt** sind – nicht die
 ganze Gemeinde: Ein Name, hinter dem kein einziger Sonntag steht, wäre in
 einem Filter nichts als Leerlauf.
 
 **Exportieren.** Der Knopf oben rechts öffnet den Ausdruck: eine Tabelle mit
-Datum, Organist und den vier Liedplätzen, eine Zeile je Sonntag. Sie ist zum
-Weitergeben gedacht – der Organist sieht darauf, wann er spielt und was
-gesungen wird.
+Datum, den Eingeteilten und den vier Liedplätzen, eine Zeile je Sonntag. Sie
+ist zum Weitergeben gedacht – wer eingeteilt ist, sieht darauf, wann er dran
+ist und was gesungen wird.
 
-Zwei Angaben sind zu treffen:
+Drei Angaben bestimmen, was herauskommt:
 
-| Wahl           | Was zur Verfügung steht                                                                  |
-| -------------- | ---------------------------------------------------------------------------------------- |
-| **Zeitraum**   | Nur dieser Sonntag, 1 Monat, 3 Monate, 6 Monate oder 12 Monate – **ab** dem gewählten Sonntag |
-| **Organisten** | ohne Auswahl alle; sonst einer oder mehrere von denen, die in diesem Zeitraum eingeteilt sind |
+| Wahl               | Was zur Verfügung steht                                                                      |
+| ------------------ | ---------------------------------------------------------------------------------------------- |
+| **Zeitraum**       | Nur dieser Sonntag, 1 Monat, 3 Monate, 6 Monate oder 12 Monate – **ab** dem gewählten Sonntag |
+| **Welche Spalten** | Beide, nur Organist oder nur Dirigent – die Lieder stehen immer auf dem Blatt                 |
+| **Wer genau**      | ohne Auswahl alle; sonst einzelne Personen, nach Aufgabe gruppiert                            |
 
-Ohne Auswahl stehen **alle** Sonntage des Zeitraums auf dem Blatt, auch die,
-an denen noch niemand eingeteilt ist – gerade sie sollen auffallen. Wird nach
-Personen eingeschränkt, bleiben nur deren Sonntage. Wer den Filter der Seite
-gesetzt hat und dann exportiert, findet ihn im Dialog bereits angehakt.
+Die letzten beiden hängen zusammen: Wer nur die Dirigenten druckt, bekommt
+auch nur sie zur Auswahl. Ohne Auswahl stehen **alle** Sonntage des Zeitraums
+auf dem Blatt, auch die, an denen noch niemand eingeteilt ist – gerade sie
+sollen auffallen. Wer den Filter der Seite gesetzt hat und dann exportiert,
+findet ihn im Dialog bereits angehakt.
 
-Unter der Wahl steht, was herauskommt: wie viele Sonntage und von wann bis
-wann. Ein Sonntag, an dem in der Gemeinde nichts stattfindet – Generalkonferenz,
-Pfahlkonferenz –, steht mit seinem Grund da statt mit leeren Liedspalten.
+Unter der Wahl steht, was herauskommt: wie viele Sonntage, von wann bis wann
+und für wen. Ein Sonntag, an dem in der Gemeinde nichts stattfindet –
+Generalkonferenz, Pfahlkonferenz –, steht mit seinem Grund da statt mit leeren
+Liedspalten.
 
 **Als PDF** entsteht das Blatt im Druckdialog des Browsers («Als PDF sichern»
 bzw. «In Datei drucken»). Eine eigene Bibliothek dafür wäre ein Paket mehr bei
@@ -2964,7 +2977,7 @@ _Nur lesen_ oder _Bearbeiten_:
 | Bereich        | Was damit offensteht                                                          |
 | -------------- | ----------------------------------------------------------------------------- |
 | **Ansprachen** | die ganze Ansprachenplanung – Programm, Vorschläge, Verlauf, Zuständigkeit    |
-| **Musik**      | Organist, Gemeindelieder und Musikeinlagen des Sonntags samt Ausdruck          |
+| **Musik**      | Organist, Dirigent, Gemeindelieder und Musikeinlagen des Sonntags samt Ausdruck |
 | **Gebet**      | Anfangs- und Schlussgebet samt Vorschlagsliste und Verlauf                     |
 
 Einer, zwei oder alle drei, und jeder für sich: Der eine sucht die Lieder aus

@@ -4,26 +4,54 @@ import { Printer } from 'lucide-react'
 import { useData } from '@/contexts/DataContext'
 import { useLocalStorage } from '@/hooks/useLocalStorage'
 import { Modal } from '@/components/ui/Modal'
+import { SegmentedControl } from '@/components/ui/Pickers'
 import { formatDate, formatDateShort, formatDayMonthYear } from '@/lib/dates'
 import {
-  EXPORT_RANGES,
   EXPORT_RANGE_LABELS,
+  EXPORT_RANGES,
   exportRows,
+  MUSIC_ROLE_LABELS,
+  MUSIC_ROLE_PLURAL,
+  MUSIC_ROLES,
   type ExportRange,
+  type MusicPersonRef,
+  type MusicRole,
   type MusicRow,
-  type OrganistRef,
-} from '@/lib/organist'
+} from '@/lib/musicRoles'
 import { sundayProgram } from '@/lib/sunday'
 import { cn } from '@/lib/utils'
-import { HYMN_SLOTS, HYMN_SLOT_LABELS, type HymnChoice, type SacramentMeeting } from '@/lib/types'
+import { HYMN_SLOT_LABELS, HYMN_SLOTS, type HymnChoice, type SacramentMeeting } from '@/lib/types'
 
 /**
- * Die Liederliste ausdrucken – als Blatt für die Organisten.
+ * Welche der beiden Aufgaben aufs Blatt kommen.
  *
- * Der Zweck steht am Anfang: Wer an der Orgel eingeteilt ist, soll auf einem
- * Blatt sehen, an welchen Sonntagen er spielt und welche Lieder dann
- * gesungen werden. Deshalb eine Tabelle und keine Aufzählung – eine Zeile je
- * Sonntag, die Lieder in Spalten daneben.
+ * «Beide» ist der Normalfall – die Liederliste geht an alle, die am Sonntag
+ * Musik machen. Wer sie nur den Organisten schickt, nimmt den Dirigenten
+ * weg: Eine Spalte, die niemanden angeht, macht das Blatt bloss enger.
+ */
+type RoleScope = 'both' | MusicRole
+
+const SCOPE_OPTIONS: { value: RoleScope; label: string }[] = [
+  { value: 'both', label: 'Beide' },
+  { value: 'organist', label: 'Nur Organist' },
+  { value: 'chorister', label: 'Nur Dirigent' },
+]
+
+function rolesOf(scope: RoleScope): MusicRole[] {
+  return scope === 'both' ? MUSIC_ROLES : [scope]
+}
+
+/**
+ * Die Liederliste ausdrucken – als Blatt für die Organisten und Dirigenten.
+ *
+ * Der Zweck steht am Anfang: Wer eingeteilt ist, soll auf einem Blatt sehen,
+ * an welchen Sonntagen er dran ist und welche Lieder dann gesungen werden.
+ * Deshalb eine Tabelle und keine Aufzählung – eine Zeile je Sonntag, die
+ * Lieder in Spalten daneben.
+ *
+ * Drei Angaben bestimmen, was herauskommt: **Zeitraum**, **welche Spalten**
+ * und **welche Personen**. Die letzten beiden hängen zusammen: Wer nur die
+ * Dirigenten druckt, bekommt auch nur sie zur Auswahl.
  *
  * **PDF entsteht im Druckdialog.** Der Browser bietet dort «Als PDF
  * sichern»; eine Bibliothek dafür einzubinden hiesse, jedem Aufruf der App
@@ -43,7 +71,7 @@ export function MusicExportDialog({
   date: Date
   meetings: SacramentMeeting[]
   /**
-   * Der Organist, nach dem die Seite gerade filtert.
+   * Die Person, nach der die Seite gerade filtert.
    *
    * Wer die Sonntage einer Person vor sich hat und dann «Exportieren»
    * drückt, meint deren Blatt – nicht das der ganzen Gemeinde. Die Auswahl
@@ -52,11 +80,15 @@ export function MusicExportDialog({
   preselect?: string
 }) {
   const { settings, membersById } = useData()
-  /* Der Ausschnitt bleibt gewählt: Wer die Liste vierteljährlich
-     verschickt, soll das nicht jedes Mal neu einstellen müssen. Ein Wert
-     aus einer früheren Fassung wird dabei verworfen. */
-  const [stored, setRange] = useLocalStorage<ExportRange>('bss:musik:ausdruck', 'quarter')
-  const range = EXPORT_RANGES.includes(stored) ? stored : 'quarter'
+  /* Zeitraum und Spalten bleiben gewählt: Wer die Liste vierteljährlich
+     verschickt, soll das nicht jedes Mal neu einstellen müssen. Werte aus
+     einer früheren Fassung werden dabei verworfen. */
+  const [storedRange, setRange] = useLocalStorage<ExportRange>('bss:musik:ausdruck', 'quarter')
+  const range = EXPORT_RANGES.includes(storedRange) ? storedRange : 'quarter'
+  const [storedScope, setScope] = useLocalStorage<RoleScope>('bss:musik:ausdruck:wer', 'both')
+  const scope = SCOPE_OPTIONS.some((entry) => entry.value === storedScope) ? storedScope : 'both'
+  const roles = useMemo(() => rolesOf(scope), [scope])
+
   const [selected, setSelected] = useState<string[]>(preselect ? [preselect] : [])
   const [printing, setPrinting] = useState(false)
 
@@ -79,37 +111,46 @@ export function MusicExportDialog({
     [membersById],
   )
 
-  /** Alle Sonntage des Ausschnitts – die Auswahl schränkt daraus ein. */
+  /** Alle Sonntage des Zeitraums – die Auswahl schränkt daraus ein. */
   const all = useMemo(
     () => exportRows(date, range, meetings, [], resolve),
     [date, range, meetings, resolve],
   )
 
   /*
-   * Zur Wahl stehen die Organisten, die in diesem Ausschnitt tatsächlich
-   * eingeteilt sind. Eine Liste aller je Eingeteilten wäre über die Jahre
-   * lang und stünde grösstenteils für Sonntage, die gar nicht gedruckt
-   * werden.
+   * Zur Wahl stehen die Personen, die in diesem Zeitraum tatsächlich
+   * eingeteilt sind – und nur in den Aufgaben, die aufs Blatt kommen. Eine
+   * Liste aller je Eingeteilten wäre über die Jahre lang und stünde
+   * grösstenteils für Sonntage, die gar nicht gedruckt werden.
    */
   const available = useMemo(() => {
-    const found = new Map<string, OrganistRef>()
-    for (const row of all) if (row.organist) found.set(row.organist.key, row.organist)
-    return [...found.values()].sort((a, b) => a.name.localeCompare(b.name, 'de'))
-  }, [all])
+    const found = new Map<string, { person: MusicPersonRef; count: number }>()
+    for (const row of all) {
+      for (const role of roles) {
+        const person = row.people[role]
+        if (!person) continue
+        const known = found.get(person.key)
+        if (known) known.count += 1
+        else found.set(person.key, { person, count: 1 })
+      }
+    }
+    return [...found.values()].sort(
+      (a, b) =>
+        MUSIC_ROLES.indexOf(a.person.role) - MUSIC_ROLES.indexOf(b.person.role) ||
+        a.person.name.localeCompare(b.person.name, 'de'),
+    )
+  }, [all, roles])
 
   /* Was gewählt war, aber im neuen Ausschnitt nicht vorkommt, zählt nicht
      mit – sonst käme ein leeres Blatt heraus, ohne dass jemand sähe, warum. */
   const active = useMemo(
-    () => selected.filter((key) => available.some((entry) => entry.key === key)),
+    () => selected.filter((key) => available.some((entry) => entry.person.key === key)),
     [selected, available],
   )
 
   const rows = useMemo(
-    () =>
-      active.length === 0
-        ? all
-        : all.filter((row) => row.organist && active.includes(row.organist.key)),
-    [all, active],
+    () => (active.length === 0 ? all : exportRows(date, range, meetings, active, resolve)),
+    [active, all, date, range, meetings, resolve],
   )
 
   const toggle = (key: string) =>
@@ -123,9 +164,9 @@ export function MusicExportDialog({
    * `print()` sofort zurückkehrt.
    *
    * Der eigene Dialog schliesst sich vorher (siehe `startPrint` unten): Die
-   * Vorschau des Browsers zeigt sonst ein Blatt, hinter dem noch ein
-   * halbes Fenster steht, und die Scroll-Sperre des Dialogs schnitte den
-   * Ausdruck nach der ersten Seite ab.
+   * Vorschau des Browsers zeigt sonst ein Blatt, hinter dem noch ein halbes
+   * Fenster steht, und die Scroll-Sperre des Dialogs schnitte den Ausdruck
+   * nach der ersten Seite ab.
    */
   useEffect(() => {
     if (!printing) return
@@ -152,10 +193,10 @@ export function MusicExportDialog({
   const span = first && last ? `${formatDate(first)} – ${formatDate(last)}` : '–'
   const who =
     active.length === 0
-      ? 'Alle Organisten'
+      ? roles.map((role) => MUSIC_ROLE_PLURAL[role]).join(' und ')
       : available
-          .filter((entry) => active.includes(entry.key))
-          .map((entry) => entry.name)
+          .filter((entry) => active.includes(entry.person.key))
+          .map((entry) => entry.person.name)
           .join(', ')
 
   return (
@@ -164,7 +205,7 @@ export function MusicExportDialog({
         open={open}
         onClose={onClose}
         title="Liederliste ausdrucken"
-        description="Eine Tabelle mit Datum, Organist und den Liedern – zum Weitergeben oder als PDF sichern."
+        description="Eine Tabelle mit Datum, den Eingeteilten und den Liedern – zum Weitergeben oder als PDF sichern."
         footer={
           <>
             <button type="button" className="btn-secondary" onClick={onClose}>
@@ -207,35 +248,63 @@ export function MusicExportDialog({
           </div>
 
           <div>
-            <span className="label">Organisten</span>
+            <span className="label">Welche Spalten</span>
             <p className="hint mt-0 mb-2">
-              Ohne Auswahl stehen alle auf dem Blatt – auch die Sonntage, an denen noch niemand
+              Organist, Dirigent oder beide – die Lieder stehen immer auf dem Blatt.
+            </p>
+            <SegmentedControl<RoleScope>
+              options={SCOPE_OPTIONS}
+              value={scope}
+              onChange={setScope}
+              wrap
+            />
+          </div>
+
+          <div>
+            <span className="label">Wer genau</span>
+            <p className="hint mt-0 mb-2">
+              Ohne Auswahl kommen alle aufs Blatt – auch die Sonntage, an denen noch niemand
               eingeteilt ist.
             </p>
             {available.length === 0 ? (
               <p className="text-sm text-slate-400">
-                In diesem Zeitraum ist noch niemand an der Orgel eingeteilt.
+                In diesem Zeitraum ist dafür noch niemand eingeteilt.
               </p>
             ) : (
-              <div className="space-y-1">
-                {available.map((entry) => {
-                  const count = all.filter((row) => row.organist?.key === entry.key).length
+              <div className="space-y-3">
+                {roles.map((role) => {
+                  const group = available.filter((entry) => entry.person.role === role)
+                  if (group.length === 0) return null
                   return (
-                    <label
-                      key={entry.key}
-                      className="flex cursor-pointer items-center gap-2.5 rounded-lg px-2 py-1.5 text-sm transition hover:bg-slate-50 dark:hover:bg-slate-800"
-                    >
-                      <input
-                        type="checkbox"
-                        className="checkbox"
-                        checked={active.includes(entry.key)}
-                        onChange={() => toggle(entry.key)}
-                      />
-                      <span className="min-w-0 flex-1 truncate">{entry.name}</span>
-                      <span className="shrink-0 text-xs text-slate-400">
-                        {count} {count === 1 ? 'Sonntag' : 'Sonntage'}
-                      </span>
-                    </label>
+                    <div key={role}>
+                      {/* Die Gruppenüberschrift steht nur, wenn es zwei
+                          Gruppen gibt – sonst sagt sie dasselbe wie die
+                          Wahl darüber. */}
+                      {roles.length > 1 && (
+                        <p className="mb-1 text-xs font-semibold text-slate-500 dark:text-slate-400">
+                          {MUSIC_ROLE_PLURAL[role]}
+                        </p>
+                      )}
+                      <div className="space-y-0.5">
+                        {group.map(({ person, count }) => (
+                          <label
+                            key={person.key}
+                            className="flex cursor-pointer items-center gap-2.5 rounded-lg px-2 py-1.5 text-sm transition hover:bg-slate-50 dark:hover:bg-slate-800"
+                          >
+                            <input
+                              type="checkbox"
+                              className="checkbox"
+                              checked={active.includes(person.key)}
+                              onChange={() => toggle(person.key)}
+                            />
+                            <span className="min-w-0 flex-1 truncate">{person.name}</span>
+                            <span className="shrink-0 text-xs text-slate-400">
+                              {count} {count === 1 ? 'Sonntag' : 'Sonntage'}
+                            </span>
+                          </label>
+                        ))}
+                      </div>
+                    </div>
                   )
                 })}
               </div>
@@ -245,12 +314,14 @@ export function MusicExportDialog({
           <p className="rounded-lg bg-slate-50 px-3 py-2 text-sm text-slate-600 dark:bg-slate-800 dark:text-slate-300">
             {rows.length === 0
               ? 'Für diese Auswahl gibt es nichts zu drucken.'
-              : `${rows.length} ${rows.length === 1 ? 'Sonntag' : 'Sonntage'} · ${span}`}
+              : `${rows.length} ${rows.length === 1 ? 'Sonntag' : 'Sonntage'} · ${span} · ${who}`}
           </p>
         </div>
       </Modal>
 
-      {printing && <MusicSheet rows={rows} wardName={settings.wardName} span={span} who={who} />}
+      {printing && (
+        <MusicSheet rows={rows} roles={roles} wardName={settings.wardName} span={span} who={who} />
+      )}
     </>
   )
 }
@@ -269,16 +340,20 @@ export function MusicExportDialog({
  */
 function MusicSheet({
   rows,
+  roles,
   wardName,
   span,
   who,
 }: {
   rows: MusicRow[]
+  roles: MusicRole[]
   wardName: string
   span: string
   who: string
 }) {
   const { hymnLabel } = useData()
+  /* Datum, die gewählten Aufgaben, dann die vier Lieder. */
+  const columns = 1 + roles.length + HYMN_SLOTS.length
 
   return createPortal(
     <div className="export-sheet">
@@ -294,7 +369,11 @@ function MusicSheet({
         <thead>
           <tr>
             <th className="col-date">Datum</th>
-            <th className="col-who">Organist</th>
+            {roles.map((role) => (
+              <th key={role} className="col-who">
+                {MUSIC_ROLE_LABELS[role]}
+              </th>
+            ))}
             {HYMN_SLOTS.map((slot) => (
               <th key={slot}>{HYMN_SLOT_LABELS[slot]}</th>
             ))}
@@ -315,9 +394,11 @@ function MusicSheet({
                       gespielt wird. */}
                   {program.kind !== 'regular' && <span className="note">{program.label}</span>}
                 </td>
-                <td className="col-who">
-                  {row.organist?.name || <span className="muted">–</span>}
-                </td>
+                {roles.map((role) => (
+                  <td key={role} className="col-who">
+                    {row.people[role]?.name || <span className="muted">–</span>}
+                  </td>
+                ))}
                 {program.meets ? (
                   HYMN_SLOTS.map((slot) => (
                     <td key={slot}>
@@ -336,7 +417,7 @@ function MusicSheet({
                   {/* `note` gehört an das Kind und nicht an die Zelle: Die
                       Klasse macht einen Block daraus, und ein Block ist
                       keine Tabellenzelle mehr – die Spalte spränge auf. */}
-                  <td colSpan={HYMN_SLOTS.length + 1}>
+                  <td colSpan={columns - 1}>
                     <span className="note">
                       Musikeinlage:{' '}
                       {numbers
