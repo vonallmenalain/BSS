@@ -447,10 +447,12 @@ service cloud.firestore {
      * Programm. `announcements`, `business`, `notes`, der Vorsitz und die
      * Begrüssungen stehen im selben Dokument und bleiben unangetastet.
      *
-     * Der Organist gehört zur Musik: Er spielt alle Lieder der Versammlung,
-     * und wer die Lieder aussucht, teilt ihn ein. `organistId` verweist auf
-     * das Mitglied, `organistName` hält den Namen fest – auch für jemanden,
-     * der gar nicht im Verzeichnis steht.
+     * Organist und Dirigent gehören zur Musik: Beide tragen die Lieder der
+     * Versammlung, und wer die Lieder aussucht, teilt sie ein. `…Id`
+     * verweist auf das Mitglied, `…Name` hält den Namen fest – auch für
+     * jemanden, der gar nicht im Verzeichnis steht. `choristerId` ist der
+     * Dirigent und hat mit `conductingId` nichts zu tun: Das ist, wer die
+     * Versammlung leitet, und das bleibt dem Vollzugriff vorbehalten.
      *
      * `date` und `updatedAt` schreibt jeder Vorgang mit (siehe
      * `saveSacramentMeeting`) – sie stehen deshalb in beiden Listen.
@@ -461,7 +463,9 @@ service cloud.firestore {
 
       allow create, update: if (assistantWrites(['music'])
           && touchedKeys().hasOnly([
-               'hymns', 'musicalNumbers', 'organistId', 'organistName', 'date', 'updatedAt'
+               'hymns', 'musicalNumbers',
+               'organistId', 'organistName', 'choristerId', 'choristerName',
+               'date', 'updatedAt'
              ]))
         || (assistantWrites(['talks'])
           && touchedKeys().hasOnly([

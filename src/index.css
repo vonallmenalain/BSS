@@ -687,8 +687,11 @@
     white-space: nowrap;
   }
 
+  /* Zwei Namensspalten (Organist, Dirigent) müssen neben vier Liedern
+     Platz lassen; wird nur eine gedruckt, verteilt die feste Tabelle den
+     Rest von selbst auf die Lieder. */
   .export-table .col-who {
-    width: 34mm;
+    width: 30mm;
   }
 
   /* Der Liedtitel unter der Nummer, der Grund unter dem Datum, die

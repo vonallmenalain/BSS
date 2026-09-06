@@ -87,6 +87,8 @@ const FIELD_LABELS: Record<string, string> = {
   business: 'Angelegenheiten',
   callingChanges: 'Berufungsänderung',
   closedAt: 'Abschluss',
+  choristerId: 'Dirigent',
+  choristerName: 'Dirigent',
   closingPrayer: 'Schlussgebet',
   color: 'Farbe',
   completedAt: 'Erledigt am',
