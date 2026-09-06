@@ -1,6 +1,6 @@
 import { createContext, useCallback, useContext, useMemo, type ReactNode } from 'react'
 import { NavLink, Outlet, useSearchParams } from 'react-router-dom'
-import { ChevronLeft, ChevronRight, Eye, TriangleAlert, UserCog } from 'lucide-react'
+import { ChevronLeft, ChevronRight, TriangleAlert, UserCog } from 'lucide-react'
 import { useAuth } from '@/contexts/AuthContext'
 import { useData } from '@/contexts/DataContext'
 import { useSacramentMeeting } from '@/hooks/useFirestore'
@@ -27,7 +27,16 @@ interface SacramentContextValue {
   date: Date
   /** Datum als «yyyy-MM-dd» – zugleich die Dokument-ID */
   dateKey: string
-  setDate: (next: Date) => void
+  /**
+   * Einen anderen Sonntag wählen.
+   *
+   * `adjust` ändert dabei weitere Angaben in der Adresse mit – etwa den
+   * Filter einer Unterseite. Es steht hier und nicht bei der Unterseite,
+   * weil beides **dieselbe** Adresse fortschreibt: Zwei getrennte Aufrufe
+   * gingen vom selben Stand aus, und der zweite überschriebe den ersten
+   * (siehe `useSearchParams`).
+   */
+  setDate: (next: Date, adjust?: (params: URLSearchParams) => void) => void
   /** Programm aus Firestore; `null`, solange für diesen Sonntag nichts erfasst ist */
   meeting: SacramentMeeting | null
   loading: boolean
@@ -97,13 +106,14 @@ export function SacramentLayout() {
   }, [dateKey, defaultKey])
 
   const setDate = useCallback(
-    (next: Date) => {
+    (next: Date, adjust?: (params: URLSearchParams) => void) => {
       const key = sacramentDocId(next)
       setRemembered(key)
       setSearchParams(
         (current) => {
           const params = new URLSearchParams(current)
           params.set('sonntag', key)
+          adjust?.(params)
           return params
         },
         { replace: true },
@@ -264,39 +274,29 @@ export function ConflictNotice({ onDiscard }: { onDiscard: () => void }) {
   )
 }
 
-/** Überschrift einer Unterseite – hält die Bereiche optisch beieinander. */
+/**
+ * Überschrift einer Unterseite – hält die Bereiche optisch beieinander.
+ *
+ * Ein Kennzeichen «Nur lesen» stand hier einmal neben dem Titel. Es ist
+ * weg: Wer einen Bereich bloss zum Nachschauen hat, sieht das an der Seite
+ * selbst – dort steht kein einziger Knopf –, und ein Schild dafür war
+ * dieselbe Auskunft ein zweites Mal.
+ */
 export function SectionHeader({
   title,
   description,
   actions,
   className,
-  readOnly = false,
 }: {
   title: string
   description?: ReactNode
   actions?: ReactNode
   className?: string
-  /**
-   * Dieser Bereich steht nur zum Nachschauen offen.
-   *
-   * Die Knöpfe fehlen dann ohnehin – aber ohne ein Wort dazu sähe die Seite
-   * aus, als wäre etwas kaputt. Ein Kennzeichen neben der Überschrift sagt
-   * es einmal und nimmt keinen Platz weg.
-   */
-  readOnly?: boolean
 }) {
   return (
     <header className={cn('mb-4 flex flex-wrap items-start justify-between gap-3', className)}>
       <div className="min-w-0">
-        <h2 className="flex flex-wrap items-center gap-2 text-base font-semibold">
-          {title}
-          {readOnly && (
-            <span className="badge bg-slate-100 font-normal text-slate-600 dark:bg-slate-800 dark:text-slate-300">
-              <Eye className="size-3" aria-hidden />
-              Nur lesen
-            </span>
-          )}
-        </h2>
+        <h2 className="flex flex-wrap items-center gap-2 text-base font-semibold">{title}</h2>
         {description && (
           <p className="mt-0.5 text-sm text-slate-500 dark:text-slate-400">{description}</p>
         )}

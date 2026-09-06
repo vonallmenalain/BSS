@@ -140,7 +140,7 @@ export function Prayers() {
 
   return (
     <>
-      <SectionHeader title="Gebet" readOnly={readOnly} />
+      <SectionHeader title="Gebet" />
 
       <SegmentedControl<Tab>
         className="mb-4"

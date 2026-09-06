@@ -314,6 +314,30 @@ export async function saveResponsible(
 }
 
 /**
+ * Festlegen, wer an einem Sonntag die Orgel spielt.
+ *
+ * Genau eine Person je Sonntag – sie spielt alle Lieder. Geschrieben werden
+ * immer beide Angaben: die Kennung des Mitglieds (oder `null`) und der
+ * ausgeschriebene Name. Ein Name ohne Kennung ist der Besuch, der einspringt;
+ * eine Kennung ohne Namen gäbe es nur als halb geschriebenen Stand, deshalb
+ * gehen die beiden Felder nie getrennt zur Datenbank.
+ */
+export async function saveOrganist(
+  date: Date,
+  organist: { memberId?: string | null; name?: string } | null,
+): Promise<SaveOutcome> {
+  const name = organist?.name?.trim() ?? ''
+  const memberId = organist?.memberId ?? null
+  // Ohne Namen und ohne Mitglied ist der Platz frei – beide Felder auf
+  // `null`, damit am Sonntag kein halber Eintrag zurückbleibt.
+  const empty = !name && !memberId
+  return saveSacramentMeeting(date, {
+    organistId: empty ? null : memberId,
+    organistName: empty ? null : name,
+  })
+}
+
+/**
  * Einen weiteren Programmplatz für Ansprachen vorsehen.
  *
  * Gezählt wird ab dem höchsten belegten Platz: Sonst käme bei drei bereits

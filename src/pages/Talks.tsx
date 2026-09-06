@@ -286,7 +286,6 @@ export function Talks() {
     <>
       <SectionHeader
         title="Ansprachen und Zeugnisse"
-        readOnly={readOnly}
         actions={
           readOnly ? undefined : (
             <button

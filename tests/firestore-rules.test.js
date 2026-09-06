@@ -537,6 +537,23 @@ describe('Assistenz der Abendmahlsversammlung', () => {
       ),
     )
 
+    // Der Organist gehört zur Musik: Er spielt alle Lieder, und wer die
+    // Lieder aussucht, teilt ihn ein – als Mitglied oder als blosser Name.
+    await assertSucceeds(
+      setDoc(
+        doc(asMusicAssistant(), 'sacramentMeetings', '2026-08-09'),
+        { organistId: 'mitglied-1', organistName: 'Muster, Max' },
+        { merge: true },
+      ),
+    )
+    await assertSucceeds(
+      setDoc(
+        doc(asMusicAssistant(), 'sacramentMeetings', '2026-08-09'),
+        { organistId: null, organistName: 'Besuch aus Thun' },
+        { merge: true },
+      ),
+    )
+
     // Die Bekanntmachungen und die Angelegenheiten stehen im selben
     // Dokument – anfassen darf sie die Assistenz trotzdem nicht.
     await assertFails(

@@ -2631,6 +2631,27 @@ export interface SacramentMeeting extends WithId {
   /** Abweichende Anzahl Ansprachen nur für diesen Sonntag */
   talkSlots?: number | null
 
+  /**
+   * Wer an diesem Sonntag die Orgel spielt – genau eine Person.
+   *
+   * Sie spielt alle Lieder der Versammlung; deshalb steht sie am Sonntag
+   * und nicht am einzelnen Lied. Die Kennung zeigt auf das
+   * Mitgliederverzeichnis, sofern die Person darin steht: Nur so lassen
+   * sich die Sonntage einer Person zusammenzählen, auch wenn sie später
+   * heiratet und anders heisst.
+   */
+  organistId?: string | null
+  /**
+   * Der ausgeschriebene Name – immer mitgeschrieben.
+   *
+   * Zwei Gründe, wie beim Liedtitel und beim Namen der leitenden Person:
+   * Ein Programm von vor zwei Jahren soll auch dann lesbar bleiben, wenn
+   * der Mitgliedersatz längst weg ist – und es spielt nicht immer jemand
+   * aus der Gemeinde. Ein Name ohne `organistId` ist genau das: von Hand
+   * erfasst und keinem Mitglied zugeordnet.
+   */
+  organistName?: string | null
+
   hymns: Partial<Record<HymnSlot, HymnChoice>>
   musicalNumbers: MusicalNumber[]
   announcements: AnnouncementEntry[]
