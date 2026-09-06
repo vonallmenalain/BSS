@@ -176,8 +176,8 @@ export function Music() {
         </div>
         <p className="hint mt-0 max-w-xs flex-1 basis-48">
           {chosen
-            ? `Alle Sonntage von ${chosen.name} mit ihren Liedern.`
-            : 'Eine Person wählen, um ihre Sonntage und Lieder zu sehen.'}
+            ? `Alle Sonntage mit ${chosen.name} an der Orgel.`
+            : 'Eine Person wählen, um deren Sonntage und Lieder zu sehen.'}
         </p>
       </div>
 
@@ -188,13 +188,10 @@ export function Music() {
           {draft.conflict && <ConflictNotice onDiscard={draft.reset} />}
 
           <section className="card mb-4 p-4">
-            <h3 className="flex items-center gap-2 text-sm font-semibold">
+            <h3 className="mb-3 flex items-center gap-2 text-sm font-semibold">
               <Piano className="size-4 text-slate-400" aria-hidden />
               Organist
             </h3>
-            <p className="hint mb-3">
-              Eine Person je Sonntag – sie spielt alle Lieder der Versammlung.
-            </p>
             <OrganistField date={date} meeting={meeting} readOnly={readOnly} />
           </section>
 
