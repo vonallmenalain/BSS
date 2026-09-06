@@ -442,10 +442,15 @@ service cloud.firestore {
      *
      * Gelesen wird es von jeder Assistenz: Alle drei Bereiche brauchen die
      * Auskunft, was an diesem Sonntag stattfindet, und die Lieder stehen
-     * ohnehin darin. Geschrieben wird feldweise – «Musik» rührt die Lieder
-     * und die Musikeinlagen an, «Ansprachen» die Angaben zum Programm.
-     * `announcements`, `business`, `notes`, der Vorsitz und die Begrüssungen
-     * stehen im selben Dokument und bleiben unangetastet.
+     * ohnehin darin. Geschrieben wird feldweise – «Musik» rührt die Lieder,
+     * die Musikeinlagen und den Organisten an, «Ansprachen» die Angaben zum
+     * Programm. `announcements`, `business`, `notes`, der Vorsitz und die
+     * Begrüssungen stehen im selben Dokument und bleiben unangetastet.
+     *
+     * Der Organist gehört zur Musik: Er spielt alle Lieder der Versammlung,
+     * und wer die Lieder aussucht, teilt ihn ein. `organistId` verweist auf
+     * das Mitglied, `organistName` hält den Namen fest – auch für jemanden,
+     * der gar nicht im Verzeichnis steht.
      *
      * `date` und `updatedAt` schreibt jeder Vorgang mit (siehe
      * `saveSacramentMeeting`) – sie stehen deshalb in beiden Listen.
@@ -455,7 +460,9 @@ service cloud.firestore {
       allow write: if approved();
 
       allow create, update: if (assistantWrites(['music'])
-          && touchedKeys().hasOnly(['hymns', 'musicalNumbers', 'date', 'updatedAt']))
+          && touchedKeys().hasOnly([
+               'hymns', 'musicalNumbers', 'organistId', 'organistName', 'date', 'updatedAt'
+             ]))
         || (assistantWrites(['talks'])
           && touchedKeys().hasOnly([
                'talkSlots', 'kind', 'kindLabel', 'meets', 'plansTalks', 'responsibleId',

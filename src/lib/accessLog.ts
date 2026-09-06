@@ -123,6 +123,8 @@ const FIELD_LABELS: Record<string, string> = {
   notes: 'Notizen',
   openingPrayer: 'Anfangsgebet',
   order: 'Reihenfolge',
+  organistId: 'Organist',
+  organistName: 'Organist',
   organization: 'Organisation',
   phone: 'Telefon',
   position: 'Berufung',

@@ -505,6 +505,23 @@
   margin: 14mm;
 }
 
+/* Die Liederliste liegt quer: Datum, Organist und vier Lieder nebeneinander
+   sind im Hochformat sechs schmale Spalten, in denen jeder Liedtitel
+   viermal umbricht. Ein benannter Seitentyp gilt nur für dieses eine Blatt;
+   Browser, die ihn nicht kennen, drucken es hochkant – schmaler, aber
+   vollständig. */
+@page liederliste {
+  size: A4 landscape;
+  margin: 12mm;
+}
+
+/* Das Blatt der Liederliste hängt neben der App am `<body>` und ist am
+   Bildschirm unsichtbar – gebraucht wird es nur auf dem Papier. */
+.export-sheet {
+  display: none;
+  page: liederliste;
+}
+
 /* Beim Drucken (Protokoll) nur den Inhalt ausgeben */
 @media print {
   .no-print {
@@ -513,6 +530,14 @@
   body {
     background: white;
     color: black;
+  }
+
+  /* Ein offener Dialog hält die Seite an (`lib/scrollLock`). Auf dem Papier
+     schnitte das alles nach der ersten Seite ab – gedruckt wird immer das
+     Ganze. */
+  html,
+  body {
+    overflow: visible !important;
   }
   .card {
     border: 1px solid #ddd;
@@ -574,5 +599,115 @@
      zerrissen – am Pult wird Zeile für Zeile gelesen. */
   .sheet-page .print-sheet li {
     break-inside: avoid;
+  }
+
+  /* --- Die Liederliste ---------------------------------------------
+     Solange sie gedruckt wird, gehört das Papier ihr allein: Die App und
+     der Dialog, aus dem der Ausdruck kommt, treten ab, das Blatt tritt an
+     ihre Stelle. Es hängt als Geschwister neben ihnen am `<body>` (siehe
+     `MusicExport`), deshalb genügt hier eine Zeile.
+
+     Gesetzt wird in Punkt und Millimeter statt in Pixeln: Auf dem Papier
+     ist das die Einheit, in der man denkt, und die Zeile soll gelesen
+     werden, nicht bloss passen. */
+  body.export-page > *:not(.export-sheet) {
+    display: none !important;
+  }
+
+  .export-sheet {
+    display: block;
+    color: #000;
+    font-size: 9pt;
+    line-height: 1.35;
+  }
+
+  .export-head h1 {
+    margin: 0;
+    font-size: 15pt;
+    font-weight: 600;
+  }
+
+  .export-head p {
+    margin: 0.5mm 0 0;
+    font-size: 9pt;
+    color: #444;
+  }
+
+  .export-table {
+    width: 100%;
+    margin-top: 5mm;
+    border-collapse: collapse;
+    /* Feste Spalten: Ohne sie zieht ein einziger langer Liedtitel die
+       Tabelle schief, und die Sonntage stünden nicht mehr untereinander. */
+    table-layout: fixed;
+  }
+
+  .export-table th,
+  .export-table td {
+    padding: 1.4mm 1.8mm;
+    border: 0.4pt solid #999;
+    text-align: left;
+    vertical-align: top;
+    /* «Fast- und Zeugnisversammlung» passt in keine Spalte dieser Breite.
+       Getrennt wird deshalb nach den Regeln der Sprache (das `lang` steht
+       am `<html>`); nur wo auch das nicht reicht, bricht das Wort hart. */
+    hyphens: auto;
+    overflow-wrap: break-word;
+  }
+
+  /* Der Tabellenkopf wiederholt sich auf jeder Seite – sonst wüsste man
+     ab Blatt zwei nicht mehr, welche Spalte welches Lied ist. */
+  .export-table thead {
+    display: table-header-group;
+  }
+
+  .export-table thead th {
+    background: #eee;
+    font-size: 7.5pt;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+    print-color-adjust: exact;
+    -webkit-print-color-adjust: exact;
+  }
+
+  /* Jeder Sonntag ist eine eigene Gruppe – so bleiben seine beiden Zeilen
+     (Lieder und Musikeinlage) beieinander. */
+  .export-table tbody {
+    break-inside: avoid;
+  }
+
+  .export-table .col-date {
+    width: 34mm;
+  }
+
+  /* Das Datum steht in einer Zeile – umbrochen läse man erst «So,» und
+     eine Zeile später, welcher Sonntag gemeint ist. */
+  .export-table .col-date strong {
+    white-space: nowrap;
+  }
+
+  .export-table .col-who {
+    width: 34mm;
+  }
+
+  /* Der Liedtitel unter der Nummer, der Grund unter dem Datum, die
+     Musikeinlage unter dem Sonntag – immer eine eigene, leisere Zeile.
+     Nur an einem Kind der Zelle: Als Block wäre die Zelle selbst keine
+     Tabellenzelle mehr und ihre Spalte spränge auf. */
+  .export-table .note {
+    display: block;
+    font-size: 7.5pt;
+    color: #444;
+  }
+
+  .export-table .muted {
+    color: #777;
+  }
+
+  .export-foot {
+    margin-top: 4mm;
+    font-size: 7.5pt;
+    color: #666;
   }
 }

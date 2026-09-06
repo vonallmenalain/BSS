@@ -366,6 +366,21 @@ export function useSacramentMeetings(limitCount = 30) {
 }
 
 /**
+ * Alle Sonntage, vom ältesten zum jüngsten – ohne Obergrenze.
+ *
+ * Für die Auswertungen rund um den Organisten: «an welchen Sonntagen spielt
+ * diese Person?» und der Ausdruck über die nächsten Monate. Beide Fragen
+ * reichen über die zuletzt bearbeiteten Sonntage hinaus – wer im September
+ * für den Winter plant, hätte den Dezember sonst nicht dabei. Der Bestand
+ * liegt ohnehin vollständig vor (siehe `lib/collectionStore`), das Sortieren
+ * kostet also nichts weiter.
+ */
+export function useAllSacramentMeetings() {
+  const state = useSacramentStore()
+  return useMemo(() => ({ ...state, data: byDate(state.data, 'date', 'asc') }), [state])
+}
+
+/**
  * Wer welchen Monat führt – als Karte «2026-08» → UID.
  *
  * Gerechnet und nicht gespeichert: Die Angabe steht bereits an den Sonntagen
