@@ -6,6 +6,7 @@ import {
   dutyAssignees,
   dutyIsRunning,
   dutyItemId,
+  dutyItemReturns,
   formatMonthKey,
   isMonthKey,
   monthKey,
@@ -35,12 +36,16 @@ function duty(partial: Partial<MonthlyDuty> = {}): MonthlyDuty {
   }
 }
 
-type DutyItem = Pick<AgendaItem, 'id' | 'dutyId' | 'dutyLeaderId' | 'assignees' | 'status'>
+type DutyItem = Pick<
+  AgendaItem,
+  'id' | 'dutyId' | 'dutyMonth' | 'dutyLeaderId' | 'assignees' | 'status'
+>
 
 function item(partial: Partial<DutyItem> = {}): DutyItem {
   return {
     id: dutyItemId('d1', '2026-08'),
     dutyId: 'd1',
+    dutyMonth: '2026-08',
     dutyLeaderId: 'josh',
     assignees: ['josh'],
     status: 'pending',
@@ -156,6 +161,30 @@ test('dutyItemId ist aus Vorlage und Monat gerechnet', () => {
   assert.equal(dutyItemId('abc123', '2026-08').includes('/'), false)
 })
 
+test('dutyItemReturns erkennt die Pendenz, die von selbst wiederkäme', () => {
+  // Der laufende Monat: gelöscht und keine Sekunde später wieder da – solange
+  // die Vorlage steht, aus der sie entsteht.
+  assert.equal(dutyItemReturns(item(), '2026-08'), true)
+})
+
+test('dutyItemReturns lässt einen früheren Monat aus', () => {
+  // Angelegt wird nur der laufende Monat. Dem Juli kommt nichts nach – seine
+  // Pendenz lässt sich löschen wie jede andere, und die Aufgabe bleibt.
+  const juli = item({ id: dutyItemId('d1', '2026-07'), dutyMonth: '2026-07' })
+  assert.equal(dutyItemReturns(juli, '2026-08'), false)
+})
+
+test('dutyItemReturns geht gewöhnliche Einträge nichts an', () => {
+  assert.equal(dutyItemReturns({ id: 'irgendein-eintrag', dutyId: null }, '2026-08'), false)
+})
+
+test('dutyItemReturns rechnet an der ID und nicht am Monat im Eintrag', () => {
+  // Dieselbe Rechnung wie im Abgleich (siehe `dutyItemId`): Was zählt, ist
+  // die ID, unter der die Pendenz dieses Monats stünde – nicht ein zweites
+  // Feld, das von ihr abweichen könnte.
+  assert.equal(dutyItemReturns({ id: dutyItemId('d1', '2026-08'), dutyId: 'd1' }, '2026-08'), true)
+})
+
 /* ------------------------------------------------------------------ */
 /* Wem gehört sie?                                                     */
 /* ------------------------------------------------------------------ */
@@ -242,8 +271,18 @@ test('pendingDutyActions überspringt beendete und noch nicht begonnene Aufgaben
 
 test('pendingDutyActions rührt einen anderen Monat nicht an', () => {
   // Die Pendenz des Julis steht da; gefragt ist der August.
-  const juli = item({ id: dutyItemId('d1', '2026-07') })
+  const juli = item({ id: dutyItemId('d1', '2026-07'), dutyMonth: '2026-07' })
   const actions = pendingDutyActions([duty()], [juli], leaders, '2026-08')
   assert.equal(actions.length, 1)
   assert.equal(actions[0].kind, 'create')
+})
+
+test('eine gelöschte Monatspendenz kommt ohne ihre Vorlage nicht wieder', () => {
+  /*
+   * Der Fehler, um den es ging: Die Pendenz allein zu löschen half nichts –
+   * der Abgleich sah eine Aufgabe ohne Pendenz und legte sie auf der Stelle
+   * wieder an. Gelöscht wird deshalb beides (siehe `services/agenda`).
+   */
+  assert.equal(pendingDutyActions([duty()], [], leaders, '2026-08').length, 1)
+  assert.deepEqual(pendingDutyActions([], [], leaders, '2026-08'), [])
 })

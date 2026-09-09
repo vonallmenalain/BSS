@@ -976,13 +976,25 @@ Pendenzenseite. Dort steht, wer den laufenden Monat führt, was jeden Monat
 anfällt und seit wann – und dort lässt sich der Wortlaut ändern (das gilt ab
 dem nächsten Monat; was schon dasteht, bleibt, wie es ist).
 
-Zum Aufhören gibt es zwei Wege, und sie meinen Verschiedenes:
+**«Erledigt» und «Löschen» sind zweierlei**, und das ist der ganze
+Unterschied: Abgehakt ist die Aufgabe für diesen Monat vom Tisch und steht im
+nächsten wieder da, bei dem, der ihn führt. Gelöscht ist sie ganz weg – auch
+für die kommenden Monate.
+
+Zum Aufhören gibt es drei Wege, und sie meinen Verschiedenes:
 
 - **Beenden** – dieser Monat läuft noch zu Ende, danach kommt nichts mehr
   nach. Alles Bisherige bleibt stehen, samt allem, was darin notiert wurde.
   Das ist der Normalfall; **Weiterführen** nimmt es wieder zurück.
-- **Löschen** – nur für das, was von Anfang an ein Versehen war. Die bereits
-  entstandenen Pendenzen bleiben auch dann erhalten.
+- **Löschen** (in der Liste der Vorlagen) – nur für das, was von Anfang an ein
+  Versehen war. Die bereits entstandenen Pendenzen bleiben auch dann erhalten.
+- **Löschen an der Pendenz selbst** – der kurze Weg, und er meint dasselbe:
+  Wer die Monatspendenz des laufenden Monats in der Pendenzenliste löscht,
+  löscht die Aufgabe mit. Anders ginge es nicht – angelegt wird ja, was für
+  diesen Monat fehlt, und die Pendenz stünde im selben Augenblick wieder da.
+  Die Rückfrage sagt es vorher. Eine Pendenz aus einem **früheren** Monat
+  verschwindet dagegen für sich allein: Ihr kommt ohnehin nichts nach, und die
+  Aufgabe fällt weiterhin jeden Monat an.
 
 > **Ohne eingetragene Zuständigkeit** entsteht die Pendenz trotzdem – sie
 > wartet dann ohne Zuständigen unter «Pendent» und findet ihre Person, sobald

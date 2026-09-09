@@ -15,7 +15,7 @@ import {
 } from '@/lib/db'
 import { auth, db, COLLECTIONS } from '@/lib/firebase'
 import { forgetDoc } from '@/lib/collectionStore'
-import { isDutyItem } from '@/lib/monthlyDuties'
+import { dutyItemReturns, isDutyItem, monthKey } from '@/lib/monthlyDuties'
 import {
   advanceStanding,
   dayKey,
@@ -31,6 +31,7 @@ import {
 } from '@/lib/standing'
 import { stripUndefined, uid } from '@/lib/utils'
 import { commit, type SaveOutcome } from '@/lib/sync'
+import { deleteMonthlyDuty } from '@/services/monthlyDuties'
 import type {
   AgendaItem,
   CallingChanges,
@@ -496,9 +497,34 @@ export async function carryOverOpenItems(
   return taken
 }
 
-export async function deleteAgendaItem(id: string): Promise<SaveOutcome> {
-  const outcome = await commit(deleteDoc(doc(db, COLLECTIONS.agendaItems, id)))
-  forgetDoc(COLLECTIONS.agendaItems, id)
+/**
+ * Einen Eintrag löschen – und bei einer Monatspendenz das, woraus sie jeden
+ * Monat neu entsteht, gleich mit.
+ *
+ * Denn eine Monatspendenz des laufenden Monats liess sich bisher nicht
+ * löschen: Sie stand im selben Augenblick wieder da. Die Vorlage blieb
+ * bestehen, der Abgleich sah eine Aufgabe ohne Pendenz und legte sie erneut
+ * an (siehe `hooks/useMonthlyDuties`). Wer sie löscht, meint aber die
+ * Aufgabe – bloss für diesen Monat vom Tisch ist sie mit «Erledigt», und dann
+ * kehrt sie im nächsten Monat bei der neuen Monatsleitung wieder.
+ *
+ * **Die Reihenfolge ist kein Zierrat.** Zwischen den beiden Schreibvorgängen
+ * rechnet die App nach, was für diesen Monat fehlt. Wäre die Pendenz zuerst
+ * weg, fiele dieser Blick auf eine bestehende Vorlage ohne Pendenz – und
+ * legte sie auf der Stelle wieder an. Erst die Vorlage, dann die Pendenz.
+ *
+ * Eine Monatspendenz aus einem früheren Monat wird gelöscht wie jeder andere
+ * Eintrag: Ihr kommt nichts nach, und die Aufgabe fällt weiterhin jeden Monat
+ * an (siehe `dutyItemReturns`).
+ */
+export async function deleteAgendaItem(
+  item: Pick<AgendaItem, 'id' | 'dutyId'>,
+): Promise<SaveOutcome> {
+  if (item.dutyId && dutyItemReturns(item, monthKey(new Date()))) {
+    await deleteMonthlyDuty(item.dutyId)
+  }
+  const outcome = await commit(deleteDoc(doc(db, COLLECTIONS.agendaItems, item.id)))
+  forgetDoc(COLLECTIONS.agendaItems, item.id)
   return outcome
 }
 

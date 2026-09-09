@@ -82,7 +82,7 @@ export function AgendaItemDialog({
   const remove = async () => {
     if (!item) return
     try {
-      await deleteAgendaItem(item.id)
+      await deleteAgendaItem(item)
       toast.success(`${ITEM_KIND_LABELS[kind]} gelöscht.`)
       onClose()
     } catch (error) {

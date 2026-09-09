@@ -114,6 +114,10 @@ export function resumeMonthlyDuty(id: string): Promise<SaveOutcome> {
  * entstanden sind, bleiben – sie gehören den Monaten, in denen sie standen,
  * und wer sie nicht mehr braucht, löscht sie dort einzeln. Soll bloss nichts
  * mehr nachkommen, ist «Beenden» der richtige Weg.
+ *
+ * Der zweite Weg hierher führt über die Pendenz selbst: Wer die des laufenden
+ * Monats löscht, löscht die Vorlage mit – sie stünde sonst im selben
+ * Augenblick wieder da (siehe `services/agenda`).
  */
 export async function deleteMonthlyDuty(id: string): Promise<SaveOutcome> {
   const outcome = await commit(deleteDoc(doc(db, COLLECTIONS.monthlyDuties, id)))
@@ -136,7 +140,9 @@ export async function deleteMonthlyDuty(id: string): Promise<SaveOutcome> {
  *
  *  - Beim **Anlegen** würde ein gewöhnliches `setDoc()` eine bereits
  *    abgehakte Pendenz stillschweigend wieder öffnen, wenn das Gerät sie noch
- *    nicht kennt.
+ *    nicht kennt – und eine, deren Aufgabe soeben gelöscht wurde, gleich
+ *    wieder hinstellen. Gelesen werden deshalb beide: die Pendenz und die
+ *    Vorlage, aus der sie entstünde.
  *  - Beim **Umschreiben** würde eine Pendenz, die jemand eben erledigt hat,
  *    noch einem neuen Zuständigen zugeschrieben – sie wäre danach von jemand
  *    anderem erledigt worden, als es dasteht.
@@ -244,6 +250,20 @@ export async function applyDutyActions(
     let created = false
 
     await runTransaction(db, async (transaction) => {
+      /*
+       * Zuerst nachsehen, ob die Vorlage überhaupt noch besteht.
+       *
+       * Wer eine Monatspendenz löscht, löscht die Vorlage mit – sonst stünde
+       * sie im selben Augenblick wieder da (siehe `services/agenda`). Ein
+       * zweites Gerät, das die Löschung noch nicht gesehen hat, legte sie ohne
+       * diesen Blick trotzdem erneut an, und der Eintrag wäre nicht
+       * wegzubekommen. Gelesen wird deshalb auch hier auf dem Stand des
+       * Servers, und beide Lesevorgänge stehen vor dem Schreiben – anders
+       * lässt eine Transaktion es nicht zu.
+       */
+      const template = await transaction.get(doc(db, COLLECTIONS.monthlyDuties, duty.id))
+      if (!template.exists()) return
+
       const existing = await transaction.get(ref)
       if (existing.exists()) return
 
