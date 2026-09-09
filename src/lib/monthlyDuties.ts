@@ -187,6 +187,32 @@ export function isDutyItem(item: Pick<AgendaItem, 'dutyId'>): boolean {
   return Boolean(item.dutyId)
 }
 
+/**
+ * Käme diese Pendenz nach dem Löschen von selbst wieder?
+ *
+ * Angelegt wird immer nur der **laufende** Monat (siehe `pendingDutyActions`),
+ * und angelegt wird, was fehlt. Eine Monatspendenz dieses Monats stünde
+ * deshalb im selben Augenblick wieder da, in dem sie gelöscht wird – solange
+ * die Vorlage besteht, aus der sie Monat für Monat entsteht. Wer sie löscht,
+ * meint also die Aufgabe und nicht bloss diesen einen Eintrag: Beides muss
+ * weg, sonst ist nichts geschehen (siehe `services/agenda`).
+ *
+ * Eine Pendenz aus einem früheren Monat ist der andere Fall. Ihr kommt nichts
+ * nach – sie lässt sich löschen wie jede andere, und die Aufgabe fällt
+ * weiterhin jeden Monat an.
+ *
+ * Gefragt wird an der **ID** und nicht am Monat, der im Eintrag steht: Genau
+ * an ihr entscheidet der Abgleich, ob für diesen Monat schon etwas dasteht
+ * (siehe `dutyItemId`). Damit ist hier dieselbe Rechnung wie dort – und keine
+ * zweite, die von ihr abweichen könnte.
+ */
+export function dutyItemReturns(
+  item: Pick<AgendaItem, 'id' | 'dutyId'>,
+  currentMonth: string,
+): boolean {
+  return item.dutyId ? item.id === dutyItemId(item.dutyId, currentMonth) : false
+}
+
 /* ------------------------------------------------------------------ */
 /* Wem gehört sie?                                                     */
 /* ------------------------------------------------------------------ */

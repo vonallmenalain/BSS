@@ -202,7 +202,7 @@ export function MeetingFocus({ items, onAdd, nextMeeting, readOnly = false }: Pr
 
   const remove = async () => {
     try {
-      await deleteAgendaItem(current.id)
+      await deleteAgendaItem(current)
       toast.success(`${ITEM_KIND_LABELS[kind]} gelöscht.`)
       goTo(items[Math.max(index - 1, 0)])
     } catch (error) {

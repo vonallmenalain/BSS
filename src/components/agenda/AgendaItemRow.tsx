@@ -25,7 +25,7 @@ import { useStandingRound } from '@/hooks/useStanding'
 import { deleteAgendaItem, setItemStatus } from '@/services/agenda'
 import { callingRowCounts } from '@/lib/callingChanges'
 import { formatDate } from '@/lib/dates'
-import { formatMonthKey, isDutyItem } from '@/lib/monthlyDuties'
+import { dutyItemReturns, formatMonthKey, isDutyItem, monthKey } from '@/lib/monthlyDuties'
 import { dayKey, normalizeStanding, standingWaits } from '@/lib/standing'
 import {
   ITEM_KIND_LABELS,
@@ -155,6 +155,17 @@ export function AgendaItemRow({
   const dutyMonth = duty && item.dutyMonth ? formatMonthKey(item.dutyMonth) : null
 
   /*
+   * Löschen heisst hier mehr als an jedem anderen Eintrag.
+   *
+   * Die Pendenz des laufenden Monats entsteht aus einer Vorlage, und die legt
+   * sie umgehend wieder an, wenn sie fehlt. Gelöscht wird deshalb beides – die
+   * Aufgabe fällt danach nicht mehr an (siehe `services/agenda`). Das gehört
+   * vor den Klick und nicht danach in eine Meldung, deshalb steht es unten in
+   * der Rückfrage.
+   */
+  const dutyEnds = dutyItemReturns(item, monthKey(new Date()))
+
+  /*
    * Eine Berufungsrunde hakt sich nicht in einem Zug ab.
    *
    * Sie ist ein Eintrag mit zwanzig Zeilen, die untereinander verteilt
@@ -182,6 +193,24 @@ export function AgendaItemRow({
   const openRows = callingRowCounts(live ?? item.callingChanges).open
   const closable = isDone || openRows === 0
 
+  /*
+   * Was «Erledigt» an diesem Eintrag bedeutet.
+   *
+   * An den meisten heisst es schlicht «fertig», und dann braucht es keinen
+   * Hinweis. An den beiden wiederkehrenden Arten heisst es etwas anderes, und
+   * das steht sonst nirgends: Eine ständige Pendenz rückt eine Runde weiter,
+   * eine Monatspendenz fällt im nächsten Monat bei der nächsten Monatsleitung
+   * wieder an. Gerade an der Monatspendenz ist das der Weg, sie für diesen
+   * Monat vom Tisch zu bekommen – «Löschen» beendet sie ganz.
+   */
+  const doneHint = isDone
+    ? undefined
+    : standing
+      ? 'Diese Runde ist erledigt – die Pendenz kehrt wieder.'
+      : duty
+        ? 'Für diesen Monat erledigt – im nächsten Monat fällt sie bei dem an, der ihn führt.'
+        : undefined
+
   const toggleDone = async () => {
     if (!profile) return
     // Eine ständige Pendenz wird nicht abgeschlossen, sondern weitergesetzt.
@@ -200,8 +229,12 @@ export function AgendaItemRow({
 
   const remove = async () => {
     try {
-      await deleteAgendaItem(item.id)
-      toast.success(`${ITEM_KIND_LABELS[kind]} gelöscht.`)
+      await deleteAgendaItem(item)
+      toast.success(
+        dutyEnds
+          ? 'Monatspendenz gelöscht – sie fällt nicht mehr an.'
+          : `${ITEM_KIND_LABELS[kind]} gelöscht.`,
+      )
     } catch (error) {
       console.error(error)
       toast.error('Löschen fehlgeschlagen.')
@@ -405,11 +438,7 @@ export function AgendaItemRow({
                   type="button"
                   className={isDone ? 'btn-secondary btn-sm' : 'btn-success btn-sm'}
                   onClick={() => void toggleDone()}
-                  title={
-                    standing && !isDone
-                      ? 'Diese Runde ist erledigt – die Pendenz kehrt wieder.'
-                      : undefined
-                  }
+                  title={doneHint}
                 >
                   <Check className="size-4" aria-hidden />
                   {isDone ? 'Wieder offen' : 'Erledigt'}
@@ -441,12 +470,26 @@ export function AgendaItemRow({
         open={confirmDelete}
         onClose={() => setConfirmDelete(false)}
         onConfirm={() => void remove()}
-        title={`${ITEM_KIND_LABELS[kind]} löschen?`}
+        title={duty ? 'Monatspendenz löschen?' : `${ITEM_KIND_LABELS[kind]} löschen?`}
         message={
-          <>
-            «{item.title}» wird endgültig gelöscht – samt Verlauf. Soll der Punkt bloss aus dieser
-            Sitzung verschwinden, ist «Verschieben» der richtige Weg.
-          </>
+          dutyEnds ? (
+            <>
+              «{item.title}» wird endgültig gelöscht – samt Verlauf –, und die Aufgabe fällt nicht
+              mehr jeden Monat an: Es kommt nichts mehr nach. Soll sie bloss für diesen Monat vom
+              Tisch, ist «Erledigt» der richtige Weg – dann steht sie im nächsten Monat wieder da,
+              bei dem, der ihn führt.
+            </>
+          ) : duty ? (
+            <>
+              «{item.title}»{dutyMonth ? ` (${dutyMonth})` : ''} wird endgültig gelöscht – samt
+              Verlauf. Die Aufgabe selbst bleibt: Sie fällt weiterhin jeden Monat an.
+            </>
+          ) : (
+            <>
+              «{item.title}» wird endgültig gelöscht – samt Verlauf. Soll der Punkt bloss aus dieser
+              Sitzung verschwinden, ist «Verschieben» der richtige Weg.
+            </>
+          )
         }
         confirmLabel="Endgültig löschen"
         danger
