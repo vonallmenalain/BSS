@@ -421,6 +421,11 @@ Das gilt überall, wo eine Freitextsuche neben einem Filter steht:
 **Sitzungen** in der Seitenleiste. Eine Sitzung wird geplant, gestartet,
 durchgeführt und abgeschlossen; danach lässt sich das Protokoll drucken.
 
+**Unter «Anstehend» steht, was noch kommt.** Eine laufende Sitzung immer,
+eine abgeschlossene nie: Mit «Abschliessen» wechselt sie im selben Augenblick
+unter «Vergangen». Eine geplante bleibt bis zum Ende ihres Tages stehen – hat
+sie niemand abgeschlossen, rückt sie am nächsten Tag von selbst nach.
+
 **Die Liste zeigt auf Wunsch den Inhalt mit** – «Ansicht» oben rechts stellt
 je Gruppe ein, ob die Titel genügen oder der ganze Eintrag zu lesen sein soll.
 Damit wird die Sitzungsliste zum Programm mehrerer Sitzungen. Ein Griff auf

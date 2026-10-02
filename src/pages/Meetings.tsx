@@ -26,6 +26,7 @@ import {
   toTimeInput,
   fromDateTimeInput,
 } from '@/lib/dates'
+import { isUpcomingMeeting } from '@/lib/meetingScope'
 import { isDutyItem } from '@/lib/monthlyDuties'
 import { cn, matchesSearch } from '@/lib/utils'
 import { searchSnippet } from '@/lib/search'
@@ -155,14 +156,10 @@ export function Meetings() {
     const sorted = [...meetings].sort(
       (a, b) => (toDate(b.date)?.getTime() ?? 0) - (toDate(a.date)?.getTime() ?? 0),
     )
+    // Laufende stehen oben, abgeschlossene sofort unter «Vergangen».
     return {
-      // Laufende Sitzungen bleiben oben, auch wenn ihr Termin bereits vorbei ist.
-      upcoming: sorted
-        .filter((m) => m.status === 'running' || (toDate(m.date)?.getTime() ?? 0) >= now - 86400000)
-        .reverse(),
-      past: sorted.filter(
-        (m) => m.status !== 'running' && (toDate(m.date)?.getTime() ?? 0) < now - 86400000,
-      ),
+      upcoming: sorted.filter((m) => isUpcomingMeeting(m, now)).reverse(),
+      past: sorted.filter((m) => !isUpcomingMeeting(m, now)),
     }
   }, [meetings, now])
 
