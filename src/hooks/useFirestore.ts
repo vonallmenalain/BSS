@@ -456,10 +456,13 @@ export function useAnnouncementSeries() {
 /**
  * Der Putzplan – sortiert nach dem ersten Tag der Woche, der zugleich die
  * Dokument-ID ist.
+ *
+ * Wie der Aktivitätenplan ohne Bedingung: Der Plan steht unter `/putzplan`
+ * jedem offen, angemeldet oder nicht (siehe `firestore.rules`) – der QR-Code
+ * auf dem Ausdruck führt dorthin. Geändert wird er nur mit Vollzugriff.
  */
 export function useCleaningWeeks(limitCount = 400) {
-  const { isApproved } = useAuth()
-  const state = useCollection<CleaningWeek>(COLLECTIONS.cleaningWeeks, isApproved)
+  const state = useCollection<CleaningWeek>(COLLECTIONS.cleaningWeeks)
   return useMemo(
     () => ({
       ...state,

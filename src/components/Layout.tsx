@@ -155,6 +155,12 @@ export function Layout() {
    */
   const immersive =
     location.pathname === '/anti-doom' || location.pathname.startsWith('/anti-doom/')
+
+  /* Welches der beiden Anschlagbretter jemand ohne Konto gerade liest – die
+     Kopfzeile nennt es und führt dorthin zurück (siehe `PUBLIC_PATHS`). */
+  const guestBoard = location.pathname.startsWith('/putzplan')
+    ? { to: '/putzplan', label: 'Putzplan' }
+    : { to: '/ap', label: 'Aktivitätenplan' }
   const openMenu = useCallback(() => setMenuOpen(true), [])
 
   /*
@@ -313,11 +319,15 @@ export function Layout() {
 
             {/* Ohne Konto führt die Marke zurück auf den Plan und nicht auf
                 die Übersicht – die gäbe es dort nur als Umleitung zur
-                Anmeldung. Und statt des Gemeindenamens steht «Aktivitätenplan»:
-                Die Einstellungen bleiben angemeldeten Konten vorbehalten, der
-                Name der Gemeinde steht also gar nicht zur Verfügung – und was
-                die Seite ist, sagt er ohnehin besser. */}
-            <NavLink to={isGuest ? '/ap' : '/'} className="flex min-w-0 items-center gap-2.5">
+                Anmeldung. Und statt des Gemeindenamens steht der Name des
+                Plans, «Aktivitätenplan» oder «Putzplan»: Die Einstellungen
+                bleiben angemeldeten Konten vorbehalten, der Name der Gemeinde
+                steht also gar nicht zur Verfügung – und was die Seite ist,
+                sagt er ohnehin besser. */}
+            <NavLink
+              to={isGuest ? guestBoard.to : '/'}
+              className="flex min-w-0 items-center gap-2.5"
+            >
               <span className="bg-brand-600 grid size-8 shrink-0 place-items-center rounded-lg text-sm font-bold text-white">
                 BS
               </span>
@@ -326,7 +336,7 @@ export function Layout() {
                   Bischofschaft
                 </span>
                 <span className="block truncate text-[11px] leading-tight text-slate-500 dark:text-slate-400">
-                  {isGuest ? 'Aktivitätenplan' : settings.wardName}
+                  {isGuest ? guestBoard.label : settings.wardName}
                 </span>
               </span>
             </NavLink>

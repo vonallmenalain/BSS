@@ -437,14 +437,14 @@ describe('Alle Rollen sehen denselben Bestand', () => {
     await assertFails(getDocs(collection(asAnonymous(), 'monthlyDuties')))
   })
 
-  it('lässt jede Rolle den Putzplan führen – und wartende Konten nicht', async () => {
+  it('lässt jede Rolle den Putzplan führen – wartende Konten nur lesen', async () => {
     await assertSucceeds(getDoc(doc(asSecretary(), 'cleaningWeeks', '2026-06-29')))
     await assertSucceeds(
       updateDoc(doc(asBishop(), 'cleaningWeeks', '2026-06-29'), { note: 'Generalkonf.' }),
     )
-    await assertFails(getDocs(collection(asPending(), 'cleaningWeeks')))
+    // Lesen darf ihn jeder (siehe «Der Putzplan steht offen») – ändern nicht.
+    await assertSucceeds(getDocs(collection(asPending(), 'cleaningWeeks')))
     await assertFails(setDoc(doc(asPending(), 'cleaningWeeks', '2026-07-06'), { team: 'Versuch' }))
-    await assertFails(getDocs(collection(asAnonymous(), 'cleaningWeeks')))
   })
 
   it('lässt Sekretäre Mitglieder bearbeiten und löschen', async () => {
@@ -500,12 +500,12 @@ describe('Assistenz der Abendmahlsversammlung', () => {
       await assertFails(getDocs(collection(as(), 'meetings')))
       await assertFails(getDocs(collection(as(), 'notes')))
       await assertFails(getDocs(collection(as(), 'callings')))
-      await assertFails(getDocs(collection(as(), 'cleaningWeeks')))
       await assertFails(getDocs(collection(as(), 'monthlyDuties')))
       await assertFails(getDocs(collection(as(), 'announcementSeries')))
-      // `apActivities` steht hier bewusst nicht mehr: Der Aktivitätenplan
-      // ist öffentlich (siehe «Der Plan steht offen»), und was die ganze
-      // Welt lesen darf, ist der Assistenz nicht vorzuenthalten.
+      // `apActivities` und `cleaningWeeks` stehen hier bewusst nicht mehr:
+      // Beide Pläne sind öffentlich (siehe «Der Plan steht offen» und «Der
+      // Putzplan steht offen»), und was die ganze Welt lesen darf, ist der
+      // Assistenz nicht vorzuenthalten.
       await assertFails(getDocs(collection(as(), 'impulseItems')))
       await assertFails(getDocs(collection(as(), 'accessLog')))
     }
@@ -1598,7 +1598,7 @@ describe('Aktivitäten AP', () => {
       await assertFails(getDocs(collection(as(), 'prayers')))
       await assertFails(getDocs(collection(as(), 'callings')))
       await assertFails(getDocs(collection(as(), 'notes')))
-      await assertFails(getDocs(collection(as(), 'cleaningWeeks')))
+      // Der Putzplan nicht: Er ist öffentlich (siehe «Der Putzplan steht offen»).
       await assertFails(getDocs(collection(as(), 'monthlyDuties')))
       await assertFails(getDocs(collection(as(), 'meetings')))
       // Die Benutzerliste bleibt zu – das eigene Profil bleibt lesbar.
@@ -1753,8 +1753,8 @@ describe('Aktivitäten AP', () => {
       )
     })
 
-    it('gibt ohne Anmeldung ausser dem Plan gar nichts heraus', async () => {
-      // Die eigentliche Zusage: Der Plan ist offen, die Gemeinde ist es nicht.
+    it('gibt ohne Anmeldung ausser den beiden Plänen gar nichts heraus', async () => {
+      // Die eigentliche Zusage: Die Pläne sind offen, die Gemeinde ist es nicht.
       for (const name of [
         'members',
         'users',
@@ -1765,7 +1765,6 @@ describe('Aktivitäten AP', () => {
         'talks',
         'prayers',
         'sacramentMeetings',
-        'cleaningWeeks',
         'announcementSeries',
         'monthlyDuties',
         'impulseItems',
@@ -1775,10 +1774,50 @@ describe('Aktivitäten AP', () => {
         await assertFails(getDocs(collection(asAnonymous(), name)))
       }
       // Auch die Einstellungen nicht: Der Gemeindename in der Kopfzeile ist
-      // kein Grund, den Rest davon der Öffentlichkeit hinzulegen. Die Seite
-      // schreibt dort «Aktivitätenplan» und kommt ohne aus.
+      // kein Grund, den Rest davon der Öffentlichkeit hinzulegen. Die Seiten
+      // schreiben dort «Aktivitätenplan» bzw. «Putzplan» und kommen ohne aus.
       await assertFails(getDoc(doc(asAnonymous(), 'settings', 'app')))
     })
+  })
+})
+
+/* ------------------------------------------------------------------ */
+
+/*
+ * Der Putzplan steht offen – lesen ja, ändern nein.
+ *
+ * Der ausgedruckte Plan hängt am Anschlagbrett, sein QR-Code führt auf
+ * `/putzplan`. Wer davor steht, soll ihn ohne Konto lesen können – geändert
+ * wird er weiterhin nur mit Vollzugriff. Dass sonst nichts mitkommt, prüft
+ * «gibt ohne Anmeldung ausser den beiden Plänen gar nichts heraus».
+ */
+describe('Der Putzplan steht offen', () => {
+  it('lässt jeden ohne Anmeldung den Putzplan lesen', async () => {
+    await assertSucceeds(getDocs(collection(asAnonymous(), 'cleaningWeeks')))
+    await assertSucceeds(getDoc(doc(asAnonymous(), 'cleaningWeeks', '2026-06-29')))
+  })
+
+  it('lässt ohne Anmeldung nichts daran ändern', async () => {
+    await assertFails(
+      setDoc(doc(asAnonymous(), 'cleaningWeeks', '2026-07-06'), {
+        startDate: '2026-07-06',
+        endDate: '2026-07-11',
+        group: 'Gruppe 3',
+        team: 'Von aussen',
+      }),
+    )
+    await assertFails(
+      updateDoc(doc(asAnonymous(), 'cleaningWeeks', '2026-06-29'), { team: 'Umbenannt' }),
+    )
+    await assertFails(deleteDoc(doc(asAnonymous(), 'cleaningWeeks', '2026-06-29')))
+  })
+
+  it('lässt Konten ohne Vollzugriff lesen, aber nicht schreiben', async () => {
+    for (const as of [asApEditor, asApViewer, asAssistant, asMusicAssistant, asPending]) {
+      await assertSucceeds(getDocs(collection(as(), 'cleaningWeeks')))
+      await assertFails(updateDoc(doc(as(), 'cleaningWeeks', '2026-06-29'), { team: 'Getauscht' }))
+      await assertFails(deleteDoc(doc(as(), 'cleaningWeeks', '2026-06-29')))
+    }
   })
 })
 

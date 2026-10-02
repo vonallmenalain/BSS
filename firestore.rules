@@ -52,6 +52,12 @@ rules_version = '2';
 // nicht weil sie den Plan schützte, sondern weil dort steht, wer welchen
 // Link hat und wann er zuletzt abgerufen wurde.
 //
+// **Ebenso öffentlich ist der Putzplan** (`cleaningWeeks`) – die Seite unter
+// `/putzplan`, zu der der QR-Code auf dem ausgedruckten Plan am
+// Anschlagbrett führt. Er trägt Woche, Gruppe und die Namen derer, die
+// putzen; genau das, was auf dem Ausdruck ohnehin für alle sichtbar hängt.
+// Geändert wird er weiterhin nur mit Vollzugriff.
+//
 // Die dritte Ausnahme ist die **Assistenz** der Abendmahlsversammlung. Die
 // Vorbereitung des Sonntags lässt sich abgeben – Ansprachen anfragen, die
 // Lieder aussuchen, die Gebete verteilen –, ohne den Einblick abzugeben, den
@@ -486,8 +492,25 @@ service cloud.firestore {
 
     /* ---------------- Putzplan ---------------- */
 
+    /*
+     * Der Putzplan – wie der Aktivitätenplan ohne Anmeldung lesbar.
+     *
+     * `read: if true` ist auch hier der Zweck und keine vergessene
+     * Bedingung: Der ausgedruckte Plan hängt am Anschlagbrett, und sein
+     * QR-Code führt auf `/putzplan` – zu einer Seite, die jeder lesen
+     * können muss, der vor dem Brett steht. Entschieden hat das die
+     * Bischofschaft; die Regel schreibt es bloss auf.
+     *
+     * Was damit offensteht, ist genau das, was auf dem Ausdruck steht:
+     * Woche, Gruppe, die Namen derer, die putzen – und die Bemerkung zur
+     * Woche («Generalkonf.»). Wer dort etwas einträgt, schreibt damit ins
+     * Schaufenster; das steht so auch im README.
+     *
+     * Geändert wird der Plan weiterhin nur mit Vollzugriff.
+     */
     match /cleaningWeeks/{weekId} {
-      allow read, write: if approved();
+      allow read: if true;
+      allow write: if approved();
     }
 
     /* ---------------- Gesangbuch ---------------- */
@@ -517,8 +540,8 @@ service cloud.firestore {
     /* ---------------- Aktivitäten AP ---------------- */
 
     /*
-     * Der Aktivitätenplan der Priestertumskollegien – der einzige Bereich,
-     * der ohne Anmeldung offensteht.
+     * Der Aktivitätenplan der Priestertumskollegien – neben dem Putzplan
+     * der einzige Bereich, der ohne Anmeldung offensteht.
      *
      * `read: if true` ist hier keine vergessene Bedingung, sondern der
      * Zweck: Die Seite unter `/ap` ist das Anschlagbrett der AP's. Sie wird
