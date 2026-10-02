@@ -28,6 +28,13 @@ import {
  * Sonntag mit einem Griff wieder «automatisch».
  */
 
+/**
+ * Was vom erfassten Sonntag hier zählt: die Art, ihre eigene Bezeichnung
+ * und die beiden Haken. Der Rest des Programms spielt für die Frage «was
+ * findet statt?» keine Rolle – so kann auch fragen, wer nur diese Felder hat.
+ */
+export type StoredSunday = Pick<SacramentMeeting, 'kind' | 'kindLabel' | 'meets' | 'plansTalks'>
+
 export interface SundayProgram {
   /** Eine der eingebauten Arten oder die ID eines selbst erfassten Grundes */
   kind: string
@@ -53,7 +60,7 @@ export interface SundayProgram {
  * wurde, bleibt lesbar: Seine Bezeichnung steht am Sonntag mit (`kindLabel`),
  * und die beiden Haken stehen dort ohnehin.
  */
-function kindInfo(kind: string, meeting: SacramentMeeting | null): SacramentKindInfo {
+function kindInfo(kind: string, meeting: StoredSunday | null): SacramentKindInfo {
   const known = SACRAMENT_KIND_INFO[kind as keyof typeof SACRAMENT_KIND_INFO]
   if (known) return known
   return {
@@ -85,7 +92,7 @@ export function automaticSacramentKind(
 }
 
 /** Was für diesen Sonntag gilt – Erfasstes vor Regel. */
-export function sundayProgram(date: Date, meeting: SacramentMeeting | null): SundayProgram {
+export function sundayProgram(date: Date, meeting: StoredSunday | null): SundayProgram {
   const stored = meeting?.kind ?? null
   const kind = stored ?? automaticSacramentKind(date)
   const info = kindInfo(kind, meeting)

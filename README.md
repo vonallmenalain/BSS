@@ -1613,20 +1613,39 @@ allerdings wieder.
 
 ### Als PDF zum Ausdrucken
 
-**PDF** oben rechts fragt nach dem Zeitraum – vorbelegt mit der laufenden Woche
-bis zum Ende des Plans; «Ab dieser Woche» und «Ganzer Plan» stellen ihn mit
-einem Griff ein – und lädt eine A4-Seite herunter, die sich im Vorbeigehen
+**Export** oben rechts fragt nach dem Zeitraum – vorbelegt mit der laufenden
+Woche bis zum Ende des Plans; «Ab dieser Woche» und «Ganzer Plan» stellen ihn
+mit einem Griff ein – und lädt eine A4-Seite herunter, die sich im Vorbeigehen
 lesen lässt: je Woche die **Kalenderwoche**, das **Datum**, **wer an der Reihe
 ist** und die **Gruppe**. Mehr steht bewusst nicht darauf; Bemerkungen bleiben
-in der App. Über der Tabelle stehen der Name der Gemeinde aus den Einstellungen
-und der Zeitraum, unten der Stand und die Seitenzahl; lange Namen brechen auf
-zwei Zeilen um, und eine lange Liste geht mit ihrer Kopfzeile auf die nächste
-Seite über.
+in der App. Über der Tabelle steht der Name der Gemeinde aus den Einstellungen –
+den Zeitraum zeigt die Tabelle selbst –, unten der Stand und die Seitenzahl;
+lange Namen brechen auf zwei Zeilen um, und eine lange Liste geht mit ihrer
+Kopfzeile auf die nächste Seite über.
+
+**Zweimal hintereinander.** Putzt eine Gruppe zwei Wochen nacheinander, steht
+der Grund grau in Klammern hinter den Namen – «Künzli Dominik & Lena
+(Pfahlkonferenz)» –, damit es am Anschlagbrett nicht nach einem Fehler im Plan
+aussieht. Er kommt zuerst vom Sonntag zwischen den beiden Wochen, wie er unter
+**Abendmahl** steht: Die **Generalkonferenz** erkennt der Plan von selbst, eine
+**Pfahlkonferenz** oder einen anderen Sonntag ohne Versammlung, sobald er dort
+eingetragen ist. Sonst gilt die **Bemerkung** aus der Tabelle, ausgeschrieben
+(«Generalkonf.» wird zu «Generalkonferenz»). Fehlt beides, steht nur da, wer
+dran ist. Verglichen wird der ganze Plan: Beginnt der Ausdruck mit der zweiten
+Woche eines Paares, trägt auch sie ihren Grund.
+
+**Link und QR-Code.** Mit dem Haken «Link und QR-Code integrieren» steht unten
+auf jeder Seite `bss.alae.app/putzplan`, daneben ein QR-Code, der zur Seite des
+Putzplans führt – wer vor dem Anschlagbrett steht, hat den Plan damit auf dem
+Telefon, und dort immer im neusten Stand. Das Gerät merkt sich den Haken. Der
+Code zeigt fest auf die Adresse der App, auch wenn das PDF in einer Vorschau
+entsteht; ein halbes Jahr passt trotzdem weiterhin auf eine Seite.
 
 Die Kalenderwoche zählt nach ISO, gemessen an der Mitte der Putzwoche – so
 stimmt sie für Wochen ab Montag wie ab Sonntag. Erzeugt wird die Datei in der
-App selbst, ohne Bibliothek und ohne Server (`lib/pdf`): Sie verwendet die
-PDF-Standardschrift Helvetica und ist ein paar Kilobyte klein.
+App selbst, ohne Bibliothek und ohne Server (`lib/pdf`, der QR-Code in
+`lib/qr`): Sie verwendet die PDF-Standardschrift Helvetica und ist ein paar
+Kilobyte klein.
 
 ### Die Ansage am Sonntag
 

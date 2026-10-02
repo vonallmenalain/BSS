@@ -23,6 +23,25 @@
 
 export type PdfFont = 'regular' | 'bold'
 
+/**
+ * Was in einer Zelle steht: ein Text – oder ein Text mit einem grauen
+ * Zusatz dahinter, «Künzli Dominik & Lena (Pfahlkonferenz)».
+ */
+export type PdfCell = string | { text: string; aside?: string }
+
+/**
+ * Unten auf jeder Seite: wo es die Liste online gibt – als Adresse zum
+ * Abtippen und als QR-Code zum Scannen.
+ */
+export interface PdfLink {
+  /** Klein über der Adresse – «Immer aktuell unter» */
+  caption: string
+  /** Die Adresse, wie sie dasteht – «bss.alae.app/putzplan» */
+  label: string
+  /** Der QR-Code dazu, Zeile für Zeile (`lib/qr`); `true` ist dunkel */
+  qr: boolean[][]
+}
+
 export interface PdfColumn {
   label: string
   /** Anteil an der Tabellenbreite – die Anteile aller Spalten werden zusammengezählt */
@@ -33,13 +52,15 @@ export interface PdfColumn {
 export interface PdfTable {
   /** Gross über der Tabelle – «Putzplan» */
   title: string
-  /** Darunter, kleiner und grau – der Zeitraum */
+  /** Darunter, kleiner und grau – der Name der Gemeinde */
   subtitle?: string
   columns: PdfColumn[]
-  /** Je Zeile ein Text pro Spalte */
-  rows: string[][]
+  /** Je Zeile ein Eintrag pro Spalte */
+  rows: PdfCell[][]
   /** Links unten auf jeder Seite – «Stand: 02.10.2026» */
   footer?: string
+  /** Unten rechts auf jeder Seite: Adresse und QR-Code */
+  link?: PdfLink
   /** Für die Eigenschaften der Datei; sonst der Titel */
   documentTitle?: string
   /** Wann erstellt – für die Eigenschaften der Datei */
@@ -63,12 +84,27 @@ const SUBTITLE_SIZE = 11
 const HEAD_SIZE = 9.5
 const BODY_SIZE = 10.5
 const FOOT_SIZE = 8.5
+/** Die Adresse neben dem QR-Code – fett und etwas grösser, zum Abtippen. */
+const LINK_SIZE = 11.5
 const LINE_HEIGHT = 13
 const CELL_PAD_X = 8
 const CELL_PAD_Y = 6
 const HEAD_HEIGHT = 22
 /** Mehr als drei Zeilen je Zelle wären keine Tabelle mehr, sondern ein Absatz. */
 const MAX_LINES = 3
+
+/** Grauwerte: die Schrift fast schwarz, Zusätze und Fusszeile gedämpft. */
+const INK = 0.1
+const MUTED = 0.45
+
+/**
+ * Der QR-Code unten rechts – gut 23 mm breit, so lässt er sich vor dem
+ * Anschlagbrett noch bequem scannen. Er sitzt etwas tiefer als die
+ * gewöhnliche Fusszeile, damit die Tabelle nicht mehr Platz verliert als
+ * nötig: Ein halbes Jahr Putzplan passt weiterhin auf eine Seite.
+ */
+const QR_SIZE = 66
+const QR_BOTTOM = 30
 
 /* ------------------------------------------------------------------ */
 /* Schrift: Kodierung und Breiten                                      */
@@ -257,30 +293,85 @@ function line(x1: number, y1: number, x2: number, y2: number, gray: number, widt
   return `${num(gray)} G ${num(width)} w ${num(x1)} ${num(y1)} m ${num(x2)} ${num(y2)} l S`
 }
 
-/** Wo ein Text in seiner Zelle beginnt – links, rechts oder mittig. */
-function alignedX(
-  cellX: number,
-  cellWidth: number,
-  text: string,
-  column: PdfColumn,
-  font: PdfFont,
-  size: number,
-) {
+/** Wo ein Text der Breite `width` in seiner Zelle beginnt – links, rechts oder mittig. */
+function alignedX(cellX: number, cellWidth: number, width: number, column: PdfColumn) {
   const inner = cellWidth - 2 * CELL_PAD_X
-  if (column.align === 'right') return cellX + CELL_PAD_X + inner - textWidth(text, font, size)
-  if (column.align === 'center')
-    return cellX + CELL_PAD_X + (inner - textWidth(text, font, size)) / 2
+  if (column.align === 'right') return cellX + CELL_PAD_X + inner - width
+  if (column.align === 'center') return cellX + CELL_PAD_X + (inner - width) / 2
   return cellX + CELL_PAD_X
+}
+
+/**
+ * Ein QR-Code als Fläche aus Rechtecken – je Zeile ein Rechteck für jeden
+ * Lauf dunkler Module.
+ *
+ * Jede Zeile reicht einen Hauch in die nächste hinein: Ohne das blitzen in
+ * manchen Programmen beim Kantenglätten feine helle Linien zwischen den
+ * Zeilen auf.
+ */
+function drawQr(x: number, y: number, size: number, modules: boolean[][]): string {
+  const count = modules.length
+  const unit = size / count
+  const rects: string[] = []
+  modules.forEach((row, rowIndex) => {
+    const bottom = y + size - (rowIndex + 1) * unit
+    let start = -1
+    for (let column = 0; column <= count; column++) {
+      const dark = column < count && row[column]
+      if (dark && start < 0) start = column
+      if (!dark && start >= 0) {
+        rects.push(
+          `${num(x + start * unit)} ${num(bottom - 0.05)} ${num((column - start) * unit)} ${num(unit + 0.05)} re`,
+        )
+        start = -1
+      }
+    }
+  })
+  return `0 g\n${rects.join('\n')}\nf`
 }
 
 /* ------------------------------------------------------------------ */
 /* Seiten                                                              */
 /* ------------------------------------------------------------------ */
 
+/** Ein Stück einer Zeile – gedämpft, wenn es der Zusatz einer Zelle ist. */
+interface Span {
+  text: string
+  muted: boolean
+}
+
 interface LaidOutRow {
-  /** Je Spalte die Zeilen des Textes */
-  cells: string[][]
+  /** Je Spalte die Zeilen der Zelle, je Zeile ihre Stücke */
+  cells: Span[][][]
   height: number
+}
+
+/**
+ * Die Zeilen einer Zelle.
+ *
+ * Der Zusatz hängt sich an die letzte Zeile, wenn er dort Platz hat –
+ * sonst steht er als Ganzes darunter, statt mitten in der Klammer
+ * umzubrechen.
+ */
+function layoutCell(cell: PdfCell, width: number): Span[][] {
+  const text = typeof cell === 'string' ? cell : cell.text
+  const aside = typeof cell === 'string' ? '' : (cell.aside ?? '').trim()
+  const lines = wrapText(text, 'regular', BODY_SIZE, width).map((line) => [
+    { text: line, muted: false },
+  ])
+  if (!aside) return lines
+
+  const last = lines[lines.length - 1]
+  const lastText = last[0].text
+  if (!lastText) return [...lines.slice(0, -1), [{ text: aside, muted: true }]]
+  if (textWidth(`${lastText} ${aside}`, 'regular', BODY_SIZE) <= width) {
+    last.push({ text: aside, muted: true })
+    return lines
+  }
+  return [
+    ...lines,
+    ...wrapText(aside, 'regular', BODY_SIZE, width).map((line) => [{ text: line, muted: true }]),
+  ]
 }
 
 /**
@@ -288,7 +379,9 @@ interface LaidOutRow {
  * Zeichenbefehlen ausgeben.
  *
  * Jede Seite trägt Titel, Untertitel und die Kopfzeile der Tabelle – wer
- * die zweite Seite allein in der Hand hält, soll wissen, was er liest.
+ * die zweite Seite allein in der Hand hält, soll wissen, was er liest. Aus
+ * demselben Grund steht ein QR-Code auf jeder Seite und nicht bloss auf der
+ * letzten.
  */
 function renderPages(table: PdfTable): string[] {
   const tableWidth = PAGE_WIDTH - 2 * MARGIN_X
@@ -300,14 +393,15 @@ function renderPages(table: PdfTable): string[] {
 
   const rows: LaidOutRow[] = table.rows.map((row) => {
     const cells = table.columns.map((_, index) =>
-      wrapText(row[index] ?? '', 'regular', BODY_SIZE, widths[index] - 2 * CELL_PAD_X),
+      layoutCell(row[index] ?? '', widths[index] - 2 * CELL_PAD_X),
     )
     const lines = Math.max(1, ...cells.map((cell) => cell.length))
     return { cells, height: lines * LINE_HEIGHT + 2 * CELL_PAD_Y - (LINE_HEIGHT - BODY_SIZE) }
   })
 
   const headerBottom = PAGE_HEIGHT - MARGIN_TOP - TITLE_SIZE - (table.subtitle ? 24 : 6) - 18
-  const pageFloor = MARGIN_BOTTOM + 18
+  // Mit QR-Code endet die Tabelle über ihm – samt seiner hellen Ruhezone.
+  const pageFloor = table.link ? QR_BOTTOM + QR_SIZE + 16 : MARGIN_BOTTOM + 18
 
   // Zeilen auf Seiten verteilen: so viele, wie unter die Kopfzeile passen.
   const pages: LaidOutRow[][] = [[]]
@@ -326,7 +420,7 @@ function renderPages(table: PdfTable): string[] {
 
     // Titel und Untertitel
     let top = PAGE_HEIGHT - MARGIN_TOP - TITLE_SIZE * 0.75
-    ops.push(drawText(MARGIN_X, top, table.title, 'bold', TITLE_SIZE, 0.1))
+    ops.push(drawText(MARGIN_X, top, table.title, 'bold', TITLE_SIZE, INK))
     if (table.subtitle) {
       top -= 22
       ops.push(drawText(MARGIN_X, top, table.subtitle, 'regular', SUBTITLE_SIZE, 0.4))
@@ -337,7 +431,7 @@ function renderPages(table: PdfTable): string[] {
     ops.push(fillRect(MARGIN_X, headTop - HEAD_HEIGHT, tableWidth, HEAD_HEIGHT, 0.92))
     table.columns.forEach((column, index) => {
       const label = fitText(column.label, 'bold', HEAD_SIZE, widths[index] - 2 * CELL_PAD_X)
-      const x = alignedX(starts[index], widths[index], label, column, 'bold', HEAD_SIZE)
+      const x = alignedX(starts[index], widths[index], textWidth(label, 'bold', HEAD_SIZE), column)
       ops.push(
         drawText(x, headTop - HEAD_HEIGHT / 2 - HEAD_SIZE * 0.35, label, 'bold', HEAD_SIZE, 0.2),
       )
@@ -349,27 +443,68 @@ function renderPages(table: PdfTable): string[] {
       const bottom = rowTop - row.height
       if (rowIndex % 2 === 1) ops.push(fillRect(MARGIN_X, bottom, tableWidth, row.height, 0.97))
       row.cells.forEach((cellLines, index) => {
-        cellLines.forEach((text, lineIndex) => {
+        cellLines.forEach((spans, lineIndex) => {
           const baseline = rowTop - CELL_PAD_Y - BODY_SIZE * 0.78 - lineIndex * LINE_HEIGHT
-          const x = alignedX(
+          const full = spans.map((span) => span.text).join(' ')
+          let x = alignedX(
             starts[index],
             widths[index],
-            text,
+            textWidth(full, 'regular', BODY_SIZE),
             table.columns[index],
-            'regular',
-            BODY_SIZE,
           )
-          ops.push(drawText(x, baseline, text, 'regular', BODY_SIZE, 0.1))
+          for (const span of spans) {
+            if (span.text) {
+              ops.push(
+                drawText(x, baseline, span.text, 'regular', BODY_SIZE, span.muted ? MUTED : INK),
+              )
+            }
+            x += textWidth(`${span.text} `, 'regular', BODY_SIZE)
+          }
         })
       })
       ops.push(line(MARGIN_X, bottom, MARGIN_X + tableWidth, bottom, 0.85))
       rowTop = bottom
     })
 
+    const pageLabel = `Seite ${pageIndex + 1} von ${pages.length}`
+
+    if (table.link) {
+      /* Unten rechts der QR-Code, links daneben die Adresse zum Abtippen.
+         Die Seitenzahl rückt dann zum Stand nach links – rechts ist kein
+         Platz mehr für sie. */
+      const qrX = PAGE_WIDTH - MARGIN_X - QR_SIZE
+      ops.push(drawQr(qrX, QR_BOTTOM, QR_SIZE, table.link.qr))
+
+      const textRight = qrX - 14
+      const middle = QR_BOTTOM + QR_SIZE / 2
+      const { caption, label } = table.link
+      ops.push(
+        drawText(
+          textRight - textWidth(caption, 'regular', FOOT_SIZE),
+          middle + 5,
+          caption,
+          'regular',
+          FOOT_SIZE,
+          MUTED,
+        ),
+        drawText(
+          textRight - textWidth(label, 'bold', LINK_SIZE),
+          middle - 11,
+          label,
+          'bold',
+          LINK_SIZE,
+          INK,
+        ),
+      )
+
+      const footer = table.footer ? `${table.footer} · ${pageLabel}` : pageLabel
+      ops.push(drawText(MARGIN_X, QR_BOTTOM + 4, footer, 'regular', FOOT_SIZE, MUTED))
+      return ops.join('\n')
+    }
+
     // Fusszeile: links der Stand, rechts die Seite
     const footY = MARGIN_BOTTOM - FOOT_SIZE
-    if (table.footer) ops.push(drawText(MARGIN_X, footY, table.footer, 'regular', FOOT_SIZE, 0.45))
-    const pageLabel = `Seite ${pageIndex + 1} von ${pages.length}`
+    if (table.footer) ops.push(drawText(MARGIN_X, footY, table.footer, 'regular', FOOT_SIZE, MUTED))
     ops.push(
       drawText(
         PAGE_WIDTH - MARGIN_X - textWidth(pageLabel, 'regular', FOOT_SIZE),
@@ -377,7 +512,7 @@ function renderPages(table: PdfTable): string[] {
         pageLabel,
         'regular',
         FOOT_SIZE,
-        0.45,
+        MUTED,
       ),
     )
 
