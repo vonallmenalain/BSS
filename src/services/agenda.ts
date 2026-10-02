@@ -22,6 +22,7 @@ import {
   formatDayKey,
   nextStandingRound,
   normalizeStanding,
+  revertStanding,
   sectionOf,
   serializeStanding,
   standingLabel,
@@ -284,7 +285,9 @@ export async function completeStandingRound(
 
   const outcome = await commit(
     updateDoc(doc(db, COLLECTIONS.agendaItems, item.id), {
-      standing: serializeStanding(advanceStanding(rule, round, now)),
+      // Die Sitzung, in der abgehakt wurde, merkt sich der Takt: Dort steht
+      // die Pendenz weiter mit dem grünen Haken (siehe `itemsOfMeeting`).
+      standing: serializeStanding(advanceStanding(rule, round, now, item.meetingId ?? null)),
       meetingId: round.meetingId,
       // Sie war schon eine Pendenz; ausgeschrieben steht es hier trotzdem,
       // weil ein Altbestand ohne `kind` sonst weiter aus der Vorgeschichte
@@ -306,6 +309,34 @@ export async function completeStandingRound(
   )
 
   return { outcome, round }
+}
+
+/**
+ * Den letzten Haken an einer ständigen Pendenz zurücknehmen.
+ *
+ * Für den Griff daneben – in der Sitzung abgehakt, was noch gar nicht
+ * besprochen war. Die Pendenz kehrt in die Sitzung zurück, in der sie
+ * abgehakt wurde, und ist dort wieder offen; Datum, Zähler und die Liste der
+ * Sitzungen stehen wieder wie zuvor (siehe `revertStanding`). Geht nur mit
+ * der letzten Runde und nur in ihrer Sitzung.
+ */
+export async function undoStandingRound(
+  item: Pick<AgendaItem, 'id' | 'standing'>,
+  meetingId: string,
+  actor: Actor,
+): Promise<SaveOutcome> {
+  const rule = normalizeStanding(item.standing)
+  const reverted = rule ? revertStanding(rule, meetingId) : null
+  if (!reverted) throw new Error('Dieser Haken lässt sich nicht mehr zurücknehmen.')
+
+  return commit(
+    updateDoc(doc(db, COLLECTIONS.agendaItems, item.id), {
+      standing: serializeStanding(reverted),
+      meetingId,
+      history: arrayUnion(historyEntry('Wieder offen – Haken zurückgenommen', actor)),
+      ...touch(),
+    }),
+  )
 }
 
 /**

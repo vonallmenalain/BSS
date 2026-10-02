@@ -5,12 +5,17 @@ import {
   addDays,
   addMonths,
   advanceStanding,
+  asDoneIn,
+  canUndoStanding,
   dayKey,
   formatDayKey,
   isDayKey,
   isStanding,
+  itemsByMeeting,
+  itemsOfMeeting,
   nextStandingRound,
   normalizeStanding,
+  revertStanding,
   sectionOf,
   serializeStanding,
   standingLabel,
@@ -109,7 +114,25 @@ test('serializeStanding schreibt jedes Feld aus', () => {
     dueFrom: null,
     doneCount: 0,
     lastDoneAt: null,
+    doneIn: [],
+    undo: null,
   })
+})
+
+test('normalizeStanding übernimmt die Sitzungen und den Stand davor', () => {
+  const normalized = normalizeStanding({
+    unit: 'meeting',
+    doneIn: ['m1', '', 7, 'm2'],
+    undo: { meetingId: 'm2', dueFrom: 'bald', lastDoneAt: '2026-10-01T18:30:00.000Z' },
+  })
+  assert.deepEqual(normalized?.doneIn, ['m1', 'm2'])
+  assert.deepEqual(normalized?.undo, {
+    meetingId: 'm2',
+    dueFrom: null,
+    lastDoneAt: '2026-10-01T18:30:00.000Z',
+  })
+  // Ohne Sitzung ist der Stand davor nichts wert.
+  assert.equal(normalizeStanding({ unit: 'meeting', undo: { dueFrom: null } })?.undo, undefined)
 })
 
 test('isStanding fragt am Eintrag', () => {
@@ -270,4 +293,154 @@ test('sectionOf stellt die ständige Pendenz voran', () => {
   // Altbestand ohne `kind`: Wer schon in einer anderen Sitzung stand, ist
   // eine Pendenz (siehe `toItemKind`).
   assert.equal(sectionOf(item({ meetingId: 'm2', firstMeetingId: 'm1' })), 'pendenz')
+})
+
+/* ------------------------------------------------------------------ */
+/* In der Sitzung erledigt                                             */
+/* ------------------------------------------------------------------ */
+
+/*
+ * Der Fall aus der Praxis: In der Sitzung vom 1. Oktober wird eine ständige
+ * Pendenz abgehakt. Sie wandert in die Sitzung vom 8. Oktober und ist dort
+ * wieder offen – in der vom 1. soll sie trotzdem mit dem grünen Haken
+ * stehen bleiben.
+ */
+
+const ABGEHAKT = new Date('2026-10-01T19:15:00Z')
+
+test('advanceStanding merkt sich die Sitzung und den Stand davor', () => {
+  const vorher = rule({ doneCount: 2, lastDoneAt: '2026-09-24T19:00:00.000Z', doneIn: ['m0'] })
+  const nachher = advanceStanding(
+    vorher,
+    { dueFrom: '2026-10-08', meetingId: 'm2' },
+    ABGEHAKT,
+    'm1',
+  )
+
+  assert.deepEqual(nachher.doneIn, ['m0', 'm1'])
+  assert.deepEqual(nachher.undo, {
+    meetingId: 'm1',
+    dueFrom: null,
+    lastDoneAt: '2026-09-24T19:00:00.000Z',
+  })
+  assert.equal(nachher.doneCount, 3)
+})
+
+test('dieselbe Sitzung steht nur einmal in der Liste', () => {
+  const nachher = advanceStanding(
+    rule({ doneIn: ['m1'] }),
+    { dueFrom: null, meetingId: null },
+    ABGEHAKT,
+    'm1',
+  )
+  assert.deepEqual(nachher.doneIn, ['m1'])
+})
+
+test('ohne Sitzung abgehakt: nichts zum Zurücknehmen', () => {
+  const nachher = advanceStanding(
+    rule({ doneIn: ['m1'], undo: { meetingId: 'm1', dueFrom: null, lastDoneAt: null } }),
+    { dueFrom: '2026-11-01', meetingId: null },
+    ABGEHAKT,
+  )
+  assert.deepEqual(nachher.doneIn, ['m1'])
+  assert.equal(nachher.undo, undefined)
+  assert.equal(serializeStanding(nachher).undo, null)
+})
+
+test('revertStanding stellt den Stand vor der letzten Runde wieder her', () => {
+  const vorher = rule({
+    doneCount: 2,
+    dueFrom: '2026-10-01',
+    lastDoneAt: '2026-09-24T19:00:00.000Z',
+  })
+  const nachher = advanceStanding(
+    vorher,
+    { dueFrom: '2026-10-08', meetingId: 'm2' },
+    ABGEHAKT,
+    'm1',
+  )
+
+  assert.deepEqual(revertStanding(nachher, 'm1'), {
+    every: 1,
+    unit: 'meeting',
+    dueFrom: '2026-10-01',
+    doneCount: 2,
+    lastDoneAt: '2026-09-24T19:00:00.000Z',
+    doneIn: [],
+    undo: null,
+  })
+})
+
+test('zurücknehmen geht nur mit der letzten Runde und in ihrer Sitzung', () => {
+  const erste = advanceStanding(rule(), { dueFrom: '2026-10-08', meetingId: 'm2' }, ABGEHAKT, 'm1')
+  const zweite = advanceStanding(
+    erste,
+    { dueFrom: '2026-10-15', meetingId: 'm3' },
+    new Date('2026-10-08T19:15:00Z'),
+    'm2',
+  )
+
+  assert.equal(revertStanding(zweite, 'm1'), null)
+  assert.notEqual(revertStanding(zweite, 'm2'), null)
+  assert.equal(canUndoStanding({ standing: zweite }, 'm1'), false)
+  assert.equal(canUndoStanding({ standing: zweite }, 'm2'), true)
+})
+
+function item(partial: Partial<AgendaItem>): AgendaItem {
+  return { id: 'p1', title: 'Ansprachen planen', status: 'pending', ...partial } as AgendaItem
+}
+
+test('in der Sitzung abgehakt steht sie dort als erledigt', () => {
+  const standing = advanceStanding(
+    rule(),
+    { dueFrom: '2026-10-08', meetingId: 'm2' },
+    ABGEHAKT,
+    'm1',
+  )
+  const pendenz = item({ meetingId: 'm2', standing })
+  const andere = item({ id: 'p2', meetingId: 'm1', kind: 'pendenz' })
+
+  const ersteSitzung = itemsOfMeeting([pendenz, andere], 'm1')
+  assert.deepEqual(
+    ersteSitzung.map((entry) => [entry.id, entry.status, entry.doneInMeeting]),
+    [
+      ['p1', 'done', 'm1'],
+      ['p2', 'pending', undefined],
+    ],
+  )
+
+  // In der nächsten Sitzung ist sie wieder offen – wie sie gespeichert ist.
+  const naechsteSitzung = itemsOfMeeting([pendenz, andere], 'm2')
+  assert.deepEqual(
+    naechsteSitzung.map((entry) => [entry.id, entry.status, entry.doneInMeeting]),
+    [['p1', 'pending', undefined]],
+  )
+})
+
+test('nach dem Zurücknehmen steht sie wieder offen in ihrer Sitzung', () => {
+  const abgehakt = advanceStanding(
+    rule(),
+    { dueFrom: '2026-10-08', meetingId: 'm2' },
+    ABGEHAKT,
+    'm1',
+  )
+  const zurueck = item({ meetingId: 'm1', standing: revertStanding(abgehakt, 'm1') })
+
+  assert.deepEqual(
+    itemsOfMeeting([zurueck], 'm1').map((entry) => [entry.status, entry.doneInMeeting]),
+    [['pending', undefined]],
+  )
+  assert.deepEqual(itemsOfMeeting([zurueck], 'm2'), [])
+  // Das Fenster, das sie eben noch als erledigt zeigte, zeigt sie wieder offen.
+  assert.equal(asDoneIn(zurueck, 'm1').status, 'pending')
+})
+
+test('itemsByMeeting legt die erledigte Runde in jede ihrer Sitzungen', () => {
+  const standing = rule({ doneIn: ['m0', 'm1'] })
+  const map = itemsByMeeting([item({ meetingId: 'm2', standing })])
+
+  assert.deepEqual([...map.keys()].sort(), ['m0', 'm1', 'm2'])
+  assert.equal(map.get('m0')?.[0].status, 'done')
+  assert.equal(map.get('m1')?.[0].doneInMeeting, 'm1')
+  assert.equal(map.get('m2')?.[0].status, 'pending')
 })

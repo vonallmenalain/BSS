@@ -67,7 +67,7 @@ export function AgendaItemDialog({
     if (!item || !profile) return
     // Eine ständige Pendenz rückt eine Runde weiter, statt zuzugehen
     // (siehe `hooks/useStanding`).
-    if (!isDone && (await standingRound(item))) return
+    if (await standingRound(item)) return
     try {
       await setItemStatus(item.id, isDone ? 'pending' : 'done', {
         id: profile.id,
@@ -140,11 +140,13 @@ export function AgendaItemDialog({
                     </button>
                   )}
 
-                  <DeferMenu
-                    itemId={item.id}
-                    nextMeeting={nextMeeting ?? null}
-                    className="btn-sm"
-                  />
+                  {!item.doneInMeeting && (
+                    <DeferMenu
+                      itemId={item.id}
+                      nextMeeting={nextMeeting ?? null}
+                      className="btn-sm"
+                    />
+                  )}
 
                   {/* Beide Richtungen – zur ständigen Pendenz und zurück.
                       Nicht an der Monatspendenz: Die kehrt bereits auf ihre

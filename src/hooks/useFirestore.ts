@@ -10,7 +10,7 @@ import {
 import { toDate } from '@/lib/dates'
 import { impulseKindRank } from '@/lib/impulse'
 import { isDutyItem, monthLeaders } from '@/lib/monthlyDuties'
-import { dayKey, standingWaits } from '@/lib/standing'
+import { dayKey, itemsOfMeeting, standingWaits } from '@/lib/standing'
 import {
   isWithdrawnTalk,
   OPEN_STATUSES,
@@ -138,16 +138,18 @@ function useAgendaStore() {
   )
 }
 
-/** Alle Traktanden und Pendenzen einer bestimmten Sitzung. */
+/**
+ * Alle Traktanden und Pendenzen einer bestimmten Sitzung – dazu die
+ * ständigen Pendenzen, die in ihr abgehakt wurden und schon in der nächsten
+ * warten: Hier stehen sie als erledigt (siehe `itemsOfMeeting`).
+ */
 export function useMeetingItems(meetingId: string | undefined) {
   const state = useAgendaStore()
   return useMemo(
     () => ({
       ...state,
       data: meetingId
-        ? state.data
-            .filter((item) => item.meetingId === meetingId)
-            .sort((a, b) => (a.order ?? 0) - (b.order ?? 0))
+        ? itemsOfMeeting(state.data, meetingId).sort((a, b) => (a.order ?? 0) - (b.order ?? 0))
         : [],
     }),
     [state, meetingId],

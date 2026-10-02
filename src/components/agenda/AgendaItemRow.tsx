@@ -213,9 +213,10 @@ export function AgendaItemRow({
 
   const toggleDone = async () => {
     if (!profile) return
-    // Eine ständige Pendenz wird nicht abgeschlossen, sondern weitergesetzt.
-    // «Wieder offen» gibt es an ihr nicht – sie ist nie zu.
-    if (!isDone && (await standingRound(item))) return
+    // Eine ständige Pendenz wird nicht abgeschlossen, sondern weitergesetzt –
+    // und «Wieder offen» an einer, die in dieser Sitzung abgehakt wurde,
+    // nimmt die Runde zurück (siehe `hooks/useStanding`).
+    if (await standingRound(item)) return
     try {
       await setItemStatus(item.id, isDone ? 'pending' : 'done', {
         id: profile.id,
@@ -445,7 +446,11 @@ export function AgendaItemRow({
                 </button>
               )}
 
-              {!duty && <DeferMenu itemId={item.id} nextMeeting={nextMeeting} className="btn-sm" />}
+              {/* Nicht an der Pendenz, die hier bloss als erledigt dasteht: Sie
+                  wartet schon in der nächsten Sitzung. */}
+              {!duty && !item.doneInMeeting && (
+                <DeferMenu itemId={item.id} nextMeeting={nextMeeting} className="btn-sm" />
+              )}
 
               {/* Der Weg in beide Richtungen: aus einer Pendenz eine ständige
                   machen – und aus einer ständigen wieder eine gewöhnliche.

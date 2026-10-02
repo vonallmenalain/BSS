@@ -185,10 +185,11 @@ export function MeetingFocus({ items, onAdd, nextMeeting, readOnly = false }: Pr
     /*
      * Eine ständige Pendenz wird nicht abgeschlossen, sondern auf ihre
      * nächste Runde gesetzt (siehe `hooks/useStanding`). Weitergerückt wird
-     * trotzdem: Für den Ablauf der Sitzung ist der Punkt erledigt.
+     * trotzdem: Für den Ablauf der Sitzung ist der Punkt erledigt – er bleibt
+     * mit dem grünen Haken stehen, und «Wieder offen» nimmt die Runde zurück.
      */
-    if (status === 'done' && (await standingRound(current))) {
-      advance()
+    if ((status === 'done' || current.doneInMeeting) && (await standingRound(current))) {
+      if (status === 'done') advance()
       return
     }
     try {
@@ -330,7 +331,9 @@ export function MeetingFocus({ items, onAdd, nextMeeting, readOnly = false }: Pr
                 </span>
               </button>
 
-              <DeferMenu itemId={current.id} nextMeeting={nextMeeting} compact />
+              {!current.doneInMeeting && (
+                <DeferMenu itemId={current.id} nextMeeting={nextMeeting} compact />
+              )}
 
               {/* Am Sitzungstisch fällt auf, dass ein Punkt zum dritten Mal
                   dasteht – deshalb steht der Weg zur ständigen Pendenz auch

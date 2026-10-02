@@ -7,6 +7,7 @@ import {
   type AgendaItem,
   type MeetingSection,
   type StandingRule,
+  type StandingUndo,
   type StandingUnit,
 } from './types.ts'
 
@@ -106,6 +107,16 @@ export function addMonths(key: string, months: number): string {
 
 const UNITS: StandingUnit[] = ['meeting', 'day', 'week', 'month']
 
+/**
+ * Wie viele Sitzungen sich eine ständige Pendenz merkt, in denen sie
+ * abgehakt wurde.
+ *
+ * Jede Sitzung eines Jahres und noch etwas mehr – genug, damit auch ältere
+ * Protokolle sie als erledigt zeigen, und wenig genug, dass der Eintrag über
+ * die Jahre nicht anwächst.
+ */
+export const STANDING_DONE_KEPT = 60
+
 /** Der Takt, mit dem eine neue ständige Pendenz beginnt: jede Sitzung. */
 export const DEFAULT_STANDING: StandingRule = { every: 1, unit: 'meeting' }
 
@@ -135,7 +146,25 @@ export function normalizeStanding(value: unknown): StandingRule | null {
     rule.doneCount = Math.round(raw.doneCount)
   }
   if (typeof raw.lastDoneAt === 'string' && raw.lastDoneAt) rule.lastDoneAt = raw.lastDoneAt
+  if (Array.isArray(raw.doneIn)) {
+    const doneIn = raw.doneIn.filter((id): id is string => typeof id === 'string' && id !== '')
+    if (doneIn.length > 0) rule.doneIn = doneIn.slice(-STANDING_DONE_KEPT)
+  }
+  const undo = normalizeUndo(raw.undo)
+  if (undo) rule.undo = undo
   return rule
+}
+
+/** Der Stand vor der letzten Runde – oder `null`, wenn er nicht brauchbar ist. */
+function normalizeUndo(value: unknown): StandingUndo | null {
+  if (!value || typeof value !== 'object') return null
+  const raw = value as Partial<StandingUndo>
+  if (typeof raw.meetingId !== 'string' || !raw.meetingId) return null
+  return {
+    meetingId: raw.meetingId,
+    dueFrom: isDayKey(raw.dueFrom) ? raw.dueFrom : null,
+    lastDoneAt: typeof raw.lastDoneAt === 'string' && raw.lastDoneAt ? raw.lastDoneAt : null,
+  }
 }
 
 /**
@@ -153,6 +182,8 @@ export function serializeStanding(rule: StandingRule): StandingRule {
     dueFrom: rule.dueFrom ?? null,
     doneCount: rule.doneCount ?? 0,
     lastDoneAt: rule.lastDoneAt ?? null,
+    doneIn: (rule.doneIn ?? []).slice(-STANDING_DONE_KEPT),
+    undo: rule.undo ?? null,
   }
 }
 
@@ -288,15 +319,120 @@ export function nextStandingRound(
  * Pendenz hinterlässt: Sie wird nie erledigt und steht deshalb nie im Archiv.
  * Ohne ihn wäre an ihr nicht abzulesen, ob sie seit einem halben Jahr läuft
  * oder erst gestern erfasst wurde.
+ *
+ * Wurde in einer Sitzung abgehakt (`meetingId`), merkt sich der Takt auch
+ * diese – dort steht die Pendenz weiter mit dem grünen Haken (siehe
+ * `itemsOfMeeting`) – und den Stand von davor, damit sich der Haken in
+ * derselben Sitzung zurücknehmen lässt (`revertStanding`). Ohne Sitzung gibt
+ * es keinen Ort, an den sie zurückkehren könnte; das Zurücknehmen entfällt.
  */
-export function advanceStanding(rule: StandingRule, round: StandingRound, now: Date): StandingRule {
-  return {
+export function advanceStanding(
+  rule: StandingRule,
+  round: StandingRound,
+  now: Date,
+  meetingId: string | null = null,
+): StandingRule {
+  const next: StandingRule = {
     every: rule.every,
     unit: rule.unit,
     dueFrom: round.dueFrom,
     doneCount: (rule.doneCount ?? 0) + 1,
     lastDoneAt: now.toISOString(),
   }
+
+  if (meetingId) {
+    const earlier = (rule.doneIn ?? []).filter((id) => id !== meetingId)
+    next.doneIn = [...earlier, meetingId].slice(-STANDING_DONE_KEPT)
+    next.undo = { meetingId, dueFrom: rule.dueFrom ?? null, lastDoneAt: rule.lastDoneAt ?? null }
+  } else if (rule.doneIn) {
+    next.doneIn = rule.doneIn
+  }
+  return next
+}
+
+/**
+ * Der Takt nach dem Zurücknehmen des letzten Hakens – oder `null`, wenn sich
+ * in dieser Sitzung nichts zurücknehmen lässt.
+ *
+ * Zurücknehmen lässt sich nur die **letzte** Runde, und nur in der Sitzung,
+ * in der sie abgehakt wurde: Wer am 1. Oktober abhakt und am 8. wieder, kann
+ * am 8. zurücknehmen – der Haken vom 1. ist dann Geschichte.
+ */
+export function revertStanding(rule: StandingRule, meetingId: string): StandingRule | null {
+  const doneIn = rule.doneIn ?? []
+  if (rule.undo?.meetingId !== meetingId || doneIn.at(-1) !== meetingId) return null
+
+  return {
+    every: rule.every,
+    unit: rule.unit,
+    dueFrom: rule.undo.dueFrom,
+    doneCount: Math.max(0, (rule.doneCount ?? 1) - 1),
+    lastDoneAt: rule.undo.lastDoneAt,
+    doneIn: doneIn.slice(0, -1),
+    undo: null,
+  }
+}
+
+/* ------------------------------------------------------------------ */
+/* In der Sitzung erledigt                                             */
+/* ------------------------------------------------------------------ */
+
+/** Wurde in dieser Sitzung eine Runde abgehakt? */
+export function standingDoneIn(item: Pick<AgendaItem, 'standing'>, meetingId: string): boolean {
+  return normalizeStanding(item.standing)?.doneIn?.includes(meetingId) ?? false
+}
+
+/** Lässt sich der Haken in dieser Sitzung noch zurücknehmen? */
+export function canUndoStanding(item: Pick<AgendaItem, 'standing'>, meetingId: string): boolean {
+  const rule = normalizeStanding(item.standing)
+  return rule !== null && revertStanding(rule, meetingId) !== null
+}
+
+/**
+ * Die Pendenz, wie sie in einer Sitzung dasteht, in der sie abgehakt wurde:
+ * erledigt.
+ *
+ * Steht sie dort nicht mehr als erledigt – weil der Haken eben
+ * zurückgenommen wurde –, kommt sie unverändert zurück.
+ */
+export function asDoneIn<T extends AgendaItem>(item: T, meetingId: string): T {
+  if (item.meetingId === meetingId || !standingDoneIn(item, meetingId)) return item
+  return { ...item, status: 'done', doneInMeeting: meetingId }
+}
+
+/**
+ * Die Einträge einer Sitzung – samt den ständigen Pendenzen, die in ihr
+ * abgehakt wurden.
+ *
+ * Eine ständige Pendenz wandert beim Abhaken in die nächste Sitzung und ist
+ * dort wieder offen. In der Sitzung, in der sie abgehakt wurde, soll sie
+ * trotzdem stehen bleiben: mit dem grünen Haken, wie jede andere erledigte
+ * Pendenz. Sonst verschwände sie mitten in der Sitzung aus der Liste, und
+ * ob der Griff gewirkt hat, liesse sich nur noch in der nächsten nachsehen.
+ */
+export function itemsOfMeeting<T extends AgendaItem>(items: T[], meetingId: string): T[] {
+  return items.flatMap((item) => {
+    if (item.meetingId === meetingId) return [item]
+    return standingDoneIn(item, meetingId) ? [asDoneIn(item, meetingId)] : []
+  })
+}
+
+/** Dasselbe für viele Sitzungen auf einmal – je Sitzung ihre Einträge. */
+export function itemsByMeeting<T extends AgendaItem>(items: T[]): Map<string, T[]> {
+  const map = new Map<string, T[]>()
+  const add = (meetingId: string, item: T) => {
+    const list = map.get(meetingId)
+    if (list) list.push(item)
+    else map.set(meetingId, [item])
+  }
+
+  for (const item of items) {
+    if (item.meetingId) add(item.meetingId, item)
+    for (const meetingId of normalizeStanding(item.standing)?.doneIn ?? []) {
+      if (meetingId !== item.meetingId) add(meetingId, asDoneIn(item, meetingId))
+    }
+  }
+  return map
 }
 
 /* ------------------------------------------------------------------ */
