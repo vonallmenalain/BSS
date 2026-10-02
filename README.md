@@ -1611,6 +1611,23 @@ ergänzt den ersten, statt ihn abzuräumen. Einzelne Wochen lassen sich von Hand
 einlesen müssen; ein späterer Import derselben Woche überschreibt die Korrektur
 allerdings wieder.
 
+### Als PDF zum Ausdrucken
+
+**PDF** oben rechts fragt nach dem Zeitraum – vorbelegt mit der laufenden Woche
+bis zum Ende des Plans; «Ab dieser Woche» und «Ganzer Plan» stellen ihn mit
+einem Griff ein – und lädt eine A4-Seite herunter, die sich im Vorbeigehen
+lesen lässt: je Woche die **Kalenderwoche**, das **Datum**, **wer an der Reihe
+ist** und die **Gruppe**. Mehr steht bewusst nicht darauf; Bemerkungen bleiben
+in der App. Über der Tabelle stehen der Name der Gemeinde aus den Einstellungen
+und der Zeitraum, unten der Stand und die Seitenzahl; lange Namen brechen auf
+zwei Zeilen um, und eine lange Liste geht mit ihrer Kopfzeile auf die nächste
+Seite über.
+
+Die Kalenderwoche zählt nach ISO, gemessen an der Mitte der Putzwoche – so
+stimmt sie für Wochen ab Montag wie ab Sonntag. Erzeugt wird die Datei in der
+App selbst, ohne Bibliothek und ohne Server (`lib/pdf`): Sie verwendet die
+PDF-Standardschrift Helvetica und ist ein paar Kilobyte klein.
+
 ### Die Ansage am Sonntag
 
 Unter **Bekanntmachungen → Wiederkehrend → Aus dem Putzplan** entsteht eine

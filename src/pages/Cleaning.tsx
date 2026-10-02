@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useState, type FormEvent } from 'react'
-import { Brush, CalendarRange, Pencil, Plus, Trash2 } from 'lucide-react'
+import { Brush, CalendarRange, FileDown, Pencil, Plus, Trash2 } from 'lucide-react'
+import { useData } from '@/contexts/DataContext'
 import { useToast } from '@/contexts/ToastContext'
 import { useCleaningWeeks } from '@/hooks/useFirestore'
 import { EmptyState, SkeletonList } from '@/components/ui/Feedback'
@@ -9,6 +10,7 @@ import { Modal, ConfirmDialog } from '@/components/ui/Modal'
 import { formatDateLong, toDateInput } from '@/lib/dates'
 import { cn, matchesSearch } from '@/lib/utils'
 import { deleteCleaningWeek, saveCleaningWeek } from '@/services/cleaning'
+import { cleaningPdf, cleaningPdfFilename, weeksInRange } from '@/services/cleaningPdf'
 import { cleaningAround } from '@/services/importCleaning'
 import { fromIsoDate } from '@/services/importHistory'
 import type { CleaningWeek } from '@/lib/types'
@@ -34,6 +36,7 @@ export function Cleaning() {
   const [search, setSearch] = useState('')
   const [formOpen, setFormOpen] = useState(false)
   const [editWeek, setEditWeek] = useState<CleaningWeek | null>(null)
+  const [exportOpen, setExportOpen] = useState(false)
 
   const today = toDateInput(new Date())
 
@@ -97,11 +100,26 @@ export function Cleaning() {
 
   return (
     <>
-      {/* Oben rechts steht nichts: Der Plan kommt zweimal im Jahr als Tabelle
-          und wird eingelesen, nicht Woche für Woche erfasst. Wer eine einzelne
-          korrigieren muss, tut das am Stift in der Zeile – und ganz ohne Plan
-          führt der leere Zustand zum Formular. */}
-      <PageHeader title="Putzplan" />
+      {/* Oben rechts steht nur der Ausdruck: Der Plan kommt zweimal im Jahr
+          als Tabelle und wird eingelesen, nicht Woche für Woche erfasst. Wer
+          eine einzelne korrigieren muss, tut das am Stift in der Zeile – und
+          ganz ohne Plan führt der leere Zustand zum Formular. */}
+      <PageHeader
+        title="Putzplan"
+        actions={
+          weeks.length > 0 && (
+            <button
+              type="button"
+              className="btn-secondary"
+              onClick={() => setExportOpen(true)}
+              title="Den Putzplan als PDF herunterladen"
+            >
+              <FileDown className="size-4" aria-hidden />
+              PDF
+            </button>
+          )
+        }
+      />
 
       <NextSunday weeks={weeks} />
 
@@ -185,8 +203,155 @@ export function Cleaning() {
           setEditWeek(null)
         }}
       />
+
+      {/* Bei jedem Öffnen neu aufgebaut – mit dem Zeitraum von heute. */}
+      {exportOpen && <CleaningExport weeks={weeks} onClose={() => setExportOpen(false)} />}
     </>
   )
+}
+
+/* ------------------------------------------------------------------ */
+
+/**
+ * Den Putzplan als PDF herunterladen.
+ *
+ * Gefragt wird nur der Zeitraum. Zwei Knöpfe nehmen die üblichen Antworten
+ * vorweg: ab der laufenden Woche bis zum Ende des Plans – das Blatt fürs
+ * Anschlagbrett – und der ganze Plan. Was auf dem Blatt steht, sagt die
+ * Beschreibung: Woche, Datum, wer an der Reihe ist und die Gruppe (siehe
+ * `services/cleaningPdf`).
+ */
+function CleaningExport({ weeks, onClose }: { weeks: CleaningWeek[]; onClose: () => void }) {
+  const { settings } = useData()
+  const toast = useToast()
+  const today = toDateInput(new Date())
+
+  const sorted = useMemo(
+    () => [...weeks].sort((a, b) => a.startDate.localeCompare(b.startDate)),
+    [weeks],
+  )
+  const planStart = sorted[0]?.startDate ?? today
+  const planEnd = sorted.reduce(
+    (latest, week) => (week.endDate > latest ? week.endDate : latest),
+    planStart,
+  )
+  /** Die laufende Woche – oder, wenn heute keine läuft, die nächste. */
+  const thisWeek = sorted.find((week) => week.endDate >= today)?.startDate ?? planStart
+
+  const [from, setFrom] = useState(thisWeek)
+  const [to, setTo] = useState(planEnd)
+
+  const valid = Boolean(from && to && from <= to)
+  const count = valid ? weeksInRange(weeks, from, to).length : 0
+
+  const download = () => {
+    const bytes = cleaningPdf({ weeks, from, to, wardName: settings.wardName, today })
+    if (!bytes) {
+      toast.error('In diesem Zeitraum steht keine Woche im Plan.')
+      return
+    }
+    saveFile(bytes, cleaningPdfFilename(from, to))
+    toast.success('Putzplan als PDF heruntergeladen.')
+    onClose()
+  }
+
+  return (
+    <Modal
+      open
+      onClose={onClose}
+      title="Putzplan als PDF"
+      description="Woche, Datum, wer an der Reihe ist und die Gruppe – zum Ausdrucken."
+      footer={
+        <>
+          <button type="button" className="btn-secondary" onClick={onClose}>
+            Abbrechen
+          </button>
+          <button
+            type="button"
+            className="btn-primary"
+            onClick={download}
+            disabled={!valid || count === 0}
+          >
+            <FileDown className="size-4" aria-hidden />
+            PDF herunterladen
+          </button>
+        </>
+      }
+    >
+      <div className="space-y-4">
+        <div className="grid gap-4 sm:grid-cols-2">
+          <div>
+            <label className="label" htmlFor="export-from">
+              Von
+            </label>
+            <input
+              id="export-from"
+              type="date"
+              className="input"
+              value={from}
+              onChange={(event) => setFrom(event.target.value)}
+            />
+          </div>
+          <div>
+            <label className="label" htmlFor="export-to">
+              Bis
+            </label>
+            <input
+              id="export-to"
+              type="date"
+              className="input"
+              value={to}
+              onChange={(event) => setTo(event.target.value)}
+            />
+          </div>
+        </div>
+
+        <div className="flex flex-wrap gap-2">
+          <button
+            type="button"
+            className="btn-secondary btn-sm"
+            onClick={() => {
+              setFrom(thisWeek)
+              setTo(planEnd)
+            }}
+          >
+            Ab dieser Woche
+          </button>
+          <button
+            type="button"
+            className="btn-secondary btn-sm"
+            onClick={() => {
+              setFrom(planStart)
+              setTo(planEnd)
+            }}
+          >
+            Ganzer Plan
+          </button>
+        </div>
+
+        <p className="hint mt-0">
+          {!valid
+            ? 'Das Ende liegt vor dem Anfang.'
+            : count === 0
+              ? 'In diesem Zeitraum steht keine Woche im Plan.'
+              : `${count} ${count === 1 ? 'Woche' : 'Wochen'} kommen aufs Blatt.`}
+        </p>
+      </div>
+    </Modal>
+  )
+}
+
+/** Die Datei im Browser speichern – wie die Sicherung unter «Einstellungen». */
+function saveFile(bytes: Uint8Array, filename: string) {
+  const blob = new Blob([bytes as BlobPart], { type: 'application/pdf' })
+  const url = URL.createObjectURL(blob)
+  const link = document.createElement('a')
+  link.href = url
+  link.download = filename
+  link.click()
+  // Erst später freigeben: Im selben Zug verworfen, bricht der Download je
+  // nach Browser ab, bevor er begonnen hat.
+  setTimeout(() => URL.revokeObjectURL(url), 60_000)
 }
 
 /* ------------------------------------------------------------------ */
