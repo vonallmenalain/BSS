@@ -1,10 +1,13 @@
 import { useEffect, useMemo, useState, type FormEvent } from 'react'
-import { Brush, CalendarRange, FileDown, Pencil, Plus, Trash2 } from 'lucide-react'
+import { Brush, CalendarRange, FileDown, Pencil, Plus, Sparkles, Trash2, Users } from 'lucide-react'
 import { useAuth } from '@/contexts/AuthContext'
 import { useData } from '@/contexts/DataContext'
 import { useToast } from '@/contexts/ToastContext'
-import { useAllSacramentMeetings, useCleaningWeeks } from '@/hooks/useFirestore'
+import { useAllSacramentMeetings, useCleaningGroups, useCleaningWeeks } from '@/hooks/useFirestore'
 import { useLocalStorage } from '@/hooks/useLocalStorage'
+import { CleaningGenerateDialog } from '@/components/cleaning/CleaningGenerateDialog'
+import { CleaningGroupDialog } from '@/components/cleaning/CleaningGroupDialog'
+import { CleaningGroupsDialog } from '@/components/cleaning/CleaningGroupsDialog'
 import { EmptyState, SkeletonList } from '@/components/ui/Feedback'
 import { OtherResults } from '@/components/ui/OtherResults'
 import { PageHeader, SegmentedControl } from '@/components/ui/Pickers'
@@ -18,7 +21,8 @@ import {
   cleaningPdfFilename,
   weeksInRange,
 } from '@/services/cleaningPdf'
-import { cleaningAround, cleaningNow } from '@/services/importCleaning'
+import { cleaningGroupNumber } from '@/lib/cleaningGroups'
+import { cleaningAround, cleaningNow } from '@/lib/cleaningPlan'
 import { fromIsoDate } from '@/services/importHistory'
 import type { CleaningWeek } from '@/lib/types'
 
@@ -27,15 +31,16 @@ type Scope = 'upcoming' | 'past' | 'all'
 /**
  * Der Putzplan der Gemeinde.
  *
- * Er entsteht zweimal im Jahr als Excel-Tabelle und wird unter
- * «Einstellungen › Importe» eingelesen. Hier steht er zum Nachschauen –
- * und als Grundlage für die wiederkehrende Bekanntmachung, die am Sonntag
- * dem einen Team dankt und das nächste ankündigt.
+ * Er entsteht aus der Gruppeneinteilung: Unter «Generieren» wird er für
+ * einige Monate fortgeführt, eine Gruppe nach der anderen; die Einteilung
+ * selbst steht unter «Gruppeneinteilung» (siehe `components/cleaning`). Hier
+ * steht er zum Nachschauen – und als Grundlage für die wiederkehrende
+ * Bekanntmachung, die am Sonntag dem einen Team dankt und das nächste
+ * ankündigt.
  *
  * Einzelne Wochen lassen sich von Hand ändern: Wer kurzfristig tauscht,
- * soll dafür nicht die ganze Tabelle neu einlesen müssen. Ein späterer
- * Import derselben Woche überschreibt die Korrektur allerdings wieder –
- * die Tabelle bleibt die Quelle.
+ * soll dafür nicht den ganzen Zeitraum neu generieren müssen. Wird derselbe
+ * Zeitraum später neu generiert, gilt allerdings wieder die Einteilung.
  *
  * **Ohne Vollzugriff ist die Seite ein Anschlagbrett.** Sie steht unter
  * `/putzplan` für alle offen (siehe `PUBLIC_PATHS` in `App.tsx`) – der
@@ -50,7 +55,12 @@ export function Cleaning() {
   const { isApproved } = useAuth()
   const editable = isApproved
   const { data: weeks, loading, error } = useCleaningWeeks()
+  const { data: groups } = useCleaningGroups()
   const [scope, setScope] = useState<Scope>('upcoming')
+  const [groupsOpen, setGroupsOpen] = useState(false)
+  const [generateOpen, setGenerateOpen] = useState(false)
+  /** Die Gruppe, deren Übersicht offensteht – ohne Vollzugriff ein Antippen entfernt. */
+  const [groupShown, setGroupShown] = useState<number | null>(null)
   const [search, setSearch] = useState('')
   const [formOpen, setFormOpen] = useState(false)
   const [editWeek, setEditWeek] = useState<CleaningWeek | null>(null)
@@ -63,6 +73,13 @@ export function Cleaning() {
     setEditWeek(week)
     setFormOpen(true)
   }
+
+  /** Ohne Vollzugriff führt das Antippen einer Woche zur Übersicht ihrer Gruppe. */
+  const showGroup = (week: CleaningWeek) => {
+    const number = cleaningGroupNumber(week.group)
+    if (number !== null) setGroupShown(number)
+  }
+  const onRow = editable ? openWeek : showGroup
 
   const counts = useMemo(
     () => ({
@@ -118,29 +135,53 @@ export function Cleaning() {
 
   return (
     <>
-      {/* Oben rechts steht nur der Export: Der Plan kommt zweimal im Jahr
-          als Tabelle und wird eingelesen, nicht Woche für Woche erfasst. Wer
-          eine einzelne korrigieren muss, tut das am Stift in der Zeile – und
-          ganz ohne Plan führt der leere Zustand zum Formular. */}
+      {/* Oben rechts die drei Handgriffe der Leitung: die Einteilung der
+          Gruppen pflegen, den Plan daraus generieren und ihn ausdrucken. Wer
+          eine einzelne Woche korrigieren muss, tut das am Stift in der Zeile. */}
       <PageHeader
         title="Putzplan"
         actions={
-          editable &&
-          weeks.length > 0 && (
-            <button
-              type="button"
-              className="btn-secondary"
-              onClick={() => setExportOpen(true)}
-              title="Den Putzplan als PDF zum Ausdrucken herunterladen"
-            >
-              <FileDown className="size-4" aria-hidden />
-              Export
-            </button>
+          editable && (
+            <div className="flex flex-wrap gap-2">
+              <button
+                type="button"
+                className="btn-secondary"
+                onClick={() => setGroupsOpen(true)}
+                title="Die Gruppen und wer dazugehört"
+              >
+                <Users className="size-4" aria-hidden />
+                Gruppeneinteilung
+              </button>
+              <button
+                type="button"
+                className="btn-secondary"
+                onClick={() => setGenerateOpen(true)}
+                title="Den Plan für die nächsten Monate einteilen"
+              >
+                <Sparkles className="size-4" aria-hidden />
+                Generieren
+              </button>
+              {weeks.length > 0 && (
+                <button
+                  type="button"
+                  className="btn-secondary"
+                  onClick={() => setExportOpen(true)}
+                  title="Den Putzplan als PDF zum Ausdrucken herunterladen"
+                >
+                  <FileDown className="size-4" aria-hidden />
+                  Export
+                </button>
+              )}
+            </div>
           )
         }
       />
 
-      {editable ? <NextSunday weeks={weeks} /> : <OnDuty weeks={weeks} today={today} />}
+      {editable ? (
+        <NextSunday weeks={weeks} />
+      ) : (
+        <OnDuty weeks={weeks} today={today} onGroup={showGroup} />
+      )}
 
       <div className="mb-4 space-y-3">
         <input
@@ -181,7 +222,7 @@ export function Cleaning() {
                 : weeks.length > 0
                   ? 'Passe Suche oder Auswahl an.'
                   : editable
-                    ? 'Die Tabelle der Gemeinde lässt sich unter «Einstellungen › Importe › Putzplan» einlesen. Einzelne Wochen können auch von Hand erfasst werden.'
+                    ? 'Unter «Generieren» entsteht der Plan aus der Gruppeneinteilung. Einzelne Wochen lassen sich auch von Hand erfassen.'
                     : 'Sobald der Plan eingetragen ist, steht er hier.'
             }
             action={
@@ -204,7 +245,7 @@ export function Cleaning() {
           />
         </div>
       ) : (
-        <WeekRows weeks={visible} currentId={currentId} onEdit={editable ? openWeek : undefined} />
+        <WeekRows weeks={visible} currentId={currentId} onOpen={onRow} editable={editable} />
       )}
 
       {/* Was ausserhalb des gewählten Zeitraums zur Suche passt – meist die
@@ -223,7 +264,7 @@ export function Cleaning() {
           }
         >
           {(page) => (
-            <WeekRows weeks={page} currentId={currentId} onEdit={editable ? openWeek : undefined} />
+            <WeekRows weeks={page} currentId={currentId} onOpen={onRow} editable={editable} />
           )}
         </OtherResults>
       )}
@@ -242,6 +283,23 @@ export function Cleaning() {
       {/* Bei jedem Öffnen neu aufgebaut – mit dem Zeitraum von heute. */}
       {editable && exportOpen && (
         <CleaningExport weeks={weeks} onClose={() => setExportOpen(false)} />
+      )}
+      {editable && groupsOpen && <CleaningGroupsDialog onClose={() => setGroupsOpen(false)} />}
+      {editable && generateOpen && (
+        <CleaningGenerateDialog
+          weeks={weeks}
+          groups={groups}
+          onClose={() => setGenerateOpen(false)}
+        />
+      )}
+      {groupShown !== null && (
+        <CleaningGroupDialog
+          number={groupShown}
+          weeks={weeks}
+          groups={groups}
+          today={today}
+          onClose={() => setGroupShown(null)}
+        />
       )}
     </>
   )
@@ -508,7 +566,16 @@ function weekMeta(week: CleaningWeek): string {
  * Läuft heute keine Woche – am Sonntag zwischen zwei Wochen von Montag bis
  * Samstag –, rückt die nächste nach oben und die übernächste darunter.
  */
-function OnDuty({ weeks, today }: { weeks: CleaningWeek[]; today: string }) {
+function OnDuty({
+  weeks,
+  today,
+  onGroup,
+}: {
+  weeks: CleaningWeek[]
+  today: string
+  /** Die Übersicht der Gruppe öffnen */
+  onGroup: (week: CleaningWeek) => void
+}) {
   if (weeks.length === 0) return null
   const { current, next, after } = cleaningNow(weeks, today)
   const first = current ?? next
@@ -529,23 +596,35 @@ function OnDuty({ weeks, today }: { weeks: CleaningWeek[]; today: string }) {
     <section className="card relative mb-4 overflow-hidden p-5 sm:p-6">
       <span className="bg-brand-600 absolute inset-x-0 top-0 h-1" aria-hidden />
 
-      <p className="text-brand-700 dark:text-brand-300 text-sm font-semibold">
-        {current ? 'Diese Woche dran' : 'Als Nächstes dran'}
-      </p>
-      <h2 className="mt-1 text-2xl font-semibold tracking-tight text-balance sm:text-3xl">
-        {first.team}
-      </h2>
-      <p className="mt-1.5 text-sm text-slate-500 dark:text-slate-400">{weekMeta(first)}</p>
+      {/* Ein Antippen öffnet die Übersicht der Gruppe – wer dazugehört und
+          wann sie wieder dran ist. */}
+      <button type="button" className="group block w-full text-left" onClick={() => onGroup(first)}>
+        <p className="text-brand-700 dark:text-brand-300 text-sm font-semibold">
+          {current ? 'Diese Woche dran' : 'Als Nächstes dran'}
+        </p>
+        <h2 className="mt-1 text-2xl font-semibold tracking-tight text-balance group-hover:underline sm:text-3xl">
+          {first.team}
+        </h2>
+        <p className="mt-1.5 text-sm text-slate-500 dark:text-slate-400">{weekMeta(first)}</p>
+      </button>
 
       <div className="mt-5 border-t border-slate-200 pt-4 dark:border-slate-800">
         <p className="text-sm font-semibold text-slate-500 dark:text-slate-400">
           {current ? 'Nächste Woche dran' : 'Danach dran'}
         </p>
         {second ? (
-          <>
-            <p className="mt-0.5 text-lg font-semibold text-balance">{second.team}</p>
-            <p className="text-sm text-slate-500 dark:text-slate-400">{weekMeta(second)}</p>
-          </>
+          <button
+            type="button"
+            className="group block w-full text-left"
+            onClick={() => onGroup(second)}
+          >
+            <span className="mt-0.5 block text-lg font-semibold text-balance group-hover:underline">
+              {second.team}
+            </span>
+            <span className="block text-sm text-slate-500 dark:text-slate-400">
+              {weekMeta(second)}
+            </span>
+          </button>
         ) : (
           <p className="mt-0.5 text-sm text-slate-500 dark:text-slate-400">
             Weiter reicht der Plan noch nicht.
@@ -575,66 +654,61 @@ const EMPTY: FormState = { startDate: '', endDate: '', group: '', team: '', note
  * Zeitraum und für die Treffer, die daneben liegen. Die laufende Woche bleibt
  * dabei in beiden Listen hervorgehoben.
  *
- * Ohne `onEdit` – auf dem Anschlagbrett ohne Konto – sind es blosse Zeilen:
- * kein Stift, nichts zum Anklicken.
+ * Mit Vollzugriff öffnet eine Zeile das Formular der Woche (mit Stift), ohne
+ * die Übersicht ihrer Gruppe – wer dazugehört und wann sie wieder dran ist.
  */
 function WeekRows({
   weeks,
   currentId,
-  onEdit,
+  onOpen,
+  editable,
 }: {
   weeks: CleaningWeek[]
   currentId: string | null
-  onEdit?: (week: CleaningWeek) => void
+  onOpen: (week: CleaningWeek) => void
+  editable: boolean
 }) {
   return (
     <ul className="card divide-list overflow-hidden">
       {weeks.map((week) => {
         const current = week.id === currentId
-        const content = (
-          <>
-            <span
-              className={cn(
-                'grid size-9 shrink-0 place-items-center rounded-lg text-xs font-semibold',
-                current
-                  ? 'bg-brand-600 text-white'
-                  : 'bg-slate-100 text-slate-500 dark:bg-slate-800 dark:text-slate-400',
-              )}
-            >
-              {week.group.replace(/[^\d]/g, '') || '–'}
-            </span>
-
-            <div className="min-w-0 flex-1">
-              <p className="truncate text-sm font-medium">{week.team}</p>
-              <p className="mt-0.5 truncate text-xs text-slate-500 dark:text-slate-400">
-                {week.group && `${week.group} · `}
-                {period(week)}
-                {week.note?.trim() && ` · ${week.note.trim()}`}
-                {current && ' · diese Woche'}
-              </p>
-            </div>
-
-            {onEdit && <Pencil className="size-4 shrink-0 text-slate-300" aria-hidden />}
-          </>
-        )
-        const row = cn(
-          'flex w-full items-center gap-3 px-4 py-3 text-left',
-          current && 'bg-brand-50/60 dark:bg-brand-950/40',
-        )
-
         return (
           <li key={week.id}>
-            {onEdit ? (
-              <button
-                type="button"
-                onClick={() => onEdit(week)}
-                className={cn(row, 'transition hover:bg-slate-50 dark:hover:bg-slate-800/60')}
+            <button
+              type="button"
+              onClick={() => onOpen(week)}
+              className={cn(
+                'flex w-full items-center gap-3 px-4 py-3 text-left transition hover:bg-slate-50 dark:hover:bg-slate-800/60',
+                current && 'bg-brand-50/60 dark:bg-brand-950/40',
+              )}
+            >
+              <span
+                className={cn(
+                  'grid size-9 shrink-0 place-items-center rounded-lg text-xs font-semibold',
+                  current
+                    ? 'bg-brand-600 text-white'
+                    : 'bg-slate-100 text-slate-500 dark:bg-slate-800 dark:text-slate-400',
+                )}
               >
-                {content}
-              </button>
-            ) : (
-              <div className={row}>{content}</div>
-            )}
+                {week.group.replace(/[^\d]/g, '') || '–'}
+              </span>
+
+              <div className="min-w-0 flex-1">
+                <p className="truncate text-sm font-medium">{week.team}</p>
+                <p className="mt-0.5 truncate text-xs text-slate-500 dark:text-slate-400">
+                  {week.group && `${week.group} · `}
+                  {period(week)}
+                  {week.note?.trim() && ` · ${week.note.trim()}`}
+                  {current && ' · diese Woche'}
+                </p>
+              </div>
+
+              {editable ? (
+                <Pencil className="size-4 shrink-0 text-slate-300" aria-hidden />
+              ) : (
+                <Users className="size-4 shrink-0 text-slate-300" aria-hidden />
+              )}
+            </button>
           </li>
         )
       })}
@@ -811,8 +885,8 @@ function WeekForm({
           </div>
 
           <p className="hint">
-            Die Woche läuft von Montag bis Samstag. Der Sonntag dazwischen ist der Tag, an dem
-            gedankt und angekündigt wird.
+            Die Woche läuft von Sonntag bis Samstag – so legt «Generieren» sie an. Am Sonntag wird
+            der Woche davor gedankt und diese angekündigt.
           </p>
         </form>
       </Modal>

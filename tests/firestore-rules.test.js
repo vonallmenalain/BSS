@@ -246,6 +246,11 @@ async function seed() {
       note: '',
     })
 
+    await setDoc(doc(db, 'cleaningGroups', '2'), {
+      number: 2,
+      entries: [{ id: 'e1', label: 'Muster Hans & Anna', memberIds: ['mitglied-1'] }],
+    })
+
     await setDoc(doc(db, 'apActivities', 'aktivitaet-1'), {
       date: '2026-01-07',
       endDate: null,
@@ -1795,6 +1800,21 @@ describe('Der Putzplan steht offen', () => {
   it('lässt jeden ohne Anmeldung den Putzplan lesen', async () => {
     await assertSucceeds(getDocs(collection(asAnonymous(), 'cleaningWeeks')))
     await assertSucceeds(getDoc(doc(asAnonymous(), 'cleaningWeeks', '2026-06-29')))
+  })
+
+  it('lässt jeden die Gruppeneinteilung lesen – eingeteilt wird nur mit Vollzugriff', async () => {
+    await assertSucceeds(getDocs(collection(asAnonymous(), 'cleaningGroups')))
+    await assertSucceeds(getDoc(doc(asAnonymous(), 'cleaningGroups', '2')))
+    await assertSucceeds(
+      setDoc(doc(asSecretary(), 'cleaningGroups', '3'), { number: 3, entries: [] }),
+    )
+    for (const as of [asAnonymous, asPending, asApEditor, asAssistant]) {
+      await assertFails(
+        updateDoc(doc(as(), 'cleaningGroups', '2'), { entries: [] }),
+      )
+      await assertFails(setDoc(doc(as(), 'cleaningGroups', '11'), { number: 11, entries: [] }))
+      await assertFails(deleteDoc(doc(as(), 'cleaningGroups', '2')))
+    }
   })
 
   it('lässt ohne Anmeldung nichts daran ändern', async () => {

@@ -1589,29 +1589,57 @@ zum Verschieben.
 anderen **`bss.alae.app/putzplan`**, ohne Anmeldung (siehe [«Wer den Putzplan
 sieht»](#wer-den-putzplan-sieht)).
 
-Die Gemeinde erstellt zweimal im Jahr eine Excel-Tabelle: je Woche eine
-Gruppe, die Namen und der Zeitraum. Sie wird unter **Einstellungen → Importe →
-Putzplan** eingelesen und steht danach als Wochenplan da – mit der laufenden
+Die Gemeinde putzt in zehn Gruppen, eine nach der anderen, jede eine Woche von
+Sonntag bis Samstag. Der Plan steht als Liste der Wochen da – mit der laufenden
 Woche hervorgehoben und, ganz oben, den zwei Zeilen für den nächsten Sonntag:
-wem gedankt wird und wer als Nächstes an der Reihe ist.
+wem gedankt wird und wer als Nächstes an der Reihe ist. Mit Vollzugriff stehen
+oben rechts drei Knöpfe: **Gruppeneinteilung**, **Generieren** und **Export**.
 
-**Gelesen wird nach Inhalt, nicht nach Spalte.** Die Tabelle hat keine
-Kopfzeile, und wer sie pflegt, verschiebt die Spalten gelegentlich. Erkannt
-werden deshalb die Zellen selbst: «Gruppe 7» ist die Gruppe, «13.7. - 18.7.»
-der Zeitraum, die längste übrige Zelle sind die Namen, der Rest ist Bemerkung
-(«Generalkonf.»). Zeilen ohne Zeitraum – Titel, Legenden, Leerzeilen – fallen
-von selbst weg.
+### Die Gruppeneinteilung
 
-Das **Jahr** steht in der Überschrift («Putzplan 2026 Juli – Dezember»); fehlt
-es, wird das laufende angenommen und das gemeldet. Wechselt es innerhalb des
-Plans («27.12. – 2.1.»), wird das erkannt.
+Je Gruppe die Haushalte und Personen, die dazugehören – «Bader Roger &
+Sylvie», «Römer David» –, der **zuständige zuoberst**, wie auf der Liste der
+Gemeinde. Sein Name steht im Plan unter «An der Reihe». Eingelesen wurde die
+Liste einmal aus dem PDF der Gemeinde ([Putzgruppen
+importieren](#putzgruppen-importieren)); gepflegt wird sie seither hier.
 
-Der erste Tag einer Woche ist ihr Schlüssel: Derselbe Plan lässt sich beliebig
-oft einlesen, ohne Dubletten anzulegen, und der Plan fürs zweite Halbjahr
-ergänzt den ersten, statt ihn abzuräumen. Einzelne Wochen lassen sich von Hand
-ändern – wer kurzfristig tauscht, soll dafür nicht die ganze Tabelle neu
-einlesen müssen; ein späterer Import derselben Woche überschreibt die Korrektur
-allerdings wieder.
+Jeder Eintrag ist mit den **aktiven Mitgliedern** verknüpft, die dazugehören.
+Neben den Gruppen steht, wer unter den aktiven Mitgliedern ab 18 Jahren noch in
+keiner Gruppe ist (auf Wunsch auch Kinder und Jugendliche) – mit einem Griff
+einer Gruppe zuzuteilen. Ein Eintrag lässt sich bearbeiten: Bezeichnung,
+verknüpfte Mitglieder (Suche über alle aktiven), Gruppe; dazu **Zuständig
+machen** und **Entfernen**. «Aus den Mitgliedern» bildet die Bezeichnung neu,
+etwa nach einer Heirat. Jede Person steht höchstens einmal in der Einteilung:
+Wer einem Eintrag zugeordnet wird, verschwindet aus einem früheren. Gruppen
+lassen sich hinzufügen und – leer – entfernen.
+
+### Generieren
+
+**Generieren** führt den Plan für **3 oder 6 Monate** fort (oder bis zu einem
+gewählten Tag): eine Gruppe nach der anderen, nach der letzten wieder die
+erste – weiter, wo der Plan steht. Die erste Gruppe ergibt sich aus der Woche
+davor und lässt sich ändern.
+
+An einem **Sonntag ohne Versammlung in Burgdorf** putzt die Gruppe der Woche
+davor eine Woche länger; der Grund steht als Bemerkung an der zweiten Woche.
+Welche Sonntage das sind, sagt das Programm des Sonntags (siehe [Leitung und
+Programm](#abendmahlsversammlung)):
+
+- Die **Generalkonferenz** am ersten Sonntag im April und im Oktober steht fest.
+- **Pfahlkonferenzen** und **andere Sonntage ohne Versammlung** (selten) lassen
+  sich im Dialog festlegen. Sie werden im Programm des Sonntags gespeichert und
+  stehen damit auch unter «Abendmahl» – ein eigener Grund wie
+  «Gemeindeausflug» steht dort danach ebenfalls zur Wahl.
+
+**Neu generieren** ist derselbe Handgriff mit einem früheren Beginn – etwa wenn
+eine Pfahlkonferenz erst später bekannt wird oder falsch eingetragen war.
+Reicht der Plan schon weiter als der gewählte Zeitraum, wird bis zu seinem Ende
+neu eingeteilt, damit die Reihenfolge danach aufgeht. Die Vorschau zeigt jede
+Woche mit «neu» oder «geändert» und was entfällt, bevor etwas gespeichert wird.
+
+Einzelne Wochen lassen sich weiterhin von Hand ändern – wer kurzfristig tauscht,
+soll dafür nicht neu generieren müssen; wird derselbe Zeitraum später neu
+generiert, gilt allerdings wieder die Einteilung.
 
 ### Als PDF zum Ausdrucken
 
@@ -1667,13 +1695,20 @@ oder noch wartend – sehen die Ansicht fürs Anschlagbrett:
 - darunter die **Suche**, die Auswahl **Kommend · Vergangen · Alle**
   (vorgewählt: Kommend) und die **Liste** wie gewohnt – bloss ohne Stift.
 
+Ein Antippen – einer Woche oder der Namen ganz oben – öffnet die **Übersicht
+der Gruppe**: zuoberst, wer zuständig ist, darunter der nächste Einsatz (mit
+«in 3 Wochen»), die Zahl der kommenden Einsätze, wer dazugehört und die
+kommenden Termine samt dem Grund einer doppelten Woche.
+
 Ändern, Export und die Sonntagskarte fehlen dort. Oben rechts steht statt des
 Benutzermenüs der Knopf **Anmelden**, in der Kopfzeile «Putzplan» statt des
 Gemeindenamens – die Einstellungen bleiben angemeldeten Konten vorbehalten.
 
 **Was damit öffentlich ist.** Genau das, was auf dem ausgedruckten Plan am
 Brett hängt: Woche, Gruppe, die Namen derer, die putzen – und die Bemerkung zur
-Woche. Wer dort etwas einträgt, schreibt damit ins Schaufenster. Alles andere
+Woche. Dazu die Einteilung der Gruppen: wer zuständig ist und wer dazugehört,
+so wie die Einträge heissen («Bader Roger & Sylvie»). Wer dort etwas einträgt,
+schreibt damit ins Schaufenster. Alles andere
 bleibt zu wie bisher. Suchmaschinen nehmen die Seite nicht auf: Die ganze App
 ist für sie gesperrt (`robots.txt` und Kopfzeile). Durchgesetzt wird das in
 `firestore.rules`: Lesen darf den Plan jeder, ändern nur der Vollzugriff;
@@ -2361,22 +2396,23 @@ Speichern erneuert, beantwortete die Frage «seit wann?» nicht mehr.
 
 ## Admin-Importe
 
-Vier Importe haben den Bestand beim Umstieg ein einziges Mal gefüllt und
+Fünf Importe haben den Bestand beim Umstieg ein einziges Mal gefüllt und
 werden seither nicht mehr gebraucht:
 
-| Import             | Was er einmal getan hat                                    |
-| ------------------ | ---------------------------------------------------------- |
+| Import             | Was er einmal getan hat                                     |
+| ------------------ | ----------------------------------------------------------- |
 | **Aktivitäten AP** | den bisherigen Jahresplan der Priestertumskollegien geholt  |
 | **Sitzungen**      | vier Jahre Protokolle als Sitzungsgeschichte nachgetragen   |
 | **Verlauf**        | Ansprachen und Gebete aus der bisherigen Tabelle übernommen |
 | **Liederlisten**   | die drei Gesangbücher eingelesen                            |
+| **Putzgruppen**    | die Gruppeneinteilung fürs Putzen aus dem PDF übernommen    |
 
 Sie stehen deshalb für sich: in der Registerleiste über den Importseiten
 hinter einem Strich, in den Einstellungen in einem eigenen Block – und
 sichtbar allein für das Administrator-Konto (siehe [Rollen](#rollen)). Wer
-die App im Alltag benutzt, sieht nur noch die sechs Importe, die tatsächlich
-wiederkehren: Mitglieder, Berufungen, Betreuung, Alleinstehende, Putzplan
-und die Themen der AP-Klasse.
+die App im Alltag benutzt, sieht nur noch die fünf Importe, die tatsächlich
+wiederkehren: Mitglieder, Berufungen, Betreuung, Alleinstehende und die
+Themen der AP-Klasse.
 
 Entfernt sind sie nicht – beim Einrichten der nächsten Gemeinde brauchte es
 sie wieder. Auch ihre Adressen bestehen weiter; für jedes andere Konto
@@ -2385,7 +2421,7 @@ führen sie zurück auf «Mitglieder importieren».
 **Eine Sperre ist das nicht.** Die Zugriffsregeln kennen die Unterscheidung
 nicht: Wer Vollzugriff hat, darf diese Sammlungen weiterhin schreiben – und
 muss es auch, denn dieselben Daten entstehen im Alltag von Hand. Die
-Trennung räumt die Oberfläche auf und hält vier Gelegenheiten aus dem Weg,
+Trennung räumt die Oberfläche auf und hält fünf Gelegenheiten aus dem Weg,
 versehentlich einen gepflegten Bestand zu ersetzen. Wo eine echte Grenze
 verläuft, steht unter [Rollen](#rollen).
 
@@ -2787,18 +2823,31 @@ Verlauf zu verdoppeln. Was in der App gepflegt wurde, bleibt unangetastet.
 
 ---
 
-## Putzplan importieren
+## Putzgruppen importieren
 
-**Einstellungen → Importe → Putzplan**, zweimal im Jahr.
+**Einstellungen → Importe → [Admin-Importe](#admin-importe) → Putzgruppen**,
+einmalig. Den Putzplan selbst gibt es nicht mehr als Import – er entsteht unter
+**Putzplan → Generieren** (siehe [Putzplan](#putzplan)).
 
-Die Halbjahrestabelle der Gemeinde als `.xlsx` oder `.csv` einlesen, per
-Auswahl oder Drag-and-drop. Wie sie gelesen wird und was danach damit möglich
-ist, steht unter [Putzplan](#putzplan).
+Die «Gruppeneinteilung Putzen» der Gemeinde als **PDF** hochladen, wie sie
+verschickt wird: links «Gruppe 1» bis «Gruppe 10», rechts die Haushalte, der
+zuständige fett zuoberst. Gelesen wird die Datei selbst, ohne Bibliothek
+(`lib/pdfText`): Sie kennt die Lage jedes Wortes und die Schrift – damit stehen
+die Zeilen wie auf dem Blatt, und wer fett dasteht, ist zuständig. Kopiert man
+den Text dagegen aus einem PDF-Programm, kommt er je nach Programm
+spaltenweise, erst alle Gruppen und dann alle Namen; das wird erkannt und
+gemeldet. Als Ausweg lässt sich die Tabelle aus Google Docs auch als **Text
+einfügen** – ohne Fettdruck gilt dann der erste Eintrag einer Gruppe als
+zuständig.
 
-Die Vorschau zeigt jede erkannte Woche mit ihrer Zeilennummer aus der Datei,
-dazu die Zahl der Teams und die Zeilen, die einen Zeitraum haben, aber keine
-Namen – die werden übersprungen und gemeldet. Stimmt eine Zeile nicht, lässt
-sie sich nach dem Import auf der Seite **Putzplan** einzeln richtigstellen.
+Jeder Eintrag wird den **aktiven Mitgliedern** zugeordnet: «Bader Roger &
+Sylvie» Roger und Sylvie Bader, «Den Brower Ruud und Astrid» beiden Den Browers,
+«Hansruedi Rothenbühler» auch andersherum. Ein Doppelname auf einer Seite
+(«Morales-Römer» und «Römer»), ein fehlender Buchstabe am Ende eines Vornamens
+und ausgeschriebene Umlaute finden ebenfalls zusammen. Was mehrdeutig oder
+unbekannt bleibt, zeigt die Vorschau als «nicht zugeordnet»; verknüpft wird es
+danach unter **Putzplan → Gruppeneinteilung**. Der Import ersetzt die ganze
+Einteilung.
 
 ---
 

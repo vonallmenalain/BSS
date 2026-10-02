@@ -2872,6 +2872,42 @@ export interface CleaningWeek extends WithId {
 }
 
 /* ------------------------------------------------------------------ */
+/* Putzgruppen                                                         */
+/* ------------------------------------------------------------------ */
+
+/**
+ * Eine Putzgruppe der Gemeinde – die Dokument-ID ist ihre Nummer («1» …).
+ *
+ * Wer zuständig ist, steht zuoberst: Der erste Eintrag ist der zuständige
+ * Haushalt, so wie ihn die Liste der Gemeinde fett an den Anfang setzt.
+ * Sein Name steht im Putzplan unter «An der Reihe» (siehe `lib/cleaningPlan`).
+ *
+ * Öffentlich lesbar wie der Putzplan selbst (siehe `firestore.rules`): Die
+ * Übersicht einer Gruppe steht auf der Seite, zu der der QR-Code am
+ * Anschlagbrett führt. Darum stehen die Namen ausgeschrieben im Eintrag und
+ * nicht bloss als Verweis ins Mitgliederverzeichnis, das verschlossen bleibt.
+ */
+export interface CleaningGroup extends WithId {
+  number: number
+  entries: CleaningGroupEntry[]
+  updatedAt?: TS
+}
+
+/** Ein Eintrag einer Putzgruppe – ein Haushalt oder eine Person: «Bader Roger & Sylvie». */
+export interface CleaningGroupEntry {
+  /** Stabil innerhalb der Einteilung – für Listen und zum Verschieben */
+  id: string
+  /** So steht der Eintrag da, auch öffentlich */
+  label: string
+  /**
+   * Die verknüpften Mitglieder (IDs aus `members`). Leer, solange niemand
+   * zugeordnet ist – der Eintrag gilt trotzdem, er heisst dann bloss so,
+   * wie er dasteht.
+   */
+  memberIds: string[]
+}
+
+/* ------------------------------------------------------------------ */
 /* Notizen                                                             */
 /* ------------------------------------------------------------------ */
 

@@ -1,58 +1,125 @@
 import { deleteDoc, doc, serverTimestamp, setDoc, writeBatch } from '@/lib/db'
 import { db, COLLECTIONS } from '@/lib/firebase'
 import { forgetDoc } from '@/lib/collectionStore'
+import { cleaningGroupId } from '@/lib/cleaningGroups'
 import { commit, requireOnline, type SaveOutcome } from '@/lib/sync'
-import type { ParsedCleaningWeek } from '@/services/importCleaning'
-import type { CleaningWeek } from '@/lib/types'
+import type { GeneratedWeek } from '@/lib/cleaningPlan'
+import type { CleaningGroupEntry, CleaningWeek } from '@/lib/types'
 
 /*
- * Der Putzplan in Firestore.
+ * Der Putzplan und die Putzgruppen in Firestore.
  *
- * Die Dokument-ID ist der erste Tag der Woche. Das macht jeden Import
- * folgenlos wiederholbar: Dieselbe Woche schreibt dasselbe Dokument, und
- * eine korrigierte Tabelle ersetzt die alte Fassung, statt eine zweite
+ * Die Dokument-ID einer Woche ist ihr erster Tag, die einer Gruppe ihre
+ * Nummer. Damit schreibt dieselbe Woche immer dasselbe Dokument: Ein neu
+ * generierter Zeitraum ersetzt den alten, statt eine zweite Fassung
  * danebenzustellen.
  *
- * Gelesen wird über `useCleaningWeeks()` – der Plan gehört zu den Daten, die
- * eine Ansicht mitlaufen sehen will, nicht zu denen, die man einmal abholt.
+ * Gelesen wird über `useCleaningWeeks()` und `useCleaningGroups()` – beide
+ * gehören zu den Daten, die eine Ansicht mitlaufen sehen will.
  */
 
 const CHUNK_SIZE = 400
 
-/** Schreibt einen eingelesenen Plan. Vorhandene Wochen werden ersetzt. */
-export async function importCleaningWeeks(
-  weeks: ParsedCleaningWeek[],
-  onProgress?: (done: number, total: number) => void,
-): Promise<number> {
+/**
+ * Einen generierten Zeitraum übernehmen: die Wochen schreiben und entfernen,
+ * was es darin nicht mehr gibt (siehe `diffCleaningPlan`).
+ *
+ * Jede Woche wird ganz geschrieben, nicht zusammengeführt – eine Bemerkung
+ * von früher gehört nicht mehr zu einer Woche, die jetzt eine andere Gruppe
+ * putzt.
+ */
+export async function applyCleaningPlan(
+  weeks: readonly GeneratedWeek[],
+  removedIds: readonly string[],
+): Promise<void> {
   requireOnline()
-
-  for (let offset = 0; offset < weeks.length; offset += CHUNK_SIZE) {
-    const chunk = weeks.slice(offset, offset + CHUNK_SIZE)
+  const writes = [
+    ...weeks.map((week) => ({ kind: 'set' as const, week })),
+    ...removedIds.map((id) => ({ kind: 'delete' as const, id })),
+  ]
+  for (let offset = 0; offset < writes.length; offset += CHUNK_SIZE) {
     const batch = writeBatch(db)
-
-    for (const week of chunk) {
-      batch.set(
-        doc(db, COLLECTIONS.cleaningWeeks, week.startDate),
-        {
-          startDate: week.startDate,
-          endDate: week.endDate,
-          group: week.group,
-          team: week.team,
-          note: week.note,
+    for (const write of writes.slice(offset, offset + CHUNK_SIZE)) {
+      if (write.kind === 'delete') {
+        batch.delete(doc(db, COLLECTIONS.cleaningWeeks, write.id))
+      } else {
+        batch.set(doc(db, COLLECTIONS.cleaningWeeks, write.week.startDate), {
+          startDate: write.week.startDate,
+          endDate: write.week.endDate,
+          group: write.week.group,
+          team: write.week.team,
+          note: write.week.note,
           updatedAt: serverTimestamp(),
-        },
-        // Zusammenführen statt ersetzen: Was von Hand nachgetragen wurde,
-        // überlebt einen zweiten Import derselben Tabelle.
-        { merge: true },
-      )
+        })
+      }
     }
-
     await batch.commit()
-    onProgress?.(Math.min(offset + chunk.length, weeks.length), weeks.length)
   }
-
-  return weeks.length
+  removedIds.forEach((id) => forgetDoc(COLLECTIONS.cleaningWeeks, id))
 }
+
+/* ------------------------------------------------------------------ */
+/* Putzgruppen                                                         */
+/* ------------------------------------------------------------------ */
+
+/** Eine Gruppe samt ihrer Einträge schreiben – der oberste ist zuständig. */
+export async function saveCleaningGroup(
+  number: number,
+  entries: readonly CleaningGroupEntry[],
+): Promise<SaveOutcome> {
+  return commit(
+    setDoc(doc(db, COLLECTIONS.cleaningGroups, cleaningGroupId(number)), {
+      number,
+      entries: entries.map((entry) => ({
+        id: entry.id,
+        label: entry.label.trim(),
+        memberIds: [...new Set(entry.memberIds)],
+      })),
+      updatedAt: serverTimestamp(),
+    }),
+  )
+}
+
+export async function deleteCleaningGroup(number: number): Promise<SaveOutcome> {
+  const id = cleaningGroupId(number)
+  const outcome = await commit(deleteDoc(doc(db, COLLECTIONS.cleaningGroups, id)))
+  forgetDoc(COLLECTIONS.cleaningGroups, id)
+  return outcome
+}
+
+/**
+ * Die ganze Einteilung ersetzen – für den Import. Gruppen, die in der neuen
+ * Einteilung fehlen, fallen weg.
+ */
+export async function replaceCleaningGroups(
+  groups: readonly { number: number; entries: readonly CleaningGroupEntry[] }[],
+  existingNumbers: readonly number[],
+): Promise<void> {
+  requireOnline()
+  const batch = writeBatch(db)
+  const kept = new Set(groups.map((group) => group.number))
+  for (const group of groups) {
+    batch.set(doc(db, COLLECTIONS.cleaningGroups, cleaningGroupId(group.number)), {
+      number: group.number,
+      entries: group.entries.map((entry) => ({
+        id: entry.id,
+        label: entry.label.trim(),
+        memberIds: [...new Set(entry.memberIds)],
+      })),
+      updatedAt: serverTimestamp(),
+    })
+  }
+  const dropped = existingNumbers.filter((number) => !kept.has(number))
+  for (const number of dropped) {
+    batch.delete(doc(db, COLLECTIONS.cleaningGroups, cleaningGroupId(number)))
+  }
+  await batch.commit()
+  dropped.forEach((number) => forgetDoc(COLLECTIONS.cleaningGroups, cleaningGroupId(number)))
+}
+
+/* ------------------------------------------------------------------ */
+/* Einzelne Wochen                                                     */
+/* ------------------------------------------------------------------ */
 
 /** Eine einzelne Woche anlegen oder ändern – für Korrekturen von Hand. */
 export async function saveCleaningWeek(week: Omit<CleaningWeek, 'id'>): Promise<SaveOutcome> {

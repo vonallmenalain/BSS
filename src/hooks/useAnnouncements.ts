@@ -1,7 +1,7 @@
 import { useCallback, useMemo } from 'react'
 import { useAnnouncementSeries, useCleaningWeeks } from '@/hooks/useFirestore'
 import { announcementsFor, seriesAppliesTo, type SeriesTextResolver } from '@/lib/series'
-import { cleaningAround, fillCleaningText } from '@/services/importCleaning'
+import { cleaningAround, fillCleaningText } from '@/lib/cleaningPlan'
 import type { AnnouncementEntry, AnnouncementSeries, CleaningWeek } from '@/lib/types'
 
 /**

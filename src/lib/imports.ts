@@ -34,18 +34,20 @@ export const ADMIN_IMPORT_LABEL = 'Admin-Importe'
  * Die Reihenfolge ist die des Einrichtens: Zuerst die Mitglieder, denn
  * Berufungen, Betreuung und die Listen der Alleinstehenden ordnen ihre
  * Einträge den erfassten Personen zu. Danach, was jeweils zu seiner Zeit
- * anfällt – die Alleinstehenden alle paar Monate, der Putzplan zweimal im
- * Jahr, die Themen der AP-Klasse jeden Monat neu.
+ * anfällt – die Alleinstehenden alle paar Monate, die Themen der AP-Klasse
+ * jeden Monat neu. Den Putzplan gibt es nicht mehr als Import: Er wird seit
+ * der Gruppeneinteilung in der App generiert (siehe `pages/Cleaning`).
  *
  * Hinten stehen die **Admin-Importe** (`adminOnly`). Sie haben den Bestand
  * beim Umstieg ein einziges Mal gefüllt: die bisherigen Protokolle, den
- * Verlauf der Ansprachen und Gebete, den alten Jahresplan der Aktivitäten
- * und die Liederbücher. Seither wird keiner von ihnen mehr gebraucht.
- * Löschen liesse sich sagen – aber dann wären sie beim nächsten Einrichten
- * neu zu schreiben; deshalb bleiben sie und zeigen sich nur noch dem
- * Administrator-Konto (`ADMIN_EMAIL`). Für alle Übrigen wäre es eine
- * Handvoll Handgriffe, die nie wieder jemand tut – und vier Gelegenheiten,
- * versehentlich einen Bestand zu ersetzen, der längst gepflegt wird.
+ * Verlauf der Ansprachen und Gebete, den alten Jahresplan der Aktivitäten,
+ * die Liederbücher und die Gruppeneinteilung fürs Putzen. Seither wird
+ * keiner von ihnen mehr gebraucht. Löschen liesse sich sagen – aber dann
+ * wären sie beim nächsten Einrichten neu zu schreiben; deshalb bleiben sie
+ * und zeigen sich nur noch dem Administrator-Konto (`ADMIN_EMAIL`). Für
+ * alle Übrigen wäre es eine Handvoll Handgriffe, die nie wieder jemand tut
+ * – und fünf Gelegenheiten, versehentlich einen Bestand zu ersetzen, der
+ * längst gepflegt wird.
  *
  * Die Trennung gilt für die Anzeige und die Adressen (`RequireAdmin` in
  * `App.tsx`), nicht für die Zugriffsregeln: Wer Vollzugriff hat, darf diese
@@ -76,12 +78,6 @@ export const IMPORTS: ImportEntry[] = [
     label: 'Alleinstehende',
     description: 'Die Listen JAE und AE – Grundlage für den Filter nach Organisation',
     icon: Users,
-  },
-  {
-    to: '/import/putzplan',
-    label: 'Putzplan',
-    description: 'Die Excel-Tabelle der Gemeinde als Wochenplan',
-    icon: Brush,
   },
   {
     to: '/import/ap-themen',
@@ -117,6 +113,13 @@ export const IMPORTS: ImportEntry[] = [
     label: 'Liederlisten',
     description: 'Damit beim Erfassen der Musik die Liednummer genügt',
     icon: Music,
+    adminOnly: true,
+  },
+  {
+    to: '/import/putzgruppen',
+    label: 'Putzgruppen',
+    description: 'Die Gruppeneinteilung fürs Putzen aus dem PDF der Gemeinde',
+    icon: Brush,
     adminOnly: true,
   },
 ]

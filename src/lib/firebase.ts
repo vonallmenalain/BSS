@@ -107,6 +107,8 @@ export const COLLECTIONS = {
   monthlyDuties: 'monthlyDuties',
   /** Putzplan der Gemeinde, Dokument-ID ist der erste Tag der Woche */
   cleaningWeeks: 'cleaningWeeks',
+  /** Die Putzgruppen samt Einteilung, Dokument-ID ist die Nummer der Gruppe */
+  cleaningGroups: 'cleaningGroups',
   /** Aktivitätenplan der Priestertumskollegien (AP) */
   apActivities: 'apActivities',
   /** Führendes Kollegium je Monat, Dokument-ID ist «yyyy-MM» */
