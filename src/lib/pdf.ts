@@ -23,11 +23,20 @@
 
 export type PdfFont = 'regular' | 'bold'
 
+/** Ein Eintrag einer Liste in einer Zelle – auf eigener Zeile, auf Wunsch fett oder grau. */
+export interface PdfLine {
+  text: string
+  bold?: boolean
+  muted?: boolean
+}
+
 /**
  * Was in einer Zelle steht: ein Text – oder ein Text mit einem grauen
- * Zusatz dahinter, «Künzli Dominik & Lena (Pfahlkonferenz)».
+ * Zusatz dahinter, «Künzli Dominik & Lena (Pfahlkonferenz)» – oder eine
+ * Liste, ein Eintrag je Zeile: die Gruppeneinteilung, der zuständige
+ * Haushalt fett zuoberst.
  */
-export type PdfCell = string | { text: string; aside?: string }
+export type PdfCell = string | { text: string; aside?: string } | { lines: readonly PdfLine[] }
 
 /**
  * Unten auf jeder Seite: wo es die Liste online gibt – als Adresse zum
@@ -338,6 +347,20 @@ function drawQr(x: number, y: number, size: number, modules: boolean[][]): strin
 interface Span {
   text: string
   muted: boolean
+  bold?: boolean
+}
+
+function spanFont(span: Span): PdfFont {
+  return span.bold ? 'bold' : 'regular'
+}
+
+/** Wie breit die Stücke einer Zeile zusammen sind – mit einem Leerzeichen dazwischen. */
+function spansWidth(spans: Span[]): number {
+  return spans.reduce(
+    (sum, span, index) =>
+      sum + textWidth(index === 0 ? span.text : ` ${span.text}`, spanFont(span), BODY_SIZE),
+    0,
+  )
 }
 
 interface LaidOutRow {
@@ -351,9 +374,20 @@ interface LaidOutRow {
  *
  * Der Zusatz hängt sich an die letzte Zeile, wenn er dort Platz hat –
  * sonst steht er als Ganzes darunter, statt mitten in der Klammer
- * umzubrechen.
+ * umzubrechen. Eine Liste beginnt jeden Eintrag auf einer neuen Zeile; ein
+ * langer Eintrag bricht für sich um.
  */
 function layoutCell(cell: PdfCell, width: number): Span[][] {
+  if (typeof cell !== 'string' && 'lines' in cell) {
+    const lines = cell.lines.flatMap((entry) => {
+      const font: PdfFont = entry.bold ? 'bold' : 'regular'
+      return wrapText(entry.text, font, BODY_SIZE, width).map((line) => [
+        { text: line, muted: entry.muted === true, bold: entry.bold === true },
+      ])
+    })
+    return lines.length > 0 ? lines : [[{ text: '', muted: false }]]
+  }
+
   const text = typeof cell === 'string' ? cell : cell.text
   const aside = typeof cell === 'string' ? '' : (cell.aside ?? '').trim()
   const lines = wrapText(text, 'regular', BODY_SIZE, width).map((line) => [
@@ -445,20 +479,21 @@ function renderPages(table: PdfTable): string[] {
       row.cells.forEach((cellLines, index) => {
         cellLines.forEach((spans, lineIndex) => {
           const baseline = rowTop - CELL_PAD_Y - BODY_SIZE * 0.78 - lineIndex * LINE_HEIGHT
-          const full = spans.map((span) => span.text).join(' ')
-          let x = alignedX(
-            starts[index],
-            widths[index],
-            textWidth(full, 'regular', BODY_SIZE),
-            table.columns[index],
-          )
+          let x = alignedX(starts[index], widths[index], spansWidth(spans), table.columns[index])
           for (const span of spans) {
             if (span.text) {
               ops.push(
-                drawText(x, baseline, span.text, 'regular', BODY_SIZE, span.muted ? MUTED : INK),
+                drawText(
+                  x,
+                  baseline,
+                  span.text,
+                  spanFont(span),
+                  BODY_SIZE,
+                  span.muted ? MUTED : INK,
+                ),
               )
             }
-            x += textWidth(`${span.text} `, 'regular', BODY_SIZE)
+            x += textWidth(`${span.text} `, spanFont(span), BODY_SIZE)
           }
         })
       })

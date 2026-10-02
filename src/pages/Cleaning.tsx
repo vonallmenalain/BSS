@@ -17,6 +17,8 @@ import { cn, matchesSearch } from '@/lib/utils'
 import { deleteCleaningWeek, saveCleaningWeek } from '@/services/cleaning'
 import {
   CLEANING_PLAN_LABEL,
+  cleaningGroupsPdf,
+  cleaningGroupsPdfFilename,
   cleaningPdf,
   cleaningPdfFilename,
   weeksInRange,
@@ -24,7 +26,7 @@ import {
 import { cleaningGroupNumber } from '@/lib/cleaningGroups'
 import { cleaningAround, cleaningNow } from '@/lib/cleaningPlan'
 import { fromIsoDate } from '@/services/importHistory'
-import type { CleaningWeek } from '@/lib/types'
+import type { CleaningGroup, CleaningWeek } from '@/lib/types'
 
 type Scope = 'upcoming' | 'past' | 'all'
 
@@ -161,12 +163,12 @@ export function Cleaning() {
                 <Sparkles className="size-4" aria-hidden />
                 Generieren
               </button>
-              {weeks.length > 0 && (
+              {(weeks.length > 0 || groups.length > 0) && (
                 <button
                   type="button"
                   className="btn-secondary"
                   onClick={() => setExportOpen(true)}
-                  title="Den Putzplan als PDF zum Ausdrucken herunterladen"
+                  title="Putzplan oder Gruppeneinteilung als PDF zum Ausdrucken herunterladen"
                 >
                   <FileDown className="size-4" aria-hidden />
                   Export
@@ -282,7 +284,7 @@ export function Cleaning() {
 
       {/* Bei jedem Öffnen neu aufgebaut – mit dem Zeitraum von heute. */}
       {editable && exportOpen && (
-        <CleaningExport weeks={weeks} onClose={() => setExportOpen(false)} />
+        <CleaningExport weeks={weeks} groups={groups} onClose={() => setExportOpen(false)} />
       )}
       {editable && groupsOpen && <CleaningGroupsDialog onClose={() => setGroupsOpen(false)} />}
       {editable && generateOpen && (
@@ -308,7 +310,7 @@ export function Cleaning() {
 /* ------------------------------------------------------------------ */
 
 /**
- * Den Putzplan als PDF herunterladen.
+ * Den Putzplan als PDF herunterladen – oder die Gruppeneinteilung.
  *
  * Gefragt wird nur der Zeitraum. Zwei Knöpfe nehmen die üblichen Antworten
  * vorweg: ab der laufenden Woche bis zum Ende des Plans – das Blatt fürs
@@ -322,13 +324,30 @@ export function Cleaning() {
  *
  * Die Sonntage braucht der Grund hinter einer doppelten Woche: Steht dort
  * eine Pfahlkonferenz, steht sie auch auf dem Blatt.
+ *
+ * Oben lässt sich statt des Plans die **Gruppeneinteilung** wählen: alle
+ * Gruppen auf einem Blatt, der zuständige Haushalt fett zuoberst – wie die
+ * Liste der Gemeinde, aus der sie einmal importiert wurde (siehe
+ * `cleaningGroupsPdf`). Ein Zeitraum spielt dafür keine Rolle; der Haken für
+ * Adresse und QR-Code gilt für beide.
  */
-function CleaningExport({ weeks, onClose }: { weeks: CleaningWeek[]; onClose: () => void }) {
+function CleaningExport({
+  weeks,
+  groups,
+  onClose,
+}: {
+  weeks: CleaningWeek[]
+  groups: readonly CleaningGroup[]
+  onClose: () => void
+}) {
   const { settings } = useData()
   const toast = useToast()
   const { data: sundays } = useAllSacramentMeetings()
   const [withLink, setWithLink] = useLocalStorage('bss:putzplan:pdf-link', false)
+  // Ohne Plan, aber mit Einteilung gibt es nur die Einteilung zu exportieren.
+  const [what, setWhat] = useState<'plan' | 'groups'>(weeks.length > 0 ? 'plan' : 'groups')
   const today = toDateInput(new Date())
+  const entryCount = groups.reduce((sum, group) => sum + group.entries.length, 0)
 
   const sorted = useMemo(
     () => [...weeks].sort((a, b) => a.startDate.localeCompare(b.startDate)),
@@ -349,6 +368,23 @@ function CleaningExport({ weeks, onClose }: { weeks: CleaningWeek[]; onClose: ()
   const count = valid ? weeksInRange(weeks, from, to).length : 0
 
   const download = () => {
+    if (what === 'groups') {
+      const bytes = cleaningGroupsPdf({
+        groups,
+        wardName: settings.wardName,
+        today,
+        withLink,
+      })
+      if (!bytes) {
+        toast.error('Es gibt noch keine Gruppen.')
+        return
+      }
+      saveFile(bytes, cleaningGroupsPdfFilename(today))
+      toast.success('Gruppeneinteilung als PDF heruntergeladen.')
+      onClose()
+      return
+    }
+
     const bytes = cleaningPdf({
       weeks,
       from,
@@ -371,8 +407,12 @@ function CleaningExport({ weeks, onClose }: { weeks: CleaningWeek[]; onClose: ()
     <Modal
       open
       onClose={onClose}
-      title="Putzplan exportieren"
-      description="Als PDF zum Ausdrucken: Woche, Datum, wer an der Reihe ist und die Gruppe."
+      title="Exportieren"
+      description={
+        what === 'groups'
+          ? 'Als PDF zum Ausdrucken: alle Gruppen, der zuständige Haushalt fett zuoberst.'
+          : 'Als PDF zum Ausdrucken: Woche, Datum, wer an der Reihe ist und die Gruppe.'
+      }
       footer={
         <>
           <button type="button" className="btn-secondary" onClick={onClose}>
@@ -382,7 +422,7 @@ function CleaningExport({ weeks, onClose }: { weeks: CleaningWeek[]; onClose: ()
             type="button"
             className="btn-primary"
             onClick={download}
-            disabled={!valid || count === 0}
+            disabled={what === 'groups' ? groups.length === 0 : !valid || count === 0}
           >
             <FileDown className="size-4" aria-hidden />
             PDF herunterladen
@@ -391,63 +431,82 @@ function CleaningExport({ weeks, onClose }: { weeks: CleaningWeek[]; onClose: ()
       }
     >
       <div className="space-y-4">
-        <div className="grid gap-4 sm:grid-cols-2">
-          <div>
-            <label className="label" htmlFor="export-from">
-              Von
-            </label>
-            <input
-              id="export-from"
-              type="date"
-              className="input"
-              value={from}
-              onChange={(event) => setFrom(event.target.value)}
-            />
-          </div>
-          <div>
-            <label className="label" htmlFor="export-to">
-              Bis
-            </label>
-            <input
-              id="export-to"
-              type="date"
-              className="input"
-              value={to}
-              onChange={(event) => setTo(event.target.value)}
-            />
-          </div>
-        </div>
+        <SegmentedControl<'plan' | 'groups'>
+          value={what}
+          onChange={setWhat}
+          options={[
+            { value: 'plan', label: 'Putzplan', count: weeks.length },
+            { value: 'groups', label: 'Gruppeneinteilung', count: groups.length },
+          ]}
+        />
 
-        <div className="flex flex-wrap gap-2">
-          <button
-            type="button"
-            className="btn-secondary btn-sm"
-            onClick={() => {
-              setFrom(thisWeek)
-              setTo(planEnd)
-            }}
-          >
-            Ab dieser Woche
-          </button>
-          <button
-            type="button"
-            className="btn-secondary btn-sm"
-            onClick={() => {
-              setFrom(planStart)
-              setTo(planEnd)
-            }}
-          >
-            Ganzer Plan
-          </button>
-        </div>
+        {what === 'groups' ? (
+          <p className="hint mt-0">
+            {groups.length === 0
+              ? 'Es gibt noch keine Gruppen – sie entstehen unter «Gruppeneinteilung».'
+              : `${groups.length} ${groups.length === 1 ? 'Gruppe' : 'Gruppen'} mit ${entryCount} ${entryCount === 1 ? 'Eintrag' : 'Einträgen'} kommen aufs Blatt, mit dem Stand von heute.`}
+          </p>
+        ) : (
+          <>
+            <div className="grid gap-4 sm:grid-cols-2">
+              <div>
+                <label className="label" htmlFor="export-from">
+                  Von
+                </label>
+                <input
+                  id="export-from"
+                  type="date"
+                  className="input"
+                  value={from}
+                  onChange={(event) => setFrom(event.target.value)}
+                />
+              </div>
+              <div>
+                <label className="label" htmlFor="export-to">
+                  Bis
+                </label>
+                <input
+                  id="export-to"
+                  type="date"
+                  className="input"
+                  value={to}
+                  onChange={(event) => setTo(event.target.value)}
+                />
+              </div>
+            </div>
 
-        <p className="hint mt-0">
-          {!valid
-            ? 'Das Ende liegt vor dem Anfang.'
-            : count === 0
-              ? 'In diesem Zeitraum steht keine Woche im Plan.'
-              : `${count} ${count === 1 ? 'Woche' : 'Wochen'} kommen aufs Blatt.`}
-        </p>
+            <div className="flex flex-wrap gap-2">
+              <button
+                type="button"
+                className="btn-secondary btn-sm"
+                onClick={() => {
+                  setFrom(thisWeek)
+                  setTo(planEnd)
+                }}
+              >
+                Ab dieser Woche
+              </button>
+              <button
+                type="button"
+                className="btn-secondary btn-sm"
+                onClick={() => {
+                  setFrom(planStart)
+                  setTo(planEnd)
+                }}
+              >
+                Ganzer Plan
+              </button>
+            </div>
+
+            <p className="hint mt-0">
+              {!valid
+                ? 'Das Ende liegt vor dem Anfang.'
+                : count === 0
+                  ? 'In diesem Zeitraum steht keine Woche im Plan.'
+                  : `${count} ${count === 1 ? 'Woche' : 'Wochen'} kommen aufs Blatt.`}
+            </p>
+          </>
+        )}
 
         <label className="flex cursor-pointer items-start gap-3">
           <input

@@ -1671,6 +1671,14 @@ Telefon, ohne Konto und immer im neusten Stand. Das Gerät merkt sich den
 Haken. Der Code zeigt fest auf die Adresse der App, auch wenn das PDF in einer
 Vorschau entsteht; ein halbes Jahr passt trotzdem weiterhin auf eine Seite.
 
+**Die Gruppeneinteilung.** Oben im Dialog lässt sich statt des Plans die
+**Gruppeneinteilung** wählen: alle Gruppen auf einem Blatt, je Gruppe wer
+dazugehört, der zuständige Haushalt **fett** zuoberst – wie die Liste der
+Gemeinde, aus der sie einmal importiert wurde. Damit zehn Gruppen samt
+QR-Code auf eine Seite passen, stehen sie in zwei Spalten, links 1–5, rechts
+6–10. Ein Zeitraum spielt dafür keine Rolle; unten steht der Stand von heute,
+und der Haken für Link und QR-Code gilt auch hier.
+
 Die Kalenderwoche zählt nach ISO, gemessen an der Mitte der Putzwoche – so
 stimmt sie für Wochen ab Montag wie ab Sonntag. Erzeugt wird die Datei in der
 App selbst, ohne Bibliothek und ohne Server (`lib/pdf`, der QR-Code in
