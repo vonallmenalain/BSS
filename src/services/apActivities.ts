@@ -240,7 +240,7 @@ export async function importApPlan(
 export interface ApTopicWrite {
   /** «2026-09-06» */
   date: string
-  /** Das Thema – leer bleibt «Thema noch offen» */
+  /** Der Titel, «Dein Körper ist heilig – …» – leer bleibt «Thema noch offen» */
   title: string
   /** Die bestehende Klasse an diesem Sonntag, sonst `null` */
   id: string | null
@@ -264,6 +264,9 @@ export interface ApTopicImportResult {
  * findet statt, nur das Thema fehlt noch – und genau das sagt «Thema noch
  * offen» im Plan. Ein bestehender Titel wird davon nicht überschrieben; wer
  * von Hand etwas eingetragen hat, behält es.
+ *
+ * Welche bestehenden Titel ersetzt werden, entscheidet die Vorschau: Sie
+ * reicht nur die Sonntage weiter, die geschrieben werden sollen.
  */
 export async function importApTopics(
   rows: ApTopicWrite[],

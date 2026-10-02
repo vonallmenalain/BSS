@@ -2764,27 +2764,58 @@ kommen die Zeilen zum Bestehenden dazu – sinnvoll nur für einen Nachtrag.
 **jeden Monat** gebraucht wird.
 
 Seit die AP-Klasse wöchentlich ist, sind ihre Themen vorgegeben: «Für eine
-starke Jugend» gibt je Monat vier Lektionen heraus. Sie stehen als Seite im
-Netz, herunterladen lässt sich nichts – kopieren schon. Auf
-`churchofjesuschrist.org` das Heft für den gewünschten Monat öffnen, die
+starke Jugend» gibt je Monat ein Thema und vier Lektionen heraus. Sie
+stehen als Seite im Netz, herunterladen lässt sich nichts – kopieren schon.
+Auf `churchofjesuschrist.org` das Heft für den gewünschten Monat öffnen, die
 ganze Seite markieren (Strg bzw. Cmd + A), kopieren, einfügen. Menü,
-Artikel und Fusszeile dürfen mitkommen; gelesen wird nur der Abschnitt
+Artikel und Fusszeile dürfen mitkommen; gelesen werden nur die Abschnitte
 «Lektionen am Sonntag».
 
-**Die Adresse ist der Schlüssel, nicht der Text.** Beim Kopieren kommen die
-Verweise mit, und in ihnen steckt alles Nötige:
+**Jede Klasse heisst «Thema des Monats – Thema der Woche»:**
+
+| Sonntag         | Titel                                                                          |
+| --------------- | ------------------------------------------------------------------------------ |
+| 2. Sonntag Okt. | Dein Körper ist heilig – Erfahre mehr über das Wort der Weisheit               |
+| 1. Sonntag Nov. | Die Wahrheit befreit dich – Kapitel aus dem Wegweiser „Für eine starke Jugend“ |
+
+Das Monatsthema vorn hält die Sonntage eines Monats im Plan sichtbar
+zusammen. Die Nummer der Lektion fällt weg – der wievielte Sonntag es ist,
+steht im Plan schon im Datum –, und von der Lektion am Fastsonntag bleibt
+nur, worum es geht: «Befasse dich mit dem Kapitel aus dem Wegweiser …» heisst
+sie jeden Monat, im Titel steht «Kapitel aus dem Wegweiser …».
+
+**Die Seite gliedert sich nach Monaten.** Jeder Monat hat einen eigenen
+Abschnitt, und ein Heft kann mehrere davon enthalten – das vom Oktober 2026
+bringt auch die Lektionen für den November mit. Der Import übernimmt alle
+auf einmal. Unter jeder Überschrift steht dasselbe Muster:
 
 ```
-[Zweiter Sonntag](…/ftsoy/2026/09/fsy-lessons/02-second-sunday?lang=deu)
-[2. Erfahre mehr über die Wiederherstellung des Priestertums](…/02-second-sunday…)
-[Studienhilfen für den zweiten Sonntag im September](…/02-second-sunday…)
+Oktober: Lektionen am Sonntag – Für eine starke Jugend
+Oktober                                        ← Rubrik
+Dein Körper ist heilig                         ← Thema des Monats
+Fastensonntag                                  ← Rubrik
+1. Befasse dich mit dem Kapitel aus …          ← Lektion
+Zweiter Sonntag
+2. Erfahre mehr über das Wort der Weisheit
+…
 ```
 
-Der Monat steht in der Adresse, die Lektion in ihrer Ziffer – das braucht
-kein Deutsch und hält, wenn die Rubriken im nächsten Monat anders heissen.
-Von den drei Zeilen derselben Lektion gilt die mit der Nummer: Sie ist der
-Titel, Rubrik und Beschreibung sind es nicht. Die Nummer selbst fällt weg,
-denn der wievielte Sonntag es ist, steht im Plan schon im Datum.
+Die Lektion erkennt der Import an ihrer Nummer, das Thema des Monats daran,
+dass es der erste Eintrag unter der Überschrift ist, der weder Monatsname
+noch Beschreibung ist und auf den nicht gleich eine Lektion folgt. Den
+Monat nennt die Überschrift, das Jahr das Heft – die Adresse taugt dafür
+nicht immer: Die Lektionen für den November liegen im Oktoberheft, unter
+`…/ftsoy/2026/10/01-fast-sunday`.
+
+**Mit oder ohne Verweise.** Ins Textfeld kommt in der Regel der blosse Text;
+wer über ein Programm einfügt, das die Verweise mitnimmt, bekommt Zeilen wie
+
+```
+[2. Erfahre mehr über das Wort der Weisheit](…/ftsoy/2026/10/fsy-lessons/02-second-sunday?lang=deu)
+```
+
+Beides geht. Wo die Adresse mitkommt, hilft sie: Sie weist den Einstieg
+(`00-intro`) und die Lektionen sicher aus.
 
 | Lektion             | Kommt auf                 |
 | ------------------- | ------------------------- |
@@ -2795,8 +2826,8 @@ denn der wievielte Sonntag es ist, steht im Plan schon im Datum.
 
 **Im April und im Oktober fällt die erste Lektion aus.** An diesem Sonntag
 ist Generalkonferenz, es findet keine Klasse statt – der Import legt dort
-also keinen Termin an und meldet die Lektion oben als eine, die auf keinen
-Klassensonntag passt.
+also keinen Termin an und meldet die Lektion in der Vorschau als eine, die
+auf einen Sonntag ohne Klasse fällt.
 
 **Ein fünfter Sonntag bleibt frei.** Das Heft nennt die vierte Lektion
 «Letzter Sonntag», die Adresse dagegen `04-fourth-sunday`; in vier von fünf
@@ -2807,27 +2838,28 @@ Monatsende. Dort steht dann «Thema noch offen», und wer mag, trägt selbst
 etwas ein.
 
 Für die vierte Lektion gilt die Fassung der **Kollegien des Aaronischen
-Priestertums** (`04b`) und nicht die der Jungen Damen (`04a`) – auf der
-Seite steht die der Jungen Damen zuerst.
+Priestertums** (`04b`) und nicht die der Jungen Damen (`04a`). Ohne
+Adresse erkennt der Import sie an der Rubrik darüber («… Kollegien des
+Aaronischen Priestertums» bzw. «… Junge Damen»), und wo auch die fehlt, an
+der Reihenfolge: Auf der Seite steht die der Jungen Damen zuerst.
 
 **Der Import legt die Klassen gleich mit an.** Wer im September beginnt,
 hat für die kommenden Sonntage noch gar keine Termine – ein Sonntag, an dem
 Klasse ist und für den ein Thema feststeht, soll nicht zweimal von Hand
 erfasst werden müssen. Steht die Klasse dagegen schon im Plan, bleibt alles
 daran stehen: Zeit, Treffpunkt, Zuständigkeit; geändert wird nur der Titel,
-und nur dort, wo das Heft ein Thema vorgibt. Ein selbst eingetragenes Thema
-an einem Sonntag ohne Vorgabe überschreibt der Import also nicht.
+und nur dort, wo das Heft ein Thema vorgibt.
 
-Die Vorschau zeigt jeden Sonntag mit seiner Lektion, dem Thema und dem, was
-daraus wird – «wird angelegt», «wird gesetzt», «bleibt». Wo ein Thema
-ersetzt wird, steht das bisherige durchgestrichen daneben. Darüber die
-Zählung und, falls eine Lektion in diesem Monat auf keinen Klassensonntag
-passt, ein Hinweis darauf.
-
-Kopiert ein Browser die Seite ohne Verweise, greift der zweite Weg: die
-Zeilen, die mit «1.» bis «4.» beginnen, und der Monat aus der Überschrift.
-Bei der Vier gilt dann die zweite – erst steht die Lektion der Jungen
-Damen, danach die der Kollegien.
+**Was überschrieben wird, entscheidet die Vorschau.** Sie zeigt jeden
+Sonntag mit seiner Lektion, dem Titel und dem, was daraus wird – «wird
+angelegt», «wird gesetzt», «steht schon so», «bleibt». Hat eine Klasse
+schon einen anderen Titel, steht dort ein Häkchen «überschreiben»: gesetzt,
+denn meist ist es der Titel aus einem früheren Import. Wer an einem Sonntag
+etwas Eigenes geplant hat, nimmt es weg; «Alle überschreiben» und «Alle
+behalten» erledigen das für alle auf einmal. Was danach im Plan steht,
+steht oben, das andere durchgestrichen darunter. Darüber die Monate mit
+ihrem Thema, die Zählung und, falls eine Lektion auf einen Sonntag ohne
+Klasse fällt, ein Hinweis darauf.
 
 ---
 
