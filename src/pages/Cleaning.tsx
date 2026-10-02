@@ -2,7 +2,8 @@ import { useEffect, useMemo, useState, type FormEvent } from 'react'
 import { Brush, CalendarRange, FileDown, Pencil, Plus, Trash2 } from 'lucide-react'
 import { useData } from '@/contexts/DataContext'
 import { useToast } from '@/contexts/ToastContext'
-import { useCleaningWeeks } from '@/hooks/useFirestore'
+import { useAllSacramentMeetings, useCleaningWeeks } from '@/hooks/useFirestore'
+import { useLocalStorage } from '@/hooks/useLocalStorage'
 import { EmptyState, SkeletonList } from '@/components/ui/Feedback'
 import { OtherResults } from '@/components/ui/OtherResults'
 import { PageHeader, SegmentedControl } from '@/components/ui/Pickers'
@@ -10,7 +11,12 @@ import { Modal, ConfirmDialog } from '@/components/ui/Modal'
 import { formatDateLong, toDateInput } from '@/lib/dates'
 import { cn, matchesSearch } from '@/lib/utils'
 import { deleteCleaningWeek, saveCleaningWeek } from '@/services/cleaning'
-import { cleaningPdf, cleaningPdfFilename, weeksInRange } from '@/services/cleaningPdf'
+import {
+  CLEANING_PLAN_LABEL,
+  cleaningPdf,
+  cleaningPdfFilename,
+  weeksInRange,
+} from '@/services/cleaningPdf'
 import { cleaningAround } from '@/services/importCleaning'
 import { fromIsoDate } from '@/services/importHistory'
 import type { CleaningWeek } from '@/lib/types'
@@ -100,7 +106,7 @@ export function Cleaning() {
 
   return (
     <>
-      {/* Oben rechts steht nur der Ausdruck: Der Plan kommt zweimal im Jahr
+      {/* Oben rechts steht nur der Export: Der Plan kommt zweimal im Jahr
           als Tabelle und wird eingelesen, nicht Woche für Woche erfasst. Wer
           eine einzelne korrigieren muss, tut das am Stift in der Zeile – und
           ganz ohne Plan führt der leere Zustand zum Formular. */}
@@ -112,10 +118,10 @@ export function Cleaning() {
               type="button"
               className="btn-secondary"
               onClick={() => setExportOpen(true)}
-              title="Den Putzplan als PDF herunterladen"
+              title="Den Putzplan als PDF zum Ausdrucken herunterladen"
             >
               <FileDown className="size-4" aria-hidden />
-              PDF
+              Export
             </button>
           )
         }
@@ -220,10 +226,19 @@ export function Cleaning() {
  * Anschlagbrett – und der ganze Plan. Was auf dem Blatt steht, sagt die
  * Beschreibung: Woche, Datum, wer an der Reihe ist und die Gruppe (siehe
  * `services/cleaningPdf`).
+ *
+ * Dazu ein Haken für die Adresse des Plans samt QR-Code: Wer vor dem
+ * Anschlagbrett steht, hat den Plan damit auch auf dem Telefon – und dort
+ * immer den neusten Stand. Das Gerät merkt sich die Wahl.
+ *
+ * Die Sonntage braucht der Grund hinter einer doppelten Woche: Steht dort
+ * eine Pfahlkonferenz, steht sie auch auf dem Blatt.
  */
 function CleaningExport({ weeks, onClose }: { weeks: CleaningWeek[]; onClose: () => void }) {
   const { settings } = useData()
   const toast = useToast()
+  const { data: sundays } = useAllSacramentMeetings()
+  const [withLink, setWithLink] = useLocalStorage('bss:putzplan:pdf-link', false)
   const today = toDateInput(new Date())
 
   const sorted = useMemo(
@@ -245,7 +260,15 @@ function CleaningExport({ weeks, onClose }: { weeks: CleaningWeek[]; onClose: ()
   const count = valid ? weeksInRange(weeks, from, to).length : 0
 
   const download = () => {
-    const bytes = cleaningPdf({ weeks, from, to, wardName: settings.wardName, today })
+    const bytes = cleaningPdf({
+      weeks,
+      from,
+      to,
+      wardName: settings.wardName,
+      today,
+      sundays,
+      withLink,
+    })
     if (!bytes) {
       toast.error('In diesem Zeitraum steht keine Woche im Plan.')
       return
@@ -259,8 +282,8 @@ function CleaningExport({ weeks, onClose }: { weeks: CleaningWeek[]; onClose: ()
     <Modal
       open
       onClose={onClose}
-      title="Putzplan als PDF"
-      description="Woche, Datum, wer an der Reihe ist und die Gruppe – zum Ausdrucken."
+      title="Putzplan exportieren"
+      description="Als PDF zum Ausdrucken: Woche, Datum, wer an der Reihe ist und die Gruppe."
       footer={
         <>
           <button type="button" className="btn-secondary" onClick={onClose}>
@@ -336,6 +359,22 @@ function CleaningExport({ weeks, onClose }: { weeks: CleaningWeek[]; onClose: ()
               ? 'In diesem Zeitraum steht keine Woche im Plan.'
               : `${count} ${count === 1 ? 'Woche' : 'Wochen'} kommen aufs Blatt.`}
         </p>
+
+        <label className="flex cursor-pointer items-start gap-3">
+          <input
+            type="checkbox"
+            className="mt-0.5 size-4 rounded"
+            checked={withLink}
+            onChange={(event) => setWithLink(event.target.checked)}
+          />
+          <span>
+            <span className="text-sm font-medium">Link und QR-Code integrieren</span>
+            <span className="hint mt-0.5 block">
+              Ganz unten auf dem Blatt steht {CLEANING_PLAN_LABEL} – mit einem QR-Code, der dorthin
+              führt.
+            </span>
+          </span>
+        </label>
       </div>
     </Modal>
   )
