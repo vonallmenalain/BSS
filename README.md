@@ -1585,7 +1585,9 @@ zum Verschieben.
 
 ## Putzplan
 
-**Putzplan** in der Seitenleiste, gleich unter den Notizen.
+**Putzplan** in der Seitenleiste, gleich unter den Notizen – und für alle
+anderen **`bss.alae.app/putzplan`**, ohne Anmeldung (siehe [«Wer den Putzplan
+sieht»](#wer-den-putzplan-sieht)).
 
 Die Gemeinde erstellt zweimal im Jahr eine Excel-Tabelle: je Woche eine
 Gruppe, die Namen und der Zeitraum. Sie wird unter **Einstellungen → Importe →
@@ -1637,15 +1639,45 @@ Woche eines Paares, trägt auch sie ihren Grund.
 **Link und QR-Code.** Mit dem Haken «Link und QR-Code integrieren» steht unten
 auf jeder Seite `bss.alae.app/putzplan`, daneben ein QR-Code, der zur Seite des
 Putzplans führt – wer vor dem Anschlagbrett steht, hat den Plan damit auf dem
-Telefon, und dort immer im neusten Stand. Das Gerät merkt sich den Haken. Der
-Code zeigt fest auf die Adresse der App, auch wenn das PDF in einer Vorschau
-entsteht; ein halbes Jahr passt trotzdem weiterhin auf eine Seite.
+Telefon, ohne Konto und immer im neusten Stand. Das Gerät merkt sich den
+Haken. Der Code zeigt fest auf die Adresse der App, auch wenn das PDF in einer
+Vorschau entsteht; ein halbes Jahr passt trotzdem weiterhin auf eine Seite.
 
 Die Kalenderwoche zählt nach ISO, gemessen an der Mitte der Putzwoche – so
 stimmt sie für Wochen ab Montag wie ab Sonntag. Erzeugt wird die Datei in der
 App selbst, ohne Bibliothek und ohne Server (`lib/pdf`, der QR-Code in
 `lib/qr`): Sie verwendet die PDF-Standardschrift Helvetica und ist ein paar
 Kilobyte klein.
+
+### Wer den Putzplan sieht
+
+**Jeder.** Der Plan steht unter `bss.alae.app/putzplan` offen – ohne Anmeldung
+und ohne Konto. Dorthin führt der QR-Code auf dem ausgedruckten Plan; ein
+Anschlagbrett, für das man sich anmelden muss, wird nicht gelesen.
+
+Es ist dieselbe Adresse für alle. Wer mit Vollzugriff angemeldet ist, sieht die
+Seite wie bisher: oben die Karte für den nächsten Sonntag (wem gedankt wird,
+wer als Nächstes dran ist), dazu **Export** und den Stift an jeder Woche. Alle
+anderen – ohne Konto, mit einem Zugang nur für den AP-Kalender, als Assistenz
+oder noch wartend – sehen die Ansicht fürs Anschlagbrett:
+
+- ganz oben und gross, **wer diese Woche dran ist**, darunter **wer nächste
+  Woche dran ist** – gezählt ab heute, nicht ab dem Sonntag. Liegt heute
+  zwischen zwei Wochen, rückt die nächste nach oben;
+- darunter die **Suche**, die Auswahl **Kommend · Vergangen · Alle**
+  (vorgewählt: Kommend) und die **Liste** wie gewohnt – bloss ohne Stift.
+
+Ändern, Export und die Sonntagskarte fehlen dort. Oben rechts steht statt des
+Benutzermenüs der Knopf **Anmelden**, in der Kopfzeile «Putzplan» statt des
+Gemeindenamens – die Einstellungen bleiben angemeldeten Konten vorbehalten.
+
+**Was damit öffentlich ist.** Genau das, was auf dem ausgedruckten Plan am
+Brett hängt: Woche, Gruppe, die Namen derer, die putzen – und die Bemerkung zur
+Woche. Wer dort etwas einträgt, schreibt damit ins Schaufenster. Alles andere
+bleibt zu wie bisher. Suchmaschinen nehmen die Seite nicht auf: Die ganze App
+ist für sie gesperrt (`robots.txt` und Kopfzeile). Durchgesetzt wird das in
+`firestore.rules`: Lesen darf den Plan jeder, ändern nur der Vollzugriff;
+`npm run test:rules` prüft beides.
 
 ### Die Ansage am Sonntag
 
@@ -1931,7 +1963,8 @@ Seite, bloss ohne alles, was ein Konto braucht:
 
 Oben rechts steht statt des Benutzermenüs ein Knopf **Anmelden**; Seitenleiste
 und untere Leiste fehlen, denn ohne Konto gibt es nichts, wohin sie führen
-könnten. Jede andere Adresse führt weiterhin zur Anmeldung.
+könnten. Jede andere Adresse – ausser dem [Putzplan](#wer-den-putzplan-sieht) –
+führt weiterhin zur Anmeldung.
 
 **Was damit öffentlich ist.** Genau das, was auf dem ausgedruckten Plan stünde:
 Datum, Anlass, Treffpunkt, Zeit, Zuständigkeit, die Bemerkung – und welches
@@ -3102,9 +3135,10 @@ Was sie **nicht** sieht: _Leitung_, _Bekanntmachungen_ und _Angelegenheiten_.
 Diese drei Reiter stehen für sie gar nicht erst da, ihre Adressen führen
 zurück in den eigenen Bereich, und die Zugriffsregeln lassen sie nichts
 davon ändern. Ebenso wenig sieht sie Übersicht, Sitzungen, Pendenzen,
-Notizen, Putzplan, Mitgliederverzeichnis, Berufungen, Einstellungen,
-AP-Kalender und Anti Doom – die Seitenleiste trägt für sie einen einzigen
-Eintrag.
+Notizen, Mitgliederverzeichnis, Berufungen, Einstellungen, AP-Kalender und
+Anti Doom – die Seitenleiste trägt für sie einen einzigen Eintrag. Den
+Putzplan unter `/putzplan` liest sie wie jeder andere auch, ohne ihn zu
+ändern.
 
 Namen aus der Gemeinde liest sie mit: Ohne sie liesse sich weder eine
 Ansprache noch ein Gebet vergeben. Ein Klick auf einen Namen führt allerdings

@@ -66,7 +66,7 @@ const ImportSingles = lazy(() =>
   import('@/pages/ImportSingles').then((m) => ({ default: m.ImportSingles })),
 )
 
-/* Aktivitäten AP – der einzige Bereich, der ohne Anmeldung offensteht. */
+/* Aktivitäten AP – neben dem Putzplan der Bereich, der ohne Anmeldung offensteht. */
 const ApActivities = lazy(() =>
   import('@/pages/ApActivities').then((m) => ({ default: m.ApActivities })),
 )
@@ -74,18 +74,24 @@ const ApActivities = lazy(() =>
 /**
  * Die Adressen, die ohne Anmeldung offenstehen.
  *
- * Bisher genau eine: der Aktivitätenplan unter `/ap`. Er ist das
- * Anschlagbrett der AP's – er wird den Jugendlichen, ihren Eltern und den
- * Beratern als Link geschickt, und ein Anschlagbrett, für das man sich
- * anmelden muss, wird nicht gelesen. Dass der Plan wirklich offensteht,
- * entscheidet nicht diese Liste, sondern `firestore.rules`; hier steht bloss,
- * dass die App nicht vorher zur Anmeldung umleitet.
+ * Genau zwei Anschlagbretter:
+ *
+ *  - der **Aktivitätenplan** unter `/ap`. Er wird den Jugendlichen, ihren
+ *    Eltern und den Beratern als Link geschickt, und ein Anschlagbrett, für
+ *    das man sich anmelden muss, wird nicht gelesen.
+ *  - der **Putzplan** unter `/putzplan`. Dorthin führt der QR-Code auf dem
+ *    ausgedruckten Plan – wer vor dem Brett im Gemeindehaus steht, soll ihn
+ *    auf dem Telefon öffnen können, ohne Konto.
+ *
+ * Dass die Pläne wirklich offenstehen, entscheidet nicht diese Liste,
+ * sondern `firestore.rules`; hier steht bloss, dass die App nicht vorher zur
+ * Anmeldung umleitet.
  *
  * Der Link ist derselbe, ob angemeldet oder nicht: Wer ihn weitergibt, muss
  * nicht überlegen, an wen. Was jemand darf, entscheidet sich auf der Seite –
  * ohne Schreibrecht gibt es dort nichts zu ändern.
  */
-const PUBLIC_PATHS = ['/ap']
+const PUBLIC_PATHS = ['/ap', '/putzplan']
 
 function isPublicPath(pathname: string): boolean {
   return PUBLIC_PATHS.some((path) => pathname === path || pathname.startsWith(`${path}/`))
@@ -131,16 +137,17 @@ function LegacyImpulsRedirect() {
  * den AP-Kalender sehen darf, kommt ebenfalls in die App – aber nur bis
  * dorthin, dafür sorgt `RequireFullAccess`.
  *
- * Und eine Adresse kommt ganz ohne Konto durch: der Aktivitätenplan (siehe
- * `PUBLIC_PATHS`). Die Weiche steht hier und nicht in einem zweiten
- * Routenbaum neben diesem, damit es die Seite nur einmal gibt – dieselbe
- * Adresse, dieselbe Hülle, angemeldet wie nicht. Wer dabei was sieht,
- * entscheidet weiter unten das Schreibrecht und in letzter Instanz
- * `firestore.rules`.
+ * Und zwei Adressen kommen ganz ohne Konto durch: der Aktivitätenplan und
+ * der Putzplan (siehe `PUBLIC_PATHS`). Die Weiche steht hier und nicht in
+ * einem zweiten Routenbaum neben diesem, damit es jede Seite nur einmal
+ * gibt – dieselbe Adresse, dieselbe Hülle, angemeldet wie nicht. Wer dabei
+ * was sieht, entscheidet weiter unten das Schreibrecht und in letzter
+ * Instanz `firestore.rules`.
  *
  * Auch ein Konto, das noch auf die Freigabe wartet, sieht dort den Plan
- * statt des Wartezimmers. Er steht der ganzen Welt offen – ausgerechnet dem
- * Wartenden die Tür zu weisen, wäre eine Schikane ohne Gewinn.
+ * statt des Wartezimmers. Die Pläne stehen der ganzen Welt offen –
+ * ausgerechnet dem Wartenden die Tür zu weisen, wäre eine Schikane ohne
+ * Gewinn.
  */
 function RequireAuth({ children }: { children: ReactNode }) {
   const { firebaseUser, loading, isApproved, canViewAp, canViewImpulse, isAssistant } = useAuth()
@@ -307,6 +314,20 @@ export default function App() {
                     }
                   />
 
+                  {/* ---------- Putzplan ----------
+                    Aus demselben Grund ausserhalb von `RequireFullAccess`
+                    und in `PUBLIC_PATHS`: Der QR-Code auf dem ausgedruckten
+                    Plan führt hierher. Ohne Vollzugriff zeigt die Seite nur,
+                    wer dran ist – ändern lässt sich dort nichts. */}
+                  <Route
+                    path="putzplan"
+                    element={
+                      <Suspense fallback={<LoadingScreen />}>
+                        <Cleaning />
+                      </Suspense>
+                    }
+                  />
+
                   {/* ---------- Anti Doom ----------
                     Ebenfalls ausserhalb von `RequireFullAccess`: Der Bereich
                     wird pro Konto freigeschaltet und steht damit auch Konten
@@ -438,15 +459,6 @@ export default function App() {
                         </Suspense>
                       }
                     />
-                    <Route
-                      path="putzplan"
-                      element={
-                        <Suspense fallback={<LoadingScreen />}>
-                          <Cleaning />
-                        </Suspense>
-                      }
-                    />
-
                     <Route
                       path="mitglieder"
                       element={

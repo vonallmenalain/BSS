@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useState, type FormEvent } from 'react'
 import { Brush, CalendarRange, FileDown, Pencil, Plus, Trash2 } from 'lucide-react'
+import { useAuth } from '@/contexts/AuthContext'
 import { useData } from '@/contexts/DataContext'
 import { useToast } from '@/contexts/ToastContext'
 import { useAllSacramentMeetings, useCleaningWeeks } from '@/hooks/useFirestore'
@@ -17,7 +18,7 @@ import {
   cleaningPdfFilename,
   weeksInRange,
 } from '@/services/cleaningPdf'
-import { cleaningAround } from '@/services/importCleaning'
+import { cleaningAround, cleaningNow } from '@/services/importCleaning'
 import { fromIsoDate } from '@/services/importHistory'
 import type { CleaningWeek } from '@/lib/types'
 
@@ -35,9 +36,20 @@ type Scope = 'upcoming' | 'past' | 'all'
  * soll dafür nicht die ganze Tabelle neu einlesen müssen. Ein späterer
  * Import derselben Woche überschreibt die Korrektur allerdings wieder –
  * die Tabelle bleibt die Quelle.
+ *
+ * **Ohne Vollzugriff ist die Seite ein Anschlagbrett.** Sie steht unter
+ * `/putzplan` für alle offen (siehe `PUBLIC_PATHS` in `App.tsx`) – der
+ * QR-Code auf dem ausgedruckten Plan führt hierher. Wer kein Konto hat
+ * oder nur den AP-Kalender bzw. die Assistenz, sieht oben gross, wer diese
+ * Woche dran ist und wer nächste Woche, darunter Suche, Auswahl und Liste
+ * wie gewohnt. Was ein Konto braucht, fehlt: Ändern, Export und die
+ * Sonntagskarte der Leitung – wem am Sonntag gedankt wird, ist deren
+ * Sache.
  */
 export function Cleaning() {
-  const { data: weeks, loading } = useCleaningWeeks()
+  const { isApproved } = useAuth()
+  const editable = isApproved
+  const { data: weeks, loading, error } = useCleaningWeeks()
   const [scope, setScope] = useState<Scope>('upcoming')
   const [search, setSearch] = useState('')
   const [formOpen, setFormOpen] = useState(false)
@@ -113,6 +125,7 @@ export function Cleaning() {
       <PageHeader
         title="Putzplan"
         actions={
+          editable &&
           weeks.length > 0 && (
             <button
               type="button"
@@ -127,7 +140,7 @@ export function Cleaning() {
         }
       />
 
-      <NextSunday weeks={weeks} />
+      {editable ? <NextSunday weeks={weeks} /> : <OnDuty weeks={weeks} today={today} />}
 
       <div className="mb-4 space-y-3">
         <input
@@ -155,13 +168,25 @@ export function Cleaning() {
         <div className="card">
           <EmptyState
             icon={Brush}
-            title={weeks.length === 0 ? 'Noch kein Putzplan' : 'Nichts gefunden'}
+            title={
+              error && weeks.length === 0
+                ? 'Der Putzplan lässt sich gerade nicht laden'
+                : weeks.length === 0
+                  ? 'Noch kein Putzplan'
+                  : 'Nichts gefunden'
+            }
             description={
-              weeks.length === 0
-                ? 'Die Tabelle der Gemeinde lässt sich unter «Einstellungen › Importe › Putzplan» einlesen. Einzelne Wochen können auch von Hand erfasst werden.'
-                : 'Passe Suche oder Auswahl an.'
+              error && weeks.length === 0
+                ? 'Bitte versuche es später noch einmal.'
+                : weeks.length > 0
+                  ? 'Passe Suche oder Auswahl an.'
+                  : editable
+                    ? 'Die Tabelle der Gemeinde lässt sich unter «Einstellungen › Importe › Putzplan» einlesen. Einzelne Wochen können auch von Hand erfasst werden.'
+                    : 'Sobald der Plan eingetragen ist, steht er hier.'
             }
             action={
+              editable &&
+              !error &&
               weeks.length === 0 && (
                 <button
                   type="button"
@@ -179,7 +204,7 @@ export function Cleaning() {
           />
         </div>
       ) : (
-        <WeekRows weeks={visible} currentId={currentId} onEdit={openWeek} />
+        <WeekRows weeks={visible} currentId={currentId} onEdit={editable ? openWeek : undefined} />
       )}
 
       {/* Was ausserhalb des gewählten Zeitraums zur Suche passt – meist die
@@ -197,21 +222,27 @@ export function Cleaning() {
                 : 'Diese Wochen passen zur Suche, werden aber durch die Auswahl ausgeblendet.'
           }
         >
-          {(page) => <WeekRows weeks={page} currentId={currentId} onEdit={openWeek} />}
+          {(page) => (
+            <WeekRows weeks={page} currentId={currentId} onEdit={editable ? openWeek : undefined} />
+          )}
         </OtherResults>
       )}
 
-      <WeekForm
-        open={formOpen}
-        week={editWeek}
-        onClose={() => {
-          setFormOpen(false)
-          setEditWeek(null)
-        }}
-      />
+      {editable && (
+        <WeekForm
+          open={formOpen}
+          week={editWeek}
+          onClose={() => {
+            setFormOpen(false)
+            setEditWeek(null)
+          }}
+        />
+      )}
 
       {/* Bei jedem Öffnen neu aufgebaut – mit dem Zeitraum von heute. */}
-      {exportOpen && <CleaningExport weeks={weeks} onClose={() => setExportOpen(false)} />}
+      {editable && exportOpen && (
+        <CleaningExport weeks={weeks} onClose={() => setExportOpen(false)} />
+      )}
     </>
   )
 }
@@ -461,6 +492,72 @@ function NextSunday({ weeks }: { weeks: CleaningWeek[] }) {
 
 /* ------------------------------------------------------------------ */
 
+/** «Gruppe 10 · 15.11. – 21.11.2026» – oder nur die Tage, wenn die Gruppe fehlt. */
+function weekMeta(week: CleaningWeek): string {
+  return week.group ? `${week.group} · ${period(week)}` : period(week)
+}
+
+/**
+ * Wer dran ist – gross, für den Blick vor dem Anschlagbrett.
+ *
+ * Die Ansicht ohne Konto beginnt mit der einen Frage, wegen der jemand den
+ * QR-Code scannt: Sind wir diese Woche dran? Die Antwort steht gross oben,
+ * darunter kleiner die nächste Woche. Gezählt wird ab heute, nicht ab dem
+ * Sonntag (siehe `cleaningNow`).
+ *
+ * Läuft heute keine Woche – am Sonntag zwischen zwei Wochen von Montag bis
+ * Samstag –, rückt die nächste nach oben und die übernächste darunter.
+ */
+function OnDuty({ weeks, today }: { weeks: CleaningWeek[]; today: string }) {
+  if (weeks.length === 0) return null
+  const { current, next, after } = cleaningNow(weeks, today)
+  const first = current ?? next
+  const second = current ? next : after
+
+  if (!first) {
+    return (
+      <div className="card mb-4 p-5">
+        <p className="text-sm text-slate-500 dark:text-slate-400">
+          Der Plan reicht nicht bis heute – sobald der nächste eingetragen ist, steht hier, wer dran
+          ist.
+        </p>
+      </div>
+    )
+  }
+
+  return (
+    <section className="card relative mb-4 overflow-hidden p-5 sm:p-6">
+      <span className="bg-brand-600 absolute inset-x-0 top-0 h-1" aria-hidden />
+
+      <p className="text-brand-700 dark:text-brand-300 text-sm font-semibold">
+        {current ? 'Diese Woche dran' : 'Als Nächstes dran'}
+      </p>
+      <h2 className="mt-1 text-2xl font-semibold tracking-tight text-balance sm:text-3xl">
+        {first.team}
+      </h2>
+      <p className="mt-1.5 text-sm text-slate-500 dark:text-slate-400">{weekMeta(first)}</p>
+
+      <div className="mt-5 border-t border-slate-200 pt-4 dark:border-slate-800">
+        <p className="text-sm font-semibold text-slate-500 dark:text-slate-400">
+          {current ? 'Nächste Woche dran' : 'Danach dran'}
+        </p>
+        {second ? (
+          <>
+            <p className="mt-0.5 text-lg font-semibold text-balance">{second.team}</p>
+            <p className="text-sm text-slate-500 dark:text-slate-400">{weekMeta(second)}</p>
+          </>
+        ) : (
+          <p className="mt-0.5 text-sm text-slate-500 dark:text-slate-400">
+            Weiter reicht der Plan noch nicht.
+          </p>
+        )}
+      </div>
+    </section>
+  )
+}
+
+/* ------------------------------------------------------------------ */
+
 interface FormState {
   startDate: string
   endDate: string
@@ -477,6 +574,9 @@ const EMPTY: FormState = { startDate: '', endDate: '', group: '', team: '', note
  * Sie stehen für sich, weil sie zweimal gebraucht werden: für den gewählten
  * Zeitraum und für die Treffer, die daneben liegen. Die laufende Woche bleibt
  * dabei in beiden Listen hervorgehoben.
+ *
+ * Ohne `onEdit` – auf dem Anschlagbrett ohne Konto – sind es blosse Zeilen:
+ * kein Stift, nichts zum Anklicken.
  */
 function WeekRows({
   weeks,
@@ -485,24 +585,18 @@ function WeekRows({
 }: {
   weeks: CleaningWeek[]
   currentId: string | null
-  onEdit: (week: CleaningWeek) => void
+  onEdit?: (week: CleaningWeek) => void
 }) {
   return (
     <ul className="card divide-list overflow-hidden">
-      {weeks.map((week) => (
-        <li key={week.id}>
-          <button
-            type="button"
-            onClick={() => onEdit(week)}
-            className={cn(
-              'flex w-full items-center gap-3 px-4 py-3 text-left transition hover:bg-slate-50 dark:hover:bg-slate-800/60',
-              week.id === currentId && 'bg-brand-50/60 dark:bg-brand-950/40',
-            )}
-          >
+      {weeks.map((week) => {
+        const current = week.id === currentId
+        const content = (
+          <>
             <span
               className={cn(
                 'grid size-9 shrink-0 place-items-center rounded-lg text-xs font-semibold',
-                week.id === currentId
+                current
                   ? 'bg-brand-600 text-white'
                   : 'bg-slate-100 text-slate-500 dark:bg-slate-800 dark:text-slate-400',
               )}
@@ -516,14 +610,34 @@ function WeekRows({
                 {week.group && `${week.group} · `}
                 {period(week)}
                 {week.note?.trim() && ` · ${week.note.trim()}`}
-                {week.id === currentId && ' · diese Woche'}
+                {current && ' · diese Woche'}
               </p>
             </div>
 
-            <Pencil className="size-4 shrink-0 text-slate-300" aria-hidden />
-          </button>
-        </li>
-      ))}
+            {onEdit && <Pencil className="size-4 shrink-0 text-slate-300" aria-hidden />}
+          </>
+        )
+        const row = cn(
+          'flex w-full items-center gap-3 px-4 py-3 text-left',
+          current && 'bg-brand-50/60 dark:bg-brand-950/40',
+        )
+
+        return (
+          <li key={week.id}>
+            {onEdit ? (
+              <button
+                type="button"
+                onClick={() => onEdit(week)}
+                className={cn(row, 'transition hover:bg-slate-50 dark:hover:bg-slate-800/60')}
+              >
+                {content}
+              </button>
+            ) : (
+              <div className={row}>{content}</div>
+            )}
+          </li>
+        )
+      })}
     </ul>
   )
 }

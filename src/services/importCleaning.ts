@@ -196,6 +196,36 @@ export function cleaningAround<T extends { startDate: string; endDate: string }>
 }
 
 /**
+ * Wer jetzt dran ist und wer danach – für die Ansicht ohne Anmeldung.
+ *
+ * Dort zählt nicht der Sonntag, sondern heute: Wer den QR-Code am
+ * Anschlagbrett scannt, will wissen, ob er diese Woche dran ist.
+ *
+ *  - **current** ist die Woche, in der heute liegt. Liegt heute in keiner –
+ *    am Sonntag zwischen zwei Wochen von Montag bis Samstag, in einer Lücke
+ *    oder vor dem ersten Eintrag –, bleibt sie leer.
+ *  - **next** ist die erste Woche, die danach beginnt.
+ *  - **after** die Woche nach `next` – für den Fall ohne laufende Woche, in
+ *    dem `next` an ihre Stelle rückt.
+ */
+export interface CleaningNow<T> {
+  current: T | null
+  next: T | null
+  after: T | null
+}
+
+export function cleaningNow<T extends { startDate: string; endDate: string }>(
+  weeks: T[],
+  todayKey: string,
+): CleaningNow<T> {
+  const sorted = [...weeks].sort((a, b) => a.startDate.localeCompare(b.startDate))
+  const current =
+    sorted.find((week) => week.startDate <= todayKey && todayKey <= week.endDate) ?? null
+  const upcoming = sorted.filter((week) => week.startDate > (current?.endDate ?? todayKey))
+  return { current, next: upcoming[0] ?? null, after: upcoming[1] ?? null }
+}
+
+/**
  * Platzhalter, die in einer Bekanntmachung aus dem Putzplan gefüllt werden.
  *
  * Deutsch und ausgeschrieben, damit sie sich beim Erfassen von selbst

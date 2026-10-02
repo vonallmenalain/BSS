@@ -4,6 +4,7 @@ import { test } from 'node:test'
 import {
   CLEANING_DEFAULT_TEXT,
   cleaningAround,
+  cleaningNow,
   fillCleaningText,
   parseCleaningSheet,
 } from '../src/services/importCleaning.ts'
@@ -208,4 +209,38 @@ test('lässt unbekannte Klammerausdrücke stehen', () => {
     }),
     'Bis {irgendwann} um Gruppe 3',
   )
+})
+
+/* ------------------------------------------------------------------ */
+/* Wer jetzt dran ist                                                  */
+/* ------------------------------------------------------------------ */
+
+test('diese Woche und die nächste – gezählt ab heute', () => {
+  const weeks = [
+    { startDate: '2026-10-11', endDate: '2026-10-17', team: 'C' },
+    { startDate: '2026-09-27', endDate: '2026-10-03', team: 'A' },
+    { startDate: '2026-10-04', endDate: '2026-10-10', team: 'B' },
+  ]
+  // Mittwoch: mitten in der Woche von B.
+  const wednesday = cleaningNow(weeks, '2026-10-07')
+  assert.equal(wednesday.current?.team, 'B')
+  assert.equal(wednesday.next?.team, 'C')
+  assert.equal(wednesday.after, null)
+  // Der erste und der letzte Tag gehören dazu.
+  assert.equal(cleaningNow(weeks, '2026-10-04').current?.team, 'B')
+  assert.equal(cleaningNow(weeks, '2026-10-10').current?.team, 'B')
+  // Nach dem letzten Eintrag ist niemand mehr dran.
+  assert.deepEqual(cleaningNow(weeks, '2026-10-18'), { current: null, next: null, after: null })
+})
+
+test('am Sonntag zwischen zwei Wochen von Montag bis Samstag rückt die nächste nach', () => {
+  const weeks = [
+    { startDate: '2026-06-29', endDate: '2026-07-04', team: 'A' },
+    { startDate: '2026-07-06', endDate: '2026-07-11', team: 'B' },
+    { startDate: '2026-07-13', endDate: '2026-07-18', team: 'C' },
+  ]
+  const sunday = cleaningNow(weeks, '2026-07-05')
+  assert.equal(sunday.current, null)
+  assert.equal(sunday.next?.team, 'B')
+  assert.equal(sunday.after?.team, 'C')
 })
