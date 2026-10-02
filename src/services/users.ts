@@ -106,7 +106,7 @@ export async function setUserActive(userId: string, active: boolean): Promise<Sa
 
 export async function updateUserProfile(
   userId: string,
-  patch: Partial<Pick<AppUser, 'displayName' | 'memberId' | 'color'>>,
+  patch: Partial<Pick<AppUser, 'displayName' | 'memberId' | 'color' | 'apNames'>>,
 ): Promise<SaveOutcome> {
   return commit(
     updateDoc(doc(db, COLLECTIONS.users, userId), {

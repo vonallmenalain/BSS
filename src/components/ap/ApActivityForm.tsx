@@ -1,10 +1,12 @@
 import { useEffect, useId, useMemo, useRef, useState, type FormEvent } from 'react'
 import { Trash2 } from 'lucide-react'
 import { useAuth } from '@/contexts/AuthContext'
+import { useData } from '@/contexts/DataContext'
 import { useToast } from '@/contexts/ToastContext'
 import { Modal, ConfirmDialog } from '@/components/ui/Modal'
 import { SegmentedControl } from '@/components/ui/Pickers'
 import { apDateLabel, apTitle } from '@/components/ap/ApActivityRow'
+import { AP_PERSON_FIELD_LABELS, linkedAccounts } from '@/lib/apInvolvement'
 import {
   EMPTY_AP_ACTIVITY,
   apSuggestions,
@@ -79,6 +81,7 @@ export function ApActivityForm({
   onClose: () => void
 }) {
   const { profile, canEditAp } = useAuth()
+  const { users } = useData()
   const toast = useToast()
   const listId = useId()
 
@@ -114,6 +117,18 @@ export function ApActivityForm({
       alive.current = false
     }
   }, [])
+
+  /*
+   * Welche Konten hinter den eingetragenen Namen stehen.
+   *
+   * Zuständige und Teilnehmende sind Freitext; mit einem Konto verknüpft
+   * ist ein Name erst, wenn er dort unter «Im AP-Plan als» steht (siehe
+   * `lib/apInvolvement`). Der Hinweis zeigt es gleich beim Tippen – wer
+   * «Carden» einträgt, sieht, ob Carden an den Termin erinnert werden kann.
+   * Das Team liest nur der Vollzugriff; für die übrigen bleibt die Liste
+   * leer und der Hinweis weg.
+   */
+  const linked = useMemo(() => linkedAccounts(form, users), [form, users])
 
   const suggestions = useMemo(
     () => ({
@@ -430,6 +445,18 @@ export function ApActivityForm({
               listId={`${listId}-advisor`}
             />
           </div>
+
+          {linked.length > 0 && (
+            <p className="hint -mt-2">
+              Verknüpfte Konten:{' '}
+              {linked
+                .map(
+                  ({ user, fields }) =>
+                    `${user.displayName} (${fields.map((field) => AP_PERSON_FIELD_LABELS[field]).join(', ')})`,
+                )
+                .join(' · ')}
+            </p>
+          )}
 
           <div>
             <label className="label" htmlFor="ap-note">

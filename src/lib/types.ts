@@ -629,6 +629,18 @@ export interface AppUser extends WithId {
   /** optionale Verknüpfung zum Mitgliederdatensatz */
   memberId?: string | null
   /**
+   * Unter welchen Namen die Person im Aktivitätenplan steht – «Carden»,
+   * «JM», «Bruder Meier».
+   *
+   * Der Plan führt Zuständige und Teilnehmende als Freitext, so wie die
+   * Excel-Tabelle sie führt. Erst diese Liste verknüpft einen solchen Namen
+   * mit dem Konto: Damit lässt sich die Erinnerung auf die Termine
+   * beschränken, bei denen man selbst eingetragen ist (siehe
+   * `lib/apInvolvement`). Setzen darf sie die Person selbst oder das
+   * Administrator-Konto.
+   */
+  apNames?: string[]
+  /**
    * Welche Bereiche der Abendmahlsversammlung diesem Konto offenstehen.
    *
    * Gilt allein für die Rolle `assistant`; bei jeder anderen steht das Feld
@@ -3740,7 +3752,17 @@ export interface NotificationSettings extends WithId {
    * AP-Klassen oder beides. Erinnert wird nur, was eine Uhrzeit hat –
    * die eigene am Termin oder die übliche der Klasse.
    */
-  ap: { on: boolean; hoursBefore: number; scope: ApNotifyScope }
+  ap: {
+    on: boolean
+    hoursBefore: number
+    scope: ApNotifyScope
+    /**
+     * Nur Termine, bei denen man selbst eingetragen ist – als Zuständige,
+     * für die Bischofschaft oder als Berater, erkannt an den eigenen Namen
+     * im Plan (`AppUser.apNames`).
+     */
+    onlyMine?: boolean
+  }
   /** Vom Versand geführt: wann zuletzt gesendet wurde. */
   impulsSentAt?: TS | null
   agendaSentAt?: TS | null

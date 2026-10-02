@@ -22,6 +22,7 @@ import { useAuth } from '@/contexts/AuthContext'
 import { useData } from '@/contexts/DataContext'
 import { useToast } from '@/contexts/ToastContext'
 import { useAutosave, saveStateLabel } from '@/hooks/useAutosave'
+import { ApNamesField } from '@/components/ap/ApNamesField'
 import { MemberCombobox, PageHeader } from '@/components/ui/Pickers'
 import { ConfirmDialog } from '@/components/ui/Modal'
 import { UserAvatar } from '@/components/ui/Avatar'
@@ -50,6 +51,7 @@ import { cn } from '@/lib/utils'
 import {
   ACCESS_LEVELS,
   ADMIN_EMAIL,
+  AP_ACCESS_ROLES,
   AP_ONLY_ROLES,
   AREA_ACCESS_LABELS,
   AREA_ACCESS_ORDER,
@@ -453,6 +455,11 @@ export function Settings() {
             Neben der Rolle steht, <strong>wer im Mitgliederverzeichnis</strong> zu diesem Konto
             gehört. Ein Konto ist eine Anmeldung, ein Mitglied ein Eintrag der Gemeinde – erst diese
             Verknüpfung sagt der App, dass beides dieselbe Person ist.
+          </p>
+          <p className="hint mb-4">
+            Ebenso <strong>«Im AP-Plan als …»</strong>: die Namen, unter denen jemand im
+            Aktivitätenplan steht – etwa «Carden» oder «JM». Damit lässt sich die Erinnerung auf die
+            Termine beschränken, bei denen die Person eingetragen ist.
           </p>
           {isAdmin && (
             <p className="hint mb-4">
@@ -1260,6 +1267,19 @@ function UserRow({
           behandelt. Die eigene Verknüpfung darf jede Person selbst setzen;
           fremde nur der Admin. */}
       {!apOnly && (canManage || isSelf) && <MemberLinkField user={user} />}
+
+      {/* Wie die Person im Aktivitätenplan heisst – die Brücke zwischen den
+          Namen dort und dem Konto, für die Erinnerung «nur wo ich
+          eingetragen bin» (siehe `lib/apInvolvement`). Nur bei Konten, die
+          den Plan sehen; die eigenen Namen setzt jede Person selbst. */}
+      {AP_ACCESS_ROLES.includes(user.role) && (canManage || isSelf) && (
+        <ApNamesField
+          user={user}
+          label={`Namen von ${user.displayName} im Aktivitätenplan`}
+          placeholder="Im AP-Plan als …"
+          className="w-full sm:w-48"
+        />
+      )}
 
       {canManage && !isSelf && (
         <>
