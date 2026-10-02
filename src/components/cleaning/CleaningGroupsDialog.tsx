@@ -1,22 +1,36 @@
 import { useMemo, useState } from 'react'
-import { ArrowUp, Check, Pencil, Plus, Search, Trash2, UserPlus, X } from 'lucide-react'
+import {
+  ArrowUp,
+  ArrowUpDown,
+  Check,
+  Pencil,
+  Plus,
+  Search,
+  Trash2,
+  UserPlus,
+  X,
+} from 'lucide-react'
 import { useData } from '@/contexts/DataContext'
 import { useToast } from '@/contexts/ToastContext'
-import { useCleaningGroups } from '@/hooks/useFirestore'
+import { useCleaningGroups, useCleaningWeeks } from '@/hooks/useFirestore'
 import { ConfirmDialog, Modal } from '@/components/ui/Modal'
 import {
   entriesKey,
   entryLabelFromMembers,
   groupOfMember,
+  homeWithAssignedParents,
   normalizedEntries,
+  renamedTeams,
   sortedGroups,
   unassignedMembers,
+  wifeFirst,
+  wifeFirstChanges,
   withoutConfirmed,
   withPendingGroups,
 } from '@/lib/cleaningGroups'
 import { cn, matchesSearch, uid } from '@/lib/utils'
-import { toDate } from '@/lib/dates'
-import { deleteCleaningGroup, saveCleaningGroup } from '@/services/cleaning'
+import { toDate, toDateInput } from '@/lib/dates'
+import { deleteCleaningGroup, renameCleaningTeams, saveCleaningGroup } from '@/services/cleaning'
 import type { CleaningGroup, CleaningGroupEntry, Member } from '@/lib/types'
 
 /** Was gerade bearbeitet wird – ein Eintrag oder ein neuer in einer Gruppe. */
@@ -41,6 +55,10 @@ function birthYear(member: Pick<Member, 'birthDate'>): string {
  * und der Name stimmt auch nach einer Heirat noch mit dem Verzeichnis
  * überein, wenn man ihn neu bilden lässt («Aus den Mitgliedern»).
  *
+ * Bei einem Ehepaar steht die Frau zuerst – beim Speichern eines Eintrags
+ * wie beim Einlesen der Liste. Was noch aus der Zeit davor stammt, stellt
+ * «Frau zuerst» auf einmal um.
+ *
  * Jede Person steht höchstens einmal in der Einteilung: Wer einem Eintrag
  * zugeordnet wird, verschwindet aus einem früheren. Gespeichert wird je
  * Handgriff, wie in den übrigen Einstellungen – und jeder Handgriff baut auf
@@ -51,8 +69,9 @@ function birthYear(member: Pick<Member, 'birthDate'>): string {
  */
 export function CleaningGroupsDialog({ onClose }: { onClose: () => void }) {
   const toast = useToast()
-  const { members } = useData()
+  const { members, membersById } = useData()
   const { data: stored } = useCleaningGroups()
+  const { data: weeks } = useCleaningWeeks()
 
   /*
    * Was dieser Dialog geschrieben hat und der Listener noch nicht
@@ -82,7 +101,8 @@ export function CleaningGroupsDialog({ onClose }: { onClose: () => void }) {
     })
 
   const [editing, setEditing] = useState<Editing>(null)
-  const [withMinors, setWithMinors] = useState(false)
+  const [reordering, setReordering] = useState(false)
+  const [everyone, setEveryone] = useState(false)
   const [search, setSearch] = useState('')
   const [removing, setRemoving] = useState<{ group: number; entry: CleaningGroupEntry } | null>(
     null,
@@ -100,14 +120,28 @@ export function CleaningGroupsDialog({ onClose }: { onClose: () => void }) {
         ),
     [members],
   )
-  const unassigned = useMemo(
-    () => unassignedMembers(members, groups, today, withMinors),
-    [members, groups, today, withMinors],
+  // Wer fehlt – und wer nur ausgeblendet ist: Kinder und wer bei den
+  // eingeteilten Eltern wohnt.
+  const unassignedAll = useMemo(
+    () => unassignedMembers(members, groups, today, true),
+    [members, groups, today],
   )
+  const unassignedAdults = useMemo(
+    () => unassignedMembers(members, groups, today),
+    [members, groups, today],
+  )
+  const atHome = useMemo(() => homeWithAssignedParents(members, groups), [members, groups])
+  const unassigned = everyone ? unassignedAll : unassignedAdults
+  const hiddenCount = unassignedAll.length - unassignedAdults.length
   const shown = unassigned.filter((member) =>
     matchesSearch(`${member.lastName} ${member.firstName}`, search),
   )
   const ordered = sortedGroups(groups)
+  // Bezeichnungen, bei denen noch der Mann zuerst steht.
+  const relabels = useMemo(
+    () => wifeFirstChanges(groups, (id) => membersById.get(id)),
+    [groups, membersById],
+  )
   const entryCount = groups.reduce((sum, group) => sum + group.entries.length, 0)
   const unlinked = groups.reduce(
     (sum, group) => sum + group.entries.filter((entry) => entry.memberIds.length === 0).length,
@@ -154,7 +188,11 @@ export function CleaningGroupsDialog({ onClose }: { onClose: () => void }) {
    * Einen Eintrag speichern – an seinem Platz, in einer anderen Gruppe oder
    * neu. Wer ihm zugeordnet ist, verschwindet aus jedem anderen Eintrag.
    */
-  const saveEntry = (from: number, entry: CleaningGroupEntry, to: number) => {
+  const saveEntry = (from: number, edited: CleaningGroupEntry, to: number) => {
+    const linked = edited.memberIds
+      .map((id) => membersById.get(id))
+      .filter((member): member is Member => Boolean(member))
+    const entry = { ...edited, label: wifeFirst(edited.label, linked) }
     const next = draft()
     for (const entries of next.values()) {
       for (const other of entries) {
@@ -206,6 +244,39 @@ export function CleaningGroupsDialog({ onClose }: { onClose: () => void }) {
     void write(next, `${memberName(member)} ist jetzt in Gruppe ${number}.`)
   }
 
+  /**
+   * «Frau zuerst» für die ganze Einteilung – und für den Putzplan ab heute,
+   * der die Namen der Zuständigen als Kopie trägt. Die Wochen zuerst: Geht
+   * dabei etwas schief, bleibt der Knopf da und lässt sich noch einmal
+   * drücken.
+   */
+  const applyWifeFirst = async () => {
+    const changes = relabels
+    if (changes.length === 0) return
+    const next = draft()
+    for (const change of changes) {
+      const entry = next.get(change.group)?.find((item) => item.id === change.entryId)
+      if (entry) entry.label = change.to
+    }
+    try {
+      await renameCleaningTeams(renamedTeams(weeks, changes, toDateInput(new Date())))
+    } catch (error) {
+      console.error(error)
+      toast.error(
+        navigator.onLine
+          ? 'Der Putzplan konnte nicht angepasst werden.'
+          : 'Dafür braucht es eine Internetverbindung.',
+      )
+      return
+    }
+    await write(
+      next,
+      changes.length === 1
+        ? 'Bei einem Eintrag steht jetzt die Frau zuerst.'
+        : `Bei ${changes.length} Einträgen steht jetzt die Frau zuerst.`,
+    )
+  }
+
   const addGroup = async () => {
     const number = Math.max(0, ...groups.map((group) => group.number)) + 1
     // Vorgemerkt wie jeder andere Handgriff – ein zweiter Klick legt die
@@ -249,6 +320,24 @@ export function CleaningGroupsDialog({ onClose }: { onClose: () => void }) {
     >
       <div className="grid gap-5 lg:grid-cols-[minmax(0,1fr)_20rem]">
         <div>
+          {relabels.length > 0 && (
+            <div className="mb-3 flex flex-wrap items-center gap-3 rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-sm text-amber-900 dark:border-amber-800 dark:bg-amber-950 dark:text-amber-100">
+              <p className="min-w-0 flex-1">
+                {relabels.length === 1
+                  ? 'Bei einem Ehepaar steht der Mann zuerst'
+                  : `Bei ${relabels.length} Ehepaaren steht der Mann zuerst`}{' '}
+                – etwa «{relabels[0].from}».
+              </p>
+              <button
+                type="button"
+                className="btn-secondary btn-sm"
+                onClick={() => setReordering(true)}
+              >
+                <ArrowUpDown className="size-3.5" aria-hidden />
+                Frau zuerst
+              </button>
+            </div>
+          )}
           {ordered.length === 0 && (
             <p className="hint mt-0 mb-3">
               Noch keine Gruppen. Die Liste der Gemeinde lässt sich unter «Einstellungen › Importe ›
@@ -286,8 +375,10 @@ export function CleaningGroupsDialog({ onClose }: { onClose: () => void }) {
                 Nicht eingeteilt <span className="text-slate-400">({unassigned.length})</span>
               </h3>
               <p className="hint mt-0.5">
-                Aktive Mitglieder ohne Gruppe{withMinors ? '' : ', ab 18 Jahren'}. Für Ehepaare beim
-                Eintrag «Mitglied hinzufügen» wählen.
+                {everyone
+                  ? 'Alle aktiven Mitglieder ohne Gruppe.'
+                  : 'Aktive Mitglieder ohne Gruppe, ab 18 Jahren. Wer bei eingeteilten Eltern wohnt, fehlt – die Eltern stehen für den Haushalt.'}{' '}
+                Für Ehepaare beim Eintrag «Mitglied hinzufügen» wählen.
               </p>
               <div className="relative mt-2">
                 <Search
@@ -306,10 +397,13 @@ export function CleaningGroupsDialog({ onClose }: { onClose: () => void }) {
                 <input
                   type="checkbox"
                   className="size-3.5 rounded"
-                  checked={withMinors}
-                  onChange={(event) => setWithMinors(event.target.checked)}
+                  checked={everyone}
+                  onChange={(event) => setEveryone(event.target.checked)}
                 />
-                Auch Kinder und Jugendliche
+                <span>
+                  Auch Kinder und wer bei den Eltern wohnt
+                  {hiddenCount > 0 && <span className="text-slate-400"> ({hiddenCount})</span>}
+                </span>
               </label>
             </div>
             <ul className="divide-list max-h-[28rem] overflow-y-auto">
@@ -322,9 +416,15 @@ export function CleaningGroupsDialog({ onClose }: { onClose: () => void }) {
                 <li key={member.id} className="flex items-center gap-2 px-3 py-2">
                   <div className="min-w-0 flex-1">
                     <p className="truncate text-sm">{memberName(member)}</p>
-                    {birthYear(member) && (
+                    {(birthYear(member) || atHome.has(member.id)) && (
                       <p className="text-xs text-slate-500 dark:text-slate-400">
-                        {birthYear(member)}
+                        {[
+                          birthYear(member),
+                          atHome.has(member.id) &&
+                            `bei den Eltern in Gruppe ${atHome.get(member.id)}`,
+                        ]
+                          .filter(Boolean)
+                          .join(' · ')}
                       </p>
                     )}
                   </div>
@@ -350,6 +450,22 @@ export function CleaningGroupsDialog({ onClose }: { onClose: () => void }) {
           </div>
         </aside>
       </div>
+
+      {reordering && relabels.length > 0 && (
+        <ConfirmDialog
+          open
+          onClose={() => setReordering(false)}
+          onConfirm={() => {
+            setReordering(false)
+            void applyWifeFirst()
+          }}
+          title="Frau zuerst?"
+          message={`${
+            relabels.length === 1 ? 'Ein Eintrag wird' : `${relabels.length} Einträge werden`
+          } umgestellt, etwa «${relabels[0].from}» zu «${relabels[0].to}». Im Putzplan ändern sich die Namen ab dieser Woche mit; vergangene Wochen bleiben, wie sie waren.`}
+          confirmLabel="Umstellen"
+        />
+      )}
 
       {removing && (
         <ConfirmDialog

@@ -4,12 +4,7 @@ import { useAuth } from '@/contexts/AuthContext'
 import { useToast } from '@/contexts/ToastContext'
 import { useCleaningReminder } from '@/hooks/useCleaningReminder'
 import { useNow } from '@/hooks/useNow'
-import {
-  cleaningGroupNumber,
-  groupOfMember,
-  responsibleEntry,
-  sortedGroups,
-} from '@/lib/cleaningGroups'
+import { cleaningGroupChoices, groupOfMember } from '@/lib/cleaningGroups'
 import {
   CLEANING_REMINDER_DAYS,
   DEFAULT_CLEANING_REMINDER,
@@ -29,30 +24,6 @@ import {
 } from '@/services/cleaningReminder'
 import { pushConfigured, pushDenied, pushSupported } from '@/services/push'
 import type { CleaningGroup, CleaningWeek } from '@/lib/types'
-
-/**
- * Die wählbaren Gruppen: aus der Einteilung, mit der zuständigen Familie
- * dahinter – und was der Plan sonst noch nennt, falls die Einteilung (noch)
- * fehlt.
- */
-function groupOptions(
-  groups: readonly CleaningGroup[],
-  weeks: readonly CleaningWeek[],
-): { number: number; label: string }[] {
-  const options = new Map<number, string>()
-  for (const group of sortedGroups(groups)) {
-    const responsible = responsibleEntry(group)?.label
-    options.set(
-      group.number,
-      responsible ? `Gruppe ${group.number} – ${responsible}` : `Gruppe ${group.number}`,
-    )
-  }
-  for (const week of weeks) {
-    const number = cleaningGroupNumber(week.group)
-    if (number !== null && !options.has(number)) options.set(number, `Gruppe ${number}`)
-  }
-  return [...options].sort((a, b) => a[0] - b[0]).map(([number, label]) => ({ number, label }))
-}
 
 /**
  * Die Erinnerung an die Putzwoche einrichten – auf diesem Gerät, ohne Konto.
@@ -87,7 +58,7 @@ export function CleaningReminderPanel({
   const { profile } = useAuth()
   const stored = useCleaningReminder()
   const now = useNow()
-  const options = useMemo(() => groupOptions(groups, weeks), [groups, weeks])
+  const options = useMemo(() => cleaningGroupChoices(groups, weeks), [groups, weeks])
   /** Die eigene Gruppe – wenn das Konto mit einem Mitglied verknüpft ist. */
   const own = profile?.memberId ? (groupOfMember(groups, profile.memberId)?.group.number ?? 0) : 0
 

@@ -91,9 +91,21 @@ type Theme = 'light' | 'dark' | 'system'
  * `forced` schlägt die Wahl der App vorübergehend: «Anti Doom» ist von
  * sich aus dunkel (siehe `useImpulseAppearance`). Die Wahl der App bleibt
  * daneben stehen und gilt wieder, sobald man den Bereich verlässt.
+ *
+ * `board` ist der Putzplan ohne Konto – das Anschlagbrett, zu dem der
+ * QR-Code auf dem Ausdruck führt. Er beginnt hell, wie das Blatt am Brett,
+ * auch auf einem Telefon im dunklen Modus. Wer dort umschaltet, behält
+ * seine Wahl; sie gilt nur für dieses Brett und lässt die übrige
+ * Darstellung des Geräts in Ruhe. Ein eigener Schlüssel ist nötig, weil
+ * `useLocalStorage` jeden Wert gleich beim ersten Mal speichert: Ob unter
+ * `bss:theme` «System» als Wahl oder als Voreinstellung steht, lässt sich
+ * nicht mehr unterscheiden.
  */
-export function useTheme(forced?: 'light' | 'dark' | null) {
-  const [theme, setTheme] = useLocalStorage<Theme>('bss:theme', 'system')
+export function useTheme(forced?: 'light' | 'dark' | null, board = false) {
+  const [appTheme, setAppTheme] = useLocalStorage<Theme>('bss:theme', 'system')
+  const [boardTheme, setBoardTheme] = useLocalStorage<Theme>('bss:putzplan:darstellung', 'light')
+  const theme = board ? boardTheme : appTheme
+  const setTheme = board ? setBoardTheme : setAppTheme
 
   /*
    * `useLayoutEffect`: Die Klasse sitzt, bevor das Bild steht. Nach dem

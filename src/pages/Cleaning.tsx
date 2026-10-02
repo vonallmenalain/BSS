@@ -3,6 +3,7 @@ import {
   Bell,
   BellRing,
   Brush,
+  CalendarPlus,
   CalendarRange,
   FileDown,
   Pencil,
@@ -18,6 +19,7 @@ import { useCleaningReminder } from '@/hooks/useCleaningReminder'
 import { useAllSacramentMeetings, useCleaningGroups, useCleaningWeeks } from '@/hooks/useFirestore'
 import { useLocalStorage } from '@/hooks/useLocalStorage'
 import { CleaningGenerateDialog } from '@/components/cleaning/CleaningGenerateDialog'
+import { CleaningCalendarDialog } from '@/components/cleaning/CleaningCalendarDialog'
 import { CleaningGroupDialog } from '@/components/cleaning/CleaningGroupDialog'
 import { CleaningGroupsDialog } from '@/components/cleaning/CleaningGroupsDialog'
 import { CleaningInstallCard } from '@/components/cleaning/CleaningInstallCard'
@@ -37,6 +39,7 @@ import {
   cleaningGroupsPdfFilename,
   cleaningPdf,
   cleaningPdfFilename,
+  cleaningPdfLayout,
   weeksInRange,
 } from '@/services/cleaningPdf'
 import { cleaningGroupNumber } from '@/lib/cleaningGroups'
@@ -72,7 +75,9 @@ type Scope = 'upcoming' | 'past' | 'all'
  * **Die Erinnerung gibt es für alle.** Über den Knopf «Erinnerung» lässt
  * sich jedes Gerät benachrichtigen, wenn eine Gruppe dran ist – ohne Konto,
  * und mit Konto in jeder Rolle (siehe `components/cleaning/
- * CleaningReminderPanel`). Wer ohne Konto liest, bekommt dazu den Hinweis,
+ * CleaningReminderPanel`). Ebenso für alle der Knopf «Kalender»: die
+ * Wochen einer Gruppe als Abo oder Datei im eigenen Kalender (siehe
+ * `CleaningCalendarDialog`). Wer ohne Konto liest, bekommt dazu den Hinweis,
  * den Putzplan als App zu installieren; installiert wird er unter eigenem
  * Namen und beginnt auf dieser Seite (`usePutzplanManifest`).
  */
@@ -92,6 +97,8 @@ export function Cleaning() {
   const [exportOpen, setExportOpen] = useState(false)
   /** Der Dialog «Erinnerung» – mit der Gruppe, aus deren Übersicht man kommt. */
   const [reminderFor, setReminderFor] = useState<{ group: number | null } | null>(null)
+  /** Der Dialog «Kalender» – ebenso mit der Gruppe aus der Übersicht. */
+  const [calendarFor, setCalendarFor] = useState<{ group: number | null } | null>(null)
   const reminder = useCleaningReminder()
   const remindable = pushConfigured()
 
@@ -203,6 +210,18 @@ export function Cleaning() {
                   <Bell className="size-4" aria-hidden />
                 )}
                 Erinnerung
+              </button>
+            )}
+            {/* Ebenso für alle: die Wochen einer Gruppe im eigenen Kalender. */}
+            {(weeks.length > 0 || groups.length > 0) && (
+              <button
+                type="button"
+                className="btn-secondary"
+                onClick={() => setCalendarFor({ group: null })}
+                title="Die Putzwochen einer Gruppe in Google Calendar oder Apple Kalender"
+              >
+                <CalendarPlus className="size-4" aria-hidden />
+                Kalender
               </button>
             )}
             {editable && (
@@ -374,6 +393,10 @@ export function Cleaning() {
                 }
               : undefined
           }
+          onCalendar={(number) => {
+            setGroupShown(null)
+            setCalendarFor({ group: number })
+          }}
         />
       )}
       {reminderFor && (
@@ -382,6 +405,14 @@ export function Cleaning() {
           weeks={weeks}
           initialGroup={reminderFor.group}
           onClose={() => setReminderFor(null)}
+        />
+      )}
+      {calendarFor && (
+        <CleaningCalendarDialog
+          groups={groups}
+          weeks={weeks}
+          initialGroup={calendarFor.group}
+          onClose={() => setCalendarFor(null)}
         />
       )}
     </>
@@ -428,7 +459,10 @@ function usePutzplanManifest(active: boolean) {
  *
  * Dazu ein Haken für die Adresse des Plans samt QR-Code: Wer vor dem
  * Anschlagbrett steht, hat den Plan damit auch auf dem Telefon – und dort
- * immer den neusten Stand. Das Gerät merkt sich die Wahl.
+ * immer den neusten Stand. Und einer für «auf 1 Seite»: Alles kommt auf ein
+ * Blatt, die Schrift so klein wie nötig. Ohne ihn bleibt das Blatt, wie es
+ * war; wie viele Seiten es dann werden, steht unter dem Zeitraum. Das Gerät
+ * merkt sich beide Haken.
  *
  * Die Sonntage braucht der Grund hinter einer doppelten Woche: Steht dort
  * eine Pfahlkonferenz, steht sie auch auf dem Blatt.
@@ -452,6 +486,7 @@ function CleaningExport({
   const toast = useToast()
   const { data: sundays } = useAllSacramentMeetings()
   const [withLink, setWithLink] = useLocalStorage('bss:putzplan:pdf-link', false)
+  const [onePage, setOnePage] = useLocalStorage('bss:putzplan:pdf-eine-seite', false)
   // Ohne Plan, aber mit Einteilung gibt es nur die Einteilung zu exportieren.
   const [what, setWhat] = useState<'plan' | 'groups'>(weeks.length > 0 ? 'plan' : 'groups')
   const today = toDateInput(new Date())
@@ -474,6 +509,23 @@ function CleaningExport({
 
   const valid = Boolean(from && to && from <= to)
   const count = valid ? weeksInRange(weeks, from, to).length : 0
+  /** Wie das Blatt ausfällt – Seiten und Schrift, bevor es entsteht. */
+  const layout = useMemo(
+    () =>
+      what === 'plan' && valid
+        ? cleaningPdfLayout({
+            weeks,
+            from,
+            to,
+            wardName: settings.wardName,
+            today,
+            sundays,
+            withLink,
+            onePage,
+          })
+        : null,
+    [what, valid, weeks, from, to, settings.wardName, today, sundays, withLink, onePage],
+  )
 
   const download = () => {
     if (what === 'groups') {
@@ -501,6 +553,7 @@ function CleaningExport({
       today,
       sundays,
       withLink,
+      onePage,
     })
     if (!bytes) {
       toast.error('In diesem Zeitraum steht keine Woche im Plan.')
@@ -609,10 +662,29 @@ function CleaningExport({
             <p className="hint mt-0">
               {!valid
                 ? 'Das Ende liegt vor dem Anfang.'
-                : count === 0
+                : count === 0 || !layout
                   ? 'In diesem Zeitraum steht keine Woche im Plan.'
-                  : `${count} ${count === 1 ? 'Woche' : 'Wochen'} kommen aufs Blatt.`}
+                  : `${count} ${count === 1 ? 'Woche' : 'Wochen'} kommen aufs Blatt – ${
+                      layout.pages === 1 ? '1 Seite' : `${layout.pages} Seiten`
+                    }.`}
             </p>
+
+            <label className="flex cursor-pointer items-start gap-3">
+              <input
+                type="checkbox"
+                className="mt-0.5 size-4 rounded"
+                checked={onePage}
+                onChange={(event) => setOnePage(event.target.checked)}
+              />
+              <span>
+                <span className="text-sm font-medium">Auf 1 Seite darstellen</span>
+                <span className="hint mt-0.5 block">
+                  {onePage && layout
+                    ? onePageHint(layout)
+                    : 'Alles auf ein Blatt – je mehr Wochen, desto kleiner die Schrift.'}
+                </span>
+              </span>
+            </label>
           </>
         )}
 
@@ -634,6 +706,18 @@ function CleaningExport({
       </div>
     </Modal>
   )
+}
+
+/** Was «auf 1 Seite» aus der Auswahl macht – Schrift und Anordnung. */
+function onePageHint(layout: { pages: number; bodySize: number; sideBySide: boolean }): string {
+  const size = layout.bodySize.toLocaleString('de-CH')
+  if (layout.pages > 1) {
+    return `So viele Wochen passen nicht einmal mit ${size} Punkt auf eine Seite – es werden ${layout.pages}.`
+  }
+  if (layout.bodySize >= 10.5 && !layout.sideBySide) {
+    return 'Passt in der gewohnten Schriftgrösse auf eine Seite.'
+  }
+  return `Schrift ${size} statt 10.5 Punkt${layout.sideBySide ? ', in zwei Hälften nebeneinander' : ''}.`
 }
 
 /** Die Datei im Browser speichern – wie die Sicherung unter «Einstellungen». */

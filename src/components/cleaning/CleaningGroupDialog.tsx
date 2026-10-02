@@ -1,5 +1,5 @@
 import type { ReactNode } from 'react'
-import { Bell, CalendarClock, CalendarRange, Home, Users } from 'lucide-react'
+import { Bell, CalendarClock, CalendarPlus, CalendarRange, Home, Users } from 'lucide-react'
 import { Modal } from '@/components/ui/Modal'
 import { cleaningGroupName, cleaningGroupNumber, responsibleEntry } from '@/lib/cleaningGroups'
 import { cn } from '@/lib/utils'
@@ -30,7 +30,8 @@ function untilLabel(startDate: string, today: string): string {
  * Die Übersicht einer Putzgruppe – für alle, die den Putzplan öffnen.
  *
  * Oben, wer zuständig ist; darunter, wann die Gruppe das nächste Mal dran
- * ist und wer dazugehört; zuletzt die kommenden Termine. Die Namen stehen,
+ * ist, wie viele Haushalte sie zählt und wer dazugehört; zuletzt die
+ * kommenden Termine. Die Namen stehen,
  * wie sie in der Einteilung stehen («Bader Roger & Sylvie») – das
  * Mitgliederverzeichnis braucht es dafür nicht, und es bleibt zu.
  *
@@ -38,8 +39,9 @@ function untilLabel(startDate: string, today: string): string {
  * steht, gehört dazu – auch die zweite Woche um eine Konferenz, mit ihrem
  * Grund.
  *
- * Zuunterst der kurze Weg zur Erinnerung: Wer nachschaut, wann die eigene
- * Gruppe dran ist, will es meist auch nicht vergessen.
+ * Zuunterst die kurzen Wege zur Erinnerung und in den eigenen Kalender:
+ * Wer nachschaut, wann die eigene Gruppe dran ist, will es meist auch nicht
+ * vergessen.
  */
 export function CleaningGroupDialog({
   number,
@@ -48,6 +50,7 @@ export function CleaningGroupDialog({
   today,
   onClose,
   onRemind,
+  onCalendar,
 }: {
   number: number
   weeks: readonly CleaningWeek[]
@@ -57,6 +60,8 @@ export function CleaningGroupDialog({
   onClose: () => void
   /** Die Erinnerung für diese Gruppe einrichten – fehlt, wo es keine gibt. */
   onRemind?: (number: number) => void
+  /** Die Wochen dieser Gruppe in den eigenen Kalender holen. */
+  onCalendar?: (number: number) => void
 }) {
   const group = groups.find((entry) => entry.number === number) ?? null
   const own = weeks
@@ -87,14 +92,13 @@ export function CleaningGroupDialog({
           </p>
         </section>
 
-        {/* Am Telefon der nächste Einsatz über die ganze Breite, die beiden
-            Zahlen darunter nebeneinander. */}
-        <div className="grid grid-cols-2 gap-2 sm:grid-cols-3">
+        {/* Der nächste Einsatz breit, daneben die Zahl der Haushalte. */}
+        <div className="grid grid-cols-3 gap-2">
           <Tile
             icon={CalendarClock}
             label={current ? 'Diese Woche dran' : 'Nächster Einsatz'}
             highlight={Boolean(current)}
-            className="col-span-2 sm:col-span-1"
+            className="col-span-2"
           >
             {current ? (
               <>
@@ -117,9 +121,6 @@ export function CleaningGroupDialog({
                 Noch nicht im Plan
               </span>
             )}
-          </Tile>
-          <Tile icon={CalendarRange} label="Kommende Einsätze">
-            <span className="tabular text-2xl">{upcoming.length}</span>
           </Tile>
           <Tile icon={Home} label="Haushalte">
             <span className="tabular text-2xl">{households}</span>
@@ -182,15 +183,21 @@ export function CleaningGroupDialog({
           )}
         </section>
 
-        {onRemind && (
-          <button
-            type="button"
-            className="btn-secondary w-full sm:w-auto"
-            onClick={() => onRemind(number)}
-          >
-            <Bell className="size-4" aria-hidden />
-            Erinnern, wenn {cleaningGroupName(number)} dran ist
-          </button>
+        {(onRemind || onCalendar) && (
+          <div className="flex flex-col gap-2 sm:flex-row sm:flex-wrap">
+            {onRemind && (
+              <button type="button" className="btn-secondary" onClick={() => onRemind(number)}>
+                <Bell className="size-4" aria-hidden />
+                Erinnern, wenn {cleaningGroupName(number)} dran ist
+              </button>
+            )}
+            {onCalendar && (
+              <button type="button" className="btn-secondary" onClick={() => onCalendar(number)}>
+                <CalendarPlus className="size-4" aria-hidden />
+                Im Kalender eintragen
+              </button>
+            )}
+          </div>
         )}
       </div>
     </Modal>

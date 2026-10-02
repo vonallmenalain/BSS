@@ -199,9 +199,10 @@ Ohne diesen Wert läuft die App vollständig – nur der Kalender antwortet mit
 einer Fehlermeldung, der Link für alle wie die vergebenen.
 
 Dasselbe Dienstkonto braucht der Versand der
-[Benachrichtigungen](#benachrichtigungen) und die Anmeldung zur
-Putzplan-Erinnerung (`netlify/functions/putzplan-erinnerung.mts`); ohne es
-bleiben beide still.
+[Benachrichtigungen](#benachrichtigungen), die Anmeldung zur
+Putzplan-Erinnerung (`netlify/functions/putzplan-erinnerung.mts`) und der
+Kalender des Putzplans (`netlify/functions/putzplan-ics.mts`); ohne es bleiben
+die ersten beiden still, und der Kalender antwortet mit einer Fehlermeldung.
 
 ---
 
@@ -339,6 +340,12 @@ Ohne Token kommt der ganze Plan; ein unbekanntes oder widerrufenes Token
 bekommt `404`, ein gültiges den Kalender als `text/calendar`. In der
 Produktion ist die Variable nicht gesetzt, und dann führt kein Weg am
 Dienstkonto vorbei.
+
+Der Kalender des Putzplans geht genauso, je Gruppe:
+
+```bash
+curl "http://localhost:8888/.netlify/functions/putzplan-ics?gruppe=5"
+```
 
 ---
 
@@ -1599,8 +1606,9 @@ Sonntag bis Samstag. Der Plan steht als Liste der Wochen da – mit der laufende
 Woche hervorgehoben und, ganz oben, den zwei Zeilen für den nächsten Sonntag:
 wem gedankt wird und wer als Nächstes an der Reihe ist. Mit Vollzugriff stehen
 oben rechts drei Knöpfe: **Gruppeneinteilung**, **Generieren** und **Export**.
-Für alle – mit und ohne Konto – steht daneben **Erinnerung** (siehe
-[«Erinnerung und App»](#erinnerung-und-app)).
+Für alle – mit und ohne Konto – stehen daneben **Erinnerung** und **Kalender**
+(siehe [«Erinnerung und App»](#erinnerung-und-app) und [«Putzwochen im eigenen
+Kalender»](#putzwochen-im-eigenen-kalender)).
 
 ### Die Gruppeneinteilung
 
@@ -1611,14 +1619,38 @@ Liste einmal aus dem PDF der Gemeinde ([Putzgruppen
 importieren](#putzgruppen-importieren)); gepflegt wird sie seither hier.
 
 Jeder Eintrag ist mit den **aktiven Mitgliedern** verknüpft, die dazugehören.
-Neben den Gruppen steht, wer unter den aktiven Mitgliedern ab 18 Jahren noch in
-keiner Gruppe ist (auf Wunsch auch Kinder und Jugendliche) – mit einem Griff
-einer Gruppe zuzuteilen. Ein Eintrag lässt sich bearbeiten: Bezeichnung,
+Neben den Gruppen steht unter **Nicht eingeteilt**, wer unter den aktiven
+Mitgliedern ab 18 Jahren noch in keiner Gruppe ist – mit einem Griff einer
+Gruppe zuzuteilen. Ein Eintrag lässt sich bearbeiten: Bezeichnung,
 verknüpfte Mitglieder (Suche über alle aktiven), Gruppe; dazu **Zuständig
 machen** und **Entfernen**. «Aus den Mitgliedern» bildet die Bezeichnung neu,
 etwa nach einer Heirat. Jede Person steht höchstens einmal in der Einteilung:
 Wer einem Eintrag zugeordnet wird, verschwindet aus einem früheren. Gruppen
 lassen sich hinzufügen und – leer – entfernen.
+
+**Wer bei den Eltern wohnt**, fehlt unter «Nicht eingeteilt»: Ein Haushalt
+steht einmal in der Einteilung, die Eltern genügen. Erkannt wird das an drei
+Dingen zusammen – dieselbe Postadresse (Strasse und PLZ aus dem
+Mitgliederverzeichnis), ein gemeinsamer Nachname und mindestens 16 Jahre
+Altersunterschied zu einem eingeteilten Mitglied dort. Die Adresse allein
+genügt nicht: In einem Mehrfamilienhaus wohnen mehrere Familien unter derselben
+Hausnummer. Und erst der Altersunterschied macht aus «wohnt dort» ein «wohnt
+bei den Eltern» – ist die erwachsene Tochter eingeteilt, die Eltern aber nicht,
+stehen die Eltern weiter in der Liste, ebenso Geschwister und ein Ehepartner,
+der im Eintrag fehlt. Ohne Adresse oder Geburtsdatum bleibt eine Person
+sichtbar. Der Schalter «Auch Kinder und wer bei den Eltern wohnt» zeigt alle,
+mit dem Hinweis «bei den Eltern in Gruppe 3».
+
+**Frau zuerst.** Bei einem Ehepaar steht die Frau zuerst – «Bader Sylvie &
+Roger», bei verschiedenen Nachnamen «Meier Anna & Muster Hans». So bildet «Aus
+den Mitgliedern» die Bezeichnung, so stellt das Speichern eines Eintrags sie
+um, und so liest der [Import](#putzgruppen-importieren) die Liste ein.
+Getauscht wird nur, was sich den verknüpften Mitgliedern eindeutig zuordnen
+lässt: genau zwei Namen, der hintere gehört einer Frau, der vordere nicht.
+Alles andere bleibt, wie es dasteht. Was noch mit dem Mann zuerst eingetragen
+ist, meldet der Dialog oben, mit dem Knopf **Frau zuerst**: Ein Griff stellt
+alle diese Einträge um – und im Plan die Namen der Zuständigen ab der
+laufenden Woche; vergangene Wochen bleiben, wie sie waren.
 
 ### Generieren
 
@@ -1678,6 +1710,22 @@ Telefon, ohne Konto und immer im neusten Stand. Das Gerät merkt sich den
 Haken. Der Code zeigt fest auf die Adresse der App, auch wenn das PDF in einer
 Vorschau entsteht; ein halbes Jahr passt trotzdem weiterhin auf eine Seite.
 
+**Wie viele Seiten.** Unter dem Zeitraum steht, wie viele Seiten das Blatt mit
+der Auswahl ergibt – «22 Wochen kommen aufs Blatt – 1 Seite» –, bevor etwas
+heruntergeladen ist.
+
+**Auf 1 Seite.** Mit dem Haken «Auf 1 Seite darstellen» kommt alles auf ein
+Blatt, auch ein ganzes Jahr. Zuerst rücken die Zeilen enger zusammen – so
+passen gut zehn Wochen mehr noch in der gewohnten Schrift –, dann wird die
+Schrift kleiner, gerade so weit wie nötig und nie so, dass ein Name oder ein
+Datum abgeschnitten würde. Bliebe dabei weniger als 7 Punkt, stehen zwei
+Hälften nebeneinander, links die erste, rechts die zweite, mit kurzem Datum
+(«05.10.–10.10.26»); das ergibt wieder eine grössere Schrift. Ein Jahr steht
+so in etwa 7.5 Punkt untereinander, zwei Jahre in zwei Hälften ebenfalls in
+etwa 7.5 Punkt (normal: 10.5). Unter dem Haken steht, was herauskommt
+(«Schrift 7.5 statt 10.5 Punkt»). Ohne den Haken bleibt das Blatt, wie es war;
+das Gerät merkt sich auch diesen Haken.
+
 **Die Gruppeneinteilung.** Oben im Dialog lässt sich statt des Plans die
 **Gruppeneinteilung** wählen: alle Gruppen auf einem Blatt, je Gruppe wer
 dazugehört, der zuständige Haushalt **fett** zuoberst – wie die Liste der
@@ -1696,7 +1744,14 @@ Kilobyte klein.
 
 **Jeder.** Der Plan steht unter `bss.alae.app/putzplan` offen – ohne Anmeldung
 und ohne Konto. Dorthin führt der QR-Code auf dem ausgedruckten Plan; ein
-Anschlagbrett, für das man sich anmelden muss, wird nicht gelesen.
+Anschlagbrett, für das man sich anmelden muss, wird nicht gelesen. Auf der
+Anmeldeseite führt **Putzplan ansehen** hierher, gleich unter «Aktivitätenplan
+der AP’s ansehen».
+
+Ohne Konto beginnt die Seite **hell**, wie das Blatt am Brett – auch auf einem
+Telefon, das sonst dunkel eingestellt ist. Wer oben umschaltet, behält seine
+Wahl für dieses Brett (`bss:putzplan:darstellung`); die übrige Darstellung des
+Geräts bleibt davon unberührt, und angemeldete Konten behalten ihre eigene.
 
 Es ist dieselbe Adresse für alle. Wer mit Vollzugriff angemeldet ist, sieht die
 Seite wie bisher: oben die Karte für den nächsten Sonntag (wem gedankt wird,
@@ -1712,8 +1767,9 @@ oder noch wartend – sehen die Ansicht fürs Anschlagbrett:
 
 Ein Antippen – einer Woche oder der Namen ganz oben – öffnet die **Übersicht
 der Gruppe**: zuoberst, wer zuständig ist, darunter der nächste Einsatz (mit
-«in 3 Wochen»), die Zahl der kommenden Einsätze, wer dazugehört und die
-kommenden Termine samt dem Grund einer doppelten Woche.
+«in 3 Wochen») und die Zahl der Haushalte, wer dazugehört und die kommenden
+Termine samt dem Grund einer doppelten Woche; zuunterst die Wege zur
+Erinnerung und in den eigenen Kalender.
 
 Ändern, Export und die Sonntagskarte fehlen dort. Oben rechts steht statt des
 Benutzermenüs der Knopf **Anmelden**, in der Kopfzeile «Putzplan» statt des
@@ -1768,6 +1824,40 @@ iOS 16.4). Im Safari-Tab sagt der Dialog das und zeigt, wie es geht.
 über die das Gerät Nachrichten empfängt. Kein Name, keine Kennung einer Person.
 Wie die Anmeldung ohne Konto läuft, steht unter [«Wie es technisch
 läuft»](#wie-es-technisch-läuft).
+
+### Putzwochen im eigenen Kalender
+
+Über dem Plan steht für alle der Knopf **Kalender**, und die Übersicht einer
+Gruppe führt mit «Im Kalender eintragen» dorthin. Gewählt wird die Gruppe –
+vorbelegt die aus der Übersicht, sonst die der Erinnerung auf diesem Gerät,
+sonst die eigene aus der Einteilung. Jede Putzwoche steht als **ein
+ganztägiger Termin von Montag bis Samstag** im Kalender, «Putzwoche Gruppe 5»;
+in der Beschreibung stehen, wer zuständig ist, der Grund einer doppelten Woche
+und der Link zum Plan. Der Termin belegt keine Zeit – sonst wäre man die ganze
+Woche als beschäftigt eingetragen.
+
+Zwei Wege, und der erste ist der empfohlene:
+
+- **Abonnieren** – bleibt aktuell. Google und Apple holen die Termine unter der
+  Adresse immer wieder selbst; wird der Plan neu generiert oder eine Woche
+  getauscht, zieht der Kalender von selbst nach. «Apple Kalender» öffnet am
+  iPhone und am Mac den Kalender mit der Frage nach dem Abo (webcal), «Google
+  Calendar» öffnet Google mit derselben Frage; die Adresse lässt sich auch
+  kopieren, etwa für Outlook. Wann ein Kalender nachsieht, bestimmt er selbst –
+  Google meist alle paar Stunden, manchmal seltener.
+- **Einmalig herunterladen** – die bekannten Wochen ab heute als Datei
+  (`.ics`), für Kalender ohne Abo oder wer die Termine lieber fest eingetragen
+  hat. Das ist eine Kopie: Ändert sich der Plan, ändern sich diese Termine
+  nicht mit.
+
+Die Adresse je Gruppe ist
+`bss.alae.app/.netlify/functions/putzplan-ics?gruppe=5`, ohne Anmeldung und
+ohne Token – der Plan steht ohnehin jedem offen, ein Geheimnis in der Adresse
+schützte nichts. Die Function (`netlify/functions/putzplan-ics.mts`) liest mit
+dem Dienstkonto allein den Putzplan – drei Monate zurück, zwei Jahre voraus –
+und den Namen der Gemeinde, und sie merkt sich einen gebauten Kalender je
+Gruppe zehn Minuten. Die Termine tragen im Abo wie in der Datei dieselbe
+Kennung, je Woche und Gruppe (`lib/cleaningIcs`).
 
 ### Die Ansage am Sonntag
 
@@ -2901,7 +2991,9 @@ Sylvie» Roger und Sylvie Bader, «Den Brower Ruud und Astrid» beiden Den Browe
 («Morales-Römer» und «Römer»), ein fehlender Buchstabe am Ende eines Vornamens
 und ausgeschriebene Umlaute finden ebenfalls zusammen. Was mehrdeutig oder
 unbekannt bleibt, zeigt die Vorschau als «nicht zugeordnet»; verknüpft wird es
-danach unter **Putzplan → Gruppeneinteilung**. Der Import ersetzt die ganze
+danach unter **Putzplan → Gruppeneinteilung**. Bei einem Ehepaar steht danach
+die Frau zuerst – «Bader Roger & Sylvie» wird «Bader Sylvie & Roger» (siehe
+[Die Gruppeneinteilung](#die-gruppeneinteilung)). Der Import ersetzt die ganze
 Einteilung.
 
 ---

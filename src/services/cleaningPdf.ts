@@ -1,7 +1,14 @@
 // Mit Dateiendung, damit sich das Modul auch ohne Bundler ausführen lässt
 // (`node --test`). Vite und TypeScript lösen das genauso auf.
 import { sortedGroups } from '../lib/cleaningGroups.ts'
-import { tablePdf, type PdfCell, type PdfLink } from '../lib/pdf.ts'
+import {
+  tableLayout,
+  tablePdf,
+  type PdfCell,
+  type PdfColumn,
+  type PdfLink,
+  type PdfTable,
+} from '../lib/pdf.ts'
 import { qrCode } from '../lib/qr.ts'
 import { sundayProgram, type StoredSunday } from '../lib/sunday.ts'
 import type { CleaningGroup, CleaningWeek } from '../lib/types.ts'
@@ -15,6 +22,10 @@ import type { CleaningGroup, CleaningWeek } from '../lib/types.ts'
  * Vorbeigehen lesen lassen. Mit einer Ausnahme: Ist eine Gruppe zwei Wochen
  * hintereinander dran, steht der Grund dahinter, «(Generalkonferenz)» –
  * sonst sähe es nach einem Fehler im Plan aus (siehe `repeatReasons`).
+ *
+ * Auf Wunsch kommt alles auf eine Seite, auch ein ganzes Jahr: Die Schrift
+ * wird dann so klein wie nötig, und bei sehr vielen Wochen stehen zwei
+ * Hälften nebeneinander (siehe `cleaningTable`).
  *
  * Daneben die Gruppeneinteilung als PDF – im selben Export-Dialog, aufgebaut
  * wie die Liste der Gemeinde (siehe `cleaningGroupsPdf`).
@@ -95,6 +106,13 @@ export function cleaningPeriod(week: Pick<Week, 'startDate' | 'endDate'>): strin
   const [, startMonth, startDay] = week.startDate.split('-')
   const [endYear, endMonth, endDay] = week.endDate.split('-')
   return `${startDay}.${startMonth}. – ${endDay}.${endMonth}.${endYear}`
+}
+
+/** «05.10.–10.10.26» – kurz, für zwei Hälften nebeneinander. */
+export function cleaningPeriodShort(week: Pick<Week, 'startDate' | 'endDate'>): string {
+  const [, startMonth, startDay] = week.startDate.split('-')
+  const [endYear, endMonth, endDay] = week.endDate.split('-')
+  return `${startDay}.${startMonth}.–${endDay}.${endMonth}.${endYear.slice(-2)}`
 }
 
 /** «Gruppe 2» → «2». Was keine Nummer trägt, bleibt, wie es ist. */
@@ -228,18 +246,20 @@ export function repeatReasons(
  * Je Woche eine Zeile: Woche, Datum, wer an der Reihe ist, Gruppe.
  *
  * Wiederholt eine Woche die vorige, steht der Grund grau in Klammern hinter
- * den Namen (`reasons`, siehe `repeatReasons`).
+ * den Namen (`reasons`, siehe `repeatReasons`). `short` kürzt das Datum –
+ * für zwei Hälften nebeneinander.
  */
 export function cleaningRows(
   weeks: Week[],
   reasons: ReadonlyMap<string, string> = new Map(),
+  short = false,
 ): PdfCell[][] {
   return weeks.map((week) => {
     const team = week.team.trim() || '–'
     const reason = reasons.get(week.startDate)
     return [
       String(cleaningWeekNumber(week)),
-      cleaningPeriod(week),
+      short ? cleaningPeriodShort(week) : cleaningPeriod(week),
       reason ? { text: team, aside: `(${reason})` } : team,
       groupNumber(week.group) || '–',
     ]
@@ -267,16 +287,68 @@ export interface CleaningPdfOptions {
   sundays?: readonly CleaningSunday[]
   /** Unten auf jeder Seite die Adresse des Plans samt QR-Code */
   withLink?: boolean
+  /** Alles auf eine Seite – die Schrift so klein wie nötig (siehe `cleaningTable`) */
+  onePage?: boolean
 }
 
 /**
- * Das PDF – oder `null`, wenn im Zeitraum keine Woche liegt.
+ * Die Spalten des Plans. «An der Reihe» so breit, dass auch der längste
+ * Name der Gemeinde samt «(Generalkonferenz)» auf eine Zeile passt.
+ */
+const PLAN_COLUMNS: PdfColumn[] = [
+  { label: 'Woche', width: 1, align: 'center' },
+  { label: 'Datum', width: 2.4 },
+  { label: 'An der Reihe', width: 5.5 },
+  { label: 'Gruppe', width: 1.1, align: 'center' },
+]
+
+/**
+ * Dieselben Spalten für eine Hälfte, wenn zwei nebeneinanderstehen – mit
+ * kurzen Köpfen und dem kurzen Datum (`cleaningPeriodShort`), damit für die
+ * Namen möglichst viel Platz bleibt.
+ */
+const HALF_COLUMNS: PdfColumn[] = [
+  { label: 'KW', width: 0.95, align: 'center' },
+  { label: 'Datum', width: 3.05 },
+  { label: 'An der Reihe', width: 5.1 },
+  { label: 'Gr.', width: 0.9, align: 'center' },
+]
+
+/**
+ * Die Zeilen in zwei Hälften nebeneinander – links die erste Hälfte der
+ * Wochen, rechts die zweite. Gelesen wird wie in einer Zeitung: erst die
+ * linke Spalte hinunter, dann die rechte.
+ */
+export function sideBySide(rows: readonly PdfCell[][], width: number): PdfCell[][] {
+  const half = Math.ceil(rows.length / 2)
+  return rows
+    .slice(0, half)
+    .map((left, index) => [...left, ...(rows[half + index] ?? Array<PdfCell>(width).fill(''))])
+}
+
+/**
+ * Untereinander bleibt es, solange die Schrift dabei mindestens 7 Punkt
+ * gross bleibt: Eine Spalte liest sich am ruhigsten, und kein Name bricht
+ * um. Erst darunter stehen zwei Hälften nebeneinander – und auch das nur,
+ * wenn die Schrift damit merklich grösser wird.
+ */
+const SINGLE_COLUMN_MIN = 7
+const SIDE_BY_SIDE_GAIN = 0.75
+
+/**
+ * Der Plan als Tabelle – oder `null`, wenn im Zeitraum keine Woche liegt.
  *
  * Über der Tabelle steht nur der Name der Gemeinde. Der Zeitraum steht in
  * der Tabelle selbst, ein zweites Mal darüber wäre er bloss im Weg; in den
  * Eigenschaften der Datei steht er trotzdem, dort hilft er beim Wiederfinden.
+ *
+ * **Auf eine Seite** (`onePage`): Zuerst rücken die Zeilen enger zusammen,
+ * dann wird die Schrift kleiner, gerade so weit, dass alles Platz hat (siehe
+ * `fitToPage` in `lib/pdf`). Bei sehr vielen Wochen bliebe davon eine
+ * Schrift, die niemand mehr liest – dann stehen zwei Hälften nebeneinander,
+ * links die erste, rechts die zweite (siehe `SINGLE_COLUMN_MIN`).
  */
-export function cleaningPdf(options: CleaningPdfOptions): Uint8Array | null {
+function cleaningTable(options: CleaningPdfOptions): PdfTable | null {
   const weeks = weeksInRange(options.weeks, options.from, options.to)
   if (weeks.length === 0) return null
 
@@ -288,24 +360,55 @@ export function cleaningPdf(options: CleaningPdfOptions): Uint8Array | null {
   const range = `${longDate(first)} – ${longDate(last)}`
   // «Gemeinde» ist die Voreinstellung und sagt auf dem Blatt nichts.
   const ward = options.wardName?.trim()
+  const reasons = repeatReasons(options.weeks, options.sundays)
+  const rows = cleaningRows(weeks, reasons)
 
-  return tablePdf({
+  const single: PdfTable = {
     title: 'Putzplan',
     subtitle: ward && ward !== 'Gemeinde' ? ward : undefined,
     documentTitle: `Putzplan ${range}`,
-    // «An der Reihe» so breit, dass auch der längste Name der Gemeinde samt
-    // «(Generalkonferenz)» auf eine Zeile passt.
-    columns: [
-      { label: 'Woche', width: 1, align: 'center' },
-      { label: 'Datum', width: 2.4 },
-      { label: 'An der Reihe', width: 5.5 },
-      { label: 'Gruppe', width: 1.1, align: 'center' },
-    ],
-    rows: cleaningRows(weeks, repeatReasons(options.weeks, options.sundays)),
+    columns: PLAN_COLUMNS,
+    rows,
     footer: `Stand: ${shortDate(options.today)}`,
     link: options.withLink ? planLink() : undefined,
     createdAt: options.createdAt,
-  })
+  }
+  if (!options.onePage) return single
+
+  const fitted: PdfTable = { ...single, fitToPage: true }
+  const one = tableLayout(fitted)
+  if (one.pages === 1 && one.bodySize >= SINGLE_COLUMN_MIN) return fitted
+
+  const halves: PdfTable = {
+    ...fitted,
+    columns: [
+      ...HALF_COLUMNS,
+      ...HALF_COLUMNS.map((column, index) => (index === 0 ? { ...column, divider: true } : column)),
+    ],
+    rows: sideBySide(cleaningRows(weeks, reasons, true), HALF_COLUMNS.length),
+  }
+  const two = tableLayout(halves)
+  if (two.pages !== one.pages) return two.pages < one.pages ? halves : fitted
+  return two.bodySize >= one.bodySize + SIDE_BY_SIDE_GAIN ? halves : fitted
+}
+
+/** Das PDF – oder `null`, wenn im Zeitraum keine Woche liegt (siehe `cleaningTable`). */
+export function cleaningPdf(options: CleaningPdfOptions): Uint8Array | null {
+  const table = cleaningTable(options)
+  return table ? tablePdf(table) : null
+}
+
+/**
+ * Wie das Blatt ausfällt, bevor es entsteht: wie viele Seiten, wie gross die
+ * Schrift (normal 10,5 Punkt) und ob zwei Hälften nebeneinanderstehen – für
+ * den Hinweis im Export. `null`, wenn im Zeitraum keine Woche liegt.
+ */
+export function cleaningPdfLayout(
+  options: CleaningPdfOptions,
+): { pages: number; bodySize: number; sideBySide: boolean } | null {
+  const table = cleaningTable(options)
+  if (!table) return null
+  return { ...tableLayout(table), sideBySide: table.columns.length > PLAN_COLUMNS.length }
 }
 
 /** Unten auf jeder Seite: die Adresse des Putzplans samt QR-Code. */

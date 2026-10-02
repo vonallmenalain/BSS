@@ -56,6 +56,8 @@ export interface PdfColumn {
   /** Anteil an der Tabellenbreite – die Anteile aller Spalten werden zusammengezählt */
   width: number
   align?: 'left' | 'right' | 'center'
+  /** Eine senkrechte Linie links der Spalte – trennt zwei Tabellen nebeneinander */
+  divider?: boolean
 }
 
 export interface PdfTable {
@@ -74,6 +76,11 @@ export interface PdfTable {
   documentTitle?: string
   /** Wann erstellt – für die Eigenschaften der Datei */
   createdAt?: Date
+  /**
+   * Alles auf eine Seite: Abstände und Schrift werden so weit verkleinert,
+   * bis die Tabelle auf eine Seite passt (siehe `fitMetrics`).
+   */
+  fitToPage?: boolean
 }
 
 /* ------------------------------------------------------------------ */
@@ -238,8 +245,18 @@ export function textWidth(text: string, font: PdfFont, size: number): number {
  * endet dann mit «…».
  */
 export function wrapText(text: string, font: PdfFont, size: number, width: number): string[] {
+  return wrapLines(text, font, size, width).lines
+}
+
+/** Wie `wrapText` – und ob dabei etwas gekürzt werden musste. */
+function wrapLines(
+  text: string,
+  font: PdfFont,
+  size: number,
+  width: number,
+): { lines: string[]; cut: boolean } {
   const words = text.trim().split(/\s+/).filter(Boolean)
-  if (words.length === 0) return ['']
+  if (words.length === 0) return { lines: [''], cut: false }
 
   const lines: string[] = []
   let current = ''
@@ -256,7 +273,11 @@ export function wrapText(text: string, font: PdfFont, size: number, width: numbe
 
   const kept = lines.slice(0, MAX_LINES)
   if (lines.length > MAX_LINES) kept[MAX_LINES - 1] = `${kept[MAX_LINES - 1]} …`
-  return kept.map((line) => fitText(line, font, size, width))
+  const fitted = kept.map((line) => fitText(line, font, size, width))
+  return {
+    lines: fitted,
+    cut: lines.length > MAX_LINES || fitted.some((line, index) => line !== kept[index]),
+  }
 }
 
 /** Kürzt einen Text mit «…», bis er in die Breite passt. */
@@ -303,11 +324,17 @@ function line(x1: number, y1: number, x2: number, y2: number, gray: number, widt
 }
 
 /** Wo ein Text der Breite `width` in seiner Zelle beginnt – links, rechts oder mittig. */
-function alignedX(cellX: number, cellWidth: number, width: number, column: PdfColumn) {
-  const inner = cellWidth - 2 * CELL_PAD_X
-  if (column.align === 'right') return cellX + CELL_PAD_X + inner - width
-  if (column.align === 'center') return cellX + CELL_PAD_X + (inner - width) / 2
-  return cellX + CELL_PAD_X
+function alignedX(
+  cellX: number,
+  cellWidth: number,
+  width: number,
+  column: PdfColumn,
+  padX: number,
+) {
+  const inner = cellWidth - 2 * padX
+  if (column.align === 'right') return cellX + padX + inner - width
+  if (column.align === 'center') return cellX + padX + (inner - width) / 2
+  return cellX + padX
 }
 
 /**
@@ -355,10 +382,10 @@ function spanFont(span: Span): PdfFont {
 }
 
 /** Wie breit die Stücke einer Zeile zusammen sind – mit einem Leerzeichen dazwischen. */
-function spansWidth(spans: Span[]): number {
+function spansWidth(spans: Span[], size: number): number {
   return spans.reduce(
     (sum, span, index) =>
-      sum + textWidth(index === 0 ? span.text : ` ${span.text}`, spanFont(span), BODY_SIZE),
+      sum + textWidth(index === 0 ? span.text : ` ${span.text}`, spanFont(span), size),
     0,
   )
 }
@@ -370,18 +397,81 @@ interface LaidOutRow {
 }
 
 /**
+ * Wie dicht die Tabelle gesetzt ist: Schrift und Zeilenabstand der Zeilen,
+ * die Luft in den Zellen und die Kopfzeile. Titel, Fusszeile und QR-Code
+ * bleiben immer gleich gross.
+ */
+interface Metrics {
+  body: number
+  line: number
+  padX: number
+  padY: number
+  head: number
+  headHeight: number
+}
+
+const NORMAL: Metrics = {
+  body: BODY_SIZE,
+  line: LINE_HEIGHT,
+  padX: CELL_PAD_X,
+  padY: CELL_PAD_Y,
+  head: HEAD_SIZE,
+  headHeight: HEAD_HEIGHT,
+}
+
+/** Kleiner wird die Schrift auch für «auf eine Seite» nicht – darunter liest es niemand mehr. */
+const MIN_BODY_SIZE = 4
+
+/**
+ * Von der gewohnten Tabelle bis zur engsten, der Reihe nach – für «auf eine
+ * Seite». Zuerst weicht die Luft zwischen den Zeilen, erst dann wird die
+ * Schrift kleiner, in Vierteln eines Punkts: So passen gut zehn Wochen mehr
+ * noch in der gewohnten Grösse aufs Blatt, und wo es mehr sind, nimmt die
+ * Schrift nur so weit ab, wie es sein muss.
+ */
+const DENSER: readonly Metrics[] = [
+  NORMAL,
+  ...[5, 4, 3, 2.5].map((padY) => ({ ...NORMAL, padY, line: BODY_SIZE * 1.2 })),
+  ...Array.from({ length: Math.round((BODY_SIZE - MIN_BODY_SIZE) / 0.25) }, (_, index) => {
+    const body = BODY_SIZE - (index + 1) * 0.25
+    return {
+      body,
+      line: body * 1.2,
+      padX: Math.max(3, body * 0.55),
+      padY: Math.max(1.25, body * 0.24),
+      head: Math.min(HEAD_SIZE, body * 0.92),
+      headHeight: Math.max(12, body * 2.1),
+    }
+  }),
+]
+
+/**
  * Die Zeilen einer Zelle.
  *
  * Der Zusatz hängt sich an die letzte Zeile, wenn er dort Platz hat –
  * sonst steht er als Ganzes darunter, statt mitten in der Klammer
  * umzubrechen. Eine Liste beginnt jeden Eintrag auf einer neuen Zeile; ein
  * langer Eintrag bricht für sich um.
+ *
+ * Muss dabei etwas gekürzt werden, hält `cut` das fest – «auf eine Seite»
+ * verkleinert dann weiter, statt Namen abzuschneiden.
  */
-function layoutCell(cell: PdfCell, width: number): Span[][] {
+function layoutCell(
+  cell: PdfCell,
+  width: number,
+  size: number,
+  cut: { value: boolean } = { value: false },
+): Span[][] {
+  const wrap = (text: string, font: PdfFont) => {
+    const result = wrapLines(text, font, size, width)
+    if (result.cut) cut.value = true
+    return result.lines
+  }
+
   if (typeof cell !== 'string' && 'lines' in cell) {
     const lines = cell.lines.flatMap((entry) => {
       const font: PdfFont = entry.bold ? 'bold' : 'regular'
-      return wrapText(entry.text, font, BODY_SIZE, width).map((line) => [
+      return wrap(entry.text, font).map((line) => [
         { text: line, muted: entry.muted === true, bold: entry.bold === true },
       ])
     })
@@ -390,22 +480,112 @@ function layoutCell(cell: PdfCell, width: number): Span[][] {
 
   const text = typeof cell === 'string' ? cell : cell.text
   const aside = typeof cell === 'string' ? '' : (cell.aside ?? '').trim()
-  const lines = wrapText(text, 'regular', BODY_SIZE, width).map((line) => [
-    { text: line, muted: false },
-  ])
+  const lines = wrap(text, 'regular').map((line) => [{ text: line, muted: false }])
   if (!aside) return lines
 
   const last = lines[lines.length - 1]
   const lastText = last[0].text
   if (!lastText) return [...lines.slice(0, -1), [{ text: aside, muted: true }]]
-  if (textWidth(`${lastText} ${aside}`, 'regular', BODY_SIZE) <= width) {
+  if (textWidth(`${lastText} ${aside}`, 'regular', size) <= width) {
     last.push({ text: aside, muted: true })
     return lines
   }
-  return [
-    ...lines,
-    ...wrapText(aside, 'regular', BODY_SIZE, width).map((line) => [{ text: line, muted: true }]),
-  ]
+  return [...lines, ...wrap(aside, 'regular').map((line) => [{ text: line, muted: true }])]
+}
+
+/** Die Spalten in Punkt – je Spalte Breite und linker Rand. */
+function columnFrame(table: PdfTable): { tableWidth: number; widths: number[]; starts: number[] } {
+  const tableWidth = PAGE_WIDTH - 2 * MARGIN_X
+  const totalShare = table.columns.reduce((sum, column) => sum + column.width, 0) || 1
+  const widths = table.columns.map((column) => (column.width / totalShare) * tableWidth)
+  const starts = widths.map((_, index) =>
+    widths.slice(0, index).reduce((sum, width) => sum + width, MARGIN_X),
+  )
+  return { tableWidth, widths, starts }
+}
+
+/** Wo die Kopfzeile der Tabelle beginnt – unter Titel und Untertitel. */
+function headerBottomOf(table: PdfTable): number {
+  return PAGE_HEIGHT - MARGIN_TOP - TITLE_SIZE - (table.subtitle ? 24 : 6) - 18
+}
+
+/**
+ * Die Zeilen gesetzt und auf Seiten verteilt: so viele je Seite, wie unter
+ * die Kopfzeile passen. `cut`, wenn irgendwo – in einer Zelle oder einem
+ * Spaltenkopf – etwas gekürzt werden musste.
+ */
+function paginate(table: PdfTable, metrics: Metrics): { pages: LaidOutRow[][]; cut: boolean } {
+  const { widths } = columnFrame(table)
+  const cut = {
+    value: table.columns.some(
+      (column, index) =>
+        textWidth(column.label, 'bold', metrics.head) > widths[index] - 2 * metrics.padX,
+    ),
+  }
+  const rows: LaidOutRow[] = table.rows.map((row) => {
+    const cells = table.columns.map((_, index) =>
+      layoutCell(row[index] ?? '', widths[index] - 2 * metrics.padX, metrics.body, cut),
+    )
+    const lines = Math.max(1, ...cells.map((cell) => cell.length))
+    return {
+      cells,
+      height: lines * metrics.line + 2 * metrics.padY - (metrics.line - metrics.body),
+    }
+  })
+
+  const top = headerBottomOf(table) - metrics.headHeight
+  // Mit QR-Code endet die Tabelle über ihm – samt seiner hellen Ruhezone.
+  const pageFloor = table.link ? QR_BOTTOM + QR_SIZE + 16 : MARGIN_BOTTOM + 18
+
+  const pages: LaidOutRow[][] = [[]]
+  let y = top
+  for (const row of rows) {
+    if (y - row.height < pageFloor && pages[pages.length - 1].length > 0) {
+      pages.push([])
+      y = top
+    }
+    pages[pages.length - 1].push(row)
+    y -= row.height
+  }
+  return { pages, cut: cut.value }
+}
+
+/**
+ * Wie dicht gesetzt werden muss, damit die Tabelle auf eine Seite passt –
+ * so wenig dicht wie möglich, und ohne dass etwas gekürzt wird: Ein Datum
+ * mit «…» wäre nicht leserlich, sondern verloren. Passt sie nicht einmal
+ * mit der kleinsten Schrift, bleibt es bei der und weiteren Seiten.
+ *
+ * Gesucht wird halbierend: Je dichter, desto weniger Platz braucht jede
+ * Zeile, und eine kleinere Schrift bricht nie öfter um.
+ */
+function fitMetrics(table: PdfTable): Metrics {
+  const fits = (metrics: Metrics) => {
+    const { pages, cut } = paginate(table, metrics)
+    return pages.length === 1 && !cut
+  }
+  let low = 0
+  let high = DENSER.length - 1
+  if (!fits(DENSER[high])) return DENSER[high]
+  while (low < high) {
+    const middle = Math.floor((low + high) / 2)
+    if (fits(DENSER[middle])) high = middle
+    else low = middle + 1
+  }
+  return DENSER[low]
+}
+
+function metricsOf(table: PdfTable): Metrics {
+  return table.fitToPage ? fitMetrics(table) : NORMAL
+}
+
+/**
+ * Wie das PDF ausfällt, ohne es zu erstellen: wie viele Seiten, in welcher
+ * Schriftgrösse – für den Hinweis im Export, bevor jemand herunterlädt.
+ */
+export function tableLayout(table: PdfTable): { pages: number; bodySize: number } {
+  const metrics = metricsOf(table)
+  return { pages: paginate(table, metrics).pages.length, bodySize: metrics.body }
 }
 
 /**
@@ -418,36 +598,11 @@ function layoutCell(cell: PdfCell, width: number): Span[][] {
  * letzten.
  */
 function renderPages(table: PdfTable): string[] {
-  const tableWidth = PAGE_WIDTH - 2 * MARGIN_X
-  const totalShare = table.columns.reduce((sum, column) => sum + column.width, 0) || 1
-  const widths = table.columns.map((column) => (column.width / totalShare) * tableWidth)
-  const starts = widths.map((_, index) =>
-    widths.slice(0, index).reduce((sum, width) => sum + width, MARGIN_X),
-  )
-
-  const rows: LaidOutRow[] = table.rows.map((row) => {
-    const cells = table.columns.map((_, index) =>
-      layoutCell(row[index] ?? '', widths[index] - 2 * CELL_PAD_X),
-    )
-    const lines = Math.max(1, ...cells.map((cell) => cell.length))
-    return { cells, height: lines * LINE_HEIGHT + 2 * CELL_PAD_Y - (LINE_HEIGHT - BODY_SIZE) }
-  })
-
-  const headerBottom = PAGE_HEIGHT - MARGIN_TOP - TITLE_SIZE - (table.subtitle ? 24 : 6) - 18
-  // Mit QR-Code endet die Tabelle über ihm – samt seiner hellen Ruhezone.
-  const pageFloor = table.link ? QR_BOTTOM + QR_SIZE + 16 : MARGIN_BOTTOM + 18
-
-  // Zeilen auf Seiten verteilen: so viele, wie unter die Kopfzeile passen.
-  const pages: LaidOutRow[][] = [[]]
-  let y = headerBottom - HEAD_HEIGHT
-  for (const row of rows) {
-    if (y - row.height < pageFloor && pages[pages.length - 1].length > 0) {
-      pages.push([])
-      y = headerBottom - HEAD_HEIGHT
-    }
-    pages[pages.length - 1].push(row)
-    y -= row.height
-  }
+  const { tableWidth, widths, starts } = columnFrame(table)
+  const metrics = metricsOf(table)
+  const { pages } = paginate(table, metrics)
+  const headerBottom = headerBottomOf(table)
+  const { body, line: lineHeight, padX, padY, head, headHeight } = metrics
 
   return pages.map((pageRows, pageIndex) => {
     const ops: string[] = []
@@ -462,43 +617,46 @@ function renderPages(table: PdfTable): string[] {
 
     // Kopfzeile der Tabelle
     const headTop = headerBottom
-    ops.push(fillRect(MARGIN_X, headTop - HEAD_HEIGHT, tableWidth, HEAD_HEIGHT, 0.92))
+    ops.push(fillRect(MARGIN_X, headTop - headHeight, tableWidth, headHeight, 0.92))
     table.columns.forEach((column, index) => {
-      const label = fitText(column.label, 'bold', HEAD_SIZE, widths[index] - 2 * CELL_PAD_X)
-      const x = alignedX(starts[index], widths[index], textWidth(label, 'bold', HEAD_SIZE), column)
-      ops.push(
-        drawText(x, headTop - HEAD_HEIGHT / 2 - HEAD_SIZE * 0.35, label, 'bold', HEAD_SIZE, 0.2),
-      )
+      const label = fitText(column.label, 'bold', head, widths[index] - 2 * padX)
+      const x = alignedX(starts[index], widths[index], textWidth(label, 'bold', head), column, padX)
+      ops.push(drawText(x, headTop - headHeight / 2 - head * 0.35, label, 'bold', head, 0.2))
     })
 
     // Die Zeilen – jede zweite leicht hinterlegt, dazwischen eine feine Linie
-    let rowTop = headTop - HEAD_HEIGHT
+    let rowTop = headTop - headHeight
     pageRows.forEach((row, rowIndex) => {
       const bottom = rowTop - row.height
       if (rowIndex % 2 === 1) ops.push(fillRect(MARGIN_X, bottom, tableWidth, row.height, 0.97))
       row.cells.forEach((cellLines, index) => {
         cellLines.forEach((spans, lineIndex) => {
-          const baseline = rowTop - CELL_PAD_Y - BODY_SIZE * 0.78 - lineIndex * LINE_HEIGHT
-          let x = alignedX(starts[index], widths[index], spansWidth(spans), table.columns[index])
+          const baseline = rowTop - padY - body * 0.78 - lineIndex * lineHeight
+          let x = alignedX(
+            starts[index],
+            widths[index],
+            spansWidth(spans, body),
+            table.columns[index],
+            padX,
+          )
           for (const span of spans) {
             if (span.text) {
               ops.push(
-                drawText(
-                  x,
-                  baseline,
-                  span.text,
-                  spanFont(span),
-                  BODY_SIZE,
-                  span.muted ? MUTED : INK,
-                ),
+                drawText(x, baseline, span.text, spanFont(span), body, span.muted ? MUTED : INK),
               )
             }
-            x += textWidth(`${span.text} `, spanFont(span), BODY_SIZE)
+            x += textWidth(`${span.text} `, spanFont(span), body)
           }
         })
       })
       ops.push(line(MARGIN_X, bottom, MARGIN_X + tableWidth, bottom, 0.85))
       rowTop = bottom
+    })
+
+    // Zwei Tabellen nebeneinander: eine Linie dazwischen, von der Kopfzeile
+    // bis zur letzten Zeile der Seite.
+    table.columns.forEach((column, index) => {
+      if (column.divider) ops.push(line(starts[index], rowTop, starts[index], headTop, 0.55, 0.75))
     })
 
     const pageLabel = `Seite ${pageIndex + 1} von ${pages.length}`
