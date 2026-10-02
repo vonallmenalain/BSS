@@ -198,6 +198,11 @@ base64 -w0 dienstkonto.json
 Ohne diesen Wert läuft die App vollständig – nur der Kalender antwortet mit
 einer Fehlermeldung, der Link für alle wie die vergebenen.
 
+Dasselbe Dienstkonto braucht der Versand der
+[Benachrichtigungen](#benachrichtigungen) und die Anmeldung zur
+Putzplan-Erinnerung (`netlify/functions/putzplan-erinnerung.mts`); ohne es
+bleiben beide still.
+
 ---
 
 ## Automatisches Ausrollen
@@ -1594,6 +1599,8 @@ Sonntag bis Samstag. Der Plan steht als Liste der Wochen da – mit der laufende
 Woche hervorgehoben und, ganz oben, den zwei Zeilen für den nächsten Sonntag:
 wem gedankt wird und wer als Nächstes an der Reihe ist. Mit Vollzugriff stehen
 oben rechts drei Knöpfe: **Gruppeneinteilung**, **Generieren** und **Export**.
+Für alle – mit und ohne Konto – steht daneben **Erinnerung** (siehe
+[«Erinnerung und App»](#erinnerung-und-app)).
 
 ### Die Gruppeneinteilung
 
@@ -1721,6 +1728,46 @@ bleibt zu wie bisher. Suchmaschinen nehmen die Seite nicht auf: Die ganze App
 ist für sie gesperrt (`robots.txt` und Kopfzeile). Durchgesetzt wird das in
 `firestore.rules`: Lesen darf den Plan jeder, ändern nur der Vollzugriff;
 `npm run test:rules` prüft beides.
+
+### Erinnerung und App
+
+**Erinnerung.** Über dem Plan steht für alle – mit und ohne Konto – der Knopf
+**Erinnerung**: eine Nachricht aufs Gerät, wenn eine Gruppe mit Putzen dran
+ist. Gefragt wird nur die **Gruppe**, der **Tag** (vom Samstag davor bis zum
+Samstag am Ende der Woche) und die **Uhrzeit** (halbe Stunden, Schweizer
+Zeit); vorbelegt ist der Samstag davor um 18:00. Darunter steht, wann die
+nächste Erinnerung tatsächlich kommt – am Plan gemessen, nicht beschrieben.
+Derselbe Weg führt aus der Übersicht einer Gruppe («Erinnern, wenn Gruppe 5
+dran ist»), und angemeldete Konten finden dieselbe Einstellung unter
+**Benachrichtigungen** – in jeder Rolle, auch als Assistenz. Ist ein Konto mit
+einem Mitglied verknüpft, steht dessen Gruppe aus der Einteilung schon da.
+
+Die Nachricht sagt, wer putzt und welche Woche: «Ab morgen putzt Gruppe 5»,
+darunter «4.–10. Oktober · zuständig: Bader Roger & Sylvie». Die zweite Woche
+um einen Sonntag ohne Versammlung heisst «Gruppe 5 putzt noch eine Woche» und
+trägt den Grund. Antippen öffnet den Putzplan.
+
+Die Erinnerung gehört dem **Gerät**, nicht einem Konto: eine je Gerät, ein- und
+ausschalten lässt sie sich jederzeit am selben Knopf. Wer die Benachrichtigungen
+seines Kontos ausschaltet, behält sie – und umgekehrt.
+
+**Als App.** Wer ohne Konto liest, sieht unter den Namen ganz oben den Hinweis
+**«Den Putzplan als App»**: mit dem Knopf **Installieren**, wo der Browser das
+erlaubt (Chrome, Edge, Android), auf dem iPhone mit der Anleitung (Teilen →
+«Zum Home-Bildschirm»). Installiert wird der Putzplan allein, unter eigenem
+Namen: Solange jemand ohne Konto die Seite liest, zeigt sie auf ein eigenes
+Manifest (`public/putzplan.webmanifest`), das auf `/putzplan` startet. Für
+Browser, die beim Manifest der App bleiben, beginnt die installierte App ohne
+Konto auf dem Anschlagbrett, das zuletzt offen war, statt bei der Anmeldung.
+Der Hinweis lässt sich wegklicken; das Gerät merkt es sich.
+
+Auf dem **iPhone** kommen Erinnerungen nur in der installierten App an (ab
+iOS 16.4). Im Safari-Tab sagt der Dialog das und zeigt, wie es geht.
+
+**Was dabei gespeichert wird.** Die Gruppe, Tag und Uhrzeit – und die Adresse,
+über die das Gerät Nachrichten empfängt. Kein Name, keine Kennung einer Person.
+Wie die Anmeldung ohne Konto läuft, steht unter [«Wie es technisch
+läuft»](#wie-es-technisch-läuft).
 
 ### Die Ansage am Sonntag
 
@@ -3479,13 +3526,17 @@ Pendenzen und Notizen.
 > sofort geht es, indem man sie einmal entfernt und neu zum Startbildschirm
 > hinzufügt.
 
+**Der Putzplan allein.** Ohne Konto lässt sich auch nur der Putzplan
+installieren, unter eigenem Namen und mit Start auf `/putzplan` – siehe
+[«Erinnerung und App»](#erinnerung-und-app).
+
 ---
 
 ## Benachrichtigungen
 
-Erreichbar über das Kürzel oben rechts → **«Benachrichtigungen»**. Alles an
-einem Ort, und der Aufbau folgt der einen Frage, die sich sonst niemand
-beantworten kann – «warum kommt bei mir nichts an?»:
+Erreichbar über das Kürzel oben rechts → **«Benachrichtigungen»**, für jedes
+Konto. Alles an einem Ort, und der Aufbau folgt der einen Frage, die sich sonst
+niemand beantworten kann – «warum kommt bei mir nichts an?»:
 
 **Zuoberst das Gerät.** Die Erlaubnis für Mitteilungen vergibt der Browser,
 nicht das Konto. Wer sie auf dem Telefon will und am Laptop nicht, meldet
@@ -3505,6 +3556,13 @@ Geräte:
 
 Standardmässig ist alles aus – eine Benachrichtigung soll man bestellen
 müssen, nicht abbestellen.
+
+**Zuunterst der Putzplan.** Die Erinnerung, wenn eine Gruppe mit Putzen dran
+ist, steht in jedem Konto – auch in einem, das sonst nichts bestellen kann,
+etwa der Assistenz. Sie gehört nicht zum Konto, sondern zum Gerät, und braucht
+den Schalter oben nicht: Es ist dieselbe Einstellung wie über dem Putzplan,
+wo sie auch ohne Anmeldung zu haben ist (siehe [«Erinnerung und
+App»](#erinnerung-und-app)).
 
 **«Nur wo ich eingetragen bin»** beschränkt die AP-Erinnerung auf die Termine,
 bei denen einer der eigenen Namen unter **Zuständig**, **Teilnahme
@@ -3547,6 +3605,34 @@ Service Worker der PWA nicht in die Quere kommt. Eingerichtet wird das Ganze
 mit dem **öffentlichen** VAPID-Schlüssel in `VITE_FIREBASE_VAPID_KEY` (siehe
 `.env.example`); versendet wird über das Dienstkonto in
 `FIREBASE_SERVICE_ACCOUNT`, der private Teil bleibt bei Firebase.
+
+**Die Putzplan-Erinnerung** kommt ohne Konto aus und meldet sich deshalb nicht
+in `pushTokens` an – dort prüfen die Regeln, dass ein Gerät auf den eigenen
+Namen eingetragen wird, und ohne Konto gibt es keinen. Stattdessen nimmt
+`netlify/functions/putzplan-erinnerung.mts` die Anmeldung entgegen
+(`POST /.netlify/functions/putzplan-erinnerung`, ohne Umleitung). Die Stelle
+prüft die Einstellung, fragt Cloud Messaging mit einer Probe ohne Versand, ob
+es die Adresse gibt, nimmt höchstens 500 Geräte an und schreibt mit dem
+Dienstkonto nach `cleaningReminders`: ein Dokument je Gerät, die ID ist der
+SHA-256 der Adresse, darin Adresse, Gruppe, Tag und Uhrzeit. Lesen kann die
+Sammlung niemand, auch kein Konto mit Vollzugriff (`npm run test:rules` prüft
+das); abmelden kann nur, wer die Adresse kennt – das Gerät selbst. Derselbe
+Lauf alle 15 Minuten verschickt die fälligen Erinnerungen. Die Marke `lastMark`
+im Dokument hält jede einmalig, eine abgelaufene Adresse räumt er samt Dokument
+weg. Vergibt der Browser eine neue Adresse, meldet sich das Gerät beim nächsten
+Öffnen des Putzplans unter der neuen an und räumt die alte weg.
+
+Die Adresse eines Browsers bei Cloud Messaging ist dieselbe für die
+Benachrichtigungen des Kontos und für die Putzplan-Erinnerung. Wer das eine
+ausschaltet, gibt sie deshalb nur dann an den Browser zurück, wenn das andere
+sie nicht mehr braucht. Vergibt der Browser eine neue, zieht die Anmeldung des
+Kontos mit – aber nur für das Konto, das das Gerät angemeldet hat.
+
+Eine angetippte Benachrichtigung öffnet ihre Seite: Steht schon ein Fenster
+dort, kommt es nach vorn; sonst wird ein offenes Fenster der App dorthin
+gebracht. Umleiten darf es nur der Service Worker der PWA, dem es gehört –
+der der Benachrichtigungen bittet deshalb die App per Nachricht darum
+(`hooks/usePushNavigation`).
 
 ---
 

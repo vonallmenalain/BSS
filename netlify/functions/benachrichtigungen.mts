@@ -2,6 +2,15 @@ import { Buffer } from 'node:buffer'
 import { createSign } from 'node:crypto'
 import process from 'node:process'
 import { apInvolves } from '../../src/lib/apInvolvement.ts'
+import {
+  MAX_CLEANING_REMINDERS,
+  cleaningReminderMark,
+  cleaningReminderMessage,
+  cleaningReminderRange,
+  continuesCleaningWeek,
+  dueCleaningWeek,
+  parseCleaningReminder,
+} from '../../src/lib/cleaningReminder.ts'
 import { impulseWeekKey } from '../../src/lib/impulse.ts'
 import {
   agendaDue,
@@ -25,7 +34,7 @@ import type { ApActivityKind, ApNotifyScope, NotificationMode } from '../../src/
  * Der Versand aller Benachrichtigungen.
  *
  * Läuft alle Viertelstunde (siehe `config` zuunterst) und fragt jedes Mal
- * dasselbe: Wer hat sich etwas bestellt, und ist es jetzt so weit? Drei
+ * dasselbe: Wer hat sich etwas bestellt, und ist es jetzt so weit? Fünf
  * Anlässe kennt er:
  *
  *   1. **Anti Doom** – die Erinnerung an die neue Woche, zur selbst gewählten
@@ -41,6 +50,12 @@ import type { ApActivityKind, ApNotifyScope, NotificationMode } from '../../src/
  *      auf Wunsch nur für die Termine, bei denen man selbst eingetragen
  *      ist (`ap.onlyMine`, erkannt an den Namen am Konto, `apNames`).
  *      Erinnert wird nur, was eine Uhrzeit hat; die Marke `apNotified`
+ *      hält jede Erinnerung einmalig.
+ *   5. **Putzplan** – die Erinnerung an die Woche einer Putzgruppe, zum
+ *      gewählten Tag und zur gewählten Uhrzeit. Sie hängt nicht an einem
+ *      Konto, sondern am Gerät: Bestellt wird ohne Anmeldung, über
+ *      `putzplan-erinnerung.mts`, und abgelegt in `cleaningReminders` –
+ *      Adresse und Einstellung im selben Dokument, die Marke `lastMark`
  *      hält jede Erinnerung einmalig.
  *
  * Wann etwas fällig ist, rechnet `src/lib/notifications.ts` – dieselbe
@@ -428,19 +443,41 @@ interface Recipient {
   settings: FirestoreDocument
 }
 
+/** Eine Nachricht, wie sie hinausgeht – an alle Adressen einer Person oder an ein Gerät. */
+interface Delivery {
+  tokens: string[]
+  message: PushMessage
+  url: string
+  tag: string
+  /**
+   * Bei einer Putzplan-Erinnerung: ihr Dokument und die Marke, die nach dem
+   * Versand dort hingehört. Ist das Gerät weg, verschwindet mit der Adresse
+   * auch das Dokument – es gibt keine zweite Stelle, an der sie stünde.
+   */
+  reminder?: { id: string; mark: string }
+}
+
 export default async function handler(): Promise<Response> {
   const client = await connect()
   const now = new Date()
 
-  const settings = await collectionOf(client, 'notificationSettings')
-  if (settings.length === 0) {
+  const [settings, reminders] = await Promise.all([
+    collectionOf(client, 'notificationSettings'),
+    runQuery(client, {
+      from: [{ collectionId: 'cleaningReminders' }],
+      limit: MAX_CLEANING_REMINDERS,
+    }),
+  ])
+  if (settings.length === 0 && reminders.length === 0) {
     return new Response('Niemand hat Benachrichtigungen eingestellt.', { status: 200 })
   }
 
-  const [tokenDocs, userDocs] = await Promise.all([
-    collectionOf(client, 'pushTokens'),
-    collectionOf(client, 'users'),
-  ])
+  // Konten und ihre Geräte braucht nur, wer Einstellungen am Konto hat – die
+  // Putzplan-Erinnerungen tragen ihre Adresse selbst.
+  const [tokenDocs, userDocs] =
+    settings.length > 0
+      ? await Promise.all([collectionOf(client, 'pushTokens'), collectionOf(client, 'users')])
+      : [[], []]
 
   const tokensByUid = new Map<string, string[]>()
   for (const document of tokenDocs) {
@@ -481,11 +518,11 @@ export default async function handler(): Promise<Response> {
   })
 
   const withDevices = recipients.filter((recipient) => recipient.tokens.length > 0)
-  if (withDevices.length === 0) {
+  if (withDevices.length === 0 && reminders.length === 0) {
     return new Response('Kein angemeldetes Gerät.', { status: 200 })
   }
 
-  const outbox: { recipient: Recipient; message: PushMessage; url: string; tag: string }[] = []
+  const outbox: Delivery[] = []
   const marks: { uid: string; fields: Record<string, FirestoreValue> }[] = []
 
   /* --- 1. Anti Doom -------------------------------------------------- */
@@ -519,7 +556,7 @@ export default async function handler(): Promise<Response> {
     if (ready.length > 0) {
       for (const recipient of impulsWaiting) {
         outbox.push({
-          recipient,
+          tokens: recipient.tokens,
           message: impulsMessage(impulsSchedule(recipient).mode),
           url: '/anti-doom',
           // Beim Tagestakt trägt der Anker den Tag, sonst käme die
@@ -586,7 +623,7 @@ export default async function handler(): Promise<Response> {
       })
 
       outbox.push({
-        recipient,
+        tokens: recipient.tokens,
         message: agendaMessage(names.filter(Boolean), mine.length),
         url: '/sitzungen',
         tag: 'traktanden',
@@ -650,7 +687,12 @@ export default async function handler(): Promise<Response> {
         const next = [...done.slice(-9), idOf(meeting)]
         notedThisRun.set(recipient.uid, next)
 
-        outbox.push({ recipient, message, url: '/sitzungen', tag: `sitzung-${idOf(meeting)}` })
+        outbox.push({
+          tokens: recipient.tokens,
+          message,
+          url: '/sitzungen',
+          tag: `sitzung-${idOf(meeting)}`,
+        })
         marks.push({
           uid: recipient.uid,
           fields: {
@@ -738,7 +780,7 @@ export default async function handler(): Promise<Response> {
         notedApThisRun.set(recipient.uid, next)
 
         outbox.push({
-          recipient,
+          tokens: recipient.tokens,
           message: apReminderMessage({
             kind,
             title: text(activity, 'title'),
@@ -760,6 +802,52 @@ export default async function handler(): Promise<Response> {
     }
   }
 
+  /* --- 5. Der Putzplan ---------------------------------------------- */
+
+  if (reminders.length > 0) {
+    // Die Wochen, deren Erinnerung heute fallen kann, und die Woche davor
+    // (siehe `cleaningReminderRange`). Der Plan speichert Kalendertage.
+    const range = cleaningReminderRange(zurichDay(now))
+    const weeks = (
+      await runQuery(client, {
+        from: [{ collectionId: 'cleaningWeeks' }],
+        where: stringBetween('startDate', range.from, range.to),
+        limit: 10,
+      })
+    ).map((week) => ({
+      startDate: text(week, 'startDate'),
+      endDate: text(week, 'endDate'),
+      group: text(week, 'group'),
+      team: text(week, 'team'),
+      note: text(week, 'note'),
+    }))
+
+    for (const reminder of reminders) {
+      const token = text(reminder, 'token')
+      // Dieselbe Prüfung wie bei der Anmeldung: Was nicht passt, schweigt.
+      const schedule = parseCleaningReminder({
+        group: number(reminder.fields?.group, 0),
+        day: number(reminder.fields?.day, Number.NaN),
+        time: text(reminder, 'time'),
+      })
+      if (!token || !schedule) continue
+
+      const week = dueCleaningWeek(weeks, schedule, now, text(reminder, 'lastMark'))
+      if (!week) continue
+
+      outbox.push({
+        tokens: [token],
+        message: cleaningReminderMessage(week, schedule, continuesCleaningWeek(weeks, week)),
+        url: '/putzplan',
+        tag: `putzplan-${week.startDate}`,
+        reminder: {
+          id: idOf(reminder),
+          mark: cleaningReminderMark(schedule.group, week.startDate),
+        },
+      })
+    }
+  }
+
   /* --- Versand ------------------------------------------------------ */
 
   if (outbox.length === 0) {
@@ -774,21 +862,46 @@ export default async function handler(): Promise<Response> {
   let sent = 0
   let removed = 0
   let failed = 0
+  const reminderMarks: { id: string; mark: string }[] = []
 
   for (const entry of outbox) {
-    for (const token of entry.recipient.tokens) {
+    for (const token of entry.tokens) {
       const outcome = await sendTo(client, token, entry.message, {
         url: entry.url,
         tag: entry.tag,
       })
-      if (outcome === 'sent') sent += 1
+      if (outcome === 'sent') {
+        sent += 1
+        // Eine Putzplan-Erinnerung gilt erst als erledigt, wenn sie draussen
+        // ist – eine gescheiterte versucht der nächste Lauf noch einmal.
+        if (entry.reminder) reminderMarks.push(entry.reminder)
+      }
       if (outcome === 'failed') failed += 1
       if (outcome === 'gone') {
         removed += 1
-        await firestore(client, `/documents/pushTokens/${encodeURIComponent(token)}`, {
-          method: 'DELETE',
-        }).catch((error) => console.error('[benachrichtigungen] Aufräumen scheiterte:', error))
+        const path = entry.reminder
+          ? `/documents/cleaningReminders/${entry.reminder.id}`
+          : `/documents/pushTokens/${encodeURIComponent(token)}`
+        await firestore(client, path, { method: 'DELETE' }).catch((error) =>
+          console.error('[benachrichtigungen] Aufräumen scheiterte:', error),
+        )
       }
+    }
+  }
+
+  /*
+   * Die Marken der Putzplan-Erinnerungen. Nur das eine Feld – und nur, wenn
+   * es das Dokument noch gibt: Wer sich während des Laufs abgemeldet hat,
+   * soll nicht als Dokument ohne Adresse wiederauferstehen.
+   */
+  for (const { id, mark: value } of reminderMarks) {
+    const response = await firestore(
+      client,
+      `/documents/cleaningReminders/${id}?currentDocument.exists=true&updateMask.fieldPaths=lastMark`,
+      { method: 'PATCH', body: JSON.stringify({ fields: { lastMark: { stringValue: value } } }) },
+    )
+    if (!response.ok && response.status !== 404) {
+      console.error(`[benachrichtigungen] Putzplan-Marke nicht gesetzt (${response.status})`)
     }
   }
 

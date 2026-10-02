@@ -1839,6 +1839,36 @@ describe('Der Putzplan steht offen', () => {
       await assertFails(deleteDoc(doc(as(), 'cleaningWeeks', '2026-06-29')))
     }
   })
+
+  /*
+   * Die Erinnerungen ohne Konto (`cleaningReminders`) schreibt allein die
+   * Function `putzplan-erinnerung` mit dem Dienstkonto. Darin stehen die
+   * Adressen der Geräte – an die kommt in der App niemand heran, auch nicht
+   * das Administrator-Konto.
+   */
+  it('hält die Erinnerungen ohne Konto für alle geschlossen', async () => {
+    await testEnv.withSecurityRulesDisabled(async (context) => {
+      await setDoc(doc(context.firestore(), 'cleaningReminders', 'geraet-1'), {
+        token: 'adresse-1',
+        group: 5,
+        day: -1,
+        time: '18:00',
+      })
+    })
+    for (const as of [asAnonymous, asPending, asAssistant, asApViewer, asSecretary, asBishop]) {
+      await assertFails(getDocs(collection(as(), 'cleaningReminders')))
+      await assertFails(getDoc(doc(as(), 'cleaningReminders', 'geraet-1')))
+      await assertFails(
+        setDoc(doc(as(), 'cleaningReminders', 'geraet-2'), {
+          token: 'adresse-2',
+          group: 1,
+          day: 0,
+          time: '08:00',
+        }),
+      )
+      await assertFails(deleteDoc(doc(as(), 'cleaningReminders', 'geraet-1')))
+    }
+  })
 })
 
 /* ------------------------------------------------------------------ */

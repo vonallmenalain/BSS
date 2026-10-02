@@ -49,11 +49,23 @@ self.addEventListener('notificationclick', (event) => {
 
   event.waitUntil(
     self.clients.matchAll({ type: 'window', includeUncontrolled: true }).then((windows) => {
-      // Ein offenes Fenster der App in den Vordergrund holen – sonst eines
-      // öffnen. Navigiert wird nicht: Das Fenster gehört dem Service Worker
-      // der PWA, und jeder Bereich ist von überall einen Fingertipp entfernt.
+      const target = new URL(url, self.location.origin).pathname
+      // Steht ein Fenster schon dort, genügt es, es nach vorn zu holen.
+      const there = windows.find(
+        (client) => 'focus' in client && new URL(client.url).pathname === target,
+      )
+      if (there) return there.focus()
+
+      // Sonst ein offenes Fenster der App – auf die richtige Seite gebracht.
+      // Selbst navigieren darf nur der Service Worker, dem das Fenster gehört
+      // (der der PWA, nicht dieser hier); also bittet er die App darum
+      // (`usePushNavigation`). Wer ohne Konto den Aktivitätenplan offen hat,
+      // käme sonst nie beim Putzplan an – dorthin führt von dort kein Menü.
       const open = windows.find((client) => 'focus' in client)
-      if (open) return open.focus()
+      if (open) {
+        open.postMessage({ type: 'bss-navigate', url })
+        return open.focus()
+      }
       return self.clients.openWindow(url)
     }),
   )

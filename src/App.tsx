@@ -1,4 +1,4 @@
-import { lazy, Suspense, type ReactNode } from 'react'
+import { lazy, Suspense, useEffect, type ReactNode } from 'react'
 import {
   BrowserRouter,
   Routes,
@@ -12,6 +12,8 @@ import { AuthProvider, useAuth } from '@/contexts/AuthContext'
 import { DataProvider } from '@/contexts/DataContext'
 import { ToastProvider } from '@/contexts/ToastContext'
 import { useAccessLog } from '@/hooks/useAccessLog'
+import { usePushNavigation } from '@/hooks/usePushNavigation'
+import { isStandalone, rememberBoard, rememberedBoard } from '@/lib/install'
 import { Layout } from '@/components/Layout'
 import { ErrorBoundary } from '@/components/ErrorBoundary'
 import { LoadingScreen } from '@/components/ui/Feedback'
@@ -93,8 +95,29 @@ const ApActivities = lazy(() =>
  */
 const PUBLIC_PATHS = ['/ap', '/putzplan']
 
+/** Das Anschlagbrett, zu dem eine Adresse gehört – oder `null`. */
+function publicBoard(pathname: string): string | null {
+  return PUBLIC_PATHS.find((path) => pathname === path || pathname.startsWith(`${path}/`)) ?? null
+}
+
 function isPublicPath(pathname: string): boolean {
-  return PUBLIC_PATHS.some((path) => pathname === path || pathname.startsWith(`${path}/`))
+  return publicBoard(pathname) !== null
+}
+
+/**
+ * Wohin es ohne Konto geht, wenn die Adresse eine Anmeldung verlangt.
+ *
+ * Meist zur Anmeldung. Nur die installierte App, gestartet mit ihrer
+ * Startadresse «/», beginnt auf dem Anschlagbrett, das auf diesem Gerät
+ * zuletzt ohne Konto offen war: Wer den Putzplan als App aufs Telefon
+ * gelegt hat, will den Putzplan sehen und nicht eine Anmeldung, für die er
+ * kein Konto hat. Meist sorgt dafür schon das eigene Manifest des
+ * Putzplans (siehe `pages/Cleaning`) – das hier fängt die Browser auf, die
+ * beim Installieren beim Manifest der App bleiben.
+ */
+function guestTarget(pathname: string): string {
+  if (pathname === '/' && isStandalone()) return rememberedBoard() ?? '/anmelden'
+  return '/anmelden'
 }
 
 /* «Anti Doom» – der geistige Bereich für die AP's (docs/KONZEPT-IMPULS.md).
@@ -154,6 +177,13 @@ function RequireAuth({ children }: { children: ReactNode }) {
   const { pathname } = useLocation()
   const publicPage = isPublicPath(pathname)
 
+  // Welches Anschlagbrett ohne Konto zuletzt offen war – für den Start der
+  // installierten App (siehe `guestTarget`).
+  const guestBoard = !loading && !firebaseUser ? publicBoard(pathname) : null
+  useEffect(() => {
+    if (guestBoard) rememberBoard(guestBoard)
+  }, [guestBoard])
+
   /*
    * Hier und nicht tiefer: Diese Stelle sieht jedes angemeldete Konto, auch
    * eines, das noch auf die Freigabe wartet. Dass jemand sich anmeldet und
@@ -166,7 +196,9 @@ function RequireAuth({ children }: { children: ReactNode }) {
   useAccessLog()
 
   if (loading) return <LoadingScreen label="Anmeldung wird geprüft …" />
-  if (!firebaseUser) return publicPage ? <>{children}</> : <Navigate to="/anmelden" replace />
+  if (!firebaseUser) {
+    return publicPage ? <>{children}</> : <Navigate to={guestTarget(pathname)} replace />
+  }
   if (!isApproved && !canViewAp && !canViewImpulse && !isAssistant && !publicPage)
     return <PendingApproval />
 
@@ -279,10 +311,17 @@ function LoginRoute() {
   return <Login />
 }
 
+/** Hört auf angetippte Benachrichtigungen – innerhalb des Routers, damit sie navigieren kann. */
+function PushNavigation() {
+  usePushNavigation()
+  return null
+}
+
 export default function App() {
   return (
     <ErrorBoundary>
       <BrowserRouter>
+        <PushNavigation />
         <ToastProvider>
           <AuthProvider>
             <DataProvider>

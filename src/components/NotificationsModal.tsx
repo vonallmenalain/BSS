@@ -1,9 +1,11 @@
 import { useEffect, useState, type ReactNode } from 'react'
-import { Bell, CalendarClock, ListChecks, Smartphone, Sparkles, Tent } from 'lucide-react'
+import { Bell, Brush, CalendarClock, ListChecks, Smartphone, Sparkles, Tent } from 'lucide-react'
 import { Modal } from '@/components/ui/Modal'
 import { ApNamesField } from '@/components/ap/ApNamesField'
+import { CleaningReminderPanel } from '@/components/cleaning/CleaningReminderPanel'
 import { useAuth } from '@/contexts/AuthContext'
 import { useToast } from '@/contexts/ToastContext'
+import { useCleaningGroups, useCleaningWeeks } from '@/hooks/useFirestore'
 import { useNotificationSettings } from '@/hooks/useNotificationSettings'
 import {
   AP_LEAD_HOURS,
@@ -33,6 +35,11 @@ import { AP_NOTIFY_SCOPE_LABELS, type ApNotifyScope, type NotificationMode } fro
  * darunter kommt, **was** verschickt werden soll. Was gerade nicht möglich
  * ist, wird angeschrieben statt versteckt: ein fehlender Schlüssel, ein
  * Browser ohne Web-Push, eine vom Browser verweigerte Erlaubnis.
+ *
+ * Zuunterst die Putzplan-Erinnerung – für jedes Konto, in jeder Rolle. Sie
+ * gehört nicht zum Konto, sondern zum Gerät, und braucht weder den
+ * Schalter oben noch eine Rolle mit Benachrichtigungen: Dieselbe
+ * Einstellung gibt es ohne Anmeldung über dem Putzplan.
  */
 export function NotificationsModal({ open, onClose }: { open: boolean; onClose: () => void }) {
   return (
@@ -52,6 +59,9 @@ export function NotificationsModal({ open, onClose }: { open: boolean; onClose: 
 
 function NotificationsPanel() {
   const { profile, isApproved, canViewAp, canViewImpulse } = useAuth()
+  // Wer Benachrichtigungen am Konto bekommen kann – dieselbe Linie wie im
+  // Benutzermenü. Die Putzplan-Erinnerung braucht sie nicht.
+  const mayNotify = isApproved || canViewAp || canViewImpulse
   const toast = useToast()
   const { settings, loading } = useNotificationSettings()
 
@@ -112,53 +122,55 @@ function NotificationsPanel() {
   return (
     <div className="space-y-6">
       {/* --- Das Gerät --------------------------------------------- */}
-      <section>
-        <SectionTitle icon={<Smartphone className="size-4" aria-hidden />}>
-          Benachrichtigungen auf diesem Gerät
-        </SectionTitle>
+      {mayNotify && (
+        <section>
+          <SectionTitle icon={<Smartphone className="size-4" aria-hidden />}>
+            Benachrichtigungen auf diesem Gerät
+          </SectionTitle>
 
-        {!configured ? (
-          <p className="hint">
-            Es fehlt noch der öffentliche VAPID-Schlüssel: <code>VITE_FIREBASE_VAPID_KEY</code> bei
-            Netlify hinterlegen und neu ausrollen.
-          </p>
-        ) : supported === false ? (
-          <p className="text-sm text-slate-600 dark:text-slate-300">
-            Dieser Browser kann keine Benachrichtigungen empfangen. Auf dem iPhone geht es, sobald
-            die App installiert ist: Teilen-Symbol → «Zum Home-Bildschirm», dann hier einschalten.
-          </p>
-        ) : denied ? (
-          /*
-           * Kein Knopf, wenn der Browser schon Nein gesagt hat: Ein
-           * erneutes Fragen beantwortet er ohne Rückfrage wieder mit Nein.
-           * Weiter kommt man nur über die Browser-Einstellungen – und
-           * genau dahin führt der Text.
-           */
-          <Row
-            label="Vom Browser blockiert"
-            description="Dieser Browser hat Benachrichtigungen für die App verweigert; ein Knopf hier hilft dann nicht mehr weiter. Erlauben lässt es sich in der Adresszeile über das Schloss- oder Info-Symbol → Berechtigungen → «Benachrichtigungen» auf «Zulassen». Danach diesen Dialog einmal schliessen und wieder öffnen."
-          />
-        ) : (
-          <Row
-            label={deviceOn ? 'Eingeschaltet' : 'Ausgeschaltet'}
-            description={
-              deviceOn
-                ? 'Benachrichtigungen kommen auf diesem Gerät an. Die Erlaubnis gilt je Browser – andere Geräte schalten Sie dort einzeln ein.'
-                : 'Ohne Benachrichtigungen auf diesem Gerät bleibt es hier still, auch wenn unten etwas eingeschaltet ist.'
-            }
-            control={
-              <button
-                type="button"
-                className={deviceOn ? 'btn-secondary btn-sm' : 'btn-primary btn-sm'}
-                onClick={() => void toggleDevice()}
-                disabled={busy || supported === null}
-              >
-                {deviceOn ? 'Ausschalten' : 'Einschalten'}
-              </button>
-            }
-          />
-        )}
-      </section>
+          {!configured ? (
+            <p className="hint">
+              Es fehlt noch der öffentliche VAPID-Schlüssel: <code>VITE_FIREBASE_VAPID_KEY</code>{' '}
+              bei Netlify hinterlegen und neu ausrollen.
+            </p>
+          ) : supported === false ? (
+            <p className="text-sm text-slate-600 dark:text-slate-300">
+              Dieser Browser kann keine Benachrichtigungen empfangen. Auf dem iPhone geht es, sobald
+              die App installiert ist: Teilen-Symbol → «Zum Home-Bildschirm», dann hier einschalten.
+            </p>
+          ) : denied ? (
+            /*
+             * Kein Knopf, wenn der Browser schon Nein gesagt hat: Ein
+             * erneutes Fragen beantwortet er ohne Rückfrage wieder mit Nein.
+             * Weiter kommt man nur über die Browser-Einstellungen – und
+             * genau dahin führt der Text.
+             */
+            <Row
+              label="Vom Browser blockiert"
+              description="Dieser Browser hat Benachrichtigungen für die App verweigert; ein Knopf hier hilft dann nicht mehr weiter. Erlauben lässt es sich in der Adresszeile über das Schloss- oder Info-Symbol → Berechtigungen → «Benachrichtigungen» auf «Zulassen». Danach diesen Dialog einmal schliessen und wieder öffnen."
+            />
+          ) : (
+            <Row
+              label={deviceOn ? 'Eingeschaltet' : 'Ausgeschaltet'}
+              description={
+                deviceOn
+                  ? 'Benachrichtigungen kommen auf diesem Gerät an. Die Erlaubnis gilt je Browser – andere Geräte schalten Sie dort einzeln ein.'
+                  : 'Ohne Benachrichtigungen auf diesem Gerät bleibt es hier still, auch wenn unten etwas eingeschaltet ist.'
+              }
+              control={
+                <button
+                  type="button"
+                  className={deviceOn ? 'btn-secondary btn-sm' : 'btn-primary btn-sm'}
+                  onClick={() => void toggleDevice()}
+                  disabled={busy || supported === null}
+                >
+                  {deviceOn ? 'Ausschalten' : 'Einschalten'}
+                </button>
+              }
+            />
+          )}
+        </section>
+      )}
 
       {/* --- Anti Doom ---------------------------------------------- */}
       {canViewImpulse && (
@@ -419,7 +431,8 @@ function NotificationsPanel() {
         </section>
       )}
 
-      {configured &&
+      {mayNotify &&
+        configured &&
         supported !== false &&
         !denied &&
         !deviceOn &&
@@ -429,7 +442,31 @@ function NotificationsPanel() {
             einschalten, sonst kommt hier nichts an.
           </p>
         )}
+
+      {/* --- Putzplan ---------------------------------------------- */}
+      <CleaningReminderSection besideDevice={mayNotify} />
     </div>
+  )
+}
+
+/**
+ * Die Putzplan-Erinnerung – dieselbe wie über dem Putzplan, auch ohne
+ * Konto. Eine eigene Komponente, damit nur der Dialog Plan und Gruppen
+ * abonniert, solange er offen ist.
+ */
+function CleaningReminderSection({ besideDevice }: { besideDevice: boolean }) {
+  const { data: weeks } = useCleaningWeeks()
+  const { data: groups } = useCleaningGroups()
+
+  return (
+    <section>
+      <SectionTitle icon={<Brush className="size-4" aria-hidden />}>Putzplan</SectionTitle>
+      <p className="mb-3 text-xs text-slate-500 dark:text-slate-400">
+        Eine Nachricht, wenn eine Gruppe mit Putzen dran ist.
+        {besideDevice && ' Sie gilt für dieses Gerät, unabhängig vom Schalter oben.'}
+      </p>
+      <CleaningReminderPanel groups={groups} weeks={weeks} />
+    </section>
   )
 }
 
