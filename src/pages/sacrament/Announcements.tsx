@@ -20,7 +20,7 @@ import {
   updateSeries,
   type SeriesInput,
 } from '@/services/announcementSeries'
-import { CLEANING_DEFAULT_TEXT, CLEANING_PLACEHOLDERS } from '@/services/importCleaning'
+import { CLEANING_DEFAULT_TEXT, CLEANING_PLACEHOLDERS } from '@/lib/cleaningPlan'
 import {
   SERIES_RHYTHM_LABELS,
   SERIES_WEEK_LABELS,

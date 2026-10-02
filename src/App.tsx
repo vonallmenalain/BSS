@@ -50,8 +50,8 @@ const ImportHistory = lazy(() =>
 const ImportHymns = lazy(() =>
   import('@/pages/ImportHymns').then((m) => ({ default: m.ImportHymns })),
 )
-const ImportCleaning = lazy(() =>
-  import('@/pages/ImportCleaning').then((m) => ({ default: m.ImportCleaning })),
+const ImportCleaningGroups = lazy(() =>
+  import('@/pages/ImportCleaningGroups').then((m) => ({ default: m.ImportCleaningGroups })),
 )
 const ImportApActivities = lazy(() =>
   import('@/pages/ImportApActivities').then((m) => ({ default: m.ImportApActivities })),
@@ -516,14 +516,6 @@ export default function App() {
                       }
                     />
                     <Route
-                      path="import/putzplan"
-                      element={
-                        <Suspense fallback={<LoadingScreen />}>
-                          <ImportCleaning />
-                        </Suspense>
-                      }
-                    />
-                    <Route
                       path="import/ap-themen"
                       element={
                         <Suspense fallback={<LoadingScreen />}>
@@ -588,6 +580,14 @@ export default function App() {
                         element={
                           <Suspense fallback={<LoadingScreen />}>
                             <ImportHymns />
+                          </Suspense>
+                        }
+                      />
+                      <Route
+                        path="import/putzgruppen"
+                        element={
+                          <Suspense fallback={<LoadingScreen />}>
+                            <ImportCleaningGroups />
                           </Suspense>
                         }
                       />

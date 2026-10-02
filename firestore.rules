@@ -56,7 +56,9 @@ rules_version = '2';
 // `/putzplan`, zu der der QR-Code auf dem ausgedruckten Plan am
 // Anschlagbrett führt. Er trägt Woche, Gruppe und die Namen derer, die
 // putzen; genau das, was auf dem Ausdruck ohnehin für alle sichtbar hängt.
-// Geändert wird er weiterhin nur mit Vollzugriff.
+// Dazu die Einteilung der Gruppen (`cleaningGroups`): wer zuständig ist und
+// wer dazugehört, wie auf der Liste der Gemeinde. Geändert wird beides nur
+// mit Vollzugriff.
 //
 // Die dritte Ausnahme ist die **Assistenz** der Abendmahlsversammlung. Die
 // Vorbereitung des Sonntags lässt sich abgeben – Ansprachen anfragen, die
@@ -509,6 +511,22 @@ service cloud.firestore {
      * Geändert wird der Plan weiterhin nur mit Vollzugriff.
      */
     match /cleaningWeeks/{weekId} {
+      allow read: if true;
+      allow write: if approved();
+    }
+
+    /*
+     * Die Putzgruppen – eine je Dokument, die Nummer ist die ID.
+     *
+     * Ebenso öffentlich: Auf der Seite des Putzplans lässt sich eine Gruppe
+     * antippen, und dann steht da, wer zuständig ist und wer dazugehört.
+     * Darum tragen die Einträge die Namen ausgeschrieben – so, wie sie auf
+     * der Liste der Gemeinde stehen –, und dazu die IDs der verknüpften
+     * Mitglieder. Mehr nicht: Das Mitgliederverzeichnis selbst bleibt zu.
+     *
+     * Eingeteilt wird nur mit Vollzugriff.
+     */
+    match /cleaningGroups/{groupId} {
       allow read: if true;
       allow write: if approved();
     }

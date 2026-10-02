@@ -41,6 +41,7 @@ export const AREA_LABELS: Record<string, string> = {
   announcementSeries: 'Wiederkehrende Bekanntmachungen',
   hymns: 'Gesangbuch',
   cleaningWeeks: 'Putzplan',
+  cleaningGroups: 'Putzplan · Gruppen',
   apActivities: 'Aktivitäten AP',
   apMonths: 'Aktivitäten AP · Leitung',
   calendarFeeds: 'Kalender-Links',
@@ -230,6 +231,8 @@ export function describeChange(
       return readableDay(docId)
     case 'cleaningWeeks':
       return field('team') || readableDay(field('startDate') || docId)
+    case 'cleaningGroups':
+      return docId ? `Gruppe ${docId}` : ''
     case 'hymns': {
       const number = written.number ?? stored.number
       const title = field('title')

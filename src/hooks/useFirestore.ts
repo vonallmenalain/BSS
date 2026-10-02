@@ -23,6 +23,7 @@ import {
   type ApMonth,
   type CalendarFeed,
   type Calling,
+  type CleaningGroup,
   type CleaningWeek,
   type ImpulseAnswer,
   type ImpulseComment,
@@ -472,6 +473,20 @@ export function useCleaningWeeks(limitCount = 400) {
       ),
     }),
     [state, limitCount],
+  )
+}
+
+/**
+ * Die Putzgruppen – nach Nummer, der zuständige Eintrag jeweils zuoberst.
+ *
+ * Ohne Bedingung wie der Putzplan selbst: Die Übersicht einer Gruppe steht
+ * auf der öffentlichen Seite (siehe `firestore.rules`).
+ */
+export function useCleaningGroups() {
+  const state = useCollection<CleaningGroup>(COLLECTIONS.cleaningGroups)
+  return useMemo(
+    () => ({ ...state, data: [...state.data].sort((a, b) => a.number - b.number) }),
+    [state],
   )
 }
 

@@ -1,9 +1,10 @@
 // Mit Dateiendung, damit sich das Modul auch ohne Bundler ausführen lässt
 // (`node --test`). Vite und TypeScript lösen das genauso auf.
-import { tablePdf, type PdfCell } from '../lib/pdf.ts'
+import { sortedGroups } from '../lib/cleaningGroups.ts'
+import { tablePdf, type PdfCell, type PdfLink } from '../lib/pdf.ts'
 import { qrCode } from '../lib/qr.ts'
 import { sundayProgram, type StoredSunday } from '../lib/sunday.ts'
-import type { CleaningWeek } from '../lib/types.ts'
+import type { CleaningGroup, CleaningWeek } from '../lib/types.ts'
 
 /**
  * Der Putzplan als PDF zum Ausdrucken.
@@ -15,11 +16,15 @@ import type { CleaningWeek } from '../lib/types.ts'
  * hintereinander dran, steht der Grund dahinter, «(Generalkonferenz)» –
  * sonst sähe es nach einem Fehler im Plan aus (siehe `repeatReasons`).
  *
+ * Daneben die Gruppeneinteilung als PDF – im selben Export-Dialog, aufgebaut
+ * wie die Liste der Gemeinde (siehe `cleaningGroupsPdf`).
+ *
  * Bewusst frei von Firestore und React, damit sich die Aufbereitung mit
  * `node --test` prüfen lässt.
  */
 
 type Week = Pick<CleaningWeek, 'startDate' | 'endDate' | 'group' | 'team' | 'note'>
+type Group = Pick<CleaningGroup, 'number' | 'entries'>
 
 /** Ein erfasster Sonntag – die Dokument-ID ist sein Datum, «2026-11-15». */
 export type CleaningSunday = StoredSunday & { id: string }
@@ -298,13 +303,105 @@ export function cleaningPdf(options: CleaningPdfOptions): Uint8Array | null {
     ],
     rows: cleaningRows(weeks, repeatReasons(options.weeks, options.sundays)),
     footer: `Stand: ${shortDate(options.today)}`,
-    link: options.withLink
-      ? {
-          caption: 'Immer aktuell unter',
-          label: CLEANING_PLAN_LABEL,
-          qr: qrCode(CLEANING_PLAN_URL),
-        }
-      : undefined,
+    link: options.withLink ? planLink() : undefined,
+    createdAt: options.createdAt,
+  })
+}
+
+/** Unten auf jeder Seite: die Adresse des Putzplans samt QR-Code. */
+function planLink(): PdfLink {
+  return {
+    caption: 'Immer aktuell unter',
+    label: CLEANING_PLAN_LABEL,
+    qr: qrCode(CLEANING_PLAN_URL),
+  }
+}
+
+/* ------------------------------------------------------------------ */
+/* Die Gruppeneinteilung                                               */
+/* ------------------------------------------------------------------ */
+
+/**
+ * Eine Gruppe in zwei Zellen: die Nummer und die Einträge untereinander,
+ * der zuständige fett zuoberst – so, wie die Liste der Gemeinde aussieht.
+ * Eine Gruppe ohne Einträge sagt das, statt leer dazustehen.
+ */
+function groupCells(group: Group): [PdfCell, PdfCell] {
+  const entries = group.entries.filter((entry) => entry.label.trim())
+  return [
+    String(group.number),
+    {
+      lines:
+        entries.length > 0
+          ? entries.map((entry, index) => ({ text: entry.label.trim(), bold: index === 0 }))
+          : [{ text: 'Noch niemand eingeteilt', muted: true }],
+    },
+  ]
+}
+
+/**
+ * Die Zeilen der Gruppeneinteilung – in zwei Spalten, links die erste
+ * Hälfte der Gruppen, rechts die zweite: 1–5 und 6–10.
+ *
+ * Untereinander gesetzt brauchten zehn Gruppen mit je fünf, sechs
+ * Haushalten zwei Seiten; nebeneinander passen sie samt QR-Code auf eine,
+ * und am Anschlagbrett hängt ein Blatt statt zweier. Gelesen wird wie in
+ * einer Zeitung: erst die linke Spalte hinunter, dann die rechte.
+ */
+export function cleaningGroupRows(groups: readonly Group[]): PdfCell[][] {
+  const sorted = sortedGroups(groups)
+  const half = Math.ceil(sorted.length / 2)
+  return sorted.slice(0, half).map((left, index) => {
+    const right = sorted[half + index]
+    return [...groupCells(left), ...(right ? groupCells(right) : ['', ''])]
+  })
+}
+
+/** «Gruppeneinteilung_Putzen_2026-10-02.pdf» – mit dem Stand im Namen. */
+export function cleaningGroupsPdfFilename(today: string): string {
+  return `Gruppeneinteilung_Putzen_${today}.pdf`
+}
+
+export interface CleaningGroupsPdfOptions {
+  groups: readonly Group[]
+  /** Aus den Einstellungen – erscheint über der Tabelle, sofern gesetzt */
+  wardName?: string
+  /** Heute als «2026-10-02» – für den Stand unten links */
+  today: string
+  createdAt?: Date
+  /** Unten auf jeder Seite die Adresse des Plans samt QR-Code */
+  withLink?: boolean
+}
+
+/**
+ * Die Gruppeneinteilung als PDF – oder `null`, wenn es noch keine Gruppe
+ * gibt.
+ *
+ * Aufgebaut wie das Blatt, aus dem sie einmal importiert wurde: die
+ * Gruppe, daneben wer dazugehört, der zuständige Haushalt fett zuoberst –
+ * nur in zwei Spalten (siehe `cleaningGroupRows`). Der Stand steht unten;
+ * er ersetzt die «Version» im Titel der alten Liste. Eine Gruppe bricht nie
+ * über zwei Seiten.
+ */
+export function cleaningGroupsPdf(options: CleaningGroupsPdfOptions): Uint8Array | null {
+  if (options.groups.length === 0) return null
+  const ward = options.wardName?.trim()
+
+  return tablePdf({
+    title: 'Gruppeneinteilung Putzen',
+    subtitle: ward && ward !== 'Gemeinde' ? ward : undefined,
+    documentTitle: `Gruppeneinteilung Putzen, Stand ${shortDate(options.today)}`,
+    // Die Namensspalten so breit, dass auch «Morales-Römer Oscar & Céleste»
+    // fett auf eine Zeile passt; die Nummern gerade breit genug für «Gruppe».
+    columns: [
+      { label: 'Gruppe', width: 1.05, align: 'center' },
+      { label: 'Wer dazugehört', width: 4 },
+      { label: 'Gruppe', width: 1.05, align: 'center' },
+      { label: 'Wer dazugehört', width: 4 },
+    ],
+    rows: cleaningGroupRows(options.groups),
+    footer: `Stand: ${shortDate(options.today)} · fett: zuständig`,
+    link: options.withLink ? planLink() : undefined,
     createdAt: options.createdAt,
   })
 }

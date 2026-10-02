@@ -5,6 +5,9 @@ import { tablePdf, textWidth, toWinAnsi, wrapText } from '../src/lib/pdf.ts'
 import {
   CLEANING_PLAN_LABEL,
   CLEANING_PLAN_URL,
+  cleaningGroupRows,
+  cleaningGroupsPdf,
+  cleaningGroupsPdfFilename,
   cleaningPdf,
   cleaningPdfFilename,
   cleaningPeriod,
@@ -283,6 +286,137 @@ test('passt der Zusatz nicht mehr dahinter, steht er als Ganzes darunter', () =>
   const reason = y('\\(\\\\\\(Generalkonferenz\\\\\\)\\)')
   // Eine Zeile tiefer, nicht mitten in der Klammer umgebrochen.
   assert.equal(Math.round(names - reason), 13)
+})
+
+/* ------------------------------------------------------------------ */
+/* Die Gruppeneinteilung                                               */
+/* ------------------------------------------------------------------ */
+
+const entry = (label: string) => ({ id: label, label, memberIds: [] })
+const GROUPS = [
+  { number: 2, entries: [entry('Bader Roger & Sylvie'), entry('Lauener Thomas & Lydia')] },
+  {
+    number: 1,
+    entries: [entry('Römer Nathan'), entry('  '), entry('Lauener Richard & Katrin')],
+  },
+  { number: 3, entries: [] },
+]
+
+test('die Gruppeneinteilung: zwei Spalten, der zuständige fett zuoberst', () => {
+  // Drei Gruppen: links 1 und 2, rechts 3 – die rechte Spalte der zweiten Zeile bleibt leer.
+  assert.deepEqual(cleaningGroupRows(GROUPS), [
+    [
+      '1',
+      {
+        lines: [
+          { text: 'Römer Nathan', bold: true },
+          { text: 'Lauener Richard & Katrin', bold: false },
+        ],
+      },
+      '3',
+      { lines: [{ text: 'Noch niemand eingeteilt', muted: true }] },
+    ],
+    [
+      '2',
+      {
+        lines: [
+          { text: 'Bader Roger & Sylvie', bold: true },
+          { text: 'Lauener Thomas & Lydia', bold: false },
+        ],
+      },
+      '',
+      '',
+    ],
+  ])
+  assert.equal(cleaningGroupsPdfFilename('2026-10-02'), 'Gruppeneinteilung_Putzen_2026-10-02.pdf')
+})
+
+test('zehn Gruppen: links 1–5, rechts 6–10 – samt QR-Code auf einer Seite', () => {
+  const ten = Array.from({ length: 10 }, (_, index) => ({
+    number: index + 1,
+    entries: Array.from({ length: 6 }, (_, n) =>
+      entry(n === 0 ? 'Morales-Römer Oscar & Céleste' : `Aeschbacher Branden & Myriam ${n}`),
+    ),
+  }))
+  const rows = cleaningGroupRows(ten)
+  assert.deepEqual(
+    rows.map((row) => [row[0], row[2]]),
+    [
+      ['1', '6'],
+      ['2', '7'],
+      ['3', '8'],
+      ['4', '9'],
+      ['5', '10'],
+    ],
+  )
+  const text = asText(cleaningGroupsPdf({ groups: ten, today: '2026-10-02', withLink: true })!)
+  assert.match(text, /\/Count 1 >>/)
+  // Auch der längste Name fett auf einer Zeile, nicht umgebrochen.
+  assert.match(text, /\(Morales-Römer Oscar & Céleste\) Tj/)
+})
+
+test('das PDF der Gruppeneinteilung: Titel, Gemeinde, Stand – fett, wer zuständig ist', () => {
+  assert.equal(cleaningGroupsPdf({ groups: [], today: '2026-10-02' }), null)
+
+  const text = asText(
+    cleaningGroupsPdf({ groups: GROUPS, wardName: 'Gemeinde Burgdorf', today: '2026-10-02' })!,
+  )
+  assert.match(text, /\(Gruppeneinteilung Putzen\) Tj/)
+  assert.match(text, /\(Gemeinde Burgdorf\) Tj/)
+  assert.match(text, /\(Stand: 02\.10\.2026 · fett: zuständig\) Tj/)
+  assert.ok(!text.includes(CLEANING_PLAN_LABEL), 'ohne Haken keine Adresse')
+
+  // Der zuständige Haushalt fett (F2), die übrigen gewöhnlich (F1) – jeder
+  // Eintrag auf seiner eigenen Zeile, eine Zeilenhöhe tiefer.
+  const line = (name: string) =>
+    text.match(new RegExp(`/(F\\d) [\\d.]+ Tf [\\d.]+ g [\\d.]+ ([\\d.]+) Td \\(${name}\\) Tj`))
+  const responsible = line('Bader Roger & Sylvie')
+  const member = line('Lauener Thomas & Lydia')
+  assert.ok(responsible && member)
+  assert.equal(responsible[1], 'F2')
+  assert.equal(member[1], 'F1')
+  assert.equal(Math.round(Number(responsible[2]) - Number(member[2])), 13)
+  // Die leere Gruppe ist grau beschriftet.
+  assert.match(text, /0\.45 g [\d.]+ [\d.]+ Td \(Noch niemand eingeteilt\) Tj/)
+
+  const withLink = asText(
+    cleaningGroupsPdf({ groups: GROUPS, today: '2026-10-02', withLink: true })!,
+  )
+  assert.match(withLink, /\(bss\.alae\.app\/putzplan\) Tj/)
+})
+
+test('ein langer Eintrag bricht für sich um, der nächste beginnt auf neuer Zeile', () => {
+  const text = asText(
+    tablePdf({
+      title: 'Probe',
+      columns: [
+        { label: 'Gruppe', width: 3 },
+        { label: 'Wer', width: 1 },
+      ],
+      rows: [
+        [
+          'Gruppe 1',
+          {
+            lines: [
+              { text: 'Morales-Römer Oscar & Céleste mit Kindern', bold: true },
+              { text: 'Lea' },
+            ],
+          },
+        ],
+      ],
+    }),
+  )
+  const line = (pattern: string) =>
+    text.match(new RegExp(`/(F\\d) [\\d.]+ Tf [\\d.]+ g [\\d.]+ ([\\d.]+) Td \\(${pattern}\\) Tj`))
+  const first = line('Morales-Römer')
+  const last = line('Kindern')
+  const lea = line('Lea')
+  assert.ok(first && last && lea)
+  // Der erste Eintrag bricht auf drei Zeilen um – fett bis zuletzt –, Lea
+  // steht eine Zeilenhöhe darunter und nicht daneben.
+  assert.deepEqual([first[1], last[1], lea[1]], ['F2', 'F2', 'F1'])
+  assert.equal(Math.round(Number(first[2]) - Number(last[2])), 26)
+  assert.equal(Math.round(Number(last[2]) - Number(lea[2])), 13)
 })
 
 /* ------------------------------------------------------------------ */
