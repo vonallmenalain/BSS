@@ -172,7 +172,11 @@ export function Layout() {
    * selbst zurück.
    */
   const [impulseLook, setImpulseLook] = useImpulseAppearance()
-  const [theme, setTheme] = useTheme(immersive ? (impulseLook === 'hell' ? 'light' : 'dark') : null)
+  // Der Putzplan ohne Konto beginnt hell – mit eigener Wahl (siehe `useTheme`).
+  const [theme, setTheme] = useTheme(
+    immersive ? (impulseLook === 'hell' ? 'light' : 'dark') : null,
+    isGuest && guestBoard.to === '/putzplan',
+  )
 
   /*
    * Wo man gerade ist, für den Weg zurück festhalten.

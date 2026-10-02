@@ -124,6 +124,26 @@ export async function saveCleaningWeek(week: Omit<CleaningWeek, 'id'>): Promise<
   )
 }
 
+/**
+ * In einzelnen Wochen die zuständige Familie umbenennen – für «Frau zuerst»
+ * in der Gruppeneinteilung. Sonst bleibt jede Woche, wie sie ist.
+ */
+export async function renameCleaningTeams(
+  changes: readonly { id: string; team: string }[],
+): Promise<void> {
+  requireOnline()
+  for (let offset = 0; offset < changes.length; offset += CHUNK_SIZE) {
+    const batch = writeBatch(db)
+    for (const change of changes.slice(offset, offset + CHUNK_SIZE)) {
+      batch.update(doc(db, COLLECTIONS.cleaningWeeks, change.id), {
+        team: change.team,
+        updatedAt: serverTimestamp(),
+      })
+    }
+    await batch.commit()
+  }
+}
+
 export async function deleteCleaningWeek(id: string): Promise<SaveOutcome> {
   const outcome = await commit(deleteDoc(doc(db, COLLECTIONS.cleaningWeeks, id)))
   forgetDoc(COLLECTIONS.cleaningWeeks, id)

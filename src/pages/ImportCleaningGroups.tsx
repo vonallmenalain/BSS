@@ -17,6 +17,7 @@ import {
 import { PageHeader } from '@/components/ui/Pickers'
 import { SummaryTile } from '@/components/ui/Feedback'
 import { cn, uid } from '@/lib/utils'
+import { wifeFirst } from '@/lib/cleaningGroups'
 import { replaceCleaningGroups } from '@/services/cleaning'
 import {
   activeMemberIndex,
@@ -26,7 +27,7 @@ import {
   parseCleaningGroups,
   type ParsedCleaningGroups,
 } from '@/services/importCleaningGroups'
-import type { CleaningGroupEntry } from '@/lib/types'
+import type { CleaningGroupEntry, Member } from '@/lib/types'
 
 /**
  * Die Gruppeneinteilung fürs Putzen übernehmen – einmalig.
@@ -76,19 +77,23 @@ export function ImportCleaningGroups() {
   const fromText = useMemo(() => parseCleaningGroups(linesFromText(pasted)), [pasted])
 
   /* Die Zuordnung hängt an den Mitgliedern – sie sind beim Öffnen der Seite
-     vielleicht noch nicht geladen. Deshalb wird sie erst hier gerechnet. */
+     vielleicht noch nicht geladen. Deshalb wird sie erst hier gerechnet.
+     Bei einem Ehepaar steht danach die Frau zuerst, wie überall in der
+     Einteilung – «Bader Roger & Sylvie» wird «Bader Sylvie & Roger». */
   const index = useMemo(() => activeMemberIndex(members), [members])
   const preview = useMemo<PreviewGroup[]>(
     () =>
       (parsed?.groups ?? []).map((group) => ({
         number: group.number,
-        entries: group.entries.map((entry) => ({
-          id: uid(),
-          label: entry.label,
-          ...matchEntryMembers(entry.label, index),
-        })),
+        entries: group.entries.map((entry) => {
+          const match = matchEntryMembers(entry.label, index)
+          const linked = match.memberIds
+            .map((id) => membersById.get(id))
+            .filter((member): member is Member => Boolean(member))
+          return { id: uid(), label: wifeFirst(entry.label, linked), ...match }
+        }),
       })),
-    [parsed, index],
+    [parsed, index, membersById],
   )
 
   const entryCount = preview.reduce((sum, group) => sum + group.entries.length, 0)

@@ -8,10 +8,15 @@ import {
   entriesKey,
   entryLabelFromMembers,
   groupOfMember,
+  homeWithAssignedParents,
+  householdKey,
   isAdult,
   normalizedEntries,
+  renamedTeams,
   responsibleEntry,
   unassignedMembers,
+  wifeFirst,
+  wifeFirstChanges,
   withoutConfirmed,
   withPendingGroups,
 } from '../src/lib/cleaningGroups.ts'
@@ -351,7 +356,180 @@ test('wer noch in keiner Gruppe steht – Erwachsene, auf Wunsch auch Kinder', (
 
   assert.equal(isAdult({ birthDate: new Date(2008, 9, 2) }, today), true)
   assert.equal(isAdult({ birthDate: new Date(2008, 9, 3) }, today), false)
+  // Offline liefert Firestore manchmal ein reines Objekt statt eines Timestamps.
+  assert.equal(
+    isAdult({ birthDate: { seconds: new Date(2012, 0, 1).getTime() / 1000 } }, today),
+    false,
+  )
   assert.equal(groupOfMember(GROUPS, ids('Hansruedi Bürki')[0])?.group.number, 2)
+})
+
+test('bei einem Ehepaar steht die Frau zuerst', () => {
+  assert.equal(
+    entryLabelFromMembers([
+      { firstName: 'Roger', lastName: 'Bader', gender: 'm' },
+      { firstName: 'Sylvie', lastName: 'Bader', gender: 'f' },
+    ]),
+    'Bader Sylvie & Roger',
+  )
+  assert.equal(
+    entryLabelFromMembers([
+      { firstName: 'Hans', lastName: 'Muster', gender: 'm' },
+      { firstName: 'Anna', lastName: 'Meier', gender: 'f' },
+    ]),
+    'Meier Anna & Muster Hans',
+  )
+})
+
+test('eine bestehende Bezeichnung: Frau zuerst, wo es eindeutig ist', () => {
+  const roger = { firstName: 'Roger', lastName: 'Bader', gender: 'm' as const }
+  const sylvie = { firstName: 'Sylvie Marie', lastName: 'Bader', gender: 'f' as const }
+  assert.equal(wifeFirst('Bader Roger & Sylvie', [roger, sylvie]), 'Bader Sylvie & Roger')
+  assert.equal(wifeFirst('Bader Roger und Sylvie', [roger, sylvie]), 'Bader Sylvie & Roger')
+  // Schon richtig – oder nicht zu entscheiden: bleibt, wie es ist.
+  assert.equal(wifeFirst('Bader Sylvie & Roger', [roger, sylvie]), 'Bader Sylvie & Roger')
+  assert.equal(wifeFirst('Bader Roger & Sylvie', []), 'Bader Roger & Sylvie')
+  assert.equal(
+    wifeFirst('Bader Roger & Sylvie', [roger, { ...sylvie, gender: 'unknown' as const }]),
+    'Bader Roger & Sylvie',
+  )
+  assert.equal(wifeFirst('Roger Bader', [roger]), 'Roger Bader')
+  // «Muster Hans» ist kein Nachname – nicht tauschen, statt Unsinn zu bilden.
+  assert.equal(
+    wifeFirst('Muster Hans Peter & Anna', [
+      { firstName: 'Hans Peter', lastName: 'Muster', gender: 'm' },
+      { firstName: 'Anna', lastName: 'Muster', gender: 'f' },
+    ]),
+    'Muster Hans Peter & Anna',
+  )
+  // Der Nachname kann auch nur ein Teil eines Doppelnamens sein.
+  assert.equal(
+    wifeFirst('Schär Noé & Céline', [
+      { firstName: 'Noé', lastName: 'Schär', gender: 'm' },
+      { firstName: 'Céline', lastName: 'Schär-Bühler', gender: 'f' },
+    ]),
+    'Schär Céline & Noé',
+  )
+  assert.equal(
+    wifeFirst('Bader Roger & Sylvie & Tim', [roger, sylvie]),
+    'Bader Roger & Sylvie & Tim',
+  )
+  // Mehrteiliger Nachname, Kurzform des Vornamens.
+  assert.equal(
+    wifeFirst('von Gunten Paul & Bea', [
+      { firstName: 'Paul', lastName: 'von Gunten', gender: 'm' },
+      { firstName: 'Beatrice', lastName: 'von Gunten', gender: 'f' },
+    ]),
+    'von Gunten Bea & Paul',
+  )
+  // Verschiedene Nachnamen: die beiden Hälften tauschen.
+  assert.equal(
+    wifeFirst('Muster Hans & Meier Anna', [
+      { firstName: 'Hans', lastName: 'Muster', gender: 'm' },
+      { firstName: 'Anna', lastName: 'Meier', gender: 'f' },
+    ]),
+    'Meier Anna & Muster Hans',
+  )
+})
+
+test('«Frau zuerst» für eine bestehende Einteilung – samt dem Plan ab heute', () => {
+  const people = new Map([
+    ['r', { firstName: 'Roger', lastName: 'Bader', gender: 'm' as const }],
+    ['s', { firstName: 'Sylvie', lastName: 'Bader', gender: 'f' as const }],
+    ['h', { firstName: 'Hansruedi', lastName: 'Bürki', gender: 'm' as const }],
+  ])
+  const groups = [
+    {
+      number: 5,
+      entries: [
+        { id: 'e1', label: 'Bader Roger & Sylvie', memberIds: ['r', 's'] },
+        { id: 'e2', label: 'Hansruedi Bürki', memberIds: ['h'] },
+      ],
+    },
+  ]
+  const changes = wifeFirstChanges(groups, (id) => people.get(id))
+  assert.deepEqual(changes, [
+    { group: 5, entryId: 'e1', from: 'Bader Roger & Sylvie', to: 'Bader Sylvie & Roger' },
+  ])
+
+  const weeks = [
+    { id: 'w1', endDate: '2026-09-26', team: 'Bader Roger & Sylvie' },
+    { id: 'w2', endDate: '2026-10-03', team: 'Bader Roger & Sylvie ' },
+    { id: 'w3', endDate: '2026-10-10', team: 'Hansruedi Bürki' },
+  ]
+  // Vergangenes bleibt; die laufende Woche zählt mit.
+  assert.deepEqual(renamedTeams(weeks, changes, '2026-10-02'), [
+    { id: 'w2', team: 'Bader Sylvie & Roger' },
+  ])
+  // Zwei Einträge mit derselben Bezeichnung, verschieden umgestellt: nicht anfassen.
+  assert.deepEqual(
+    renamedTeams(
+      weeks,
+      [...changes, { from: 'Bader Roger & Sylvie', to: 'Bader Sylvia & Roger' }],
+      '2026-10-02',
+    ),
+    [],
+  )
+})
+
+test('ein Haushalt ist eine Postadresse', () => {
+  assert.equal(
+    householdKey({ street: 'Bahnhofstr. 10', zip: '3400' }),
+    householdKey({ street: 'bahnhofstr 10', zip: ' 3400 ' }),
+  )
+  assert.notEqual(
+    householdKey({ street: 'Bahnhofstr. 10', zip: '3400' }),
+    householdKey({ street: 'Bahnhofstr. 12', zip: '3400' }),
+  )
+  assert.equal(householdKey({ street: '', zip: '3400' }), null)
+})
+
+test('wer bei eingeteilten Eltern wohnt, fehlt unter «Nicht eingeteilt»', () => {
+  const today = new Date(2026, 9, 2)
+  const born = (year: number) => ({ toDate: () => new Date(year, 2, 1) }) as never
+  const home = { street: 'Lindenweg 4', zip: '3400' }
+  const vater = member('Peter', 'Keller', { ...home, birthDate: born(1968) })
+  const mutter = member('Ruth', 'Keller-Graf', { ...home, birthDate: born(1970) })
+  const sohn = member('Jonas', 'Keller', { ...home, birthDate: born(2003) })
+  const tochter = member('Lara', 'Graf', { ...home, birthDate: born(2001) })
+  const nachbarin = member('Eva', 'Brunner', { ...home, birthDate: born(2000) })
+  const ohneJahr = member('Tim', 'Keller', { ...home, birthDate: null })
+  const all = [vater, mutter, sohn, tochter, nachbarin, ohneJahr]
+  const groups = [
+    { number: 3, entries: [{ id: 'k', label: 'Keller', memberIds: [vater.id, mutter.id] }] },
+  ]
+
+  const atHome = homeWithAssignedParents(all, groups)
+  assert.equal(atHome.get(sohn.id), 3)
+  // Der Nachname der Mutter genügt.
+  assert.equal(atHome.get(tochter.id), 3)
+  // Eine andere Familie im selben Haus, und wer ohne Geburtsdatum dasteht.
+  assert.ok(!atHome.has(nachbarin.id))
+  assert.ok(!atHome.has(ohneJahr.id))
+
+  const names = (list: Member[]) => list.map((entry) => entry.firstName)
+  assert.deepEqual(names(unassignedMembers(all, groups, today)), ['Eva', 'Tim'])
+  assert.deepEqual(names(unassignedMembers(all, groups, today, true)), [
+    'Eva',
+    'Lara',
+    'Jonas',
+    'Tim',
+  ])
+
+  // Umgekehrt: Ist der Sohn eingeteilt, fehlen die Eltern weiterhin – und
+  // ein Geschwister bleibt sichtbar.
+  const bruder = member('Nico', 'Keller', { ...home, birthDate: born(2006) })
+  const reversed = [
+    { number: 1, entries: [{ id: 's', label: 'Keller Jonas', memberIds: [sohn.id] }] },
+  ]
+  assert.deepEqual(names(unassignedMembers([...all, bruder], reversed, today)), [
+    'Eva',
+    'Lara',
+    'Nico',
+    'Peter',
+    'Tim',
+    'Ruth',
+  ])
 })
 
 /* ------------------------------------------------------------------ */

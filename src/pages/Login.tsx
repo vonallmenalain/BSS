@@ -205,18 +205,26 @@ export function Login() {
         </div>
 
         {/*
-         * Der Weg zum Plan, ohne Konto.
+         * Die Wege zu den beiden Plänen, ohne Konto.
          *
-         * Wer den Link zum Aktivitätenplan weitergibt, gibt ihn oft an
-         * jemanden, der die App nicht kennt – und wer von dort aus einmal
-         * hier landet (ein altes Lesezeichen, ein Tippfehler), soll nicht
-         * vor einem Anmeldeformular stehen, das er gar nicht braucht.
+         * Wer den Link zum Aktivitätenplan oder zum Putzplan weitergibt,
+         * gibt ihn oft an jemanden, der die App nicht kennt – und wer von
+         * dort aus einmal hier landet (ein altes Lesezeichen, ein
+         * Tippfehler, der Knopf «Anmelden» oben im Plan), soll nicht vor
+         * einem Anmeldeformular stehen, das er gar nicht braucht.
          */}
-        <p className="mt-4 text-center text-sm">
-          <Link to="/ap" className="text-brand-600 dark:text-brand-300 hover:underline">
-            Aktivitätenplan der AP’s ansehen
-          </Link>
-        </p>
+        <div className="mt-4 space-y-2 text-center text-sm">
+          <p>
+            <Link to="/ap" className="text-brand-600 dark:text-brand-300 hover:underline">
+              Aktivitätenplan der AP’s ansehen
+            </Link>
+          </p>
+          <p>
+            <Link to="/putzplan" className="text-brand-600 dark:text-brand-300 hover:underline">
+              Putzplan ansehen
+            </Link>
+          </p>
+        </div>
 
         <p className="mt-4 text-center text-xs text-slate-400">
           Neue Konten werden erst nach Freigabe durch die Bischofschaft aktiv.

@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict'
 import { test } from 'node:test'
 
-import { tablePdf, textWidth, toWinAnsi, wrapText } from '../src/lib/pdf.ts'
+import { tableLayout, tablePdf, textWidth, toWinAnsi, wrapText } from '../src/lib/pdf.ts'
 import {
   CLEANING_PLAN_LABEL,
   CLEANING_PLAN_URL,
@@ -10,7 +10,9 @@ import {
   cleaningGroupsPdfFilename,
   cleaningPdf,
   cleaningPdfFilename,
+  cleaningPdfLayout,
   cleaningPeriod,
+  cleaningPeriodShort,
   cleaningRows,
   cleaningWeekNumber,
   groupNumber,
@@ -468,6 +470,107 @@ test('mit QR-Code passt ein halbes Jahr weiterhin auf eine Seite', () => {
     })!,
   )
   assert.ok(text.includes('(Stand: 20.07.2026 · Seite 1 von 1)'))
+})
+
+/* ------------------------------------------------------------------ */
+/* Auf eine Seite                                                      */
+/* ------------------------------------------------------------------ */
+
+/** `count` Wochen ab dem 4. Januar 2026, Sonntag bis Samstag, zehn Gruppen der Reihe nach. */
+function weeksFrom2026(count: number) {
+  const teams = ['Bader Sylvie & Roger', 'Morales-Römer Céleste & Oscar', 'Muster Anna & Hans']
+  return Array.from({ length: count }, (_, index) => {
+    const start = new Date(Date.UTC(2026, 0, 4 + index * 7))
+    const end = new Date(start.getTime() + 6 * 86_400_000)
+    return week(
+      start.toISOString().slice(0, 10),
+      end.toISOString().slice(0, 10),
+      `Gruppe ${(index % 10) + 1}`,
+      teams[index % teams.length],
+    )
+  })
+}
+
+function exportOf(weeks: ReturnType<typeof weeksFrom2026>, onePage: boolean) {
+  return {
+    weeks,
+    from: weeks[0].startDate,
+    to: weeks[weeks.length - 1].endDate,
+    wardName: 'Gemeinde Burgdorf',
+    today: '2026-10-02',
+    withLink: true,
+    onePage,
+  }
+}
+
+test('das kurze Datum für zwei Hälften nebeneinander', () => {
+  assert.equal(cleaningPeriodShort(PLAN[1]), '05.10.–10.10.26')
+  assert.equal(cleaningPeriodShort(PLAN[3]), '28.12.–02.01.27')
+})
+
+test('ohne «auf 1 Seite» bleibt das Blatt, wie es war – die Seitenzahl steht vorher fest', () => {
+  const year = weeksFrom2026(52)
+  assert.deepEqual(cleaningPdfLayout(exportOf(year, false)), {
+    pages: 2,
+    bodySize: 10.5,
+    sideBySide: false,
+  })
+  const text = asText(cleaningPdf(exportOf(year, false))!)
+  assert.ok(text.includes('· Seite 2 von 2)'))
+  assert.ok(text.includes('/F1 10.5 Tf'))
+  assert.equal(cleaningPdfLayout(exportOf(weeksFrom2026(20), false))?.pages, 1)
+})
+
+test('auf 1 Seite: ein Jahr untereinander, die Schrift so klein wie nötig', () => {
+  const layout = cleaningPdfLayout(exportOf(weeksFrom2026(52), true))!
+  assert.equal(layout.pages, 1)
+  assert.equal(layout.sideBySide, false)
+  assert.ok(layout.bodySize < 10.5 && layout.bodySize >= 7, String(layout.bodySize))
+
+  const text = asText(cleaningPdf(exportOf(weeksFrom2026(52), true))!)
+  assert.ok(text.includes('(Stand: 02.10.2026 · Seite 1 von 1)'))
+  assert.ok(text.includes(`/F1 ${layout.bodySize} Tf`))
+  // Nichts gekürzt: jeder Name ganz da, kein «…».
+  assert.ok(!text.includes('\u0085'))
+  assert.equal(text.split('(Morales-Römer Céleste & Oscar) Tj').length - 1, 17)
+
+  // Was ohnehin auf eine Seite passt, behält die gewohnte Schrift.
+  assert.equal(cleaningPdfLayout(exportOf(weeksFrom2026(20), true))?.bodySize, 10.5)
+})
+
+test('auf 1 Seite: sehr viele Wochen stehen in zwei Hälften nebeneinander', () => {
+  const weeks = weeksFrom2026(104)
+  const layout = cleaningPdfLayout(exportOf(weeks, true))!
+  assert.deepEqual(
+    { pages: layout.pages, sideBySide: layout.sideBySide },
+    { pages: 1, sideBySide: true },
+  )
+  assert.ok(layout.bodySize >= 7, String(layout.bodySize))
+
+  const text = asText(cleaningPdf(exportOf(weeks, true))!)
+  assert.ok(text.includes('(Stand: 02.10.2026 · Seite 1 von 1)'))
+  assert.ok(!text.includes('\u0085'), 'nichts gekürzt')
+  // Jede Woche steht da – links die erste Hälfte, rechts die zweite.
+  for (const entry of weeks) {
+    assert.ok(text.includes(`(${toWinAnsi(cleaningPeriodShort(entry))}) Tj`), entry.startDate)
+  }
+  assert.equal(text.split('(KW) Tj').length - 1, 2)
+})
+
+test('auf eine Seite verkleinert, statt etwas abzuschneiden', () => {
+  // Zu schmal für die Zahlen in normaler Grösse: «…» wäre die Folge.
+  const table = {
+    title: 'Probe',
+    columns: [
+      { label: 'Nr', width: 0.8 },
+      { label: 'Name', width: 9.2 },
+    ],
+    rows: [['123456', 'eins']],
+  }
+  assert.ok(asText(tablePdf(table)).includes('\u0085'))
+  const fitted = tableLayout({ ...table, fitToPage: true })
+  assert.ok(fitted.bodySize < 10.5 && fitted.bodySize > 8, String(fitted.bodySize))
+  assert.ok(!asText(tablePdf({ ...table, fitToPage: true })).includes('\u0085'))
 })
 
 test('das Verzeichnis zeigt auf jedes Objekt', () => {
