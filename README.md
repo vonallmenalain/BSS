@@ -3391,9 +3391,24 @@ Geräte:
 | Die neue Woche im **Impuls** | Zugang «Impuls» | Takt frei wählbar: täglich oder wöchentlich, Wochentag und Uhrzeit (Standard Montag, 08:00). Eine Woche ohne Inhalt bleibt still. |
 | **Neues Traktandum** | Vollzugriff | «Josh hat ein neues Traktandum angelegt.» |
 | **Eine Stunde vor der Sitzung** | Vollzugriff | Titel, Zeit, Anzahl Traktanden und Pendenzen |
+| **Vor einem Termin im AP-Kalender** | wer den Plan sieht | Vorlauf 1 Stunde bis 1 Tag; Aktivitäten, AP-Klassen oder beides – auf Wunsch **nur, wo man selbst eingetragen ist** |
 
 Standardmässig ist alles aus – eine Benachrichtigung soll man bestellen
 müssen, nicht abbestellen.
+
+**«Nur wo ich eingetragen bin»** beschränkt die AP-Erinnerung auf die Termine,
+bei denen einer der eigenen Namen unter **Zuständig**, **Teilnahme
+Bischofschaft** oder **Teilnahme Berater** steht. Der Plan führt diese Leute
+als Freitext – «Carden», «JM», «Br. Meier & Br. Huber» –, so wie die
+Excel-Tabelle sie führt. Mit dem Konto verknüpft ist ein solcher Name erst,
+wenn er dort unter **«Im AP-Plan als …»** steht: im selben Dialog, sobald die
+Option an ist, oder für jedes Konto unter **Einstellungen → Benutzer und
+Rollen** (dort setzt das Administrator-Konto die Namen, jede Person ihre
+eigenen). Verglichen wird wortweise und ohne Gross-/Kleinschreibung: «Josh»
+trifft «Carden & Josh», nicht aber «Joshua». Wer im Termin «Carden» einträgt,
+sieht im Formular gleich darunter, mit welchem Konto der Name verknüpft ist.
+Steht noch kein Name am Konto, sagt der Dialog das – sonst bliebe die
+Erinnerung stumm, ohne dass jemand wüsste, warum.
 
 Zwei Vorkehrungen halten die Traktanden-Meldung erträglich: Was man **selbst**
 anlegt, meldet sich nie, und zwischen zwei Meldungen liegen mindestens

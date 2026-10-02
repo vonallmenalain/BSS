@@ -1,6 +1,7 @@
 import { useEffect, useState, type ReactNode } from 'react'
 import { Bell, CalendarClock, ListChecks, Smartphone, Sparkles, Tent } from 'lucide-react'
 import { Modal } from '@/components/ui/Modal'
+import { ApNamesField } from '@/components/ap/ApNamesField'
 import { useAuth } from '@/contexts/AuthContext'
 import { useToast } from '@/contexts/ToastContext'
 import { useNotificationSettings } from '@/hooks/useNotificationSettings'
@@ -12,7 +13,14 @@ import {
   scheduleLabel,
 } from '@/lib/notifications'
 import { saveNotificationSettings, withDefaults } from '@/services/notifications'
-import { disablePush, enablePush, pushConfigured, pushDenied, pushEnabled, pushSupported } from '@/services/push'
+import {
+  disablePush,
+  enablePush,
+  pushConfigured,
+  pushDenied,
+  pushEnabled,
+  pushSupported,
+} from '@/services/push'
 import { AP_NOTIFY_SCOPE_LABELS, type ApNotifyScope, type NotificationMode } from '@/lib/types'
 
 /**
@@ -116,8 +124,8 @@ function NotificationsPanel() {
           </p>
         ) : supported === false ? (
           <p className="text-sm text-slate-600 dark:text-slate-300">
-            Dieser Browser kann keine Benachrichtigungen empfangen. Auf dem iPhone geht es, sobald die
-            App installiert ist: Teilen-Symbol → «Zum Home-Bildschirm», dann hier einschalten.
+            Dieser Browser kann keine Benachrichtigungen empfangen. Auf dem iPhone geht es, sobald
+            die App installiert ist: Teilen-Symbol → «Zum Home-Bildschirm», dann hier einschalten.
           </p>
         ) : denied ? (
           /*
@@ -255,7 +263,7 @@ function NotificationsPanel() {
             label="Erinnerung vor dem Termin"
             description={
               current.ap.on
-                ? `${apLeadLabel(current.ap.hoursBefore)} – ${AP_NOTIFY_SCOPE_LABELS[current.ap.scope]}.`
+                ? `${apLeadLabel(current.ap.hoursBefore)} – ${AP_NOTIFY_SCOPE_LABELS[current.ap.scope]}${current.ap.onlyMine ? ', nur wo ich eingetragen bin' : ''}.`
                 : 'Eine Benachrichtigung vor Aktivitäten und AP-Klassen – Vorlauf und Auswahl bestimmst du.'
             }
             control={
@@ -314,10 +322,61 @@ function NotificationsPanel() {
             </div>
           )}
 
+          {/*
+           * Nur die eigenen Termine.
+           *
+           * Der Plan kennt keine Konten, nur Namen («Carden», «JM»). Welche
+           * davon man selbst ist, sagt das Feld darunter – es verknüpft die
+           * Namen im Plan mit dem eigenen Konto (siehe `lib/apInvolvement`).
+           * Ohne Namen bliebe die Erinnerung stumm; das steht dann da.
+           */}
+          {current.ap.on && (
+            <div className="mt-3 space-y-3">
+              <label className="flex cursor-pointer items-start gap-3">
+                <input
+                  type="checkbox"
+                  className="mt-0.5 size-4 rounded"
+                  checked={current.ap.onlyMine === true}
+                  disabled={loading}
+                  onChange={(event) =>
+                    void save({ ap: { ...current.ap, onlyMine: event.target.checked } })
+                  }
+                />
+                <span>
+                  <span className="text-sm font-medium">Nur wo ich eingetragen bin</span>
+                  <span className="hint mt-0.5 block">
+                    Nur Termine, bei denen einer deiner Namen unter «Zuständig», «Teilnahme
+                    Bischofschaft» oder «Teilnahme Berater» steht.
+                  </span>
+                </span>
+              </label>
+
+              {current.ap.onlyMine && profile && (
+                <div>
+                  <label className="label" htmlFor="ap-namen">
+                    Im Plan stehe ich als
+                  </label>
+                  <ApNamesField id="ap-namen" user={profile} label="Im Plan stehe ich als" />
+                  {(profile.apNames ?? []).length === 0 ? (
+                    <p className="mt-1 text-xs text-amber-700 dark:text-amber-400">
+                      Noch kein Name – so kommt keine Erinnerung. Trag ein, wie du im Plan stehst,
+                      mehrere durch Komma getrennt.
+                    </p>
+                  ) : (
+                    <p className="hint">
+                      Mehrere Namen durch Komma getrennt. Verglichen werden ganze Wörter: «Josh»
+                      trifft «Carden & Josh», nicht aber «Joshua».
+                    </p>
+                  )}
+                </div>
+              )}
+            </div>
+          )}
+
           {current.ap.on && (
             <p className="hint">
-              Erinnert wird an Termine mit Uhrzeit – die AP-Klasse hat immer eine, besondere
-              Anlässe zählen zu den Aktivitäten, Ausgefallenes bleibt still.
+              Erinnert wird an Termine mit Uhrzeit – die AP-Klasse hat immer eine, besondere Anlässe
+              zählen zu den Aktivitäten, Ausgefallenes bleibt still.
             </p>
           )}
         </section>

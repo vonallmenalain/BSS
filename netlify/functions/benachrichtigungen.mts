@@ -1,6 +1,7 @@
 import { Buffer } from 'node:buffer'
 import { createSign } from 'node:crypto'
 import process from 'node:process'
+import { apInvolves } from '../../src/lib/apInvolvement.ts'
 import { impulseWeekKey } from '../../src/lib/impulse.ts'
 import {
   agendaDue,
@@ -36,7 +37,9 @@ import type { ApActivityKind, ApNotifyScope, NotificationMode } from '../../src/
  *   3. **Eine Stunde vor der Sitzung** – mit Anzahl Traktanden und
  *      Pendenzen.
  *   4. **AP-Kalender** – die Erinnerung vor Aktivitäten und AP-Klassen,
- *      mit wählbarem Vorlauf (1 bis 24 Stunden) und wählbarer Auswahl.
+ *      mit wählbarem Vorlauf (1 bis 24 Stunden) und wählbarer Auswahl –
+ *      auf Wunsch nur für die Termine, bei denen man selbst eingetragen
+ *      ist (`ap.onlyMine`, erkannt an den Namen am Konto, `apNames`).
  *      Erinnert wird nur, was eine Uhrzeit hat; die Marke `apNotified`
  *      hält jede Erinnerung einmalig.
  *
@@ -419,6 +422,8 @@ interface Recipient {
   fullAccess: boolean
   /** Sieht den AP-Kalender – Vollzugriff oder eine der AP-Rollen. */
   apAccess: boolean
+  /** Unter welchen Namen die Person im Aktivitätenplan steht (`AppUser.apNames`). */
+  apNames: string[]
   impulse: boolean
   settings: FirestoreDocument
 }
@@ -461,6 +466,7 @@ export default async function handler(): Promise<Response> {
         fullAccess: FULL_ACCESS.has(role),
         // Dieselben Rollen wie `apAccess()` in den Zugriffsregeln.
         apAccess: FULL_ACCESS.has(role) || role === 'ap_editor' || role === 'ap_viewer',
+        apNames: strings(user, 'apNames'),
         // Der Schalter am Konto – oder das Administrator-Konto, das den
         // Bereich immer sieht. Dieselbe Adresse steht in `firestore.rules`
         // und in `src/lib/types.ts`; sie ändert sich an drei Orten oder an
@@ -585,7 +591,10 @@ export default async function handler(): Promise<Response> {
         url: '/sitzungen',
         tag: 'traktanden',
       })
-      marks.push({ uid: recipient.uid, fields: { agendaSentAt: { timestampValue: now.toISOString() } } })
+      marks.push({
+        uid: recipient.uid,
+        fields: { agendaSentAt: { timestampValue: now.toISOString() } },
+      })
     }
   }
 
@@ -697,6 +706,25 @@ export default async function handler(): Promise<Response> {
           'alle') as ApNotifyScope
         if (!apScopeIncludes(scope, kind)) continue
         if (!apReminderDue(startsAt, now, hours * 60)) continue
+        /*
+         * Nur die eigenen Termine: Einer der Namen am Konto steht unter
+         * «Zuständig», «Teilnahme Bischofschaft» oder «Teilnahme Berater»
+         * (siehe `src/lib/apInvolvement.ts`). Ohne Namen ist nichts das
+         * eigene – die Einstellungen sagen das dort, wo man sie setzt.
+         */
+        if (
+          bool(recipient.settings, ['ap', 'onlyMine']) &&
+          !apInvolves(
+            {
+              leader: text(activity, 'leader'),
+              bishopric: text(activity, 'bishopric'),
+              advisor: text(activity, 'advisor'),
+            },
+            recipient.apNames,
+          )
+        ) {
+          continue
+        }
 
         const done = [
           ...strings(recipient.settings, 'apNotified'),

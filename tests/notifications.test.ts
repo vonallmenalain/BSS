@@ -243,7 +243,7 @@ test('der Standard ist Montag um acht – und alles ausgeschaltet', () => {
     impuls: { on: false, mode: 'weekly', weekday: 1, time: '08:00' },
     agenda: { on: false },
     meeting: { on: false },
-    ap: { on: false, hoursBefore: 1, scope: 'alle' },
+    ap: { on: false, hoursBefore: 1, scope: 'alle', onlyMine: false },
   })
 })
 
