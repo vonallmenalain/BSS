@@ -27,6 +27,7 @@ import {
   fromDateTimeInput,
 } from '@/lib/dates'
 import { isUpcomingMeeting } from '@/lib/meetingScope'
+import { asDoneIn, itemsByMeeting as groupByMeeting } from '@/lib/standing'
 import { isDutyItem } from '@/lib/monthlyDuties'
 import { cn, matchesSearch } from '@/lib/utils'
 import { searchSnippet } from '@/lib/search'
@@ -121,18 +122,20 @@ export function Meetings() {
    * festgehalten: Was das Formular speichert, kommt über den Bestand zurück,
    * und ein eingefrorener Stand zeigte danach wieder das Alte.
    */
-  const dialogItem = openItem ? (allItems.find((i) => i.id === openItem.id) ?? openItem) : null
+  /*
+   * Der Eintrag im Fenster, frisch aus dem Bestand – und, war er in seiner
+   * Sitzung bloss als erledigt zu sehen (eine ständige Pendenz, die schon in
+   * der nächsten wartet), wieder so wie dort. Sonst böte das Fenster
+   * «Erledigt» an und hakte eine Runde zu viel ab.
+   */
+  const dialogItem = useMemo(() => {
+    if (!openItem) return null
+    const fresh = allItems.find((i) => i.id === openItem.id) ?? openItem
+    return openItem.doneInMeeting ? asDoneIn(fresh, openItem.doneInMeeting) : fresh
+  }, [openItem, allItems])
 
-  const itemsByMeeting = useMemo(() => {
-    const map = new Map<string, AgendaItem[]>()
-    for (const item of allItems) {
-      if (!item.meetingId) continue
-      const list = map.get(item.meetingId)
-      if (list) list.push(item)
-      else map.set(item.meetingId, [item])
-    }
-    return map
-  }, [allItems])
+  /* Je Sitzung ihre Einträge – samt den in ihr abgehakten ständigen Pendenzen. */
+  const itemsByMeeting = useMemo(() => groupByMeeting(allItems), [allItems])
 
   /* Über den PWA-Schnellzugriff direkt in die nächste Sitzung springen. */
   useEffect(() => {

@@ -505,6 +505,15 @@ eingestellten Zeitraum. Es bleibt derselbe Eintrag, mit demselben Titel,
 derselben Beschreibung, denselben Zuständigen und demselben Verlauf – in dem
 nun eine Zeile mehr steht.
 
+**In der Sitzung, in der sie abgehakt wurde, bleibt sie stehen** – mit dem
+grünen Haken, wie jede erledigte Pendenz, auch später im Protokoll. Offen ist
+sie erst wieder in der Sitzung, in die sie gewandert ist. So verschwindet
+mitten in der Sitzung nichts aus der Liste, und ob der Griff gewirkt hat, ist
+auf einen Blick zu sehen. **Wieder offen** an diesem Eintrag nimmt den Haken
+zurück: Die Pendenz kehrt in diese Sitzung zurück, mit Datum und Zähler von
+vorher. Das geht mit der letzten Runde – wurde sie seither erneut abgehakt,
+ist der ältere Haken Geschichte.
+
 **Wie oft, sagen drei Knöpfe:**
 
 | Wahl                  | Was sie bedeutet                                             |

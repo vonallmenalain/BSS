@@ -1178,6 +1178,28 @@ export interface StandingRule {
   doneCount?: number
   /** Wann zuletzt abgehakt – als ISO-Text, wie die Einträge im Verlauf. */
   lastDoneAt?: string | null
+  /**
+   * Die Sitzungen, in denen eine Runde abgehakt wurde – die jüngste zuletzt.
+   *
+   * Beim Abhaken wandert die Pendenz in die nächste Sitzung. In der, in der
+   * sie abgehakt wurde, bleibt sie trotzdem stehen – mit dem grünen Haken,
+   * wie jede erledigte Pendenz, auch später im Protokoll (siehe
+   * `itemsOfMeeting` in `lib/standing`).
+   */
+  doneIn?: string[]
+  /** Der Stand vor der letzten Runde – damit sich ein Haken zurücknehmen lässt. */
+  undo?: StandingUndo | null
+}
+
+/**
+ * Wohin eine ständige Pendenz zurückkehrt, wenn ihr letzter Haken
+ * zurückgenommen wird: in die Sitzung, in der abgehakt wurde, mit dem Stand
+ * von davor.
+ */
+export interface StandingUndo {
+  meetingId: string
+  dueFrom: string | null
+  lastDoneAt: string | null
 }
 
 /* ------------------------------------------------------------------ */
@@ -1323,6 +1345,17 @@ export interface AgendaItem extends WithId {
    * gewöhnliche Pendenz; das ist zugleich der Weg zurück.
    */
   standing?: StandingRule | null
+
+  /**
+   * Nur in der Ansicht einer Sitzung, **nie in Firestore**: Diese ständige
+   * Pendenz wurde in der Sitzung mit dieser ID abgehakt.
+   *
+   * Sie wartet längst in der nächsten Sitzung, steht in dieser aber noch
+   * mit dem grünen Haken da – `status` ist für diese Ansicht `done`. Ein
+   * Griff auf «Wieder offen» nimmt die Runde zurück, statt den Status zu
+   * setzen (siehe `itemsOfMeeting` in `lib/standing`).
+   */
+  doneInMeeting?: string
 
   /*
    * Eine eigene Notizliste je Traktandum gab es einmal; sie ist weggefallen.

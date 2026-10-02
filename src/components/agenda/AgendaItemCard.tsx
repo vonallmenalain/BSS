@@ -65,7 +65,7 @@ export function AgendaItemCard({
     if (!profile) return
     // Eine ständige Pendenz rückt eine Runde weiter, statt zuzugehen
     // (siehe `hooks/useStanding`).
-    if (!isDone && (await standingRound(item))) return
+    if (await standingRound(item)) return
     try {
       const outcome = await setItemStatus(item.id, isDone ? 'pending' : 'done', {
         id: profile.id,

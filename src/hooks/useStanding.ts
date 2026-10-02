@@ -2,9 +2,15 @@ import { useCallback, useMemo } from 'react'
 import { useAuth } from '@/contexts/AuthContext'
 import { useToast } from '@/contexts/ToastContext'
 import { useMeetings } from '@/hooks/useFirestore'
-import { completeStandingRound } from '@/services/agenda'
+import { completeStandingRound, undoStandingRound } from '@/services/agenda'
 import { toDate } from '@/lib/dates'
-import { dayKey, formatDayKey, isStanding, type StandingMeeting } from '@/lib/standing'
+import {
+  canUndoStanding,
+  dayKey,
+  formatDayKey,
+  isStanding,
+  type StandingMeeting,
+} from '@/lib/standing'
 import type { AgendaItem } from '@/lib/types'
 
 /**
@@ -19,6 +25,11 @@ import type { AgendaItem } from '@/lib/types'
  * Der Hook liefert eine Funktion, die `true` zurückgibt, wenn sie
  * zuständig war – dann ist der Griff erledigt. Bei `false` war es eine
  * gewöhnliche Pendenz, und der Aufrufer macht weiter wie bisher.
+ *
+ * Zuständig ist sie in beide Richtungen: «Erledigt» an einer offenen
+ * ständigen Pendenz setzt sie eine Runde weiter, «Wieder offen» an einer, die
+ * in der gezeigten Sitzung abgehakt wurde (`doneInMeeting`), nimmt die Runde
+ * zurück.
  *
  * Die Sitzungen kommen aus dem gemeinsamen Bestand und kosten nichts
  * Zusätzliches (siehe `lib/collectionStore`). Gebraucht werden sie für die
@@ -46,12 +57,37 @@ export function useStandingRound(): (item: AgendaItem) => Promise<boolean> {
 
   return useCallback(
     async (item: AgendaItem) => {
-      if (!profile || !isStanding(item)) return false
+      if (!profile) return false
+      const actor = { id: profile.id, name: profile.displayName }
+
+      /*
+       * In dieser Sitzung abgehakt – der Haken wird zurückgenommen.
+       *
+       * Die Pendenz steht hier nur noch als erledigt da (siehe
+       * `itemsOfMeeting`); «Wieder offen» holt sie aus der nächsten Sitzung
+       * zurück. Das geht nur mit der letzten Runde – eine ältere ist
+       * Geschichte, und das wird gesagt statt stillschweigend übergangen.
+       */
+      if (item.doneInMeeting) {
+        if (!canUndoStanding(item, item.doneInMeeting)) {
+          toast.info(
+            'Dieser Haken lässt sich nicht mehr zurücknehmen – seither wurde die Pendenz erneut abgehakt.',
+          )
+          return true
+        }
+        try {
+          await undoStandingRound(item, item.doneInMeeting, actor)
+          toast.success('Wieder offen – die Pendenz steht wieder in dieser Sitzung.')
+        } catch (error) {
+          console.error(error)
+          toast.error('Status konnte nicht geändert werden.')
+        }
+        return true
+      }
+
+      if (item.status === 'done' || !isStanding(item)) return false
       try {
-        const { round } = await completeStandingRound(item, open, {
-          id: profile.id,
-          name: profile.displayName,
-        })
+        const { round } = await completeStandingRound(item, open, actor)
         /*
          * Gemeldet wird, wann es weitergeht – und nicht, dass etwas erledigt
          * sei. Der Punkt verschwindet ja nicht: Er steht gleich darauf in
