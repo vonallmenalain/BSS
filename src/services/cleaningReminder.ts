@@ -66,16 +66,40 @@ export function storedCleaningReminder(): StoredCleaningReminder | null {
   return value
 }
 
-function remember(value: StoredCleaningReminder | null) {
+/**
+ * Festhalten, was eingestellt ist – `false`, wenn der Browser nichts
+ * speichern lässt (gesperrter oder voller Speicher).
+ */
+function remember(value: StoredCleaningReminder | null): boolean {
+  let stored = true
   try {
     if (value) localStorage.setItem(CLEANING_REMINDER_KEY, JSON.stringify(value))
     else localStorage.removeItem(CLEANING_REMINDER_KEY)
   } catch {
-    // Privates Fenster oder voller Speicher: Die Erinnerung gilt trotzdem –
-    // nur zeigt die Seite sie beim nächsten Besuch nicht mehr an.
+    stored = false
   }
   listeners.forEach((listener) => listener())
+  return stored
 }
+
+/** Lässt der Browser die Seite überhaupt etwas speichern? Eine Probe mit einem Wegwerf-Eintrag. */
+function storageWritable(): boolean {
+  try {
+    const probe = `${CLEANING_REMINDER_KEY}-probe`
+    localStorage.setItem(probe, '1')
+    localStorage.removeItem(probe)
+    return true
+  } catch {
+    return false
+  }
+}
+
+/**
+ * Ohne Speicher keine Erinnerung: Das Gerät muss sich seine Adresse merken,
+ * sonst liesse sich die Erinnerung später nicht mehr ausschalten.
+ */
+const NO_STORAGE =
+  'Dieser Browser lässt die Seite nichts speichern. Ohne das liesse sich die Erinnerung später nicht mehr ausschalten – sie bleibt deshalb aus.'
 
 /** Meldet jede Änderung – für `useCleaningReminder`. */
 export function subscribeCleaningReminder(listener: () => void): () => void {
@@ -137,6 +161,10 @@ async function post(body: Record<string, unknown>): Promise<void> {
 export async function saveCleaningReminder(
   schedule: CleaningReminderSchedule,
 ): Promise<'saved' | 'denied'> {
+  // Zuerst prüfen, ob sich das Gerät die Anmeldung merken kann – bevor es
+  // eine gibt, die sich nicht mehr abstellen liesse.
+  if (!storageWritable()) throw new CleaningReminderError(NO_STORAGE)
+
   const permission =
     Notification.permission === 'granted' ? 'granted' : await Notification.requestPermission()
   if (permission !== 'granted') return 'denied'
@@ -149,8 +177,18 @@ export async function saveCleaningReminder(
     ...schedule,
     previousToken: previous && previous.token !== token ? previous.token : undefined,
   })
-  remember({ ...schedule, token })
+  if (!remember({ ...schedule, token })) await rollBack(token)
   return 'saved'
+}
+
+/**
+ * Angemeldet, aber nicht gemerkt: lieber wieder abmelden als eine
+ * Erinnerung stehen lassen, die niemand mehr abstellen kann.
+ */
+async function rollBack(token: string): Promise<never> {
+  await post({ action: 'delete', token }).catch(() => undefined)
+  remember(null)
+  throw new CleaningReminderError(NO_STORAGE)
 }
 
 /**
@@ -196,5 +234,5 @@ export async function refreshCleaningReminder(): Promise<void> {
     time: stored.time,
     previousToken: stored.token,
   })
-  remember({ ...stored, token })
+  if (!remember({ ...stored, token })) await rollBack(token)
 }

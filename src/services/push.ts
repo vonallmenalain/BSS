@@ -7,7 +7,7 @@ import {
   serverTimestamp,
   setDoc as fbSetDoc,
 } from 'firebase/firestore'
-import { app, db, COLLECTIONS } from '@/lib/firebase'
+import { app, auth, db, COLLECTIONS } from '@/lib/firebase'
 
 /*
  * Das Gerät an- und abmelden: Erlaubnis, Adresse, Stand.
@@ -27,6 +27,8 @@ import { app, db, COLLECTIONS } from '@/lib/firebase'
  */
 
 const TOKEN_KEY = 'bss-push-token'
+/** Für welches Konto das Gerät angemeldet ist – damit eine neue Adresse beim richtigen landet. */
+const UID_KEY = 'bss-push-uid'
 const SW_URL = '/push-sw.js'
 const SW_SCOPE = '/push/'
 
@@ -88,6 +90,7 @@ export async function enablePush(user: { uid: string }): Promise<'granted' | 'de
     { merge: true },
   )
   localStorage.setItem(TOKEN_KEY, token)
+  localStorage.setItem(UID_KEY, user.uid)
   return 'granted'
 }
 
@@ -100,10 +103,51 @@ export async function enablePush(user: { uid: string }): Promise<'granted' | 'de
  */
 export async function deviceToken(): Promise<string> {
   const registration = await navigator.serviceWorker.register(SW_URL, { scope: SW_SCOPE })
-  return getToken(getMessaging(app), {
+  const token = await getToken(getMessaging(app), {
     vapidKey: import.meta.env.VITE_FIREBASE_VAPID_KEY as string,
     serviceWorkerRegistration: registration,
   })
+  await followAccountToken(token)
+  return token
+}
+
+/**
+ * Hat der Browser eine neue Adresse vergeben, zieht die Anmeldung des
+ * Kontos mit.
+ *
+ * Die Putzplan-Erinnerung fragt bei jedem Öffnen des Plans nach der
+ * Adresse, und dabei kann der Browser eine neue ausgeben. Bliebe die
+ * Anmeldung des Kontos unter der alten stehen, verstummten seine
+ * Benachrichtigungen, sobald der Versand die alte als abgelaufen wegräumt –
+ * während der Schalter weiter «Eingeschaltet» zeigt.
+ *
+ * Umgeschrieben wird nur für das Konto, das das Gerät angemeldet hat: Wer
+ * sich auf einem geteilten Gerät mit einem anderen Konto anmeldet, wird
+ * nicht stillschweigend selbst zum Empfänger. Ohne Anmeldung geht es gar
+ * nicht – das holt der nächste Aufruf mit Konto nach. Scheitert es, bleibt
+ * die Adresse trotzdem brauchbar; die Erinnerung soll daran nicht hängen.
+ */
+async function followAccountToken(token: string): Promise<void> {
+  try {
+    const previous = localStorage.getItem(TOKEN_KEY)
+    if (!previous || previous === token) return
+    const uid = auth.currentUser?.uid
+    const owner = localStorage.getItem(UID_KEY)
+    if (!uid || (owner && owner !== uid)) return
+
+    await fbSetDoc(
+      fbDoc(db, COLLECTIONS.pushTokens, token),
+      { uid, token, createdAt: serverTimestamp(), updatedAt: serverTimestamp() },
+      { merge: true },
+    )
+    localStorage.setItem(TOKEN_KEY, token)
+    localStorage.setItem(UID_KEY, uid)
+    await fbDeleteDoc(fbDoc(db, COLLECTIONS.pushTokens, previous)).catch((error) =>
+      console.warn('[push] Alte Adresse konnte nicht entfernt werden:', error),
+    )
+  } catch (error) {
+    console.warn('[push] Anmeldung des Kontos nicht nachgeführt:', error)
+  }
 }
 
 /** Die Adresse zurückgeben – danach erreicht dieses Gerät keine Nachricht mehr. */
@@ -132,6 +176,7 @@ function cleaningReminderActive(): boolean {
 export async function disablePush(): Promise<void> {
   const token = localStorage.getItem(TOKEN_KEY)
   localStorage.removeItem(TOKEN_KEY)
+  localStorage.removeItem(UID_KEY)
 
   if (!cleaningReminderActive()) await releaseDeviceToken()
 

@@ -12,6 +12,7 @@ import { AuthProvider, useAuth } from '@/contexts/AuthContext'
 import { DataProvider } from '@/contexts/DataContext'
 import { ToastProvider } from '@/contexts/ToastContext'
 import { useAccessLog } from '@/hooks/useAccessLog'
+import { usePushNavigation } from '@/hooks/usePushNavigation'
 import { isStandalone, rememberBoard, rememberedBoard } from '@/lib/install'
 import { Layout } from '@/components/Layout'
 import { ErrorBoundary } from '@/components/ErrorBoundary'
@@ -310,10 +311,17 @@ function LoginRoute() {
   return <Login />
 }
 
+/** Hört auf angetippte Benachrichtigungen – innerhalb des Routers, damit sie navigieren kann. */
+function PushNavigation() {
+  usePushNavigation()
+  return null
+}
+
 export default function App() {
   return (
     <ErrorBoundary>
       <BrowserRouter>
+        <PushNavigation />
         <ToastProvider>
           <AuthProvider>
             <DataProvider>

@@ -3625,7 +3625,14 @@ weg. Vergibt der Browser eine neue Adresse, meldet sich das Gerät beim nächste
 Die Adresse eines Browsers bei Cloud Messaging ist dieselbe für die
 Benachrichtigungen des Kontos und für die Putzplan-Erinnerung. Wer das eine
 ausschaltet, gibt sie deshalb nur dann an den Browser zurück, wenn das andere
-sie nicht mehr braucht.
+sie nicht mehr braucht. Vergibt der Browser eine neue, zieht die Anmeldung des
+Kontos mit – aber nur für das Konto, das das Gerät angemeldet hat.
+
+Eine angetippte Benachrichtigung öffnet ihre Seite: Steht schon ein Fenster
+dort, kommt es nach vorn; sonst wird ein offenes Fenster der App dorthin
+gebracht. Umleiten darf es nur der Service Worker der PWA, dem es gehört –
+der der Benachrichtigungen bittet deshalb die App per Nachricht darum
+(`hooks/usePushNavigation`).
 
 ---
 
