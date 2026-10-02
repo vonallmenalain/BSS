@@ -5,10 +5,14 @@ import { useToast } from '@/contexts/ToastContext'
 import { useCleaningGroups } from '@/hooks/useFirestore'
 import { ConfirmDialog, Modal } from '@/components/ui/Modal'
 import {
+  entriesKey,
   entryLabelFromMembers,
   groupOfMember,
+  normalizedEntries,
   sortedGroups,
   unassignedMembers,
+  withoutConfirmed,
+  withPendingGroups,
 } from '@/lib/cleaningGroups'
 import { cn, matchesSearch, uid } from '@/lib/utils'
 import { toDate } from '@/lib/dates'
@@ -39,7 +43,8 @@ function birthYear(member: Pick<Member, 'birthDate'>): string {
  *
  * Jede Person steht höchstens einmal in der Einteilung: Wer einem Eintrag
  * zugeordnet wird, verschwindet aus einem früheren. Gespeichert wird je
- * Handgriff, wie in den übrigen Einstellungen.
+ * Handgriff, wie in den übrigen Einstellungen – und jeder Handgriff baut auf
+ * dem vorigen auf, auch bevor der zurückgemeldet ist (`pending`).
  *
  * Nur mit Vollzugriff; die Zugriffsregeln lassen ohnehin niemand anderen
  * schreiben.
@@ -47,7 +52,35 @@ function birthYear(member: Pick<Member, 'birthDate'>): string {
 export function CleaningGroupsDialog({ onClose }: { onClose: () => void }) {
   const toast = useToast()
   const { members } = useData()
-  const { data: groups } = useCleaningGroups()
+  const { data: stored } = useCleaningGroups()
+
+  /*
+   * Was dieser Dialog geschrieben hat und der Listener noch nicht
+   * zurückgemeldet hat – je Gruppe die Einträge. Jeder Handgriff schreibt
+   * eine ganze Gruppe; zwei kurz hintereinander, etwa zwei Mitglieder in
+   * dieselbe Gruppe, rechneten sonst beide mit dem Stand von vorher, und der
+   * zweite überschriebe den ersten. Kommt eine Gruppe so zurück, wie sie
+   * geschrieben wurde, fällt ihre Vormerkung weg – gleich beim Zeichnen,
+   * ohne Umweg über einen Effekt.
+   */
+  const [pending, setPending] = useState<ReadonlyMap<number, CleaningGroupEntry[]>>(() => new Map())
+  const [seen, setSeen] = useState(stored)
+  if (seen !== stored) {
+    setSeen(stored)
+    setPending((current) => withoutConfirmed(current, stored))
+  }
+  const groups = useMemo(() => withPendingGroups(stored, pending), [stored, pending])
+
+  /** Die Vormerkung zurücknehmen – nur, wenn seither nichts Neueres darübergeschrieben wurde. */
+  const forget = (written: ReadonlyMap<number, CleaningGroupEntry[]>) =>
+    setPending((current) => {
+      const next = new Map(current)
+      for (const [number, entries] of written) {
+        if (next.get(number) === entries) next.delete(number)
+      }
+      return next
+    })
+
   const [editing, setEditing] = useState<Editing>(null)
   const [withMinors, setWithMinors] = useState(false)
   const [search, setSearch] = useState('')
@@ -81,17 +114,28 @@ export function CleaningGroupsDialog({ onClose }: { onClose: () => void }) {
     0,
   )
 
-  /** Schreibt die geänderten Gruppen – unveränderte bleiben unberührt. */
+  /**
+   * Schreibt die geänderten Gruppen – unveränderte bleiben unberührt. Vorgemerkt
+   * wird, bevor geschrieben wird: Der nächste Handgriff sieht den neuen Stand
+   * schon, auch wenn dieser noch unterwegs ist.
+   */
   const write = async (next: Map<number, CleaningGroupEntry[]>, message: string) => {
+    const changed = new Map(
+      [...next.entries()]
+        .map(([number, entries]) => [number, normalizedEntries(entries)] as const)
+        .filter(([number, entries]) => {
+          const before = groups.find((group) => group.number === number)?.entries
+          return !before || entriesKey(before) !== entriesKey(entries)
+        }),
+    )
+    if (changed.size > 0) setPending((current) => new Map([...current, ...changed]))
     try {
-      const changed = [...next.entries()].filter(([number, entries]) => {
-        const before = groups.find((group) => group.number === number)?.entries ?? null
-        return JSON.stringify(before) !== JSON.stringify(entries)
-      })
       let outcome: Awaited<ReturnType<typeof saveCleaningGroup>> = 'synced'
       for (const [number, entries] of changed) outcome = await saveCleaningGroup(number, entries)
       toast.saved(message, outcome)
     } catch (error) {
+      // Nicht angekommen: zurück auf den Stand, den der Listener meldet.
+      forget(changed)
       console.error(error)
       toast.error('Die Gruppeneinteilung konnte nicht gespeichert werden.')
     }
@@ -164,15 +208,27 @@ export function CleaningGroupsDialog({ onClose }: { onClose: () => void }) {
 
   const addGroup = async () => {
     const number = Math.max(0, ...groups.map((group) => group.number)) + 1
+    // Vorgemerkt wie jeder andere Handgriff – ein zweiter Klick legt die
+    // nächste Gruppe an, nicht dieselbe noch einmal.
+    const written = new Map([[number, [] as CleaningGroupEntry[]]])
+    setPending((current) => new Map([...current, ...written]))
     try {
       toast.saved(`Gruppe ${number} angelegt.`, await saveCleaningGroup(number, []))
     } catch (error) {
+      forget(written)
       console.error(error)
       toast.error('Die Gruppe konnte nicht angelegt werden.')
     }
   }
 
   const removeGroup = async (number: number) => {
+    // Eine vorgemerkte Gruppe stünde sonst weiter da, auch wenn sie weg ist.
+    setPending((current) => {
+      if (!current.has(number)) return current
+      const next = new Map(current)
+      next.delete(number)
+      return next
+    })
     try {
       toast.saved(`Gruppe ${number} entfernt.`, await deleteCleaningGroup(number))
     } catch (error) {

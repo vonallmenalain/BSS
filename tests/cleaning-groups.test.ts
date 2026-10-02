@@ -5,11 +5,15 @@ import { deflateSync } from 'node:zlib'
 import {
   assignedMemberIds,
   cleaningGroupNumber,
+  entriesKey,
   entryLabelFromMembers,
   groupOfMember,
   isAdult,
+  normalizedEntries,
   responsibleEntry,
   unassignedMembers,
+  withoutConfirmed,
+  withPendingGroups,
 } from '../src/lib/cleaningGroups.ts'
 import { pdfLines, pdfSegments, pdfTextItems } from '../src/lib/pdfText.ts'
 import {
@@ -348,4 +352,58 @@ test('wer noch in keiner Gruppe steht – Erwachsene, auf Wunsch auch Kinder', (
   assert.equal(isAdult({ birthDate: new Date(2008, 9, 2) }, today), true)
   assert.equal(isAdult({ birthDate: new Date(2008, 9, 3) }, today), false)
   assert.equal(groupOfMember(GROUPS, ids('Hansruedi Bürki')[0])?.group.number, 2)
+})
+
+/* ------------------------------------------------------------------ */
+/* Was gerade unterwegs ist                                            */
+/* ------------------------------------------------------------------ */
+
+test('Einträge werden gespeichert, wie sie verglichen werden', () => {
+  assert.deepEqual(
+    normalizedEntries([
+      { id: 'a', label: '  Bader Roger & Sylvie ', memberIds: ['m2', 'm3', 'm2'] },
+    ]),
+    [{ id: 'a', label: 'Bader Roger & Sylvie', memberIds: ['m2', 'm3'] }],
+  )
+  // Die Reihenfolge der Felder spielt keine Rolle – Firestore liefert sie, wie es will.
+  assert.equal(
+    entriesKey([{ memberIds: ['m1'], label: 'Römer Nathan', id: 'x' }]),
+    entriesKey([{ id: 'x', label: 'Römer Nathan ', memberIds: ['m1', 'm1'] }]),
+  )
+  assert.notEqual(
+    entriesKey([{ id: 'x', label: 'Römer Nathan', memberIds: ['m1'] }]),
+    entriesKey([{ id: 'x', label: 'Römer Nathan', memberIds: [] }]),
+  )
+})
+
+test('zwei Handgriffe kurz hintereinander bauen aufeinander auf', () => {
+  const entry = (id: string, memberIds: string[] = []) => ({ id, label: id, memberIds })
+  const stored = [
+    { id: '1', number: 1, entries: [entry('Römer Nathan', ['m1'])] },
+    { id: '2', number: 2, entries: [entry('Bader Roger & Sylvie', ['m2', 'm3'])] },
+  ]
+  // Der erste Handgriff ist geschrieben, aber noch nicht zurückgemeldet …
+  const pending = new Map([[1, [entry('Römer Nathan', ['m1']), entry('Muster Lea', ['m9'])]]])
+  // … und dazu eine eben angelegte Gruppe 3.
+  pending.set(3, [])
+  const shown = withPendingGroups(stored, pending)
+  assert.deepEqual(
+    shown.map((group) => [group.number, group.entries.map((item) => item.id)]),
+    [
+      [1, ['Römer Nathan', 'Muster Lea']],
+      [2, ['Bader Roger & Sylvie']],
+      [3, []],
+    ],
+  )
+  assert.equal(shown[2].id, '3')
+
+  // Solange der Listener den alten Stand meldet, bleibt die Vormerkung.
+  assert.equal(withoutConfirmed(pending, stored), pending)
+  // Meldet er Gruppe 1 so, wie sie geschrieben wurde, fällt sie weg – Gruppe 3 bleibt.
+  const confirmed = withoutConfirmed(pending, [
+    { number: 1, entries: [entry('Römer Nathan', ['m1']), entry('Muster Lea', ['m9'])] },
+    stored[1],
+  ])
+  assert.deepEqual([...confirmed.keys()], [3])
+  assert.equal(withPendingGroups(stored, new Map()).length, 2)
 })

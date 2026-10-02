@@ -1,7 +1,7 @@
 import { deleteDoc, doc, serverTimestamp, setDoc, writeBatch } from '@/lib/db'
 import { db, COLLECTIONS } from '@/lib/firebase'
 import { forgetDoc } from '@/lib/collectionStore'
-import { cleaningGroupId } from '@/lib/cleaningGroups'
+import { cleaningGroupId, normalizedEntries } from '@/lib/cleaningGroups'
 import { commit, requireOnline, type SaveOutcome } from '@/lib/sync'
 import type { GeneratedWeek } from '@/lib/cleaningPlan'
 import type { CleaningGroupEntry, CleaningWeek } from '@/lib/types'
@@ -70,11 +70,7 @@ export async function saveCleaningGroup(
   return commit(
     setDoc(doc(db, COLLECTIONS.cleaningGroups, cleaningGroupId(number)), {
       number,
-      entries: entries.map((entry) => ({
-        id: entry.id,
-        label: entry.label.trim(),
-        memberIds: [...new Set(entry.memberIds)],
-      })),
+      entries: normalizedEntries(entries),
       updatedAt: serverTimestamp(),
     }),
   )
@@ -101,11 +97,7 @@ export async function replaceCleaningGroups(
   for (const group of groups) {
     batch.set(doc(db, COLLECTIONS.cleaningGroups, cleaningGroupId(group.number)), {
       number: group.number,
-      entries: group.entries.map((entry) => ({
-        id: entry.id,
-        label: entry.label.trim(),
-        memberIds: [...new Set(entry.memberIds)],
-      })),
+      entries: normalizedEntries(group.entries),
       updatedAt: serverTimestamp(),
     })
   }

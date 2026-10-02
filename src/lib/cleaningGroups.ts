@@ -121,3 +121,77 @@ export function groupOfMember<T extends Pick<CleaningGroup, 'number' | 'entries'
   }
   return null
 }
+
+/* ------------------------------------------------------------------ */
+/* Was gerade unterwegs ist                                            */
+/* ------------------------------------------------------------------ */
+
+/**
+ * Die Einträge so, wie sie gespeichert werden: die Bezeichnung ohne
+ * Leerraum an den Enden, jedes Mitglied höchstens einmal.
+ */
+export function normalizedEntries(entries: readonly CleaningGroupEntry[]): CleaningGroupEntry[] {
+  return entries.map((entry) => ({
+    id: entry.id,
+    label: entry.label.trim(),
+    memberIds: [...new Set(entry.memberIds)],
+  }))
+}
+
+/**
+ * Ein Vergleichswert für die Einträge einer Gruppe – gleich, wenn
+ * gespeichert dasselbe herauskommt. Unabhängig davon, in welcher Reihenfolge
+ * Firestore die Felder eines Eintrags zurückgibt.
+ */
+export function entriesKey(entries: readonly CleaningGroupEntry[]): string {
+  return JSON.stringify(
+    normalizedEntries(entries).map((entry) => [entry.id, entry.label, entry.memberIds]),
+  )
+}
+
+/**
+ * Die Einteilung samt dem, was geschrieben, aber noch nicht zurückgemeldet
+ * ist – je Gruppe die vorgemerkten Einträge statt der gespeicherten, eine
+ * eben angelegte Gruppe hinten angehängt.
+ *
+ * Gebraucht vom Dialog «Gruppeneinteilung»: Jeder Handgriff schreibt eine
+ * ganze Gruppe. Zwei kurz hintereinander – zwei Mitglieder in dieselbe
+ * Gruppe – rechneten ohne diese Vormerkung beide mit dem Stand von vorher,
+ * und der zweite überschriebe den ersten.
+ */
+export function withPendingGroups<T extends CleaningGroup>(
+  stored: readonly T[],
+  pending: ReadonlyMap<number, CleaningGroupEntry[]>,
+): CleaningGroup[] {
+  if (pending.size === 0) return [...stored]
+  const result: CleaningGroup[] = stored.map((group) => {
+    const entries = pending.get(group.number)
+    return entries ? { ...group, entries } : group
+  })
+  for (const [number, entries] of pending) {
+    if (!stored.some((group) => group.number === number)) {
+      result.push({ id: cleaningGroupId(number), number, entries })
+    }
+  }
+  return result
+}
+
+/**
+ * Was der Listener inzwischen so meldet, wie es geschrieben wurde, braucht
+ * keine Vormerkung mehr. Unverändert, wenn nichts angekommen ist – dieselbe
+ * Map, damit React nichts neu zeichnet.
+ */
+export function withoutConfirmed(
+  pending: ReadonlyMap<number, CleaningGroupEntry[]>,
+  stored: readonly Pick<CleaningGroup, 'number' | 'entries'>[],
+): ReadonlyMap<number, CleaningGroupEntry[]> {
+  let next: Map<number, CleaningGroupEntry[]> | null = null
+  for (const [number, entries] of pending) {
+    const group = stored.find((item) => item.number === number)
+    if (group && entriesKey(group.entries) === entriesKey(entries)) {
+      next ??= new Map(pending)
+      next.delete(number)
+    }
+  }
+  return next ?? pending
+}
