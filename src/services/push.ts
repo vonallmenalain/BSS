@@ -30,6 +30,16 @@ const TOKEN_KEY = 'bss-push-token'
 const SW_URL = '/push-sw.js'
 const SW_SCOPE = '/push/'
 
+/**
+ * Die Putzplan-Erinnerung dieses Geräts (`services/cleaningReminder`).
+ *
+ * Sie braucht kein Konto, aber dieselbe Adresse: Ein Browser hat bei Cloud
+ * Messaging nur eine. Wer die Benachrichtigungen des Kontos ausschaltet,
+ * darf die Adresse deshalb nicht zurückgeben, solange die Erinnerung sie
+ * noch braucht – und umgekehrt.
+ */
+export const CLEANING_REMINDER_KEY = 'bss-putzplan-erinnerung'
+
 /** Ist der öffentliche VAPID-Schlüssel hinterlegt (`VITE_FIREBASE_VAPID_KEY`)? */
 export function pushConfigured(): boolean {
   return Boolean(import.meta.env.VITE_FIREBASE_VAPID_KEY)
@@ -70,12 +80,7 @@ export async function enablePush(user: { uid: string }): Promise<'granted' | 'de
   const permission = await Notification.requestPermission()
   if (permission !== 'granted') return 'denied'
 
-  const registration = await navigator.serviceWorker.register(SW_URL, { scope: SW_SCOPE })
-  const messaging = getMessaging(app)
-  const token = await getToken(messaging, {
-    vapidKey: import.meta.env.VITE_FIREBASE_VAPID_KEY as string,
-    serviceWorkerRegistration: registration,
-  })
+  const token = await deviceToken()
 
   await fbSetDoc(
     fbDoc(db, COLLECTIONS.pushTokens, token),
@@ -86,17 +91,49 @@ export async function enablePush(user: { uid: string }): Promise<'granted' | 'de
   return 'granted'
 }
 
-/** Abmelden: Adresse zurückgeben und das Dokument wegräumen. */
-export async function disablePush(): Promise<void> {
-  const token = localStorage.getItem(TOKEN_KEY)
-  localStorage.removeItem(TOKEN_KEY)
+/**
+ * Die Adresse dieses Geräts bei Cloud Messaging – setzt die Erlaubnis voraus.
+ *
+ * Solange der Browser sie nicht neu vergibt, ist es bei jedem Aufruf
+ * dieselbe; die Benachrichtigungen des Kontos und die Putzplan-Erinnerung
+ * teilen sie sich.
+ */
+export async function deviceToken(): Promise<string> {
+  const registration = await navigator.serviceWorker.register(SW_URL, { scope: SW_SCOPE })
+  return getToken(getMessaging(app), {
+    vapidKey: import.meta.env.VITE_FIREBASE_VAPID_KEY as string,
+    serviceWorkerRegistration: registration,
+  })
+}
 
+/** Die Adresse zurückgeben – danach erreicht dieses Gerät keine Nachricht mehr. */
+export async function releaseDeviceToken(): Promise<void> {
   try {
     await deleteToken(getMessaging(app))
   } catch (error) {
     // Ein Token, das sich nicht zurückgeben lässt, ist meist schon weg.
     console.warn('[push] Token konnte nicht zurückgegeben werden:', error)
   }
+}
+
+/** Braucht die Putzplan-Erinnerung die Adresse dieses Geräts noch? */
+function cleaningReminderActive(): boolean {
+  try {
+    return Boolean(localStorage.getItem(CLEANING_REMINDER_KEY))
+  } catch {
+    return false
+  }
+}
+
+/**
+ * Abmelden: das Dokument wegräumen – und die Adresse zurückgeben, sofern
+ * die Putzplan-Erinnerung sie nicht noch braucht.
+ */
+export async function disablePush(): Promise<void> {
+  const token = localStorage.getItem(TOKEN_KEY)
+  localStorage.removeItem(TOKEN_KEY)
+
+  if (!cleaningReminderActive()) await releaseDeviceToken()
 
   if (token) {
     await fbDeleteDoc(fbDoc(db, COLLECTIONS.pushTokens, token)).catch((error) =>

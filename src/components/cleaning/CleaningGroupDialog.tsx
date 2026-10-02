@@ -1,5 +1,5 @@
 import type { ReactNode } from 'react'
-import { CalendarClock, CalendarRange, Home, Users } from 'lucide-react'
+import { Bell, CalendarClock, CalendarRange, Home, Users } from 'lucide-react'
 import { Modal } from '@/components/ui/Modal'
 import { cleaningGroupName, cleaningGroupNumber, responsibleEntry } from '@/lib/cleaningGroups'
 import { cn } from '@/lib/utils'
@@ -37,6 +37,9 @@ function untilLabel(startDate: string, today: string): string {
  * Die Termine kommen aus dem Plan selbst: Jede Woche, in der «Gruppe N»
  * steht, gehört dazu – auch die zweite Woche um eine Konferenz, mit ihrem
  * Grund.
+ *
+ * Zuunterst der kurze Weg zur Erinnerung: Wer nachschaut, wann die eigene
+ * Gruppe dran ist, will es meist auch nicht vergessen.
  */
 export function CleaningGroupDialog({
   number,
@@ -44,6 +47,7 @@ export function CleaningGroupDialog({
   groups,
   today,
   onClose,
+  onRemind,
 }: {
   number: number
   weeks: readonly CleaningWeek[]
@@ -51,6 +55,8 @@ export function CleaningGroupDialog({
   /** «2026-10-02» */
   today: string
   onClose: () => void
+  /** Die Erinnerung für diese Gruppe einrichten – fehlt, wo es keine gibt. */
+  onRemind?: (number: number) => void
 }) {
   const group = groups.find((entry) => entry.number === number) ?? null
   const own = weeks
@@ -175,6 +181,17 @@ export function CleaningGroupDialog({
             </p>
           )}
         </section>
+
+        {onRemind && (
+          <button
+            type="button"
+            className="btn-secondary w-full sm:w-auto"
+            onClick={() => onRemind(number)}
+          >
+            <Bell className="size-4" aria-hidden />
+            Erinnern, wenn {cleaningGroupName(number)} dran ist
+          </button>
+        )}
       </div>
     </Modal>
   )

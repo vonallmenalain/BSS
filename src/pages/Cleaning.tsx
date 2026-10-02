@@ -1,13 +1,27 @@
 import { useEffect, useMemo, useState, type FormEvent } from 'react'
-import { Brush, CalendarRange, FileDown, Pencil, Plus, Sparkles, Trash2, Users } from 'lucide-react'
+import {
+  Bell,
+  BellRing,
+  Brush,
+  CalendarRange,
+  FileDown,
+  Pencil,
+  Plus,
+  Sparkles,
+  Trash2,
+  Users,
+} from 'lucide-react'
 import { useAuth } from '@/contexts/AuthContext'
 import { useData } from '@/contexts/DataContext'
 import { useToast } from '@/contexts/ToastContext'
+import { useCleaningReminder } from '@/hooks/useCleaningReminder'
 import { useAllSacramentMeetings, useCleaningGroups, useCleaningWeeks } from '@/hooks/useFirestore'
 import { useLocalStorage } from '@/hooks/useLocalStorage'
 import { CleaningGenerateDialog } from '@/components/cleaning/CleaningGenerateDialog'
 import { CleaningGroupDialog } from '@/components/cleaning/CleaningGroupDialog'
 import { CleaningGroupsDialog } from '@/components/cleaning/CleaningGroupsDialog'
+import { CleaningInstallCard } from '@/components/cleaning/CleaningInstallCard'
+import { CleaningReminderDialog } from '@/components/cleaning/CleaningReminderDialog'
 import { EmptyState, SkeletonList } from '@/components/ui/Feedback'
 import { OtherResults } from '@/components/ui/OtherResults'
 import { PageHeader, SegmentedControl } from '@/components/ui/Pickers'
@@ -15,6 +29,8 @@ import { Modal, ConfirmDialog } from '@/components/ui/Modal'
 import { formatDateLong, toDateInput } from '@/lib/dates'
 import { cn, matchesSearch } from '@/lib/utils'
 import { deleteCleaningWeek, saveCleaningWeek } from '@/services/cleaning'
+import { refreshCleaningReminder } from '@/services/cleaningReminder'
+import { pushConfigured } from '@/services/push'
 import {
   CLEANING_PLAN_LABEL,
   cleaningGroupsPdf,
@@ -52,9 +68,16 @@ type Scope = 'upcoming' | 'past' | 'all'
  * wie gewohnt. Was ein Konto braucht, fehlt: Ändern, Export und die
  * Sonntagskarte der Leitung – wem am Sonntag gedankt wird, ist deren
  * Sache.
+ *
+ * **Die Erinnerung gibt es für alle.** Über den Knopf «Erinnerung» lässt
+ * sich jedes Gerät benachrichtigen, wenn eine Gruppe dran ist – ohne Konto,
+ * und mit Konto in jeder Rolle (siehe `components/cleaning/
+ * CleaningReminderPanel`). Wer ohne Konto liest, bekommt dazu den Hinweis,
+ * den Putzplan als App zu installieren; installiert wird er unter eigenem
+ * Namen und beginnt auf dieser Seite (`usePutzplanManifest`).
  */
 export function Cleaning() {
-  const { isApproved } = useAuth()
+  const { isApproved, isGuest } = useAuth()
   const editable = isApproved
   const { data: weeks, loading, error } = useCleaningWeeks()
   const { data: groups } = useCleaningGroups()
@@ -67,8 +90,26 @@ export function Cleaning() {
   const [formOpen, setFormOpen] = useState(false)
   const [editWeek, setEditWeek] = useState<CleaningWeek | null>(null)
   const [exportOpen, setExportOpen] = useState(false)
+  /** Der Dialog «Erinnerung» – mit der Gruppe, aus deren Übersicht man kommt. */
+  const [reminderFor, setReminderFor] = useState<{ group: number | null } | null>(null)
+  const reminder = useCleaningReminder()
+  const remindable = pushConfigured()
 
   const today = toDateInput(new Date())
+
+  usePutzplanManifest(isGuest)
+
+  /*
+   * Stimmt die Anmeldung der Erinnerung noch? Browser vergeben ihre Adresse
+   * ab und zu neu – beim Öffnen des Plans fällt das auf, und das Gerät
+   * meldet sich unter der neuen an (siehe `refreshCleaningReminder`).
+   */
+  useEffect(() => {
+    if (!remindable) return
+    refreshCleaningReminder().catch((error) =>
+      console.warn('[putzplan] Erinnerung nicht nachgeführt:', error),
+    )
+  }, [remindable])
 
   /** Eine Woche zum Ändern öffnen – aus beiden Listen derselbe Weg. */
   const openWeek = (week: CleaningWeek) => {
@@ -143,8 +184,28 @@ export function Cleaning() {
       <PageHeader
         title="Putzplan"
         actions={
-          editable && (
-            <div className="flex flex-wrap gap-2">
+          <div className="flex flex-wrap gap-2">
+            {/* Für alle, mit und ohne Konto: die Erinnerung an die Putzwoche. */}
+            {remindable && (
+              <button
+                type="button"
+                className="btn-secondary"
+                onClick={() => setReminderFor({ group: null })}
+                title={
+                  reminder
+                    ? `Erinnerung für Gruppe ${reminder.group} eingeschaltet`
+                    : 'Benachrichtigen, wenn eine Gruppe dran ist'
+                }
+              >
+                {reminder ? (
+                  <BellRing className="text-brand-600 dark:text-brand-300 size-4" aria-hidden />
+                ) : (
+                  <Bell className="size-4" aria-hidden />
+                )}
+                Erinnerung
+              </button>
+            )}
+            {editable && (
               <button
                 type="button"
                 className="btn-secondary"
@@ -154,6 +215,8 @@ export function Cleaning() {
                 <Users className="size-4" aria-hidden />
                 Gruppeneinteilung
               </button>
+            )}
+            {editable && (
               <button
                 type="button"
                 className="btn-secondary"
@@ -163,19 +226,19 @@ export function Cleaning() {
                 <Sparkles className="size-4" aria-hidden />
                 Generieren
               </button>
-              {(weeks.length > 0 || groups.length > 0) && (
-                <button
-                  type="button"
-                  className="btn-secondary"
-                  onClick={() => setExportOpen(true)}
-                  title="Putzplan oder Gruppeneinteilung als PDF zum Ausdrucken herunterladen"
-                >
-                  <FileDown className="size-4" aria-hidden />
-                  Export
-                </button>
-              )}
-            </div>
-          )
+            )}
+            {editable && (weeks.length > 0 || groups.length > 0) && (
+              <button
+                type="button"
+                className="btn-secondary"
+                onClick={() => setExportOpen(true)}
+                title="Putzplan oder Gruppeneinteilung als PDF zum Ausdrucken herunterladen"
+              >
+                <FileDown className="size-4" aria-hidden />
+                Export
+              </button>
+            )}
+          </div>
         }
       />
 
@@ -184,6 +247,8 @@ export function Cleaning() {
       ) : (
         <OnDuty weeks={weeks} today={today} onGroup={showGroup} />
       )}
+
+      {isGuest && <CleaningInstallCard />}
 
       <div className="mb-4 space-y-3">
         <input
@@ -301,10 +366,53 @@ export function Cleaning() {
           groups={groups}
           today={today}
           onClose={() => setGroupShown(null)}
+          onRemind={
+            remindable
+              ? (number) => {
+                  setGroupShown(null)
+                  setReminderFor({ group: number })
+                }
+              : undefined
+          }
+        />
+      )}
+      {reminderFor && (
+        <CleaningReminderDialog
+          groups={groups}
+          weeks={weeks}
+          initialGroup={reminderFor.group}
+          onClose={() => setReminderFor(null)}
         />
       )}
     </>
   )
+}
+
+/**
+ * Ohne Konto wird der Putzplan als eigene App installiert.
+ *
+ * Das Manifest der App beginnt bei «/» – ohne Konto hiesse das: bei der
+ * Anmeldung. Solange jemand ohne Konto den Putzplan liest, zeigt der Link
+ * im Kopf der Seite deshalb auf `public/putzplan.webmanifest`: eigener
+ * Name, eigenes Symbol auf dem Startbildschirm, Start auf dieser Seite.
+ * Beim Verlassen kommt das Manifest der App zurück. Dazu der Name, den
+ * Safari dem Symbol auf dem Home-Bildschirm gibt.
+ */
+function usePutzplanManifest(active: boolean) {
+  useEffect(() => {
+    if (!active) return
+    const link = document.querySelector<HTMLLinkElement>('link[rel="manifest"]')
+    const title = document.querySelector<HTMLMetaElement>('meta[name="apple-mobile-web-app-title"]')
+    const before = { href: link?.getAttribute('href') ?? null, title: title?.content ?? null }
+
+    link?.setAttribute('href', '/putzplan.webmanifest')
+    if (title) title.content = 'Putzplan'
+
+    return () => {
+      if (link && before.href !== null) link.setAttribute('href', before.href)
+      if (title && before.title !== null) title.content = before.title
+    }
+  }, [active])
 }
 
 /* ------------------------------------------------------------------ */
