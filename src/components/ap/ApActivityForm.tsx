@@ -1,4 +1,4 @@
-import { useEffect, useId, useMemo, useState, type FormEvent } from 'react'
+import { useEffect, useId, useMemo, useRef, useState, type FormEvent } from 'react'
 import { Trash2 } from 'lucide-react'
 import { useAuth } from '@/contexts/AuthContext'
 import { useToast } from '@/contexts/ToastContext'
@@ -82,21 +82,38 @@ export function ApActivityForm({
   const toast = useToast()
   const listId = useId()
 
-  const [form, setForm] = useState<ApActivityInput>(EMPTY_AP_ACTIVITY)
-  const [multiDay, setMultiDay] = useState(false)
+  /*
+   * Die Startwerte stehen schon im ersten Bild.
+   *
+   * Die Seite baut das Formular für jedes Öffnen neu auf (`key`), und es
+   * übernimmt Termin bzw. Vorschlag beim Aufbau. Früher setzte ein Effekt
+   * die Felder erst nach dem Zeichnen – bis dahin stand im Fenster der
+   * zuletzt geöffnete Termin, auf einem langsamen Telefon gut sichtbar.
+   */
+  const [form, setForm] = useState<ApActivityInput>(() =>
+    activity ? toInput(activity) : { ...EMPTY_AP_ACTIVITY, date: defaultDate },
+  )
+  const [multiDay, setMultiDay] = useState(() =>
+    Boolean(activity?.endDate && activity.endDate !== activity.date),
+  )
   const [saving, setSaving] = useState(false)
   const [confirmDelete, setConfirmDelete] = useState(false)
 
+  /*
+   * Ob dieses Formular noch das offene ist.
+   *
+   * Speichern wartet bis zu zwei Sekunden auf die Bestätigung (siehe
+   * `lib/sync`). Wer in der Zeit schliesst und schon den nächsten Termin
+   * öffnet, hat ein neues Formular vor sich – das nachlaufende Speichern
+   * darf dann nicht dieses schliessen.
+   */
+  const alive = useRef(true)
   useEffect(() => {
-    if (!open) return
-    if (activity) {
-      setForm(toInput(activity))
-      setMultiDay(Boolean(activity.endDate && activity.endDate !== activity.date))
-    } else {
-      setForm({ ...EMPTY_AP_ACTIVITY, date: defaultDate })
-      setMultiDay(false)
+    alive.current = true
+    return () => {
+      alive.current = false
     }
-  }, [open, activity, defaultDate])
+  }, [])
 
   const suggestions = useMemo(
     () => ({
@@ -185,7 +202,7 @@ export function ApActivityForm({
         profile?.id ?? null,
       )
       toast.saved(activity ? 'Termin gespeichert.' : 'Termin hinzugefügt.', outcome)
-      onClose()
+      if (alive.current) onClose()
     } catch (error) {
       console.error(error)
       toast.error('Speichern fehlgeschlagen.')
@@ -436,7 +453,7 @@ export function ApActivityForm({
           onConfirm={() => {
             void deleteApActivity(activity.id).then((outcome) => {
               toast.saved('Termin entfernt.', outcome)
-              onClose()
+              if (alive.current) onClose()
             })
           }}
           title="Termin löschen?"

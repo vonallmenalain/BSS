@@ -125,6 +125,12 @@ export function ApActivities() {
   const [wantsEdit, setWantsEdit] = useState(false)
   const [formOpen, setFormOpen] = useState(false)
   const [editing, setEditing] = useState<ApActivity | null>(null)
+  /*
+   * Jedes Öffnen baut das Formular neu auf: Es zeigt den angeklickten Termin
+   * schon im ersten Bild und nicht für einen Augenblick den zuletzt
+   * geöffneten (siehe `ApActivityForm`).
+   */
+  const [formKey, setFormKey] = useState(0)
   const [scheduleOpen, setScheduleOpen] = useState(false)
   const [feedOpen, setFeedOpen] = useState(false)
   /*
@@ -219,6 +225,7 @@ export function ApActivities() {
 
   const open = (activity: ApActivity | null) => {
     setEditing(activity)
+    setFormKey((key) => key + 1)
     setFormOpen(true)
   }
 
@@ -434,6 +441,7 @@ export function ApActivities() {
       )}
 
       <ApActivityForm
+        key={formKey}
         open={formOpen}
         activity={editing}
         defaultDate={suggestedDate}
