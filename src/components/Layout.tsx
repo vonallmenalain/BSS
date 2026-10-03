@@ -25,6 +25,7 @@ import {
   Tent,
   Sparkles,
   LogIn,
+  EyeOff,
 } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { useAuth } from '@/contexts/AuthContext'
@@ -32,6 +33,7 @@ import { useData } from '@/contexts/DataContext'
 import { useTrackLocation } from '@/hooks/useBack'
 import { useImpulseAppearance, useOnlineStatus, useTheme } from '@/hooks/useLocalStorage'
 import { usePendingWrites } from '@/hooks/useSync'
+import { PUTZPLAN_PREVIEW, usePutzplanPreview } from '@/hooks/usePutzplanPreview'
 import { useEnsureMonthlyDuties } from '@/hooks/useMonthlyDuties'
 import { useNow } from '@/hooks/useNow'
 import { useImpulseItems, useImpulseProgress } from '@/hooks/useFirestore'
@@ -161,6 +163,15 @@ export function Layout() {
   const guestBoard = location.pathname.startsWith('/putzplan')
     ? { to: '/putzplan', label: 'Putzplan' }
     : { to: '/ap', label: 'Aktivitätenplan' }
+
+  /*
+   * Die Vorschau des öffentlichen Putzplans (`?vorschau`, nur mit
+   * Vollzugriff): Die Hülle sieht dann aus wie für jemanden ohne Konto –
+   * keine Navigation, «Putzplan» im Kopf, hell –, bloss steht oben rechts
+   * «Vorschau verlassen» statt «Anmelden» (siehe `usePutzplanPreview`).
+   */
+  const preview = usePutzplanPreview()
+  const asGuest = isGuest || preview.active
   const openMenu = useCallback(() => setMenuOpen(true), [])
 
   /*
@@ -175,7 +186,7 @@ export function Layout() {
   // Der Putzplan ohne Konto beginnt hell – mit eigener Wahl (siehe `useTheme`).
   const [theme, setTheme] = useTheme(
     immersive ? (impulseLook === 'hell' ? 'light' : 'dark') : null,
-    isGuest && guestBoard.to === '/putzplan',
+    asGuest && guestBoard.to === '/putzplan',
   )
 
   /*
@@ -246,7 +257,7 @@ export function Layout() {
     })),
   }
 
-  const navItems: NavItem[] = isApproved
+  const accountNavItems: NavItem[] = isApproved
     ? [
         { to: '/', label: 'Übersicht', shortLabel: 'Start', icon: LayoutDashboard, primary: true },
         {
@@ -287,6 +298,9 @@ export function Layout() {
         ...(canViewAp ? [{ ...apItem, primary: true }] : []),
         ...(canViewImpulse ? [{ ...impulsItem, primary: true }] : []),
       ]
+
+  // In der Vorschau des Putzplans wie ohne Konto: keine Navigation.
+  const navItems = preview.active ? [] : accountNavItems
 
   const ThemeIcon = theme === 'dark' ? Moon : theme === 'light' ? Sun : MonitorSmartphone
   const themeLabel = theme === 'system' ? 'System' : theme === 'dark' ? 'Dunkel' : 'Hell'
@@ -329,7 +343,7 @@ export function Layout() {
                 steht also gar nicht zur Verfügung – und was die Seite ist,
                 sagt er ohnehin besser. */}
             <NavLink
-              to={isGuest ? guestBoard.to : '/'}
+              to={preview.active ? PUTZPLAN_PREVIEW : isGuest ? guestBoard.to : '/'}
               className="flex min-w-0 items-center gap-2.5"
             >
               <span className="bg-brand-600 grid size-8 shrink-0 place-items-center rounded-lg text-sm font-bold text-white">
@@ -340,7 +354,7 @@ export function Layout() {
                   Bischofschaft
                 </span>
                 <span className="block truncate text-[11px] leading-tight text-slate-500 dark:text-slate-400">
-                  {isGuest ? guestBoard.label : settings.wardName}
+                  {asGuest ? guestBoard.label : settings.wardName}
                 </span>
               </span>
             </NavLink>
@@ -388,6 +402,14 @@ export function Layout() {
                 <span className="hidden sm:inline">Anmelden</span>
                 <span className="sr-only sm:hidden">Anmelden</span>
               </NavLink>
+            ) : preview.active ? (
+              /* An der Stelle von «Anmelden» – der Weg zurück zur Bearbeitung,
+                 den es nur für Angemeldete gibt. */
+              <button type="button" className="btn-secondary" onClick={preview.leave}>
+                <EyeOff className="size-4" aria-hidden />
+                <span className="hidden sm:inline">Vorschau verlassen</span>
+                <span className="sr-only sm:hidden">Vorschau verlassen</span>
+              </button>
             ) : (
               <UserMenu />
             )}

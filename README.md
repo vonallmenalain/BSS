@@ -1605,7 +1605,9 @@ Die Gemeinde putzt in zehn Gruppen, eine nach der anderen, jede eine Woche von
 Sonntag bis Samstag. Der Plan steht als Liste der Wochen da – mit der laufenden
 Woche hervorgehoben und, ganz oben, den zwei Zeilen für den nächsten Sonntag:
 wem gedankt wird und wer als Nächstes an der Reihe ist. Mit Vollzugriff stehen
-oben rechts drei Knöpfe: **Gruppeneinteilung**, **Generieren** und **Export**.
+oben rechts **Gruppeneinteilung**, **Generieren**, **Export** und **Vorschau
+öffentlicher Putzplan** (siehe [«Wer den Putzplan
+sieht»](#wer-den-putzplan-sieht)).
 Für alle – mit und ohne Konto – stehen daneben **Erinnerung** und **Kalender**
 (siehe [«Erinnerung und App»](#erinnerung-und-app) und [«Putzwochen im eigenen
 Kalender»](#putzwochen-im-eigenen-kalender)).
@@ -1774,6 +1776,17 @@ Erinnerung und in den eigenen Kalender.
 Ändern, Export und die Sonntagskarte fehlen dort. Oben rechts steht statt des
 Benutzermenüs der Knopf **Anmelden**, in der Kopfzeile «Putzplan» statt des
 Gemeindenamens – die Einstellungen bleiben angemeldeten Konten vorbehalten.
+
+**Die Vorschau.** Mit Vollzugriff zeigt **Vorschau öffentlicher Putzplan**
+dieselbe Seite so, wie sie ohne Konto aussieht – samt der Hülle des
+Anschlagbretts: ohne Navigation, hell, «Putzplan» in der Kopfzeile, mit dem
+Hinweis zur App. Ein Streifen über dem Plan sagt, dass es die Vorschau ist.
+**Zurück zur Bearbeitung** dort oder **Vorschau verlassen** oben rechts – an
+der Stelle von «Anmelden» – schliesst sie wieder, ebenso der Zurück-Knopf des
+Browsers. Die Vorschau ist die Adresse `/putzplan?vorschau` und wirkt nur mit
+Vollzugriff: Ohne Konto zeigt dieselbe Adresse schlicht den öffentlichen Plan,
+und einen Weg «zurück zur Bearbeitung» gibt es dort nicht
+(`hooks/usePutzplanPreview`).
 
 **Was damit öffentlich ist.** Genau das, was auf dem ausgedruckten Plan am
 Brett hängt: Woche, Gruppe, die Namen derer, die putzen – und die Bemerkung zur

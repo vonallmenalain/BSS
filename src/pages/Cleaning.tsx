@@ -1,10 +1,12 @@
 import { useEffect, useMemo, useState, type FormEvent } from 'react'
 import {
+  ArrowLeft,
   Bell,
   BellRing,
   Brush,
   CalendarPlus,
   CalendarRange,
+  Eye,
   FileDown,
   Pencil,
   Plus,
@@ -18,6 +20,7 @@ import { useToast } from '@/contexts/ToastContext'
 import { useCleaningReminder } from '@/hooks/useCleaningReminder'
 import { useAllSacramentMeetings, useCleaningGroups, useCleaningWeeks } from '@/hooks/useFirestore'
 import { useLocalStorage } from '@/hooks/useLocalStorage'
+import { usePutzplanPreview } from '@/hooks/usePutzplanPreview'
 import { CleaningGenerateDialog } from '@/components/cleaning/CleaningGenerateDialog'
 import { CleaningCalendarDialog } from '@/components/cleaning/CleaningCalendarDialog'
 import { CleaningGroupDialog } from '@/components/cleaning/CleaningGroupDialog'
@@ -80,10 +83,19 @@ type Scope = 'upcoming' | 'past' | 'all'
  * `CleaningCalendarDialog`). Wer ohne Konto liest, bekommt dazu den Hinweis,
  * den Putzplan als App zu installieren; installiert wird er unter eigenem
  * Namen und beginnt auf dieser Seite (`usePutzplanManifest`).
+ *
+ * **Die Vorschau.** Mit Vollzugriff zeigt «Vorschau öffentlicher Putzplan»
+ * dieselbe Seite so, wie sie ohne Konto aussieht – Anschlagbrett statt
+ * Bearbeitung, samt Hinweis zur App –, bis «Zurück zur Bearbeitung» oder
+ * «Vorschau verlassen» oben rechts sie wieder schliesst (siehe
+ * `usePutzplanPreview`).
  */
 export function Cleaning() {
   const { isApproved, isGuest } = useAuth()
-  const editable = isApproved
+  const preview = usePutzplanPreview()
+  // In der Vorschau wie ohne Konto: nichts zu ändern, das Anschlagbrett.
+  const editable = isApproved && !preview.active
+  const asGuest = isGuest || preview.active
   const { data: weeks, loading, error } = useCleaningWeeks()
   const { data: groups } = useCleaningGroups()
   const [scope, setScope] = useState<Scope>('upcoming')
@@ -104,7 +116,7 @@ export function Cleaning() {
 
   const today = toDateInput(new Date())
 
-  usePutzplanManifest(isGuest)
+  usePutzplanManifest(asGuest)
 
   /*
    * Stimmt die Anmeldung der Erinnerung noch? Browser vergeben ihre Adresse
@@ -185,9 +197,10 @@ export function Cleaning() {
 
   return (
     <>
-      {/* Oben rechts die drei Handgriffe der Leitung: die Einteilung der
-          Gruppen pflegen, den Plan daraus generieren und ihn ausdrucken. Wer
-          eine einzelne Woche korrigieren muss, tut das am Stift in der Zeile. */}
+      {/* Oben rechts die Handgriffe der Leitung: die Einteilung der Gruppen
+          pflegen, den Plan daraus generieren, ihn ausdrucken – und ansehen,
+          wie ihn alle anderen sehen. Wer eine einzelne Woche korrigieren muss,
+          tut das am Stift in der Zeile. */}
       <PageHeader
         title="Putzplan"
         actions={
@@ -257,9 +270,42 @@ export function Cleaning() {
                 Export
               </button>
             )}
+            {editable && (
+              <button
+                type="button"
+                className="btn-secondary"
+                onClick={preview.enter}
+                title="Den Putzplan so ansehen, wie er ohne Anmeldung aussieht"
+              >
+                <Eye className="size-4" aria-hidden />
+                Vorschau öffentlicher Putzplan
+              </button>
+            )}
           </div>
         }
       />
+
+      {/* Die Vorschau sagt, was sie ist – sonst fragt man sich, wo die
+          Knöpfe geblieben sind. */}
+      {preview.active && (
+        <div className="no-print mb-4 flex flex-col gap-3 rounded-xl border border-sky-200 bg-sky-50 px-4 py-3 text-sm text-sky-900 sm:flex-row sm:items-center dark:border-sky-900 dark:bg-sky-950/50 dark:text-sky-100">
+          <p className="flex min-w-0 flex-1 items-start gap-2.5">
+            <Eye className="mt-0.5 size-4 shrink-0" aria-hidden />
+            <span>
+              <span className="font-semibold">Vorschau:</span> So sehen den Putzplan alle, die nicht
+              angemeldet sind – etwa über den QR-Code am Anschlagbrett.
+            </span>
+          </p>
+          <button
+            type="button"
+            className="btn-secondary btn-sm self-start sm:self-auto"
+            onClick={preview.leave}
+          >
+            <ArrowLeft className="size-4" aria-hidden />
+            Zurück zur Bearbeitung
+          </button>
+        </div>
+      )}
 
       {editable ? (
         <NextSunday weeks={weeks} />
@@ -267,7 +313,7 @@ export function Cleaning() {
         <OnDuty weeks={weeks} today={today} onGroup={showGroup} />
       )}
 
-      {isGuest && <CleaningInstallCard />}
+      {asGuest && <CleaningInstallCard />}
 
       <div className="mb-4 space-y-3">
         <input
