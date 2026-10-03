@@ -1612,6 +1612,15 @@ Für alle – mit und ohne Konto – stehen daneben **Erinnerung** und **Kalende
 (siehe [«Erinnerung und App»](#erinnerung-und-app) und [«Putzwochen im eigenen
 Kalender»](#putzwochen-im-eigenen-kalender)).
 
+**Die Suche** über der Liste kennt alle Namen der Gruppeneinteilung, nicht bloss
+die Zuständigen, die in einer Woche stehen. «Lauener» findet jede Woche einer
+Gruppe, in der Laueners eingeteilt sind – auch wenn jemand anderes zuständig
+ist; die Zeile sagt dann darunter, warum: «In der Gruppe: Lauener Richard &
+Katrin». Gesucht wird in den Bezeichnungen der Einträge und, angemeldet, in
+den Namen der verknüpften Mitglieder (etwa ein Doppelname, der in der
+Bezeichnung fehlt). Die Einteilung gilt, wie sie heute ist: Eine vergangene
+Woche findet sich unter den Namen, die heute in ihrer Gruppe stehen.
+
 ### Die Gruppeneinteilung
 
 Je Gruppe die Haushalte und Personen, die dazugehören – «Bader Roger &

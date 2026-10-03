@@ -5,6 +5,8 @@ import { deflateSync } from 'node:zlib'
 import {
   assignedMemberIds,
   cleaningGroupNumber,
+  cleaningSearchIndex,
+  cleaningWeekHit,
   entriesKey,
   entryLabelFromMembers,
   groupOfMember,
@@ -530,6 +532,63 @@ test('wer bei eingeteilten Eltern wohnt, fehlt unter «Nicht eingeteilt»', () =
     'Tim',
     'Ruth',
   ])
+})
+
+test('die Suche im Putzplan kennt alle Namen der Gruppe', () => {
+  const people = new Map([
+    ['c', { firstName: 'Céline', lastName: 'Schär-Bühler' }],
+    ['n', { firstName: 'Noé', lastName: 'Schär' }],
+  ])
+  const groups = [
+    {
+      number: 5,
+      entries: [
+        { id: 'a', label: 'Bader Sylvie & Roger', memberIds: [] },
+        { id: 'b', label: 'Lauener Richard & Katrin', memberIds: [] },
+        { id: 'c', label: 'von Allmen Alain & Bea', memberIds: [] },
+      ],
+    },
+    {
+      number: 2,
+      entries: [{ id: 'd', label: 'Schär Noé & Céline', memberIds: ['n', 'c'] }],
+    },
+  ]
+  const withMembers = cleaningSearchIndex(groups, (id) => people.get(id))
+  const labelsOnly = cleaningSearchIndex(groups)
+  const week5 = { group: 'Gruppe 5', team: 'Bader Sylvie & Roger' }
+  const week2 = { group: 'Gruppe 2', team: 'Schär Noé & Céline' }
+
+  // Wer nicht zuständig ist, findet die Woche trotzdem – mit dem Eintrag dazu.
+  assert.deepEqual(cleaningWeekHit(week5, labelsOnly, 'Lauener'), {
+    match: true,
+    via: 'Lauener Richard & Katrin',
+  })
+  assert.deepEqual(cleaningWeekHit(week5, labelsOnly, 'alain'), {
+    match: true,
+    via: 'von Allmen Alain & Bea',
+  })
+  // Die Zuständigen und die Gruppe stehen schon da – kein Hinweis nötig.
+  assert.deepEqual(cleaningWeekHit(week5, labelsOnly, 'Bader'), { match: true, via: null })
+  assert.deepEqual(cleaningWeekHit(week5, labelsOnly, 'Gruppe 5'), { match: true, via: null })
+  assert.deepEqual(cleaningWeekHit(week5, labelsOnly, 'Müller'), { match: false, via: null })
+  // Wörter aus verschiedenen Einträgen derselben Gruppe.
+  assert.deepEqual(cleaningWeekHit(week5, labelsOnly, 'Lauener Bea'), { match: true, via: null })
+  // Leere Suche: alles passt.
+  assert.deepEqual(cleaningWeekHit(week5, labelsOnly, '  '), { match: true, via: null })
+
+  // Mit dem Verzeichnis auch der Name des verknüpften Mitglieds, samt Umlaut.
+  assert.deepEqual(cleaningWeekHit(week2, withMembers, 'Buehler'), { match: true, via: null })
+  assert.deepEqual(cleaningWeekHit({ ...week2, team: 'Bader' }, withMembers, 'Bühler'), {
+    match: true,
+    via: 'Schär Noé & Céline',
+  })
+  // Ohne Konto bleibt es bei den Bezeichnungen.
+  assert.equal(cleaningWeekHit(week2, labelsOnly, 'Bühler').match, false)
+  // Eine Gruppe ohne Einteilung: nur, was in der Woche steht.
+  assert.equal(
+    cleaningWeekHit({ group: 'Gruppe 9', team: 'Muster' }, labelsOnly, 'Lauener').match,
+    false,
+  )
 })
 
 /* ------------------------------------------------------------------ */

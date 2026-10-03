@@ -32,7 +32,7 @@ import { OtherResults } from '@/components/ui/OtherResults'
 import { PageHeader, SegmentedControl } from '@/components/ui/Pickers'
 import { Modal, ConfirmDialog } from '@/components/ui/Modal'
 import { formatDateLong, toDateInput } from '@/lib/dates'
-import { cn, matchesSearch } from '@/lib/utils'
+import { cn } from '@/lib/utils'
 import { deleteCleaningWeek, saveCleaningWeek } from '@/services/cleaning'
 import { refreshCleaningReminder } from '@/services/cleaningReminder'
 import { pushConfigured } from '@/services/push'
@@ -45,7 +45,7 @@ import {
   cleaningPdfLayout,
   weeksInRange,
 } from '@/services/cleaningPdf'
-import { cleaningGroupNumber } from '@/lib/cleaningGroups'
+import { cleaningGroupNumber, cleaningSearchIndex, cleaningWeekHit } from '@/lib/cleaningGroups'
 import { cleaningAround, cleaningNow } from '@/lib/cleaningPlan'
 import { fromIsoDate } from '@/services/importHistory'
 import type { CleaningGroup, CleaningWeek } from '@/lib/types'
@@ -92,6 +92,7 @@ type Scope = 'upcoming' | 'past' | 'all'
  */
 export function Cleaning() {
   const { isApproved, isGuest } = useAuth()
+  const { membersById } = useData()
   const preview = usePutzplanPreview()
   // In der Vorschau wie ohne Konto: nichts zu ändern, das Anschlagbrett.
   const editable = isApproved && !preview.active
@@ -154,6 +155,31 @@ export function Cleaning() {
 
   const searching = search.trim() !== ''
 
+  /*
+   * Die Suche kennt alle Namen der Gruppeneinteilung, nicht bloss die
+   * Zuständigen, die in der Woche stehen: «Lauener» findet jede Woche einer
+   * Gruppe, in der Laueners eingeteilt sind. Je Woche, ob sie passt – und
+   * über welchen Eintrag, damit die Zeile das sagen kann (siehe
+   * `cleaningWeekHit`). Ohne Konto bleibt es bei den Bezeichnungen der
+   * Einträge; das Verzeichnis ist dann ohnehin leer.
+   */
+  const searchIndex = useMemo(
+    () => cleaningSearchIndex(groups, (id) => membersById.get(id)),
+    [groups, membersById],
+  )
+  const hits = useMemo(
+    () =>
+      searching
+        ? new Map(weeks.map((week) => [week.id, cleaningWeekHit(week, searchIndex, search)]))
+        : null,
+    [searching, weeks, searchIndex, search],
+  )
+  const hints = useMemo(
+    () =>
+      new Map([...(hits ?? [])].flatMap(([id, hit]) => (hit.via ? [[id, hit.via] as const] : []))),
+    [hits],
+  )
+
   const visible = useMemo(() => {
     let result = weeks
     if (scope === 'upcoming') result = result.filter((week) => week.endDate >= today)
@@ -161,11 +187,9 @@ export function Cleaning() {
     else if (scope === 'past') {
       result = [...result].filter((week) => week.endDate < today).reverse()
     }
-    if (search.trim()) {
-      result = result.filter((week) => matchesSearch(`${week.group} ${week.team}`, search))
-    }
+    if (hits) result = result.filter((week) => hits.get(week.id)?.match)
     return result
-  }, [weeks, scope, search, today])
+  }, [weeks, scope, hits, today])
 
   /*
    * Was die Suche ausserhalb des gewählten Zeitraums findet.
@@ -179,15 +203,13 @@ export function Cleaning() {
    * interessiert zuerst.
    */
   const otherHits = useMemo(() => {
-    if (!searching) return []
+    if (!hits) return []
     const shown = new Set(visible.map((week) => week.id))
-    const rest = weeks.filter(
-      (week) => !shown.has(week.id) && matchesSearch(`${week.group} ${week.team}`, search),
-    )
+    const rest = weeks.filter((week) => !shown.has(week.id) && hits.get(week.id)?.match)
     // Steht oben das Kommende, ist das Übrige Vergangenheit – und die liest
     // sich von hinten.
     return scope === 'upcoming' ? [...rest].reverse() : rest
-  }, [searching, visible, weeks, search, scope])
+  }, [hits, visible, weeks, scope])
 
   /** Die Woche, in der heute liegt – sie steht hervorgehoben in der Liste. */
   const currentId = useMemo(
@@ -377,7 +399,13 @@ export function Cleaning() {
           />
         </div>
       ) : (
-        <WeekRows weeks={visible} currentId={currentId} onOpen={onRow} editable={editable} />
+        <WeekRows
+          weeks={visible}
+          currentId={currentId}
+          onOpen={onRow}
+          editable={editable}
+          hints={hints}
+        />
       )}
 
       {/* Was ausserhalb des gewählten Zeitraums zur Suche passt – meist die
@@ -396,7 +424,13 @@ export function Cleaning() {
           }
         >
           {(page) => (
-            <WeekRows weeks={page} currentId={currentId} onOpen={onRow} editable={editable} />
+            <WeekRows
+              weeks={page}
+              currentId={currentId}
+              onOpen={onRow}
+              editable={editable}
+              hints={hints}
+            />
           )}
         </OtherResults>
       )}
@@ -959,11 +993,14 @@ function WeekRows({
   currentId,
   onOpen,
   editable,
+  hints,
 }: {
   weeks: CleaningWeek[]
   currentId: string | null
   onOpen: (week: CleaningWeek) => void
   editable: boolean
+  /** Je Woche der Eintrag ihrer Gruppe, auf den die Suche passt – wenn nicht die Zuständigen selbst */
+  hints?: ReadonlyMap<string, string>
 }) {
   return (
     <ul className="card divide-list overflow-hidden">
@@ -998,6 +1035,13 @@ function WeekRows({
                   {week.note?.trim() && ` · ${week.note.trim()}`}
                   {current && ' · diese Woche'}
                 </p>
+                {/* Warum die Woche zur Suche passt, wenn es nicht die
+                    Zuständigen sind: wer sonst in der Gruppe ist. */}
+                {hints?.get(week.id) && (
+                  <p className="text-brand-700 dark:text-brand-300 mt-0.5 truncate text-xs">
+                    In der Gruppe: {hints.get(week.id)}
+                  </p>
+                )}
               </div>
 
               {editable ? (
