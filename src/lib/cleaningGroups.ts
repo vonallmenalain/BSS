@@ -1,6 +1,7 @@
 // Mit Dateiendung, damit sich das Modul auch ohne Bundler ausführen lässt
 // (`node --test`). Vite und TypeScript lösen das genauso auf.
 import type { CleaningGroup, CleaningGroupEntry, Gender, Member } from './types.ts'
+import { matchesSearch } from './utils.ts'
 
 /**
  * Die Putzgruppen – was sich aus ihnen ablesen lässt.
@@ -451,4 +452,79 @@ export function cleaningGroupChoices(
     if (number !== null && !options.has(number)) options.set(number, `Gruppe ${number}`)
   }
   return [...options].sort((a, b) => a[0] - b[0]).map(([number, label]) => ({ number, label }))
+}
+
+/* ------------------------------------------------------------------ */
+/* Suche im Putzplan                                                   */
+/* ------------------------------------------------------------------ */
+
+/** Was die Suche von einer Gruppe weiss – je Eintrag die Bezeichnung und alle Namen. */
+export interface CleaningGroupSearch {
+  entries: { label: string; text: string }[]
+}
+
+/**
+ * Die Namen der Gruppen für die Suche im Putzplan: je Eintrag seine
+ * Bezeichnung und die verknüpften Mitglieder, soweit das Verzeichnis offen
+ * ist. Ohne Konto bleibt es bei den Bezeichnungen – «Bader Sylvie & Roger»
+ * nennt die Namen ja schon.
+ */
+export function cleaningSearchIndex(
+  groups: readonly Pick<CleaningGroup, 'number' | 'entries'>[],
+  memberOf: (id: string) => Pick<Member, 'firstName' | 'lastName'> | undefined = () => undefined,
+): Map<number, CleaningGroupSearch> {
+  return new Map(
+    groups.map((group) => [
+      group.number,
+      {
+        entries: group.entries.map((entry) => ({
+          label: entry.label.trim(),
+          text: [
+            entry.label,
+            ...entry.memberIds
+              .map(memberOf)
+              .filter((member): member is Pick<Member, 'firstName' | 'lastName'> => Boolean(member))
+              .map((member) => `${member.firstName} ${member.lastName}`),
+          ].join(' '),
+        })),
+      },
+    ]),
+  )
+}
+
+/**
+ * Passt eine Woche zur Suche?
+ *
+ * Gesucht wird in der Gruppe und der zuständigen Familie, wie sie in der
+ * Woche stehen – und in allen Namen ihrer Gruppe aus der Einteilung. Wer
+ * «Lauener» sucht, findet damit jede Woche einer Gruppe, in der Laueners
+ * eingeteilt sind, auch wenn jemand anderes zuständig ist. `via` nennt dann
+ * den Eintrag, auf den die Suche passt: Die Liste zeigt ihn an, sonst sähe
+ * man nicht, warum die Woche dasteht.
+ *
+ * Die Einteilung gilt, wie sie heute ist – eine vergangene Woche findet sich
+ * unter den Namen, die heute in ihrer Gruppe stehen.
+ */
+export function cleaningWeekHit(
+  week: { group: string; team: string },
+  index: ReadonlyMap<number, CleaningGroupSearch>,
+  search: string,
+): { match: boolean; via: string | null } {
+  if (!search.trim()) return { match: true, via: null }
+  const own = `${week.group} ${week.team}`
+  if (matchesSearch(own, search)) return { match: true, via: null }
+
+  const number = cleaningGroupNumber(week.group)
+  const group = number === null ? undefined : index.get(number)
+  if (!group) return { match: false, via: null }
+
+  const entry = group.entries.find((item) => matchesSearch(item.text, search))
+  if (entry) {
+    // Passt es auf die Zuständigen selbst – etwa über den Namen eines
+    // verknüpften Mitglieds –, steht der Eintrag schon da.
+    return { match: true, via: entry.label === week.team.trim() ? null : entry.label || null }
+  }
+  // Mehrere Wörter, verteilt auf verschiedene Einträge derselben Gruppe.
+  const all = [own, ...group.entries.map((item) => item.text)].join(' ')
+  return { match: matchesSearch(all, search), via: null }
 }
