@@ -62,6 +62,7 @@ export {
   getCountFromServer,
   getDoc,
   getDocs,
+  getDocsFromServer,
   increment,
   limit,
   onSnapshot,

@@ -5,10 +5,12 @@ import {
   collection,
   deleteDoc,
   doc,
+  getDocsFromServer,
   serverTimestamp,
   setDoc,
   updateDoc,
   writeBatch,
+  type WriteBatch,
 } from '@/lib/db'
 // Am Protokoll vorbei – warum, steht bei `setImpulseLastSeenWeek`.
 import { setDoc as fbSetDoc } from 'firebase/firestore'
@@ -784,9 +786,9 @@ function chunks<T>(list: T[], size = BATCH_LIMIT): T[][] {
   return result
 }
 
-/** Die Inhalte eines Pakets schreiben – feste IDs, ein zweiter Lauf trifft dieselben Dokumente. */
-async function writePlans(plans: PackPlan[], userId?: string | null): Promise<void> {
-  for (const part of chunks(plans)) {
+/** Die Inhalte eines Pakets als Stapel – feste IDs, ein zweiter Lauf trifft dieselben Dokumente. */
+function planBatches(plans: PackPlan[], userId?: string | null): WriteBatch[] {
+  return chunks(plans).map((part) => {
     const batch = writeBatch(db)
     for (const plan of part) {
       const { id, ...data } = plan
@@ -797,8 +799,21 @@ async function writePlans(plans: PackPlan[], userId?: string | null): Promise<vo
         createdBy: userId ?? null,
       })
     }
-    await batch.commit()
-  }
+    return batch
+  })
+}
+
+/**
+ * Stapel der Reihe nach schreiben – jeder erst, wenn der Server den
+ * vorigen bestätigt hat, wie bei den Importen.
+ *
+ * Reisst die Verbindung mittendrin ab, liegt so höchstens ein Anfang der
+ * Folge in der Warteschlange, nie ein späterer Stapel ohne die früheren;
+ * lehnt der Server einen Stapel ab, gehen die folgenden gar nicht erst
+ * hinaus. Die Reihenfolge der Stapel trägt damit die Sicherheit.
+ */
+async function commitInOrder(batches: WriteBatch[]): Promise<void> {
+  for (const batch of batches) await batch.commit()
 }
 
 /**
@@ -807,14 +822,16 @@ async function writePlans(plans: PackPlan[], userId?: string | null): Promise<vo
  * Die festen Dokument-IDs («fsy26-w41-umfrage-1» …) machen den Lauf
  * gefahrlos: Ein zweiter würde dieselben Dokumente treffen statt
  * Dubletten anzulegen – und die Redaktion blendet den Knopf ohnehin
- * aus, sobald das Paket ganz da ist.
+ * aus, sobald das Paket ganz da ist. Darum darf `commit()` hier nach
+ * zwei Sekunden «zwischengespeichert» melden: Ginge ein späterer Stapel
+ * verloren, holt der nächste Lauf nach, was fehlt.
  */
 export async function createPackItems(
   plans: PackPlan[],
   userId?: string | null,
 ): Promise<SaveOutcome> {
   requireOnline()
-  return commit(writePlans(plans, userId))
+  return commit(commitInOrder(planBatches(plans, userId)))
 }
 
 /**
@@ -824,38 +841,54 @@ export async function createPackItems(
  * Das ist der eine Handgriff, der nicht rückgängig zu machen ist; die
  * Redaktion bestätigt ihn ausdrücklich. Bewusst stehen bleiben der
  * Fortschritt (Serie, Gemerktes, Amen), die Einreichungen der
- * Mitmach-Ecke und alles ausserhalb des Bereichs. Erst wird gelöscht,
- * dann eingespielt – und weil hier Hunderte Dokumente auf einmal gehen,
- * braucht es eine Verbindung, wie bei den Importen: Eine halbe
- * Löschung in der Warteschlange wäre schlimmer als gar keine.
+ * Mitmach-Ecke und alles ausserhalb des Bereichs.
+ *
+ * Wie die Importe verlangt er eine Verbindung und kehrt erst zurück, wenn
+ * der Server jeden Stapel bestätigt hat – kein «zwischengespeichert» nach
+ * zwei Sekunden, das mehr verspräche, als schon sicher liegt. Zuerst geht
+ * das Paket hinaus, dann die Antworten, die Beiträge und zuletzt die
+ * alten Karten (siehe `commitInOrder`): Reisst die Verbindung ab, stehen
+ * schlimmstenfalls Altes und Neues nebeneinander – nie eine Löschung ohne
+ * Paket und nie eine Antwort ohne ihre Karte.
+ *
+ * Welche Antworten und Beiträge zu den Karten gehören, steht nicht in den
+ * Abos der Seite, sondern wird frisch beim Server erfragt: Die Abos laden
+ * vielleicht noch oder hinken nach, und was sie nicht kennen, bliebe
+ * sonst verwaist zurück. Erreicht die Abfrage den Server nicht, bricht
+ * der Neustart ab, bevor etwas geschrieben ist.
  */
 export async function restartImpulseContent(input: {
   itemIds: string[]
-  answerIds: string[]
-  commentIds: string[]
   plans: PackPlan[]
   userId?: string | null
-}): Promise<SaveOutcome> {
+}): Promise<void> {
   requireOnline()
+  const itemIds = new Set(input.itemIds)
+  const [answers, comments] = await Promise.all([
+    getDocsFromServer(collection(db, COLLECTIONS.impulseAnswers)),
+    getDocsFromServer(collection(db, COLLECTIONS.impulseComments)),
+  ])
+  const answerIds = answers.docs
+    .filter((entry) => itemIds.has(String(entry.get('itemId'))))
+    .map((entry) => entry.id)
+  const commentIds = comments.docs
+    .filter((entry) => itemIds.has(String(entry.get('itemId'))))
+    .map((entry) => entry.id)
+
   const deletions = [
-    ...input.answerIds.map((id) => doc(db, COLLECTIONS.impulseAnswers, id)),
-    ...input.commentIds.map((id) => doc(db, COLLECTIONS.impulseComments, id)),
+    ...answerIds.map((id) => doc(db, COLLECTIONS.impulseAnswers, id)),
+    ...commentIds.map((id) => doc(db, COLLECTIONS.impulseComments, id)),
     ...input.itemIds.map((id) => doc(db, COLLECTIONS.impulseItems, id)),
   ]
-  const outcome = await commit(
-    (async () => {
-      for (const part of chunks(deletions)) {
-        const batch = writeBatch(db)
-        for (const reference of part) batch.delete(reference)
-        await batch.commit()
-      }
-      await writePlans(input.plans, input.userId)
-    })(),
-  )
+  const deletionBatches = chunks(deletions).map((part) => {
+    const batch = writeBatch(db)
+    for (const reference of part) batch.delete(reference)
+    return batch
+  })
+  await commitInOrder([...planBatches(input.plans, input.userId), ...deletionBatches])
   for (const id of input.itemIds) forgetDoc(COLLECTIONS.impulseItems, id)
-  for (const id of input.answerIds) forgetDoc(COLLECTIONS.impulseAnswers, id)
-  for (const id of input.commentIds) forgetDoc(COLLECTIONS.impulseComments, id)
-  return outcome
+  for (const id of answerIds) forgetDoc(COLLECTIONS.impulseAnswers, id)
+  for (const id of commentIds) forgetDoc(COLLECTIONS.impulseComments, id)
 }
 
 /**
