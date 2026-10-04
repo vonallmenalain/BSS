@@ -207,6 +207,37 @@ export function scheduleDue(
   return true
 }
 
+/**
+ * Holt die wöchentliche Anti-Doom-Erinnerung nach, wenn ein verschobener
+ * Wochenstart sie verschluckt hat.
+ *
+ * Hat die Redaktion den Start einer Woche nach hinten geschoben (etwa auf
+ * Dienstag, 18:00) und lag die gewählte Zeit davor (etwa Montag, 08:00),
+ * schwieg die Erinnerung dort – «Die neue Woche ist da» stimmte noch
+ * nicht. Sobald die Woche beginnt, ist sie fällig: einmal, solange seit
+ * dem Start keine verschickt wurde. Ein vorgezogener Start verschluckt
+ * nichts; dort kommt die Erinnerung zur gewählten Zeit.
+ */
+export function weeklyReminderCatchUp(input: {
+  schedule: NotificationSchedule
+  /** Der verschobene Start der Kalenderwoche. */
+  start: Date
+  /** Montag, 00:00, derselben Woche – der gewohnte Start. */
+  weekStart: Date
+  now: Date
+  lastSentAt: Date | null
+}): boolean {
+  const { schedule, start, weekStart, now, lastSentAt } = input
+  if (schedule.mode !== 'weekly') return false
+  if (start.getTime() <= weekStart.getTime()) return false
+  if (now.getTime() < start.getTime()) return false
+  if (lastSentAt && lastSentAt.getTime() >= start.getTime()) return false
+  // Lag die gewählte Zeit dieser Woche vor dem Start? Dann hat er sie verschluckt.
+  const at = wallClock(start)
+  const target = parseTime(schedule.time)
+  return schedule.weekday < at.weekday || (schedule.weekday === at.weekday && target < at.minutes)
+}
+
 /** Darf jetzt wieder über neue Traktanden benachrichtigt werden? */
 export function agendaDue(now: Date, lastSentAt: Date | null): boolean {
   if (!lastSentAt) return true

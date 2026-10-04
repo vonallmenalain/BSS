@@ -22,6 +22,7 @@ import {
   scheduleDue,
   scheduleLabel,
   wallClock,
+  weeklyReminderCatchUp,
   zurichDay,
   zurichTime,
 } from '../src/lib/notifications.ts'
@@ -324,5 +325,57 @@ test('apReminderMessage: Vorlauf im Titel, Titel und Zeit im Text', () => {
   assert.equal(
     apReminderMessage({ kind: 'special', title: 'Tempelbesuch', startsAt, leadHours: 1 }).title,
     'In einer Stunde: AP-Aktivität',
+  )
+})
+
+/* ------------------------------------------------------------------ */
+/* Anti Doom: die Erinnerung nach einem verschobenen Wochenstart        */
+/* ------------------------------------------------------------------ */
+
+test('weeklyReminderCatchUp: holt nach, was ein späterer Wochenstart verschluckt hat', () => {
+  // Woche ab Montag, 12. Oktober 2026 (Sommerzeit, UTC+2). Start verschoben
+  // auf Dienstag, 18:00 – die Erinnerung «Montag, 08:00» schwieg darum.
+  const weekStart = new Date('2026-10-11T22:00:00Z') // Montag, 00:00 in Zürich
+  const start = new Date('2026-10-13T16:00:00Z') // Dienstag, 18:00 in Zürich
+  const catchUp = (now: string, lastSentAt: string | null, schedule = montags) =>
+    weeklyReminderCatchUp({
+      schedule,
+      start,
+      weekStart,
+      now: new Date(now),
+      lastSentAt: lastSentAt ? new Date(lastSentAt) : null,
+    })
+
+  // Vor dem Start: noch nicht.
+  assert.equal(catchUp('2026-10-13T15:45:00Z', '2026-10-05T06:00:00Z'), false)
+  // Kaum hat die Woche begonnen: fällig – die letzte kam vor einer Woche.
+  assert.equal(catchUp('2026-10-13T16:00:00Z', '2026-10-05T06:00:00Z'), true)
+  assert.equal(catchUp('2026-10-13T16:00:00Z', null), true)
+  // Einmal: Seit dem Start ist schon eine verschickt.
+  assert.equal(catchUp('2026-10-13T16:15:00Z', '2026-10-13T16:00:00Z'), false)
+  // Lag die gewählte Zeit nach dem Start (Mittwoch, 08:00), hat der Start
+  // nichts verschluckt – sie kommt zur gewählten Zeit.
+  const mittwochs: NotificationSchedule = { mode: 'weekly', weekday: 3, time: '08:00' }
+  assert.equal(catchUp('2026-10-13T16:00:00Z', null, mittwochs), false)
+  // Am selben Tag, aber später als der Start (Dienstag, 19:00): ebenso.
+  const dienstagAbend: NotificationSchedule = { mode: 'weekly', weekday: 2, time: '19:00' }
+  assert.equal(catchUp('2026-10-13T16:00:00Z', null, dienstagAbend), false)
+  // Der Tagestakt kennt das Nachholen nicht – er kommt ohnehin morgen.
+  const täglich: NotificationSchedule = { mode: 'daily', weekday: 1, time: '08:00' }
+  assert.equal(catchUp('2026-10-13T16:00:00Z', null, täglich), false)
+})
+
+test('weeklyReminderCatchUp: ein vorgezogener Start verschluckt nichts', () => {
+  // Das neue Thema schon am Sonntagabend: Die Erinnerung kommt wie immer
+  // am Montag um 08:00, nicht schon beim Freischalten.
+  assert.equal(
+    weeklyReminderCatchUp({
+      schedule: montags,
+      start: new Date('2026-10-11T17:00:00Z'), // Sonntag, 19:00 in Zürich
+      weekStart: new Date('2026-10-11T22:00:00Z'),
+      now: new Date('2026-10-11T17:15:00Z'),
+      lastSentAt: null,
+    }),
+    false,
   )
 })

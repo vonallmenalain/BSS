@@ -11,7 +11,13 @@ import {
   dueCleaningWeek,
   parseCleaningReminder,
 } from '../../src/lib/cleaningReminder.ts'
-import { impulseWeekKey } from '../../src/lib/impulse.ts'
+import {
+  impulseCurrentWeek,
+  impulseWeekKey,
+  impulseWeekStarts,
+  weekKeyOffset,
+  weekStart,
+} from '../../src/lib/impulse.ts'
 import {
   agendaDue,
   agendaMessage,
@@ -23,6 +29,7 @@ import {
   meetingDue,
   meetingMessage,
   scheduleDue,
+  weeklyReminderCatchUp,
   zurichDay,
   zurichTime,
   type PushMessage,
@@ -534,22 +541,95 @@ export default async function handler(): Promise<Response> {
     time: (value(recipient.settings, ['impuls', 'time'])?.stringValue as string) ?? '08:00',
   })
 
-  const impulsWaiting = withDevices.filter(
-    (recipient) =>
-      recipient.impulse &&
-      bool(recipient.settings, ['impuls', 'on']) &&
-      scheduleDue(impulsSchedule(recipient), now, timestamp(recipient.settings, 'impulsSentAt')),
+  const impulsOn = withDevices.filter(
+    (recipient) => recipient.impulse && bool(recipient.settings, ['impuls', 'on']),
   )
 
-  if (impulsWaiting.length > 0) {
-    const week = impulseWeekKey(now)
-    const ready = await runQuery(client, {
-      from: [{ collectionId: 'impulseItems' }],
-      where: {
-        compositeFilter: { op: 'AND', filters: [equals('week', week), equals('status', 'ready')] },
-      },
-      limit: 1,
+  if (impulsOn.length > 0) {
+    /*
+     * Die laufende Woche – wie in der App (`impulseCurrentWeek`): Die
+     * Redaktion kann den Start einer Woche verschieben, am Wochenthema
+     * (`startsAt`, mit der Woche, für die er gilt). Darum zuerst die
+     * Wochenthemen dieser und der nächsten Kalenderwoche.
+     */
+    const calendar = impulseWeekKey(now)
+    const neighbours = [calendar, weekKeyOffset(calendar, 1)].filter(
+      (key): key is string => key !== null,
+    )
+    const themes = (
+      await Promise.all(
+        neighbours.map((key) =>
+          runQuery(client, {
+            from: [{ collectionId: 'impulseItems' }],
+            where: {
+              compositeFilter: {
+                op: 'AND',
+                filters: [equals('week', key), equals('kind', 'impuls')],
+              },
+            },
+            limit: 5,
+          }),
+        ),
+      )
+    ).flat()
+    const starts = impulseWeekStarts(
+      themes.map((theme) => {
+        const shifted = (
+          theme.fields?.startsAt?.mapValue as { fields?: Record<string, FirestoreValue> }
+        )?.fields
+        const shiftedWeek = shifted?.week?.stringValue as string | undefined
+        const shiftedAt = shifted?.at?.timestampValue as string | undefined
+        return {
+          kind: 'impuls' as const,
+          status: (theme.fields?.status?.stringValue as string | undefined) ?? '',
+          week: (theme.fields?.week?.stringValue as string | undefined) ?? null,
+          startsAt:
+            shiftedWeek && shiftedAt
+              ? { week: shiftedWeek, at: { toMillis: () => new Date(shiftedAt).getTime() } }
+              : null,
+        }
+      }),
+    )
+    const week = impulseCurrentWeek(now, starts)
+    const ownStart = starts.get(calendar)
+    const monday = weekStart(calendar)
+
+    const impulsWaiting = impulsOn.filter((recipient) => {
+      const schedule = impulsSchedule(recipient)
+      const sentAt = timestamp(recipient.settings, 'impulsSentAt')
+      if (scheduleDue(schedule, now, sentAt)) {
+        // «Die neue Woche ist da» – nicht, solange ein verschobener Start sie
+        // noch zurückhält. Der Tagestakt spricht von «dieser Woche» und darf.
+        return !(schedule.mode === 'weekly' && week < calendar)
+      }
+      // Was der verschobene Start verschluckt hat, kommt, sobald er da ist.
+      return (
+        ownStart !== undefined &&
+        monday !== null &&
+        week === calendar &&
+        weeklyReminderCatchUp({
+          schedule,
+          start: new Date(ownStart),
+          weekStart: monday,
+          now,
+          lastSentAt: sentAt,
+        })
+      )
     })
+
+    const ready =
+      impulsWaiting.length === 0
+        ? []
+        : await runQuery(client, {
+            from: [{ collectionId: 'impulseItems' }],
+            where: {
+              compositeFilter: {
+                op: 'AND',
+                filters: [equals('week', week), equals('status', 'ready')],
+              },
+            },
+            limit: 1,
+          })
 
     // Eine leere Woche bleibt still – und merkt sich auch nichts: Kommt der
     // Inhalt eine Stunde später, greift die Erinnerung noch im Nachlauf.
