@@ -1,4 +1,6 @@
-import { Clock, LogOut, RefreshCw } from 'lucide-react'
+import { useEffect, useState } from 'react'
+import { Clock, Loader2, LogOut, RefreshCw } from 'lucide-react'
+import { useAppUpdate } from '@/contexts/AppUpdateContext'
 import { useAuth } from '@/contexts/AuthContext'
 
 /**
@@ -11,9 +13,44 @@ import { useAuth } from '@/contexts/AuthContext'
  * Registrierung von sich aus auf der Übersicht.
  */
 export function PendingApproval() {
-  const { profile, firebaseUser, signOut } = useAuth()
+  const { profile, firebaseUser, signOut, unknownRole } = useAuth()
+  const { needRefresh, applyUpdate, checkForUpdate } = useAppUpdate()
+  const [checking, setChecking] = useState(false)
   const name = profile?.displayName ?? firebaseUser?.displayName ?? ''
   const inactive = profile && !profile.active
+  /*
+   * Freigeschaltet – aber mit einer Rolle, die diese Fassung der App nicht
+   * kennt. Sie wurde mit einer neueren Fassung vergeben, während auf dem
+   * Gerät noch die alte läuft. «Wartet auf eine Rolle» wäre falsch; was
+   * fehlt, ist die neue Fassung.
+   */
+  const outdated = unknownRole && profile?.active === true
+
+  /*
+   * Eine neue Fassung wird hier sofort übernommen, statt wie sonst zu
+   * fragen: Im Wartebereich geht beim Neuladen nichts verloren – und
+   * vielleicht ist es gerade die neue Fassung, die das Konto hereinlässt.
+   */
+  useEffect(() => {
+    if (needRefresh) applyUpdate()
+  }, [needRefresh, applyUpdate])
+
+  // Kennt die App die Rolle nicht, fragt sie von sich aus nach der neuen Fassung.
+  useEffect(() => {
+    if (outdated) void checkForUpdate()
+  }, [outdated, checkForUpdate])
+
+  /*
+   * «Neu prüfen» fragt zuerst nach einer neuen Fassung. Kommt eine, lädt die
+   * Wirkung oben neu, sobald sie bereitliegt; sonst – oder wenn sie hängen
+   * bleibt – genügt ein gewöhnliches Neuladen, und das Profil kommt frisch
+   * vom Server.
+   */
+  const recheck = async () => {
+    setChecking(true)
+    const coming = await checkForUpdate()
+    window.setTimeout(() => window.location.reload(), coming ? 10_000 : 0)
+  }
   /*
    * Eine Assistenz ohne einen einzigen Bereich.
    *
@@ -33,14 +70,22 @@ export function PendingApproval() {
         <h1 className="text-lg font-semibold">
           {inactive
             ? 'Zugang deaktiviert'
-            : withoutArea
-              ? 'Kein Bereich freigeschaltet'
-              : 'Freigabe ausstehend'}
+            : outdated
+              ? 'Neue Version nötig'
+              : withoutArea
+                ? 'Kein Bereich freigeschaltet'
+                : 'Freigabe ausstehend'}
         </h1>
 
         <p className="mt-2 text-sm text-slate-600 dark:text-slate-300">
           {inactive ? (
             <>Dein Zugang wurde deaktiviert. Bitte wende dich an den Bischof.</>
+          ) : outdated ? (
+            <>
+              Hallo {name}, dein Konto ist freigeschaltet – aber die App auf diesem Gerät ist älter
+              als dein Zugang. Die neue Version wird gesucht und geladen. Tut sich nichts, schliesse
+              die App ganz und öffne sie wieder.
+            </>
           ) : withoutArea ? (
             <>
               Hallo {name}, dein Konto ist als Assistenz der Abendmahlsversammlung eingerichtet – es
@@ -56,8 +101,17 @@ export function PendingApproval() {
         </p>
 
         <div className="mt-5 flex flex-wrap justify-center gap-2">
-          <button type="button" className="btn-secondary" onClick={() => window.location.reload()}>
-            <RefreshCw className="size-4" aria-hidden />
+          <button
+            type="button"
+            className="btn-secondary"
+            onClick={() => void recheck()}
+            disabled={checking}
+          >
+            {checking ? (
+              <Loader2 className="size-4 animate-spin" aria-hidden />
+            ) : (
+              <RefreshCw className="size-4" aria-hidden />
+            )}
             Neu prüfen
           </button>
           <button type="button" className="btn-ghost" onClick={() => void signOut()}>

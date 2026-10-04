@@ -3603,7 +3603,7 @@ src/
 │   ├── ui/              Bausteine: Modal, Badges, Avatare, Auswahlfelder,
 │   │                    «@»-Feld und «@»-Text
 │   ├── Layout.tsx       Navigation (Seitenleiste bzw. untere Leiste)
-│   └── UpdatePrompt.tsx Hinweis auf neue Version
+│   └── UpdatePrompt.tsx Hinweis auf neue Version (überall, siehe AppUpdateContext)
 ├── contexts/            Anmeldung, Stammdaten, Meldungen
 ├── hooks/               Sammlungen lesen, Weg zurück, Ansicht in der Adresse,
 │                        Bekanntmachungen eines Sonntags, Monatspendenzen,
@@ -3638,7 +3638,29 @@ und läuft offline. Firestore hält eine lokale Kopie der Daten vor.
 
 Neue Versionen werden nicht ungefragt geladen – stattdessen erscheint ein
 Hinweis mit einer Schaltfläche. So startet die App nicht mitten in der Sitzung
-neu und verliert Eingaben.
+neu und verliert Eingaben. Der Hinweis steht auf jeder Seite, auch auf der
+Anmeldung (`AppUpdateProvider` in `src/main.tsx`).
+
+**Im Wartebereich wird nicht gefragt.** Dort geht beim Neuladen nichts
+verloren, und oft ist es gerade die neue Version, die das Konto hereinlässt:
+Eine Rolle, die neuer ist als die App auf dem Gerät – etwa «Nur Anti Doom»
+auf einem Telefon mit der Fassung von gestern –, kennt die alte Fassung nicht.
+Der Wartebereich übernimmt eine bereitliegende Version deshalb sofort, und
+«Neu prüfen» fragt zuerst nach einer neuen. Kennt die App die Rolle nicht,
+steht dort «Neue Version nötig» statt «Freigabe ausstehend», und sie sucht
+von sich aus nach der neuen Fassung.
+
+> Eine Fassung, die das noch nicht kann, bleibt im Wartebereich auf der alten
+> Version stehen. Dann hilft einmal: die App ganz schliessen (auch aus der
+> Übersicht der offenen Apps wegwischen) und wieder öffnen – notfalls zweimal.
+
+**Kein Wartebereich beim Anmelden.** Zwischen der Anmeldung und dem ersten
+Profil liegt ein Augenblick, in dem das Konto schon bekannt ist, seine Rolle
+aber noch nicht. Die App zeigt in dieser Zeit den Ladebildschirm und nicht den
+Wartebereich. Dasselbe gilt für ein Profil aus dem Gerätespeicher, das noch
+«wartet auf Freigabe» sagt, obwohl die Rolle inzwischen vergeben ist: Gibt der
+gespeicherte Stand keinen Zugang, wartet die App bis zu vier Sekunden auf den
+Server (`AuthContext`).
 
 **Hoch und quer.** Die App war einmal auf das Hochformat festgelegt; das ist
 sie nicht mehr. Am Pult zählt das: Wer die **Leitung** ins Vollbild schaltet

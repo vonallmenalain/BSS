@@ -29,26 +29,21 @@ import { auth, db, COLLECTIONS, isFirebaseConfigured } from '@/lib/firebase'
 import { getInitials } from '@/lib/utils'
 import { commit } from '@/lib/sync'
 import { clearSyncWatermarks, stopCollectionStores } from '@/lib/collectionStore'
-import {
-  ADMIN_EMAIL,
-  AP_ACCESS_ROLES,
-  AP_WRITE_ROLES,
-  ASSISTANT_AREA_PATHS,
-  assistantAreasOf,
-  assistantWriteOf,
-  BISHOPRIC_ROLES,
-  FULL_ACCESS_ROLES,
-  IMPULSE_ONLY_ROLE,
-  type AppUser,
-  type AssistantArea,
-  type Role,
-} from '@/lib/types'
+import { accessOf } from '@/lib/access'
+import { BISHOPRIC_ROLES, type AppUser, type AssistantArea, type Role } from '@/lib/types'
 
 interface AuthContextValue {
   /** Firebase-Auth-Benutzer (Anmeldeidentität) */
   firebaseUser: FirebaseUser | null
   /** Profil aus Firestore inkl. Rolle – `null`, solange kein Profil existiert */
   profile: AppUser | null
+  /**
+   * Anmeldung oder Profil sind noch nicht geklärt.
+   *
+   * Das gilt auch für den Augenblick nach dem Anmelden, in dem das Konto
+   * schon bekannt ist, sein Profil aber noch nicht: Ohne Profil sähe es wie
+   * ein Konto ohne Rolle aus, und die App zeigte kurz den Wartebereich.
+   */
   loading: boolean
   /**
    * Angemeldet, aktiv und freigeschaltet.
@@ -144,6 +139,11 @@ interface AuthContextValue {
    * Schalter `impulseEditor` steht bereit, um sie später zu öffnen.
    */
   canEditImpulse: boolean
+  /**
+   * Die Rolle des Kontos ist dieser Fassung der App unbekannt – sie ist
+   * neuer als die App auf dem Gerät (siehe `accessOf`).
+   */
+  unknownRole: boolean
   role: Role | null
   error: string | null
   signIn: (email: string, password: string) => Promise<void>
@@ -154,6 +154,13 @@ interface AuthContextValue {
 }
 
 const AuthContext = createContext<AuthContextValue | undefined>(undefined)
+
+/**
+ * Wie lange ein Profil aus dem Gerätespeicher, das keinen Zugang gibt, auf
+ * die Bestätigung des Servers wartet. Danach gilt es trotzdem – eine
+ * langsame Verbindung soll nicht in einem endlosen Ladebildschirm enden.
+ */
+const CACHED_PROFILE_GRACE_MS = 4000
 
 /** Firebase-Fehlercodes in verständliche deutsche Meldungen übersetzen. */
 function translateAuthError(error: unknown): string {
@@ -189,6 +196,8 @@ function translateAuthError(error: unknown): string {
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [firebaseUser, setFirebaseUser] = useState<FirebaseUser | null>(null)
   const [profile, setProfile] = useState<AppUser | null>(null)
+  /** Für welches Konto `profile` gilt – siehe `loading`. */
+  const [profileUid, setProfileUid] = useState<string | null>(null)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
 
@@ -218,25 +227,50 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   useEffect(() => {
     if (!firebaseUser) return
 
-    const ref = doc(db, COLLECTIONS.users, firebaseUser.uid)
+    const { uid, email } = firebaseUser
+    const ref = doc(db, COLLECTIONS.users, uid)
+    let waiting: ReturnType<typeof setTimeout> | undefined
+    const apply = (next: AppUser | null) => {
+      clearTimeout(waiting)
+      setProfile(next)
+      setProfileUid(uid)
+      setLoading(false)
+    }
     const unsubscribe = onSnapshot(
       ref,
+      // Auch die Meldung, dass der Server einen Stand bestätigt hat –
+      // gebraucht für die Frist unten.
+      { includeMetadataChanges: true },
       (snapshot) => {
-        if (snapshot.exists()) {
-          setProfile({ id: snapshot.id, ...snapshot.data() } as AppUser)
-        } else {
-          // Konto existiert in Auth, aber (noch) kein Profil in Firestore.
-          setProfile(null)
+        // Ohne Dokument: Das Konto existiert in Auth, aber (noch) kein Profil.
+        const next = snapshot.exists() ? ({ id: snapshot.id, ...snapshot.data() } as AppUser) : null
+        /*
+         * Ein Stand aus dem Gerätespeicher kann überholt sein – etwa noch
+         * «wartet auf Freigabe», obwohl die Rolle längst vergeben ist. Gibt
+         * er keinen Zugang, wartet die App einen Moment auf den Server,
+         * statt den Wartebereich aufblitzen zu lassen. Gibt er Zugang, gilt
+         * er sofort: So startet die App auch ohne Verbindung. Und ohne
+         * Verbindung wartet sie auf nichts, was nicht kommen kann.
+         */
+        if (snapshot.metadata.fromCache && navigator.onLine && !accessOf(next, email).hasAccess) {
+          clearTimeout(waiting)
+          waiting = setTimeout(() => apply(next), CACHED_PROFILE_GRACE_MS)
+          return
         }
-        setLoading(false)
+        apply(next)
       },
       (err) => {
+        clearTimeout(waiting)
         console.error('[auth] Profil konnte nicht geladen werden:', err)
         setError('Dein Profil konnte nicht geladen werden. Bist du bereits freigeschaltet?')
+        setProfileUid(uid)
         setLoading(false)
       },
     )
-    return unsubscribe
+    return () => {
+      clearTimeout(waiting)
+      unsubscribe()
+    }
   }, [firebaseUser])
 
   /**
@@ -358,76 +392,35 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }, [])
 
   const value = useMemo<AuthContextValue>(() => {
-    const role = profile?.role ?? null
-    const active = Boolean(profile && profile.active && role)
-    const isApproved = active && Boolean(role && FULL_ACCESS_ROLES.includes(role))
-    const canViewAp = active && Boolean(role && AP_ACCESS_ROLES.includes(role))
-    const isAdmin = firebaseUser?.email?.toLowerCase() === ADMIN_EMAIL
-
-    /*
-     * Die Bereiche der Assistenz.
-     *
-     * `assistantAreasOf` prüft Rolle und Aktivstatus gleich mit – ein Feld
-     * aus einer früheren Fassung öffnet damit nichts, solange die Rolle
-     * nicht dazu passt.
-     */
-    const assistantAreas = assistantAreasOf(profile)
-    const assistantWriteAreas = assistantWriteOf(profile)
-    const isAssistant = assistantAreas.length > 0
-
-    // Die Rolle «Nur Anti Doom» bringt den Bereich von sich aus mit; bei
-    // allen anderen hängt er am Schalter des Kontos.
-    const canViewImpulse =
-      isAdmin ||
-      (active &&
-        role !== 'pending' &&
-        (role === IMPULSE_ONLY_ROLE ||
-          profile?.impulse === true ||
-          profile?.impulseEditor === true))
-
-    /*
-     * Der Ort, an dem dieses Konto zu Hause ist.
-     *
-     * Die Reihenfolge ist die des Zugriffs: Wer alles sieht, beginnt auf der
-     * Übersicht; wer nur Bereiche der Abendmahlsversammlung hat, im ersten
-     * davon; wer nur den Kalender hat, dort. Bleibt nichts übrig, führt der
-     * Weg auf die Startseite – dort steht dann der Wartebereich.
-     */
-    const homePath = isApproved
-      ? '/'
-      : isAssistant
-        ? ASSISTANT_AREA_PATHS[assistantAreas[0]]
-        : canViewAp
-          ? '/ap'
-          : canViewImpulse
-            ? '/anti-doom'
-            : '/'
+    const access = accessOf(profile, firebaseUser?.email)
+    const { role, isApproved, canViewAp, assistantAreas, assistantWriteAreas } = access
+    // Angemeldet, das Profil aber noch nicht da (siehe `loading`).
+    const profilePending = Boolean(firebaseUser) && profileUid !== firebaseUser?.uid
+    const pending = loading || profilePending
 
     return {
       firebaseUser,
       profile,
-      loading,
-      isGuest: !loading && !firebaseUser,
+      loading: pending,
+      isGuest: !pending && !firebaseUser,
       isApproved,
       isBishopric: Boolean(role && BISHOPRIC_ROLES.includes(role)),
       isBishop: role === 'bishop',
-      isAdmin,
+      isAdmin: access.isAdmin,
       canViewAp,
-      canEditAp: active && Boolean(role && AP_WRITE_ROLES.includes(role)),
+      canEditAp: access.canEditAp,
       isApOnly: canViewAp && !isApproved,
-      isAssistant,
+      isAssistant: access.isAssistant,
       assistantAreas,
       assistantWriteAreas,
       canSeeSacramentArea: (area: AssistantArea) => isApproved || assistantAreas.includes(area),
       canEditSacramentArea: (area: AssistantArea) =>
         isApproved || assistantWriteAreas.includes(area),
-      homePath,
-      // Ein wartendes Konto bleibt draussen, selbst wenn ein Feld gesetzt
-      // sein sollte – freigeschaltet wird zuerst, der Schalter kommt danach.
-      // Die Redaktion sieht den Bereich immer: Wer ihn pflegt, muss ihn
-      // lesen können. Dieselben Bedingungen stehen in `firestore.rules`.
-      canViewImpulse,
-      canEditImpulse: isAdmin || (active && role !== 'pending' && profile?.impulseEditor === true),
+      homePath: access.homePath,
+      // Dieselben Bedingungen stehen in `firestore.rules` (siehe `accessOf`).
+      canViewImpulse: access.canViewImpulse,
+      canEditImpulse: access.canEditImpulse,
+      unknownRole: access.unknownRole,
       role,
       error,
       signIn,
@@ -436,7 +429,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       resetPassword,
       clearError: () => setError(null),
     }
-  }, [firebaseUser, profile, loading, error, signIn, signUp, signOut, resetPassword])
+  }, [firebaseUser, profile, profileUid, loading, error, signIn, signUp, signOut, resetPassword])
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>
 }
