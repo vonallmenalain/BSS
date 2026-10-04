@@ -226,6 +226,25 @@ export function impulseAnswerId(itemId: string, uid: string): string {
   return `${itemId}_${uid}`
 }
 
+/** Der Vorname – mehr braucht der Bereich nicht von einem Namen. */
+export function impulseFirstName(displayName: string): string {
+  return displayName.trim().split(/\s+/)[0] || displayName
+}
+
+/**
+ * Ob eine Quizantwort stimmt – bestimmt bei der Auswahl selbst. Die
+ * Suchfrage bleibt unbewertet (`null`), es zählt die Teilnahme.
+ */
+export function quizAnswerCorrect(
+  item: Pick<ImpulseItem, 'quiz'>,
+  reply: { choiceIndex?: number },
+): boolean | null {
+  const quiz = item.quiz
+  return quiz && quiz.form === 'choice' && typeof reply.choiceIndex === 'number'
+    ? reply.choiceIndex === quiz.answerIndex
+    : null
+}
+
 /**
  * Was noch fehlt, bevor ein Inhalt «bereit» sein darf.
  *

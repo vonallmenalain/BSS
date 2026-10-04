@@ -1,6 +1,5 @@
 import { useState, type FormEvent } from 'react'
 import { Check, Lightbulb, Link2, Maximize2, Puzzle, RotateCcw, Search, X } from 'lucide-react'
-import { useAuth } from '@/contexts/AuthContext'
 import { useToast } from '@/contexts/ToastContext'
 import { cn } from '@/lib/utils'
 import { formatWeekRange } from '@/lib/impulse'
@@ -9,7 +8,7 @@ import { labeledLink, splitLinks } from '@/lib/links'
 import { scriptureLink } from '@/lib/scriptures'
 import { ImpulseCardActions } from '@/components/impulse/ImpulseCardActions'
 import { ImpulseImageLightbox } from '@/components/impulse/ImpulseImageLightbox'
-import { answerImpulseQuiz } from '@/services/impulse'
+import { useImpulseAuth, useImpulseWrites } from '@/hooks/useImpulseRuntime'
 import type { ImpulseAnswer, ImpulseImage, ImpulseItem, ImpulseProgress } from '@/lib/types'
 
 /*
@@ -443,7 +442,8 @@ export function QuizCard({
   /** Mit Fortschrittsbestand trägt auch das Quiz «Amen» und «Merken». */
   progressDocs?: ImpulseProgress[]
 }) {
-  const { profile } = useAuth()
+  const { profile } = useImpulseAuth()
+  const { answerImpulseQuiz } = useImpulseWrites()
   const toast = useToast()
   /** Die eben getippte Möglichkeit – die Auflösung, bevor der Server antwortet. */
   const [chosen, setChosen] = useState<number | null>(null)

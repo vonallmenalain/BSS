@@ -21,10 +21,11 @@ import { ImpulseFeedScreen, type ImpulseDeckCard } from '@/components/impulse/Im
 import type { ImpulseItem } from '@/lib/types'
 
 /**
- * Die Vorschau der Redaktion – der **echte** Vollbild-Feed, kein
+ * Die Vorschau einer Karte – der **echte** Vollbild-Feed, kein
  * nachgebautes Fenster: dieselben Karten, dasselbe Wischen, dieselben
- * Vertiefungen. Zwei Spielarten: die ganze Woche (in Lesereihenfolge,
- * Entwürfe angeschrieben) oder eine einzelne Karte.
+ * Vertiefungen. Die Redaktion öffnet so eine einzelne Karte oder eine
+ * Einreichung; die ganze Woche zeigt sie im Bereich selbst, genau so wie
+ * bei den Jugendlichen (`ImpulsePreviewProvider`).
  *
  * Damit niemand die Vorschau mit dem Bereich verwechselt, sitzt oben
  * eine unübersehbare Leiste: «Vorschau – Änderungen werden nicht

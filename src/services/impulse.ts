@@ -17,7 +17,7 @@ import { setDoc as fbSetDoc } from 'firebase/firestore'
 import { db, COLLECTIONS } from '@/lib/firebase'
 import { forgetDoc } from '@/lib/collectionStore'
 import { commit, requireOnline, type SaveOutcome } from '@/lib/sync'
-import { impulseAnswerId } from '@/lib/impulse'
+import { impulseAnswerId, impulseFirstName, quizAnswerCorrect } from '@/lib/impulse'
 import type { PackPlan } from '@/lib/impulsePack'
 import type {
   ImpulseCrestPalette,
@@ -546,7 +546,7 @@ export async function createImpulseSubmission(
 }
 
 /** Die Kartenfelder einer Einreichung, aus dem Formular gelesen. */
-function submissionCard(input: ImpulseItemInput) {
+export function submissionCard(input: ImpulseItemInput) {
   return {
     body: input.body.trim(),
     deepening: input.deepening.trim(),
@@ -921,22 +921,12 @@ export async function applyDifficultyCleanup(
  * wenn das Konto später verschwindet – die AP's können keine fremden
  * Profile nachschlagen.
  */
-/** Der Vorname – mehr braucht der Bereich nicht von einem Namen. */
-function impulseFirstName(displayName: string): string {
-  return displayName.trim().split(/\s+/)[0] || displayName
-}
-
 export async function answerImpulseQuiz(
   item: ImpulseItem,
   user: { uid: string; displayName: string },
   reply: { choiceIndex?: number; text?: string },
 ): Promise<SaveOutcome> {
-  const quiz = item.quiz
-  const correct =
-    quiz && quiz.form === 'choice' && typeof reply.choiceIndex === 'number'
-      ? reply.choiceIndex === quiz.answerIndex
-      : null
-
+  const correct = quizAnswerCorrect(item, reply)
   const firstName = impulseFirstName(user.displayName)
 
   return commit(

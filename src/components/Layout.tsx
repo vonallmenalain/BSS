@@ -572,6 +572,16 @@ function SidebarLink({ item }: { item: NavItem }) {
   const section = item.children ? item.to.split('/')[1] : ''
   const inSection = Boolean(section) && location.pathname.startsWith(`/${section}`)
 
+  /* Läuft die Vorschau der Redaktion von «Anti Doom» (`state.vorschau`),
+     tragen die Wege in den Bereich sie weiter – sonst bliebe im Verlauf
+     ein Eintrag ohne Vermerk, der beim Zurückblättern in die echte Ansicht
+     führte (siehe `Impuls`). */
+  const preview = (location.state as { vorschau?: unknown } | null)?.vorschau
+  const keepPreview = (to: string) =>
+    typeof preview === 'string' && (to === '/anti-doom' || to.startsWith('/anti-doom/'))
+      ? { vorschau: preview }
+      : undefined
+
   const [expanded, setExpanded] = useState(inSection)
   const [wasInSection, setWasInSection] = useState(inSection)
 
@@ -588,6 +598,7 @@ function SidebarLink({ item }: { item: NavItem }) {
       <div className="flex items-center">
         <NavLink
           to={item.to}
+          state={keepPreview(item.to)}
           end={item.to === '/'}
           className={({ isActive }) =>
             cn(
@@ -630,6 +641,7 @@ function SidebarLink({ item }: { item: NavItem }) {
             <li key={child.to}>
               <NavLink
                 to={child.to}
+                state={keepPreview(child.to)}
                 className={({ isActive }) =>
                   cn(
                     'block truncate rounded-lg px-3 py-1.5 text-sm transition',

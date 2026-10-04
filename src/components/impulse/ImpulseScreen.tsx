@@ -100,7 +100,7 @@ export function ImpulseScreen({
       aria-label={theme.label}
       tabIndex={-1}
       data-closing={closing || undefined}
-      className="imp-screen fixed inset-0 z-50 flex flex-col overflow-hidden bg-slate-50 outline-none dark:bg-slate-950"
+      className="imp-screen fixed inset-x-0 top-[var(--imp-preview-top,0px)] bottom-0 z-50 flex flex-col overflow-hidden bg-slate-50 outline-none dark:bg-slate-950"
       style={{ transformOrigin: origin ? `${origin.x}px ${origin.y}px` : '50% 40%' }}
     >
       {/* Der Farbschleier des Bereichs – oben getönt, unten still. Beim

@@ -512,7 +512,8 @@ Damit die Viertelstunde pro Woche reicht:
   Form – jeweils drei, vier Felder, nicht mehr.
 - **Fragenpool:** Fragen entstehen, wann immer eine einfällt, und werden
   später einer Woche zugeteilt. Nichts verfällt.
-- **Vorschau:** jede Karte so sehen, wie die AP’s sie sehen werden.
+- **Vorschau:** jede Karte so sehen, wie die AP’s sie sehen werden – und
+  die ganze Woche genau so, wie sie sie erleben (siehe Abschnitt 13.5).
 - **Vorproduktion:** Vor dem Start werden vier bis sechs Wochen eingeplant –
   der Puffer, der verhindert, dass der Bereich beim ersten vollen Terminplan
   der Redaktion versiegt.
@@ -954,3 +955,37 @@ des Formulars besteht, dass jede Woche mit dem Sonntag ihrer Lektion
 endet, dass nie zwei gleiche Arten aufeinander folgen und dass die IDs
 fest und eindeutig sind.
 
+### 13.5 Die Vorschau der Woche: genau die Ansicht der Jugendlichen
+
+«Vorschau der Woche» in der Redaktion öffnet nicht mehr nur den Feed,
+sondern **den Bereich selbst** – Übersicht mit «Mission der Woche» und
+Wochen-Wappen, Feed mit Fortschrittsleiste und kleinem Wappen, Räume,
+Kacheln und die Feier, wenn das Wappen ganz dasteht. Die gewählte Woche
+spielt dabei die laufende; einzige Zugabe ist eine Leiste oben mit dem
+gespielten Tag und «Vorschau verlassen».
+
+- **Wie bei den Jugendlichen:** nur, was «bereit» ist (die Leiste nennt
+  ausgeblendete Entwürfe), keine Redaktions- und Moderationsknöpfe, und
+  die Vorschau beginnt bei null – gespielt wird eine eigene Person mit
+  dem Vornamen der Redaktion (`PREVIEW_UID`), die echten Antworten der
+  Redaktion zählen nicht als die eigenen.
+- **Der Tag:** die laufende Woche beginnt heute, jede andere am Montag.
+  In der Leiste lässt sich jeder Tag von Montag bis Sonntag wählen –
+  Countdown, Tages-Challenge und Sonntag folgen ihm.
+- **Nichts wird gespeichert:** Seite und Karten schreiben über
+  `useImpulseWrites`; in der Vorschau führen diese Wege einen Stand im
+  Arbeitsspeicher nach (`lib/impulsePreview`), mit denselben Feldern wie
+  die Dienste, und die Seite liest ihn zum echten Bestand dazu. So
+  reagieren Wappen, Sterne, Ergebnisse und Feier wie echt. Auch die
+  Statistik am Gerät und die gemerkte Feier bleiben unberührt.
+- **Kein Weg hinaus ohne es zu merken:** Jeder Schritt in der Vorschau
+  trägt die Woche im Verlauf mit (`state.vorschau`, `useImpulseNavigate`,
+  ebenso die Links des App-Menüs in den Bereich); auch Zurück- und
+  Vorblättern bleibt Vorschau. Und solange man im Bereich ist, bleibt sie
+  auch bei einem Schritt ohne Vermerk bestehen. Sie endet mit «Vorschau
+  verlassen» oder wenn der Bereich verlassen wird – und mit ihr der Stand.
+
+Die einzelne Karte und die Einreichung schaut die Redaktion weiterhin im
+Fenster an (`ImpulseEditorPreview`). `tests/impulse-preview.test.ts`
+hält den gespielten Tag und die Regeln fest, nach denen ein
+Schreibvorgang den Stand verändert.
