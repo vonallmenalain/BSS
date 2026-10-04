@@ -53,6 +53,7 @@ import {
   ADMIN_EMAIL,
   AP_ACCESS_ROLES,
   AP_ONLY_ROLES,
+  IMPULSE_ONLY_ROLE,
   AREA_ACCESS_LABELS,
   AREA_ACCESS_ORDER,
   ASSIGNABLE_ROLES,
@@ -464,8 +465,10 @@ export function Settings() {
           {isAdmin && (
             <p className="hint mb-4">
               Der Haken <strong>«Anti Doom»</strong> schaltet den geistigen Bereich für die AP’s pro
-              Konto frei – unabhängig von der Rolle, für Vollzugriff wie für AP-Zugänge. Das
-              Administrator-Konto sieht ihn immer.
+              Konto frei – unabhängig von der Rolle, für Vollzugriff wie für AP-Zugänge. Die Rolle{' '}
+              <strong>«Nur Anti Doom»</strong> bringt ihn von sich aus mit und zeigt sonst nichts –
+              für AP’s, die nur diesen Bereich sehen sollen. Das Administrator-Konto sieht ihn
+              immer.
             </p>
           )}
           {!isAdmin && (
@@ -1149,6 +1152,7 @@ function UserRow({
   }
 
   const apOnly = AP_ONLY_ROLES.includes(user.role)
+  const impulseOnly = user.role === IMPULSE_ONLY_ROLE
   const isAssistant = user.role === 'assistant'
   /* Ein deaktiviertes Konto behält seine Bereiche in der Anzeige: Wer es
      wieder aktiviert, soll dieselbe Einteilung vorfinden. */
@@ -1173,6 +1177,7 @@ function UserRow({
           {user.email}
           {apOnly &&
             (user.impulse ? ' · sieht AP-Kalender und Anti Doom' : ' · sieht nur den AP-Kalender')}
+          {impulseOnly && ' · sieht nur Anti Doom'}
           {isAssistant &&
             (summary === '' ? ' · sieht nichts – kein Bereich freigeschaltet' : ` · ${summary}`)}
         </p>
@@ -1218,6 +1223,11 @@ function UserRow({
             </optgroup>
           )}
           {!isSelf && (
+            <optgroup label="Nur Anti Doom">
+              <option value={IMPULSE_ONLY_ROLE}>{ROLE_LABELS[IMPULSE_ONLY_ROLE]}</option>
+            </optgroup>
+          )}
+          {!isSelf && (
             <optgroup label="Kein Zugriff">
               <option value="pending">{ROLE_LABELS.pending}</option>
             </optgroup>
@@ -1245,16 +1255,26 @@ function UserRow({
 
       {/* «Anti Doom» hängt am Konto und nicht an der Rolle – der Haken steht
           deshalb neben der Rollenwahl. Gesetzt wird er nur hier; die
-          Zugriffsregeln lassen niemanden das eigene Feld anfassen. */}
+          Zugriffsregeln lassen niemanden das eigene Feld anfassen. Bei der
+          Rolle «Nur Anti Doom» gehört der Bereich zur Rolle: Der Haken steht
+          dann fest gesetzt da. */}
       {canManage && !isAdminAccount && (
         <label
-          className="flex cursor-pointer items-center gap-1.5 text-sm text-slate-600 dark:text-slate-300"
-          title="Bereich «Anti Doom» für dieses Konto freischalten"
+          className={cn(
+            'flex items-center gap-1.5 text-sm text-slate-600 dark:text-slate-300',
+            impulseOnly ? 'cursor-default opacity-70' : 'cursor-pointer',
+          )}
+          title={
+            impulseOnly
+              ? 'Gehört zur Rolle «Nur Anti Doom»'
+              : 'Bereich «Anti Doom» für dieses Konto freischalten'
+          }
         >
           <input
             type="checkbox"
             className="size-4"
-            checked={user.impulse === true}
+            checked={impulseOnly || user.impulse === true}
+            disabled={impulseOnly}
             onChange={(event) => void changeImpulse(event.target.checked)}
           />
           Anti Doom
@@ -1266,7 +1286,7 @@ function UserRow({
           Assistenz erreicht es und wird deshalb wie der Vollzugriff
           behandelt. Die eigene Verknüpfung darf jede Person selbst setzen;
           fremde nur der Admin. */}
-      {!apOnly && (canManage || isSelf) && <MemberLinkField user={user} />}
+      {!apOnly && !impulseOnly && (canManage || isSelf) && <MemberLinkField user={user} />}
 
       {/* Wie die Person im Aktivitätenplan heisst – die Brücke zwischen den
           Namen dort und dem Konto, für die Erinnerung «nur wo ich

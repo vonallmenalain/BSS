@@ -541,8 +541,9 @@ users/{uid}.impulse: boolean     – darf den Bereich «Impuls» sehen
 
 - **Pro Konto schaltbar**, unabhängig von der Rolle: ein `ap_viewer` mit
   Flag sieht Kalender und Impuls; einer ohne Flag nur den Kalender; auch ein
-  Konto mit Vollzugriff braucht das Flag (oder ist Admin). Später wäre sogar
-  ein Konto denkbar, das **nur** den Impuls-Bereich sieht.
+  Konto mit Vollzugriff braucht das Flag (oder ist Admin). Ein Konto, das
+  **nur** den Impuls-Bereich sieht, gibt es inzwischen als eigene Rolle
+  (siehe «Die Rolle «Nur Anti Doom»» unten).
 - **Verwalten kann es nur der Admin** – Benutzerdokumente darf heute schon
   ausschliesslich das Administrator-Konto ändern (`isAdmin()` in den Regeln).
   In der Benutzerverwaltung kommt neben die Rolle ein Schalter «Impuls»,
@@ -568,6 +569,31 @@ users/{uid}.impulseEditor: boolean   – darf Inhalte pflegen und moderieren
 Am Anfang bleibt es ungesetzt – Redaktion ist der Admin. Beide Flags stehen
 damit dort, wo heute schon Rolle und Aktivstatus verwaltet werden, und
 tauchen in denselben Oberflächen auf (Benutzerverwaltung, Freischalt-Dialog).
+
+### Die Rolle «Nur Anti Doom»
+
+Für die AP's selbst gibt es eine eigene Rolle, `impulse_only` («Nur Anti
+Doom»). Sie sieht **ausschliesslich** diesen Bereich – keinen AP-Kalender
+hinter der Anmeldung, keine Mitglieder, keine Benutzerliste, nicht einmal die
+Einstellungen der Gemeinde. Den Bereich bringt sie von sich aus mit: Der
+Haken «Anti Doom» steht bei ihr fest gesetzt da und lässt sich nicht
+wegnehmen. Bei allen übrigen Rollen bleibt es beim Haken.
+
+- **Zugriffsregeln:** `impulseAccess()` lässt `impulse_only` ohne Haken
+  durch. `notifyAccess()` schliesst `impulseAccess()` ein – sonst könnte sich
+  die Rolle nicht an die neue Woche erinnern lassen, denn bisher hing das am
+  AP-Zugang. `impulseWrite()` kennt die Rolle ebenfalls, damit sie mit
+  `impulseEditor` auch redigieren könnte.
+- **App:** `canViewImpulse` (AuthContext) gilt für die Rolle, ihr Zuhause ist
+  `/anti-doom`, und das Menü trägt einen einzigen Eintrag.
+- **Versand:** Die geplante Function behandelt die Rolle wie ein Konto mit
+  Haken (`netlify/functions/benachrichtigungen.mts`).
+- **Vergeben:** in der Benutzerverwaltung (Gruppe «Nur Anti Doom» in der
+  Rollenwahl) oder schon beim Freischalten (Zugriffsstufe «Nur Anti Doom»).
+
+Geprüft in `tests/firestore-rules.test.js` («Rolle «Nur Anti Doom»»): Sie
+liest und macht mit wie ein Konto mit Haken, scheitert an allem anderen, gibt
+sich weder Rolle noch Schalter selbst – und deaktiviert bleibt sie draussen.
 
 ### Regeln je Sammlung
 
