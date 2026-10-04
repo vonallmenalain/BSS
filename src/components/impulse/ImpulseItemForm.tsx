@@ -38,6 +38,7 @@ export function ImpulseItemForm({
   weekChoices,
   answerIds,
   commentIds = [],
+  scoreIds = [],
   todayKey,
   onSaved,
 }: {
@@ -54,6 +55,8 @@ export function ImpulseItemForm({
   answerIds: string[]
   /** Beiträge zur Frage der Woche – ebenso. */
   commentIds?: string[]
+  /** Die Rangliste eines Minispiels – ebenso. */
+  scoreIds?: string[]
   todayKey: string
 }) {
   const { profile } = useAuth()
@@ -86,6 +89,7 @@ export function ImpulseItemForm({
         : null,
     image: input.imageUrl.trim() ? { url: input.imageUrl } : null,
     videoUrl: input.videoUrl,
+    game: input.kind === 'spiel' ? input.game : null,
   })
   const blocked = input.status === 'ready' && problems.length > 0
 
@@ -111,7 +115,7 @@ export function ImpulseItemForm({
   const remove = async () => {
     if (!itemId) return
     try {
-      const outcome = await deleteImpulseItem(itemId, answerIds, commentIds)
+      const outcome = await deleteImpulseItem(itemId, answerIds, commentIds, scoreIds)
       toast.saved('Inhalt entfernt.', outcome)
       onClose()
     } catch (error) {
@@ -262,7 +266,12 @@ export function ImpulseItemForm({
         onConfirm={() => void remove()}
         title="Inhalt entfernen?"
         message={
-          attachedCount > 0 ? (
+          scoreIds.length > 0 ? (
+            <>
+              «{input.title || 'Ohne Titel'}» wird gelöscht – mitsamt der Rangliste (
+              {scoreIds.length === 1 ? 'ein Eintrag' : `${scoreIds.length} Einträge`}).
+            </>
+          ) : attachedCount > 0 ? (
             <>
               «{input.title || 'Ohne Titel'}» wird gelöscht – mitsamt{' '}
               {attachedCount === 1 ? 'der einen Antwort' : `den ${attachedCount} Antworten`}, die

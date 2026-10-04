@@ -3368,6 +3368,11 @@ export interface CalendarFeed extends WithId {
  * Puzzle lässt einen Vers aus Wörtern zusammensetzen. Beide schreiben in
  * dieselbe Sammlung wie das Quiz (`impulseAnswers`) – eine Stimme bzw.
  * ein Versuch pro Person, erzwungen durch die Dokument-ID.
+ *
+ * Das **Minispiel** ist die letzte Karte des Feeds: ein kurzes Spiel zum
+ * Thema der Woche (welches, sagt `game`), mit einer Rangliste, in der je
+ * Konto der beste Lauf steht (`ImpulseGameScore`). Eine Woche trägt
+ * höchstens eines.
  */
 export type ImpulseKind =
   | 'impuls'
@@ -3381,6 +3386,7 @@ export type ImpulseKind =
   | 'frage'
   | 'feed'
   | 'teilen'
+  | 'spiel'
 
 export const IMPULSE_KIND_LABELS: Record<ImpulseKind, string> = {
   impuls: 'Wochenthema',
@@ -3394,6 +3400,22 @@ export const IMPULSE_KIND_LABELS: Record<ImpulseKind, string> = {
   frage: 'Frage der Woche',
   feed: 'Feed-Karte',
   teilen: 'Teilen-Aufgabe',
+  spiel: 'Minispiel',
+}
+
+/**
+ * Welches Spiel eine Minispiel-Karte spielt.
+ *
+ * Jedes Spiel ist Code, kein Inhalt – die Redaktion wählt es aus, statt
+ * es zu bauen. Fürs Erste gibt es eines, zum Wort der Weisheit:
+ * `sortieren` – Gesundes und Schädliches fällt von oben und will auf die
+ * richtige Seite. Ein neues Spiel kommt mit einem neuen Schlüssel dazu
+ * (`components/impulse/game`); alte Ranglisten bleiben bei ihrem Spiel.
+ */
+export type ImpulseGameId = 'sortieren'
+
+export const IMPULSE_GAME_LABELS: Record<ImpulseGameId, string> = {
+  sortieren: 'Gut für dich? – Gesundes und Schädliches sortieren',
 }
 
 /**
@@ -3693,6 +3715,8 @@ export interface ImpulseItem extends WithId {
   lesson?: ImpulseSource | null
   /** Wie das Wochen-Wappen aussieht – beim Wochenthema. */
   crest?: ImpulseCrest | null
+  /** Welches Spiel die Karte spielt – beim Minispiel. */
+  game?: ImpulseGameId | null
   /**
    * Nur beim Wochenthema: wann die Woche bei den Jugendlichen beginnt, wenn
    * es nicht Montag, 00:00, sein soll – früher (das neue Thema schon am
@@ -3757,12 +3781,20 @@ export interface ImpulseItem extends WithId {
  * ohne `card` stammen aus der Freitext-Zeit und werden weiterhin
  * verstanden.
  */
-export type ImpulseSubmissionKind = ImpulseKind | 'gedanke'
+export type ImpulseSubmissionKind = Exclude<ImpulseKind, 'spiel'> | 'gedanke'
 
-export const IMPULSE_SUBMISSION_KIND_LABELS: Record<ImpulseSubmissionKind, string> = {
-  ...IMPULSE_KIND_LABELS,
+/**
+ * Die Arten, die sich in der Mitmach-Ecke einreichen lassen – alle ausser
+ * dem Minispiel: Ein Spiel ist Code, keine Karte zum Ausfüllen.
+ */
+export const IMPULSE_SUBMISSION_KINDS = (Object.keys(IMPULSE_KIND_LABELS) as ImpulseKind[]).filter(
+  (kind): kind is Exclude<ImpulseKind, 'spiel'> => kind !== 'spiel',
+)
+
+export const IMPULSE_SUBMISSION_KIND_LABELS = {
+  ...Object.fromEntries(IMPULSE_SUBMISSION_KINDS.map((kind) => [kind, IMPULSE_KIND_LABELS[kind]])),
   gedanke: 'Schriftstelle oder Gedanke',
-}
+} as Record<ImpulseSubmissionKind, string>
 
 export type ImpulseSubmissionStatus = 'open' | 'accepted'
 
@@ -3954,7 +3986,42 @@ export interface ImpulseProgress extends WithId {
    * die früheste Woche, die sein Fortschritt kennt.
    */
   firstSeenWeek?: string
+  /**
+   * Der Name in den Ranglisten der Minispiele – einmal eingetragen, gilt
+   * er für jede weitere Runde und jede weitere Woche. Frei gewählt: der
+   * Vorname, ein Spitzname, was immer jemand in der Liste lesen will.
+   */
+  gameName?: string
   createdAt?: TS
+  updatedAt?: TS
+}
+
+/**
+ * Der beste Lauf einer Person in einem Minispiel – ein Eintrag der Rangliste.
+ *
+ * Ein Dokument je Spiel-Karte und Konto, die ID ist `{itemId}_{uid}` wie
+ * bei den Antworten: So steht jede Person genau einmal in der Liste, mit
+ * ihrem besten Lauf. Wie oft jemand gespielt hat, steht nirgends – auch
+ * nicht in der Datenbank. Die Zugriffsregeln lassen den Bestwert nur
+ * steigen.
+ *
+ * `name` ist der Name aus `ImpulseProgress.gameName` – leer, solange noch
+ * keiner eingetragen ist; dann zeigt die Liste den Eintrag nur der Person
+ * selbst. `hidden` setzt allein die Redaktion, etwa bei einem Namen, der
+ * nicht in die Liste gehört.
+ */
+export interface ImpulseGameScore extends WithId {
+  itemId: string
+  uid: string
+  /** Die Woche der Karte – für den Rückblick und das Aufräumen. */
+  week: string
+  game: ImpulseGameId
+  name: string
+  /** Der beste Lauf – Punkte, ganze Zahl. */
+  best: number
+  /** Wann der beste Lauf gelang – bei Gleichstand steht vorn, wer früher dort war. */
+  bestAt?: TS
+  hidden?: boolean
   updatedAt?: TS
 }
 

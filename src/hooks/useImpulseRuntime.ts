@@ -11,6 +11,7 @@ import { Timestamp } from 'firebase/firestore'
 import { useAuth } from '@/contexts/AuthContext'
 import { useNow } from '@/hooks/useNow'
 import { impulseAnswerId, impulseFirstName, quizAnswerCorrect } from '@/lib/impulse'
+import { cleanGameName, cleanGameScore } from '@/lib/impulseGame'
 import {
   PREVIEW_UID,
   changePreviewProgress,
@@ -34,10 +35,13 @@ import {
   markImpulseDeepeningSeen,
   markImpulseFeedDone,
   saveImpulseComment,
+  saveImpulseGameScore,
   setImpulseAmen,
   setImpulseChallengeDay,
   setImpulseCommentHidden,
   setImpulseFavorite,
+  setImpulseGameName,
+  setImpulseGameScoreHidden,
   setImpulseLastSeenWeek,
   setImpulseReport,
   setImpulseWeekGoal,
@@ -80,6 +84,9 @@ export const REAL_IMPULSE_WRITES = {
   markImpulseDeepeningSeen,
   setImpulseLastSeenWeek,
   markImpulseCrest,
+  saveImpulseGameScore,
+  setImpulseGameName,
+  setImpulseGameScoreHidden,
 }
 
 export type ImpulseWrites = typeof REAL_IMPULSE_WRITES
@@ -272,6 +279,43 @@ export function previewImpulseWrites(
       progress(user, { kind: 'last-seen', week, firstSeenWeek }),
     markImpulseCrest: async (user, week, day) =>
       progress(user, { kind: 'week', week, patch: { crest: day } }),
+
+    /* Das Minispiel: dieselben Felder wie der Dienst – nur im Arbeitsspeicher. */
+    saveImpulseGameScore: async (item, user, points, name) => {
+      const at = stamp()
+      update((data) => ({
+        ...data,
+        gameScores: upsertPreviewDoc(data.gameScores, {
+          id: impulseAnswerId(item.id, user.uid),
+          itemId: item.id,
+          uid: user.uid,
+          week: item.week ?? '',
+          game: item.game ?? 'sortieren',
+          name: cleanGameName(name),
+          best: cleanGameScore(points),
+          bestAt: at,
+          updatedAt: at,
+        }),
+      }))
+      return done()
+    },
+    setImpulseGameName: async (user, name, scoreIds) => {
+      const clean = cleanGameName(name)
+      update((data) => ({
+        ...data,
+        gameScores: data.gameScores.map((entry) =>
+          scoreIds.includes(entry.id) ? { ...entry, name: clean } : entry,
+        ),
+      }))
+      return progress(user, { kind: 'game-name', name: clean })
+    },
+    setImpulseGameScoreHidden: async (scoreId, hidden) => {
+      update((data) => ({
+        ...data,
+        gameScores: patchPreviewDoc(data.gameScores, scoreId, { hidden }),
+      }))
+      return done()
+    },
 
     createImpulseSubmission: async (user, input, anonymous = false) => {
       const at = stamp()

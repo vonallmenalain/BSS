@@ -7,8 +7,10 @@ import {
   startOfISOWeek,
 } from 'date-fns'
 import { formatDayMonth, formatDayMonthYear, formatDayShort } from './dates.ts'
+import { IMPULSE_GAME_LABELS } from './types.ts'
 import type {
   ImpulseAnswer,
+  ImpulseGameId,
   ImpulseItem,
   ImpulseKind,
   ImpulsePoll,
@@ -162,9 +164,9 @@ export function upcomingWeekKeys(from: Date | number, count: number): string[] {
  * Die Ordnung der Arten innerhalb einer Woche – zuerst der Impuls, dann
  * die beiden Aufgaben neben dem Feed (Ziel und Tages-Challenge), dann die
  * übrigen Feed-Karten: Umfrage, Quiz, Puzzle, Bilderrätsel, Video, Frage,
- * Feed – und zum Schluss die Teilen-Aufgabe, die Einladung zum
- * Weitererzählen. So gruppiert die Redaktion ihre Sparten; der Feed
- * selbst folgt dem Platz, den die Redaktion jeder Karte gibt
+ * Feed – dann die Teilen-Aufgabe, die Einladung zum Weitererzählen, und
+ * zum Schluss das Minispiel. So gruppiert die Redaktion ihre Sparten; der
+ * Feed selbst folgt dem Platz, den die Redaktion jeder Karte gibt
  * (`deckOrder`).
  */
 export const IMPULSE_KIND_ORDER: ImpulseKind[] = [
@@ -179,6 +181,7 @@ export const IMPULSE_KIND_ORDER: ImpulseKind[] = [
   'frage',
   'feed',
   'teilen',
+  'spiel',
 ]
 
 /**
@@ -198,12 +201,12 @@ export function impulseKindRank(kind: ImpulseKind): number {
 }
 
 /**
- * Die drei Arten, die eine Woche genau einmal trägt – nicht aus
- * Sparsamkeit, sondern weil ihr Haken an der **Woche** hängt und nicht an
- * der Karte: das Wochenziel ist erledigt oder nicht, die Tages-Challenge
- * hat ihre sieben Tage, die Teilen-Aufgabe ist besprochen oder nicht. Eine
- * zweite von ihnen hätte keinen eigenen Haken – und die Kacheln zeigten
- * sie gar nicht erst.
+ * Die Arten, die eine Woche genau einmal trägt – nicht aus Sparsamkeit,
+ * sondern weil ihr Haken an der **Woche** hängt und nicht an der Karte:
+ * das Wochenziel ist erledigt oder nicht, die Tages-Challenge hat ihre
+ * sieben Tage, die Teilen-Aufgabe ist besprochen oder nicht. Eine zweite
+ * von ihnen hätte keinen eigenen Haken – und die Kacheln zeigten sie gar
+ * nicht erst. Dazu das Minispiel: ein Spiel, eine Rangliste je Woche.
  *
  * Für alles andere gibt es **keine Obergrenze**: Wie viele Feed-Karten,
  * Quizfragen, Bilderrätsel, Wochenthemen, Fragen oder Aufgaben eine Woche
@@ -213,6 +216,7 @@ export const IMPULSE_SINGLE_KINDS: readonly ImpulseKind[] = [
   'wochenziel',
   'tageschallenge',
   'teilen',
+  'spiel',
 ]
 
 /** Darf eine Woche mehrere Karten dieser Art tragen? */
@@ -244,14 +248,16 @@ export function nextImpulseOrder(
  * Die Reihenfolge des Feeds – so, wie die Redaktion sie gelegt hat.
  *
  * Das Wochenthema steht immer vorn (es ist die Tür in die Woche), die
- * Teilen-Aufgabe immer hinten (erst lesen, dann weitergeben). Dazwischen
+ * Teilen-Aufgabe hinten (erst lesen, dann weitergeben) und das Minispiel
+ * ganz zuletzt – die Belohnung nach den Karten. Dazwischen
  * zählt der Platz (`order`) **über alle Arten hinweg**: Umfrage, Fakt,
  * Quiz, Geschichte, Puzzle – der Wechsel hält wach, ein Block aus zehn
  * gleichen Karten nicht. Ohne Platz kommt eine Karte ans Ende, und bei
  * gleichem Platz entscheidet die gewohnte Ordnung der Arten.
  */
 export function deckOrder<T extends Pick<ImpulseItem, 'kind' | 'order'>>(items: T[]): T[] {
-  const band = (kind: ImpulseKind) => (kind === 'impuls' ? 0 : kind === 'teilen' ? 2 : 1)
+  const band = (kind: ImpulseKind) =>
+    kind === 'impuls' ? 0 : kind === 'teilen' ? 2 : kind === 'spiel' ? 3 : 1
   return [...items].sort(
     (a, b) =>
       band(a.kind) - band(b.kind) ||
@@ -329,7 +335,8 @@ export function quizAnswerCorrect(
  * Die Umfrage braucht ihre Möglichkeiten bzw. eine brauchbare Skala, aber
  * keine Quelle – sie fragt nach Meinungen, nicht nach Fakten. Das
  * Vers-Puzzle dagegen ist ein Vers: Es braucht mindestens drei Teile und
- * seine Fundstelle.
+ * seine Fundstelle. Das Minispiel braucht sein Spiel – eines, das diese
+ * Fassung der App kennt.
  */
 export function readyProblems(item: {
   kind: ImpulseKind
@@ -340,6 +347,7 @@ export function readyProblems(item: {
   puzzle?: ImpulsePuzzle | null
   image?: { url: string } | null
   videoUrl?: string | null
+  game?: ImpulseGameId | null
 }): string[] {
   const problems: string[] = []
   if (!item.title.trim())
@@ -379,6 +387,12 @@ export function readyProblems(item: {
   if (item.kind === 'puzzle') {
     if (puzzlePieces(item.puzzle?.text ?? '').length < 3)
       problems.push('Das Puzzle braucht mindestens drei Teile.')
+    return problems
+  }
+
+  if (item.kind === 'spiel') {
+    if (!item.game || !Object.hasOwn(IMPULSE_GAME_LABELS, item.game))
+      problems.push('Das Spiel fehlt.')
     return problems
   }
 
@@ -932,7 +946,19 @@ export function seededShuffle<T>(list: readonly T[], seed: string): T[] {
  */
 
 /** Arten, bei denen Anschauen nicht genügt – es braucht eine Antwort. */
-const ANSWER_KINDS: readonly ImpulseKind[] = ['quiz', 'bilderraetsel', 'umfrage', 'puzzle', 'frage']
+/*
+ * Karten, die erst mit dem eigenen Beitrag geschafft sind. Beim Minispiel
+ * ist das die erste Runde: Der Eintrag in der Rangliste
+ * (`ImpulseGameScore`) zählt wie eine Antwort.
+ */
+const ANSWER_KINDS: readonly ImpulseKind[] = [
+  'quiz',
+  'bilderraetsel',
+  'umfrage',
+  'puzzle',
+  'frage',
+  'spiel',
+]
 
 export interface ImpulseCrestStep {
   itemId: string
@@ -949,7 +975,7 @@ export function impulseCrestSteps(input: {
   /** Angeschaute Karten und Vertiefungen der Woche (Inhalts-IDs). */
   seen: ReadonlySet<string>
   deepened: ReadonlySet<string>
-  /** Beantwortete Karten: Quiz, Umfrage, Puzzle, Frage der Woche (Inhalts-IDs). */
+  /** Beantwortete Karten: Quiz, Umfrage, Puzzle, Frage der Woche, gespielte Minispiele (Inhalts-IDs). */
   answered: ReadonlySet<string>
   /** Die Teilen-Aufgabe der Woche abgehakt. */
   shared: boolean
@@ -961,7 +987,13 @@ export function impulseCrestSteps(input: {
     } else if (ANSWER_KINDS.includes(card.kind)) {
       if (!input.answered.has(card.id))
         missing.push(
-          card.kind === 'umfrage' ? 'abstimmen' : card.kind === 'puzzle' ? 'lösen' : 'antworten',
+          card.kind === 'umfrage'
+            ? 'abstimmen'
+            : card.kind === 'puzzle'
+              ? 'lösen'
+              : card.kind === 'spiel'
+                ? 'spielen'
+                : 'antworten',
         )
     } else if (!input.seen.has(card.id)) {
       missing.push('anschauen')
@@ -1029,7 +1061,7 @@ export function crestCompleters(input: {
   week: string
   cards: readonly Pick<ImpulseItem, 'id' | 'kind' | 'title' | 'deepening'>[]
   progressDocs: readonly ImpulseProgress[]
-  /** Antworten (Quiz, Umfrage, Puzzle) und Beiträge (Frage der Woche) aller. */
+  /** Antworten (Quiz, Umfrage, Puzzle), Beiträge (Frage der Woche) und Ranglisten-Einträge aller. */
   answers: readonly Pick<ImpulseAnswer, 'itemId' | 'uid'>[]
 }): { uid: string; firstName: string }[] {
   if (input.cards.length === 0) return []

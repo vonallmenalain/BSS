@@ -1380,6 +1380,103 @@ describe('Impuls', () => {
       await assertFails(getDocs(collection(asAnonymous(), 'impulseSubmissions')))
     })
   })
+
+  /*
+   * Die Ranglisten der Minispiele: je Spiel und Konto ein Eintrag, der
+   * beste Lauf. Er entsteht nur auf den eigenen Namen, sinkt nie, und
+   * ausblenden kann allein die Redaktion.
+   */
+  describe('Minispiele', () => {
+    const score = (uid, extra = {}) => ({
+      itemId: 'spiel-1',
+      uid,
+      week: '2026-W41',
+      game: 'sortieren',
+      name: '',
+      best: 12,
+      ...extra,
+    })
+    const mine = () => doc(asImpulseAp(), 'impulseGameScores', `spiel-1_${IMPULSE_AP}`)
+
+    it('der erste Lauf auf den eigenen Namen – noch ohne Namen in der Liste', async () => {
+      await assertSucceeds(setDoc(mine(), score(IMPULSE_AP)))
+    })
+
+    it('ein besserer Lauf und ein Name – ein schlechterer nie', async () => {
+      await assertSucceeds(updateDoc(mine(), { best: 30, name: 'Levin' }))
+      // Ein neuer Name lässt den Bestwert stehen.
+      await assertSucceeds(updateDoc(mine(), { name: 'Levin der Schnelle' }))
+      await assertFails(updateDoc(mine(), { best: 29 }))
+      await assertFails(updateDoc(mine(), { best: -1 }))
+    })
+
+    it('Grenzen: ganze Zahl bis 9999, Name höchstens 20 Zeichen', async () => {
+      await assertFails(updateDoc(mine(), { best: 10000 }))
+      await assertFails(updateDoc(mine(), { best: 31.5 }))
+      await assertFails(updateDoc(mine(), { name: 'x'.repeat(21) }))
+      await assertFails(updateDoc(mine(), { name: 42 }))
+      await assertSucceeds(updateDoc(mine(), { best: 9999, name: 'x'.repeat(20) }))
+    })
+
+    it('kein Eintrag auf fremden Namen, unter fremder ID oder schon ausgeblendet', async () => {
+      await assertFails(
+        setDoc(doc(asImpulseAp(), 'impulseGameScores', 'spiel-2_uid-fremd'), score(IMPULSE_AP)),
+      )
+      await assertFails(
+        setDoc(
+          doc(asImpulseAp(), 'impulseGameScores', `spiel-2_${IMPULSE_AP}`),
+          score(BISHOP, { itemId: 'spiel-2' }),
+        ),
+      )
+      await assertFails(
+        setDoc(
+          doc(asImpulseAp(), 'impulseGameScores', `spiel-2_${IMPULSE_AP}`),
+          score(IMPULSE_AP, { itemId: 'spiel-2', hidden: true }),
+        ),
+      )
+    })
+
+    it('Konto, Spiel und Moderation bleiben, wie sie sind', async () => {
+      await assertFails(updateDoc(mine(), { uid: 'uid-fremd' }))
+      await assertFails(updateDoc(mine(), { itemId: 'spiel-9' }))
+      await assertFails(updateDoc(mine(), { hidden: true }))
+    })
+
+    it('fremde Einträge bleiben fremd – löschen kann allein die Redaktion', async () => {
+      await testEnv.withSecurityRulesDisabled(async (context) => {
+        await setDoc(
+          doc(context.firestore(), 'impulseGameScores', 'spiel-1_uid-zweiter'),
+          score('uid-zweiter', { name: 'Dario', best: 50 }),
+        )
+      })
+      const other = (db) => doc(db, 'impulseGameScores', 'spiel-1_uid-zweiter')
+      await assertFails(updateDoc(other(asImpulseAp()), { best: 51 }))
+      await assertFails(updateDoc(other(asImpulseAp()), { name: 'Umbenannt' }))
+      await assertFails(deleteDoc(other(asImpulseAp())))
+      await assertFails(deleteDoc(mine()))
+    })
+
+    it('die Redaktion blendet aus und wieder ein – und räumt auf', async () => {
+      const mineAsEditor = doc(asBishop(), 'impulseGameScores', `spiel-1_${IMPULSE_AP}`)
+      await assertSucceeds(updateDoc(mineAsEditor, { hidden: true }))
+      // Ein neuer Bestwert holt den Eintrag nicht zurück – selbst einblenden geht nicht.
+      await assertSucceeds(updateDoc(mine(), { best: 9999 }))
+      await assertFails(updateDoc(mine(), { hidden: false }))
+      await assertSucceeds(updateDoc(mineAsEditor, { hidden: false }))
+      await assertSucceeds(deleteDoc(doc(asBishop(), 'impulseGameScores', 'spiel-1_uid-zweiter')))
+    })
+
+    it('ohne Schalter kein Blick auf die Ranglisten – und kein Lauf', async () => {
+      await assertSucceeds(getDocs(collection(asImpulseAp(), 'impulseGameScores')))
+      await assertSucceeds(getDocs(collection(asImpulseOnly(), 'impulseGameScores')))
+      for (const as of [asSecretary, asApViewer, asPending, asAnonymous]) {
+        await assertFails(getDocs(collection(as(), 'impulseGameScores')))
+      }
+      await assertFails(
+        setDoc(doc(asSecretary(), 'impulseGameScores', `spiel-1_${SECRETARY}`), score(SECRETARY)),
+      )
+    })
+  })
 })
 
 /* ------------------------------------------------------------------ */
@@ -1403,6 +1500,7 @@ describe('Rolle «Nur Anti Doom»', () => {
       'impulseProgress',
       'impulseComments',
       'impulseSubmissions',
+      'impulseGameScores',
     ]) {
       await assertSucceeds(getDocs(collection(asImpulseOnly(), name)))
     }

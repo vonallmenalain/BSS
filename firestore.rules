@@ -255,9 +255,8 @@ service cloud.firestore {
     }
 
     // Darf im Bereich «Impuls» Inhalte pflegen und moderieren – die
-    // Redaktion. Vorerst ist das allein das Administrator-Konto; der
-    // zweite Schalter steht bereit, damit die Öffnung später keine
-    // Regeländerung mehr braucht.
+    // Redaktion: das Administrator-Konto und, wer in der Benutzerverwaltung
+    // die Stufe «Anti Doom + Redaktion» hat (Schalter `impulseEditor`).
     function impulseWrite() {
       return isAdmin()
         || (hasProfile()
@@ -757,6 +756,57 @@ service cloud.firestore {
 
       allow delete: if impulseWrite()
         || (impulseAccess() && resource.data.uid == request.auth.uid);
+    }
+
+    /*
+     * Die Ranglisten der Minispiele: der beste Lauf je Spiel und Konto.
+     *
+     * Ein Dokument je Spiel-Karte und Person – die ID trägt beides, wie bei
+     * den Antworten. So steht jede Person genau einmal in der Liste, und
+     * wie oft jemand gespielt hat, steht nirgends. Geprüft wird:
+     *
+     * - angelegt und nachgeführt nur auf den eigenen Namen;
+     * - der Bestwert ist eine ganze Zahl von 0 bis 9999 und sinkt nie –
+     *   ein neuer Name lässt ihn stehen;
+     * - der Name ist Text, höchstens 20 Zeichen (leer, solange keiner
+     *   eingetragen ist);
+     * - Konto, Karte und das Moderations-Feld bleiben, wie sie sind: Aus-
+     *   und wieder einblenden kann allein die Redaktion, und ein Eintrag
+     *   kommt nicht schon ausgeblendet zur Welt.
+     *
+     * Lesen dürfen alle im Bereich – die Rangliste ist für alle da. Wer
+     * die Datenbank unmittelbar beschreibt, kann sich trotzdem einen
+     * Bestwert geben, solange er in den Grenzen bleibt: Das Spiel läuft auf
+     * dem Gerät. Eine Rangliste unter Freunden, keine Urkunde.
+     */
+    match /impulseGameScores/{scoreId} {
+      function validGameScore(data) {
+        return data.itemId is string
+          && data.best is int
+          && data.best >= 0
+          && data.best <= 9999
+          && data.name is string
+          && data.name.size() <= 20;
+      }
+
+      allow read: if impulseAccess();
+
+      allow create: if impulseAccess()
+        && scoreId == request.resource.data.itemId + '_' + request.auth.uid
+        && request.resource.data.uid == request.auth.uid
+        && validGameScore(request.resource.data)
+        && request.resource.data.get('hidden', false) == false;
+
+      allow update: if impulseWrite()
+        || (impulseAccess()
+          && resource.data.uid == request.auth.uid
+          && unchanged('uid')
+          && unchanged('itemId')
+          && unchanged('hidden')
+          && validGameScore(request.resource.data)
+          && request.resource.data.best >= resource.data.best);
+
+      allow delete: if impulseWrite();
     }
 
     /* ---------------- Benachrichtigungen ---------------- */

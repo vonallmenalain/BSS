@@ -12,7 +12,11 @@ import {
   submissionToItem,
   type ImpulseItemInput,
 } from '@/services/impulse'
-import { IMPULSE_SUBMISSION_KIND_LABELS, type ImpulseSubmission } from '@/lib/types'
+import {
+  IMPULSE_SUBMISSION_KIND_LABELS,
+  IMPULSE_SUBMISSION_KINDS,
+  type ImpulseSubmission,
+} from '@/lib/types'
 
 /**
  * Die Mitmach-Ecke: Die AP's liefern selbst – und zwar die fixfertige
@@ -241,7 +245,12 @@ export function ImpulseSubmitCard({
           }
         >
           <div className="space-y-4">
-            <ImpulseItemFields input={editor.input} setInput={setInput} idPrefix="submission" />
+            <ImpulseItemFields
+              input={editor.input}
+              setInput={setInput}
+              idPrefix="submission"
+              kinds={IMPULSE_SUBMISSION_KINDS}
+            />
             <div>
               <label className="flex cursor-pointer items-center gap-2 text-sm">
                 <input

@@ -3276,7 +3276,8 @@ Oberfläche: Ein AP-Zugang erreicht genau zwei Sammlungen (`apActivities`,
 `apMonths`) sowie lesend die Einstellungen – wegen des Gemeindenamens in der
 Kopfzeile. Die Rolle «Nur Anti Doom» erreicht die Sammlungen des Bereichs
 (`impulseItems`, `impulseAnswers`, `impulseProgress`, `impulseComments`,
-`impulseSubmissions`), das eigene Profil und die eigenen Benachrichtigungen –
+`impulseSubmissions`, `impulseGameScores`), das eigene Profil und die eigenen
+Benachrichtigungen –
 nicht einmal die Einstellungen; «Anti Doom» braucht den Gemeindenamen nicht.
 Jede andere Abfrage lehnt der Server ab. `npm run test:rules` prüft das in
 beide Richtungen.

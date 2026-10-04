@@ -1,6 +1,7 @@
 import { scriptureLink } from './scriptures.ts'
 import type {
   ImpulseCrest,
+  ImpulseGameId,
   ImpulseItem,
   ImpulseKind,
   ImpulsePoll,
@@ -177,6 +178,8 @@ export interface PackWeek {
   challenge: Omit<PackCard, 'key' | 'kind'>
   /** Die Karten nach dem Wochenthema, in Feed-Reihenfolge – die Teilen-Aufgabe zuletzt. */
   deck: PackCard[]
+  /** Das Minispiel der Woche – nach allen Karten, ganz zuletzt. Nicht jede Woche hat eines. */
+  game?: Omit<PackCard, 'key' | 'kind'> & { game: ImpulseGameId }
 }
 
 export const PACK_WEEKS: PackWeek[] = [
@@ -473,6 +476,14 @@ export const PACK_WEEKS: PackWeek[] = [
         source: verse('Lehre und Bündnisse 89:18–21'),
       },
     ],
+    game: {
+      game: 'sortieren',
+      emoji: '🎮',
+      title: 'Gut für dich?',
+      body:
+        'Weizen, Rüebli, ein Velo – oder Bier, Zigarette, Kaffee? Sortiere, was herunterfällt, ' +
+        'bevor es unten ankommt. Es wird schnell schneller – wer schafft am meisten?',
+    },
   },
 
   /* ================================================================ */
@@ -1777,6 +1788,7 @@ export interface PackPlan {
   kicker: string | null
   lesson: ImpulseSource | null
   crest: ImpulseCrest | null
+  game: ImpulseGameId | null
   image: null
   videoUrl: null
   videoTextPage: null
@@ -1792,7 +1804,8 @@ function plan(
   week: string,
   key: string,
   kind: ImpulseKind,
-  card: Omit<PackCard, 'key' | 'kind'> & Partial<Pick<PackTheme, 'kicker' | 'lesson' | 'crest'>>,
+  card: Omit<PackCard, 'key' | 'kind'> &
+    Partial<Pick<PackTheme, 'kicker' | 'lesson' | 'crest'>> & { game?: ImpulseGameId },
   order: number | null,
 ): PackPlan {
   return {
@@ -1814,6 +1827,7 @@ function plan(
     kicker: card.kicker ?? null,
     lesson: card.lesson ?? null,
     crest: card.crest ?? null,
+    game: card.game ?? null,
     image: null,
     videoUrl: null,
     videoTextPage: null,
@@ -1821,13 +1835,14 @@ function plan(
   }
 }
 
-/** Alle Inhalte einer Woche, wie das Paket sie anlegt – das Wochenthema zuerst. */
+/** Alle Inhalte einer Woche, wie das Paket sie anlegt – das Wochenthema zuerst, das Minispiel zuletzt. */
 export function packWeekPlans(week: PackWeek): PackPlan[] {
   return [
     plan(week.week, 'impuls', 'impuls', week.theme, 0),
     plan(week.week, 'wochenziel', 'wochenziel', week.goal, null),
     plan(week.week, 'tageschallenge', 'tageschallenge', week.challenge, null),
     ...week.deck.map((card, index) => plan(week.week, card.key, card.kind, card, index + 1)),
+    ...(week.game ? [plan(week.week, 'spiel', 'spiel', week.game, week.deck.length + 1)] : []),
   ]
 }
 

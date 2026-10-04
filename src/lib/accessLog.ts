@@ -50,6 +50,7 @@ export const AREA_LABELS: Record<string, string> = {
   impulseProgress: 'Anti Doom · Fortschritt',
   impulseComments: 'Anti Doom · Frage der Woche',
   impulseSubmissions: 'Anti Doom · Mitmach-Ecke',
+  impulseGameScores: 'Anti Doom · Ranglisten',
   pushTokens: 'Benachrichtigungen · Geräte',
   notificationSettings: 'Benachrichtigungen',
   settings: 'Einstellungen',

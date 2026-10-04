@@ -11,6 +11,7 @@ import {
 } from '@/components/impulse/ImpulseCards'
 import { ChallengeCard, GoalCard } from '@/components/impulse/ImpulseProgressCards'
 import { ImpulseFeedCard } from '@/components/impulse/ImpulseFeedCard'
+import { ImpulseGameCard } from '@/components/impulse/game/ImpulseGameCard'
 import { ImpulseQuestionCard } from '@/components/impulse/ImpulseQuestionCard'
 import { ImpulsePollCard } from '@/components/impulse/ImpulsePollCard'
 import { ImpulsePuzzleCard } from '@/components/impulse/ImpulsePuzzleCard'
@@ -105,6 +106,17 @@ export function ImpulseEditorPreview({
                   preview
                   plain
                   progressDocs={[]}
+                />
+              )
+            case 'spiel':
+              return (
+                <ImpulseGameCard
+                  item={item}
+                  scores={[]}
+                  gameName=""
+                  ownScoreIds={[]}
+                  preview
+                  plain
                 />
               )
             case 'wochenziel':
