@@ -615,6 +615,19 @@ den Kalender.
   Freischaltung durch den Admin) – es gelten dieselben Hürden wie heute.
 - Im Bereich erscheinen nur Vorname bzw. Kürzel und das, was jemand selbst
   schreibt. Beiträge sind gruppenintern, moderierbar und meldbar.
+- **Anonym mitmachen.** Der eigene Name soll kein Grund sein, nichts zu
+  schreiben. Umfragen sind immer anonym – der Hinweis «Anonym – dein Name
+  wird nicht geteilt» steht bei jeder, und in der Stimme selbst steht kein
+  Vorname. Bei der Frage der Woche gibt es den Haken **«Meinen Namen nicht
+  anzeigen»**: Die anderen sehen dann «Anonym», der Vorname steht nicht im
+  Beitrag; die Redaktion sieht weiterhin, von wem er stammt («Anonym ·
+  Levin»), denn wer moderiert, muss im Ernstfall nachfragen können – so
+  steht es auch beim Haken. In der Mitmach-Ecke heisst der Haken **«Ohne
+  meinen Namen veröffentlichen»**: Die fertige Karte trägt dann kein
+  «Eingereicht von …», und «Übernehmen» lässt den Namen von selbst weg.
+  Technisch bleibt jede Antwort einem Konto zugeordnet (eine Antwort pro
+  Person, die eigene nachbessern) – anonym ist sie gegenüber den anderen
+  in der App.
 - Vor dem Rollout an die Jugendlichen gehört das Einverständnis der Eltern
   eingeholt (kurze Information, was die App speichert und wer es sieht) –
   und die Führung der Gemeinde ins Boot. Beides ist kein App-Thema, aber
@@ -648,13 +661,17 @@ impulseItems/{id}              eine Karte oder Frage
                                             erscheint (kein Handgriff am Montag)
 
 impulseAnswers/{itemId_uid}    genau eine Antwort pro Person und Frage
-                               ├─ uid, firstName            (mitgeschrieben)
+                               ├─ uid, firstName            (mitgeschrieben –
+                               │            bei Umfragen leer: sie sind anonym)
                                ├─ choice / text, correct
                                └─ answeredAt
 
 impulseComments/{itemId_uid}   Beitrag zur Frage der Woche – eine Antwort
                                pro Person und Frage, die ID erzwingt es
-                               ├─ itemId, uid, firstName    (mitgeschrieben)
+                               ├─ itemId, uid, firstName    (mitgeschrieben –
+                               │            leer, wenn anonym)
+                               ├─ anonymous                 «Anonym» für die
+                               │            anderen; die Redaktion sieht den Namen
                                ├─ text                      (nachbesserbar)
                                ├─ hidden                    (Moderation – setzt
                                │                             nur die Redaktion)
@@ -667,6 +684,8 @@ impulseComments/{itemId_uid}   Beitrag zur Frage der Woche – eine Antwort
 
 impulseSubmissions/{id}        Einreichung aus der Mitmach-Ecke
                                ├─ uid, firstName            (mitgeschrieben)
+                               ├─ anonymous                 ohne «Eingereicht
+                               │            von …» auf der fertigen Karte
                                ├─ kind      gedanke | frage
                                ├─ text, sourceLabel, sourceUrl   – formlos,
                                │            die Redaktion bringt es in Form
@@ -883,9 +902,7 @@ mehr «bereit für Sonntag» oder «du gehst vorbereitet in die Klasse», und
 keine Aufgabe verlangt, etwas am Sonntag mitzubringen. Die Wochenthemen
 beginnen mit «Diese Woche geht es um …», die Lektion steht als
 «Lektion: …» unter der Mission. Das Wappen vor Sonntag zu vollenden,
-bleibt ein Stern – als Termin, nicht als Vorbereitung. Karten, die schon
-mit dem früheren Wortlaut eingespielt sind, führt die Redaktion mit einem
-Klick nach (siehe 13.4).
+bleibt ein Stern – als Termin, nicht als Vorbereitung.
 
 ### 13.2 Mehr Spiel: neue Kartenarten und der Wechsel im Feed
 
@@ -948,8 +965,10 @@ einmal je Woche und Gerät.
 - **Im Feed** steht oben eine Fortschrittsleiste wie über einer Story:
   ein Strich je Karte, gefüllt in der Farbe ihrer Art, sobald sie
   geschafft ist – daneben das kleine Wappen, das bei jeder geschafften
-  Karte kurz hüpft («+1»). Die Abschlusskarte zeigt das Wappen gross und
-  zählt auf, was noch fehlt; ein Tipp führt direkt zur Karte.
+  Karte kurz hüpft («+1»). Ein Tipp aufs kleine Wappen öffnet es gross:
+  wie weit es ist, welche Sterne leuchten und an welchen Karten noch etwas
+  fehlt – ein Tipp auf eine Karte springt dorthin. Die Abschlusskarte zeigt
+  das Wappen ebenfalls gross und zählt auf, was noch fehlt.
 - **Im Dashboard** steht die **Mission der Woche** im Zentrum: Countdown
   bis Sonntag, Thema, Wappen, Stand und «Weiter swipen» – das genau bei
   der ersten Karte einsteigt, an der noch etwas fehlt.
@@ -993,16 +1012,6 @@ In der Redaktion bietet der Kasten «Themenpaket» zwei Wege:
   Vergangene Wochen bleiben weg, und dank fester IDs (`fsy26-w41-…`)
   holt ein späterer Lauf nur nach, was fehlt.
 
-**Texte nachführen.** Das Paket überschreibt nie, was schon in der
-Datenbank steht. Ändert sich ein Text im Paket – wie im Oktober 2026 die
-Sätze mit dem Blick auf den Sonntag (13.1) –, bliebe eine eingespielte
-Karte beim alten. Darum führt `PACK_TEXT_REVISIONS` die früheren
-Fassungen: Steht an einer Karte noch genau so ein alter Wortlaut,
-erscheint in der Redaktion der Kasten **«Texte des Themenpakets
-nachführen»**, und ein Klick übernimmt die neuen Sätze
-(`planPackTextUpdates`). Was die Redaktion selbst umgeschrieben hat,
-bleibt unberührt; danach verschwindet der Kasten.
-
 **Das Wappen der Woche** lässt sich in der Redaktion ansehen, bevor es
 jemand baut: Der Knopf **«Wappen»** neben «Vorschau der Woche» zeigt es
 im Kleinen und öffnet ein Fenster mit dem Wappen im Grossen und einem
@@ -1015,8 +1024,11 @@ Karte zuletzt dazugekommen ist.
 des Formulars besteht, dass jede Woche mit dem Sonntag ihrer Lektion
 endet, dass nie zwei gleiche Arten aufeinander folgen und dass die IDs
 fest und eindeutig sind – dazu, dass kein Paket-Text mehr auf die
-Vorbereitung für den Sonntag zielt und dass das Nachführen nur alte
-Wortlaute ersetzt.
+Vorbereitung für den Sonntag zielt.
+
+**Einmalige Kästen** in der Redaktion – etwa «Schwierigkeits-Hinweise
+entfernen» – verschwinden, sobald sie ausgeführt sind, ohne erst auf die
+Rückmeldung des Bestands zu warten.
 
 ### 13.5 Die Vorschau der Woche: genau die Ansicht der Jugendlichen
 

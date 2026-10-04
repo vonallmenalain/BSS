@@ -33,6 +33,7 @@ import {
   useImpulseSubmissions,
 } from '@/hooks/useFirestore'
 import { cn } from '@/lib/utils'
+import { Modal } from '@/components/ui/Modal'
 import { PageHeader } from '@/components/ui/Pickers'
 import { AppMenuButton } from '@/components/AppMenuButton'
 import {
@@ -727,6 +728,8 @@ function ImpulsPage() {
   /* Spätere Sprünge: Jeder Griff ins Menü setzt ein neues Zielobjekt –
      auch derselbe Punkt zweimal hintereinander fährt wieder hin. */
   const [deckTarget, setDeckTarget] = useState<ImpulseDeckTarget | null>(null)
+  /* Das Wappen gross – ein Tipp aufs kleine Wappen oben rechts im Feed. */
+  const [crestOpen, setCrestOpen] = useState(false)
   const firstNav = useRef(true)
   /* Eine Navigation, die gar keine sein soll: das Schliessen der
      Einstellungen (siehe `closeSettings`). Die Karte im Bild bleibt
@@ -1287,7 +1290,7 @@ function ImpulsPage() {
           <div className="col-span-2">
             <SectionTile
               section="mitmachen"
-              status="Deine Idee für jede Kartenart – auf der fertigen Karte steht dein Name."
+              status="Deine Idee für jede Kartenart – auf Wunsch mit deinem Namen auf der Karte."
               badge={
                 submissionsState.data.filter(
                   (submission) => submission.uid === uid && submission.status === 'open',
@@ -1338,6 +1341,7 @@ function ImpulsPage() {
               />
             ) : null
           }
+          onCrest={viewWeek === todayKey ? () => setCrestOpen(true) : undefined}
           finale={
             <FeedFinale
               week={viewWeek}
@@ -1374,6 +1378,23 @@ function ImpulsPage() {
               onAllWeeks={() => navigate('/anti-doom/einstellungen', { replace: true })}
             />
           }
+        />
+      )}
+      {feedOpen && viewWeek === todayKey && (
+        <CrestProgressModal
+          open={crestOpen}
+          onClose={() => setCrestOpen(false)}
+          week={todayKey}
+          crest={crestDesign}
+          steps={crestSteps}
+          stars={crestStars}
+          onJump={(step) => {
+            setCrestOpen(false)
+            setDeckTarget({
+              section: IMPULSE_KIND_SECTION[step.kind as ImpulseDeckKind],
+              cardId: deckIdOf(step),
+            })
+          }}
         />
       )}
 
@@ -1736,7 +1757,7 @@ function FeedFinale({
         <FinaleAction
           icon={Send}
           label="Eigene Karte einreichen"
-          hint="Mitmach-Ecke: deine Idee – auf der Karte steht dein Name."
+          hint="Mitmach-Ecke: deine Idee – mit deinem Namen auf der Karte oder ohne."
           onClick={onMitmachen}
         />
       </div>
@@ -1805,6 +1826,100 @@ function FeedFinale({
 }
 
 /** Ein Weg weiter auf der Abschlusskarte – eine ruhige, volle Zeile. */
+/**
+ * Das eigene Wappen der Woche, gross – nach einem Tipp aufs kleine Wappen
+ * oben rechts im Feed.
+ *
+ * Wie weit es ist, welche Sterne schon leuchten und an welchen Karten noch
+ * etwas fehlt; ein Tipp auf eine Karte schliesst das Fenster und springt
+ * im Feed genau dorthin – derselbe Weg wie am Ende des Feeds.
+ */
+function CrestProgressModal({
+  open,
+  onClose,
+  week,
+  crest,
+  steps,
+  stars,
+  onJump,
+}: {
+  open: boolean
+  onClose: () => void
+  week: string
+  crest: ImpulseCrest
+  /** Alle Karten des Wappens in Feed-Reihenfolge – geschafft oder nicht. */
+  steps: ImpulseCrestStep[]
+  stars: ImpulseCrestStars
+  onJump: (step: ImpulseCrestStep) => void
+}) {
+  const total = steps.length
+  const done = steps.filter((step) => step.done).length
+  const complete = total > 0 && done >= total
+  const missing = steps.filter((step) => !step.done)
+  const starRows = [
+    { label: 'Vor Sonntag vollendet', earned: stars.sunday },
+    ...(stars.goal !== null ? [{ label: 'Wochenziel geschafft', earned: stars.goal }] : []),
+    ...(stars.challenge !== null
+      ? [{ label: 'Tages-Challenge an allen 7 Tagen', earned: stars.challenge }]
+      : []),
+  ]
+  return (
+    <Modal open={open} onClose={onClose} title="Dein Wappen" description={formatWeekRange(week)}>
+      <div className="flex justify-center py-1">
+        <ImpulseCrestEmblem
+          crest={crest}
+          week={week}
+          done={done}
+          total={total}
+          stars={stars}
+          size={200}
+        />
+      </div>
+      <p className="mt-3 text-center text-lg font-semibold">
+        {complete ? 'Wappen vollendet – stark!' : `${done} von ${total} Karten geschafft`}
+      </p>
+      <p className="mt-1 text-center text-sm text-slate-600 dark:text-slate-300">
+        {complete
+          ? 'Dein Wappen steht – und bleibt in deiner Sammlung.'
+          : 'Jede geschaffte Karte färbt ein Stück. Ein Tipp auf eine Karte führt direkt hin.'}
+      </p>
+      <ul className="mx-auto mt-4 flex max-w-xs flex-col gap-1.5 text-sm">
+        {starRows.map((row) => (
+          <li key={row.label} className="flex items-center gap-2">
+            <Star
+              className={cn(
+                'size-4 shrink-0',
+                row.earned ? 'fill-amber-400 text-amber-500' : 'text-slate-400',
+              )}
+              aria-hidden
+            />
+            <span className={row.earned ? undefined : 'text-slate-500 dark:text-slate-400'}>
+              {row.label}
+            </span>
+            <span className="sr-only">{row.earned ? '– geschafft' : '– noch offen'}</span>
+          </li>
+        ))}
+      </ul>
+      {missing.length > 0 && (
+        <div className="mt-5 space-y-1.5">
+          <p className="hint font-medium">Noch offen</p>
+          {missing.map((step) => (
+            <FinaleAction
+              key={step.itemId}
+              icon={
+                IMPULSE_SECTIONS[IMPULSE_KIND_SECTION[step.kind as ImpulseDeckKind] ?? 'woche'].icon
+              }
+              label={step.title || IMPULSE_KIND_LABELS[step.kind]}
+              hint={`${IMPULSE_KIND_LABELS[step.kind]} · ${step.missing.join(', ')}`}
+              onClick={() => onJump(step)}
+            />
+          ))}
+        </div>
+      )}
+    </Modal>
+  )
+}
+
 function FinaleAction({
   icon: Icon,
   label,
@@ -1880,7 +1995,9 @@ function PastFrageCard({
         <ul className="divide-list mt-3">
           {shown.map((comment) => (
             <li key={comment.id} className="py-2 text-sm">
-              <span className="font-medium">{comment.firstName || '–'}</span>{' '}
+              <span className="font-medium">
+                {comment.anonymous ? 'Anonym' : comment.firstName || '–'}
+              </span>{' '}
               <span className="text-slate-600 dark:text-slate-300">{comment.text}</span>
             </li>
           ))}

@@ -3778,6 +3778,12 @@ export interface ImpulseSubmissionCard {
 export interface ImpulseSubmission extends WithId {
   uid: string
   firstName: string
+  /**
+   * Ohne Namen veröffentlichen: Die fertige Karte trägt dann kein
+   * «Eingereicht von …». Die Redaktion sieht die Einreichung weiterhin mit
+   * Namen – sie muss wissen, mit wem sie es zu tun hat.
+   */
+  anonymous?: boolean
   kind: ImpulseSubmissionKind
   /** Der Titel bzw. die Frage der Karte – zugleich die Zeile in den Listen. */
   text: string
@@ -3839,8 +3845,15 @@ export interface ImpulseAnswer extends WithId {
 export interface ImpulseComment extends WithId {
   itemId: string
   uid: string
+  /** Leer, wenn die Antwort anonym ist – dann steht der Name nirgends im Beitrag. */
   firstName: string
   text: string
+  /**
+   * Ohne Namen gezeigt – die anderen sehen «Anonym». Die Redaktion sieht
+   * weiterhin, von wem der Beitrag stammt (über das Konto, `uid`): Wer
+   * moderiert, muss im Ernstfall nachfragen können.
+   */
+  anonymous?: boolean
   /** Ausgeblendet durch die Redaktion – nur sie sieht und schaltet es. */
   hidden: boolean
   createdAt?: TS

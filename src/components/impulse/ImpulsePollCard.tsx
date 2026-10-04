@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { Check, Lightbulb, Lock, RotateCcw } from 'lucide-react'
+import { Check, EyeOff, Lightbulb, Lock, RotateCcw } from 'lucide-react'
 import { useToast } from '@/contexts/ToastContext'
 import { cn } from '@/lib/utils'
 import { pollResults, type ImpulsePollResult } from '@/lib/impulse'
@@ -149,6 +149,13 @@ export function ImpulsePollCard({
                 Abstimmen
               </button>
             )}
+            {/* Abgestimmt wird ohne Namen – auch in der Stimme selbst steht er
+                nicht (`answerImpulsePoll`). Das darf jede und jeder wissen,
+                bevor sie sich entscheiden. */}
+            <p className="hint mt-0 flex w-full items-center gap-1.5">
+              <EyeOff className="size-3.5 shrink-0" aria-hidden />
+              Anonym – dein Name wird nicht geteilt.
+            </p>
           </div>
         </>
       ) : (
@@ -159,7 +166,7 @@ export function ImpulsePollCard({
             <ScaleResult poll={poll} result={result} mine={mine} />
           )}
           <p className="hint">
-            {result.total} {result.total === 1 ? 'Stimme' : 'Stimmen'}
+            {result.total} {result.total === 1 ? 'Stimme' : 'Stimmen'} · anonym
             {closed && mine === null && ' · abgestimmt wurde in jener Woche'}
           </p>
           {poll.explanation && (

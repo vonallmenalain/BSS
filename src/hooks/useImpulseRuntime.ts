@@ -188,6 +188,8 @@ export function previewImpulseWrites(
     itemId: string,
     user: { uid: string; displayName: string },
     reply: { choiceIndex: number | null; text: string; correct: boolean | null },
+    /** Wie im Dienst: Umfragen werden ohne Namen abgegeben. */
+    anonymous = false,
   ) => {
     const at = stamp()
     update((data) => ({
@@ -196,7 +198,7 @@ export function previewImpulseWrites(
         id: impulseAnswerId(itemId, user.uid),
         itemId,
         uid: user.uid,
-        firstName: impulseFirstName(user.displayName),
+        firstName: anonymous ? '' : impulseFirstName(user.displayName),
         ...reply,
         answeredAt: at,
         updatedAt: at,
@@ -212,13 +214,17 @@ export function previewImpulseWrites(
         correct: quizAnswerCorrect(item, reply),
       }),
     answerImpulsePoll: async (item, user, value) =>
-      answer(item.id, user, { choiceIndex: value, text: '', correct: null }),
+      answer(item.id, user, { choiceIndex: value, text: '', correct: null }, true),
     answerImpulsePuzzle: async (item, user, attempt, correct) =>
       answer(item.id, user, { choiceIndex: null, text: attempt.trim(), correct }),
 
-    saveImpulseComment: async (item, user, text, isNew) => {
+    saveImpulseComment: async (item, user, text, isNew, anonymous = false) => {
       const id = impulseAnswerId(item.id, user.uid)
       const at = stamp()
+      const author = {
+        firstName: anonymous ? '' : impulseFirstName(user.displayName),
+        anonymous,
+      }
       update((data) => ({
         ...data,
         comments: isNew
@@ -226,13 +232,13 @@ export function previewImpulseWrites(
               id,
               itemId: item.id,
               uid: user.uid,
-              firstName: impulseFirstName(user.displayName),
+              ...author,
               text: text.trim(),
               hidden: false,
               createdAt: at,
               updatedAt: at,
             })
-          : patchPreviewDoc(data.comments, id, { text: text.trim(), updatedAt: at }),
+          : patchPreviewDoc(data.comments, id, { text: text.trim(), ...author, updatedAt: at }),
       }))
       return done()
     },
@@ -267,7 +273,7 @@ export function previewImpulseWrites(
     markImpulseCrest: async (user, week, day) =>
       progress(user, { kind: 'week', week, patch: { crest: day } }),
 
-    createImpulseSubmission: async (user, input) => {
+    createImpulseSubmission: async (user, input, anonymous = false) => {
       const at = stamp()
       const id = `${PREVIEW_UID}-${at.toMillis().toString(36)}-${Math.random().toString(36).slice(2, 7)}`
       update((data) => ({
@@ -276,6 +282,7 @@ export function previewImpulseWrites(
           id,
           uid: user.uid,
           firstName: impulseFirstName(user.displayName),
+          anonymous,
           kind: input.kind as ImpulseSubmissionKind,
           text: input.title.trim(),
           sourceLabel: input.sourceLabel.trim(),
@@ -288,10 +295,11 @@ export function previewImpulseWrites(
       }))
       return done()
     },
-    updateImpulseSubmission: async (id, input) => {
+    updateImpulseSubmission: async (id, input, anonymous = false) => {
       update((data) => ({
         ...data,
         submissions: patchPreviewDoc(data.submissions, id, {
+          anonymous,
           kind: input.kind as ImpulseSubmissionKind,
           text: input.title.trim(),
           sourceLabel: input.sourceLabel.trim(),

@@ -42,6 +42,8 @@ export function ImpulseQuestionCard({
   const toast = useToast()
   const [draft, setDraft] = useState('')
   const [editing, setEditing] = useState(false)
+  /* Ohne Namen antworten – der Name soll kein Grund sein, nichts zu schreiben. */
+  const [anonymous, setAnonymous] = useState(false)
   const [busy, setBusy] = useState(false)
   const [previewComment, setPreviewComment] = useState<ImpulseComment | null>(null)
 
@@ -64,7 +66,8 @@ export function ImpulseQuestionCard({
         id: 'vorschau',
         itemId: item.id,
         uid: 'vorschau',
-        firstName: 'Vorschau',
+        firstName: anonymous ? '' : 'Vorschau',
+        anonymous,
         text,
         hidden: false,
       })
@@ -80,6 +83,7 @@ export function ImpulseQuestionCard({
         { uid: profile.id, displayName: profile.displayName },
         text,
         !stored,
+        anonymous,
       )
       toast.saved(stored ? 'Antwort angepasst.' : 'Antwort festgehalten.', outcome)
       setDraft('')
@@ -141,6 +145,7 @@ export function ImpulseQuestionCard({
                 preview={preview}
                 onEdit={() => {
                   setDraft(mine?.text ?? '')
+                  setAnonymous(mine?.anonymous === true)
                   setEditing(true)
                 }}
               />
@@ -173,10 +178,21 @@ export function ImpulseQuestionCard({
             onChange={(event) => setDraft(event.target.value)}
             placeholder="Zwei, drei Sätze genügen …"
           />
+          <label className="flex cursor-pointer items-center gap-2 text-sm">
+            <input
+              type="checkbox"
+              className="size-4"
+              checked={anonymous}
+              onChange={(event) => setAnonymous(event.target.checked)}
+            />
+            Meinen Namen nicht anzeigen
+          </label>
           <div className="flex flex-wrap items-center gap-2">
             <p className="hint min-w-0 flex-1">
-              Erscheint mit deinem Vornamen. Die Antworten der anderen siehst du, sobald deine
-              dasteht.
+              {anonymous
+                ? 'Erscheint als «Anonym» – die anderen sehen deinen Namen nicht, nur die Redaktion.'
+                : 'Erscheint mit deinem Vornamen.'}{' '}
+              Die Antworten der anderen siehst du, sobald deine dasteht.
             </p>
             {editing && (
               <button
@@ -269,8 +285,17 @@ function CommentRow({
       )}
     >
       <p className="text-sm font-medium">
-        {comment.firstName}
+        {comment.anonymous ? 'Anonym' : comment.firstName}
         {mine && <span className="font-normal text-slate-400"> (du)</span>}
+        {/* Die Redaktion sieht, von wem ein anonymer Beitrag stammt – wer
+            moderiert, muss im Ernstfall nachfragen können. */}
+        {comment.anonymous && !mine && canEditImpulse && !preview && (
+          <span className="font-normal text-slate-400" title="Nur für die Redaktion sichtbar">
+            {' · '}
+            {progressDocs.find((progress) => progress.uid === comment.uid)?.firstName ||
+              'unbekannt'}
+          </span>
+        )}
       </p>
       <p className="mt-1 text-sm whitespace-pre-line text-slate-600 dark:text-slate-300">
         {comment.text}

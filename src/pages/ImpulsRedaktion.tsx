@@ -8,7 +8,6 @@ import {
   Eraser,
   Eye,
   Inbox,
-  PenLine,
   Pencil,
   Plus,
   RotateCcw,
@@ -44,10 +43,9 @@ import {
   upcomingWeekKeys,
 } from '@/lib/impulse'
 import { IMPULSE_KIND_THEME, IMPULSE_SECTIONS } from '@/lib/impulseSections'
-import { isPackItem, PACK_WEEKS, planPackItems, planPackTextUpdates } from '@/lib/impulsePack'
+import { isPackItem, PACK_WEEKS, planPackItems } from '@/lib/impulsePack'
 import {
   applyDifficultyCleanup,
-  applyPackTextUpdates,
   createPackItems,
   deleteImpulseSubmission,
   restartImpulseContent,
@@ -262,12 +260,16 @@ export function ImpulsRedaktion() {
    * Hinweis bleibt. Der Kasten verschwindet, sobald nichts mehr ansteht.
    */
   const [cleaning, setCleaning] = useState(false)
+  /* Einmal ausgeführt, ist der Kasten sofort weg – auch bevor der
+     Bestand die Änderung zurückmeldet. */
+  const [cleaned, setCleaned] = useState(false)
   const cleanupPlans = useMemo(() => planDifficultyCleanup(itemsState.data), [itemsState.data])
   const runCleanup = async () => {
     if (cleaning || cleanupPlans.length === 0) return
     setCleaning(true)
     try {
       const outcome = await applyDifficultyCleanup(cleanupPlans)
+      setCleaned(true)
       toast.saved(
         `Hinweise bereinigt – ${
           cleanupPlans.length === 1 ? 'eine Karte' : `${cleanupPlans.length} Karten`
@@ -281,33 +283,6 @@ export function ImpulsRedaktion() {
       setCleaning(false)
     }
   }
-
-  /*
-   * Paket-Texte nachführen: Karten des Themenpakets, an denen noch ein
-   * früherer Wortlaut steht – etwa «Am Sonntag geht es um …» oder «bring
-   * es am Sonntag mit» (siehe `PACK_TEXT_REVISIONS`). Nachgeführt wird nur,
-   * wo noch genau der alte Text steht; der Kasten verschwindet danach.
-   */
-  const [revising, setRevising] = useState(false)
-  const textUpdates = useMemo(() => planPackTextUpdates(itemsState.data), [itemsState.data])
-  const runTextUpdates = async () => {
-    if (revising || textUpdates.length === 0) return
-    setRevising(true)
-    try {
-      const outcome = await applyPackTextUpdates(textUpdates)
-      const cards = new Set(textUpdates.map((update) => update.id)).size
-      toast.saved(
-        `Texte nachgeführt – ${cards === 1 ? 'eine Karte' : `${cards} Karten`} angepasst.`,
-        outcome,
-      )
-    } catch (error) {
-      console.error(error)
-      toast.error('Die Texte konnten nicht nachgeführt werden.')
-    } finally {
-      setRevising(false)
-    }
-  }
-  const textUpdateCards = new Set(textUpdates.map((update) => update.id)).size
 
   /* Antworten und Beiträge je Inhalt – für die Zahl an der Zeile und
      fürs Miträumen beim Löschen. */
@@ -453,7 +428,7 @@ export function ImpulsRedaktion() {
         )}
 
         {/* ---------- Aufräumen: Schwierigkeitsansagen ---------- */}
-        {cleanupPlans.length > 0 && (
+        {cleanupPlans.length > 0 && !cleaned && (
           <section className="card p-4 sm:p-5">
             <h2 className="flex items-center gap-2 text-sm font-semibold">
               <Eraser className="size-4 text-slate-400" aria-hidden />
@@ -475,34 +450,6 @@ export function ImpulsRedaktion() {
             >
               <Eraser className="size-4" aria-hidden />
               {cleaning ? 'Wird bereinigt …' : 'Jetzt bereinigen'}
-            </button>
-          </section>
-        )}
-
-        {/* ---------- Paket-Texte nachführen ---------- */}
-        {textUpdates.length > 0 && (
-          <section className="card p-4 sm:p-5">
-            <h2 className="flex items-center gap-2 text-sm font-semibold">
-              <PenLine className="size-4 text-slate-400" aria-hidden />
-              Texte des Themenpakets nachführen
-            </h2>
-            <p className="hint mt-1 mb-3">
-              {textUpdateCards === 1
-                ? 'Eine Karte des Themenpakets trägt'
-                : `${textUpdateCards} Karten des Themenpakets tragen`}{' '}
-              noch den früheren Wortlaut mit dem Blick auf den Sonntag – etwa «Am Sonntag geht es um
-              …» oder «bring es am Sonntag mit». Ein Klick übernimmt die neuen Sätze. Nachgeführt
-              wird nur, wo noch genau der ursprüngliche Text steht; was du selbst geändert hast,
-              bleibt.
-            </p>
-            <button
-              type="button"
-              className="btn-secondary"
-              onClick={() => void runTextUpdates()}
-              disabled={revising}
-            >
-              <PenLine className="size-4" aria-hidden />
-              {revising ? 'Wird nachgeführt …' : 'Jetzt nachführen'}
             </button>
           </section>
         )}
@@ -631,6 +578,8 @@ export function ImpulsRedaktion() {
                       <span className="hint font-normal">
                         {' · '}
                         {IMPULSE_SUBMISSION_KIND_LABELS[submission.kind]}
+                        {/* «Übernehmen» lässt den Namen dann von selbst weg. */}
+                        {submission.anonymous && ' · möchte ohne Namen erscheinen'}
                       </span>
                     </p>
                     <p className="mt-0.5 text-sm whitespace-pre-line text-slate-600 dark:text-slate-300">

@@ -20,7 +20,7 @@ import { db, COLLECTIONS } from '@/lib/firebase'
 import { forgetDoc } from '@/lib/collectionStore'
 import { commit, requireOnline, type SaveOutcome } from '@/lib/sync'
 import { impulseAnswerId, impulseFirstName, quizAnswerCorrect } from '@/lib/impulse'
-import type { PackPlan, PackTextUpdate } from '@/lib/impulsePack'
+import type { PackPlan } from '@/lib/impulsePack'
 import type {
   ImpulseCrestPalette,
   ImpulseCrestSymbol,
@@ -322,22 +322,28 @@ export async function deleteImpulseItem(
  * Dieselbe Dokument-ID wie bei den Quizantworten: eine pro Person und
  * Frage. Anders als dort ist Nachbessern erlaubt – ein persönliches Wort
  * darf reifen.
+ *
+ * `anonymous`: ohne Namen. Dann steht der Vorname gar nicht erst im
+ * Beitrag, und die anderen sehen «Anonym»; die Wahl lässt sich beim
+ * Nachbessern ändern.
  */
 export async function saveImpulseComment(
   item: ImpulseItem,
   user: { uid: string; displayName: string },
   text: string,
   isNew: boolean,
+  anonymous = false,
 ): Promise<SaveOutcome> {
   const ref = doc(db, COLLECTIONS.impulseComments, impulseAnswerId(item.id, user.uid))
+  const author = { firstName: anonymous ? '' : impulseFirstName(user.displayName), anonymous }
   if (!isNew) {
-    return commit(updateDoc(ref, { text: text.trim(), updatedAt: serverTimestamp() }))
+    return commit(updateDoc(ref, { text: text.trim(), ...author, updatedAt: serverTimestamp() }))
   }
   return commit(
     setDoc(ref, {
       itemId: item.id,
       uid: user.uid,
-      firstName: impulseFirstName(user.displayName),
+      ...author,
       text: text.trim(),
       hidden: false,
       createdAt: serverTimestamp(),
@@ -550,11 +556,14 @@ export async function setImpulseFavorite(
 export async function createImpulseSubmission(
   user: { uid: string; displayName: string },
   input: ImpulseItemInput,
+  /** Ohne Namen veröffentlichen – die Karte trägt dann kein «Eingereicht von …». */
+  anonymous = false,
 ): Promise<SaveOutcome> {
   return commit(
     addDoc(collection(db, COLLECTIONS.impulseSubmissions), {
       uid: user.uid,
       firstName: impulseFirstName(user.displayName),
+      anonymous,
       kind: input.kind,
       text: input.title.trim(),
       sourceLabel: input.sourceLabel.trim(),
@@ -610,9 +619,11 @@ export function submissionCard(input: ImpulseItemInput) {
 export async function updateImpulseSubmission(
   id: string,
   input: ImpulseItemInput,
+  anonymous = false,
 ): Promise<SaveOutcome> {
   return commit(
     updateDoc(doc(db, COLLECTIONS.impulseSubmissions, id), {
+      anonymous,
       kind: input.kind,
       text: input.title.trim(),
       sourceLabel: input.sourceLabel.trim(),
@@ -657,7 +668,7 @@ export function submissionToItem(submission: ImpulseSubmission): ImpulseItem {
     poll: card?.poll ?? null,
     puzzle: card?.puzzle ?? null,
     emoji: card?.emoji?.trim() || null,
-    contributor: submission.firstName,
+    contributor: submission.anonymous ? null : submission.firstName,
   }
 }
 
@@ -699,7 +710,8 @@ export function submissionToInput(
   input.title = submission.text.trim()
   input.sourceLabel = submission.sourceLabel?.trim() ?? ''
   input.sourceUrl = submission.sourceUrl?.trim() ?? ''
-  input.contributor = submission.firstName
+  // Wer ohne Namen einreicht, steht auch auf der fertigen Karte nicht.
+  input.contributor = submission.anonymous ? '' : submission.firstName
   const card = submission.card
   if (card) {
     input.body = card.body ?? ''
@@ -938,23 +950,6 @@ export async function applyDifficultyCleanup(
 }
 
 /**
- * Paket-Texte an schon eingespielten Karten nachführen (siehe
- * `planPackTextUpdates`). Ein Schreibvorgang für alle Karten – ganz oder
- * gar nicht. Ein Feld wie `puzzle.explanation` ist ein Pfad: Geändert wird
- * nur die Erklärung, der Rest des Puzzles bleibt.
- */
-export async function applyPackTextUpdates(updates: PackTextUpdate[]): Promise<SaveOutcome> {
-  const batch = writeBatch(db)
-  for (const update of updates) {
-    batch.update(doc(db, COLLECTIONS.impulseItems, update.id), {
-      [update.field]: update.text,
-      updatedAt: serverTimestamp(),
-    })
-  }
-  return commit(batch.commit())
-}
-
-/**
  * Eine Quizfrage beantworten – ein Versuch, auf den eigenen Namen.
  *
  * Richtig oder falsch wird bei der Auswahl gleich hier bestimmt; die
@@ -992,6 +987,9 @@ export async function answerImpulseQuiz(
  * Person, und umentscheiden gibt es nicht (die Regeln lassen keine
  * Änderung zu). Bei der Auswahl ist der Wert der Index der Möglichkeit,
  * bei der Skala der Wert selbst. Richtig oder falsch gibt es nicht.
+ *
+ * Abgestimmt wird anonym: Der Vorname bleibt leer – gezeigt wird ohnehin
+ * nur das Ergebnis, und so steht er auch in der Stimme selbst nicht.
  */
 export async function answerImpulsePoll(
   item: ImpulseItem,
@@ -1002,7 +1000,7 @@ export async function answerImpulsePoll(
     setDoc(doc(db, COLLECTIONS.impulseAnswers, impulseAnswerId(item.id, user.uid)), {
       itemId: item.id,
       uid: user.uid,
-      firstName: impulseFirstName(user.displayName),
+      firstName: '',
       choiceIndex: value,
       text: '',
       correct: null,
