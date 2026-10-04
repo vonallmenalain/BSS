@@ -302,7 +302,7 @@ export function ImpulseFeedScreen({
       aria-label="Anti Doom – die Karten der Woche"
       data-testid="impulse-feed"
       className={cn(
-        'imp-screen fixed inset-0 flex flex-col overflow-hidden bg-slate-50 outline-none dark:bg-slate-950',
+        'imp-screen fixed inset-x-0 top-[var(--imp-preview-top,0px)] bottom-0 flex flex-col overflow-hidden bg-slate-50 outline-none dark:bg-slate-950',
         banner ? 'z-[55]' : 'z-40',
       )}
       style={{ transformOrigin: origin ? `${origin.x}px ${origin.y}px` : '50% 40%' }}

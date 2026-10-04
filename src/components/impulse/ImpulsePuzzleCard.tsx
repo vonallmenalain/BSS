@@ -1,12 +1,11 @@
 import { useState } from 'react'
 import { Check, Lightbulb, RotateCcw, Sparkles, Undo2 } from 'lucide-react'
-import { useAuth } from '@/contexts/AuthContext'
 import { useToast } from '@/contexts/ToastContext'
 import { cn } from '@/lib/utils'
 import { puzzlePieces, puzzleSolved, shuffledPuzzlePieces } from '@/lib/impulse'
 import { CardEmoji, ContributorLine, SourceLink } from '@/components/impulse/ImpulseCards'
 import { ImpulseCardActions } from '@/components/impulse/ImpulseCardActions'
-import { answerImpulsePuzzle } from '@/services/impulse'
+import { useImpulseAuth, useImpulseWrites } from '@/hooks/useImpulseRuntime'
 import type { ImpulseAnswer, ImpulseItem, ImpulseProgress } from '@/lib/types'
 
 /**
@@ -47,7 +46,8 @@ export function ImpulsePuzzleCard({
   closed?: boolean
   progressDocs?: ImpulseProgress[]
 }) {
-  const { profile } = useAuth()
+  const { profile } = useImpulseAuth()
+  const { answerImpulsePuzzle } = useImpulseWrites()
   const toast = useToast()
   const text = item.puzzle?.text ?? ''
   const [pieces] = useState(() => shuffledPuzzlePieces(text, item.id))

@@ -1,19 +1,15 @@
 import { useState } from 'react'
 import { Check, Eye, Pencil, Plus, Send, X } from 'lucide-react'
 import { Modal } from '@/components/ui/Modal'
-import { useAuth } from '@/contexts/AuthContext'
 import { useToast } from '@/contexts/ToastContext'
-import { useNow } from '@/hooks/useNow'
+import { useImpulseAuth, useImpulseNow, useImpulseWrites } from '@/hooks/useImpulseRuntime'
 import { impulseWeekKey, readyProblems } from '@/lib/impulse'
 import { ImpulseEditorPreview } from '@/components/impulse/ImpulseEditorPreview'
 import { ImpulseItemFields } from '@/components/impulse/ImpulseItemFields'
 import {
-  createImpulseSubmission,
-  deleteImpulseSubmission,
   emptyImpulseItem,
   submissionToInput,
   submissionToItem,
-  updateImpulseSubmission,
   type ImpulseItemInput,
 } from '@/services/impulse'
 import { IMPULSE_SUBMISSION_KIND_LABELS, type ImpulseSubmission } from '@/lib/types'
@@ -42,9 +38,11 @@ export function ImpulseSubmitCard({
   /** Ohne Bereichszeile – im Vollbild steht der Bereich schon im Kopf. */
   plain?: boolean
 }) {
-  const { profile } = useAuth()
+  const { profile } = useImpulseAuth()
+  const { createImpulseSubmission, deleteImpulseSubmission, updateImpulseSubmission } =
+    useImpulseWrites()
   const toast = useToast()
-  const now = useNow()
+  const now = useImpulseNow()
   const todayKey = impulseWeekKey(now)
 
   /* Das Formular – neu (die Feed-Karte zuerst, sie ist die einfachste

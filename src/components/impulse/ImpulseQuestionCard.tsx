@@ -1,16 +1,10 @@
 import { useState } from 'react'
 import { Check, Eye, EyeOff, Flag, HandHeart, MessagesSquare, Pencil } from 'lucide-react'
-import { useAuth } from '@/contexts/AuthContext'
 import { useToast } from '@/contexts/ToastContext'
 import { cn } from '@/lib/utils'
 import { CardEmoji, SourceLink } from '@/components/impulse/ImpulseCards'
 import { ImpulseCardActions } from '@/components/impulse/ImpulseCardActions'
-import {
-  saveImpulseComment,
-  setImpulseAmen,
-  setImpulseCommentHidden,
-  setImpulseReport,
-} from '@/services/impulse'
+import { useImpulseAuth, useImpulseWrites } from '@/hooks/useImpulseRuntime'
 import type { ImpulseComment, ImpulseItem, ImpulseProgress } from '@/lib/types'
 
 /**
@@ -43,7 +37,8 @@ export function ImpulseQuestionCard({
   /** Ohne Bereichszeile – im Vollbild steht der Bereich schon im Kopf. */
   plain?: boolean
 }) {
-  const { profile, canEditImpulse } = useAuth()
+  const { profile, canEditImpulse } = useImpulseAuth()
+  const { saveImpulseComment } = useImpulseWrites()
   const toast = useToast()
   const [draft, setDraft] = useState('')
   const [editing, setEditing] = useState(false)
@@ -233,7 +228,8 @@ function CommentRow({
   preview: boolean
   onEdit: () => void
 }) {
-  const { profile, canEditImpulse } = useAuth()
+  const { profile, canEditImpulse } = useImpulseAuth()
+  const { setImpulseAmen, setImpulseCommentHidden, setImpulseReport } = useImpulseWrites()
   const toast = useToast()
   const [busy, setBusy] = useState(false)
 

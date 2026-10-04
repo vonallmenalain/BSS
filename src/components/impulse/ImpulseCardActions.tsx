@@ -1,9 +1,8 @@
 import { useState } from 'react'
 import { Bookmark, HandHeart } from 'lucide-react'
-import { useAuth } from '@/contexts/AuthContext'
 import { useToast } from '@/contexts/ToastContext'
 import { cn } from '@/lib/utils'
-import { setImpulseAmen, setImpulseFavorite } from '@/services/impulse'
+import { useImpulseAuth, useImpulseWrites } from '@/hooks/useImpulseRuntime'
 import type { ImpulseItem, ImpulseProgress } from '@/lib/types'
 
 /**
@@ -31,7 +30,8 @@ export function ImpulseCardActions({
   /** Mittig (Feed, Wochenthema) oder linksbündig (Quiz, Frage & Co.). */
   centered?: boolean
 }) {
-  const { profile } = useAuth()
+  const { profile } = useImpulseAuth()
+  const { setImpulseAmen, setImpulseFavorite } = useImpulseWrites()
   const toast = useToast()
   const [previewAmen, setPreviewAmen] = useState(false)
   const [previewFavorite, setPreviewFavorite] = useState(false)

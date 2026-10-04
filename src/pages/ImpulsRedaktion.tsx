@@ -1,5 +1,5 @@
 import { useMemo, useState } from 'react'
-import { Link } from 'react-router-dom'
+import { Link, useNavigate } from 'react-router-dom'
 import {
   Check,
   ChevronDown,
@@ -32,11 +32,9 @@ import { ImpulseItemForm } from '@/components/impulse/ImpulseItemForm'
 import { cn } from '@/lib/utils'
 import {
   allowsMultiple,
-  deckOrder,
   formatWeekRange,
   IMPULSE_KIND_ORDER,
   impulseWeekKey,
-  isFeedCardKind,
   itemsForWeek,
   nextImpulseOrder,
   planDifficultyCleanup,
@@ -162,16 +160,12 @@ export function ImpulsRedaktion() {
     items: ImpulseItem[]
     label?: string
   } | null>(null)
-  /* Die Woche in der Vorschau liegt so wie im Feed – das Wochenthema
-     vorn, dahinter die beiden Aufgaben (im Bereich sind es Kacheln), dann
-     die Karten in der Reihenfolge der Redaktion. */
-  const previewWeek = () => {
-    const ordered = deckOrder(weekItems.filter((item) => isFeedCardKind(item.kind)))
-    const themes = ordered.filter((item) => item.kind === 'impuls')
-    const tasks = weekItems.filter((item) => !isFeedCardKind(item.kind))
-    const rest = ordered.filter((item) => item.kind !== 'impuls')
-    setPreview({ week: selectedWeek, items: [...themes, ...tasks, ...rest] })
-  }
+  /* Die Woche als Ganzes: der Bereich selbst, so wie ihn die Jugendlichen
+     sehen – Übersicht mit Wappen, Feed, Räume –, mit der gewählten Woche
+     als der laufenden und ohne dass etwas gespeichert wird (siehe
+     `ImpulsePreviewProvider`). «Vorschau verlassen» führt hierher zurück. */
+  const navigate = useNavigate()
+  const previewWeek = () => navigate('/anti-doom', { state: { vorschau: selectedWeek } })
   const previewItem = (item: ImpulseItem) => setPreview({ week: selectedWeek, items: [item] })
   /** Eine Einreichung so anschauen, wie sie als Karte aussehen würde. */
   const previewSubmission = (submission: ImpulseSubmission) =>

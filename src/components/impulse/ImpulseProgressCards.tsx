@@ -1,13 +1,11 @@
 import { useState } from 'react'
 import { format } from 'date-fns'
 import { Check, CheckCircle2, Repeat, Shield, Users } from 'lucide-react'
-import { useAuth } from '@/contexts/AuthContext'
 import { useToast } from '@/contexts/ToastContext'
-import { useNow } from '@/hooks/useNow'
 import { cn } from '@/lib/utils'
 import { weekDays } from '@/lib/impulse'
 import { CardEmoji, ImpulseItemImage, SourceLink } from '@/components/impulse/ImpulseCards'
-import { setImpulseChallengeDay, setImpulseWeekGoal } from '@/services/impulse'
+import { useImpulseAuth, useImpulseNow, useImpulseWrites } from '@/hooks/useImpulseRuntime'
 import type { ImpulseItem } from '@/lib/types'
 
 /*
@@ -38,7 +36,8 @@ export function GoalCard({
   /** Ohne Bereichszeile – im Vollbild steht der Bereich schon im Kopf. */
   plain?: boolean
 }) {
-  const { profile } = useAuth()
+  const { profile } = useImpulseAuth()
+  const { setImpulseWeekGoal } = useImpulseWrites()
   const toast = useToast()
   const [busy, setBusy] = useState(false)
   const [previewDone, setPreviewDone] = useState(false)
@@ -156,9 +155,10 @@ export function ChallengeCard({
   /** Ohne Bereichszeile – im Vollbild steht der Bereich schon im Kopf. */
   plain?: boolean
 }) {
-  const { profile } = useAuth()
+  const { profile } = useImpulseAuth()
+  const { setImpulseChallengeDay } = useImpulseWrites()
   const toast = useToast()
-  const now = useNow()
+  const now = useImpulseNow()
   const [busyDay, setBusyDay] = useState<string | null>(null)
   const [previewDays, setPreviewDays] = useState<Set<string>>(new Set())
   /* Wie beim Wochenziel: Nur der eben gesetzte Haken springt – die

@@ -1,12 +1,11 @@
 import { useState } from 'react'
 import { Check, Lightbulb, Lock, RotateCcw } from 'lucide-react'
-import { useAuth } from '@/contexts/AuthContext'
 import { useToast } from '@/contexts/ToastContext'
 import { cn } from '@/lib/utils'
 import { pollResults, type ImpulsePollResult } from '@/lib/impulse'
 import { CardEmoji, ContributorLine, SourceLink } from '@/components/impulse/ImpulseCards'
 import { ImpulseCardActions } from '@/components/impulse/ImpulseCardActions'
-import { answerImpulsePoll } from '@/services/impulse'
+import { useImpulseAuth, useImpulseWrites } from '@/hooks/useImpulseRuntime'
 import type { ImpulseAnswer, ImpulseItem, ImpulsePoll, ImpulseProgress } from '@/lib/types'
 
 /**
@@ -46,7 +45,8 @@ export function ImpulsePollCard({
   closed?: boolean
   progressDocs?: ImpulseProgress[]
 }) {
-  const { profile } = useAuth()
+  const { profile } = useImpulseAuth()
+  const { answerImpulsePoll } = useImpulseWrites()
   const toast = useToast()
   const poll = item.poll
   const uid = profile?.id ?? ''

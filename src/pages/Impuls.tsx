@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react'
+import { useCallback, useEffect, useRef, useState } from 'react'
 import { Link, Navigate, useLocation, useNavigate, useParams } from 'react-router-dom'
 import {
   ArrowUpToLine,
@@ -17,8 +17,14 @@ import {
   type LucideIcon,
 } from 'lucide-react'
 import { useAuth } from '@/contexts/AuthContext'
-import { useNow } from '@/hooks/useNow'
 import { useImpulseAppearance, useLocalStorage } from '@/hooks/useLocalStorage'
+import {
+  useImpulseAuth,
+  useImpulseNavigate,
+  useImpulseNow,
+  useImpulsePreview,
+  useImpulseWrites,
+} from '@/hooks/useImpulseRuntime'
 import {
   useImpulseAnswers,
   useImpulseComments,
@@ -59,13 +65,8 @@ import { SectionTile } from '@/components/impulse/ImpulseHomeTiles'
 import { ImpulseSettingsModal, type ImpulseOrder } from '@/components/impulse/ImpulseSettingsModal'
 import { ImpulseScreen, type ScreenOrigin } from '@/components/impulse/ImpulseScreen'
 import { ImpulseStats } from '@/components/impulse/ImpulseStats'
-import {
-  markImpulseCardSeen,
-  markImpulseCrest,
-  markImpulseDeepeningSeen,
-  markImpulseFeedDone,
-  setImpulseLastSeenWeek,
-} from '@/services/impulse'
+import { ImpulsePreviewProvider } from '@/components/impulse/ImpulsePreviewMode'
+import { withPreviewDocs } from '@/lib/impulsePreview'
 import {
   computeStreak,
   crestCompleters,
@@ -163,19 +164,93 @@ interface ImpulsLocationState {
   feedItem?: string
   /** Eine bestimmte Karte des Feeds (`art-inhaltsId`) – der Weg von «Weiter swipen». */
   cardId?: string
+  /**
+   * Die Vorschau der Redaktion für diese Woche («2026-W41») – gesetzt von
+   * «Vorschau der Woche» und in der Vorschau von jedem Schritt
+   * mitgetragen (`useImpulseNavigate`).
+   */
+  vorschau?: string
 }
 
+/**
+ * Der Bereich – oder, aus der Redaktion geöffnet, seine Vorschau.
+ *
+ * Die Vorschau ist dieselbe Seite in einer gespielten Umgebung
+ * (`ImpulsePreviewProvider`): Sie zeigt die gewählte Woche, als liefe sie,
+ * genau so, wie sie die Jugendlichen sehen – nur mit der Leiste
+ * «Vorschau verlassen» oben, und ohne dass etwas gespeichert wird. Ob
+ * eine Vorschau läuft, steht im Verlauf (`state.vorschau`); nur wer die
+ * Redaktion führen darf, bekommt sie.
+ */
 export function Impuls() {
-  const { profile, canEditImpulse, canViewAp } = useAuth()
-  const now = useNow()
+  const { canEditImpulse } = useAuth()
+  const location = useLocation()
   const navigate = useNavigate()
+  const requested = (location.state as ImpulsLocationState | null)?.vorschau
+  const previewWeek = canEditImpulse && typeof requested === 'string' ? requested : null
+  const exitPreview = useCallback(
+    () => navigate('/anti-doom/redaktion', { replace: true }),
+    [navigate],
+  )
+
+  if (!previewWeek) return <ImpulsPage />
+  return (
+    <ImpulsePreviewProvider key={previewWeek} week={previewWeek} onExit={exitPreview}>
+      <ImpulsPage />
+    </ImpulsePreviewProvider>
+  )
+}
+
+function ImpulsPage() {
+  const { profile, canEditImpulse, canViewAp } = useImpulseAuth()
+  const now = useImpulseNow()
+  const navigate = useImpulseNavigate()
   const location = useLocation()
   const { bereich } = useParams()
+  const preview = useImpulsePreview()
+  const writes = useImpulseWrites()
   const itemsState = useImpulseItems()
-  const answersState = useImpulseAnswers()
-  const progressState = useImpulseProgress()
-  const commentsState = useImpulseComments()
-  const submissionsState = useImpulseSubmissions()
+
+  /*
+   * Der Bestand – in der Vorschau mit ihrem Stand darüber: Was die
+   * gespielte Person beantwortet, abgehakt oder eingereicht hat, liegt im
+   * Arbeitsspeicher (`lib/impulsePreview`) und kommt hier dazu, als stünde
+   * es in der Datenbank. Ausserhalb der Vorschau bleiben die Listen
+   * dieselben Objekte.
+   */
+  const realAnswers = useImpulseAnswers()
+  const realProgress = useImpulseProgress()
+  const realComments = useImpulseComments()
+  const realSubmissions = useImpulseSubmissions()
+  const previewData = preview?.data ?? null
+  const answersData = previewData
+    ? withPreviewDocs(realAnswers.data, previewData.answers)
+    : realAnswers.data
+  const answersState =
+    answersData === realAnswers.data
+      ? realAnswers
+      : {
+          ...realAnswers,
+          data: answersData,
+          byId: new Map(answersData.map((answer) => [answer.id, answer])),
+        }
+  const progressData = previewData?.progress
+    ? withPreviewDocs(realProgress.data, [previewData.progress])
+    : realProgress.data
+  const progressState =
+    progressData === realProgress.data
+      ? realProgress
+      : {
+          ...realProgress,
+          data: progressData,
+          byUid: new Map(progressData.map((progress) => [progress.uid, progress])),
+        }
+  const commentsState = previewData
+    ? { ...realComments, data: withPreviewDocs(realComments.data, previewData.comments) }
+    : realComments
+  const submissionsState = previewData
+    ? { ...realSubmissions, data: withPreviewDocs(realSubmissions.data, previewData.submissions) }
+    : realSubmissions
 
   const sectionKey: ImpulseSectionKey | null = isImpulseSection(bereich) ? bereich : null
   const settingsOpen = bereich === 'einstellungen'
@@ -362,10 +437,10 @@ export function Impuls() {
     myProgress?.lastSeenWeek !== todayKey
   useEffect(() => {
     if (!seenPending || !profile) return
-    setImpulseLastSeenWeek({ uid: profile.id, displayName: profile.displayName }, todayKey).catch(
-      (error) => console.error('[impuls] Woche konnte nicht vermerkt werden:', error),
-    )
-  }, [seenPending, profile, todayKey])
+    writes
+      .setImpulseLastSeenWeek({ uid: profile.id, displayName: profile.displayName }, todayKey)
+      .catch((error) => console.error('[impuls] Woche konnte nicht vermerkt werden:', error))
+  }, [seenPending, profile, todayKey, writes])
 
   /*
    * Die stille Statistik: Zeit und Besuche, nur auf diesem Gerät
@@ -373,14 +448,16 @@ export function Impuls() {
    * die Feed-Karten vermerkt der Feed selbst (`onDeckActive`), die
    * Räume und die Übersicht vermerkt dieser Effekt.
    */
+  /* Die Vorschau zählt nicht mit – sie ist kein Besuch. */
+  const counted = Boolean(uid) && !preview
   useEffect(() => {
-    if (!uid) return
+    if (!counted) return
     return trackImpulseTime(uid)
-  }, [uid])
+  }, [counted, uid])
   useEffect(() => {
-    if (!uid) return
+    if (!counted) return
     recordImpulseOpen(uid, roomKey ?? 'uebersicht')
-  }, [uid, roomKey])
+  }, [counted, uid, roomKey])
 
   /* ---------------- Der Feed: die Karten der Woche ---------------- */
 
@@ -673,7 +750,7 @@ export function Impuls() {
     [],
   )
   const onDeckActive = (card: ImpulseDeckCard) => {
-    if (uid && !recordedDeckSections.current.has(card.section)) {
+    if (counted && !recordedDeckSections.current.has(card.section)) {
       recordedDeckSections.current.add(card.section)
       recordImpulseOpen(uid, card.section)
     }
@@ -691,14 +768,16 @@ export function Impuls() {
     const itemId = card.itemId
     if (itemId && !recordedCards.current.has(itemId) && !seenCardIds.has(itemId)) {
       recordedCards.current.add(itemId)
-      markImpulseCardSeen(
-        { uid: profile.id, displayName: profile.displayName },
-        todayKey,
-        itemId,
-      ).catch((error) => {
-        console.error(error)
-        recordedCards.current.delete(itemId)
-      })
+      writes
+        .markImpulseCardSeen(
+          { uid: profile.id, displayName: profile.displayName },
+          todayKey,
+          itemId,
+        )
+        .catch((error) => {
+          console.error(error)
+          recordedCards.current.delete(itemId)
+        })
     }
 
     if (card.section !== 'feed') return
@@ -708,12 +787,12 @@ export function Impuls() {
       feedCards.every((entry) => seenFeedCards.current.has(`feed-${entry.id}`))
     if (!allSeen || feedDone || feedMarkPending.current) return
     feedMarkPending.current = true
-    markImpulseFeedDone({ uid: profile.id, displayName: profile.displayName }, todayKey).catch(
-      (error) => {
+    writes
+      .markImpulseFeedDone({ uid: profile.id, displayName: profile.displayName }, todayKey)
+      .catch((error) => {
         console.error(error)
         feedMarkPending.current = false
-      },
-    )
+      })
   }
 
   /** Der Wisch nach links: die Vertiefung war im Bild – einmal vermerken. */
@@ -722,14 +801,16 @@ export function Impuls() {
     if (!profile || viewWeek !== todayKey || !itemId) return
     if (recordedDeepenings.current.has(itemId) || seenDeepeningIds.has(itemId)) return
     recordedDeepenings.current.add(itemId)
-    markImpulseDeepeningSeen(
-      { uid: profile.id, displayName: profile.displayName },
-      todayKey,
-      itemId,
-    ).catch((error) => {
-      console.error(error)
-      recordedDeepenings.current.delete(itemId)
-    })
+    writes
+      .markImpulseDeepeningSeen(
+        { uid: profile.id, displayName: profile.displayName },
+        todayKey,
+        itemId,
+      )
+      .catch((error) => {
+        console.error(error)
+        recordedDeepenings.current.delete(itemId)
+      })
   }
 
   /* ---------------- Navigation zwischen den Räumen ---------------- */
@@ -826,16 +907,21 @@ export function Impuls() {
   const crestMarkPending = Boolean(profile) && crestIsComplete && !myWeek(todayKey).crest
   useEffect(() => {
     if (!crestMarkPending || !profile) return
-    markImpulseCrest(
-      { uid: profile.id, displayName: profile.displayName },
-      todayKey,
-      toDateInput(new Date()),
-    ).catch((error) => console.error('[impuls] Wappen konnte nicht vermerkt werden:', error))
-  }, [crestMarkPending, profile, todayKey])
+    writes
+      .markImpulseCrest({ uid: profile.id, displayName: profile.displayName }, todayKey, today)
+      .catch((error) => console.error('[impuls] Wappen konnte nicht vermerkt werden:', error))
+  }, [crestMarkPending, profile, todayKey, today, writes])
 
   /* Die Feier: einmal je Woche und Gerät, sobald das Wappen ganz dasteht –
      auch wenn es auf einem anderen Gerät vollendet wurde. */
-  const [celebrated, setCelebrated] = useLocalStorage<string>('bss:impuls:wappen-gefeiert', '')
+  const [storedCelebration, storeCelebration] = useLocalStorage<string>(
+    'bss:impuls:wappen-gefeiert',
+    '',
+  )
+  /* In der Vorschau zeigt sich die Feier bei jedem Besuch – das Gerät
+     merkt sich davon nichts. */
+  const celebrated = preview ? preview.data.celebrated : storedCelebration
+  const setCelebrated = preview ? preview.setCelebrated : storeCelebration
   const celebrationTag = `${uid}:${todayKey}`
   const celebrating = Boolean(uid) && crestIsComplete && celebrated !== celebrationTag
 
@@ -900,7 +986,9 @@ export function Impuls() {
 
   /* Ein unbekannter Routenteil führt still zur Übersicht zurück. */
   if (bereich && !sectionKey && bereich !== 'einstellungen') {
-    return <Navigate to="/anti-doom" replace />
+    return (
+      <Navigate to="/anti-doom" replace state={preview ? { vorschau: preview.week } : undefined} />
+    )
   }
 
   /* ---------------- Die Inhalte der Räume ---------------- */

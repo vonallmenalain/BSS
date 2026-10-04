@@ -1,11 +1,10 @@
 import { useState } from 'react'
 import { Check, HeartHandshake } from 'lucide-react'
-import { useAuth } from '@/contexts/AuthContext'
 import { useToast } from '@/contexts/ToastContext'
 import { cn } from '@/lib/utils'
 import { CardEmoji, ContributorLine, SourceLink } from '@/components/impulse/ImpulseCards'
 import { ImpulseCardActions } from '@/components/impulse/ImpulseCardActions'
-import { setImpulseWeekShare } from '@/services/impulse'
+import { useImpulseAuth, useImpulseWrites } from '@/hooks/useImpulseRuntime'
 import type { ImpulseItem, ImpulseProgress } from '@/lib/types'
 
 /**
@@ -35,7 +34,8 @@ export function ImpulseShareCard({
   /** Mit Fortschrittsbestand trägt auch das Teilen «Amen» und «Merken». */
   progressDocs?: ImpulseProgress[]
 }) {
-  const { profile } = useAuth()
+  const { profile } = useImpulseAuth()
+  const { setImpulseWeekShare } = useImpulseWrites()
   const toast = useToast()
   const [busy, setBusy] = useState(false)
   const [previewDone, setPreviewDone] = useState(false)
