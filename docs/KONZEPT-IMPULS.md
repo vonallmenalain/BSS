@@ -1001,18 +1001,22 @@ verschiebt sie den Start: in der Redaktion bei der gewählten Woche unter
 **«Start»** – mit «Jetzt freischalten», «Heute, 19:00», einer frei
 wählbaren Zeit oder «Zurück auf Montag, 00:00».
 
-- **Gespeichert am Wochenthema** (`startsAt`). Ohne Wochenthema bleibt
-  es beim Montag, und ein Entwurf verschiebt noch nichts – sonst begänne
-  eine Woche, deren Thema niemand sieht. Eine Regeländerung braucht es
-  nicht: Das Wochenthema darf die Redaktion ohnehin schreiben.
+- **Gespeichert am Wochenthema** (`startsAt`, samt der Woche, für die er
+  gilt). Ohne Wochenthema bleibt es beim Montag, und ein Entwurf
+  verschiebt noch nichts – sonst begänne eine Woche, deren Thema niemand
+  sieht. Wandert ein Wochenthema in eine andere Woche, bleibt sein alter
+  Start ohne Wirkung. Eine Regeländerung braucht es nicht: Das
+  Wochenthema darf die Redaktion ohnehin schreiben.
 - **Der Rahmen:** frühestens am Montag der Woche davor, spätestens am
   Sonntag der Woche selbst. Die Woche davor endet entsprechend früher
   oder später.
 - **Eine Rechnung für alle:** `impulseCurrentWeek` sagt, welche Woche
   gerade läuft – für die Seite der Jugendlichen, den Punkt in der
   Navigation und die Erinnerung (`benachrichtigungen.mts`). Hat eine
-  verschobene Woche noch nicht begonnen, wartet die Erinnerung, statt
-  die alte Woche ein zweites Mal als neu anzukündigen.
+  verschobene Woche noch nicht begonnen, wartet die wöchentliche
+  Erinnerung, statt die alte Woche ein zweites Mal als neu anzukündigen –
+  und kommt, sobald die Woche beginnt (`weeklyReminderCatchUp`). Der
+  Tagestakt spricht von «dieser Woche» und läuft weiter.
 - Die Vorschau der Redaktion zeigt immer die gewählte Woche, gleich wann
   sie startet.
 
