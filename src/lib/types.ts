@@ -3587,6 +3587,12 @@ export const IMPULSE_STATUS_LABELS: Record<ImpulseStatus, string> = {
   ready: 'Bereit',
 }
 
+/** Ein verschobener Wochenstart – samt der Woche, für die er gilt. */
+export interface ImpulseShiftedStart {
+  week: string
+  at: TS
+}
+
 export interface ImpulseItem extends WithId {
   /**
    * Die Woche, zu der der Inhalt gehört – «2026-W34».
@@ -3658,8 +3664,11 @@ export interface ImpulseItem extends WithId {
    * es nicht Montag, 00:00, sein soll – früher (das neue Thema schon am
    * Sonntagabend) oder später (die alte Woche läuft länger). Ohne Angabe
    * gilt der Montag (siehe `impulseCurrentWeek`).
+   *
+   * Der Start trägt die Woche mit, für die er gesetzt wurde: Wandert das
+   * Wochenthema in eine andere Woche, gilt er dort nicht.
    */
-  startsAt?: TS | null
+  startsAt?: ImpulseShiftedStart | null
   /** Das Bild der Karte – jede Art darf eines tragen. */
   image?: ImpulseImage | null
   /**

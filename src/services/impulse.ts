@@ -354,11 +354,13 @@ export async function saveImpulseComment(
  */
 export async function setImpulseWeekStart(
   themeId: string,
+  week: string,
   startsAt: Date | null,
 ): Promise<SaveOutcome> {
   return commit(
     updateDoc(doc(db, COLLECTIONS.impulseItems, themeId), {
-      startsAt: startsAt ? Timestamp.fromDate(startsAt) : deleteField(),
+      // Mit der Woche, für die er gilt – wandert das Thema, wirkt er nicht mit.
+      startsAt: startsAt ? { week, at: Timestamp.fromDate(startsAt) } : deleteField(),
       updatedAt: serverTimestamp(),
     }),
   )

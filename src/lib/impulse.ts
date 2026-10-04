@@ -68,22 +68,31 @@ export function weekKeyOffset(key: string, offset: number): string | null {
 
 /**
  * Die verschobenen Wochenstarts, in Millisekunden je Woche – aus den
- * bereiten Wochenthemen, die einen eigenen Start tragen (`startsAt`). Ein
- * Entwurf verschiebt nichts: Sonst begänne eine Woche, deren Thema noch
- * gar nicht zu sehen ist.
+ * bereiten Wochenthemen, die einen eigenen Start tragen (`startsAt`).
+ *
+ * Gezählt wird ein Start nur, wenn er zur Woche des Themas gehört und in
+ * ihrem Rahmen liegt (`weekStartBounds`): Wandert ein Wochenthema in eine
+ * andere Woche, bleibt sein alter Start ohne Wirkung. Ein Entwurf
+ * verschiebt nichts – sonst begänne eine Woche, deren Thema noch gar
+ * nicht zu sehen ist.
  */
 export function impulseWeekStarts(
   items: {
     kind: ImpulseKind
     status: string
     week: string | null
-    startsAt?: { toMillis(): number } | null
+    startsAt?: { week: string; at: { toMillis(): number } } | null
   }[],
 ): Map<string, number> {
   const starts = new Map<string, number>()
   for (const item of items) {
     if (item.kind !== 'impuls' || item.status !== 'ready' || typeof item.week !== 'string') continue
-    if (item.startsAt) starts.set(item.week, item.startsAt.toMillis())
+    const shifted = item.startsAt
+    if (!shifted || shifted.week !== item.week) continue
+    const time = shifted.at.toMillis()
+    const bounds = weekStartBounds(item.week)
+    if (!bounds || time < bounds.earliest.getTime() || time > bounds.latest.getTime()) continue
+    starts.set(item.week, time)
   }
   return starts
 }

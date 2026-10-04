@@ -37,7 +37,8 @@ export function ImpulseWeekStart({ week, theme }: { week: string; theme: Impulse
   const bounds = weekStartBounds(week)
   if (!monday || !bounds) return null
 
-  const custom = toDate(theme?.startsAt ?? null)
+  // Ein Start, der zu einer anderen Woche gehört, gilt hier nicht.
+  const custom = theme?.startsAt?.week === week ? toDate(theme.startsAt.at) : null
   const start = custom ?? monday
   const shifted = custom
     ? custom.getTime() < monday.getTime()
@@ -70,7 +71,7 @@ export function ImpulseWeekStart({ week, theme }: { week: string; theme: Impulse
     const value = next && next.getTime() !== monday.getTime() ? next : null
     setBusy(true)
     try {
-      const outcome = await setImpulseWeekStart(theme.id, value)
+      const outcome = await setImpulseWeekStart(theme.id, week, value)
       toast.saved(
         value
           ? `Die Woche startet ${formatStart(value)}.`

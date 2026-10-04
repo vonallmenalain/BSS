@@ -45,16 +45,62 @@ test('impulseCurrentWeek: über den Jahreswechsel', () => {
 })
 
 test('impulseWeekStarts: nur bereite Wochenthemen verschieben', () => {
+  const shifted = (week: string, time: number) => ({ week, at: stamp(time) })
   const starts = impulseWeekStarts([
-    { kind: 'impuls', status: 'ready', week: '2026-W42', startsAt: stamp(at(2026, 10, 11, 19)) },
+    {
+      kind: 'impuls',
+      status: 'ready',
+      week: '2026-W42',
+      startsAt: shifted('2026-W42', at(2026, 10, 11, 19)),
+    },
     // Ein Entwurf verschiebt nichts – sonst begänne eine leere Woche.
-    { kind: 'impuls', status: 'draft', week: '2026-W43', startsAt: stamp(at(2026, 10, 18, 19)) },
+    {
+      kind: 'impuls',
+      status: 'draft',
+      week: '2026-W43',
+      startsAt: shifted('2026-W43', at(2026, 10, 18, 19)),
+    },
     // Nur das Wochenthema trägt den Start.
-    { kind: 'quiz', status: 'ready', week: '2026-W44', startsAt: stamp(at(2026, 10, 25, 19)) },
+    {
+      kind: 'quiz',
+      status: 'ready',
+      week: '2026-W44',
+      startsAt: shifted('2026-W44', at(2026, 10, 25, 19)),
+    },
     { kind: 'impuls', status: 'ready', week: '2026-W45', startsAt: null },
-    { kind: 'impuls', status: 'ready', week: null, startsAt: stamp(at(2026, 11, 1, 19)) },
+    {
+      kind: 'impuls',
+      status: 'ready',
+      week: null,
+      startsAt: shifted('2026-W46', at(2026, 11, 8, 19)),
+    },
   ])
   assert.deepEqual([...starts.entries()], [['2026-W42', at(2026, 10, 11, 19)]])
+})
+
+test('impulseWeekStarts: ein Start gilt nur für seine Woche', () => {
+  // Das Wochenthema der Woche 42 wurde in die Woche 43 verschoben – sein
+  // alter Start (Sonntag vor W42) darf W43 nicht mitten in W42 beginnen lassen.
+  const moved = impulseWeekStarts([
+    {
+      kind: 'impuls',
+      status: 'ready',
+      week: '2026-W43',
+      startsAt: { week: '2026-W42', at: stamp(at(2026, 10, 11, 19)) },
+    },
+  ])
+  assert.equal(moved.size, 0)
+  assert.equal(impulseCurrentWeek(at(2026, 10, 14, 12), moved), '2026-W42')
+  // Und ein Start ausserhalb des Rahmens bleibt ebenso ohne Wirkung.
+  const outside = impulseWeekStarts([
+    {
+      kind: 'impuls',
+      status: 'ready',
+      week: '2026-W42',
+      startsAt: { week: '2026-W42', at: stamp(at(2026, 10, 1, 19)) },
+    },
+  ])
+  assert.equal(outside.size, 0)
 })
 
 test('weekStartBounds: frühestens Montag der Woche davor, spätestens Sonntagabend', () => {
