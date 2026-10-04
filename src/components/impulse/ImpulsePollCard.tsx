@@ -159,8 +159,7 @@ export function ImpulsePollCard({
             <ScaleResult poll={poll} result={result} mine={mine} />
           )}
           <p className="hint">
-            {result.total} {result.total === 1 ? 'Stimme' : 'Stimmen'} aus dem Kollegium · nur
-            Zahlen, keine Namen
+            {result.total} {result.total === 1 ? 'Stimme' : 'Stimmen'}
             {closed && mine === null && ' · abgestimmt wurde in jener Woche'}
           </p>
           {poll.explanation && (
