@@ -197,9 +197,12 @@ export function ImpulsRedaktion() {
    */
   const [seeding, setSeeding] = useState(false)
   const [confirmRestart, setConfirmRestart] = useState(false)
+  /* Der Kasten wartet, bis Karten, Antworten und Beiträge geladen sind –
+     sonst nennen er und die Rückfrage zu kleine Zahlen. */
+  const contentLoaded = !itemsState.loading && !answersState.loading && !commentsState.loading
   const packPlans = useMemo(
-    () => (itemsState.loading ? [] : planPackItems(itemsState.data, todayKey)),
-    [itemsState.loading, itemsState.data, todayKey],
+    () => (contentLoaded ? planPackItems(itemsState.data, todayKey) : []),
+    [contentLoaded, itemsState.data, todayKey],
   )
   const packStarted = itemsState.data.some((item) => isPackItem(item.id))
   const legacyItems = packStarted ? [] : itemsState.data
@@ -235,8 +238,6 @@ export function ImpulsRedaktion() {
     try {
       const outcome = await restartImpulseContent({
         itemIds: legacyItems.map((item) => item.id),
-        answerIds: legacyAnswers.map((answer) => answer.id),
-        commentIds: legacyComments.map((comment) => comment.id),
         plans: packPlans,
         userId: profile?.id,
       })
@@ -759,7 +760,7 @@ export function ImpulsRedaktion() {
 
         {/* Eine leere Woche ganz ohne Paket-Kasten wirkt sonst wie ein
             Fehler – der Hinweis sagt, dass einfach nichts da ist. */}
-        {!itemsState.loading && itemsState.data.length === 0 && packPlans.length === 0 && (
+        {contentLoaded && itemsState.data.length === 0 && packPlans.length === 0 && (
           <p className="hint flex items-center justify-center gap-1.5 py-4 text-center">
             <Inbox className="size-4" aria-hidden />
             Noch keine Karten – lege oben in einer Sparte die erste an.

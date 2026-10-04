@@ -5,10 +5,12 @@ import {
   collection,
   deleteDoc,
   doc,
+  getDocsFromServer,
   serverTimestamp,
   setDoc,
   updateDoc,
   writeBatch,
+  type WriteBatch,
 } from '@/lib/db'
 // Am Protokoll vorbei – warum, steht bei `setImpulseLastSeenWeek`.
 import { setDoc as fbSetDoc } from 'firebase/firestore'
@@ -784,9 +786,9 @@ function chunks<T>(list: T[], size = BATCH_LIMIT): T[][] {
   return result
 }
 
-/** Die Inhalte eines Pakets schreiben – feste IDs, ein zweiter Lauf trifft dieselben Dokumente. */
-async function writePlans(plans: PackPlan[], userId?: string | null): Promise<void> {
-  for (const part of chunks(plans)) {
+/** Die Inhalte eines Pakets als Stapel – feste IDs, ein zweiter Lauf trifft dieselben Dokumente. */
+function planBatches(plans: PackPlan[], userId?: string | null): WriteBatch[] {
+  return chunks(plans).map((part) => {
     const batch = writeBatch(db)
     for (const plan of part) {
       const { id, ...data } = plan
@@ -797,8 +799,23 @@ async function writePlans(plans: PackPlan[], userId?: string | null): Promise<vo
         createdBy: userId ?? null,
       })
     }
-    await batch.commit()
-  }
+    return batch
+  })
+}
+
+/**
+ * Mehrere Stapel abschicken – alle sofort, in ihrer Reihenfolge.
+ *
+ * Bewusst nicht einer nach dem anderen mit `await` dazwischen: Stockte die
+ * Verbindung nach dem ersten Stapel, läge nur dieser in der Warteschlange,
+ * der Rest hinge an einem Versprechen im Arbeitsspeicher. `commit()` meldete
+ * nach zwei Sekunden trotzdem «zwischengespeichert» – und schlösse jemand
+ * die App, ginge der Rest verloren: beim Neustart etwa die Löschung ohne
+ * das neue Paket. So reiht Firestore alle Stapel auf einmal ein, hält sie
+ * in IndexedDB und überträgt sie in genau dieser Reihenfolge.
+ */
+function commitBatches(batches: WriteBatch[]): Promise<void> {
+  return Promise.all(batches.map((batch) => batch.commit())).then(() => undefined)
 }
 
 /**
@@ -814,7 +831,7 @@ export async function createPackItems(
   userId?: string | null,
 ): Promise<SaveOutcome> {
   requireOnline()
-  return commit(writePlans(plans, userId))
+  return commit(commitBatches(planBatches(plans, userId)))
 }
 
 /**
@@ -824,37 +841,52 @@ export async function createPackItems(
  * Das ist der eine Handgriff, der nicht rückgängig zu machen ist; die
  * Redaktion bestätigt ihn ausdrücklich. Bewusst stehen bleiben der
  * Fortschritt (Serie, Gemerktes, Amen), die Einreichungen der
- * Mitmach-Ecke und alles ausserhalb des Bereichs. Erst wird gelöscht,
- * dann eingespielt – und weil hier Hunderte Dokumente auf einmal gehen,
- * braucht es eine Verbindung, wie bei den Importen: Eine halbe
- * Löschung in der Warteschlange wäre schlimmer als gar keine.
+ * Mitmach-Ecke und alles ausserhalb des Bereichs. Weil hier Hunderte
+ * Dokumente auf einmal gehen, braucht es eine Verbindung, wie bei den
+ * Importen.
+ *
+ * Welche Antworten und Beiträge zu den Karten gehören, steht nicht in den
+ * Abos der Seite, sondern wird hier frisch beim Server erfragt: Die Abos
+ * laden vielleicht noch oder hinken nach, und was sie nicht kennen,
+ * bliebe sonst verwaist zurück. Erreicht die Abfrage den Server nicht,
+ * bricht der Neustart ab, bevor etwas gelöscht ist. Danach gehen Löschung
+ * und Paket als eine Folge von Stapeln hinaus – erst löschen, dann
+ * einspielen, alles auf einmal eingereiht (siehe `commitBatches`).
  */
 export async function restartImpulseContent(input: {
   itemIds: string[]
-  answerIds: string[]
-  commentIds: string[]
   plans: PackPlan[]
   userId?: string | null
 }): Promise<SaveOutcome> {
   requireOnline()
+  const itemIds = new Set(input.itemIds)
+  const [answers, comments] = await Promise.all([
+    getDocsFromServer(collection(db, COLLECTIONS.impulseAnswers)),
+    getDocsFromServer(collection(db, COLLECTIONS.impulseComments)),
+  ])
+  const answerIds = answers.docs
+    .filter((entry) => itemIds.has(String(entry.get('itemId'))))
+    .map((entry) => entry.id)
+  const commentIds = comments.docs
+    .filter((entry) => itemIds.has(String(entry.get('itemId'))))
+    .map((entry) => entry.id)
+
   const deletions = [
-    ...input.answerIds.map((id) => doc(db, COLLECTIONS.impulseAnswers, id)),
-    ...input.commentIds.map((id) => doc(db, COLLECTIONS.impulseComments, id)),
+    ...answerIds.map((id) => doc(db, COLLECTIONS.impulseAnswers, id)),
+    ...commentIds.map((id) => doc(db, COLLECTIONS.impulseComments, id)),
     ...input.itemIds.map((id) => doc(db, COLLECTIONS.impulseItems, id)),
   ]
+  const deletionBatches = chunks(deletions).map((part) => {
+    const batch = writeBatch(db)
+    for (const reference of part) batch.delete(reference)
+    return batch
+  })
   const outcome = await commit(
-    (async () => {
-      for (const part of chunks(deletions)) {
-        const batch = writeBatch(db)
-        for (const reference of part) batch.delete(reference)
-        await batch.commit()
-      }
-      await writePlans(input.plans, input.userId)
-    })(),
+    commitBatches([...deletionBatches, ...planBatches(input.plans, input.userId)]),
   )
   for (const id of input.itemIds) forgetDoc(COLLECTIONS.impulseItems, id)
-  for (const id of input.answerIds) forgetDoc(COLLECTIONS.impulseAnswers, id)
-  for (const id of input.commentIds) forgetDoc(COLLECTIONS.impulseComments, id)
+  for (const id of answerIds) forgetDoc(COLLECTIONS.impulseAnswers, id)
+  for (const id of commentIds) forgetDoc(COLLECTIONS.impulseComments, id)
   return outcome
 }
 
