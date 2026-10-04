@@ -506,7 +506,7 @@ function FeedCard({
           type="button"
           onClick={() => goToPane(1)}
           className={cn(
-            'absolute top-1/2 right-1 z-20 flex -translate-y-1/2 flex-col items-center gap-1 px-1 py-2',
+            'absolute top-1/2 right-0 z-20 flex w-12 -translate-y-1/2 flex-col items-center gap-1 py-2',
             theme.text,
           )}
           aria-label="Vertiefung öffnen"
@@ -517,7 +517,7 @@ function FeedCard({
           >
             <ArrowLeft className="size-4" />
           </span>
-          <span className="text-[10px] font-medium">Vertiefen</span>
+          <span className="text-[10px] font-medium whitespace-nowrap">Vertiefen</span>
         </button>
       )}
       {pane === 1 && (
@@ -525,7 +525,7 @@ function FeedCard({
           type="button"
           onClick={() => goToPane(0)}
           className={cn(
-            'absolute top-1/2 left-1 z-20 flex -translate-y-1/2 flex-col items-center gap-1 px-1 py-2',
+            'absolute top-1/2 left-0 z-20 flex w-12 -translate-y-1/2 flex-col items-center gap-1 py-2',
             theme.text,
           )}
           aria-label="Zurück zur Karte"
@@ -536,7 +536,7 @@ function FeedCard({
           >
             <ArrowRight className="size-4" />
           </span>
-          <span className="text-[10px] font-medium">Zurück</span>
+          <span className="text-[10px] font-medium whitespace-nowrap">Zurück</span>
         </button>
       )}
     </>
@@ -572,6 +572,7 @@ function FeedCard({
               flush={flush}
               withBar={withBar}
               over={over}
+              arrow
             >
               {card.deepening}
             </CardPane>
@@ -629,6 +630,7 @@ function FeedCard({
                 label={`${theme.label} · Vertiefung`}
                 flush={flush}
                 withBar={withBar}
+                arrow
               >
                 {card.deepening}
               </CardPane>
@@ -731,8 +733,11 @@ function CardPane({
   /** Liegt die Seite über einem Bild oder Video? */
   over?: boolean
   /**
-   * Steht am Rand der Pfeil «Vertiefen»? Dann bekommt der Inhalt am
-   * Telefon seitlich Luft, damit der Pfeil keinen Text verdeckt.
+   * Steht am Rand ein Pfeil («Vertiefen» oder «Zurück»)? Dann hält der
+   * Inhalt so viel Abstand, wie der Pfeil breit ist (`w-12`, bündig am
+   * Rand) – auf beiden Seiten, damit die Spalte mittig bleibt und beim
+   * Wischen zwischen Karte und Vertiefung nicht springt. Ab `md` lässt
+   * die schmale Spalte (`max-w-xl`) von selbst genug Rand.
    */
   arrow?: boolean
   children: ReactNode
@@ -786,7 +791,7 @@ function CardPane({
         className={cn(
           'mx-auto w-full max-w-xl py-4',
           over ? 'mt-auto' : 'my-auto',
-          arrow && 'px-7 sm:px-0',
+          arrow && 'px-9 sm:px-5 md:px-0',
         )}
       >
         {children}
