@@ -267,6 +267,18 @@ export const AP_WRITE_ROLES: Role[] = [...FULL_ACCESS_ROLES, 'ap_editor']
 export const IMPULSE_ONLY_ROLE: Role = 'impulse_only'
 
 /**
+ * Die Rollen, bei denen sich «Anti Doom» am Konto vergeben lässt –
+ * Vollzugriff und die beiden AP-Zugänge.
+ *
+ * Dieselbe Liste steht in `firestore.rules` (`impulseAccess`,
+ * `impulseWrite`). Die Assistenz der Abendmahlsversammlung ist bewusst
+ * nicht dabei, und wer wartet, sieht ohnehin nichts: Ein Schalter, den die
+ * Zugriffsregeln nicht kennen, öffnete in der App einen Bereich, aus dem
+ * dann keine einzige Zeile käme.
+ */
+export const IMPULSE_SWITCH_ROLES: Role[] = [...AP_ACCESS_ROLES]
+
+/**
  * Die Reihenfolge der Konten in der Benutzerverwaltung.
  *
  * Nach Namen sortiert stünde ein AP-Zugang mitten in der Bischofschaft,
@@ -705,12 +717,14 @@ export interface AppUser extends WithId {
    */
   impulse?: boolean
   /**
-   * Darf im Bereich «Anti Doom» Inhalte pflegen und moderieren.
+   * Darf im Bereich «Anti Doom» Inhalte pflegen und moderieren – die
+   * Redaktion. Schliesst das Ansehen ein.
    *
-   * Noch ohne Wirkung – die Redaktion ist vorerst das Administrator-Konto.
-   * Das Feld ist trotzdem von Anfang an in den Regeln verriegelt, damit
-   * die Redaktion später nur noch Oberfläche braucht und keine
-   * Regeländerung.
+   * Vergeben wird es wie `impulse` in der Benutzerverwaltung, als Stufe
+   * «Anti Doom + Redaktion» (`impulseLevelOf` in lib/access), und allein
+   * vom Administrator-Konto; die Selbst-Update-Regel sperrt das Feld. Bei
+   * Vollzugriff gilt es wie bei jeder anderen Rolle: Wer nur `impulse`
+   * hat, sieht den Bereich, ohne etwas daran zu ändern.
    */
   impulseEditor?: boolean
   /** Farbe für Zuweisungs-Chips (Tailwind-Token-Name, siehe constants.ts) */

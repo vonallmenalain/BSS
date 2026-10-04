@@ -5,6 +5,7 @@ import { db, COLLECTIONS } from '@/lib/firebase'
 import { forgetDoc } from '@/lib/collectionStore'
 import { getInitials } from '@/lib/utils'
 import { commit, type SaveOutcome } from '@/lib/sync'
+import { impulseFieldsFor, type ImpulseLevel } from '@/lib/access'
 import {
   ASSISTANT_AREAS,
   type ApView,
@@ -118,17 +119,24 @@ export async function updateUserProfile(
 }
 
 /**
- * Schaltet den Bereich «Anti Doom» für ein Konto frei bzw. wieder zu.
+ * Was ein Konto im Bereich «Anti Doom» darf: nichts, ansehen – oder
+ * ansehen und als Redaktion Inhalte pflegen (`ImpulseLevel`).
  *
- * Wie Rolle und Aktivstatus: Das darf ausschliesslich das
- * Administrator-Konto, und `firestore.rules` setzt es durch – die
- * Selbst-Update-Regel sperrt das Feld. Das Administrator-Konto selbst
- * sieht den Bereich auch ohne Schalter.
+ * Beide Schalter gehen zusammen weg: Die Redaktion schliesst das Ansehen
+ * ein, und getrennt geschrieben stünde zwischen den beiden Vorgängen ein
+ * Stand da, den niemand gewollt hat. Wie Rolle und Aktivstatus darf das
+ * ausschliesslich das Administrator-Konto, und `firestore.rules` setzt es
+ * durch – die Selbst-Update-Regel sperrt beide Felder. Das
+ * Administrator-Konto selbst sieht und pflegt den Bereich auch ohne
+ * Schalter.
  */
-export async function setUserImpulse(userId: string, impulse: boolean): Promise<SaveOutcome> {
+export async function setUserImpulseAccess(
+  userId: string,
+  level: ImpulseLevel,
+): Promise<SaveOutcome> {
   return commit(
     updateDoc(doc(db, COLLECTIONS.users, userId), {
-      impulse,
+      ...impulseFieldsFor(level),
       updatedAt: serverTimestamp(),
     }),
   )

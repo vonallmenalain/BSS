@@ -135,8 +135,10 @@ interface AuthContextValue {
   canViewImpulse: boolean
   /**
    * Darf im Bereich «Anti Doom» Inhalte pflegen und moderieren – die
-   * Redaktion. Vorerst ist das allein das Administrator-Konto; der
-   * Schalter `impulseEditor` steht bereit, um sie später zu öffnen.
+   * Redaktion. Das Administrator-Konto und, wer in der Benutzerverwaltung
+   * die Stufe «Anti Doom + Redaktion» hat (Schalter `impulseEditor`). Hängt
+   * nicht an der Rolle: Auch bei Vollzugriff heisst «Anti Doom» allein nur
+   * ansehen.
    */
   canEditImpulse: boolean
   /**

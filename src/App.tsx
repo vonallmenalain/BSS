@@ -265,9 +265,10 @@ function RequireImpulse() {
 /**
  * Die Redaktion des Bereichs «Anti Doom» – Inhalte pflegen und moderieren.
  *
- * Vorerst allein das Administrator-Konto; der Schalter `impulseEditor`
- * steht bereit. Wer nur liest, landet wieder im Bereich – die
- * Zugriffsregeln liessen ihn ohnehin nichts schreiben.
+ * Das Administrator-Konto und, wer in der Benutzerverwaltung die Stufe
+ * «Anti Doom + Redaktion» hat (`impulseEditor`). Wer nur liest – auch mit
+ * Vollzugriff –, landet wieder im Bereich; die Zugriffsregeln liessen ihn
+ * ohnehin nichts schreiben.
  */
 function RequireImpulseEditor() {
   const { canEditImpulse } = useAuth()

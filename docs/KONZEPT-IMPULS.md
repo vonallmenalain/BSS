@@ -566,18 +566,36 @@ Für die Redaktion dasselbe Muster ein zweites Mal:
 users/{uid}.impulseEditor: boolean   – darf Inhalte pflegen und moderieren
 ```
 
-Am Anfang bleibt es ungesetzt – Redaktion ist der Admin. Beide Flags stehen
-damit dort, wo heute schon Rolle und Aktivstatus verwaltet werden, und
-tauchen in denselben Oberflächen auf (Benutzerverwaltung, Freischalt-Dialog).
+Am Anfang blieb es ungesetzt – Redaktion war der Admin. Beide Flags stehen
+damit dort, wo heute schon Rolle und Aktivstatus verwaltet werden.
+
+**In der Benutzerverwaltung** sind die beiden Flags eine einzige Auswahl
+neben der Rollenwahl, in drei Stufen (`impulseLevelOf` in `lib/access`):
+
+| Stufe | `impulse` | `impulseEditor` | darf |
+|---|---|---|---|
+| Ohne Anti Doom | – | – | nichts im Bereich |
+| **Anti Doom** | ✓ | – | ansehen und mitmachen wie alle |
+| **Anti Doom + Redaktion** | ✓ | ✓ | dazu Inhalte pflegen und moderieren |
+
+Das gilt für jede Rolle gleich, **auch für den Vollzugriff**: Wer zur
+Bischofschaft gehört, bekommt mit «Anti Doom» nur die Ansicht der
+Jugendlichen und keinen Knopf zur Redaktion. Bei der Rolle «Nur Anti Doom»
+fehlt die erste Stufe – den Bereich bringt die Rolle mit, es bleibt die
+Wahl der Redaktion. Bei der Assistenz und bei wartenden Konten fehlt die
+Auswahl ganz: `impulseAccess()` kennt den Bereich für sie nicht, also gilt
+er auch in der App nicht (`IMPULSE_SWITCH_ROLES`, in `tests/access.test.ts`
+mit den Regeln abgeglichen).
 
 ### Die Rolle «Nur Anti Doom»
 
 Für die AP's selbst gibt es eine eigene Rolle, `impulse_only` («Nur Anti
 Doom»). Sie sieht **ausschliesslich** diesen Bereich – keinen AP-Kalender
 hinter der Anmeldung, keine Mitglieder, keine Benutzerliste, nicht einmal die
-Einstellungen der Gemeinde. Den Bereich bringt sie von sich aus mit: Der
-Haken «Anti Doom» steht bei ihr fest gesetzt da und lässt sich nicht
-wegnehmen. Bei allen übrigen Rollen bleibt es beim Haken.
+Einstellungen der Gemeinde. Den Bereich bringt sie von sich aus mit: In der
+Auswahl neben der Rolle fehlt «Ohne Anti Doom», es bleibt «Anti Doom» oder
+«Anti Doom + Redaktion». Bei allen übrigen Rollen hängt der Bereich an der
+Auswahl.
 
 - **Zugriffsregeln:** `impulseAccess()` lässt `impulse_only` ohne Haken
   durch. `notifyAccess()` schliesst `impulseAccess()` ein – sonst könnte sich
@@ -853,8 +871,9 @@ Am 12. August 2026 besprochen und festgelegt:
 6. **Rhythmus:** Wöchentlich – Veröffentlichung am Montag, Auflösung am
    Sonntag. Dazu kommt die **Tages-Challenge** als kleiner täglicher Haken
    (siehe [5.3](#53-tages-challenge-wochenziel-serie-und-abzeichen)).
-7. **Redaktion:** Vorerst allein das Administrator-Konto; die Öffnung für
-   weitere Personen ist mit `impulseEditor` vorbereitet.
+7. **Redaktion:** Das Administrator-Konto und, wer in der Benutzerverwaltung
+   die Stufe «Anti Doom + Redaktion» hat (`impulseEditor`) – bei jeder
+   Rolle, auch beim Vollzugriff, nur mit dieser Stufe.
 8. **Öffnung über die AP’s hinaus:** bleibt als Möglichkeit bestehen – der
    Bereich wird neutral gebaut (Schalter pro Konto, kein AP-Bezug im
    Datenmodell).

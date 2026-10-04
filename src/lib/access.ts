@@ -7,6 +7,7 @@ import {
   assistantWriteOf,
   FULL_ACCESS_ROLES,
   IMPULSE_ONLY_ROLE,
+  IMPULSE_SWITCH_ROLES,
   ROLE_LABELS,
   type AppUser,
   type AssistantArea,
@@ -70,18 +71,19 @@ export function accessOf(profile: AppUser | null, email: string | null | undefin
   const assistantWriteAreas = assistantWriteOf(profile)
   const isAssistant = assistantAreas.length > 0
 
-  // Ein wartendes Konto bleibt draussen, selbst wenn ein Feld gesetzt sein
-  // sollte – freigeschaltet wird zuerst, der Schalter kommt danach. Die
-  // Rolle «Nur Anti Doom» bringt den Bereich von sich aus mit; bei allen
-  // anderen hängt er am Schalter des Kontos. Die Redaktion sieht den
+  // Die Schalter gelten nur bei den Rollen, bei denen sie auch die
+  // Zugriffsregeln kennen (`impulseAssignable`). Ein wartendes Konto und
+  // die Assistenz bleiben deshalb draussen, selbst wenn ein Feld gesetzt
+  // sein sollte – freigeschaltet wird zuerst, der Schalter kommt danach.
+  // Die Rolle «Nur Anti Doom» bringt den Bereich von sich aus mit; bei
+  // allen anderen hängt er am Schalter des Kontos. Die Redaktion sieht den
   // Bereich immer: Wer ihn pflegt, muss ihn lesen können.
+  const impulseRole = active && impulseAssignable(role)
   const canViewImpulse =
     isAdmin ||
-    (active &&
-      role !== 'pending' &&
+    (impulseRole &&
       (role === IMPULSE_ONLY_ROLE || profile?.impulse === true || profile?.impulseEditor === true))
-  const canEditImpulse =
-    isAdmin || (active && role !== 'pending' && profile?.impulseEditor === true)
+  const canEditImpulse = isAdmin || (impulseRole && profile?.impulseEditor === true)
 
   /*
    * Der Ort, an dem dieses Konto zu Hause ist.
@@ -117,6 +119,45 @@ export function accessOf(profile: AppUser | null, email: string | null | undefin
     hasAccess: isApproved || canViewAp || canViewImpulse || isAssistant,
     unknownRole: role !== null && !Object.hasOwn(ROLE_LABELS, role),
   }
+}
+
+/**
+ * Lässt sich «Anti Doom» bei dieser Rolle überhaupt vergeben?
+ *
+ * Bei Vollzugriff, den beiden AP-Zugängen und der Rolle «Nur Anti Doom» –
+ * genau dort, wo die Zugriffsregeln die Schalter kennen. Bei der Assistenz
+ * und bei wartenden Konten fehlt die Auswahl deshalb in der
+ * Benutzerverwaltung: Sie bewirkte nichts.
+ */
+export function impulseAssignable(role: Role | null | undefined): boolean {
+  return role === IMPULSE_ONLY_ROLE || Boolean(role && IMPULSE_SWITCH_ROLES.includes(role))
+}
+
+/**
+ * Wie weit ein Konto in «Anti Doom» reicht: gar nicht, ansehen – oder
+ * ansehen und als Redaktion Inhalte pflegen und moderieren.
+ *
+ * Gespeichert sind es zwei Schalter (`impulse`, `impulseEditor`); die
+ * Benutzerverwaltung fragt nach einer einzigen Stufe. Die Redaktion
+ * schliesst das Ansehen ein, und die Rolle «Nur Anti Doom» sieht den
+ * Bereich immer – bei ihr geht es nur noch um die Redaktion.
+ */
+export type ImpulseLevel = 'none' | 'view' | 'edit'
+
+export function impulseLevelOf(
+  profile: Pick<AppUser, 'role' | 'impulse' | 'impulseEditor'>,
+): ImpulseLevel {
+  if (profile.impulseEditor === true) return 'edit'
+  if (profile.role === IMPULSE_ONLY_ROLE || profile.impulse === true) return 'view'
+  return 'none'
+}
+
+/** Die beiden Schalter zu einer Stufe – so, wie sie am Konto stehen sollen. */
+export function impulseFieldsFor(level: ImpulseLevel): {
+  impulse: boolean
+  impulseEditor: boolean
+} {
+  return { impulse: level !== 'none', impulseEditor: level === 'edit' }
 }
 
 /**

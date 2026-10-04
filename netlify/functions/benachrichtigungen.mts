@@ -511,14 +511,16 @@ export default async function handler(): Promise<Response> {
         // Dieselben Rollen wie `apAccess()` in den Zugriffsregeln.
         apAccess: FULL_ACCESS.has(role) || role === 'ap_editor' || role === 'ap_viewer',
         apNames: strings(user, 'apNames'),
-        // Der Schalter am Konto, die Rolle «Nur Anti Doom» – oder das
-        // Administrator-Konto, das den Bereich immer sieht. Dieselbe Adresse
-        // steht in `firestore.rules` und in `src/lib/types.ts`; sie ändert
-        // sich an drei Orten oder an keinem.
+        // Die Rolle «Nur Anti Doom», der Schalter am Konto – aber nur bei den
+        // Rollen, bei denen ihn auch `impulseAccess()` in den Zugriffsregeln
+        // kennt (Vollzugriff und die AP-Zugänge, nicht die Assistenz) – oder
+        // das Administrator-Konto, das den Bereich immer sieht. Dieselbe
+        // Adresse steht in `firestore.rules` und in `src/lib/types.ts`; sie
+        // ändert sich an drei Orten oder an keinem.
         impulse:
           role === 'impulse_only' ||
-          bool(user, ['impulse']) ||
-          bool(user, ['impulseEditor']) ||
+          ((FULL_ACCESS.has(role) || role === 'ap_editor' || role === 'ap_viewer') &&
+            (bool(user, ['impulse']) || bool(user, ['impulseEditor']))) ||
           text(user, 'email') === 'alain.sc2@gmail.com',
         settings: document,
       },
