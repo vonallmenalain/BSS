@@ -1816,9 +1816,19 @@ Samstag am Ende der Woche) und die **Uhrzeit** (halbe Stunden, Schweizer
 Zeit); vorbelegt ist der Samstag davor um 18:00. Darunter steht, wann die
 nächste Erinnerung tatsächlich kommt – am Plan gemessen, nicht beschrieben.
 Derselbe Weg führt aus der Übersicht einer Gruppe («Erinnern, wenn Gruppe 5
-dran ist»), und angemeldete Konten finden dieselbe Einstellung unter
-**Benachrichtigungen** – in jeder Rolle, auch als Assistenz. Ist ein Konto mit
-einem Mitglied verknüpft, steht dessen Gruppe aus der Einteilung schon da.
+dran ist»), und Konten mit **Vollzugriff** finden dieselbe Einstellung
+zusätzlich unter **Benachrichtigungen**. Ist ein Konto mit einem Mitglied
+verknüpft, steht dessen Gruppe aus der Einteilung schon da.
+
+**Jede Rolle sieht genau ihre Bereiche.** Der Putzplan gehört in der App der
+Bischofschaft. Wer nur den AP-Kalender, nur Bereiche der
+Abendmahlsversammlung oder nur «Anti Doom» sieht, findet ihn weder in der
+Navigation noch unter **Benachrichtigungen** – dort steht für «Nur Anti Doom»
+allein die Erinnerung an die neue Woche, für einen AP-Zugang allein die
+Erinnerung an die Termine (`notificationAreas` in `src/lib/access.ts`, geprüft
+in `tests/access.test.ts`). Der öffentliche Plan selbst bleibt, was er ist:
+Wer die Adresse oder den QR-Code hat, liest ihn – mit und ohne Konto – und
+stellt die Erinnerung am Knopf darüber ein.
 
 Die Nachricht sagt, wer putzt und welche Woche: «Ab morgen putzt Gruppe 5»,
 darunter «4.–10. Oktober · zuständig: Bader Roger & Sylvie». Die zweite Woche

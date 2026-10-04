@@ -118,3 +118,41 @@ export function accessOf(profile: AppUser | null, email: string | null | undefin
     unknownRole: role !== null && !Object.hasOwn(ROLE_LABELS, role),
   }
 }
+
+/**
+ * Welche Abschnitte der Benachrichtigungen ein Konto zu sehen bekommt.
+ *
+ * Jede Rolle sieht genau ihre Bereiche – und nichts darüber hinaus. Wer nur
+ * «Anti Doom» sieht, findet hier allein die Erinnerung an die neue Woche;
+ * ein AP-Zugang allein die Erinnerung an die Termine. Der **Putzplan**
+ * gehört der Bischofschaft: Nur der Vollzugriff findet seine Erinnerung
+ * hier. Für alle anderen steht sie dort, wo der Putzplan öffentlich steht –
+ * am Knopf «Erinnerung» über dem Plan, wie für jeden ohne Konto.
+ *
+ * `any` sagt, ob es überhaupt etwas einzustellen gibt – ohne einen einzigen
+ * Abschnitt fehlt auch der Eintrag «Benachrichtigungen» im Menü.
+ */
+export interface NotificationAreas {
+  /** Der Schalter für dieses Gerät – sobald es Benachrichtigungen fürs Konto gibt. */
+  device: boolean
+  impulse: boolean
+  ap: boolean
+  /** Sitzungen und Traktanden. */
+  meetings: boolean
+  cleaning: boolean
+  any: boolean
+}
+
+export function notificationAreas(
+  access: Pick<Access, 'isApproved' | 'canViewAp' | 'canViewImpulse'>,
+): NotificationAreas {
+  const device = access.isApproved || access.canViewAp || access.canViewImpulse
+  return {
+    device,
+    impulse: access.canViewImpulse,
+    ap: access.canViewAp,
+    meetings: access.isApproved,
+    cleaning: access.isApproved,
+    any: device,
+  }
+}

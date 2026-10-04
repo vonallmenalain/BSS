@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict'
 import { test } from 'node:test'
 
-import { accessOf } from '../src/lib/access.ts'
+import { accessOf, notificationAreas } from '../src/lib/access.ts'
 import { ADMIN_EMAIL, ASSISTANT_AREA_PATHS, ROLE_LABELS } from '../src/lib/types.ts'
 import type { AppUser, Role } from '../src/lib/types.ts'
 
@@ -89,4 +89,54 @@ test('eine Rolle, die diese Fassung nicht kennt, ist eine neuere – kein Zugang
   const none = accessOf(null, null)
   assert.equal(none.unknownRole, false)
   assert.equal(none.hasAccess, false)
+})
+
+/* ------------------------------------------------------------------ */
+/* Benachrichtigungen: jede Rolle genau ihre Bereiche                  */
+/* ------------------------------------------------------------------ */
+
+const areasOf = (profile: AppUser | null, email: string | null = null) =>
+  notificationAreas(accessOf(profile, email))
+
+test('Benachrichtigungen: «Nur Anti Doom» sieht allein «Anti Doom» – keinen Putzplan', () => {
+  assert.deepEqual(areasOf(user('impulse_only')), {
+    device: true,
+    impulse: true,
+    ap: false,
+    meetings: false,
+    cleaning: false,
+    any: true,
+  })
+})
+
+test('Benachrichtigungen: ein AP-Zugang sieht die Termine – keinen Putzplan', () => {
+  for (const role of ['ap_editor', 'ap_viewer'] as const) {
+    const areas = areasOf(user(role))
+    assert.equal(areas.ap, true, role)
+    assert.equal(areas.cleaning, false, role)
+    assert.equal(areas.meetings, false, role)
+    assert.equal(areas.impulse, false, role)
+  }
+  // Mit Haken kommt «Anti Doom» dazu – der Putzplan bleibt draussen.
+  const withImpulse = areasOf(user('ap_viewer', { impulse: true }))
+  assert.equal(withImpulse.impulse, true)
+  assert.equal(withImpulse.cleaning, false)
+})
+
+test('Benachrichtigungen: der Putzplan gehört dem Vollzugriff', () => {
+  assert.deepEqual(areasOf(user('secretary')), {
+    device: true,
+    impulse: false,
+    ap: true,
+    meetings: true,
+    cleaning: true,
+    any: true,
+  })
+})
+
+test('Benachrichtigungen: Assistenz ohne «Anti Doom» und wartende Konten haben nichts', () => {
+  assert.equal(areasOf(user('assistant', { assistantAreas: ['music'] })).any, false)
+  assert.equal(areasOf(user('assistant', { assistantAreas: ['music'] })).cleaning, false)
+  assert.equal(areasOf(user('pending')).any, false)
+  assert.equal(areasOf(null).any, false)
 })

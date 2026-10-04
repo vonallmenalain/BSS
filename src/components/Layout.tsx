@@ -41,6 +41,7 @@ import { impulseCurrentWeek, impulseWeekStarts, visibleImpulseItems } from '@/li
 import { UserAvatar } from '@/components/ui/Avatar'
 import { ASSISTANT_AREA_LABELS, ASSISTANT_AREA_PATHS, ROLE_LABELS } from '@/lib/types'
 import { NotificationsModal } from '@/components/NotificationsModal'
+import { notificationAreas } from '@/lib/access'
 
 interface NavItem {
   to: string
@@ -459,7 +460,7 @@ export function Layout() {
               ))}
               {immersive && (
                 <div className="mt-auto border-t border-slate-200 pt-2 pb-safe dark:border-slate-800">
-                  {(isApproved || canViewAp || canViewImpulse) && (
+                  {notificationAreas({ isApproved, canViewAp, canViewImpulse }).any && (
                     <button
                       type="button"
                       onClick={() => {
@@ -721,7 +722,7 @@ function BottomLink({ item }: { item: NavItem }) {
  * und nicht erst, wenn er wieder loslässt.
  */
 function UserMenu() {
-  const { profile, signOut, isApproved } = useAuth()
+  const { profile, signOut, isApproved, canViewAp, canViewImpulse } = useAuth()
   const [open, setOpen] = useState(false)
   const [notifications, setNotifications] = useState(false)
   const menu = useRef<HTMLDivElement>(null)
@@ -746,9 +747,11 @@ function UserMenu() {
 
   if (!profile) return null
 
-  // Die Benachrichtigungen stehen jedem Konto offen: Die Putzplan-Erinnerung
-  // braucht keine Rolle, denn der Putzplan steht allen offen. Was darüber
-  // hinaus jemand bestellen kann, entscheidet der Dialog selbst.
+  // Die Benachrichtigungen stehen nur da, wo es für dieses Konto etwas
+  // einzustellen gibt – jede Rolle sieht darin genau ihre Bereiche
+  // (`notificationAreas`). Wartende Konten und eine Assistenz ohne
+  // «Anti Doom» haben dort nichts; der Eintrag fehlt dann.
+  const areas = notificationAreas({ isApproved, canViewAp, canViewImpulse })
 
   return (
     <div className="relative" ref={menu}>
@@ -771,17 +774,19 @@ function UserMenu() {
               {ROLE_LABELS[profile.role]}
             </p>
           </div>
-          <button
-            type="button"
-            onClick={() => {
-              setOpen(false)
-              setNotifications(true)
-            }}
-            className="flex w-full items-center gap-2 rounded-lg px-3 py-2 text-sm transition hover:bg-slate-100 dark:hover:bg-slate-700"
-          >
-            <Bell className="size-4" aria-hidden />
-            Benachrichtigungen
-          </button>
+          {areas.any && (
+            <button
+              type="button"
+              onClick={() => {
+                setOpen(false)
+                setNotifications(true)
+              }}
+              className="flex w-full items-center gap-2 rounded-lg px-3 py-2 text-sm transition hover:bg-slate-100 dark:hover:bg-slate-700"
+            >
+              <Bell className="size-4" aria-hidden />
+              Benachrichtigungen
+            </button>
+          )}
           {isApproved && (
             <NavLink
               to="/einstellungen"
