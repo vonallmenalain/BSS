@@ -942,8 +942,9 @@ In der Redaktion bietet der Kasten «Themenpaket» zwei Wege:
   stehen. Der Schritt lässt sich nicht rückgängig machen und verlangt
   eine Bestätigung und eine Verbindung. Welche Antworten und Beiträge
   dazugehören, fragt er frisch beim Server ab (die Abos der Seite können
-  noch laden), und Löschung und Paket reiht er auf einmal ein – bricht
-  die Verbindung ab, bleibt so nie eine Löschung ohne Paket zurück.
+  noch laden). Dann schreibt er zuerst das Paket und löscht erst danach,
+  Stapel für Stapel mit Bestätigung des Servers wie bei den Importen –
+  reisst die Verbindung ab, bleibt so nie eine Löschung ohne Paket zurück.
 - **«Einspielen»** bzw. **«Nur einspielen»** – ohne zu löschen.
   Vergangene Wochen bleiben weg, und dank fester IDs (`fsy26-w41-…`)
   holt ein späterer Lauf nur nach, was fehlt.

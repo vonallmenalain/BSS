@@ -804,18 +804,16 @@ function planBatches(plans: PackPlan[], userId?: string | null): WriteBatch[] {
 }
 
 /**
- * Mehrere Stapel abschicken – alle sofort, in ihrer Reihenfolge.
+ * Stapel der Reihe nach schreiben – jeder erst, wenn der Server den
+ * vorigen bestätigt hat, wie bei den Importen.
  *
- * Bewusst nicht einer nach dem anderen mit `await` dazwischen: Stockte die
- * Verbindung nach dem ersten Stapel, läge nur dieser in der Warteschlange,
- * der Rest hinge an einem Versprechen im Arbeitsspeicher. `commit()` meldete
- * nach zwei Sekunden trotzdem «zwischengespeichert» – und schlösse jemand
- * die App, ginge der Rest verloren: beim Neustart etwa die Löschung ohne
- * das neue Paket. So reiht Firestore alle Stapel auf einmal ein, hält sie
- * in IndexedDB und überträgt sie in genau dieser Reihenfolge.
+ * Reisst die Verbindung mittendrin ab, liegt so höchstens ein Anfang der
+ * Folge in der Warteschlange, nie ein späterer Stapel ohne die früheren;
+ * lehnt der Server einen Stapel ab, gehen die folgenden gar nicht erst
+ * hinaus. Die Reihenfolge der Stapel trägt damit die Sicherheit.
  */
-function commitBatches(batches: WriteBatch[]): Promise<void> {
-  return Promise.all(batches.map((batch) => batch.commit())).then(() => undefined)
+async function commitInOrder(batches: WriteBatch[]): Promise<void> {
+  for (const batch of batches) await batch.commit()
 }
 
 /**
@@ -824,14 +822,16 @@ function commitBatches(batches: WriteBatch[]): Promise<void> {
  * Die festen Dokument-IDs («fsy26-w41-umfrage-1» …) machen den Lauf
  * gefahrlos: Ein zweiter würde dieselben Dokumente treffen statt
  * Dubletten anzulegen – und die Redaktion blendet den Knopf ohnehin
- * aus, sobald das Paket ganz da ist.
+ * aus, sobald das Paket ganz da ist. Darum darf `commit()` hier nach
+ * zwei Sekunden «zwischengespeichert» melden: Ginge ein späterer Stapel
+ * verloren, holt der nächste Lauf nach, was fehlt.
  */
 export async function createPackItems(
   plans: PackPlan[],
   userId?: string | null,
 ): Promise<SaveOutcome> {
   requireOnline()
-  return commit(commitBatches(planBatches(plans, userId)))
+  return commit(commitInOrder(planBatches(plans, userId)))
 }
 
 /**
@@ -841,23 +841,27 @@ export async function createPackItems(
  * Das ist der eine Handgriff, der nicht rückgängig zu machen ist; die
  * Redaktion bestätigt ihn ausdrücklich. Bewusst stehen bleiben der
  * Fortschritt (Serie, Gemerktes, Amen), die Einreichungen der
- * Mitmach-Ecke und alles ausserhalb des Bereichs. Weil hier Hunderte
- * Dokumente auf einmal gehen, braucht es eine Verbindung, wie bei den
- * Importen.
+ * Mitmach-Ecke und alles ausserhalb des Bereichs.
+ *
+ * Wie die Importe verlangt er eine Verbindung und kehrt erst zurück, wenn
+ * der Server jeden Stapel bestätigt hat – kein «zwischengespeichert» nach
+ * zwei Sekunden, das mehr verspräche, als schon sicher liegt. Zuerst geht
+ * das Paket hinaus, dann die Antworten, die Beiträge und zuletzt die
+ * alten Karten (siehe `commitInOrder`): Reisst die Verbindung ab, stehen
+ * schlimmstenfalls Altes und Neues nebeneinander – nie eine Löschung ohne
+ * Paket und nie eine Antwort ohne ihre Karte.
  *
  * Welche Antworten und Beiträge zu den Karten gehören, steht nicht in den
- * Abos der Seite, sondern wird hier frisch beim Server erfragt: Die Abos
- * laden vielleicht noch oder hinken nach, und was sie nicht kennen,
- * bliebe sonst verwaist zurück. Erreicht die Abfrage den Server nicht,
- * bricht der Neustart ab, bevor etwas gelöscht ist. Danach gehen Löschung
- * und Paket als eine Folge von Stapeln hinaus – erst löschen, dann
- * einspielen, alles auf einmal eingereiht (siehe `commitBatches`).
+ * Abos der Seite, sondern wird frisch beim Server erfragt: Die Abos laden
+ * vielleicht noch oder hinken nach, und was sie nicht kennen, bliebe
+ * sonst verwaist zurück. Erreicht die Abfrage den Server nicht, bricht
+ * der Neustart ab, bevor etwas geschrieben ist.
  */
 export async function restartImpulseContent(input: {
   itemIds: string[]
   plans: PackPlan[]
   userId?: string | null
-}): Promise<SaveOutcome> {
+}): Promise<void> {
   requireOnline()
   const itemIds = new Set(input.itemIds)
   const [answers, comments] = await Promise.all([
@@ -881,13 +885,10 @@ export async function restartImpulseContent(input: {
     for (const reference of part) batch.delete(reference)
     return batch
   })
-  const outcome = await commit(
-    commitBatches([...deletionBatches, ...planBatches(input.plans, input.userId)]),
-  )
+  await commitInOrder([...planBatches(input.plans, input.userId), ...deletionBatches])
   for (const id of input.itemIds) forgetDoc(COLLECTIONS.impulseItems, id)
   for (const id of answerIds) forgetDoc(COLLECTIONS.impulseAnswers, id)
   for (const id of commentIds) forgetDoc(COLLECTIONS.impulseComments, id)
-  return outcome
 }
 
 /**

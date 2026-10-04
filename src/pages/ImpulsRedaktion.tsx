@@ -236,14 +236,13 @@ export function ImpulsRedaktion() {
     if (seeding) return
     setSeeding(true)
     try {
-      const outcome = await restartImpulseContent({
+      await restartImpulseContent({
         itemIds: legacyItems.map((item) => item.id),
         plans: packPlans,
         userId: profile?.id,
       })
       toast.saved(
         `Neu gestartet – ${legacyItems.length} alte Karten gelöscht, ${packPlans.length} neue eingespielt.`,
-        outcome,
       )
     } catch (error) {
       console.error(error)
