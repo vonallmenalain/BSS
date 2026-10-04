@@ -11,9 +11,10 @@ import type { ImpulseCrest } from '@/lib/types'
  *
  * Ein Vollbild über allem – auch über dem Feed –, das Wappen gross, mit
  * Glanz, Funken und dem entrollten Band. Darunter, was es heisst: alle
- * Karten geschafft, und wenn es vor Sonntag war, «bereit für Sonntag».
- * Die beiden übrigen Sterne (Wochenziel, Tages-Challenge) stehen als
- * Einladung da, nicht als Mahnung.
+ * Karten geschafft – und wenn es vor Sonntag war, auch das. Ums
+ * «Vorbereitetsein» auf den Sonntag geht es dabei nicht: Die Woche zählt
+ * für sich. Die beiden übrigen Sterne (Wochenziel, Tages-Challenge) stehen
+ * als Einladung da, nicht als Mahnung.
  *
  * Gezeigt wird die Feier einmal je Woche und Gerät – die Seite merkt
  * sich, wann sie gefeiert hat (siehe `Impuls`). Ein Tipp daneben, der
@@ -84,11 +85,11 @@ export function ImpulseCrestCelebration({
           />
         </div>
         <h2 className="mt-5 text-2xl leading-tight font-bold text-balance">
-          {stars.sunday ? 'Bereit für Sonntag!' : 'Stark – alles geschafft!'}
+          {stars.sunday ? 'Stark – und das vor Sonntag!' : 'Stark – alles geschafft!'}
         </h2>
         <p className="mt-2 text-sm text-slate-300">
           {stars.sunday
-            ? 'Alle Karten der Woche geschafft – und das vor Sonntag. Du gehst vorbereitet in die Klasse.'
+            ? 'Alle Karten der Woche geschafft, noch bevor die Woche um ist. Dein Wappen steht – und bleibt in deiner Sammlung.'
             : 'Alle Karten der Woche geschafft. Dein Wappen steht – und bleibt in deiner Sammlung.'}
         </p>
 

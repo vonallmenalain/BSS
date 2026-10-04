@@ -262,7 +262,8 @@ export function previewImpulseWrites(
       progress(user, { kind: 'week-list', week, field: 'cards', value: itemId, add: true }),
     markImpulseDeepeningSeen: async (user, week, itemId) =>
       progress(user, { kind: 'week-list', week, field: 'deepened', value: itemId, add: true }),
-    setImpulseLastSeenWeek: async (user, week) => progress(user, { kind: 'last-seen', week }),
+    setImpulseLastSeenWeek: async (user, week, firstSeenWeek) =>
+      progress(user, { kind: 'last-seen', week, firstSeenWeek }),
     markImpulseCrest: async (user, week, day) =>
       progress(user, { kind: 'week', week, patch: { crest: day } }),
 

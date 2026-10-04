@@ -3867,7 +3867,7 @@ export interface ImpulseWeekProgress {
   deepened?: string[]
   /**
    * Der Tag, an dem das Wochen-Wappen zum ersten Mal ganz dastand –
-   * «2026-10-08». Daran hängt der Stern «Bereit für Sonntag»: vor dem
+   * «2026-10-08». Daran hängt der Stern «Vor Sonntag vollendet»: vor dem
    * Sonntag vollendet. Ob das Wappen ganz ist, wird beim Lesen
    * gerechnet; hier steht nur, wann es das erste Mal so weit war.
    */
@@ -3918,6 +3918,15 @@ export interface ImpulseProgress extends WithId {
    * (Leitgedanke 1), dieselbe Sprache wie der Update-Hinweis.
    */
   lastSeenWeek?: string
+  /**
+   * Die erste Woche, in der diese Person «Anti Doom» geöffnet hat – «2026-W40».
+   *
+   * Der Anfang des Verlaufs in «Mein Fortschritt»: Er zeigt so viele Wochen,
+   * wie jemand dabei ist (`impulseWeeksSince`). Geschrieben wird das Feld
+   * einmal, zusammen mit `lastSeenWeek`; wer schon vorher dabei war, bekommt
+   * die früheste Woche, die sein Fortschritt kennt.
+   */
+  firstSeenWeek?: string
   createdAt?: TS
   updatedAt?: TS
 }

@@ -20,7 +20,7 @@ import { db, COLLECTIONS } from '@/lib/firebase'
 import { forgetDoc } from '@/lib/collectionStore'
 import { commit, requireOnline, type SaveOutcome } from '@/lib/sync'
 import { impulseAnswerId, impulseFirstName, quizAnswerCorrect } from '@/lib/impulse'
-import type { PackPlan } from '@/lib/impulsePack'
+import type { PackPlan, PackTextUpdate } from '@/lib/impulsePack'
 import type {
   ImpulseCrestPalette,
   ImpulseCrestSymbol,
@@ -783,6 +783,8 @@ export async function markImpulseDeepeningSeen(
 export async function setImpulseLastSeenWeek(
   user: { uid: string; displayName: string },
   week: string,
+  /** Nur beim ersten Mal: die Woche, mit der der Verlauf beginnt (`firstSeenWeek`). */
+  firstSeenWeek?: string,
 ): Promise<SaveOutcome> {
   return commit(
     fbSetDoc(
@@ -791,6 +793,7 @@ export async function setImpulseLastSeenWeek(
         uid: user.uid,
         firstName: impulseFirstName(user.displayName),
         lastSeenWeek: week,
+        ...(firstSeenWeek ? { firstSeenWeek } : {}),
         updatedAt: serverTimestamp(),
       },
       { merge: true },
@@ -935,6 +938,23 @@ export async function applyDifficultyCleanup(
 }
 
 /**
+ * Paket-Texte an schon eingespielten Karten nachführen (siehe
+ * `planPackTextUpdates`). Ein Schreibvorgang für alle Karten – ganz oder
+ * gar nicht. Ein Feld wie `puzzle.explanation` ist ein Pfad: Geändert wird
+ * nur die Erklärung, der Rest des Puzzles bleibt.
+ */
+export async function applyPackTextUpdates(updates: PackTextUpdate[]): Promise<SaveOutcome> {
+  const batch = writeBatch(db)
+  for (const update of updates) {
+    batch.update(doc(db, COLLECTIONS.impulseItems, update.id), {
+      [update.field]: update.text,
+      updatedAt: serverTimestamp(),
+    })
+  }
+  return commit(batch.commit())
+}
+
+/**
  * Eine Quizfrage beantworten – ein Versuch, auf den eigenen Namen.
  *
  * Richtig oder falsch wird bei der Auswahl gleich hier bestimmt; die
@@ -1018,7 +1038,7 @@ export async function answerImpulsePuzzle(
 
 /**
  * Den Tag vermerken, an dem das Wochen-Wappen zum ersten Mal ganz
- * dastand – für den Stern «Bereit für Sonntag». Wie das Anschauen von
+ * dastand – für den Stern «Vor Sonntag vollendet». Wie das Anschauen von
  * Karten geht das nicht ins Zugriffsprotokoll: Es ist ein Spielstand,
  * keine Änderung am Bestand.
  */

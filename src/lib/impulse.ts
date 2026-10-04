@@ -570,6 +570,26 @@ export function weekDays(key: string): string[] {
   return Array.from({ length: 7 }, (_, index) => format(addDays(start, index), 'yyyy-MM-dd'))
 }
 
+/**
+ * «Heute» innerhalb einer Woche – für die Haken der Tages-Challenge, die
+ * Meilensteine und den Vermerk des Wappens.
+ *
+ * Normalerweise der Kalendertag. Wurde die Woche früher freigeschaltet
+ * (siehe `impulseCurrentWeek`), läuft sie aber schon, bevor ihr Montag da
+ * ist – am Sonntagabend lägen dann alle sieben Tage in der Zukunft, und
+ * nichts liesse sich abhaken. Darum gilt bis dahin der Montag als heute:
+ * Wer am Sonntagabend schon loslegt, hakt den ersten Tag der neuen Woche
+ * ab. Läuft eine Woche länger, bleibt es entsprechend beim Sonntag.
+ */
+export function impulseWeekToday(week: string, now: Date | number): string {
+  const day = format(now, 'yyyy-MM-dd')
+  const days = weekDays(week)
+  if (days.length === 0) return day
+  if (day < days[0]) return days[0]
+  if (day > days[6]) return days[6]
+  return day
+}
+
 /** Der Kalendermonat, in dem die Woche beginnt – «2026-08». */
 export function monthOfWeek(key: string): string | null {
   const start = weekStart(key)
@@ -605,6 +625,40 @@ export function participatedWeeks(
     if (week) weeks.add(week)
   }
   return weeks
+}
+
+/**
+ * Die Wochen, seit jemand bei «Anti Doom» dabei ist – älteste zuerst, die
+ * laufende zuletzt.
+ *
+ * Für den Verlauf in «Mein Fortschritt»: Er zeigt keine feste Zahl von
+ * Wochen, die zum Teil vor der eigenen Zeit lägen, sondern wächst mit –
+ * am Anfang eine Woche, dann zwei, dann drei.
+ *
+ * Der Anfang ist die früheste der genannten Wochen – gewöhnlich
+ * `firstSeenWeek`, daneben jede Woche mit eigenem Fortschritt oder eigener
+ * Antwort, falls eine davon früher liegt (bei Konten aus der Zeit vor dem
+ * Feld). Wochen nach der laufenden zählen nicht.
+ */
+export function impulseWeeksSince(
+  todayKey: string,
+  weeks: Iterable<string | null | undefined>,
+): string[] {
+  let first = todayKey
+  for (const week of weeks) {
+    if (week && weekStart(week) && week < first) first = week
+  }
+  /* Zehn Jahre sind die Grenze – mehr als genug, und sicher vor einem
+     Schlüssel, der nie bei der laufenden Woche ankäme. */
+  const result: string[] = []
+  for (
+    let week: string | null = first;
+    week !== null && week <= todayKey && result.length < 520;
+    week = weekKeyOffset(week, 1)
+  ) {
+    result.push(week)
+  }
+  return result
 }
 
 /**
@@ -931,8 +985,8 @@ export function crestComplete(steps: readonly Pick<ImpulseCrestStep, 'done'>[]):
 /**
  * Die drei Sterne über dem Wappen – je einer für:
  *
- * - **Bereit für Sonntag:** das Wappen vor dem Sonntag vollendet. Genau
- *   das ist der Sinn der Woche – vorbereitet in die Klasse kommen.
+ * - **Vor Sonntag vollendet:** das Wappen ganz, bevor die Woche um ist.
+ *   (Ein Termin, keine Vorbereitung: Die Woche zählt für sich.)
  * - **Wochenziel** geschafft.
  * - **Tages-Challenge** an allen sieben Tagen.
  *
