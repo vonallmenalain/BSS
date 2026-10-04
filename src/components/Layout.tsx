@@ -40,7 +40,6 @@ import { useImpulseItems, useImpulseProgress } from '@/hooks/useFirestore'
 import { impulseCurrentWeek, impulseWeekStarts, visibleImpulseItems } from '@/lib/impulse'
 import { UserAvatar } from '@/components/ui/Avatar'
 import { ASSISTANT_AREA_LABELS, ASSISTANT_AREA_PATHS, ROLE_LABELS } from '@/lib/types'
-import { UpdatePrompt } from '@/components/UpdatePrompt'
 import { NotificationsModal } from '@/components/NotificationsModal'
 
 interface NavItem {
@@ -544,8 +543,6 @@ export function Layout() {
       {/* Der Benachrichtigungs-Dialog der Schublade – ausserhalb von ihr,
           denn die Schublade schliesst sich beim Öffnen des Dialogs. */}
       <NotificationsModal open={notificationsOpen} onClose={() => setNotificationsOpen(false)} />
-
-      <UpdatePrompt />
     </div>
   )
 }
