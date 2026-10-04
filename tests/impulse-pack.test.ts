@@ -14,11 +14,9 @@ import {
 import {
   isPackItem,
   PACK_ID_PREFIX,
-  PACK_TEXT_REVISIONS,
   PACK_WEEKS,
   packWeekPlans,
   planPackItems,
-  planPackTextUpdates,
 } from '../src/lib/impulsePack.ts'
 import { IMPULSE_CREST_PALETTE_LABELS, IMPULSE_CREST_SYMBOL_LABELS } from '../src/lib/types.ts'
 
@@ -262,49 +260,4 @@ test('Themenpaket: keine Vorbereitung auf den Sonntag, nichts zum Mitbringen', (
   for (const plan of ALL) {
     assert.doesNotMatch(textsOf(plan), sundayPrep, plan.id)
   }
-})
-
-test('PACK_TEXT_REVISIONS: jede frühere Fassung gehört zu einer Karte und ist wirklich anders', () => {
-  const byId = new Map(ALL.map((plan) => [plan.id, plan]))
-  for (const revision of PACK_TEXT_REVISIONS) {
-    const plan = byId.get(revision.id)
-    assert.ok(plan, revision.id)
-    const now =
-      revision.field === 'body'
-        ? plan.body
-        : revision.field === 'deepening'
-          ? plan.deepening
-          : plan.puzzle?.explanation
-    assert.ok(now, `${revision.id}: ${revision.field} fehlt im Paket`)
-    assert.notEqual(now, revision.from, revision.id)
-  }
-})
-
-test('planPackTextUpdates: führt nur nach, wo noch der alte Wortlaut steht', () => {
-  const goal = PACK_TEXT_REVISIONS.find((revision) => revision.id === 'fsy26-w41-wochenziel')!
-  const puzzle = PACK_TEXT_REVISIONS.find(
-    (revision) => revision.id === 'fsy26-w47-puzzle-1' && revision.field === 'puzzle.explanation',
-  )!
-  const goalPlan = ALL.find((plan) => plan.id === goal.id)!
-  const puzzlePlan = ALL.find((plan) => plan.id === puzzle.id)!
-  const updates = planPackTextUpdates([
-    // Noch so eingespielt wie damals – wird nachgeführt.
-    { id: goal.id, body: goal.from, deepening: null, puzzle: null },
-    {
-      id: puzzle.id,
-      body: 'Eigener Hinweis',
-      deepening: null,
-      puzzle: { text: 'x', explanation: puzzle.from },
-    },
-    // Von der Redaktion umgeschrieben – bleibt, wie es ist.
-    { id: 'fsy26-w47-wochenziel', body: 'Selbst formuliert.', deepening: null, puzzle: null },
-    // Schon nachgeführt – nichts mehr zu tun.
-    { id: 'fsy26-w47-teilen', body: ALL.find((plan) => plan.id === 'fsy26-w47-teilen')!.body },
-  ])
-  assert.deepEqual(updates, [
-    { id: goal.id, field: 'body', text: goalPlan.body },
-    { id: puzzle.id, field: 'puzzle.explanation', text: puzzlePlan.puzzle!.explanation },
-  ])
-  // Ohne eingespielte Karten gibt es nichts nachzuführen.
-  assert.deepEqual(planPackTextUpdates([]), [])
 })

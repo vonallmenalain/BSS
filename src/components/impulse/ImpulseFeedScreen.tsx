@@ -140,6 +140,7 @@ export function ImpulseFeedScreen({
   banner,
   doneItemIds = null,
   crest,
+  onCrest,
 }: {
   cards: ImpulseDeckCard[]
   /** Wo der Feed aufgeschlagen wird – gesetzt vor dem ersten Bild. */
@@ -180,6 +181,8 @@ export function ImpulseFeedScreen({
   doneItemIds?: ReadonlySet<string> | null
   /** Das kleine Wappen rechts neben der Leiste – es wächst mit jeder geschafften Karte. */
   crest?: ReactNode
+  /** Ein Tipp aufs kleine Wappen – zeigt es gross, samt dem eigenen Stand. */
+  onCrest?: () => void
 }) {
   const rootRef = useRef<HTMLDivElement>(null)
   const containerRef = useRef<HTMLDivElement>(null)
@@ -345,9 +348,21 @@ export function ImpulseFeedScreen({
               </div>
               {crest && (
                 <span className="relative shrink-0">
-                  <span key={bump} className={cn('block', bump > 0 && 'animate-imp-bump')}>
+                  {/* Die Kopfzeile lässt Berührungen durch (zum Wischen) –
+                      das Wappen selbst ist ein Knopf und nimmt sie an. */}
+                  <button
+                    type="button"
+                    key={bump}
+                    onClick={onCrest}
+                    disabled={!onCrest}
+                    aria-label="Dein Wappen ansehen"
+                    className={cn(
+                      'pointer-events-auto -m-1.5 block rounded-lg p-1.5 transition hover:bg-black/5 active:scale-95 disabled:pointer-events-none dark:hover:bg-white/10',
+                      bump > 0 && 'animate-imp-bump',
+                    )}
+                  >
                     {crest}
-                  </span>
+                  </button>
                   {bump > 0 && (
                     <span
                       key={`plus-${bump}`}

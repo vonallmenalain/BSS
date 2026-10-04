@@ -47,7 +47,13 @@ export function ImpulseSubmitCard({
 
   /* Das Formular – neu (die Feed-Karte zuerst, sie ist die einfachste
      Tür) oder als Nachbesserung einer offenen Einreichung. */
-  const [editor, setEditor] = useState<{ id: string | null; input: ImpulseItemInput } | null>(null)
+  /* `anonymous`: ohne Namen veröffentlichen – die fertige Karte trägt dann
+     kein «Eingereicht von …». */
+  const [editor, setEditor] = useState<{
+    id: string | null
+    input: ImpulseItemInput
+    anonymous: boolean
+  } | null>(null)
   const [busy, setBusy] = useState(false)
   /* Die eigene Karte in der echten Vorschau – nichts wird gespeichert. */
   const [preview, setPreview] = useState<ImpulseSubmission | null>(null)
@@ -90,10 +96,11 @@ export function ImpulseSubmitCard({
     setBusy(true)
     try {
       const outcome = editor.id
-        ? await updateImpulseSubmission(editor.id, editor.input)
+        ? await updateImpulseSubmission(editor.id, editor.input, editor.anonymous)
         : await createImpulseSubmission(
             { uid: profile.id, displayName: profile.displayName },
             editor.input,
+            editor.anonymous,
           )
       toast.saved(
         editor.id
@@ -131,12 +138,14 @@ export function ImpulseSubmitCard({
       <div className={plain ? 'flex flex-wrap items-center gap-3' : 'mt-2 flex flex-wrap items-center gap-3'}>
         <p className="min-w-0 flex-1 text-sm text-slate-600 dark:text-slate-300">
           Baue deine eigene Karte. Die Bischofschaft schaltet sie für alle auf – mit deinem Namen
-          darauf.
+          darauf oder ohne, wie du willst.
         </p>
         <button
           type="button"
           className="btn-secondary"
-          onClick={() => setEditor({ id: null, input: emptyImpulseItem('feed', null) })}
+          onClick={() =>
+            setEditor({ id: null, input: emptyImpulseItem('feed', null), anonymous: false })
+          }
         >
           <Plus className="size-4" aria-hidden />
           Einreichen
@@ -176,7 +185,11 @@ export function ImpulseSubmitCard({
                       type="button"
                       className="btn-ghost btn-sm"
                       onClick={() =>
-                        setEditor({ id: submission.id, input: submissionToInput(submission) })
+                        setEditor({
+                          id: submission.id,
+                          input: submissionToInput(submission),
+                          anonymous: submission.anonymous === true,
+                        })
                       }
                     >
                       <Pencil className="size-4" aria-hidden />
@@ -229,6 +242,26 @@ export function ImpulseSubmitCard({
         >
           <div className="space-y-4">
             <ImpulseItemFields input={editor.input} setInput={setInput} idPrefix="submission" />
+            <div>
+              <label className="flex cursor-pointer items-center gap-2 text-sm">
+                <input
+                  type="checkbox"
+                  className="size-4"
+                  checked={editor.anonymous}
+                  onChange={(event) =>
+                    setEditor((value) =>
+                      value ? { ...value, anonymous: event.target.checked } : value,
+                    )
+                  }
+                />
+                Ohne meinen Namen veröffentlichen
+              </label>
+              <p className="hint mt-1">
+                {editor.anonymous
+                  ? 'Die Karte erscheint ohne «Eingereicht von …». Nur die Bischofschaft sieht, von wem sie stammt.'
+                  : 'Auf der fertigen Karte steht «Eingereicht von» und dein Vorname.'}
+              </p>
+            </div>
             {problems.length > 0 && (
               <p className="hint">{problems.join(' ')} Einreichen geht trotzdem.</p>
             )}
