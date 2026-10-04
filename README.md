@@ -3239,8 +3239,14 @@ Abendmahlsversammlung (siehe [«Assistenz»](#assistenz-der-abendmahlsversammlun
 
 Zuletzt die Rolle **Nur Anti Doom** – für die AP's selbst, die allein den
 geistigen Bereich «Anti Doom» sehen sollen. Bei allen anderen Rollen hängt
-«Anti Doom» am Haken neben der Rollenwahl; diese Rolle bringt den Bereich von
-sich aus mit, der Haken steht bei ihr fest gesetzt da.
+«Anti Doom» an der Auswahl neben der Rollenwahl, und zwar in zwei Stufen:
+**Anti Doom** heisst ansehen und mitmachen wie alle, **Anti Doom +
+Redaktion** heisst dazu Inhalte pflegen und moderieren. Das gilt auch bei
+Vollzugriff – wer zur Bischofschaft gehört, bekommt mit «Anti Doom» allein
+nur die Ansicht. Die Rolle «Nur Anti Doom» bringt den Bereich von sich aus
+mit; bei ihr bleibt nur die Wahl, ob sie auch zur Redaktion gehört. Bei der
+Assistenz und bei wartenden Konten fehlt die Auswahl: Die Zugriffsregeln
+kennen den Bereich für sie nicht, eine Wahl bewirkte nichts.
 
 | Rolle                         | Zugriff                                                            |
 | ----------------------------- | ------------------------------------------------------------------ |

@@ -35,12 +35,13 @@ import {
   deleteUserProfile,
   setUserActive,
   setUserAssistantAreas,
-  setUserImpulse,
+  setUserImpulseAccess,
   setUserRole,
   setUserRoleWithAreas,
   updateUserProfile,
 } from '@/services/users'
 import { formatRelative } from '@/lib/dates'
+import { impulseAssignable, impulseLevelOf, type ImpulseLevel } from '@/lib/access'
 import {
   ADMIN_IMPORTS,
   ADMIN_IMPORT_LABEL,
@@ -464,11 +465,13 @@ export function Settings() {
           </p>
           {isAdmin && (
             <p className="hint mb-4">
-              Der Haken <strong>«Anti Doom»</strong> schaltet den geistigen Bereich für die AP’s pro
-              Konto frei – unabhängig von der Rolle, für Vollzugriff wie für AP-Zugänge. Die Rolle{' '}
-              <strong>«Nur Anti Doom»</strong> bringt ihn von sich aus mit und zeigt sonst nichts –
-              für AP’s, die nur diesen Bereich sehen sollen. Das Administrator-Konto sieht ihn
-              immer.
+              Die Auswahl neben der Rolle schaltet den geistigen Bereich für die AP’s pro Konto frei
+              – unabhängig von der Rolle, für Vollzugriff wie für AP-Zugänge, in zwei Stufen:{' '}
+              <strong>«Anti Doom»</strong> zum Ansehen und Mitmachen,{' '}
+              <strong>«Anti Doom + Redaktion»</strong> dazu zum Pflegen und Moderieren der Inhalte.
+              Die Rolle <strong>«Nur Anti Doom»</strong> bringt den Bereich von sich aus mit und
+              zeigt sonst nichts – für AP’s, die nur diesen Bereich sehen sollen. Das
+              Administrator-Konto sieht und pflegt ihn immer.
             </p>
           )}
           {!isAdmin && (
@@ -1136,13 +1139,15 @@ function UserRow({
     }
   }
 
-  const changeImpulse = async (impulse: boolean) => {
+  const changeImpulse = async (level: ImpulseLevel) => {
     try {
-      const outcome = await setUserImpulse(user.id, impulse)
+      const outcome = await setUserImpulseAccess(user.id, level)
       toast.saved(
-        impulse
-          ? `${user.displayName} sieht jetzt «Anti Doom».`
-          : `${user.displayName} sieht «Anti Doom» nicht mehr.`,
+        level === 'edit'
+          ? `${user.displayName} sieht «Anti Doom» und gehört zur Redaktion.`
+          : level === 'view'
+            ? `${user.displayName} sieht «Anti Doom» – ohne Redaktion.`
+            : `${user.displayName} sieht «Anti Doom» nicht mehr.`,
         outcome,
       )
     } catch (error) {
@@ -1153,14 +1158,18 @@ function UserRow({
 
   const apOnly = AP_ONLY_ROLES.includes(user.role)
   const impulseOnly = user.role === IMPULSE_ONLY_ROLE
+  /* Was das Konto in «Anti Doom» darf – nur bei Rollen, bei denen die
+     Zugriffsregeln den Bereich überhaupt kennen. */
+  const impulseLevel: ImpulseLevel = impulseAssignable(user.role) ? impulseLevelOf(user) : 'none'
   const isAssistant = user.role === 'assistant'
   /* Ein deaktiviertes Konto behält seine Bereiche in der Anzeige: Wer es
      wieder aktiviert, soll dieselbe Einteilung vorfinden. */
   const access = assistantAccessOf({ ...user, active: true })
   const summary = assistantAccessSummary(access)
   /*
-   * Das Administrator-Konto sieht «Anti Doom» immer – ein Haken, der nichts
-   * bewirkt, würde nur in die Irre führen. Er fehlt deshalb an dieser Zeile.
+   * Das Administrator-Konto sieht und pflegt «Anti Doom» immer – eine
+   * Auswahl, die nichts bewirkt, würde nur in die Irre führen. Sie fehlt
+   * deshalb an dieser Zeile.
    */
   const isAdminAccount = user.email.toLowerCase() === ADMIN_EMAIL
 
@@ -1176,8 +1185,11 @@ function UserRow({
         <p className="truncate text-xs text-slate-500 dark:text-slate-400">
           {user.email}
           {apOnly &&
-            (user.impulse ? ' · sieht AP-Kalender und Anti Doom' : ' · sieht nur den AP-Kalender')}
+            (impulseLevel === 'none'
+              ? ' · sieht nur den AP-Kalender'
+              : ' · sieht AP-Kalender und Anti Doom')}
           {impulseOnly && ' · sieht nur Anti Doom'}
+          {impulseLevel === 'edit' && !isAdminAccount && ' · Anti-Doom-Redaktion'}
           {isAssistant &&
             (summary === '' ? ' · sieht nichts – kein Bereich freigeschaltet' : ` · ${summary}`)}
         </p>
@@ -1253,32 +1265,28 @@ function UserRow({
         />
       )}
 
-      {/* «Anti Doom» hängt am Konto und nicht an der Rolle – der Haken steht
-          deshalb neben der Rollenwahl. Gesetzt wird er nur hier; die
-          Zugriffsregeln lassen niemanden das eigene Feld anfassen. Bei der
-          Rolle «Nur Anti Doom» gehört der Bereich zur Rolle: Der Haken steht
-          dann fest gesetzt da. */}
-      {canManage && !isAdminAccount && (
-        <label
-          className={cn(
-            'flex items-center gap-1.5 text-sm text-slate-600 dark:text-slate-300',
-            impulseOnly ? 'cursor-default opacity-70' : 'cursor-pointer',
-          )}
-          title={
-            impulseOnly
-              ? 'Gehört zur Rolle «Nur Anti Doom»'
-              : 'Bereich «Anti Doom» für dieses Konto freischalten'
-          }
+      {/* «Anti Doom» hängt am Konto und nicht an der Rolle – die Auswahl
+          steht deshalb neben der Rollenwahl, und zwar als Stufe: ohne, nur
+          ansehen, oder ansehen und als Redaktion Inhalte pflegen. Auch wer
+          Vollzugriff hat, bekommt so nur die Ansicht, wenn er nicht
+          redigieren soll. Gesetzt wird sie nur hier; die Zugriffsregeln
+          lassen niemanden die eigenen Felder anfassen. Bei der Rolle «Nur
+          Anti Doom» gehört der Bereich zur Rolle – dort geht es nur noch
+          um die Redaktion. Bei der Assistenz und bei wartenden Konten
+          fehlt die Auswahl: Die Zugriffsregeln kennen den Bereich für sie
+          nicht, eine Wahl bewirkte nichts. */}
+      {canManage && !isAdminAccount && impulseAssignable(user.role) && (
+        <select
+          className="input w-auto py-1.5 text-sm"
+          value={impulseLevel}
+          onChange={(event) => void changeImpulse(event.target.value as ImpulseLevel)}
+          aria-label={`Anti Doom von ${user.displayName}`}
+          title="Was dieses Konto im Bereich «Anti Doom» darf"
         >
-          <input
-            type="checkbox"
-            className="size-4"
-            checked={impulseOnly || user.impulse === true}
-            disabled={impulseOnly}
-            onChange={(event) => void changeImpulse(event.target.checked)}
-          />
-          Anti Doom
-        </label>
+          {!impulseOnly && <option value="none">Ohne Anti Doom</option>}
+          <option value="view">Anti Doom</option>
+          <option value="edit">Anti Doom + Redaktion</option>
+        </select>
       )}
 
       {/* Ein AP-Zugang erreicht das Mitgliederverzeichnis gar nicht – für ihn
