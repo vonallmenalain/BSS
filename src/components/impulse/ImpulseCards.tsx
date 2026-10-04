@@ -35,6 +35,26 @@ export function ContributorLine({ item }: { item: ImpulseItem }) {
   return <p className="hint mt-1">Eingereicht von {item.contributor}</p>
 }
 
+/**
+ * Das grosse Emoji über dem Titel – im Vollbild das Erste, was ins Auge
+ * springt. Es tritt mit der Karte auf, ohne Hüpfer; ohne Emoji bleibt
+ * der Platz einfach leer.
+ */
+export function CardEmoji({ item, centered = false }: { item: ImpulseItem; centered?: boolean }) {
+  if (!item.emoji?.trim()) return null
+  return (
+    <p
+      className={cn(
+        'animate-imp-rise mb-3 text-5xl leading-none select-none',
+        centered && 'text-center',
+      )}
+      aria-hidden
+    >
+      {item.emoji.trim()}
+    </p>
+  )
+}
+
 /** Die Quellenangabe – kurzer Auszug in der App, der Rest hinter dem Link. */
 export function SourceLink({ item }: { item: ImpulseItem }) {
   const source = item.source
@@ -321,10 +341,32 @@ export function WocheDeckCard({
 }) {
   return (
     <article className="px-1 text-center">
-      {item.week && <p className="hint">{formatWeekRange(item.week)}</p>}
-      <h2 className="mt-2 text-2xl leading-snug font-semibold text-balance">{item.title}</h2>
+      <CardEmoji item={item} centered />
+      {item.kicker ? (
+        <p className="text-xs font-semibold tracking-wider text-amber-700 uppercase dark:text-amber-300">
+          {item.kicker}
+        </p>
+      ) : (
+        item.week && <p className="hint">{formatWeekRange(item.week)}</p>
+      )}
+      <h2 className="mt-2 text-2xl leading-tight font-bold text-balance sm:text-3xl">
+        {item.title}
+      </h2>
       {item.body && (
         <p className="mt-3 whitespace-pre-line text-slate-600 dark:text-slate-300">{item.body}</p>
+      )}
+      {/* Die Lektion am Sonntag – das Ziel der Woche, mit Weg zum Heft. */}
+      {item.lesson?.label && (
+        <p className="mt-4 inline-flex flex-wrap items-center justify-center gap-x-1.5 rounded-full bg-amber-500/15 px-3.5 py-1.5 text-sm text-amber-900 dark:text-amber-100">
+          <span className="font-semibold">Am Sonntag:</span>
+          {item.lesson.url ? (
+            <a href={item.lesson.url} target="_blank" rel="noreferrer" className="hover:underline">
+              {item.lesson.label}
+            </a>
+          ) : (
+            <span>{item.lesson.label}</span>
+          )}
+        </p>
       )}
       <div className="mt-5 flex flex-col items-center gap-1">
         <SourceLink item={item} />
@@ -382,12 +424,19 @@ export function ImpulseCard({ item }: { item: ImpulseItem }) {
 export function QuizCard({
   item,
   answer,
+  answers = [],
   preview = false,
   plain = false,
   progressDocs,
 }: {
   item: ImpulseItem
   answer: ImpulseAnswer | null
+  /**
+   * Alle Antworten zu dieser Frage – nach der eigenen zeigt die Auflösung,
+   * wie das Kollegium geantwortet hat. Ohne Liste bleibt es bei der
+   * eigenen Auflösung.
+   */
+  answers?: ImpulseAnswer[]
   preview?: boolean
   /** Ohne Bereichszeile – im Vollbild steht der Bereich schon im Kopf. */
   plain?: boolean
@@ -513,6 +562,14 @@ export function QuizCard({
 
   const riddle = item.kind === 'bilderraetsel'
   const KindIcon = riddle ? Puzzle : Search
+  /* Zwei Möglichkeiten – «Fakt oder Mythos?» – stehen als Kacheln
+     nebeneinander: ein Daumen, eine Entscheidung. */
+  const pair = quiz.form === 'choice' && quiz.options.length === 2
+  /* Die Antworten der anderen – die eigene zählt mit, auch wenn sie noch
+     unterwegs zum Server ist. */
+  const crowd = preview
+    ? []
+    : [...answers.filter((entry) => entry.uid !== (profile?.id ?? '')), ...(shown ? [shown] : [])]
 
   return (
     <section className={plain ? undefined : 'card p-5'}>
@@ -523,9 +580,10 @@ export function QuizCard({
         </p>
       )}
       <ImpulseItemImage item={item} />
+      <CardEmoji item={item} />
       <h2
         className={cn(
-          'text-lg font-semibold text-balance',
+          'text-xl leading-snug font-semibold text-balance',
           item.image?.url ? 'mt-3' : !plain && 'mt-2',
         )}
       >
@@ -540,7 +598,7 @@ export function QuizCard({
 
       {shown ? (
         <>
-          <QuizResolution item={item} answer={shown} animated={justAnswered} />
+          <QuizResolution item={item} answer={shown} animated={justAnswered} crowd={crowd} />
           {preview && (
             <button type="button" className="btn-ghost btn-sm mt-3" onClick={reset}>
               <RotateCcw className="size-4" aria-hidden />
@@ -554,12 +612,17 @@ export function QuizCard({
            gewählt wird hier nicht, es wird gehandelt. Die Fundstelle
            bleibt bis zur Auflösung weg: «Joseph Smith –
            Lebensgeschichte» verriete Joseph Smith. */
-        <div className="mt-4 space-y-2" role="group" aria-label="Antworten">
+        <div
+          className={cn('mt-4', pair ? 'grid grid-cols-2 gap-2' : 'space-y-2')}
+          role="group"
+          aria-label="Antworten"
+        >
           {quiz.options.map((option, index) => (
             <QuizOption
               key={index}
               option={option}
               state="offen"
+              big={pair}
               disabled={busy}
               onClick={() => void choose(index)}
             />
@@ -644,6 +707,8 @@ function QuizOption({
   state,
   chosen = false,
   disabled = false,
+  big = false,
+  share,
   onClick,
 }: {
   option: string
@@ -651,11 +716,25 @@ function QuizOption({
   /** Die eigene Antwort – angeschrieben, damit sie unverwechselbar ist. */
   chosen?: boolean
   disabled?: boolean
+  /** Als grosse Kachel – bei «Fakt oder Mythos?». */
+  big?: boolean
+  /** Welcher Anteil des Kollegiums diese Möglichkeit gewählt hat (0–1) – nach der Antwort. */
+  share?: number
   onClick?: () => void
 }) {
-  const shape = 'flex w-full items-center gap-3 rounded-xl px-3.5 py-3 text-left text-sm transition'
+  const shape = cn(
+    'relative flex w-full items-center gap-3 overflow-hidden rounded-xl px-3.5 py-3 text-left text-sm transition',
+    big && 'justify-center py-6 text-center text-base font-semibold',
+  )
   const content = (
     <>
+      {share !== undefined && (
+        <span
+          aria-hidden
+          className="imp-meter absolute inset-y-0 left-0 w-full bg-slate-900/[0.07] dark:bg-white/[0.07]"
+          style={{ '--imp-share': String(share) } as React.CSSProperties}
+        />
+      )}
       {state !== 'offen' && (
         <span
           className={cn('grid size-6 shrink-0 place-items-center rounded-lg', OPTION_BADGE[state])}
@@ -668,13 +747,20 @@ function QuizOption({
           ) : null}
         </span>
       )}
-      <span className="min-w-0 flex-1">
+      <span className={cn('relative min-w-0', big ? 'flex-none' : 'flex-1')}>
         {/* Was die Farbe zeigt, muss auch vorgelesen werden. */}
         {state === 'richtig' && <span className="sr-only">Richtige Antwort: </span>}
         {state === 'daneben' && <span className="sr-only">Falsch: </span>}
         {option}
       </span>
-      {chosen && <span className="shrink-0 text-[11px] font-medium opacity-70">Deine Antwort</span>}
+      {chosen && !big && (
+        <span className="relative shrink-0 text-[11px] font-medium opacity-70">Deine Antwort</span>
+      )}
+      {share !== undefined && (
+        <span className="tabular relative shrink-0 text-xs font-semibold opacity-80">
+          {Math.round(share * 100)} %
+        </span>
+      )}
     </>
   )
 
@@ -698,14 +784,23 @@ export function QuizResolution({
   item,
   answer,
   animated = false,
+  crowd = [],
 }: {
   item: ImpulseItem
   answer: ImpulseAnswer
   /** Tritt nur an, wenn eben geantwortet wurde – nicht beim Wiedersehen. */
   animated?: boolean
+  /** Alle Antworten des Kollegiums, die eigene eingeschlossen – für die Verteilung. */
+  crowd?: ImpulseAnswer[]
 }) {
   const quiz = item.quiz
   if (!quiz) return null
+  /* Die Verteilung lohnt sich erst, wenn mehr als die eigene Antwort da ist. */
+  const showCrowd = crowd.length > 1
+  const share = (index: number) =>
+    crowd.filter((entry) => entry.choiceIndex === index).length / Math.max(crowd.length, 1)
+  const rightCount = crowd.filter((entry) => entry.correct === true).length
+  const pair = quiz.form === 'choice' && quiz.options.length === 2
 
   return (
     /* Die Auflösung tritt an statt zu erscheinen – sie ersetzt die
@@ -729,7 +824,7 @@ export function QuizResolution({
             )}
             {answer.correct ? 'Richtig – stark!' : 'Gut versucht'}
           </p>
-          <div className="space-y-2">
+          <div className={pair ? 'grid grid-cols-2 gap-2' : 'space-y-2'}>
             {quiz.options.map((option, index) => {
               const isSolution = index === quiz.answerIndex
               const isChosen = index === (answer.choiceIndex ?? -1)
@@ -739,10 +834,17 @@ export function QuizResolution({
                   option={option}
                   state={isSolution ? 'richtig' : isChosen ? 'daneben' : 'still'}
                   chosen={isChosen}
+                  big={pair}
+                  share={showCrowd ? share(index) : undefined}
                 />
               )
             })}
           </div>
+          {showCrowd && (
+            <p className="hint">
+              {rightCount} von {crowd.length} im Kollegium lagen richtig.
+            </p>
+          )}
         </>
       ) : (
         <div className="space-y-1 text-sm">
@@ -755,6 +857,11 @@ export function QuizResolution({
               {quiz.answerText}
             </span>
           </p>
+          {showCrowd && (
+            <p className="hint">
+              {crowd.length} aus dem Kollegium haben die Stelle schon nachgeschlagen.
+            </p>
+          )}
         </div>
       )}
 

@@ -8,12 +8,20 @@ import {
   scriptureLink,
 } from '@/lib/scriptures'
 import { impulseVideoHost, impulseVideoSource } from '@/lib/impulseVideo'
+import { POLL_SCALE_MAX_STEPS, puzzlePieces } from '@/lib/impulse'
 import { ImpulseCropPreview, ImpulseImageCropper } from '@/components/impulse/ImpulseImageCropper'
 import type { ImpulseItemInput } from '@/services/impulse'
 import {
+  IMPULSE_CREST_PALETTE_LABELS,
+  IMPULSE_CREST_SYMBOL_LABELS,
   IMPULSE_KIND_LABELS,
+  IMPULSE_POLL_FORM_LABELS,
   IMPULSE_QUIZ_FORM_LABELS,
+  type ImpulseCrestPalette,
+  type ImpulseCrestSymbol,
   type ImpulseKind,
+  type ImpulsePoll,
+  type ImpulsePollForm,
   type ImpulseQuiz,
   type ImpulseQuizForm,
 } from '@/lib/types'
@@ -76,6 +84,20 @@ export function ImpulseItemFields({
     setQuiz({ options, answerIndex })
   }
 
+  /* Die Umfrage: dieselben Handgriffe wie beim Quiz, nur ohne Markierung –
+     richtig oder falsch gibt es hier nicht. */
+  const poll = input.poll
+  const setPoll = (patch: Partial<ImpulsePoll>) =>
+    setInput((value) => ({ ...value, poll: { ...value.poll, ...patch } }))
+  const setPollOption = (index: number, text: string) => {
+    const options = [...poll.options]
+    options[index] = text
+    setPoll({ options })
+  }
+
+  /* Das Puzzle: die Teile, wie die Karte sie mischen wird. */
+  const pieces = puzzlePieces(input.puzzleText)
+
   /* Nur die Feed-Karten kennen den Wisch nach links – also auch nur sie
      das Feld «Vertiefung». Wochenziel und Tages-Challenge sind Kacheln. */
   const hasDeepening = input.kind !== 'wochenziel' && input.kind !== 'tageschallenge'
@@ -112,11 +134,11 @@ export function ImpulseItemFields({
 
       <div>
         <label className="label" htmlFor={`${idPrefix}-title`}>
-          {input.kind === 'quiz' || input.kind === 'frage'
+          {input.kind === 'quiz' || input.kind === 'frage' || input.kind === 'umfrage'
             ? 'Frage'
             : input.kind === 'bilderraetsel'
               ? 'Frage zum Bild'
-              : input.kind === 'impuls' || input.kind === 'video'
+              : input.kind === 'impuls' || input.kind === 'video' || input.kind === 'puzzle'
                 ? 'Titel'
                 : input.kind === 'feed'
                   ? 'Text der Karte'
@@ -128,23 +150,27 @@ export function ImpulseItemFields({
           value={input.title}
           onChange={(event) => setInput((value) => ({ ...value, title: event.target.value }))}
           placeholder={
-            input.kind === 'quiz'
-              ? 'Wie heisst der Hund, von dem in der Ansprache erzählt wird?'
-              : input.kind === 'bilderraetsel'
-                ? 'In welcher Stadt steht dieser Tempel?'
-                : input.kind === 'frage'
-                  ? 'Welche Schriftstelle hat dir diese Woche geholfen – und warum?'
-                  : input.kind === 'wochenziel'
-                    ? 'Lies diese Woche ein Kapitel im Buch Mormon'
-                    : input.kind === 'tageschallenge'
-                      ? 'Lies jeden Tag einen Vers'
-                      : input.kind === 'video'
-                        ? '«Der Erlöser lebt» – zwei Minuten, die bleiben'
-                        : input.kind === 'teilen'
-                          ? 'Frag ein Familienmitglied, wann es Nephis Beispiel gefolgt ist …'
-                          : input.kind === 'feed'
-                            ? '«Blickt in jedem Gedanken auf mich …»'
-                            : 'Kraft aus den Schriften'
+            input.kind === 'umfrage'
+              ? 'Was würdest du tun? …'
+              : input.kind === 'puzzle'
+                ? 'Vers-Puzzle: Bau die Verheissung zusammen'
+                : input.kind === 'quiz'
+                  ? 'Wie heisst der Hund, von dem in der Ansprache erzählt wird?'
+                  : input.kind === 'bilderraetsel'
+                    ? 'In welcher Stadt steht dieser Tempel?'
+                    : input.kind === 'frage'
+                      ? 'Welche Schriftstelle hat dir diese Woche geholfen – und warum?'
+                      : input.kind === 'wochenziel'
+                        ? 'Lies diese Woche ein Kapitel im Buch Mormon'
+                        : input.kind === 'tageschallenge'
+                          ? 'Lies jeden Tag einen Vers'
+                          : input.kind === 'video'
+                            ? '«Der Erlöser lebt» – zwei Minuten, die bleiben'
+                            : input.kind === 'teilen'
+                              ? 'Frag ein Familienmitglied, wann es Nephis Beispiel gefolgt ist …'
+                              : input.kind === 'feed'
+                                ? '«Blickt in jedem Gedanken auf mich …»'
+                                : 'Kraft aus den Schriften'
           }
         />
       </div>
@@ -171,6 +197,340 @@ export function ImpulseItemFields({
           }
         />
       </div>
+
+      {/* Ein grosses Emoji über dem Titel – der Blickfang der Karte im
+          Vollbild, auch ohne Bild aus der Mediathek. */}
+      <div>
+        <label className="label" htmlFor={`${idPrefix}-emoji`}>
+          Emoji (optional)
+        </label>
+        <input
+          id={`${idPrefix}-emoji`}
+          className="input w-24 text-center text-xl"
+          value={input.emoji}
+          onChange={(event) => setInput((value) => ({ ...value, emoji: event.target.value }))}
+          placeholder="🔥"
+          maxLength={8}
+        />
+      </div>
+
+      {/* Das Wochenthema trägt die Woche: das Monatsthema über dem Titel,
+          die Lektion am Sonntag, auf die alles hinläuft – und das Wappen,
+          das sich mit jeder geschafften Karte aufbaut. */}
+      {input.kind === 'impuls' && (
+        <fieldset className="space-y-3 rounded-xl border border-slate-200 p-3 dark:border-slate-700">
+          <legend className="label px-1">Woche, Sonntag und Wappen</legend>
+          <div>
+            <label className="label" htmlFor={`${idPrefix}-kicker`}>
+              Zeile über dem Titel (optional)
+            </label>
+            <input
+              id={`${idPrefix}-kicker`}
+              className="input"
+              value={input.kicker}
+              onChange={(event) => setInput((value) => ({ ...value, kicker: event.target.value }))}
+              placeholder="Dein Körper ist heilig · Wort der Weisheit"
+            />
+          </div>
+          <div className="grid gap-3 sm:grid-cols-2">
+            <div>
+              <label className="label" htmlFor={`${idPrefix}-lesson`}>
+                Lektion am Sonntag (optional)
+              </label>
+              <input
+                id={`${idPrefix}-lesson`}
+                className="input"
+                value={input.lessonLabel}
+                onChange={(event) =>
+                  setInput((value) => ({ ...value, lessonLabel: event.target.value }))
+                }
+                placeholder="Erfahre mehr über das Wort der Weisheit"
+              />
+            </div>
+            <div>
+              <label className="label" htmlFor={`${idPrefix}-lesson-url`}>
+                Link zur Lektion
+              </label>
+              <input
+                id={`${idPrefix}-lesson-url`}
+                className="input"
+                type="url"
+                value={input.lessonUrl}
+                onChange={(event) =>
+                  setInput((value) => ({ ...value, lessonUrl: event.target.value }))
+                }
+                placeholder="https://www.churchofjesuschrist.org/study/ftsoy/…"
+              />
+            </div>
+          </div>
+          <div className="grid gap-3 sm:grid-cols-3">
+            <div>
+              <label className="label" htmlFor={`${idPrefix}-crest-symbol`}>
+                Zeichen im Wappen
+              </label>
+              <select
+                id={`${idPrefix}-crest-symbol`}
+                className="input"
+                value={input.crestSymbol}
+                onChange={(event) =>
+                  setInput((value) => ({
+                    ...value,
+                    crestSymbol: event.target.value as ImpulseCrestSymbol | '',
+                  }))
+                }
+              >
+                <option value="">Automatisch</option>
+                {(Object.keys(IMPULSE_CREST_SYMBOL_LABELS) as ImpulseCrestSymbol[]).map((key) => (
+                  <option key={key} value={key}>
+                    {IMPULSE_CREST_SYMBOL_LABELS[key]}
+                  </option>
+                ))}
+              </select>
+            </div>
+            <div>
+              <label className="label" htmlFor={`${idPrefix}-crest-palette`}>
+                Farbe
+              </label>
+              <select
+                id={`${idPrefix}-crest-palette`}
+                className="input"
+                value={input.crestPalette}
+                disabled={!input.crestSymbol}
+                onChange={(event) =>
+                  setInput((value) => ({
+                    ...value,
+                    crestPalette: event.target.value as ImpulseCrestPalette,
+                  }))
+                }
+              >
+                {(Object.keys(IMPULSE_CREST_PALETTE_LABELS) as ImpulseCrestPalette[]).map((key) => (
+                  <option key={key} value={key}>
+                    {IMPULSE_CREST_PALETTE_LABELS[key]}
+                  </option>
+                ))}
+              </select>
+            </div>
+            <div>
+              <label className="label" htmlFor={`${idPrefix}-crest-motto`}>
+                Spruch auf dem Band
+              </label>
+              <input
+                id={`${idPrefix}-crest-motto`}
+                className="input"
+                value={input.crestMotto}
+                disabled={!input.crestSymbol}
+                onChange={(event) =>
+                  setInput((value) => ({ ...value, crestMotto: event.target.value }))
+                }
+                placeholder="Treu zu allen Zeiten"
+                maxLength={32}
+              />
+            </div>
+          </div>
+          <p className="hint mt-0">
+            Das Wappen baut sich mit jeder geschafften Karte auf; Zeichen und Spruch erscheinen
+            erst, wenn alles geschafft ist. «Automatisch» wählt Zeichen und Farbe nach der Woche.
+          </p>
+        </fieldset>
+      )}
+
+      {/* Die Umfrage: Auswahl oder Skala – das Ergebnis des Kollegiums
+          sehen alle erst nach der eigenen Stimme, und nur als Zahl. */}
+      {input.kind === 'umfrage' && (
+        <fieldset className="space-y-3 rounded-xl border border-slate-200 p-3 dark:border-slate-700">
+          <legend className="label px-1">Umfrage</legend>
+          <div>
+            <label className="label" htmlFor={`${idPrefix}-poll-form`}>
+              Form
+            </label>
+            <select
+              id={`${idPrefix}-poll-form`}
+              className="input"
+              value={poll.form}
+              onChange={(event) => setPoll({ form: event.target.value as ImpulsePollForm })}
+            >
+              {(Object.keys(IMPULSE_POLL_FORM_LABELS) as ImpulsePollForm[]).map((form) => (
+                <option key={form} value={form}>
+                  {IMPULSE_POLL_FORM_LABELS[form]}
+                </option>
+              ))}
+            </select>
+          </div>
+
+          {poll.form === 'choice' ? (
+            <div className="space-y-1.5">
+              <p className="label">Möglichkeiten</p>
+              {poll.options.map((option, index) => (
+                <div key={index} className="flex items-center gap-2">
+                  <input
+                    className="input"
+                    value={option}
+                    onChange={(event) => setPollOption(index, event.target.value)}
+                    placeholder={`Möglichkeit ${index + 1}`}
+                  />
+                  <button
+                    type="button"
+                    className={cn('btn-ghost p-1.5', poll.options.length <= 2 && 'invisible')}
+                    onClick={() =>
+                      poll.options.length > 2 &&
+                      setPoll({ options: poll.options.filter((_, i) => i !== index) })
+                    }
+                    aria-label={`Möglichkeit ${index + 1} entfernen`}
+                  >
+                    <X className="size-4" aria-hidden />
+                  </button>
+                </div>
+              ))}
+              {poll.options.length < 6 && (
+                <button
+                  type="button"
+                  className="btn-ghost btn-sm"
+                  onClick={() => setPoll({ options: [...poll.options, ''] })}
+                >
+                  <Plus className="size-4" aria-hidden />
+                  Möglichkeit
+                </button>
+              )}
+            </div>
+          ) : (
+            <div className="space-y-3">
+              <div className="grid grid-cols-3 gap-3">
+                <div>
+                  <label className="label" htmlFor={`${idPrefix}-poll-min`}>
+                    Von
+                  </label>
+                  <input
+                    id={`${idPrefix}-poll-min`}
+                    className="input"
+                    type="number"
+                    value={poll.min}
+                    onChange={(event) => setPoll({ min: Number(event.target.value) })}
+                  />
+                </div>
+                <div>
+                  <label className="label" htmlFor={`${idPrefix}-poll-max`}>
+                    Bis
+                  </label>
+                  <input
+                    id={`${idPrefix}-poll-max`}
+                    className="input"
+                    type="number"
+                    value={poll.max}
+                    onChange={(event) => setPoll({ max: Number(event.target.value) })}
+                  />
+                </div>
+                <div>
+                  <label className="label" htmlFor={`${idPrefix}-poll-unit`}>
+                    Einheit
+                  </label>
+                  <input
+                    id={`${idPrefix}-poll-unit`}
+                    className="input"
+                    value={poll.unit}
+                    onChange={(event) => setPoll({ unit: event.target.value })}
+                    placeholder="Std."
+                  />
+                </div>
+              </div>
+              <div className="grid gap-3 sm:grid-cols-2">
+                <div>
+                  <label className="label" htmlFor={`${idPrefix}-poll-min-label`}>
+                    Linkes Ende heisst
+                  </label>
+                  <input
+                    id={`${idPrefix}-poll-min-label`}
+                    className="input"
+                    value={poll.minLabel}
+                    onChange={(event) => setPoll({ minLabel: event.target.value })}
+                    placeholder="sehr schwer"
+                  />
+                </div>
+                <div>
+                  <label className="label" htmlFor={`${idPrefix}-poll-max-label`}>
+                    Rechtes Ende heisst
+                  </label>
+                  <input
+                    id={`${idPrefix}-poll-max-label`}
+                    className="input"
+                    value={poll.maxLabel}
+                    onChange={(event) => setPoll({ maxLabel: event.target.value })}
+                    placeholder="ganz leicht"
+                  />
+                </div>
+              </div>
+              <p className="hint mt-0">
+                Ganze Zahlen, höchstens {POLL_SCALE_MAX_STEPS} Schritte – nach der Stimme zeigt die
+                Karte die Verteilung und den Schnitt im Kollegium.
+              </p>
+            </div>
+          )}
+
+          <div>
+            <label className="label" htmlFor={`${idPrefix}-poll-explanation`}>
+              Nach der Stimme (optional)
+            </label>
+            <textarea
+              id={`${idPrefix}-poll-explanation`}
+              className="input min-h-16"
+              value={poll.explanation}
+              onChange={(event) => setPoll({ explanation: event.target.value })}
+              placeholder="Ein Gedanke aus den Schriften oder dem Wegweiser dazu …"
+            />
+          </div>
+        </fieldset>
+      )}
+
+      {/* Das Vers-Puzzle: der Vers in der richtigen Reihenfolge – die Karte
+          mischt die Teile selbst. */}
+      {input.kind === 'puzzle' && (
+        <fieldset className="space-y-3 rounded-xl border border-slate-200 p-3 dark:border-slate-700">
+          <legend className="label px-1">Vers-Puzzle</legend>
+          <div>
+            <label className="label" htmlFor={`${idPrefix}-puzzle-text`}>
+              Vers in der richtigen Reihenfolge
+            </label>
+            <textarea
+              id={`${idPrefix}-puzzle-text`}
+              className="input min-h-16"
+              value={input.puzzleText}
+              onChange={(event) =>
+                setInput((value) => ({ ...value, puzzleText: event.target.value }))
+              }
+              placeholder="die Worte / von Christus / werden euch / alles sagen, / was ihr / tun sollt"
+            />
+            <p className="hint mt-1">
+              Teile mit « / » trennen – ohne Schrägstrich zählt jedes Wort als Teil.
+              {pieces.length > 0 && ` ${pieces.length} Teile.`}
+            </p>
+            {pieces.length > 0 && (
+              <div className="mt-2 flex flex-wrap gap-1.5">
+                {pieces.map((piece, index) => (
+                  <span
+                    key={index}
+                    className="rounded-lg bg-yellow-400/25 px-2 py-1 text-xs font-medium"
+                  >
+                    {piece}
+                  </span>
+                ))}
+              </div>
+            )}
+          </div>
+          <div>
+            <label className="label" htmlFor={`${idPrefix}-puzzle-explanation`}>
+              Nach dem Versuch (optional)
+            </label>
+            <textarea
+              id={`${idPrefix}-puzzle-explanation`}
+              className="input min-h-16"
+              value={input.puzzleExplanation}
+              onChange={(event) =>
+                setInput((value) => ({ ...value, puzzleExplanation: event.target.value }))
+              }
+              placeholder="Was dieser Vers bedeutet – zwei Sätze genügen."
+            />
+          </div>
+        </fieldset>
+      )}
 
       {/* Das Video der Video-Karte – ein Link, kein Upload. Was daraus
           wird, liest `lib/impulseVideo` an der Adresse ab; die Zeile
@@ -295,7 +655,9 @@ export function ImpulseItemFields({
         heading={
           /* Aufgaben brauchen keine Fundstelle – Material schon
              (siehe `readyProblems`). */
-          input.kind === 'impuls' || input.kind === 'quiz' ? 'Quelle' : 'Quelle (optional)'
+          input.kind === 'impuls' || input.kind === 'quiz' || input.kind === 'puzzle'
+            ? 'Quelle'
+            : 'Quelle (optional)'
         }
         idLabel={`${idPrefix}-source`}
         idUrl={`${idPrefix}-source-url`}

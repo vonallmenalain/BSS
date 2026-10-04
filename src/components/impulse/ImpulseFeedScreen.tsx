@@ -138,6 +138,8 @@ export function ImpulseFeedScreen({
   onClose,
   finale,
   banner,
+  doneItemIds = null,
+  crest,
 }: {
   cards: ImpulseDeckCard[]
   /** Wo der Feed aufgeschlagen wird – gesetzt vor dem ersten Bild. */
@@ -169,6 +171,15 @@ export function ImpulseFeedScreen({
    * der Leiste.
    */
   banner?: ReactNode
+  /**
+   * Die geschafften Karten (Inhalts-IDs) – mit ihnen erscheint oben die
+   * Fortschrittsleiste: ein Strich je Karte, gefüllt in der Farbe ihrer
+   * Art, sobald sie geschafft ist. So sieht man beim Wischen, was noch
+   * fehlt – wie die Striche über einer Story.
+   */
+  doneItemIds?: ReadonlySet<string> | null
+  /** Das kleine Wappen rechts neben der Leiste – es wächst mit jeder geschafften Karte. */
+  crest?: ReactNode
 }) {
   const rootRef = useRef<HTMLDivElement>(null)
   const containerRef = useRef<HTMLDivElement>(null)
@@ -187,6 +198,21 @@ export function ImpulseFeedScreen({
    * Gesetzt wird das im Scroll-Handler, dort entsteht der Stand ohnehin.
    */
   const [celebrated, setCelebrated] = useState(false)
+
+  /* Die Fortschrittsleiste: Wie viele Karten geschafft sind – und ob
+     eben eine dazukam. Dann hüpft das kleine Wappen, und «+1» steigt
+     auf. Gerechnet beim Rendern, nicht in einem Effekt: Der Sprung
+     gehört zu genau dem Bild, in dem die Zahl wächst. */
+  const withBar = doneItemIds !== null && !banner
+  const doneCount = doneItemIds
+    ? cards.filter((card) => card.itemId && doneItemIds.has(card.itemId)).length
+    : 0
+  const [seenDone, setSeenDone] = useState(doneCount)
+  const [bump, setBump] = useState(0)
+  if (doneCount !== seenDone) {
+    if (doneCount > seenDone) setBump((value) => value + 1)
+    setSeenDone(doneCount)
+  }
 
   /* Hinter dem Vollbild soll nichts mitrollen – wie in den Räumen. */
   useEffect(() => lockScroll(), [])
@@ -290,6 +316,51 @@ export function ImpulseFeedScreen({
            hinterlegte Fläche, transparent über dem Farbschleier; erst der
            Hover des Knopfs selbst zeichnet seinen Kreis. */
         <header className="pointer-events-none absolute inset-x-0 top-0 z-20 pt-safe">
+          {withBar && cards.length > 0 && (
+            <div className="flex items-center gap-2.5 px-3 pt-2">
+              <div
+                className="flex min-w-0 flex-1 items-center gap-[3px]"
+                role="progressbar"
+                aria-label="Geschaffte Karten"
+                aria-valuemin={0}
+                aria-valuemax={cards.length}
+                aria-valuenow={doneCount}
+              >
+                {cards.map((card, cardIndex) => {
+                  const done = Boolean(card.itemId && doneItemIds?.has(card.itemId))
+                  return (
+                    <span
+                      key={card.id}
+                      className={cn(
+                        'h-1 min-w-0 flex-1 rounded-full transition-all duration-500',
+                        done
+                          ? IMPULSE_SECTIONS[card.section].bar
+                          : 'bg-slate-500/25 dark:bg-white/15',
+                        cardIndex === index && 'scale-y-[1.8] opacity-100',
+                        cardIndex !== index && !done && 'opacity-80',
+                      )}
+                    />
+                  )
+                })}
+              </div>
+              {crest && (
+                <span className="relative shrink-0">
+                  <span key={bump} className={cn('block', bump > 0 && 'animate-imp-bump')}>
+                    {crest}
+                  </span>
+                  {bump > 0 && (
+                    <span
+                      key={`plus-${bump}`}
+                      aria-hidden
+                      className="animate-imp-float absolute -top-1 -left-5 text-xs font-bold text-amber-500 dark:text-amber-300"
+                    >
+                      +1
+                    </span>
+                  )}
+                </span>
+              )}
+            </div>
+          )}
           <div className="flex items-center px-3 py-2">
             <span className="pointer-events-auto">
               <AppMenuButton />
@@ -323,6 +394,7 @@ export function ImpulseFeedScreen({
               index={cardIndex}
               total={cards.length}
               flush={Boolean(banner)}
+              withBar={withBar}
               active={cardIndex === index}
               stage={cardIndex === index ? stage : 0}
               onDeepening={onDeepening ? () => onDeepening(card) : undefined}
@@ -343,7 +415,12 @@ export function ImpulseFeedScreen({
                   IMPULSE_SECTIONS.ziel.wash,
                 )}
               />
-              <CardPane theme={IMPULSE_SECTIONS.ziel} label="Geschafft" flush={Boolean(banner)}>
+              <CardPane
+                theme={IMPULSE_SECTIONS.ziel}
+                label="Geschafft"
+                flush={Boolean(banner)}
+                withBar={withBar}
+              >
                 {/* Der eine Überschwung des Bereichs – einmal pro Besuch,
                     wenn die Karte zum ersten Mal ins Bild rollt. */}
                 <div className={cn(celebrated && 'animate-imp-pop')}>{finale}</div>
@@ -376,6 +453,7 @@ function FeedCard({
   index,
   total,
   flush = false,
+  withBar = false,
   active,
   stage,
   onDeepening,
@@ -385,6 +463,8 @@ function FeedCard({
   total: number
   /** Vorschau-Modus mit Leiste: kein Menüknopf, dem die Karte Platz liesse. */
   flush?: boolean
+  /** Über dem Feed steht die Fortschrittsleiste – die Kopfzeile rückt darunter. */
+  withBar?: boolean
   /** Steht diese Karte im Bild? */
   active: boolean
   /** Beim Bild (0) oder beim Text (1)? */
@@ -478,13 +558,21 @@ function FeedCard({
               label={theme.label}
               counter={`${index + 1}/${total}`}
               flush={flush}
+              withBar={withBar}
               over={over}
+              arrow
             >
               {card.node}
             </CardPane>
           </div>
           <div className="h-full w-full shrink-0 snap-start snap-always">
-            <CardPane theme={theme} label={`${theme.label} · Vertiefung`} flush={flush} over={over}>
+            <CardPane
+              theme={theme}
+              label={`${theme.label} · Vertiefung`}
+              flush={flush}
+              withBar={withBar}
+              over={over}
+            >
               {card.deepening}
             </CardPane>
           </div>
@@ -495,6 +583,7 @@ function FeedCard({
           label={theme.label}
           counter={`${index + 1}/${total}`}
           flush={flush}
+          withBar={withBar}
           over={over}
         >
           {card.node}
@@ -535,7 +624,12 @@ function FeedCard({
               {/* Die Vertiefung deckt das Video zu, solange sie im Bild
                   steht – Text auf laufenden Bildern liest niemand. */}
               <div aria-hidden className="absolute inset-0 bg-white dark:bg-slate-950" />
-              <CardPane theme={theme} label={`${theme.label} · Vertiefung`} flush={flush}>
+              <CardPane
+                theme={theme}
+                label={`${theme.label} · Vertiefung`}
+                flush={flush}
+                withBar={withBar}
+              >
                 {card.deepening}
               </CardPane>
             </div>
@@ -622,7 +716,9 @@ function CardPane({
   label,
   counter,
   flush = false,
+  withBar = false,
   over = false,
+  arrow = false,
   children,
 }: {
   theme: ImpulseSection
@@ -630,8 +726,15 @@ function CardPane({
   counter?: string
   /** Unter einer Vorschau-Leiste: ohne Notch-Luft und ohne Menüknopf-Platz. */
   flush?: boolean
+  /** Unter der Fortschrittsleiste: Die Bereichszeile rückt neben den tiefer stehenden Menüknopf. */
+  withBar?: boolean
   /** Liegt die Seite über einem Bild oder Video? */
   over?: boolean
+  /**
+   * Steht am Rand der Pfeil «Vertiefen»? Dann bekommt der Inhalt am
+   * Telefon seitlich Luft, damit der Pfeil keinen Text verdeckt.
+   */
+  arrow?: boolean
   children: ReactNode
 }) {
   return (
@@ -643,7 +746,8 @@ function CardPane({
     >
       <p
         className={cn(
-          'mt-2.5 flex shrink-0 items-center gap-1.5 text-xs font-medium',
+          'flex shrink-0 items-center gap-1.5 text-xs font-medium',
+          withBar ? 'mt-[2.625rem]' : 'mt-2.5',
           !flush && 'ps-11',
           over && 'ps-0',
           theme.text,
@@ -678,7 +782,13 @@ function CardPane({
       {/* `m-auto` statt `justify-center`: zentriert, solange die Karte
           Luft hat – und rollt sauber, sobald der Inhalt höher ist. Über
           einem Bild sitzt der Text unten: Oben soll das Bild bleiben. */}
-      <div className={cn('mx-auto w-full max-w-xl py-4', over ? 'mt-auto' : 'my-auto')}>
+      <div
+        className={cn(
+          'mx-auto w-full max-w-xl py-4',
+          over ? 'mt-auto' : 'my-auto',
+          arrow && 'px-7 sm:px-0',
+        )}
+      >
         {children}
       </div>
     </div>

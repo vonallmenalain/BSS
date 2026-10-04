@@ -70,6 +70,11 @@ export function ImpulseSubmitCard({
           editor.input.kind === 'quiz' || editor.input.kind === 'bilderraetsel'
             ? editor.input.quiz
             : null,
+        poll: editor.input.kind === 'umfrage' ? editor.input.poll : null,
+        puzzle:
+          editor.input.kind === 'puzzle'
+            ? { text: editor.input.puzzleText, explanation: editor.input.puzzleExplanation }
+            : null,
         image: editor.input.imageUrl.trim() ? { url: editor.input.imageUrl } : null,
         videoUrl: editor.input.videoUrl,
       })

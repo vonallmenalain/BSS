@@ -1,4 +1,4 @@
-import { ContributorLine, SourceLink } from '@/components/impulse/ImpulseCards'
+import { CardEmoji, ContributorLine, SourceLink } from '@/components/impulse/ImpulseCards'
 import { ImpulseCardActions } from '@/components/impulse/ImpulseCardActions'
 import type { ImpulseItem, ImpulseProgress } from '@/lib/types'
 
@@ -27,7 +27,8 @@ export function ImpulseFeedCard({
 }) {
   return (
     <section className="px-1 text-center">
-      <h2 className="text-xl leading-snug font-semibold text-balance">{item.title}</h2>
+      <CardEmoji item={item} centered />
+      <h2 className="text-2xl leading-snug font-bold text-balance">{item.title}</h2>
       {item.body && (
         <p className="mt-3 text-sm whitespace-pre-line text-slate-600 dark:text-slate-300">
           {item.body}

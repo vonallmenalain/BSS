@@ -10,7 +10,20 @@ import {
 import { IMPULSE_SECTIONS } from '@/lib/impulseSections'
 import { Modal } from '@/components/ui/Modal'
 import { ImpulseRing } from '@/components/impulse/ImpulseRing'
-import type { ImpulseAnswer, ImpulseProgress } from '@/lib/types'
+import { ImpulseCrestEmblem } from '@/components/impulse/ImpulseCrest'
+import type { ImpulseCrestStars } from '@/lib/impulse'
+import type { ImpulseAnswer, ImpulseCrest, ImpulseProgress } from '@/lib/types'
+
+/** Ein Wappen der Sammlung – eine Woche, wie weit sie gekommen ist. */
+export interface ImpulseCrestRecord {
+  week: string
+  crest: ImpulseCrest
+  title: string
+  done: number
+  total: number
+  complete: boolean
+  stars: ImpulseCrestStars
+}
 
 /*
  * «Mein Fortschritt» – die Statistik-Ansicht des Bereichs «Anti Doom».
@@ -40,6 +53,7 @@ export function ImpulseStats({
   commentsCount,
   favoritesCount,
   milestones,
+  crests = [],
 }: {
   todayKey: string
   streak: { current: number; best: number }
@@ -52,7 +66,12 @@ export function ImpulseStats({
   favoritesCount: number
   /** Die Meilensteine der laufenden Woche – berechnet von der Seite. */
   milestones: ImpulseWeekMilestone[]
+  /** Die Wappen aller Wochen mit Karten – die laufende zuerst. */
+  crests?: ImpulseCrestRecord[]
 }) {
+  const [openCrest, setOpenCrest] = useState<string | null>(null)
+  const shownCrest = crests.find((entry) => entry.week === openCrest) ?? null
+  const crestsDone = crests.filter((entry) => entry.complete).length
   /* Offen bleibt die **Kennung**, nicht der Meilenstein selbst: Er wird
      bei jedem Rendern neu gerechnet, und so steht im Fenster immer der
      frische Stand – auch wenn nebenher ein Haken dazukommt. */
@@ -140,6 +159,77 @@ export function ImpulseStats({
         </div>
       </section>
 
+      {/* Die Wappen-Sammlung: jede Woche ein Wappen – vollendet oder auf
+          dem Weg dorthin. Ein Tipp zeigt es gross. */}
+      {crests.length > 0 && (
+        <section>
+          <h2 className="mt-6 mb-2 flex items-baseline gap-2 text-sm font-semibold text-slate-500 dark:text-slate-400">
+            Meine Wappen
+            <span className="font-normal">
+              {crestsDone} von {crests.length} vollendet
+            </span>
+          </h2>
+          <div className="grid grid-cols-3 gap-3 sm:grid-cols-4">
+            {crests.map((entry) => (
+              <button
+                key={entry.week}
+                type="button"
+                onClick={() => setOpenCrest(entry.week)}
+                aria-haspopup="dialog"
+                className="card flex flex-col items-center gap-1.5 p-3 text-center transition hover:-translate-y-0.5 hover:shadow-md active:scale-[0.98]"
+              >
+                <ImpulseCrestEmblem
+                  crest={entry.crest}
+                  week={entry.week}
+                  done={entry.done}
+                  total={entry.total}
+                  size={56}
+                  showMotto={false}
+                />
+                <span className="text-[11px] leading-tight font-medium text-balance">
+                  {entry.week === todayKey ? 'Diese Woche' : formatWeekRange(entry.week)}
+                </span>
+                <span
+                  className={cn(
+                    'text-[10px]',
+                    entry.complete
+                      ? 'font-medium text-amber-600 dark:text-amber-300'
+                      : 'text-slate-500 dark:text-slate-400',
+                  )}
+                >
+                  {entry.complete ? 'vollendet' : `${entry.done}/${entry.total}`}
+                </span>
+              </button>
+            ))}
+          </div>
+          <Modal
+            open={shownCrest !== null}
+            onClose={() => setOpenCrest(null)}
+            title={shownCrest ? shownCrest.title : ''}
+            size="sm"
+          >
+            {shownCrest && (
+              <div className="flex flex-col items-center text-center">
+                <ImpulseCrestEmblem
+                  crest={shownCrest.crest}
+                  week={shownCrest.week}
+                  done={shownCrest.done}
+                  total={shownCrest.total}
+                  stars={shownCrest.stars}
+                  size={180}
+                />
+                <p className="mt-3 text-sm text-slate-600 dark:text-slate-300">
+                  {formatWeekRange(shownCrest.week)} ·{' '}
+                  {shownCrest.complete
+                    ? 'vollendet'
+                    : `${shownCrest.done} von ${shownCrest.total} Karten geschafft`}
+                </p>
+              </div>
+            )}
+          </Modal>
+        </section>
+      )}
+
       {/* Die Meilensteine der Woche – erreicht oder unterwegs, nie «versäumt».
           Jede Karte lässt sich antippen; das Fenster darunter erzählt, wie
           der Meilenstein zustande kommt und was noch fehlt. */}
@@ -212,8 +302,8 @@ export function ImpulseStats({
           <StatTile value={challengeDays} label="Tagesziele geschafft" sub={fullWeeks > 0 ? `${fullWeeks} volle ${fullWeeks === 1 ? 'Woche' : 'Wochen'}` : undefined} />
           <StatTile
             value={answers.length}
-            label="Quizfragen beantwortet"
-            sub={quizCorrect > 0 ? `${quizCorrect} richtig` : undefined}
+            label="Fragen, Umfragen und Puzzles"
+            sub={quizCorrect > 0 ? `${quizCorrect} richtig gelöst` : undefined}
           />
           <StatTile value={commentsCount} label="Beiträge zur Frage" />
           <StatTile value={amens} label="Amen gegeben" />

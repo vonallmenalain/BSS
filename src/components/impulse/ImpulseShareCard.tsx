@@ -3,7 +3,7 @@ import { Check, HeartHandshake } from 'lucide-react'
 import { useAuth } from '@/contexts/AuthContext'
 import { useToast } from '@/contexts/ToastContext'
 import { cn } from '@/lib/utils'
-import { ContributorLine, SourceLink } from '@/components/impulse/ImpulseCards'
+import { CardEmoji, ContributorLine, SourceLink } from '@/components/impulse/ImpulseCards'
 import { ImpulseCardActions } from '@/components/impulse/ImpulseCardActions'
 import { setImpulseWeekShare } from '@/services/impulse'
 import type { ImpulseItem, ImpulseProgress } from '@/lib/types'
@@ -76,8 +76,13 @@ export function ImpulseShareCard({
           Teilen
         </p>
       )}
+      <CardEmoji item={item} />
       <h2
-        className={plain ? 'text-lg font-semibold text-balance' : 'mt-2 text-lg font-semibold text-balance'}
+        className={
+          plain
+            ? 'text-xl leading-snug font-semibold text-balance'
+            : 'mt-2 text-lg font-semibold text-balance'
+        }
       >
         {item.title}
       </h2>

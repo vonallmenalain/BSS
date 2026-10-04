@@ -3321,16 +3321,25 @@ export interface CalendarFeed extends WithId {
  * Was ein Inhalt ist.
  *
  * Alle Arten sind wochenweise geplant. Die **Feed-Karten** des Vollbilds
- * sind das Wochenthema, die Quizfrage, das Bilderrätsel, die Frage der
- * Woche, der Feed und die Teilen-Aufgabe. Das **Wochenziel** und
- * die **Tages-Challenge** sind Aufgaben neben dem Feed – das eine für die
- * ganze Woche, das andere Tag für Tag abhakbar. Abgehakt wird per
- * Selbstauskunft, und der Stand liegt am eigenen Fortschrittsdokument
- * (`ImpulseProgress`), nicht am Inhalt.
+ * sind das Wochenthema, die Umfrage, die Quizfrage, das Vers-Puzzle, das
+ * Bilderrätsel, das Video, die Frage der Woche, der Feed und die
+ * Teilen-Aufgabe. Das **Wochenziel** und die **Tages-Challenge** sind
+ * Aufgaben neben dem Feed – das eine für die ganze Woche, das andere Tag
+ * für Tag abhakbar. Abgehakt wird per Selbstauskunft, und der Stand liegt
+ * am eigenen Fortschrittsdokument (`ImpulseProgress`), nicht am Inhalt.
+ *
+ * Die **Umfrage** und das **Vers-Puzzle** kamen mit dem Neustart nach dem
+ * Leitfaden «Für eine starke Jugend» (Oktober 2026) dazu: Die Umfrage
+ * zeigt das Ergebnis des Kollegiums erst nach der eigenen Stimme, das
+ * Puzzle lässt einen Vers aus Wörtern zusammensetzen. Beide schreiben in
+ * dieselbe Sammlung wie das Quiz (`impulseAnswers`) – eine Stimme bzw.
+ * ein Versuch pro Person, erzwungen durch die Dokument-ID.
  */
 export type ImpulseKind =
   | 'impuls'
+  | 'umfrage'
   | 'quiz'
+  | 'puzzle'
   | 'bilderraetsel'
   | 'video'
   | 'wochenziel'
@@ -3341,7 +3350,9 @@ export type ImpulseKind =
 
 export const IMPULSE_KIND_LABELS: Record<ImpulseKind, string> = {
   impuls: 'Wochenthema',
+  umfrage: 'Umfrage',
   quiz: 'Quizfrage',
+  puzzle: 'Vers-Puzzle',
   bilderraetsel: 'Bilderrätsel',
   video: 'Video',
   wochenziel: 'Wochenziel',
@@ -3377,6 +3388,132 @@ export interface ImpulseQuiz {
   answerText: string
   /** Der Lernmoment: zwei, drei Sätze, warum die Antwort stimmt. */
   explanation: string
+}
+
+/**
+ * Wie eine Umfrage beantwortet wird.
+ *
+ * `choice` ist die klassische Umfrage – und das «Was würdest du tun?»:
+ * zwei bis sechs Möglichkeiten, keine davon richtig. `scale` ist die
+ * Skala: ein Wert zwischen zwei Enden («1 = sehr schwer … 10 = ganz
+ * leicht») oder eine Zahl («Wie viele Stunden hast du geschlafen?»).
+ */
+export type ImpulsePollForm = 'choice' | 'scale'
+
+export const IMPULSE_POLL_FORM_LABELS: Record<ImpulsePollForm, string> = {
+  choice: 'Auswahl (Umfrage, «Was würdest du tun?»)',
+  scale: 'Skala (ein Wert zwischen zwei Enden)',
+}
+
+/**
+ * Eine Umfrage – das Ergebnis des Kollegiums erscheint erst nach der
+ * eigenen Stimme, und es erscheint nur als Zahl: Wer was gewählt hat,
+ * zeigt die Karte nicht. Die Stimme selbst liegt in `impulseAnswers`
+ * (`choiceIndex` ist bei der Auswahl die Möglichkeit, bei der Skala der
+ * Wert); eine Stimme pro Person, wie ein Quizversuch.
+ */
+export interface ImpulsePoll {
+  form: ImpulsePollForm
+  /** Bei `choice`: die Möglichkeiten in der angezeigten Reihenfolge (2–6). */
+  options: string[]
+  /** Bei `scale`: die beiden Enden – ganze Zahlen, höchstens 20 Schritte. */
+  min: number
+  max: number
+  /** Bei `scale`: was die Enden heissen – «sehr schwer», «ganz leicht». */
+  minLabel: string
+  maxLabel: string
+  /** Bei `scale`: die Einheit hinter dem Wert – «Std.», «Tage»; leer heisst keine. */
+  unit: string
+  /**
+   * Was nach der Stimme dazukommt – ein Gedanke aus den Schriften oder
+   * dem Wegweiser. Bei der Umfrage gibt es kein Richtig oder Falsch;
+   * hier steht, was man daraus mitnehmen kann.
+   */
+  explanation: string
+}
+
+/**
+ * Ein Vers-Puzzle: Der Vers steht in `text` in der richtigen
+ * Reihenfolge, die Teile durch « / » getrennt («die Worte / von Christus
+ * / werden euch …»). Ohne Trennzeichen ist jedes Wort ein Teil. Die
+ * Karte mischt die Teile, und wer sie in die richtige Reihenfolge
+ * tippt, hat den Vers gebaut – ein Versuch, wie beim Quiz.
+ */
+export interface ImpulsePuzzle {
+  text: string
+  /** Der Lernmoment nach dem Versuch. */
+  explanation: string
+}
+
+/**
+ * Das Zeichen in der Mitte des Wochen-Wappens – es erscheint erst, wenn
+ * alle Karten der Woche geschafft sind. Die Namen sind deutsch, damit
+ * die Redaktion sie im Formular versteht; welches Icon dahinter steht,
+ * sagt `components/impulse/ImpulseCrest`.
+ */
+export type ImpulseCrestSymbol =
+  | 'laeufer'
+  | 'schild'
+  | 'schwert'
+  | 'schluessel'
+  | 'buch'
+  | 'kompass'
+  | 'banner'
+  | 'flamme'
+  | 'berg'
+  | 'herz'
+  | 'krone'
+  | 'anker'
+  | 'stern'
+  | 'sonne'
+  | 'baum'
+  | 'tempel'
+
+export const IMPULSE_CREST_SYMBOL_LABELS: Record<ImpulseCrestSymbol, string> = {
+  laeufer: 'Fussspuren (laufen und nicht ermüden)',
+  schild: 'Schild',
+  schwert: 'Schwert',
+  schluessel: 'Schlüssel',
+  buch: 'Offenes Buch',
+  kompass: 'Kompass',
+  banner: 'Banner',
+  flamme: 'Flamme',
+  berg: 'Berg',
+  herz: 'Herz',
+  krone: 'Krone',
+  anker: 'Anker',
+  stern: 'Stern',
+  sonne: 'Sonne',
+  baum: 'Baum',
+  tempel: 'Tempel',
+}
+
+/** Die Farbwelt des Wappens – je Woche eine. */
+export type ImpulseCrestPalette =
+  'smaragd' | 'saphir' | 'feuer' | 'amethyst' | 'gold' | 'ozean' | 'rubin' | 'wald'
+
+export const IMPULSE_CREST_PALETTE_LABELS: Record<ImpulseCrestPalette, string> = {
+  smaragd: 'Smaragd (grün)',
+  saphir: 'Saphir (blau)',
+  feuer: 'Feuer (orange)',
+  amethyst: 'Amethyst (violett)',
+  gold: 'Gold',
+  ozean: 'Ozean (türkis)',
+  rubin: 'Rubin (rot)',
+  wald: 'Wald (dunkelgrün)',
+}
+
+/**
+ * Das Wochen-Wappen – es baut sich mit jeder geschafften Karte auf und
+ * steht erst ganz da, wenn alles geschafft ist. Gespeichert wird nur,
+ * wie es aussieht (am Wochenthema); wie weit es ist, rechnet
+ * `impulseCrestSteps` in `lib/impulse` aus dem eigenen Fortschritt.
+ */
+export interface ImpulseCrest {
+  symbol: ImpulseCrestSymbol
+  palette: ImpulseCrestPalette
+  /** Der Spruch auf dem Band unter dem Wappen – kurz, höchstens vier Wörter. */
+  motto: string
 }
 
 /**
@@ -3483,14 +3620,39 @@ export interface ImpulseItem extends WithId {
    */
   deepeningSource?: ImpulseSource | null
   /**
-   * Platz innerhalb der Art und Woche – für Arten mit mehreren Karten
-   * (Feed, Quizfrage, Bilderrätsel).
+   * Der Platz der Karte im Feed der Woche.
    *
    * Der Feed ist redaktionell und endlich: Die Reihenfolge legt die
-   * Redaktion, kein Algorithmus. Fehlt das Feld, kommt die Karte ans Ende.
+   * Redaktion, kein Algorithmus. Seit dem Neustart nach dem Leitfaden
+   * gilt der Platz **über alle Arten hinweg** – eine Umfrage, dann eine
+   * Feed-Karte, dann ein Quiz: Der Wechsel macht den Feed lebendig
+   * (`deckOrder` in `lib/impulse`). Das Wochenthema steht trotzdem immer
+   * vorn und die Teilen-Aufgabe hinten. Fehlt das Feld, kommt die Karte
+   * ans Ende.
    */
   order?: number
   quiz?: ImpulseQuiz | null
+  /** Die Umfrage – bei der Art `umfrage`. */
+  poll?: ImpulsePoll | null
+  /** Das Vers-Puzzle – bei der Art `puzzle`. */
+  puzzle?: ImpulsePuzzle | null
+  /**
+   * Ein grosses Emoji über dem Titel – im Vollbild das erste, was ins
+   * Auge springt. Ohne Bild aus der Mediathek trotzdem ein Blickfang.
+   */
+  emoji?: string | null
+  /**
+   * Die kleine Zeile über dem Titel des Wochenthemas – meist das
+   * Monatsthema des Leitfadens («Dein Körper ist heilig»).
+   */
+  kicker?: string | null
+  /**
+   * Die Lektion am Sonntag, auf die die Woche vorbereitet – beim
+   * Wochenthema. Das Dashboard zeigt sie samt Countdown bis Sonntag.
+   */
+  lesson?: ImpulseSource | null
+  /** Wie das Wochen-Wappen aussieht – beim Wochenthema. */
+  crest?: ImpulseCrest | null
   /** Das Bild der Karte – jede Art darf eines tragen. */
   image?: ImpulseImage | null
   /**
@@ -3571,6 +3733,10 @@ export interface ImpulseSubmissionCard {
   /** Zwei Wische statt einem: der Text über dem Video. */
   videoTextPage?: boolean
   quiz: ImpulseQuiz | null
+  /** Umfrage, Vers-Puzzle und Emoji – fehlen bei Einreichungen von vor dem Neustart. */
+  poll?: ImpulsePoll | null
+  puzzle?: ImpulsePuzzle | null
+  emoji?: string
 }
 
 export interface ImpulseSubmission extends WithId {
@@ -3590,7 +3756,8 @@ export interface ImpulseSubmission extends WithId {
 }
 
 /**
- * Eine Antwort auf eine Quizfrage.
+ * Eine Antwort auf eine Quizfrage – oder die Stimme einer Umfrage, der
+ * Versuch eines Vers-Puzzles.
  *
  * Die Dokument-ID ist `{itemId}_{uid}` – eine Antwort pro Person und
  * Frage, erzwungen durch die ID selbst und geprüft in den Zugriffsregeln;
@@ -3603,9 +3770,12 @@ export interface ImpulseAnswer extends WithId {
   itemId: string
   uid: string
   firstName: string
-  /** Bei `choice`: der gewählte Index. */
+  /**
+   * Bei `choice`: der gewählte Index. Bei der Umfrage mit Skala: der
+   * gewählte Wert.
+   */
   choiceIndex?: number | null
-  /** Bei `text`: die eingetippte Antwort. */
+  /** Bei `text`: die eingetippte Antwort. Beim Puzzle: der gebaute Satz. */
   text?: string
   /**
    * Richtig beantwortet? Bei der Suchfrage `null` – sie wird nicht
@@ -3659,6 +3829,13 @@ export interface ImpulseWeekProgress {
    */
   cards?: string[]
   deepened?: string[]
+  /**
+   * Der Tag, an dem das Wochen-Wappen zum ersten Mal ganz dastand –
+   * «2026-10-08». Daran hängt der Stern «Bereit für Sonntag»: vor dem
+   * Sonntag vollendet. Ob das Wappen ganz ist, wird beim Lesen
+   * gerechnet; hier steht nur, wann es das erste Mal so weit war.
+   */
+  crest?: string
 }
 
 /**

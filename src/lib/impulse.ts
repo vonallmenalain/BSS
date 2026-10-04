@@ -1,10 +1,19 @@
-import { addDays, format, getISOWeek, getISOWeekYear, startOfISOWeek } from 'date-fns'
+import {
+  addDays,
+  differenceInCalendarDays,
+  format,
+  getISOWeek,
+  getISOWeekYear,
+  startOfISOWeek,
+} from 'date-fns'
 import { formatDayMonth, formatDayMonthYear, formatDayShort } from './dates.ts'
 import type {
   ImpulseAnswer,
   ImpulseItem,
   ImpulseKind,
+  ImpulsePoll,
   ImpulseProgress,
+  ImpulsePuzzle,
   ImpulseQuiz,
   ImpulseSource,
 } from './types.ts'
@@ -82,22 +91,38 @@ export function upcomingWeekKeys(from: Date | number, count: number): string[] {
 }
 
 /**
- * Die Lesereihenfolge innerhalb einer Woche – zuerst der Impuls, dann die
- * beiden Aufgaben neben dem Feed (Ziel und Tages-Challenge), dann die
- * übrigen Feed-Karten: Quiz, Bilderrätsel, Frage, Feed – und zum Schluss
- * die Teilen-Aufgabe, die Einladung zum Weitererzählen.
+ * Die Ordnung der Arten innerhalb einer Woche – zuerst der Impuls, dann
+ * die beiden Aufgaben neben dem Feed (Ziel und Tages-Challenge), dann die
+ * übrigen Feed-Karten: Umfrage, Quiz, Puzzle, Bilderrätsel, Video, Frage,
+ * Feed – und zum Schluss die Teilen-Aufgabe, die Einladung zum
+ * Weitererzählen. So gruppiert die Redaktion ihre Sparten; der Feed
+ * selbst folgt dem Platz, den die Redaktion jeder Karte gibt
+ * (`deckOrder`).
  */
 export const IMPULSE_KIND_ORDER: ImpulseKind[] = [
   'impuls',
   'wochenziel',
   'tageschallenge',
+  'umfrage',
   'quiz',
+  'puzzle',
   'bilderraetsel',
   'video',
   'frage',
   'feed',
   'teilen',
 ]
+
+/**
+ * Die beiden Aufgaben neben dem Feed – sie sind Kacheln, keine Karten.
+ * Alles andere liegt als Karte im Vollbild-Feed.
+ */
+const TASK_KINDS: readonly ImpulseKind[] = ['wochenziel', 'tageschallenge']
+
+/** Liegt ein Inhalt dieser Art als Karte im Feed (und nicht als Kachel daneben)? */
+export function isFeedCardKind(kind: ImpulseKind): boolean {
+  return !TASK_KINDS.includes(kind)
+}
 
 export function impulseKindRank(kind: ImpulseKind): number {
   const index = IMPULSE_KIND_ORDER.indexOf(kind)
@@ -128,18 +153,43 @@ export function allowsMultiple(kind: ImpulseKind): boolean {
 }
 
 /**
- * Der Platz, an dem eine neue Karte dieser Art einsteigt: hinter der
- * letzten. Gezählt wird über die vergebenen Plätze **und** die Zahl der
- * Karten – so rutscht auch dann nichts nach vorn, wenn eine Karte noch
- * ohne Platz dasteht oder die Reihe eine Lücke hat.
+ * Der Platz, an dem eine neue Karte einsteigt: hinter der letzten.
+ * Karten des Feeds teilen sich **eine** Reihe über alle Arten hinweg –
+ * eine neue Umfrage landet also am Ende des Feeds, nicht hinter der
+ * letzten Umfrage. Gezählt wird über die vergebenen Plätze **und** die
+ * Zahl der Karten – so rutscht auch dann nichts nach vorn, wenn eine
+ * Karte noch ohne Platz dasteht oder die Reihe eine Lücke hat.
  */
 export function nextImpulseOrder(
   items: Pick<ImpulseItem, 'week' | 'kind' | 'order'>[],
   week: string,
   kind: ImpulseKind,
 ): number {
-  const same = items.filter((item) => item.week === week && item.kind === kind)
+  const card = isFeedCardKind(kind)
+  const same = items.filter(
+    (item) => item.week === week && (card ? isFeedCardKind(item.kind) : item.kind === kind),
+  )
   return same.reduce((max, item) => Math.max(max, item.order ?? 0), same.length) + 1
+}
+
+/**
+ * Die Reihenfolge des Feeds – so, wie die Redaktion sie gelegt hat.
+ *
+ * Das Wochenthema steht immer vorn (es ist die Tür in die Woche), die
+ * Teilen-Aufgabe immer hinten (erst lesen, dann weitergeben). Dazwischen
+ * zählt der Platz (`order`) **über alle Arten hinweg**: Umfrage, Fakt,
+ * Quiz, Geschichte, Puzzle – der Wechsel hält wach, ein Block aus zehn
+ * gleichen Karten nicht. Ohne Platz kommt eine Karte ans Ende, und bei
+ * gleichem Platz entscheidet die gewohnte Ordnung der Arten.
+ */
+export function deckOrder<T extends Pick<ImpulseItem, 'kind' | 'order'>>(items: T[]): T[] {
+  const band = (kind: ImpulseKind) => (kind === 'impuls' ? 0 : kind === 'teilen' ? 2 : 1)
+  return [...items].sort(
+    (a, b) =>
+      band(a.kind) - band(b.kind) ||
+      (a.order ?? Number.MAX_SAFE_INTEGER) - (b.order ?? Number.MAX_SAFE_INTEGER) ||
+      impulseKindRank(a.kind) - impulseKindRank(b.kind),
+  )
 }
 
 /**
@@ -188,24 +238,62 @@ export function impulseAnswerId(itemId: string, uid: string): string {
  * Wochenziel, Tages-Challenge und die Teilen-Aufgabe sind Aufgaben, kein
  * Material – «Bete jeden Abend» hat keine Fundstelle; eine Quelle darf
  * trotzdem dranstehen und wird dann gezeigt.
+ *
+ * Die Umfrage braucht ihre Möglichkeiten bzw. eine brauchbare Skala, aber
+ * keine Quelle – sie fragt nach Meinungen, nicht nach Fakten. Das
+ * Vers-Puzzle dagegen ist ein Vers: Es braucht mindestens drei Teile und
+ * seine Fundstelle.
  */
 export function readyProblems(item: {
   kind: ImpulseKind
   title: string
   source?: ImpulseSource | null
   quiz?: ImpulseQuiz | null
+  poll?: ImpulsePoll | null
+  puzzle?: ImpulsePuzzle | null
   image?: { url: string } | null
   videoUrl?: string | null
 }): string[] {
   const problems: string[] = []
   if (!item.title.trim())
     problems.push(
-      item.kind === 'quiz' || item.kind === 'frage' || item.kind === 'bilderraetsel'
+      item.kind === 'quiz' ||
+        item.kind === 'frage' ||
+        item.kind === 'bilderraetsel' ||
+        item.kind === 'umfrage'
         ? 'Die Frage fehlt.'
         : 'Der Titel fehlt.',
     )
-  const sourceRequired = item.kind === 'impuls' || item.kind === 'quiz'
+  const sourceRequired = item.kind === 'impuls' || item.kind === 'quiz' || item.kind === 'puzzle'
   if (sourceRequired && !item.source?.label.trim()) problems.push('Die Quelle fehlt.')
+
+  if (item.kind === 'umfrage') {
+    const poll = item.poll
+    if (!poll) {
+      problems.push('Die Umfrage fehlt.')
+    } else if (poll.form === 'choice') {
+      const options = poll.options.map((option) => option.trim())
+      if (options.filter(Boolean).length < 2)
+        problems.push('Es braucht mindestens zwei Möglichkeiten.')
+      else if (options.some((option) => !option)) problems.push('Eine Möglichkeit ist noch leer.')
+    } else if (
+      !Number.isInteger(poll.min) ||
+      !Number.isInteger(poll.max) ||
+      poll.max <= poll.min ||
+      poll.max - poll.min > POLL_SCALE_MAX_STEPS
+    ) {
+      problems.push(
+        `Die Skala braucht zwei ganze Zahlen, höchstens ${POLL_SCALE_MAX_STEPS} Schritte auseinander.`,
+      )
+    }
+    return problems
+  }
+
+  if (item.kind === 'puzzle') {
+    if (puzzlePieces(item.puzzle?.text ?? '').length < 3)
+      problems.push('Das Puzzle braucht mindestens drei Teile.')
+    return problems
+  }
 
   if (item.kind === 'bilderraetsel' && !item.image?.url.trim()) problems.push('Das Bild fehlt.')
 
@@ -232,6 +320,119 @@ export function readyProblems(item: {
   }
 
   return problems
+}
+
+/* ------------------------------------------------------------------ */
+/* Umfrage und Vers-Puzzle                                             */
+/* ------------------------------------------------------------------ */
+
+/**
+ * Wie weit eine Skala höchstens reicht – zwanzig Schritte passen noch
+ * als Balken auf ein Telefon, mehr wären ein Strich neben dem anderen.
+ */
+export const POLL_SCALE_MAX_STEPS = 20
+
+/** Ein Balken des Ergebnisses: was gewählt werden konnte, wie oft – und welcher Anteil. */
+export interface ImpulsePollBar {
+  /** Bei der Auswahl der Index der Möglichkeit, bei der Skala der Wert. */
+  value: number
+  label: string
+  count: number
+  /** Anteil an allen Stimmen, 0 bis 1. */
+  share: number
+}
+
+export interface ImpulsePollResult {
+  total: number
+  bars: ImpulsePollBar[]
+  /** Bei der Skala: der Schnitt aller Stimmen, eine Stelle nach dem Komma – sonst `null`. */
+  average: number | null
+}
+
+/**
+ * Das Ergebnis einer Umfrage – nur Zahlen, keine Namen.
+ *
+ * Gezählt wird, was in den Rahmen passt: Eine Stimme ausserhalb der
+ * Möglichkeiten (weil die Redaktion die Umfrage nachträglich gekürzt
+ * hat) fällt still heraus, statt einen Balken über hundert Prozent zu
+ * schieben.
+ */
+export function pollResults(
+  poll: ImpulsePoll,
+  answers: Pick<ImpulseAnswer, 'choiceIndex'>[],
+): ImpulsePollResult {
+  const choices =
+    poll.form === 'choice'
+      ? poll.options.map((label, index) => ({ value: index, label }))
+      : Array.from({ length: Math.max(poll.max - poll.min + 1, 0) }, (_, index) => ({
+          value: poll.min + index,
+          label: String(poll.min + index),
+        }))
+  const counts = new Map(choices.map((choice) => [choice.value, 0]))
+  let sum = 0
+  for (const answer of answers) {
+    const value = answer.choiceIndex
+    if (typeof value !== 'number' || !counts.has(value)) continue
+    counts.set(value, (counts.get(value) ?? 0) + 1)
+    sum += value
+  }
+  const total = [...counts.values()].reduce((all, count) => all + count, 0)
+  return {
+    total,
+    bars: choices.map((choice) => {
+      const count = counts.get(choice.value) ?? 0
+      return { ...choice, count, share: total > 0 ? count / total : 0 }
+    }),
+    average: poll.form === 'scale' && total > 0 ? Math.round((sum / total) * 10) / 10 : null,
+  }
+}
+
+/**
+ * Die Teile eines Vers-Puzzles: durch « / » getrennt – oder, ohne
+ * Trennzeichen, Wort für Wort. Leerräume innerhalb eines Teils werden
+ * zu einem einzigen, leere Teile fallen weg.
+ */
+export function puzzlePieces(text: string): string[] {
+  const trimmed = text.trim()
+  if (!trimmed) return []
+  const parts = trimmed.includes('/') ? trimmed.split('/') : trimmed.split(/\s+/)
+  return parts.map((part) => part.trim().replace(/\s+/g, ' ')).filter(Boolean)
+}
+
+/** Der fertige Satz – die Teile in der richtigen Reihenfolge. */
+export function puzzleSolution(text: string): string {
+  return puzzlePieces(text).join(' ')
+}
+
+/**
+ * Stimmt der gebaute Satz? Verglichen wird ohne Gross- und
+ * Kleinschreibung, Satzzeichen und doppelte Leerräume – zwei gleiche
+ * Wörter («und», «und») sind austauschbar, und das ist gewollt: Es zählt
+ * der Satz, nicht welcher Knopf.
+ */
+export function puzzleSolved(text: string, attempt: string): boolean {
+  const normalize = (value: string) =>
+    value
+      .toLocaleLowerCase('de-CH')
+      .replace(/[.,;:!?«»"„“”'’()–—-]/g, ' ')
+      .replace(/\s+/g, ' ')
+      .trim()
+  const solution = normalize(puzzleSolution(text))
+  return solution.length > 0 && normalize(attempt) === solution
+}
+
+/**
+ * Die Teile gemischt – für jede Karte immer gleich (der Schlüssel ist
+ * die Karte), damit der Stapel beim Wiederkommen so liegt wie verlassen.
+ * Läge er zufällig schon richtig, wird er um eins weitergedreht: Ein
+ * Puzzle, das gelöst beginnt, wäre keines.
+ */
+export function shuffledPuzzlePieces(text: string, seed: string): string[] {
+  const pieces = puzzlePieces(text)
+  if (pieces.length < 2) return pieces
+  const mixed = seededShuffle(pieces, seed)
+  if (mixed.join('\u0000') !== pieces.join('\u0000')) return mixed
+  return [...mixed.slice(1), mixed[0]]
 }
 
 /* ------------------------------------------------------------------ */
@@ -568,4 +769,161 @@ export function seededShuffle<T>(list: readonly T[], seed: string): T[] {
     ;[result[i], result[j]] = [result[j], result[i]]
   }
   return result
+}
+
+/* ------------------------------------------------------------------ */
+/* Das Wochen-Wappen                                                   */
+/* ------------------------------------------------------------------ */
+
+/*
+ * Das Wappen der Woche baut sich mit jeder geschafften Karte auf – und
+ * steht erst ganz da, wenn **alle** Karten des Feeds geschafft sind.
+ * Geschafft heisst «vollständig»: angeschaut, und wo es etwas zu tun
+ * gibt, auch getan – die Frage beantwortet, die Umfrage abgestimmt, das
+ * Puzzle gebaut, die Teilen-Aufgabe abgehakt –, und eine Vertiefung, wo
+ * es eine gibt, ebenfalls angeschaut. Das Wochenziel und die
+ * Tages-Challenge liegen nicht im Feed; sie bringen die Sterne über dem
+ * Wappen (`impulseCrestStars`).
+ *
+ * Gerechnet wird beim Lesen, wie bei Serie und Meilensteinen: Was fehlt,
+ * lässt sich jederzeit aufzählen – und für die Gruppenleiste genauso für
+ * alle anderen, aus denselben Daten.
+ */
+
+/** Arten, bei denen Anschauen nicht genügt – es braucht eine Antwort. */
+const ANSWER_KINDS: readonly ImpulseKind[] = ['quiz', 'bilderraetsel', 'umfrage', 'puzzle', 'frage']
+
+export interface ImpulseCrestStep {
+  itemId: string
+  kind: ImpulseKind
+  title: string
+  done: boolean
+  /** Was an dieser Karte noch fehlt – «anschauen», «antworten», «Vertiefung», «abhaken». */
+  missing: string[]
+}
+
+export function impulseCrestSteps(input: {
+  /** Die Karten des Feeds, in Feed-Reihenfolge. */
+  cards: readonly Pick<ImpulseItem, 'id' | 'kind' | 'title' | 'deepening'>[]
+  /** Angeschaute Karten und Vertiefungen der Woche (Inhalts-IDs). */
+  seen: ReadonlySet<string>
+  deepened: ReadonlySet<string>
+  /** Beantwortete Karten: Quiz, Umfrage, Puzzle, Frage der Woche (Inhalts-IDs). */
+  answered: ReadonlySet<string>
+  /** Die Teilen-Aufgabe der Woche abgehakt. */
+  shared: boolean
+}): ImpulseCrestStep[] {
+  return input.cards.map((card) => {
+    const missing: string[] = []
+    if (card.kind === 'teilen') {
+      if (!input.shared) missing.push('abhaken')
+    } else if (ANSWER_KINDS.includes(card.kind)) {
+      if (!input.answered.has(card.id))
+        missing.push(
+          card.kind === 'umfrage' ? 'abstimmen' : card.kind === 'puzzle' ? 'lösen' : 'antworten',
+        )
+    } else if (!input.seen.has(card.id)) {
+      missing.push('anschauen')
+    }
+    if (card.deepening && !input.deepened.has(card.id)) missing.push('Vertiefung')
+    return {
+      itemId: card.id,
+      kind: card.kind,
+      title: card.title,
+      done: missing.length === 0,
+      missing,
+    }
+  })
+}
+
+/** Steht das Wappen ganz da? Eine Woche ohne Karten hat keines. */
+export function crestComplete(steps: readonly Pick<ImpulseCrestStep, 'done'>[]): boolean {
+  return steps.length > 0 && steps.every((step) => step.done)
+}
+
+/**
+ * Die drei Sterne über dem Wappen – je einer für:
+ *
+ * - **Bereit für Sonntag:** das Wappen vor dem Sonntag vollendet. Genau
+ *   das ist der Sinn der Woche – vorbereitet in die Klasse kommen.
+ * - **Wochenziel** geschafft.
+ * - **Tages-Challenge** an allen sieben Tagen.
+ *
+ * `null` heisst: Diesen Stern gibt es diese Woche nicht (kein Wochenziel,
+ * keine Tages-Challenge) – die Anzeige lässt ihn dann weg, statt einen
+ * Stern zu zeigen, den niemand holen kann.
+ */
+export interface ImpulseCrestStars {
+  sunday: boolean
+  goal: boolean | null
+  challenge: boolean | null
+}
+
+export function impulseCrestStars(input: {
+  week: string
+  complete: boolean
+  /** Der Tag, an dem das Wappen zuerst ganz dastand («2026-10-08») – oder `null`. */
+  completedOn: string | null
+  goal: boolean | null
+  /** Abgehakte Tage der Tages-Challenge – oder `null`, wenn es keine gibt. */
+  challengeDays: number | null
+}): ImpulseCrestStars {
+  const end = weekEnd(input.week)
+  const sunday = end ? format(end, 'yyyy-MM-dd') : null
+  return {
+    sunday:
+      input.complete && sunday !== null && input.completedOn !== null && input.completedOn < sunday,
+    goal: input.goal,
+    challenge: input.challengeDays === null ? null : input.challengeDays >= 7,
+  }
+}
+
+/**
+ * Wer sein Wappen diese Woche schon vollendet hat – für die
+ * Gruppenleiste. Gerechnet für jede Person aus ihrem Fortschritt und
+ * ihren Antworten, mit denselben Regeln wie für einen selbst. Nur wer
+ * es geschafft hat, steht da; wer noch unterwegs ist, wird nicht genannt.
+ */
+export function crestCompleters(input: {
+  week: string
+  cards: readonly Pick<ImpulseItem, 'id' | 'kind' | 'title' | 'deepening'>[]
+  progressDocs: readonly ImpulseProgress[]
+  /** Antworten (Quiz, Umfrage, Puzzle) und Beiträge (Frage der Woche) aller. */
+  answers: readonly Pick<ImpulseAnswer, 'itemId' | 'uid'>[]
+}): { uid: string; firstName: string }[] {
+  if (input.cards.length === 0) return []
+  const cardIds = new Set(input.cards.map((card) => card.id))
+  const answeredBy = new Map<string, Set<string>>()
+  for (const answer of input.answers) {
+    if (!cardIds.has(answer.itemId)) continue
+    const set = answeredBy.get(answer.uid) ?? new Set<string>()
+    set.add(answer.itemId)
+    answeredBy.set(answer.uid, set)
+  }
+  return input.progressDocs
+    .filter((progress) => {
+      const state = progress.weeks?.[input.week]
+      if (!state) return false
+      return crestComplete(
+        impulseCrestSteps({
+          cards: input.cards,
+          seen: new Set(state.cards ?? []),
+          deepened: new Set(state.deepened ?? []),
+          answered: answeredBy.get(progress.uid) ?? new Set(),
+          shared: state.share === true,
+        }),
+      )
+    })
+    .map((progress) => ({ uid: progress.uid, firstName: progress.firstName || '–' }))
+    .sort((a, b) => a.firstName.localeCompare(b.firstName, 'de'))
+}
+
+/**
+ * Wie viele Tage es noch bis zum Sonntag der Woche sind – 6 am Montag,
+ * 0 am Sonntag selbst; `null` für einen unbrauchbaren Schlüssel. Eine
+ * vergangene Woche ergibt eine negative Zahl.
+ */
+export function daysUntilSunday(week: string, today: Date | number): number | null {
+  const end = weekEnd(week)
+  return end ? differenceInCalendarDays(end, today) : null
 }

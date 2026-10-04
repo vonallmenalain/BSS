@@ -13,6 +13,14 @@ Erinnerung ist inzwischen Teil der allgemeinen Benachrichtigungen der
 App – einstellbar im Benutzermenü, mit frei wählbarem Takt. Das Konzept
 ist damit vollständig umgesetzt. Der Bereich heisst «Impuls».
 
+**Neustart im Oktober 2026** ([Abschnitt 13](#13-neustart-nach-dem-leitfaden-oktober-2026)):
+Jede Woche bereitet jetzt auf die Lektion am Sonntag nach dem Leitfaden
+«Für eine starke Jugend» vor. Dazu kamen die Umfrage (mit Skala), das
+Vers-Puzzle, «Fakt oder Mythos?», die Verteilung des Kollegiums nach der
+eigenen Antwort, das Wochen-Wappen mit seinen Sternen, die
+Fortschrittsleiste im Feed – und ein Themenpaket mit sieben Wochen, das
+die bisherigen Inhalte auf Wunsch ersetzt.
+
 ---
 
 ## 1. Ausgangslage und Ziel
@@ -801,3 +809,144 @@ Am 12. August 2026 besprochen und festgelegt:
    Datenmodell).
 9. **Konferenzwochen:** Ja zur Generalkonferenz – als Themenwoche in der
    Woche **nach** der Konferenz. Keine Spezialwoche zur Pfahlkonferenz.
+
+---
+
+## 13. Neustart nach dem Leitfaden (Oktober 2026)
+
+Am 4. Oktober 2026 hat die Redaktion entschieden, die bisherigen Inhalte
+zu ersetzen und neu zu starten – mit einem klaren roten Faden und mehr
+Spiel. Das Hauptziel bleibt, wird aber schärfer: **Die Jugendlichen –
+im Kollegium junge Männer – sollen sich die Woche über auf das Thema
+vorbereiten, das am Sonntag in der Klasse drankommt, und dabei Spass
+haben.**
+
+### 13.1 Der rote Faden: die Lektion am Sonntag
+
+Die Woche läuft von Montag bis Sonntag – und am Sonntag steht im
+Kollegium genau das Thema an, um das sich die Woche dreht. Grundlage ist
+das Heft «Für eine starke Jugend» (Oktober 2026, mit den Lektionen für
+Oktober und November) und der Wegweiser «Für eine starke Jugend»:
+
+| Woche              | Sonntag | Lektion                                           |
+| ------------------ | ------- | ------------------------------------------------- |
+| 5.–11. Okt.        | 11. Okt | Erfahre mehr über das Wort der Weisheit           |
+| 12.–18. Okt.       | 18. Okt | Erfahre mehr über das Gesetz der Keuschheit       |
+| 19.–25. Okt.       | 25. Okt | Ein Sohn Gottes werden … (Helamans junge Krieger) |
+| 26. Okt. – 1. Nov. | 1. Nov  | Kapitel «Die Wahrheit befreit dich» (Fastsonntag) |
+| 2.–8. Nov.         | 8. Nov  | Erfahre mehr über das Schriftstudium              |
+| 9.–15. Nov.        | 15. Nov | Erfahre mehr über die Suche nach Wahrheit         |
+| 16.–22. Nov.       | 22. Nov | Ein Sohn Gottes werden … (Hauptmann Moroni)       |
+
+Das Wochenthema trägt dafür drei neue Felder: die **Zeile über dem
+Titel** (meist das Monatsthema), die **Lektion am Sonntag** samt Link –
+das Dashboard zeigt sie mit einem Countdown («4 Tage bis Sonntag») – und
+das **Wappen** der Woche (siehe 13.3). Die Inhalte dürfen vom Thema
+abweichen (die Woche nach der Generalkonferenz fragt etwa nach dem Satz,
+der hängen geblieben ist), der Faden bleibt die Lektion.
+
+### 13.2 Mehr Spiel: neue Kartenarten und der Wechsel im Feed
+
+- **Umfrage** (`umfrage`) – zwei Formen: die **Auswahl** (auch als «Was
+  würdest du tun?» mit einer echten Situation aus dem Alltag) und die
+  **Skala** (ein Regler zwischen zwei Enden: «Wie leicht fällt es dir,
+  Nein zu sagen?», «Wie viele Stunden hast du geschlafen?»). **Das
+  Ergebnis des Kollegiums erscheint erst nach der eigenen Stimme** – als
+  Balken mit Prozenten bzw. als Säulen mit dem Schnitt –, und es bleibt
+  bei Zahlen: Wer was gewählt hat, zeigt die Karte nie. So lässt sich
+  auch dort ehrlich antworten, wo es persönlich wird. Nach der Stimme
+  folgt ein Gedanke aus den Schriften oder dem Wegweiser.
+- **Vers-Puzzle** (`puzzle`) – die Teile eines Verses liegen gemischt
+  da, wer sie in der richtigen Reihenfolge antippt, baut den Vers. Ein
+  Versuch, wie beim Quiz; danach steht der Vers richtig da, und die
+  Karte sagt, wie viele aus dem Kollegium ihn auf Anhieb gebaut haben.
+  Die Redaktion schreibt den Vers mit « / » zwischen den Teilen.
+- **Fakt oder Mythos?** – eine Quizfrage mit genau zwei Möglichkeiten
+  erscheint als zwei grosse Kacheln nebeneinander.
+- **Die Verteilung nach der Antwort** – Quiz und Bilderrätsel zeigen
+  nach der eigenen Antwort, wie das Kollegium geantwortet hat («4 von 5
+  lagen richtig»).
+- **Ein Emoji je Karte** – ein grosser Blickfang über dem Titel, auch
+  ohne Bild aus der Mediathek.
+
+Beide neuen Arten schreiben in dieselbe Sammlung wie das Quiz
+(`impulseAnswers`, eine Stimme bzw. ein Versuch je Person, erzwungen
+durch die Dokument-ID) – **die Zugriffsregeln bleiben unverändert**.
+
+**Der Platz im Feed gilt jetzt über alle Arten hinweg** (`deckOrder`):
+Umfrage, Fakt, Quiz, Selbsteinschätzung, Geschichte, Puzzle – der
+Wechsel hält wach, ein Block aus zehn gleichen Karten nicht. Das
+Wochenthema steht weiterhin immer vorn, die Teilen-Aufgabe hinten. Eine
+neue Karte reiht sich am Ende des ganzen Feeds ein.
+
+### 13.3 Das Wochen-Wappen
+
+Das Erfolgserlebnis der Woche: ein **Wappen**, das sich mit jeder
+geschafften Karte aufbaut – ein Schild im Rautenmuster («gerautet», wie
+es in der Heraldik heisst), dessen Felder sich färben wie ein
+Kirchenfenster, während sich der Rand als Fortschrittslinie füllt. Erst
+wenn **alles** geschafft ist, erscheint das Zeichen der Woche in der
+Mitte (vorher ein Fragezeichen), der Rand wird golden, Strahlen gehen
+auf, und das Band mit dem Spruch entrollt sich («Laufen und nicht
+ermüden», «Treu zu allen Zeiten»). Ein Vollbild feiert den Moment –
+einmal je Woche und Gerät.
+
+- **Geschafft heisst vollständig** (`impulseCrestSteps`): angeschaut –
+  und wo es etwas zu tun gibt, auch getan (Quiz beantwortet, Umfrage
+  abgestimmt, Puzzle gebaut, Frage beantwortet, Teilen abgehakt), dazu
+  die Vertiefung, wo es eine gibt. Angeschaut zählt eine Karte erst,
+  wenn sie einen Moment im Bild stand (gut eine Sekunde) – wer quer
+  durch den Feed springt, rauscht an den Karten dazwischen vorbei.
+- **Drei Sterne** über dem Wappen (`impulseCrestStars`): «Vor Sonntag
+  vollendet» (der Sinn der Woche – vorbereitet in die Klasse), das
+  Wochenziel und die Tages-Challenge an allen sieben Tagen. Gibt es
+  diese Woche kein Ziel oder keine Challenge, fehlt der Stern, statt
+  unerreichbar dazustehen. Den Tag der Vollendung vermerkt das eigene
+  Fortschrittsdokument (`weeks[woche].crest`).
+- **Im Feed** steht oben eine Fortschrittsleiste wie über einer Story:
+  ein Strich je Karte, gefüllt in der Farbe ihrer Art, sobald sie
+  geschafft ist – daneben das kleine Wappen, das bei jeder geschafften
+  Karte kurz hüpft («+1»). Die Abschlusskarte zeigt das Wappen gross und
+  zählt auf, was noch fehlt; ein Tipp führt direkt zur Karte.
+- **Im Dashboard** steht die **Mission der Woche** im Zentrum: Countdown
+  bis Sonntag, Thema, Wappen, Stand und «Weiter swipen» – das genau bei
+  der ersten Karte einsteigt, an der noch etwas fehlt.
+- **Miteinander:** Wer sein Wappen schon hat, steht in der Gruppenleiste
+  («Wappen vollendet: …») – genannt wird, wer es geschafft hat, nie, wer
+  noch unterwegs ist (Leitgedanke 4).
+- **Die Sammlung:** «Mein Fortschritt» zeigt das Wappen jeder Woche –
+  vollendet oder auf dem Weg dorthin.
+
+Zeichen, Farbe und Spruch wählt die Redaktion am Wochenthema; ohne
+Angabe leitet sich das Wappen aus der Woche ab (`defaultCrest`).
+
+### 13.4 Das Themenpaket und der Neustart in der Redaktion
+
+Das frühere Startpaket (vier Wochen aus den Schriften) ist durch ein
+**Themenpaket** ersetzt (`lib/impulsePack`): sieben Wochen, je
+Wochenthema mit Lektion und Wappen, Wochenziel, Tages-Challenge und
+zwölf bis sechzehn Karten im Wechsel – Umfragen, eine Skala, ein «Was
+würdest du tun?», Quizfragen, «Fakt oder Mythos?», ein Vers-Puzzle,
+offene Fragen, Feed-Karten und die Teilen-Aufgabe. Alles stammt aus
+offiziellem Material der Kirche (Heft und Wegweiser «Für eine starke
+Jugend», heilige Schriften, Evangeliumsthemen, Kirchengeschichte);
+wörtlich zitiert wird nur, wo der Wortlaut gesichert ist, sonst steht
+der Gedanke in eigenen Worten mit Fundstelle.
+
+In der Redaktion bietet der Kasten «Themenpaket» zwei Wege:
+
+- **«Bisheriges löschen und neu starten»** – solange vom Paket noch
+  nichts da ist: Alle bisherigen Karten werden gelöscht, mitsamt ihren
+  Antworten und Beiträgen, danach wird das Paket eingespielt. Fortschritt,
+  Serien, Gemerktes und die Einreichungen der Mitmach-Ecke bleiben
+  stehen. Der Schritt lässt sich nicht rückgängig machen und verlangt
+  eine Bestätigung und eine Verbindung.
+- **«Einspielen»** bzw. **«Nur einspielen»** – ohne zu löschen.
+  Vergangene Wochen bleiben weg, und dank fester IDs (`fsy26-w41-…`)
+  holt ein späterer Lauf nur nach, was fehlt.
+
+`tests/impulse-pack.test.ts` hält fest, dass jeder Inhalt die Prüfung
+des Formulars besteht, dass jede Woche mit dem Sonntag ihrer Lektion
+endet, dass nie zwei gleiche Arten aufeinander folgen und dass die IDs
+fest und eindeutig sind.
+

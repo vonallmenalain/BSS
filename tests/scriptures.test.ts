@@ -7,15 +7,15 @@ import {
   countScriptureLinkCandidates,
   scriptureLink,
 } from '../src/lib/scriptures.ts'
-import { planStarterItems } from '../src/lib/impulseStarter.ts'
+import { PACK_WEEKS, packWeekPlans } from '../src/lib/impulsePack.ts'
 
 /*
  * Die Schriftstellen-Links: Aus «1 Nephi 3:7» soll genau die Adresse
- * werden, die auch das Startpaket von Hand hineingeschrieben hat. Die
- * Stichproben decken jede Schriftensammlung und jede Schreibform ab;
- * der Rundlauf am Ende prüft die Funktion gegen **alle** Quellen-Links
- * des Startpakets – baut jemand die Adressen der Kirche je anders,
- * schlägt genau ein Ort Alarm.
+ * werden, die die Evangeliumsbibliothek erwartet. Die Stichproben decken
+ * jede Schriftensammlung und jede Schreibform ab; der Rundlauf am Ende
+ * prüft, dass jede Schriftstelle des Themenpakets ihren Link bekommt –
+ * das Paket baut seine Schriften-Links mit genau dieser Funktion, und
+ * eine Angabe, die sie nicht versteht, stünde dort ohne Link.
  */
 
 const BASE = 'https://www.churchofjesuschrist.org/study/scriptures'
@@ -72,19 +72,35 @@ test('scriptureLink: was keine Schriftstelle ist, bekommt keinen Vorschlag', () 
   assert.equal(scriptureLink('Alma 32:9–7'), null)
 })
 
-test('scriptureLink: deckt jeden Schriften-Link des Startpakets', () => {
+test('scriptureLink: jede Schriftstelle des Themenpakets bekommt ihren Link', () => {
   let covered = 0
-  for (const plan of planStarterItems([], '2026-W33')) {
+  for (const plan of PACK_WEEKS.flatMap(packWeekPlans)) {
     const source = plan.source
-    if (!source?.url.startsWith(BASE)) continue
-    const derived = scriptureLink(source.label)
-    if (derived === null) continue
-    assert.equal(derived, source.url, `${plan.id}: «${source.label}»`)
+    if (!source) continue
+    // Jede Quelle des Pakets trägt einen Link – auch die ausserhalb der Schriften.
+    assert.ok(
+      source.url.startsWith('https://www.churchofjesuschrist.org/'),
+      `${plan.id}: «${source.label}» ohne Link`,
+    )
+    if (!source.url.startsWith(BASE)) continue
+    assert.equal(scriptureLink(source.label), source.url, `${plan.id}: «${source.label}»`)
     covered += 1
   }
-  // Nicht nur «nichts widerspricht»: Der Grossteil der Links muss auch
-  // wirklich hergeleitet werden – sonst ist die Bücher-Tafel löchrig.
-  assert.ok(covered >= 25, `nur ${covered} Schriften-Links hergeleitet`)
+  // Das Paket lebt von den Schriften – der Grossteil seiner Quellen sind Verse.
+  assert.ok(covered >= 40, `nur ${covered} Schriften-Links im Paket`)
+})
+
+test('scriptureLink: die reinen Schriftstellen-Zeilen der Vertiefungen werden verlinkt', () => {
+  /* Die Vertiefungen des Pakets nennen ihre Stellen auf eigenen Zeilen
+     («Alma 53:14–22») – die Anzeige verlinkt solche Zeilen von selbst.
+     Jede Zeile, die mit einem Buchnamen und einer Zahl endet, muss
+     deshalb erkannt werden. */
+  const lines = PACK_WEEKS.flatMap(packWeekPlans)
+    .flatMap((plan) => (plan.deepening ?? '').split('\n'))
+    .map((line) => line.trim())
+    .filter((line) => /^[1-3]?\s?[A-ZÄÖÜ][\wäöüÄÖÜ –-]+ \d+(:\d+(–\d+)?)?$/.test(line))
+  assert.ok(lines.length >= 20, `nur ${lines.length} Stellen-Zeilen gefunden`)
+  for (const line of lines) assert.ok(scriptureLink(line), `«${line}» wird nicht verlinkt`)
 })
 
 test('churchSearchLink: die Suche der Kirche, vorbefüllt', () => {
