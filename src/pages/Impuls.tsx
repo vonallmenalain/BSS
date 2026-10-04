@@ -3,6 +3,7 @@ import { Link, Navigate, useLocation, useNavigate, useParams } from 'react-route
 import {
   ArrowUpToLine,
   Bookmark,
+  CalendarClock,
   Check,
   ChevronRight,
   History,
@@ -11,6 +12,8 @@ import {
   Pencil,
   RotateCcw,
   Send,
+  Shield,
+  Star,
   type LucideIcon,
 } from 'lucide-react'
 import { useAuth } from '@/contexts/AuthContext'
@@ -37,6 +40,11 @@ import {
   WocheDeckCard,
 } from '@/components/impulse/ImpulseCards'
 import { ChallengeCard, GoalCard, GroupCard } from '@/components/impulse/ImpulseProgressCards'
+import { ImpulsePollCard } from '@/components/impulse/ImpulsePollCard'
+import { ImpulsePuzzleCard } from '@/components/impulse/ImpulsePuzzleCard'
+import { ImpulseCrestEmblem } from '@/components/impulse/ImpulseCrest'
+import { CREST_PALETTES, defaultCrest } from '@/lib/impulseCrest'
+import { ImpulseCrestCelebration } from '@/components/impulse/ImpulseCrestCelebration'
 import { ImpulseQuestionCard } from '@/components/impulse/ImpulseQuestionCard'
 import { ImpulseShareCard } from '@/components/impulse/ImpulseShareCard'
 import { ImpulseVideoPlayer } from '@/components/impulse/ImpulseVideoPlayer'
@@ -53,24 +61,33 @@ import { ImpulseScreen, type ScreenOrigin } from '@/components/impulse/ImpulseSc
 import { ImpulseStats } from '@/components/impulse/ImpulseStats'
 import {
   markImpulseCardSeen,
+  markImpulseCrest,
   markImpulseDeepeningSeen,
   markImpulseFeedDone,
   setImpulseLastSeenWeek,
 } from '@/services/impulse'
 import {
   computeStreak,
+  crestCompleters,
+  crestComplete,
+  daysUntilSunday,
+  deckOrder,
   formatWeekRange,
   impulseAnswerId,
+  impulseCrestStars,
+  impulseCrestSteps,
   impulseWeekKey,
   impulseWeekMilestones,
   itemsForWeek,
   participatedWeeks,
+  puzzleSolution,
   seededShuffle,
   visibleImpulseItems,
   weekParticipants,
+  type ImpulseCrestStars,
+  type ImpulseCrestStep,
 } from '@/lib/impulse'
 import {
-  IMPULSE_DECK_KINDS,
   IMPULSE_KIND_SECTION,
   IMPULSE_SECTIONS,
   isDeckKind,
@@ -78,6 +95,7 @@ import {
   isImpulseSection,
   isRoomSection,
   sectionForItem,
+  type ImpulseDeckKind,
   type ImpulseRoomSectionKey,
   type ImpulseSectionKey,
 } from '@/lib/impulseSections'
@@ -87,9 +105,17 @@ import {
   IMPULSE_KIND_LABELS,
   type ImpulseAnswer,
   type ImpulseComment,
+  type ImpulseCrest,
   type ImpulseItem,
   type ImpulseWeekProgress,
 } from '@/lib/types'
+
+/**
+ * Wie lange eine Karte im Bild stehen muss, bis sie als angeschaut zählt.
+ * Wer quer durch den Feed springt (Menü, «Weiter swipen»), rauscht an den
+ * Karten dazwischen vorbei – die sollen nicht als geschafft gelten.
+ */
+const SEEN_DWELL_MS = 900
 
 /**
  * «Anti Doom» – der geistige Bereich für die AP's (docs/KONZEPT-IMPULS.md;
@@ -135,6 +161,8 @@ interface ImpulsLocationState {
   feedWeek?: string
   /** … und dort gleich bei dieser Karte einsteigen. */
   feedItem?: string
+  /** Eine bestimmte Karte des Feeds (`art-inhaltsId`) – der Weg von «Weiter swipen». */
+  cardId?: string
 }
 
 export function Impuls() {
@@ -204,6 +232,17 @@ export function Impuls() {
   const weekOfItem = (itemId: string) => itemsById.get(itemId)?.week ?? null
   const myAnswers = answersState.data.filter((answer) => answer.uid === uid)
   const myComments = commentsState.data.filter((comment) => comment.uid === uid)
+  /* Alle Antworten je Karte – Quiz, Umfrage und Puzzle zeigen nach der
+     eigenen, wie das Kollegium geantwortet hat. */
+  const answersByItem = new Map<string, ImpulseAnswer[]>()
+  for (const answer of answersState.data) {
+    const list = answersByItem.get(answer.itemId) ?? []
+    list.push(answer)
+    answersByItem.set(answer.itemId, list)
+  }
+  const answersOf = (item: ImpulseItem) => answersByItem.get(item.id) ?? []
+  /* Was ich beantwortet habe – Quiz, Umfrage, Puzzle und Frage der Woche. */
+  const myAnswered = new Set([...myAnswers, ...myComments].map((entry) => entry.itemId))
   // Antworten und Beiträge zählen gleichermassen als Beteiligung.
   const participated = participatedWeeks(myProgress, [...myAnswers, ...myComments], weekOfItem)
   const streak = computeStreak(participated, todayKey)
@@ -259,6 +298,34 @@ export function Impuls() {
     })),
   })
   const milestonesEarned = milestones.filter((milestone) => milestone.earned).length
+
+  /*
+   * Das Wochen-Wappen: Jede geschaffte Karte färbt Felder, erst mit der
+   * letzten steht es ganz da (`impulseCrestSteps`). Geschafft heisst
+   * vollständig – angeschaut, beantwortet, die Vertiefung gesehen. Wie es
+   * aussieht, sagt das Wochenthema; ohne Angabe leitet es sich aus der
+   * Woche ab.
+   */
+  const themeItem = thisWeekAll.find((item) => item.kind === 'impuls') ?? null
+  const crestCards = deckOrder(deckItemsThisWeek)
+  const crestSteps = impulseCrestSteps({
+    cards: crestCards,
+    seen: seenCardIds,
+    deepened: seenDeepeningIds,
+    answered: myAnswered,
+    shared: myWeek(todayKey).share === true,
+  })
+  const crestDone = crestSteps.filter((step) => step.done).length
+  const crestIsComplete = crestComplete(crestSteps)
+  const crestDesign: ImpulseCrest = themeItem?.crest ?? defaultCrest(todayKey)
+  const doneItemIds = new Set(crestSteps.filter((step) => step.done).map((step) => step.itemId))
+  /* Wer aus dem Kollegium sein Wappen schon vollendet hat – ohne mich. */
+  const crestNames = crestCompleters({
+    week: todayKey,
+    cards: crestCards,
+    progressDocs: progressState.data,
+    answers: [...answersState.data, ...commentsState.data],
+  })
 
   /* Die Favoritensammlung – in der Reihenfolge des Merkens. */
   const favoriteItems = (myProgress?.favorites ?? [])
@@ -371,6 +438,26 @@ export function Impuls() {
           <QuizCard
             item={item}
             answer={answerFor(item)}
+            answers={answersOf(item)}
+            plain
+            progressDocs={progressState.data}
+          />
+        )
+      case 'umfrage':
+        return (
+          <ImpulsePollCard
+            item={item}
+            answers={answersOf(item)}
+            plain
+            progressDocs={progressState.data}
+          />
+        )
+      case 'puzzle':
+        return (
+          <ImpulsePuzzleCard
+            item={item}
+            answer={answerFor(item)}
+            answers={answersOf(item)}
             plain
             progressDocs={progressState.data}
           />
@@ -416,6 +503,27 @@ export function Impuls() {
       case 'quiz':
       case 'bilderraetsel':
         return <PastQuiz item={item} answer={answerFor(item)} />
+      case 'umfrage':
+        return (
+          <ImpulsePollCard
+            item={item}
+            answers={answersOf(item)}
+            plain
+            closed
+            progressDocs={progressState.data}
+          />
+        )
+      case 'puzzle':
+        return (
+          <ImpulsePuzzleCard
+            item={item}
+            answer={answerFor(item)}
+            answers={answersOf(item)}
+            plain
+            closed
+            progressDocs={progressState.data}
+          />
+        )
       case 'video':
         return <VideoDeckCard item={item} progressDocs={progressState.data} />
 
@@ -447,23 +555,27 @@ export function Impuls() {
     }
   }
 
-  const deckEntries: ImpulseDeckCard[] = IMPULSE_DECK_KINDS.flatMap((kind) =>
-    deckWeekItems
-      .filter((item) => item.kind === kind)
-      .map((item) => {
-        /* Die Vertiefung einer noch offenen Quiz- oder Rätselkarte
-           bleibt zu – sie könnte die Lösung verraten. Mit der Antwort
-           (und im Rückblick) geht sie auf; der Pfeil «Vertiefen»
-           erscheint dann als kleine Belohnung. */
+  /* Der Feed in der Reihenfolge der Redaktion – über alle Arten hinweg,
+     das Wochenthema vorn, die Teilen-Aufgabe hinten (`deckOrder`). */
+  const deckEntries: ImpulseDeckCard[] = deckOrder(
+    deckWeekItems.filter((item) => isDeckKind(item.kind)),
+  ).map((item) => {
+        /* Die Vertiefung einer noch offenen Quiz-, Rätsel-, Puzzle- oder
+           Umfragekarte bleibt zu – sie könnte die Lösung verraten oder
+           die Stimme lenken. Mit der Antwort (und im Rückblick) geht sie
+           auf; der Pfeil «Vertiefen» erscheint dann als kleine Belohnung. */
         const spoiler =
           viewWeek === todayKey &&
-          (item.kind === 'quiz' || item.kind === 'bilderraetsel') &&
+          (item.kind === 'quiz' ||
+            item.kind === 'bilderraetsel' ||
+            item.kind === 'puzzle' ||
+            item.kind === 'umfrage') &&
           !answerFor(item)
         const { media, mediaOnly } = mediaLayer(item)
         return {
           id: `${item.kind}-${item.id}`,
           itemId: item.id,
-          section: IMPULSE_KIND_SECTION[kind],
+          section: IMPULSE_KIND_SECTION[item.kind as ImpulseDeckKind],
           node: viewWeek === todayKey ? liveNode(item) : pastNode(item),
           /* Bild oder Video füllen den Bildschirm – und machen aus der
              Karte zwei Bühnen: erst die Fläche, dann der Text darüber.
@@ -475,8 +587,7 @@ export function Impuls() {
              Vertiefung erfasst hat; sonst gibt es sie gar nicht. */
           deepening: item.deepening && !spoiler ? <ImpulseDeepeningCard item={item} /> : null,
         }
-      }),
-  )
+      })
   /* Gemischt bleibt gemischt: Der Schlüssel Konto+Woche hält den Feed
      die Woche über in derselben Ordnung (siehe `seededShuffle`) – nur
      das Wochenthema bleibt immer die erste Karte. */
@@ -489,16 +600,19 @@ export function Impuls() {
 
   /* ---------------- Sprünge in den Feed ---------------- */
 
-  /* Der Einstieg über eine Karten-Adresse (`/anti-doom/quiz` – App-Menü oder
-     Lesezeichen): vor dem ersten Bild bestimmt, ohne Anlauf. */
-  const [initialDeckTarget] = useState<ImpulseDeckTarget | null>(() => {
-    if (!isImpulseSection(bereich) || !isDeckSection(bereich)) return null
-    const initial = (location.state ?? null) as ImpulsLocationState | null
-    if (bereich === 'feed' && initial?.feedItem) {
-      return { section: 'feed', cardId: `feed-${initial.feedItem}` }
-    }
-    return { section: bereich }
-  })
+  /* Der Einstieg in den Feed: über eine Karten-Adresse (`/anti-doom/quiz` –
+     App-Menü oder Lesezeichen), aus «Gemerkt» oder über «Weiter swipen»
+     bei der ersten offenen Karte. Der Feed liest das Ziel nur beim
+     Aufgehen – vor dem ersten Bild, ohne Anlauf und ohne an den Karten
+     dazwischen vorbeizurauschen. */
+  const initialDeckTarget: ImpulseDeckTarget | null =
+    !isImpulseSection(bereich) || !isDeckSection(bereich)
+      ? null
+      : state?.cardId
+        ? { section: bereich, cardId: state.cardId }
+        : bereich === 'feed' && state?.feedItem
+          ? { section: 'feed', cardId: `feed-${state.feedItem}` }
+          : { section: bereich }
 
   /* Spätere Sprünge: Jeder Griff ins Menü setzt ein neues Zielobjekt –
      auch derselbe Punkt zweimal hintereinander fährt wieder hin. */
@@ -525,7 +639,9 @@ export function Impuls() {
     }
     setDeckTarget({
       section: bereich,
-      cardId: bereich === 'feed' && navState?.feedItem ? `feed-${navState.feedItem}` : null,
+      cardId:
+        navState?.cardId ??
+        (bereich === 'feed' && navState?.feedItem ? `feed-${navState.feedItem}` : null),
     })
   }, [bereich, location.key, location.state, todayKey])
 
@@ -545,11 +661,31 @@ export function Impuls() {
   const recordedCards = useRef(new Set<string>())
   const recordedDeepenings = useRef(new Set<string>())
   const feedDone = myWeek(todayKey).feed === true
+  /* Angeschaut ist eine Karte erst, wenn sie einen Moment im Bild stand
+     (`SEEN_DWELL_MS`) – der Wecker wird bei jedem Kartenwechsel neu
+     gestellt, und wer weiterwischt, bevor er klingelt, hat nur
+     vorbeigeschaut. */
+  const seenTimer = useRef<number | null>(null)
+  useEffect(
+    () => () => {
+      if (seenTimer.current !== null) window.clearTimeout(seenTimer.current)
+    },
+    [],
+  )
   const onDeckActive = (card: ImpulseDeckCard) => {
     if (uid && !recordedDeckSections.current.has(card.section)) {
       recordedDeckSections.current.add(card.section)
       recordImpulseOpen(uid, card.section)
     }
+    if (seenTimer.current !== null) window.clearTimeout(seenTimer.current)
+    seenTimer.current = window.setTimeout(() => {
+      seenTimer.current = null
+      markDeckCardSeen(card)
+    }, SEEN_DWELL_MS)
+  }
+
+  /** Die Karte stand lange genug im Bild – vermerken, einmal je Besuch. */
+  const markDeckCardSeen = (card: ImpulseDeckCard) => {
     if (!profile || viewWeek !== todayKey) return
 
     const itemId = card.itemId
@@ -602,9 +738,14 @@ export function Impuls() {
   const openSection = (key: ImpulseSectionKey, origin?: ScreenOrigin) =>
     navigate(`/anti-doom/${key}`, { state: origin ? { origin } : undefined })
 
-  /** Der Tipp auf das Wochenthema: der Feed geht auf, bei der ersten Karte. */
-  const openFeed = (origin?: ScreenOrigin) =>
-    navigate('/anti-doom/woche', { state: origin ? { origin } : undefined })
+  /**
+   * Der Feed geht auf – bei der ersten Karte oder, mit `cardId`, genau
+   * dort (der Weg von «Weiter swipen» zur ersten offenen Karte).
+   */
+  const openFeed = (origin?: ScreenOrigin, cardId?: string) =>
+    navigate('/anti-doom/woche', {
+      state: origin || cardId ? { origin, cardId } : undefined,
+    })
 
   /** Von Raum zu Raum – ersetzt den Schritt, Zurück führt zur Übersicht. */
   const switchSection = (key: ImpulseSectionKey) => navigate(`/anti-doom/${key}`, { replace: true })
@@ -665,6 +806,80 @@ export function Impuls() {
   const challengeItem = thisWeekAll.find((item) => item.kind === 'tageschallenge') ?? null
   const challengeDays = Math.min((myWeek(todayKey).days ?? []).length, 7)
 
+  /* -------------- Das Wappen: Sterne, Vermerk und Feier -------------- */
+
+  /*
+   * Der Tag, an dem das Wappen zuerst ganz dastand, wird vermerkt – daran
+   * hängt der Stern «Bereit für Sonntag». Bis der Vermerk zurück ist,
+   * gilt der heutige Tag, damit der Stern nicht einen Augenblick lang
+   * fehlt.
+   */
+  const today = toDateInput(now)
+  const crestCompletedOn = myWeek(todayKey).crest ?? (crestIsComplete ? today : null)
+  const crestStars = impulseCrestStars({
+    week: todayKey,
+    complete: crestIsComplete,
+    completedOn: crestCompletedOn,
+    goal: goalItem ? myWeek(todayKey).goal === true : null,
+    challengeDays: challengeItem ? challengeDays : null,
+  })
+  const crestMarkPending = Boolean(profile) && crestIsComplete && !myWeek(todayKey).crest
+  useEffect(() => {
+    if (!crestMarkPending || !profile) return
+    markImpulseCrest(
+      { uid: profile.id, displayName: profile.displayName },
+      todayKey,
+      toDateInput(new Date()),
+    ).catch((error) => console.error('[impuls] Wappen konnte nicht vermerkt werden:', error))
+  }, [crestMarkPending, profile, todayKey])
+
+  /* Die Feier: einmal je Woche und Gerät, sobald das Wappen ganz dasteht –
+     auch wenn es auf einem anderen Gerät vollendet wurde. */
+  const [celebrated, setCelebrated] = useLocalStorage<string>('bss:impuls:wappen-gefeiert', '')
+  const celebrationTag = `${uid}:${todayKey}`
+  const celebrating = Boolean(uid) && crestIsComplete && celebrated !== celebrationTag
+
+  /* Die erste Karte, an der noch etwas fehlt – dort setzt «Weiter swipen» an. */
+  const firstOpenStep = crestSteps.find((step) => !step.done) ?? null
+  const deckIdOf = (step: Pick<ImpulseCrestStep, 'kind' | 'itemId'>) =>
+    `${step.kind}-${step.itemId}`
+
+  /* Die Sammlung: das Wappen jeder Woche mit Karten – die laufende zuerst. */
+  const crestHistory = [todayKey, ...pastWeeks].flatMap((week) => {
+    const items = itemsForWeek(visible, week)
+    const cards = deckOrder(items.filter((item) => isDeckKind(item.kind)))
+    if (cards.length === 0) return []
+    const state = myWeek(week)
+    const steps = impulseCrestSteps({
+      cards,
+      seen: new Set(state.cards ?? []),
+      deepened: new Set(state.deepened ?? []),
+      answered: myAnswered,
+      shared: state.share === true,
+    })
+    const theme = items.find((item) => item.kind === 'impuls')
+    const complete = crestComplete(steps)
+    return [
+      {
+        week,
+        crest: theme?.crest ?? defaultCrest(week),
+        title: theme?.title ?? formatWeekRange(week),
+        done: steps.filter((step) => step.done).length,
+        total: steps.length,
+        complete,
+        stars: impulseCrestStars({
+          week,
+          complete,
+          completedOn: state.crest ?? null,
+          goal: items.some((item) => item.kind === 'wochenziel') ? state.goal === true : null,
+          challengeDays: items.some((item) => item.kind === 'tageschallenge')
+            ? Math.min((state.days ?? []).length, 7)
+            : null,
+        }),
+      },
+    ]
+  })
+
   /* Welche Räume der Wechsler anbietet – die Kacheln, nicht die Karten. */
   const availableSections: ImpulseSectionKey[] = (
     ['ziel', 'challenge', 'fortschritt', 'gemerkt', 'wochen', 'mitmachen'] as const
@@ -720,6 +935,7 @@ export function Impuls() {
             commentsCount={myComments.length}
             favoritesCount={favoriteItems.length}
             milestones={milestones}
+            crests={crestHistory}
           />
         )
       case 'gemerkt':
@@ -735,6 +951,17 @@ export function Impuls() {
                     case 'quiz':
                     case 'bilderraetsel':
                       return <PastQuiz key={item.id} item={item} answer={answerFor(item)} />
+                    case 'umfrage':
+                      return (
+                        <PastPoll
+                          key={item.id}
+                          item={item}
+                          answers={answersOf(item)}
+                          mine={answerFor(item)}
+                        />
+                      )
+                    case 'puzzle':
+                      return <PastPuzzle key={item.id} item={item} answer={answerFor(item)} />
                     case 'wochenziel':
                       return (
                         <PastTask
@@ -840,10 +1067,40 @@ export function Impuls() {
         {/* Das Wochenthema im Zentrum – gross, ruhig, noch ohne Wischen.
             Erst der Tipp darauf öffnet den Vollbild-Feed. */}
         {deckCards.length > 0 ? (
-          <WochenimpulsHero
-            item={deckWeekItems.find((item) => item.kind === 'impuls') ?? null}
-            onOpen={openFeed}
-          />
+          viewWeek === todayKey ? (
+            <MissionHero
+              item={themeItem}
+              week={todayKey}
+              crest={crestDesign}
+              done={crestDone}
+              total={crestSteps.length}
+              stars={crestStars}
+              daysLeft={daysUntilSunday(todayKey, now)}
+              completers={crestNames
+                .filter((person) => person.uid !== uid)
+                .map((person) => person.firstName)}
+              resumeCardId={firstOpenStep ? deckIdOf(firstOpenStep) : null}
+              onOpen={openFeed}
+            />
+          ) : (
+            (() => {
+              const entry = crestHistory.find((crest) => crest.week === viewWeek)
+              return (
+                <MissionHero
+                  item={deckWeekItems.find((item) => item.kind === 'impuls') ?? null}
+                  week={viewWeek}
+                  crest={entry?.crest ?? defaultCrest(viewWeek)}
+                  done={entry?.done ?? 0}
+                  total={entry?.total ?? deckCards.length}
+                  stars={entry?.stars ?? null}
+                  daysLeft={null}
+                  completers={[]}
+                  resumeCardId={null}
+                  onOpen={openFeed}
+                />
+              )
+            })()
+          )
         ) : (
           <section className="card animate-imp-rise grid place-items-center rounded-2xl border-dashed px-4 py-14 text-center">
             <Inbox className="size-6 text-slate-400" aria-hidden />
@@ -928,7 +1185,7 @@ export function Impuls() {
 
         {!itemsState.loading && (
           <div className="animate-imp-rise mt-3" style={{ animationDelay: '210ms' }}>
-            <GroupCard participants={participants} total={total} />
+            <GroupCard participants={participants} total={total} crestNames={crestNames} />
           </div>
         )}
       </div>
@@ -946,10 +1203,40 @@ export function Impuls() {
           onActive={onDeckActive}
           onDeepening={onDeckDeepening}
           onClose={closeSection}
+          doneItemIds={viewWeek === todayKey ? doneItemIds : null}
+          crest={
+            viewWeek === todayKey ? (
+              <ImpulseCrestEmblem
+                crest={crestDesign}
+                week={todayKey}
+                done={crestDone}
+                total={crestSteps.length}
+                size={18}
+                showMotto={false}
+              />
+            ) : null
+          }
           finale={
             <FeedFinale
               week={viewWeek}
               isCurrent={viewWeek === todayKey}
+              crest={
+                viewWeek === todayKey
+                  ? {
+                      design: crestDesign,
+                      done: crestDone,
+                      total: crestSteps.length,
+                      stars: crestStars,
+                      missing: crestSteps.filter((step) => !step.done),
+                    }
+                  : null
+              }
+              onJump={(step) =>
+                setDeckTarget({
+                  section: IMPULSE_KIND_SECTION[step.kind as ImpulseDeckKind],
+                  cardId: deckIdOf(step),
+                })
+              }
               pastWeeks={pastWeeks.filter((week) => week !== viewWeek)}
               sections={[
                 ...(goalItem ? (['ziel'] as const) : []),
@@ -981,6 +1268,15 @@ export function Impuls() {
         </ImpulseScreen>
       )}
 
+      <ImpulseCrestCelebration
+        open={celebrating}
+        crest={crestDesign}
+        week={todayKey}
+        total={crestSteps.length}
+        stars={crestStars}
+        onClose={() => setCelebrated(celebrationTag)}
+      />
+
       <ImpulseSettingsModal
         open={settingsOpen}
         onClose={closeSettings}
@@ -998,68 +1294,200 @@ export function Impuls() {
 }
 
 /* ------------------------------------------------------------------ */
-/* Das Wochenthema im Zentrum                                          */
+/* Die Mission der Woche                                               */
 /* ------------------------------------------------------------------ */
 
 /**
- * Das Wochenthema als Herzstück des Dashboards: gross im Zentrum – noch
- * ohne Wischen. Der ganze Kasten ist ein Knopf; der Tipp öffnet den
- * Vollbild-Feed bei der ersten Karte, und der Klickpunkt wird zum
- * Ursprung des Übergangs. Fehlt das Wochenthema (aber andere Karten sind
- * da), lädt der Kasten trotzdem in den Feed ein.
+ * Das Herzstück des Dashboards: die Mission der Woche.
+ *
+ * Oben, worauf die Woche zuläuft – die Lektion am Sonntag und wie viele
+ * Tage es noch sind. In der Mitte das Wochen-Wappen, das mit jeder
+ * geschafften Karte wächst, darunter der Stand als Balken. Der grosse
+ * Knopf führt in den Feed: beim ersten Mal an den Anfang, danach
+ * genau zur ersten Karte, an der noch etwas fehlt. Und wer aus dem
+ * Kollegium sein Wappen schon hat, steht klein darunter – Anerkennung,
+ * kein Wettrennen.
+ *
+ * Die Farben bringt das Wappen der Woche mit: Jede Woche fühlt sich ein
+ * wenig anders an.
  */
-function WochenimpulsHero({
+function MissionHero({
   item,
+  week,
+  crest,
+  done,
+  total,
+  stars,
+  daysLeft,
+  completers,
+  resumeCardId,
   onOpen,
 }: {
   item: ImpulseItem | null
-  onOpen: (origin: ScreenOrigin) => void
+  week: string
+  crest: ImpulseCrest
+  done: number
+  total: number
+  stars: ImpulseCrestStars | null
+  /** Tage bis Sonntag – `null` im Rückblick. */
+  daysLeft: number | null
+  /** Vornamen derer, die ihr Wappen schon haben – ohne mich. */
+  completers: string[]
+  /** Die erste Karte, an der noch etwas fehlt – `null`, wenn alles geschafft ist. */
+  resumeCardId: string | null
+  onOpen: (origin: ScreenOrigin, cardId?: string) => void
 }) {
-  const theme = IMPULSE_SECTIONS.woche
+  const colors = CREST_PALETTES[crest.palette] ?? CREST_PALETTES.smaragd
+  const complete = total > 0 && done >= total
+  const share = total > 0 ? Math.min(done / total, 1) : 0
+  const live = daysLeft !== null
+
+  const open = (event: React.MouseEvent<HTMLElement>, cardId?: string) => {
+    const rect = event.currentTarget.getBoundingClientRect()
+    onOpen({ x: rect.left + rect.width / 2, y: rect.top + rect.height / 2 }, cardId)
+  }
+  const resume = (event: React.MouseEvent<HTMLElement>) =>
+    open(event, done > 0 && resumeCardId ? resumeCardId : undefined)
+
   return (
-    <button
-      type="button"
-      onClick={(event) => {
-        const rect = event.currentTarget.getBoundingClientRect()
-        onOpen({ x: rect.left + rect.width / 2, y: rect.top + rect.height / 2 })
-      }}
-      className="card animate-imp-rise group relative w-full overflow-hidden rounded-2xl px-5 py-10 text-center transition hover:-translate-y-0.5 hover:shadow-md active:scale-[0.99] active:shadow-xs sm:px-8 sm:py-12"
-    >
-      {/* Der Farbschleier des Wochenthemas – dieselbe Sprache wie im Feed. */}
-      <span
+    <section className="card animate-imp-rise relative overflow-hidden rounded-3xl text-center">
+      {/* Der Schein der Woche – in den Farben ihres Wappens. */}
+      <div
         aria-hidden
-        className={cn(
-          'pointer-events-none absolute inset-x-0 top-0 h-32 bg-gradient-to-b to-transparent',
-          theme.wash,
-        )}
+        className="pointer-events-none absolute inset-0"
+        style={{
+          background: `radial-gradient(120% 65% at 50% 0%, ${colors.light}59, transparent 62%), radial-gradient(90% 55% at 50% 100%, ${colors.mid}26, transparent 70%)`,
+        }}
       />
-      <span className="relative block">
-        <span className={cn('inline-flex items-center gap-1.5 text-xs font-medium', theme.text)}>
-          <span
-            className={cn('grid size-6 shrink-0 place-items-center rounded-md', theme.iconBox)}
-            aria-hidden
+      <div className="relative px-5 pt-4 pb-6 sm:px-8">
+        <div className="flex items-center justify-between gap-2 text-xs font-medium">
+          <span className="min-w-0 truncate text-slate-600 dark:text-slate-300">
+            {live ? 'Mission der Woche' : 'Rückblick'}
+          </span>
+          {live && daysLeft !== null && daysLeft >= 0 && (
+            <span className="inline-flex shrink-0 items-center gap-1 rounded-full bg-slate-900/[0.06] px-2.5 py-1 dark:bg-white/10">
+              <CalendarClock className="size-3.5" aria-hidden />
+              {daysLeft === 0
+                ? 'Heute ist Sonntag'
+                : daysLeft === 1
+                  ? 'Morgen ist Sonntag'
+                  : `${daysLeft} Tage bis Sonntag`}
+            </span>
+          )}
+        </div>
+
+        {item?.kicker && (
+          <p
+            className="mt-4 text-xs font-semibold tracking-wider uppercase"
+            style={{ color: colors.mid }}
           >
-            <theme.icon className="size-3.5" />
-          </span>
-          Anti Doom Wochenthema
-        </span>
-        <span className="mt-4 block text-3xl leading-tight font-semibold text-balance sm:text-4xl">
-          {item ? item.title : 'Die Karten der Woche'}
-        </span>
-        {item?.body && (
-          <span className="mx-auto mt-3 line-clamp-3 block max-w-md text-sm whitespace-pre-line text-slate-600 dark:text-slate-300">
-            {item.body}
-          </span>
+            {item.kicker}
+          </p>
         )}
-        <span className="mt-6 inline-flex items-center gap-1 rounded-full bg-slate-900/5 px-3.5 py-1.5 text-xs font-medium text-slate-600 transition group-hover:bg-slate-900/10 dark:bg-white/10 dark:text-slate-300 dark:group-hover:bg-white/15">
-          Antippen zum Eintauchen
-          <ChevronRight
-            className="size-3.5 transition-transform group-hover:translate-x-0.5"
-            aria-hidden
+        <h2 className={cn('text-2xl leading-tight font-bold text-balance sm:text-3xl', item?.kicker ? 'mt-1.5' : 'mt-4')}>
+          {item ? item.title : 'Die Karten der Woche'}
+        </h2>
+
+        <button
+          type="button"
+          onClick={resume}
+          className="mt-3 inline-block rounded-2xl transition active:scale-95"
+          aria-label={complete ? 'Wappen ansehen – Feed öffnen' : 'Weiter am Wappen bauen – Feed öffnen'}
+        >
+          <ImpulseCrestEmblem
+            crest={crest}
+            week={week}
+            done={done}
+            total={total}
+            stars={stars}
+            size={168}
           />
-        </span>
-      </span>
-    </button>
+        </button>
+
+        <div className="mx-auto mt-1 max-w-xs">
+          <div className="h-2 overflow-hidden rounded-full bg-slate-900/10 dark:bg-white/10">
+            <div
+              className="imp-meter h-full w-full rounded-full"
+              style={
+                {
+                  background: complete ? '#f59e0b' : colors.mid,
+                  '--imp-share': String(share),
+                } as React.CSSProperties
+              }
+            />
+          </div>
+          <p className="mt-1.5 text-xs text-slate-600 dark:text-slate-300">
+            {complete
+              ? 'Wappen vollendet – stark!'
+              : total === 0
+                ? 'Diese Woche hat noch keine Karten.'
+                : `${done} von ${total} Karten geschafft – jede baut an deinem Wappen.`}
+          </p>
+        </div>
+
+        {stars && (
+          <ul className="mt-3 flex flex-wrap items-center justify-center gap-x-3 gap-y-1 text-[11px] text-slate-500 dark:text-slate-400">
+            <CrestStar earned={stars.sunday} label="Vor Sonntag vollendet" />
+            {stars.goal !== null && <CrestStar earned={stars.goal} label="Wochenziel" />}
+            {stars.challenge !== null && <CrestStar earned={stars.challenge} label="7 Tage Challenge" />}
+          </ul>
+        )}
+
+        <button
+          type="button"
+          onClick={resume}
+          className="mt-5 inline-flex items-center gap-1.5 rounded-full px-7 py-3 text-sm font-semibold text-white shadow-md transition hover:brightness-110 active:scale-[0.97]"
+          style={{ background: complete ? '#d97706' : colors.mid }}
+        >
+          {!live
+            ? 'Feed dieser Woche ansehen'
+            : done === 0
+              ? 'Los geht’s'
+              : complete
+                ? 'Nochmal durchswipen'
+                : 'Weiter swipen'}
+          <ChevronRight className="size-4" aria-hidden />
+        </button>
+
+        {item?.lesson?.label && (
+          <p className="mt-4 text-sm text-slate-600 dark:text-slate-300">
+            <span className="font-semibold">Am Sonntag:</span>{' '}
+            {item.lesson.url ? (
+              <a
+                href={item.lesson.url}
+                target="_blank"
+                rel="noreferrer"
+                className="underline decoration-slate-400/60 underline-offset-2 hover:decoration-current"
+              >
+                {item.lesson.label}
+              </a>
+            ) : (
+              item.lesson.label
+            )}
+          </p>
+        )}
+
+        {completers.length > 0 && (
+          <p className="mt-2 inline-flex items-center gap-1.5 text-xs text-slate-500 dark:text-slate-400">
+            <Shield className="size-3.5 text-amber-500" aria-hidden />
+            {completers.length <= 2
+              ? `${completers.join(' und ')} ${completers.length === 1 ? 'hat sein' : 'haben ihr'} Wappen schon.`
+              : `${completers.slice(0, 2).join(', ')} und ${completers.length - 2} weitere haben ihr Wappen schon.`}
+          </p>
+        )}
+      </div>
+    </section>
+  )
+}
+
+/** Ein Stern der Legende unter dem Wappen – golden, wenn er erreicht ist. */
+function CrestStar({ earned, label }: { earned: boolean; label: string }) {
+  return (
+    <li className={cn('inline-flex items-center gap-1', earned && 'text-amber-600 dark:text-amber-300')}>
+      <Star className={cn('size-3.5', earned && 'fill-current')} aria-hidden />
+      <span className="sr-only">{earned ? 'Erreicht: ' : 'Offen: '}</span>
+      {label}
+    </li>
   )
 }
 
@@ -1080,6 +1508,8 @@ function WochenimpulsHero({
 function FeedFinale({
   week,
   isCurrent,
+  crest,
+  onJump,
   pastWeeks,
   sections,
   onRestart,
@@ -1091,6 +1521,17 @@ function FeedFinale({
 }: {
   week: string
   isCurrent: boolean
+  /** Das Wappen der laufenden Woche – `null` im Rückblick. */
+  crest: {
+    design: ImpulseCrest
+    done: number
+    total: number
+    stars: ImpulseCrestStars
+    /** Die Karten, an denen noch etwas fehlt – in Feed-Reihenfolge. */
+    missing: ImpulseCrestStep[]
+  } | null
+  /** Zu einer Karte springen, an der noch etwas fehlt. */
+  onJump: (step: ImpulseCrestStep) => void
   /** Frühere Wochen ohne die gerade angezeigte, jüngste zuerst. */
   pastWeeks: string[]
   /** Die Kacheln des Dashboards, die es diese Woche gibt – als Schnellzugriff. */
@@ -1103,22 +1544,57 @@ function FeedFinale({
   onAllWeeks: () => void
 }) {
   const shownWeeks = pastWeeks.slice(0, 3)
+  const complete = crest !== null && crest.total > 0 && crest.done >= crest.total
   return (
     <article className="px-1 text-center">
-      <span
-        className="mx-auto grid size-12 place-items-center rounded-full bg-emerald-500 text-white"
-        aria-hidden
-      >
-        <PartyPopper className="size-6" />
-      </span>
+      {crest ? (
+        <div className="flex justify-center">
+          <ImpulseCrestEmblem
+            crest={crest.design}
+            week={week}
+            done={crest.done}
+            total={crest.total}
+            stars={crest.stars}
+            size={complete ? 150 : 128}
+          />
+        </div>
+      ) : (
+        <span
+          className="mx-auto grid size-12 place-items-center rounded-full bg-emerald-500 text-white"
+          aria-hidden
+        >
+          <PartyPopper className="size-6" />
+        </span>
+      )}
       <h2 className="mt-4 text-2xl leading-snug font-semibold text-balance">
-        Alle Karten durchgeschaut – stark!
+        {crest === null
+          ? 'Alle Karten durchgeschaut – stark!'
+          : complete
+            ? 'Wappen vollendet – stark!'
+            : `Noch ${crest.missing.length} ${crest.missing.length === 1 ? 'Karte' : 'Karten'} bis zu deinem Wappen`}
       </h2>
       <p className="mt-2 text-sm text-slate-600 dark:text-slate-300">
-        {isCurrent
-          ? 'Das war Anti Doom für diese Woche. Am Montag liegt das nächste Wochenthema bereit – bis dahin:'
-          : `Das war der Rückblick auf ${formatWeekRange(week)}.`}
+        {!isCurrent
+          ? `Das war der Rückblick auf ${formatWeekRange(week)}.`
+          : complete
+            ? 'Das war Anti Doom für diese Woche. Am Montag liegt das nächste Wochenthema bereit – bis dahin:'
+            : 'Hier fehlt noch etwas – ein Tipp führt direkt zur Karte:'}
       </p>
+
+      {/* Was am Wappen noch fehlt – je Karte, mit dem Weg dorthin. */}
+      {crest && !complete && crest.missing.length > 0 && (
+        <div className="mt-4 space-y-1.5 text-left">
+          {crest.missing.map((step) => (
+            <FinaleAction
+              key={step.itemId}
+              icon={IMPULSE_SECTIONS[IMPULSE_KIND_SECTION[step.kind as ImpulseDeckKind] ?? 'woche'].icon}
+              label={step.title || IMPULSE_KIND_LABELS[step.kind]}
+              hint={`${IMPULSE_KIND_LABELS[step.kind]} · ${step.missing.join(', ')}`}
+              onClick={() => onJump(step)}
+            />
+          ))}
+        </div>
+      )}
 
       <div className="mt-6 space-y-2 text-left">
         {!isCurrent && (
@@ -1451,6 +1927,59 @@ function PastQuiz({ item, answer }: { item: ImpulseItem; answer: ImpulseAnswer |
             : ` · deine Antwort: ${answer.text || '–'}`)}
       </p>
       {quiz.explanation && <p className="hint mt-0.5 whitespace-pre-line">{quiz.explanation}</p>}
+      <div className="mt-1">
+        <SourceLink item={item} />
+      </div>
+    </div>
+  )
+}
+
+/**
+ * Eine Umfrage aus einer früheren Woche – das Ergebnis steht offen da,
+ * abgestimmt wird nicht mehr: Eine Stimme im Nachhinein zählte sonst
+ * rückwirkend zur Beteiligung einer Woche, die vorbei ist.
+ */
+function PastPoll({
+  item,
+  answers,
+  mine,
+}: {
+  item: ImpulseItem
+  answers: ImpulseAnswer[]
+  mine: ImpulseAnswer | null
+}) {
+  const poll = item.poll
+  if (!poll) return null
+  const votes = answers.filter((answer) => typeof answer.choiceIndex === 'number')
+  const own = typeof mine?.choiceIndex === 'number' ? mine.choiceIndex : null
+  const ownLabel =
+    own === null
+      ? null
+      : poll.form === 'choice'
+        ? (poll.options[own] ?? null)
+        : `${own}${poll.unit ? ` ${poll.unit}` : ''}`
+  return (
+    <div>
+      <p className="text-sm font-medium">{item.title}</p>
+      <p className="hint mt-0.5">
+        Umfrage · {votes.length} {votes.length === 1 ? 'Stimme' : 'Stimmen'}
+        {ownLabel && ` · deine Wahl: ${ownLabel}`}
+      </p>
+      {poll.explanation && <p className="hint mt-0.5 whitespace-pre-line">{poll.explanation}</p>}
+    </div>
+  )
+}
+
+/** Ein Vers-Puzzle aus einer früheren Woche – der Vers steht offen da. */
+function PastPuzzle({ item, answer }: { item: ImpulseItem; answer: ImpulseAnswer | null }) {
+  if (!item.puzzle) return null
+  return (
+    <div>
+      <p className="text-sm font-medium">{item.title}</p>
+      <p className="hint mt-0.5">
+        Vers: <span className="font-medium">{puzzleSolution(item.puzzle.text)}</span>
+        {answer && (answer.correct ? ' · auf Anhieb gebaut' : ' · versucht')}
+      </p>
       <div className="mt-1">
         <SourceLink item={item} />
       </div>

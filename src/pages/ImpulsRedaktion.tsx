@@ -10,6 +10,7 @@ import {
   Inbox,
   Pencil,
   Plus,
+  RotateCcw,
   Send,
   Sparkles,
   X,
@@ -31,20 +32,23 @@ import { ImpulseItemForm } from '@/components/impulse/ImpulseItemForm'
 import { cn } from '@/lib/utils'
 import {
   allowsMultiple,
+  deckOrder,
   formatWeekRange,
   IMPULSE_KIND_ORDER,
   impulseWeekKey,
+  isFeedCardKind,
   itemsForWeek,
   nextImpulseOrder,
   planDifficultyCleanup,
   upcomingWeekKeys,
 } from '@/lib/impulse'
 import { IMPULSE_KIND_THEME, IMPULSE_SECTIONS } from '@/lib/impulseSections'
-import { planStarterItems } from '@/lib/impulseStarter'
+import { isPackItem, PACK_WEEKS, planPackItems } from '@/lib/impulsePack'
 import {
   applyDifficultyCleanup,
-  createStarterItems,
+  createPackItems,
   deleteImpulseSubmission,
+  restartImpulseContent,
   emptyImpulseItem,
   markImpulseSubmissionAccepted,
   submissionToInput,
@@ -158,7 +162,16 @@ export function ImpulsRedaktion() {
     items: ImpulseItem[]
     label?: string
   } | null>(null)
-  const previewWeek = () => setPreview({ week: selectedWeek, items: weekItems })
+  /* Die Woche in der Vorschau liegt so wie im Feed – das Wochenthema
+     vorn, dahinter die beiden Aufgaben (im Bereich sind es Kacheln), dann
+     die Karten in der Reihenfolge der Redaktion. */
+  const previewWeek = () => {
+    const ordered = deckOrder(weekItems.filter((item) => isFeedCardKind(item.kind)))
+    const themes = ordered.filter((item) => item.kind === 'impuls')
+    const tasks = weekItems.filter((item) => !isFeedCardKind(item.kind))
+    const rest = ordered.filter((item) => item.kind !== 'impuls')
+    setPreview({ week: selectedWeek, items: [...themes, ...tasks, ...rest] })
+  }
   const previewItem = (item: ImpulseItem) => setPreview({ week: selectedWeek, items: [item] })
   /** Eine Einreichung so anschauen, wie sie als Karte aussehen würde. */
   const previewSubmission = (submission: ImpulseSubmission) =>
@@ -168,39 +181,76 @@ export function ImpulsRedaktion() {
       label: `Einreichung von ${submission.firstName}`,
     })
 
-  /* ---------------- Startpaket und Aufräumen ---------------- */
+  /* ---------------- Themenpaket und Neustart ---------------- */
 
   /*
-   * Das Startpaket: vier Wochen Inhalt aus den Schriften, mit einem Klick
-   * eingespielt (siehe `lib/impulseStarter`). Der Kasten zeigt sich,
-   * solange etwas aus dem Paket fehlt – dank der festen IDs holt ein
-   * Klick genau das Fehlende nach und rührt Vorhandenes nicht an.
+   * Das Themenpaket: sieben Wochen nach dem Leitfaden «Für eine starke
+   * Jugend» (siehe `lib/impulsePack`), eingespielt mit einem Klick. Der
+   * Kasten zeigt sich, solange etwas aus dem Paket fehlt – dank der
+   * festen IDs holt ein Klick genau das Fehlende nach und rührt
+   * Vorhandenes nicht an. Vergangene Wochen spielt er nicht mehr ein.
+   *
+   * Solange vom Paket noch gar nichts da ist, bietet der Kasten auch den
+   * **Neustart** an: alle bisherigen Inhalte löschen – mitsamt ihren
+   * Antworten und Beiträgen – und das Paket einspielen. Fortschritt,
+   * Serien, Gemerktes und Einreichungen bleiben stehen.
    */
   const [seeding, setSeeding] = useState(false)
-  const starterPlans = useMemo(
-    () => (itemsState.loading ? [] : planStarterItems(itemsState.data, todayKey)),
+  const [confirmRestart, setConfirmRestart] = useState(false)
+  const packPlans = useMemo(
+    () => (itemsState.loading ? [] : planPackItems(itemsState.data, todayKey)),
     [itemsState.loading, itemsState.data, todayKey],
   )
-  const seedStarter = async () => {
-    if (seeding || starterPlans.length === 0) return
+  const packStarted = itemsState.data.some((item) => isPackItem(item.id))
+  const legacyItems = packStarted ? [] : itemsState.data
+  const legacyIds = new Set(legacyItems.map((item) => item.id))
+  const legacyAnswers = answersState.data.filter((answer) => legacyIds.has(answer.itemId))
+  const legacyComments = commentsState.data.filter((comment) => legacyIds.has(comment.itemId))
+  const packWeeksAhead = PACK_WEEKS.filter((week) => week.week >= todayKey)
+
+  const seedPack = async () => {
+    if (seeding || packPlans.length === 0) return
     setSeeding(true)
     try {
-      const outcome = await createStarterItems(starterPlans, profile?.id)
-      const pooled = starterPlans.filter((plan) => plan.week === null).length
-      const drafts = starterPlans.filter((plan) => plan.status === 'draft').length
-      const draftNote =
-        drafts > 0
-          ? ` ${drafts} ${drafts === 1 ? 'Bilderrätsel wartet' : 'Bilderrätsel warten'} als Entwurf auf ihr Bild aus der Mediathek.`
-          : ''
+      const outcome = await createPackItems(packPlans, profile?.id)
       toast.saved(
-        pooled === 0
-          ? `Startpaket eingespielt – vier Wochen sind geplant.${draftNote}`
-          : `Startpaket eingespielt – ${starterPlans.length - pooled} Inhalte geplant, ${pooled} im Fragenpool (ihr Platz war schon belegt).${draftNote}`,
+        `Themenpaket eingespielt – ${packPlans.length} ${packPlans.length === 1 ? 'Inhalt' : 'Inhalte'}.`,
         outcome,
       )
     } catch (error) {
       console.error(error)
-      toast.error('Das Startpaket konnte nicht eingespielt werden.')
+      toast.error(
+        error instanceof Error && error.message.includes('Internetverbindung')
+          ? error.message
+          : 'Das Themenpaket konnte nicht eingespielt werden.',
+      )
+    } finally {
+      setSeeding(false)
+    }
+  }
+
+  const restart = async () => {
+    if (seeding) return
+    setSeeding(true)
+    try {
+      const outcome = await restartImpulseContent({
+        itemIds: legacyItems.map((item) => item.id),
+        answerIds: legacyAnswers.map((answer) => answer.id),
+        commentIds: legacyComments.map((comment) => comment.id),
+        plans: packPlans,
+        userId: profile?.id,
+      })
+      toast.saved(
+        `Neu gestartet – ${legacyItems.length} alte Karten gelöscht, ${packPlans.length} neue eingespielt.`,
+        outcome,
+      )
+    } catch (error) {
+      console.error(error)
+      toast.error(
+        error instanceof Error && error.message.includes('Internetverbindung')
+          ? error.message
+          : 'Der Neustart hat nicht geklappt. Bitte noch einmal versuchen.',
+      )
     } finally {
       setSeeding(false)
     }
@@ -309,33 +359,70 @@ export function ImpulsRedaktion() {
       </div>
 
       <div className="mx-auto max-w-3xl space-y-4">
-        {/* ---------- Startpaket ---------- */}
-        {starterPlans.length > 0 && (
+        {/* ---------- Themenpaket und Neustart ---------- */}
+        {packPlans.length > 0 && (
           <section className="border-brand-200 bg-brand-50/40 dark:border-brand-900 dark:bg-brand-950/30 card p-4 sm:p-5">
             <h2 className="flex items-center gap-2 text-sm font-semibold">
               <Sparkles className="text-brand-600 dark:text-brand-300 size-4" aria-hidden />
-              Startpaket: vier Wochen aus den Schriften
+              Themenpaket «Für eine starke Jugend» – Oktober und November
             </h2>
-            <p className="hint mt-1 mb-3">
-              1 Nephi 3:7, das Haus auf dem Felsen, Lehre und Bündnisse 6:36 und Almas Samenkorn –
-              die ersten drei Wochen voll ausgebaut: je drei Quizfragen und Bilderrätsel, zehn
-              Feed-Karten (etliche mit Vertiefung), dazu Wochenthema, Wochenziel, Tages-Challenge,
-              Frage der Woche und Teilen-Aufgabe. Alles «bereit» – einzig die Bilderrätsel kommen
-              als <strong>Entwurf</strong>: Bild-Link aus der Mediathek der Kirche einsetzen (die
-              Auflösung sagt, welches Bild gemeint ist), «bereit» anhaken, fertig. Eingespielt wird
-              nur, was noch fehlt ({starterPlans.length}{' '}
-              {starterPlans.length === 1 ? 'Inhalt' : 'Inhalte'}); Vorhandenes und belegte Plätze
-              bleiben unangetastet.
+            <p className="hint mt-1">
+              Jede Woche bereitet auf die Lektion am Sonntag vor:{' '}
+              {packWeeksAhead
+                .map((week) => week.theme.lesson.label.replace(/^Erfahre mehr über /, ''))
+                .join(' · ')}
+              . Je Woche ein Wochenthema mit eigenem Wappen, dazu Umfragen, Quizfragen, ein
+              Vers-Puzzle, «Fakt oder Mythos?», «Was würdest du tun?», offene Fragen,
+              Feed-Karten, Wochenziel, Tages-Challenge und Teilen-Aufgabe – alles «bereit».
+              Vergangene Wochen bleiben weg; eingespielt wird, was noch fehlt ({packPlans.length}{' '}
+              {packPlans.length === 1 ? 'Inhalt' : 'Inhalte'}).
             </p>
-            <button
-              type="button"
-              className="btn-primary"
-              onClick={() => void seedStarter()}
-              disabled={seeding}
-            >
-              <Plus className="size-4" aria-hidden />
-              {seeding ? 'Wird eingespielt …' : 'Einspielen'}
-            </button>
+            {legacyItems.length > 0 && (
+              <p className="mt-2 text-sm text-amber-800 dark:text-amber-200">
+                Bisher im Bereich: {legacyItems.length}{' '}
+                {legacyItems.length === 1 ? 'Karte' : 'Karten'}
+                {legacyAnswers.length + legacyComments.length > 0 &&
+                  ` mit ${legacyAnswers.length + legacyComments.length} ${
+                    legacyAnswers.length + legacyComments.length === 1 ? 'Antwort' : 'Antworten'
+                  }`}
+                . «Neu starten» löscht sie und spielt das Paket ein – Fortschritt, Serien,
+                Gemerktes und Einreichungen bleiben.
+              </p>
+            )}
+            <div className="mt-3 flex flex-wrap gap-2">
+              {legacyItems.length > 0 ? (
+                <>
+                  <button
+                    type="button"
+                    className="btn-primary"
+                    onClick={() => setConfirmRestart(true)}
+                    disabled={seeding}
+                  >
+                    <RotateCcw className="size-4" aria-hidden />
+                    {seeding ? 'Wird neu gestartet …' : 'Bisheriges löschen und neu starten'}
+                  </button>
+                  <button
+                    type="button"
+                    className="btn-secondary"
+                    onClick={() => void seedPack()}
+                    disabled={seeding}
+                  >
+                    <Plus className="size-4" aria-hidden />
+                    Nur einspielen
+                  </button>
+                </>
+              ) : (
+                <button
+                  type="button"
+                  className="btn-primary"
+                  onClick={() => void seedPack()}
+                  disabled={seeding}
+                >
+                  <Plus className="size-4" aria-hidden />
+                  {seeding ? 'Wird eingespielt …' : 'Einspielen'}
+                </button>
+              )}
+            </div>
           </section>
         )}
 
@@ -670,9 +757,9 @@ export function ImpulsRedaktion() {
           </section>
         )}
 
-        {/* Eine leere Woche ganz ohne Startpaket-Kasten wirkt sonst wie
-            ein Fehler – der Hinweis sagt, dass einfach nichts da ist. */}
-        {!itemsState.loading && itemsState.data.length === 0 && starterPlans.length === 0 && (
+        {/* Eine leere Woche ganz ohne Paket-Kasten wirkt sonst wie ein
+            Fehler – der Hinweis sagt, dass einfach nichts da ist. */}
+        {!itemsState.loading && itemsState.data.length === 0 && packPlans.length === 0 && (
           <p className="hint flex items-center justify-center gap-1.5 py-4 text-center">
             <Inbox className="size-4" aria-hidden />
             Noch keine Karten – lege oben in einer Sparte die erste an.
@@ -702,6 +789,29 @@ export function ImpulsRedaktion() {
           }
         />
       )}
+
+      <ConfirmDialog
+        open={confirmRestart}
+        onClose={() => setConfirmRestart(false)}
+        onConfirm={() => {
+          setConfirmRestart(false)
+          void restart()
+        }}
+        title="Bisheriges löschen und neu starten?"
+        message={
+          <>
+            Alle {legacyItems.length} bisherigen Karten werden gelöscht – mitsamt{' '}
+            {legacyAnswers.length + legacyComments.length === 1
+              ? 'der einen Antwort'
+              : `den ${legacyAnswers.length + legacyComments.length} Antworten`}
+            , die dazu abgegeben wurden. Danach wird das Themenpaket eingespielt. Fortschritt,
+            Serien, Gemerktes und Einreichungen bleiben stehen. Das lässt sich nicht rückgängig
+            machen.
+          </>
+        }
+        confirmLabel="Löschen und neu starten"
+        danger
+      />
 
       <ConfirmDialog
         open={removeSubmission !== null}
@@ -744,7 +854,9 @@ export function ImpulsRedaktion() {
 /** Die Gruppen-Überschriften – die Mehrzahl der Kartenart. */
 const KIND_GROUP_LABELS: Record<ImpulseKind, string> = {
   impuls: 'Wochenthema',
+  umfrage: 'Umfragen',
   quiz: 'Quizfragen',
+  puzzle: 'Vers-Puzzles',
   bilderraetsel: 'Bilderrätsel',
   video: 'Videos',
   wochenziel: 'Wochenziel',
@@ -835,6 +947,8 @@ function WeekKindGroup({
                     )}
                     {(item.kind === 'quiz' ||
                       item.kind === 'bilderraetsel' ||
+                      item.kind === 'umfrage' ||
+                      item.kind === 'puzzle' ||
                       item.kind === 'frage') &&
                       answerCount(item) > 0 && (
                         <>

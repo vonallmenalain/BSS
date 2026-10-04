@@ -1,12 +1,12 @@
 import { useState } from 'react'
 import { format } from 'date-fns'
-import { Check, CheckCircle2, Repeat, Users } from 'lucide-react'
+import { Check, CheckCircle2, Repeat, Shield, Users } from 'lucide-react'
 import { useAuth } from '@/contexts/AuthContext'
 import { useToast } from '@/contexts/ToastContext'
 import { useNow } from '@/hooks/useNow'
 import { cn } from '@/lib/utils'
 import { weekDays } from '@/lib/impulse'
-import { ImpulseItemImage, SourceLink } from '@/components/impulse/ImpulseCards'
+import { CardEmoji, ImpulseItemImage, SourceLink } from '@/components/impulse/ImpulseCards'
 import { setImpulseChallengeDay, setImpulseWeekGoal } from '@/services/impulse'
 import type { ImpulseItem } from '@/lib/types'
 
@@ -82,7 +82,16 @@ export function GoalCard({
           Wochenziel
         </p>
       )}
-      <h2 className={plain ? 'text-lg font-semibold text-balance' : 'mt-2 text-lg font-semibold text-balance'}>{item.title}</h2>
+      <CardEmoji item={item} />
+      <h2
+        className={
+          plain
+            ? 'text-xl leading-snug font-semibold text-balance'
+            : 'mt-2 text-lg font-semibold text-balance'
+        }
+      >
+        {item.title}
+      </h2>
       <ImpulseItemImage item={item} />
       {item.body && (
         <p className="mt-2 text-sm whitespace-pre-line text-slate-600 dark:text-slate-300">
@@ -198,7 +207,16 @@ export function ChallengeCard({
           Tages-Challenge
         </p>
       )}
-      <h2 className={plain ? 'text-lg font-semibold text-balance' : 'mt-2 text-lg font-semibold text-balance'}>{item.title}</h2>
+      <CardEmoji item={item} />
+      <h2
+        className={
+          plain
+            ? 'text-xl leading-snug font-semibold text-balance'
+            : 'mt-2 text-lg font-semibold text-balance'
+        }
+      >
+        {item.title}
+      </h2>
       <ImpulseItemImage item={item} />
       {item.body && (
         <p className="mt-2 text-sm whitespace-pre-line text-slate-600 dark:text-slate-300">
@@ -268,15 +286,20 @@ export function ChallengeCard({
 
 /**
  * Die Gruppenleiste: wer diese Woche dabei war – Vornamen, keine
- * Rangliste, keine Hervorhebung der Fehlenden.
+ * Rangliste, keine Hervorhebung der Fehlenden. Darunter, wer sein
+ * Wochen-Wappen schon vollendet hat: genannt wird, wer es geschafft hat,
+ * nie, wer noch unterwegs ist.
  */
 export function GroupCard({
   participants,
   total,
+  crestNames = [],
 }: {
   participants: { uid: string; firstName: string }[]
   /** Alle, die je im Bereich mitgemacht haben – der Nenner der Leiste. */
   total: number
+  /** Wer das Wappen der Woche schon vollendet hat. */
+  crestNames?: { uid: string; firstName: string }[]
 }) {
   return (
     <section className="card p-5">
@@ -297,6 +320,15 @@ export function GroupCard({
       ) : (
         <p className="mt-2 text-sm text-slate-600 dark:text-slate-300">
           {participants.map((person) => person.firstName).join(' · ')}
+        </p>
+      )}
+      {crestNames.length > 0 && (
+        <p className="mt-3 flex items-start gap-1.5 border-t border-slate-200 pt-3 text-sm text-slate-600 dark:border-slate-800 dark:text-slate-300">
+          <Shield className="mt-0.5 size-4 shrink-0 text-amber-500" aria-hidden />
+          <span>
+            <span className="font-medium text-slate-900 dark:text-slate-100">Wappen vollendet:</span>{' '}
+            {crestNames.map((person) => person.firstName).join(' · ')}
+          </span>
         </p>
       )}
     </section>

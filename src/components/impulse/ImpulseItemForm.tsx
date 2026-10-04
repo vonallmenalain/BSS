@@ -79,6 +79,11 @@ export function ImpulseItemForm({
       ? { label: input.sourceLabel, url: input.sourceUrl }
       : null,
     quiz: input.kind === 'quiz' || input.kind === 'bilderraetsel' ? input.quiz : null,
+    poll: input.kind === 'umfrage' ? input.poll : null,
+    puzzle:
+      input.kind === 'puzzle'
+        ? { text: input.puzzleText, explanation: input.puzzleExplanation }
+        : null,
     image: input.imageUrl.trim() ? { url: input.imageUrl } : null,
     videoUrl: input.videoUrl,
   })
@@ -198,7 +203,7 @@ export function ImpulseItemForm({
         {hasOrder && (
           <div>
             <label className="label" htmlFor="impulse-order">
-              {input.kind === 'feed' ? 'Platz im Feed' : 'Platz innerhalb der Woche'}
+              Platz im Feed
             </label>
             <input
               id="impulse-order"
@@ -214,8 +219,9 @@ export function ImpulseItemForm({
               }
             />
             <p className="hint mt-1">
-              Die Reihenfolge legt die Redaktion – kein Algorithmus. Ohne Zahl kommt die Karte
-              ans Ende.
+              Die Reihenfolge legt die Redaktion – kein Algorithmus, und über alle Arten hinweg:
+              Umfrage, Fakt, Quiz im Wechsel halten wach. Das Wochenthema steht immer vorn, die
+              Teilen-Aufgabe immer hinten. Ohne Zahl kommt die Karte ans Ende.
             </p>
           </div>
         )}

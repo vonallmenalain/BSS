@@ -14,13 +14,16 @@ import {
 import { setDoc as fbSetDoc } from 'firebase/firestore'
 import { db, COLLECTIONS } from '@/lib/firebase'
 import { forgetDoc } from '@/lib/collectionStore'
-import { commit, type SaveOutcome } from '@/lib/sync'
+import { commit, requireOnline, type SaveOutcome } from '@/lib/sync'
 import { impulseAnswerId } from '@/lib/impulse'
-import type { StarterPlan } from '@/lib/impulseStarter'
+import type { PackPlan } from '@/lib/impulsePack'
 import type {
+  ImpulseCrestPalette,
+  ImpulseCrestSymbol,
   ImpulseImageCrop,
   ImpulseItem,
   ImpulseKind,
+  ImpulsePoll,
   ImpulseQuiz,
   ImpulseStatus,
   ImpulseSubmission,
@@ -71,6 +74,22 @@ export interface ImpulseItemInput {
   /** «Eingereicht von Luca» – wenn der Inhalt aus der Mitmach-Ecke stammt. */
   contributor: string
   quiz: ImpulseQuiz
+  /** Die Umfrage – bei der Art `umfrage`. */
+  poll: ImpulsePoll
+  /** Das Vers-Puzzle: der Vers mit « / » zwischen den Teilen, und die Auflösung. */
+  puzzleText: string
+  puzzleExplanation: string
+  /** Ein grosses Emoji über dem Titel – leer heisst keines. */
+  emoji: string
+  /** Wochenthema: die Zeile über dem Titel (Monatsthema). */
+  kicker: string
+  /** Wochenthema: die Lektion am Sonntag, auf die die Woche vorbereitet. */
+  lessonLabel: string
+  lessonUrl: string
+  /** Wochenthema: wie das Wochen-Wappen aussieht – leeres Zeichen heisst: Standard. */
+  crestSymbol: ImpulseCrestSymbol | ''
+  crestPalette: ImpulseCrestPalette
+  crestMotto: string
 }
 
 export const EMPTY_IMPULSE_QUIZ: ImpulseQuiz = {
@@ -79,6 +98,36 @@ export const EMPTY_IMPULSE_QUIZ: ImpulseQuiz = {
   answerIndex: 0,
   answerText: '',
   explanation: '',
+}
+
+export const EMPTY_IMPULSE_POLL: ImpulsePoll = {
+  form: 'choice',
+  options: ['', ''],
+  min: 1,
+  max: 10,
+  minLabel: '',
+  maxLabel: '',
+  unit: '',
+  explanation: '',
+}
+
+/** Eine frische Kopie – die Vorlage selbst darf nie im Formular landen. */
+function freshPoll(poll: ImpulsePoll = EMPTY_IMPULSE_POLL): ImpulsePoll {
+  return { ...EMPTY_IMPULSE_POLL, ...poll, options: [...poll.options] }
+}
+
+/** Die Umfrage so, wie sie gespeichert wird – getrimmt, Zahlen ganz. */
+function cleanPoll(poll: ImpulsePoll): ImpulsePoll {
+  return {
+    form: poll.form,
+    options: poll.form === 'choice' ? poll.options.map((option) => option.trim()) : [],
+    min: Math.round(Number(poll.min)),
+    max: Math.round(Number(poll.max)),
+    minLabel: poll.minLabel.trim(),
+    maxLabel: poll.maxLabel.trim(),
+    unit: poll.unit.trim(),
+    explanation: poll.explanation.trim(),
+  }
 }
 
 /** Leeres Formular – zugleich die Vorlage für neue Inhalte. */
@@ -107,6 +156,16 @@ export function emptyImpulseItem(
     order,
     contributor: '',
     quiz: { ...EMPTY_IMPULSE_QUIZ, options: [...EMPTY_IMPULSE_QUIZ.options] },
+    poll: freshPoll(),
+    puzzleText: '',
+    puzzleExplanation: '',
+    emoji: '',
+    kicker: '',
+    lessonLabel: '',
+    lessonUrl: '',
+    crestSymbol: '',
+    crestPalette: 'smaragd',
+    crestMotto: '',
   }
 }
 
@@ -134,6 +193,16 @@ export function toImpulseInput(item: ImpulseItem): ImpulseItemInput {
     quiz: item.quiz
       ? { ...item.quiz, options: [...item.quiz.options] }
       : { ...EMPTY_IMPULSE_QUIZ, options: [...EMPTY_IMPULSE_QUIZ.options] },
+    poll: freshPoll(item.poll ?? undefined),
+    puzzleText: item.puzzle?.text ?? '',
+    puzzleExplanation: item.puzzle?.explanation ?? '',
+    emoji: item.emoji ?? '',
+    kicker: item.kicker ?? '',
+    lessonLabel: item.lesson?.label ?? '',
+    lessonUrl: item.lesson?.url ?? '',
+    crestSymbol: item.crest?.symbol ?? '',
+    crestPalette: item.crest?.palette ?? 'smaragd',
+    crestMotto: item.crest?.motto ?? '',
   }
 }
 
@@ -179,6 +248,27 @@ export async function saveImpulseItem(
             answerIndex: input.quiz.answerIndex,
             answerText: input.quiz.answerText.trim(),
             explanation: input.quiz.explanation.trim(),
+          }
+        : null,
+    // Umfrage und Puzzle gehören zu ihrer Art – wie das Quiz.
+    poll: input.kind === 'umfrage' ? cleanPoll(input.poll) : null,
+    puzzle:
+      input.kind === 'puzzle'
+        ? { text: input.puzzleText.trim(), explanation: input.puzzleExplanation.trim() }
+        : null,
+    emoji: input.emoji.trim() || null,
+    // Monatsthema, Sonntagslektion und Wappen trägt das Wochenthema.
+    kicker: input.kind === 'impuls' ? input.kicker.trim() || null : null,
+    lesson:
+      input.kind === 'impuls' && input.lessonLabel.trim()
+        ? { label: input.lessonLabel.trim(), url: input.lessonUrl.trim() }
+        : null,
+    crest:
+      input.kind === 'impuls' && input.crestSymbol
+        ? {
+            symbol: input.crestSymbol,
+            palette: input.crestPalette,
+            motto: input.crestMotto.trim(),
           }
         : null,
     updatedAt: serverTimestamp(),
@@ -476,6 +566,12 @@ function submissionCard(input: ImpulseItemInput) {
             explanation: input.quiz.explanation.trim(),
           }
         : null,
+    poll: input.kind === 'umfrage' ? cleanPoll(input.poll) : null,
+    puzzle:
+      input.kind === 'puzzle'
+        ? { text: input.puzzleText.trim(), explanation: input.puzzleExplanation.trim() }
+        : null,
+    emoji: input.emoji.trim(),
   }
 }
 
@@ -534,6 +630,9 @@ export function submissionToItem(submission: ImpulseSubmission): ImpulseItem {
     videoUrl: card?.videoUrl?.trim() || null,
     videoTextPage: card?.videoTextPage ?? false,
     quiz: card?.quiz ?? null,
+    poll: card?.poll ?? null,
+    puzzle: card?.puzzle ?? null,
+    emoji: card?.emoji?.trim() || null,
     contributor: submission.firstName,
   }
 }
@@ -590,6 +689,12 @@ export function submissionToInput(
     input.videoUrl = card.videoUrl ?? ''
     input.videoTextPage = card.videoTextPage ?? false
     if (card.quiz) input.quiz = { ...card.quiz, options: [...card.quiz.options] }
+    if (card.poll) input.poll = freshPoll(card.poll)
+    if (card.puzzle) {
+      input.puzzleText = card.puzzle.text ?? ''
+      input.puzzleExplanation = card.puzzle.explanation ?? ''
+    }
+    input.emoji = card.emoji ?? ''
   }
   return input
 }
@@ -669,29 +774,88 @@ export async function setImpulseLastSeenWeek(
   )
 }
 
+/** Wie viele Schreibvorgänge ein Stapel höchstens trägt – Firestore erlaubt 500. */
+const BATCH_LIMIT = 450
+
+/** Eine Liste in Häppchen, die je in einen Stapel passen. */
+function chunks<T>(list: T[], size = BATCH_LIMIT): T[][] {
+  const result: T[][] = []
+  for (let index = 0; index < list.length; index += size) result.push(list.slice(index, index + size))
+  return result
+}
+
+/** Die Inhalte eines Pakets schreiben – feste IDs, ein zweiter Lauf trifft dieselben Dokumente. */
+async function writePlans(plans: PackPlan[], userId?: string | null): Promise<void> {
+  for (const part of chunks(plans)) {
+    const batch = writeBatch(db)
+    for (const plan of part) {
+      const { id, ...data } = plan
+      batch.set(doc(db, COLLECTIONS.impulseItems, id), {
+        ...data,
+        createdAt: serverTimestamp(),
+        updatedAt: serverTimestamp(),
+        createdBy: userId ?? null,
+      })
+    }
+    await batch.commit()
+  }
+}
+
 /**
- * Das Startpaket anlegen – vier Wochen Inhalt in einem Zug.
+ * Das Themenpaket einspielen – die geplanten Wochen in einem Zug.
  *
- * Die festen Dokument-IDs («starter-w1-impuls» …) machen den Lauf
- * gefahrlos: Ein zweiter würde dieselben Dokumente treffen statt Dubletten
- * anzulegen – und die Redaktion blendet den Knopf ohnehin aus, sobald das
- * Paket einmal da ist.
+ * Die festen Dokument-IDs («fsy26-w41-umfrage-1» …) machen den Lauf
+ * gefahrlos: Ein zweiter würde dieselben Dokumente treffen statt
+ * Dubletten anzulegen – und die Redaktion blendet den Knopf ohnehin
+ * aus, sobald das Paket ganz da ist.
  */
-export async function createStarterItems(
-  plans: StarterPlan[],
+export async function createPackItems(
+  plans: PackPlan[],
   userId?: string | null,
 ): Promise<SaveOutcome> {
-  const batch = writeBatch(db)
-  for (const plan of plans) {
-    const { id, ...data } = plan
-    batch.set(doc(db, COLLECTIONS.impulseItems, id), {
-      ...data,
-      createdAt: serverTimestamp(),
-      updatedAt: serverTimestamp(),
-      createdBy: userId ?? null,
-    })
-  }
-  return commit(batch.commit())
+  requireOnline()
+  return commit(writePlans(plans, userId))
+}
+
+/**
+ * Neu starten: alle bisherigen Inhalte löschen – mitsamt ihren Antworten
+ * und Beiträgen – und das Themenpaket einspielen.
+ *
+ * Das ist der eine Handgriff, der nicht rückgängig zu machen ist; die
+ * Redaktion bestätigt ihn ausdrücklich. Bewusst stehen bleiben der
+ * Fortschritt (Serie, Gemerktes, Amen), die Einreichungen der
+ * Mitmach-Ecke und alles ausserhalb des Bereichs. Erst wird gelöscht,
+ * dann eingespielt – und weil hier Hunderte Dokumente auf einmal gehen,
+ * braucht es eine Verbindung, wie bei den Importen: Eine halbe
+ * Löschung in der Warteschlange wäre schlimmer als gar keine.
+ */
+export async function restartImpulseContent(input: {
+  itemIds: string[]
+  answerIds: string[]
+  commentIds: string[]
+  plans: PackPlan[]
+  userId?: string | null
+}): Promise<SaveOutcome> {
+  requireOnline()
+  const deletions = [
+    ...input.answerIds.map((id) => doc(db, COLLECTIONS.impulseAnswers, id)),
+    ...input.commentIds.map((id) => doc(db, COLLECTIONS.impulseComments, id)),
+    ...input.itemIds.map((id) => doc(db, COLLECTIONS.impulseItems, id)),
+  ]
+  const outcome = await commit(
+    (async () => {
+      for (const part of chunks(deletions)) {
+        const batch = writeBatch(db)
+        for (const reference of part) batch.delete(reference)
+        await batch.commit()
+      }
+      await writePlans(input.plans, input.userId)
+    })(),
+  )
+  for (const id of input.itemIds) forgetDoc(COLLECTIONS.impulseItems, id)
+  for (const id of input.answerIds) forgetDoc(COLLECTIONS.impulseAnswers, id)
+  for (const id of input.commentIds) forgetDoc(COLLECTIONS.impulseComments, id)
+  return outcome
 }
 
 /**
@@ -753,5 +917,81 @@ export async function answerImpulseQuiz(
       answeredAt: serverTimestamp(),
       updatedAt: serverTimestamp(),
     }),
+  )
+}
+
+/**
+ * Bei einer Umfrage abstimmen – eine Stimme, auf den eigenen Namen.
+ *
+ * Dieselbe Sammlung und dieselbe ID wie beim Quiz: eine Stimme pro
+ * Person, und umentscheiden gibt es nicht (die Regeln lassen keine
+ * Änderung zu). Bei der Auswahl ist der Wert der Index der Möglichkeit,
+ * bei der Skala der Wert selbst. Richtig oder falsch gibt es nicht.
+ */
+export async function answerImpulsePoll(
+  item: ImpulseItem,
+  user: { uid: string; displayName: string },
+  value: number,
+): Promise<SaveOutcome> {
+  return commit(
+    setDoc(doc(db, COLLECTIONS.impulseAnswers, impulseAnswerId(item.id, user.uid)), {
+      itemId: item.id,
+      uid: user.uid,
+      firstName: impulseFirstName(user.displayName),
+      choiceIndex: value,
+      text: '',
+      correct: null,
+      answeredAt: serverTimestamp(),
+      updatedAt: serverTimestamp(),
+    }),
+  )
+}
+
+/**
+ * Ein Vers-Puzzle abgeben – der gebaute Satz und ob er stimmt. Ein
+ * Versuch, wie beim Quiz; gezählt wird die Teilnahme.
+ */
+export async function answerImpulsePuzzle(
+  item: ImpulseItem,
+  user: { uid: string; displayName: string },
+  attempt: string,
+  correct: boolean,
+): Promise<SaveOutcome> {
+  return commit(
+    setDoc(doc(db, COLLECTIONS.impulseAnswers, impulseAnswerId(item.id, user.uid)), {
+      itemId: item.id,
+      uid: user.uid,
+      firstName: impulseFirstName(user.displayName),
+      choiceIndex: null,
+      text: attempt.trim(),
+      correct,
+      answeredAt: serverTimestamp(),
+      updatedAt: serverTimestamp(),
+    }),
+  )
+}
+
+/**
+ * Den Tag vermerken, an dem das Wochen-Wappen zum ersten Mal ganz
+ * dastand – für den Stern «Bereit für Sonntag». Wie das Anschauen von
+ * Karten geht das nicht ins Zugriffsprotokoll: Es ist ein Spielstand,
+ * keine Änderung am Bestand.
+ */
+export async function markImpulseCrest(
+  user: { uid: string; displayName: string },
+  week: string,
+  day: string,
+): Promise<SaveOutcome> {
+  return commit(
+    fbSetDoc(
+      doc(db, COLLECTIONS.impulseProgress, user.uid),
+      {
+        uid: user.uid,
+        firstName: impulseFirstName(user.displayName),
+        weeks: { [week]: { crest: day } },
+        updatedAt: serverTimestamp(),
+      },
+      { merge: true },
+    ),
   )
 }

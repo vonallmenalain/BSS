@@ -1,4 +1,6 @@
 import {
+  BarChart3,
+  Blocks,
   Bookmark,
   CheckCircle2,
   Flame,
@@ -31,7 +33,9 @@ import type { ImpulseItem, ImpulseKind } from './types.ts'
 
 export type ImpulseSectionKey =
   | 'woche'
+  | 'umfrage'
   | 'quiz'
+  | 'puzzle'
   | 'bilderraetsel'
   | 'video'
   | 'frage'
@@ -65,7 +69,7 @@ export interface ImpulseSection {
 }
 
 /*
- * Dreizehn Bereiche, dreizehn Farbtöne – bewusst weit auseinander, damit
+ * Fünfzehn Bereiche, fünfzehn Farbtöne – bewusst weit auseinander, damit
  * die Farbe allein schon sagt, wo man ist.
  *
  * Die Vollbild-Töne sind Schleier, keine Vollflächen: Sie steigen oben
@@ -87,6 +91,18 @@ export const IMPULSE_SECTIONS: Record<ImpulseSectionKey, ImpulseSection> = {
     ring: 'text-amber-500 dark:text-amber-400',
     bar: 'bg-amber-500 dark:bg-amber-400',
   },
+  umfrage: {
+    key: 'umfrage',
+    label: 'Umfrage',
+    short: 'Umfrage',
+    icon: BarChart3,
+    iconBox: 'bg-blue-600 text-white',
+    text: 'text-blue-700 dark:text-blue-300',
+    wash: 'from-blue-300/90 via-blue-200/40 dark:from-blue-500/40 dark:via-blue-500/12',
+    chipActive: 'bg-blue-600 text-white dark:bg-blue-400 dark:text-blue-950',
+    ring: 'text-blue-600 dark:text-blue-400',
+    bar: 'bg-blue-600 dark:bg-blue-400',
+  },
   quiz: {
     key: 'quiz',
     label: 'Quizfrage',
@@ -98,6 +114,18 @@ export const IMPULSE_SECTIONS: Record<ImpulseSectionKey, ImpulseSection> = {
     chipActive: 'bg-violet-600 text-white dark:bg-violet-400 dark:text-violet-950',
     ring: 'text-violet-500 dark:text-violet-400',
     bar: 'bg-violet-500 dark:bg-violet-400',
+  },
+  puzzle: {
+    key: 'puzzle',
+    label: 'Vers-Puzzle',
+    short: 'Puzzle',
+    icon: Blocks,
+    iconBox: 'bg-yellow-400 text-yellow-950',
+    text: 'text-yellow-700 dark:text-yellow-300',
+    wash: 'from-yellow-300/90 via-yellow-200/40 dark:from-yellow-500/35 dark:via-yellow-500/10',
+    chipActive: 'bg-yellow-500 text-yellow-950 dark:bg-yellow-300 dark:text-yellow-950',
+    ring: 'text-yellow-500 dark:text-yellow-300',
+    bar: 'bg-yellow-500 dark:bg-yellow-300',
   },
   bilderraetsel: {
     key: 'bilderraetsel',
@@ -236,7 +264,9 @@ export const IMPULSE_SECTIONS: Record<ImpulseSectionKey, ImpulseSection> = {
 /** Die Reihenfolge im Menü und im Bereichswechsler – Lesereihenfolge. */
 export const IMPULSE_SECTION_ORDER: ImpulseSectionKey[] = [
   'woche',
+  'umfrage',
   'quiz',
+  'puzzle',
   'bilderraetsel',
   'video',
   'frage',
@@ -263,7 +293,9 @@ export const IMPULSE_SECTION_ORDER: ImpulseSectionKey[] = [
  */
 export const IMPULSE_DECK_SECTIONS = [
   'woche',
+  'umfrage',
   'quiz',
+  'puzzle',
   'bilderraetsel',
   'video',
   'frage',
@@ -293,14 +325,17 @@ export function isRoomSection(key: ImpulseSectionKey): key is ImpulseRoomSection
 }
 
 /**
- * Die Inhaltsarten, die als Karten im Vollbild-Feed liegen – in der
- * Lesereihenfolge des Feeds: das Wochenthema zuerst, die Rätsel gleich
- * nach dem Quiz, dann das Video als Wechsel des Takts, und die
- * Teilen-Aufgabe als Einladung zum Schluss.
+ * Die Inhaltsarten, die als Karten im Vollbild-Feed liegen. Die
+ * Reihenfolge hier ist die der Redaktions-Sparten; im Feed selbst zählt
+ * der Platz, den die Redaktion jeder Karte gibt (`deckOrder` in
+ * `lib/impulse`) – nur das Wochenthema steht immer vorn und die
+ * Teilen-Aufgabe immer hinten.
  */
 export const IMPULSE_DECK_KINDS = [
   'impuls',
+  'umfrage',
   'quiz',
+  'puzzle',
   'bilderraetsel',
   'video',
   'frage',
@@ -317,7 +352,9 @@ export function isDeckKind(kind: ImpulseKind): kind is ImpulseDeckKind {
 /** Welcher Feed-Bereich einen Inhalt dieser Art zeigt. */
 export const IMPULSE_KIND_SECTION: Record<ImpulseDeckKind, ImpulseDeckSectionKey> = {
   impuls: 'woche',
+  umfrage: 'umfrage',
   quiz: 'quiz',
+  puzzle: 'puzzle',
   bilderraetsel: 'bilderraetsel',
   video: 'video',
   frage: 'frage',
@@ -353,8 +390,12 @@ export function sectionForItem(item: ImpulseItem, todayKey: string): ImpulseSect
   switch (item.kind) {
     case 'impuls':
       return 'woche'
+    case 'umfrage':
+      return 'umfrage'
     case 'quiz':
       return 'quiz'
+    case 'puzzle':
+      return 'puzzle'
     case 'bilderraetsel':
       return 'bilderraetsel'
     case 'video':

@@ -12,6 +12,8 @@ import {
 import { ChallengeCard, GoalCard } from '@/components/impulse/ImpulseProgressCards'
 import { ImpulseFeedCard } from '@/components/impulse/ImpulseFeedCard'
 import { ImpulseQuestionCard } from '@/components/impulse/ImpulseQuestionCard'
+import { ImpulsePollCard } from '@/components/impulse/ImpulsePollCard'
+import { ImpulsePuzzleCard } from '@/components/impulse/ImpulsePuzzleCard'
 import { ImpulseShareCard } from '@/components/impulse/ImpulseShareCard'
 import { ImpulseVideoPlayer } from '@/components/impulse/ImpulseVideoPlayer'
 import { impulseVideoSource } from '@/lib/impulseVideo'
@@ -72,6 +74,19 @@ export function ImpulseEditorPreview({
             case 'quiz':
             case 'bilderraetsel':
               return <QuizCard item={item} answer={null} preview plain progressDocs={[]} />
+            case 'umfrage':
+              return <ImpulsePollCard item={item} answers={[]} preview plain progressDocs={[]} />
+            case 'puzzle':
+              return (
+                <ImpulsePuzzleCard
+                  item={item}
+                  answer={null}
+                  answers={[]}
+                  preview
+                  plain
+                  progressDocs={[]}
+                />
+              )
             case 'video':
               return <VideoDeckCard item={item} progressDocs={[]} preview />
             case 'frage':

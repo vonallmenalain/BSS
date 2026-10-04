@@ -3,7 +3,7 @@ import { Check, Eye, EyeOff, Flag, HandHeart, MessagesSquare, Pencil } from 'luc
 import { useAuth } from '@/contexts/AuthContext'
 import { useToast } from '@/contexts/ToastContext'
 import { cn } from '@/lib/utils'
-import { SourceLink } from '@/components/impulse/ImpulseCards'
+import { CardEmoji, SourceLink } from '@/components/impulse/ImpulseCards'
 import { ImpulseCardActions } from '@/components/impulse/ImpulseCardActions'
 import {
   saveImpulseComment,
@@ -107,7 +107,16 @@ export function ImpulseQuestionCard({
           Frage der Woche
         </p>
       )}
-      <h2 className={plain ? 'text-lg font-semibold text-balance' : 'mt-2 text-lg font-semibold text-balance'}>{item.title}</h2>
+      <CardEmoji item={item} />
+      <h2
+        className={
+          plain
+            ? 'text-xl leading-snug font-semibold text-balance'
+            : 'mt-2 text-lg font-semibold text-balance'
+        }
+      >
+        {item.title}
+      </h2>
       {item.body && (
         <p className="mt-2 text-sm whitespace-pre-line text-slate-600 dark:text-slate-300">
           {item.body}
