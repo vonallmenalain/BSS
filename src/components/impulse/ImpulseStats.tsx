@@ -3,7 +3,6 @@ import { Award, Check, ChevronRight } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import {
   formatWeekRange,
-  weekKeyOffset,
   type ImpulseMilestoneStep,
   type ImpulseWeekMilestone,
 } from '@/lib/impulse'
@@ -30,7 +29,7 @@ export interface ImpulseCrestRecord {
  *
  * Ein kleines Spiel mit sich selbst, nie gegen andere: die Serie (nur
  * die Zahl, ohne Countdown und ohne Jokerwoche – beides gab es einmal
- * und ist bewusst weggefallen), der Verlauf der letzten zwölf Wochen,
+ * und ist bewusst weggefallen), der Verlauf der Wochen, seit man dabei ist,
  * die **Meilensteine pro Woche** (`impulseWeekMilestones` – am Montag
  * wieder offen) und die eigenen Zahlen. Alles hier vergleicht mit
  * gestern, nicht mit dem Nachbarn (Leitgedanke 4) – und ein leerer
@@ -48,6 +47,7 @@ export function ImpulseStats({
   todayKey,
   streak,
   participated,
+  timeline: timelineWeeks,
   progress,
   answers,
   commentsCount,
@@ -58,6 +58,11 @@ export function ImpulseStats({
   todayKey: string
   streak: { current: number; best: number }
   participated: ReadonlySet<string>
+  /**
+   * Die Wochen, seit diese Person dabei ist – älteste zuerst, die laufende
+   * zuletzt (`impulseWeeksSince`).
+   */
+  timeline: string[]
   /** Das eigene Fortschrittsdokument – `null`, solange keines besteht. */
   progress: ImpulseProgress | null
   /** Die eigenen Quizantworten. */
@@ -90,11 +95,14 @@ export function ImpulseStats({
   const quizCorrect = answers.filter((answer) => answer.correct === true).length
   const amens = progress?.amens?.length ?? 0
 
-  /* Die letzten zwölf Wochen, älteste zuerst – die laufende zuletzt. */
-  const timeline = Array.from({ length: 12 }, (_, index) => {
-    const week = weekKeyOffset(todayKey, index - 11) ?? todayKey
-    return { week, participated: participated.has(week), current: week === todayKey }
-  })
+  /* Die Wochen, seit ich dabei bin – älteste zuerst, die laufende zuletzt.
+     Keine feste Zahl: am Anfang eine Woche, dann zwei, dann drei. */
+  const timeline = (timelineWeeks.length > 0 ? timelineWeeks : [todayKey]).map((week) => ({
+    week,
+    participated: participated.has(week),
+    current: week === todayKey,
+  }))
+  const weeksCount = timeline.length
 
   const theme = IMPULSE_SECTIONS.fortschritt
 
@@ -132,10 +140,15 @@ export function ImpulseStats({
         </div>
       </section>
 
-      {/* Der Verlauf – zwölf Wochen, ein Blick. */}
+      {/* Der Verlauf – jede Woche, seit ich dabei bin, ein Punkt. */}
       <section className="card p-5">
-        <h2 className="text-sm font-semibold">Die letzten zwölf Wochen</h2>
-        <div className="mt-3 flex items-center justify-between gap-1">
+        <h2 className="flex items-baseline justify-between gap-2 text-sm font-semibold">
+          Seit du dabei bist
+          <span className="text-xs font-normal text-slate-500 dark:text-slate-400">
+            {weeksCount} {weeksCount === 1 ? 'Woche' : 'Wochen'}
+          </span>
+        </h2>
+        <div className="mt-3 flex flex-wrap items-center gap-2">
           {timeline.map((entry, index) => (
             <span
               key={entry.week}
@@ -153,9 +166,9 @@ export function ImpulseStats({
             />
           ))}
         </div>
-        <div className="mt-2 flex justify-between text-[10px] text-slate-400 dark:text-slate-500">
-          <span>vor 12 Wochen</span>
-          <span>diese Woche</span>
+        <div className="mt-2 flex justify-between gap-2 text-[10px] text-slate-400 dark:text-slate-500">
+          {weeksCount > 1 && <span>erste Woche</span>}
+          <span className="ms-auto">diese Woche</span>
         </div>
       </section>
 

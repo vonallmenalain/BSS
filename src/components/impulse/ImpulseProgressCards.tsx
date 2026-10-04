@@ -1,9 +1,8 @@
 import { useState } from 'react'
-import { format } from 'date-fns'
 import { Check, CheckCircle2, Repeat, Shield, Users } from 'lucide-react'
 import { useToast } from '@/contexts/ToastContext'
 import { cn } from '@/lib/utils'
-import { weekDays } from '@/lib/impulse'
+import { impulseWeekToday, weekDays } from '@/lib/impulse'
 import { CardEmoji, ImpulseItemImage, SourceLink } from '@/components/impulse/ImpulseCards'
 import { useImpulseAuth, useImpulseNow, useImpulseWrites } from '@/hooks/useImpulseRuntime'
 import type { ImpulseItem } from '@/lib/types'
@@ -159,14 +158,18 @@ export function ChallengeCard({
   const { setImpulseChallengeDay } = useImpulseWrites()
   const toast = useToast()
   const now = useImpulseNow()
-  const [busyDay, setBusyDay] = useState<string | null>(null)
+  /* Gesperrt wird je Tag, nicht die ganze Reihe: Wer schnell hintereinander
+     mehrere Tage antippt, soll keinen Tipp verlieren, solange der erste
+     noch gespeichert wird. */
+  const [busyDays, setBusyDays] = useState<ReadonlySet<string>>(new Set())
   const [previewDays, setPreviewDays] = useState<Set<string>>(new Set())
   /* Wie beim Wochenziel: Nur der eben gesetzte Haken springt – die
      schon abgehakten Tage stehen beim Öffnen still da. */
   const [celebrateDay, setCelebrateDay] = useState<string | null>(null)
 
   const allDays = weekDays(week)
-  const today = format(now, 'yyyy-MM-dd')
+  // Bei einer früher freigeschalteten Woche gilt bis Montag der Montag als heute.
+  const today = impulseWeekToday(week, now)
   const checked = preview ? previewDays : new Set(days)
   const doneCount = allDays.filter((day) => checked.has(day)).length
 
@@ -181,8 +184,8 @@ export function ChallengeCard({
       })
       return
     }
-    if (!profile || busyDay) return
-    setBusyDay(day)
+    if (!profile || busyDays.has(day)) return
+    setBusyDays((current) => new Set(current).add(day))
     try {
       const outcome = await setImpulseChallengeDay(
         { uid: profile.id, displayName: profile.displayName },
@@ -195,7 +198,11 @@ export function ChallengeCard({
       console.error(error)
       toast.error('Das konnte nicht gespeichert werden.')
     } finally {
-      setBusyDay(null)
+      setBusyDays((current) => {
+        const next = new Set(current)
+        next.delete(day)
+        return next
+      })
     }
   }
 
@@ -241,7 +248,7 @@ export function ChallengeCard({
               key={day}
               type="button"
               onClick={() => void toggle(day)}
-              disabled={isFuture || busyDay === day}
+              disabled={isFuture || busyDays.has(day)}
               aria-pressed={isChecked}
               aria-label={`${DAY_LABELS[index]} abhaken`}
               className={cn(

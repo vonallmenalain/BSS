@@ -33,7 +33,6 @@ import {
   useImpulseSubmissions,
 } from '@/hooks/useFirestore'
 import { cn } from '@/lib/utils'
-import { toDateInput } from '@/lib/dates'
 import { PageHeader } from '@/components/ui/Pickers'
 import { AppMenuButton } from '@/components/AppMenuButton'
 import {
@@ -79,7 +78,9 @@ import {
   impulseCrestSteps,
   impulseCurrentWeek,
   impulseWeekMilestones,
+  impulseWeeksSince,
   impulseWeekStarts,
+  impulseWeekToday,
   itemsForWeek,
   participatedWeeks,
   puzzleSolution,
@@ -285,9 +286,8 @@ function ImpulsPage() {
   /* Die laufende Woche – meist die Kalenderwoche; die Redaktion kann den
      Start einer Woche verschieben (`impulseCurrentWeek`). Die Vorschau
      zeigt immer die Woche, die sie spielt. */
-  const todayKey = preview
-    ? preview.week
-    : impulseCurrentWeek(now, impulseWeekStarts(itemsState.data))
+  const weekStarts = impulseWeekStarts(itemsState.data)
+  const todayKey = preview ? preview.week : impulseCurrentWeek(now, weekStarts)
   const visible = visibleImpulseItems(itemsState.data, todayKey)
   const thisWeekAll = itemsForWeek(visible, todayKey)
   const feedCards = thisWeekAll.filter((entry) => entry.kind === 'feed')
@@ -335,6 +335,15 @@ function ImpulsPage() {
   // Antworten und Beiträge zählen gleichermassen als Beteiligung.
   const participated = participatedWeeks(myProgress, [...myAnswers, ...myComments], weekOfItem)
   const streak = computeStreak(participated, todayKey)
+  /* Der Verlauf in «Mein Fortschritt»: so viele Wochen, wie ich dabei bin.
+     Beginnt mit der ersten geöffneten Woche (`firstSeenWeek`) – oder, wo
+     das Feld noch fehlt, mit der frühesten, die mein Fortschritt kennt. */
+  const myWeeks = impulseWeeksSince(todayKey, [
+    myProgress?.firstSeenWeek,
+    myProgress?.lastSeenWeek,
+    ...participated,
+    ...Object.keys(myProgress?.weeks ?? {}),
+  ])
   const participants = weekParticipants(
     progressState.data,
     [...answersState.data, ...commentsState.data],
@@ -376,7 +385,7 @@ function ImpulsPage() {
         }
       : null,
     week: todayKey,
-    today: toDateInput(now),
+    today: impulseWeekToday(todayKey, now),
     challengeDays: myWeek(todayKey).days ?? [],
     cards: deckItemsThisWeek.map((item) => ({
       id: item.id,
@@ -443,18 +452,28 @@ function ImpulsPage() {
    * Der erste Blick auf eine Woche mit Inhalt nimmt den stillen Punkt aus
    * der Navigation. Vermerkt wird erst, wenn der Bestand geladen ist und
    * wirklich etwas dasteht – ein leerer Montag ist nichts Neues.
+   *
+   * Mit dem ersten Blick bekommt der Fortschritt auch seine erste Woche
+   * (`firstSeenWeek`) – einmal, dann bleibt sie stehen. Wer schon vorher
+   * dabei war, bekommt die früheste Woche, die sein Fortschritt kennt.
    */
+  const firstSeenMissing = Boolean(profile) && !progressState.loading && !myProgress?.firstSeenWeek
   const seenPending =
     Boolean(profile) &&
     !itemsState.loading &&
     thisWeekAll.length > 0 &&
-    myProgress?.lastSeenWeek !== todayKey
+    (myProgress?.lastSeenWeek !== todayKey || firstSeenMissing)
+  const firstSeenWeek = firstSeenMissing ? myWeeks[0] : undefined
   useEffect(() => {
     if (!seenPending || !profile) return
     writes
-      .setImpulseLastSeenWeek({ uid: profile.id, displayName: profile.displayName }, todayKey)
+      .setImpulseLastSeenWeek(
+        { uid: profile.id, displayName: profile.displayName },
+        todayKey,
+        firstSeenWeek,
+      )
       .catch((error) => console.error('[impuls] Woche konnte nicht vermerkt werden:', error))
-  }, [seenPending, profile, todayKey, writes])
+  }, [seenPending, profile, todayKey, firstSeenWeek, writes])
 
   /*
    * Die stille Statistik: Zeit und Besuche, nur auf diesem Gerät
@@ -905,11 +924,11 @@ function ImpulsPage() {
 
   /*
    * Der Tag, an dem das Wappen zuerst ganz dastand, wird vermerkt – daran
-   * hängt der Stern «Bereit für Sonntag». Bis der Vermerk zurück ist,
+   * hängt der Stern «Vor Sonntag vollendet». Bis der Vermerk zurück ist,
    * gilt der heutige Tag, damit der Stern nicht einen Augenblick lang
    * fehlt.
    */
-  const today = toDateInput(now)
+  const today = impulseWeekToday(todayKey, now)
   const crestCompletedOn = myWeek(todayKey).crest ?? (crestIsComplete ? today : null)
   const crestStars = impulseCrestStars({
     week: todayKey,
@@ -1032,6 +1051,7 @@ function ImpulsPage() {
             todayKey={todayKey}
             streak={streak}
             participated={participated}
+            timeline={myWeeks}
             progress={myProgress}
             answers={myAnswers}
             commentsCount={myComments.length}
@@ -1553,7 +1573,7 @@ function MissionHero({
 
         {item?.lesson?.label && (
           <p className="mt-4 text-sm text-slate-600 dark:text-slate-300">
-            <span className="font-semibold">Am Sonntag:</span>{' '}
+            <span className="font-semibold">Lektion:</span>{' '}
             {item.lesson.url ? (
               <a
                 href={item.lesson.url}

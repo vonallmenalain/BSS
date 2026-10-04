@@ -8,6 +8,7 @@ import {
   Eraser,
   Eye,
   Inbox,
+  PenLine,
   Pencil,
   Plus,
   RotateCcw,
@@ -27,6 +28,7 @@ import {
 import { PageHeader } from '@/components/ui/Pickers'
 import { AppMenuButton } from '@/components/AppMenuButton'
 import { ConfirmDialog } from '@/components/ui/Modal'
+import { ImpulseCrestPreviewButton } from '@/components/impulse/ImpulseCrestPreview'
 import { ImpulseEditorPreview } from '@/components/impulse/ImpulseEditorPreview'
 import { ImpulseItemForm } from '@/components/impulse/ImpulseItemForm'
 import { ImpulseWeekStart } from '@/components/impulse/ImpulseWeekStart'
@@ -42,9 +44,10 @@ import {
   upcomingWeekKeys,
 } from '@/lib/impulse'
 import { IMPULSE_KIND_THEME, IMPULSE_SECTIONS } from '@/lib/impulseSections'
-import { isPackItem, PACK_WEEKS, planPackItems } from '@/lib/impulsePack'
+import { isPackItem, PACK_WEEKS, planPackItems, planPackTextUpdates } from '@/lib/impulsePack'
 import {
   applyDifficultyCleanup,
+  applyPackTextUpdates,
   createPackItems,
   deleteImpulseSubmission,
   restartImpulseContent,
@@ -279,6 +282,33 @@ export function ImpulsRedaktion() {
     }
   }
 
+  /*
+   * Paket-Texte nachführen: Karten des Themenpakets, an denen noch ein
+   * früherer Wortlaut steht – etwa «Am Sonntag geht es um …» oder «bring
+   * es am Sonntag mit» (siehe `PACK_TEXT_REVISIONS`). Nachgeführt wird nur,
+   * wo noch genau der alte Text steht; der Kasten verschwindet danach.
+   */
+  const [revising, setRevising] = useState(false)
+  const textUpdates = useMemo(() => planPackTextUpdates(itemsState.data), [itemsState.data])
+  const runTextUpdates = async () => {
+    if (revising || textUpdates.length === 0) return
+    setRevising(true)
+    try {
+      const outcome = await applyPackTextUpdates(textUpdates)
+      const cards = new Set(textUpdates.map((update) => update.id)).size
+      toast.saved(
+        `Texte nachgeführt – ${cards === 1 ? 'eine Karte' : `${cards} Karten`} angepasst.`,
+        outcome,
+      )
+    } catch (error) {
+      console.error(error)
+      toast.error('Die Texte konnten nicht nachgeführt werden.')
+    } finally {
+      setRevising(false)
+    }
+  }
+  const textUpdateCards = new Set(textUpdates.map((update) => update.id)).size
+
   /* Antworten und Beiträge je Inhalt – für die Zahl an der Zeile und
      fürs Miträumen beim Löschen. */
   const answersByItem = useMemo(() => {
@@ -363,7 +393,7 @@ export function ImpulsRedaktion() {
               Themenpaket «Für eine starke Jugend» – Oktober und November
             </h2>
             <p className="hint mt-1">
-              Jede Woche bereitet auf die Lektion am Sonntag vor:{' '}
+              Die Wochen passen zu den Lektionen am Sonntag:{' '}
               {packWeeksAhead
                 .map((week) => week.theme.lesson.label.replace(/^Erfahre mehr über /, ''))
                 .join(' · ')}
@@ -449,13 +479,41 @@ export function ImpulsRedaktion() {
           </section>
         )}
 
+        {/* ---------- Paket-Texte nachführen ---------- */}
+        {textUpdates.length > 0 && (
+          <section className="card p-4 sm:p-5">
+            <h2 className="flex items-center gap-2 text-sm font-semibold">
+              <PenLine className="size-4 text-slate-400" aria-hidden />
+              Texte des Themenpakets nachführen
+            </h2>
+            <p className="hint mt-1 mb-3">
+              {textUpdateCards === 1
+                ? 'Eine Karte des Themenpakets trägt'
+                : `${textUpdateCards} Karten des Themenpakets tragen`}{' '}
+              noch den früheren Wortlaut mit dem Blick auf den Sonntag – etwa «Am Sonntag geht es um
+              …» oder «bring es am Sonntag mit». Ein Klick übernimmt die neuen Sätze. Nachgeführt
+              wird nur, wo noch genau der ursprüngliche Text steht; was du selbst geändert hast,
+              bleibt.
+            </p>
+            <button
+              type="button"
+              className="btn-secondary"
+              onClick={() => void runTextUpdates()}
+              disabled={revising}
+            >
+              <PenLine className="size-4" aria-hidden />
+              {revising ? 'Wird nachgeführt …' : 'Jetzt nachführen'}
+            </button>
+          </section>
+        )}
+
         {/* ---------- Die Woche ---------- */}
         <section className="card p-4 sm:p-5">
           <h2 className="text-sm font-semibold">Woche</h2>
           <p className="hint mt-1 mb-3">
-            Ein Inhalt erscheint bei den AP’s, sobald er <strong>bereit</strong> ist und seine
-            Woche beginnt – die neue Woche startet automatisch am Montag, 00:00. Soll sie früher
-            oder später starten, lässt sich das unten bei «Start» einstellen.
+            Ein Inhalt erscheint bei den AP’s, sobald er <strong>bereit</strong> ist und seine Woche
+            beginnt – die neue Woche startet automatisch am Montag, 00:00. Soll sie früher oder
+            später starten, lässt sich das unten bei «Start» einstellen.
           </p>
           <div className="flex items-center gap-2">
             <button
@@ -527,6 +585,7 @@ export function ImpulsRedaktion() {
               <Eye className="size-4" aria-hidden />
               Vorschau der Woche
             </button>
+            <ImpulseCrestPreviewButton key={selectedWeek} week={selectedWeek} items={weekItems} />
           </div>
           <ImpulseWeekStart key={selectedWeek} week={selectedWeek} theme={weekTheme} />
         </section>

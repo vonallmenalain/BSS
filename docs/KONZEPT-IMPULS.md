@@ -211,8 +211,8 @@ Zwei Anker machen den Impuls stärker als eine beliebige schöne Stelle:
   bereits – die Klassen stehen mit Titel im Plan (`apActivities`, Art
   «AP-Klasse»). Der Impuls der Woche kann das Thema des kommenden Sonntags
   aufnehmen; die App kann den Titel der nächsten Klasse gleich neben dem
-  Erfassungsformular anzeigen. Wer den Impuls gelesen hat, kommt vorbereitet
-  in die Lektion – und die Lektion holt ab, was die Woche gesät hat.
+  Erfassungsformular anzeigen. Wer den Impuls gelesen hat, kennt das Thema
+  schon – und die Lektion holt ab, was die Woche gesät hat.
 - **Passend zum Lehrplan.** Alternativ oder ergänzend: das Wochenthema aus
   «Komm und folge mir nach!» – dem Lehrplan, den Seminar und Familien ohnehin
   begleiten – oder das Jahresmotto der Jugend.
@@ -678,6 +678,9 @@ impulseProgress/{uid}          der persönliche Stand – schreibt nur die Perso
                                ├─ firstName                 (mitgeschrieben)
                                ├─ lastSeenWeek              – der stille Punkt
                                │            in der Navigation hängt daran
+                               ├─ firstSeenWeek             – die erste geöffnete
+                               │            Woche; der Verlauf «Seit du dabei
+                               │            bist» beginnt dort (einmal gesetzt)
                                ├─ weeks     { «2026-W34»: { ziel, feed,
                                │              tage: [«2026-08-11», …] } }
                                ├─ amens[]                   «Amen» je Karte – am
@@ -874,6 +877,16 @@ das **Wappen** der Woche (siehe 13.3). Die Inhalte dürfen vom Thema
 abweichen (die Woche nach der Generalkonferenz fragt etwa nach dem Satz,
 der hängen geblieben ist), der Faden bleibt die Lektion.
 
+**Der Faden, nicht das Ziel.** Die Woche zählt für sich – sie ist keine
+Vorbereitung auf den Sonntag. Seit Oktober 2026 heisst es darum nirgends
+mehr «bereit für Sonntag» oder «du gehst vorbereitet in die Klasse», und
+keine Aufgabe verlangt, etwas am Sonntag mitzubringen. Die Wochenthemen
+beginnen mit «Diese Woche geht es um …», die Lektion steht als
+«Lektion: …» unter der Mission. Das Wappen vor Sonntag zu vollenden,
+bleibt ein Stern – als Termin, nicht als Vorbereitung. Karten, die schon
+mit dem früheren Wortlaut eingespielt sind, führt die Redaktion mit einem
+Klick nach (siehe 13.4).
+
 ### 13.2 Mehr Spiel: neue Kartenarten und der Wechsel im Feed
 
 - **Umfrage** (`umfrage`) – zwei Formen: die **Auswahl** (auch als «Was
@@ -927,7 +940,7 @@ einmal je Woche und Gerät.
   wenn sie einen Moment im Bild stand (gut eine Sekunde) – wer quer
   durch den Feed springt, rauscht an den Karten dazwischen vorbei.
 - **Drei Sterne** über dem Wappen (`impulseCrestStars`): «Vor Sonntag
-  vollendet» (der Sinn der Woche – vorbereitet in die Klasse), das
+  vollendet» (ganz, bevor die Woche um ist), das
   Wochenziel und die Tages-Challenge an allen sieben Tagen. Gibt es
   diese Woche kein Ziel oder keine Challenge, fehlt der Stern, statt
   unerreichbar dazustehen. Den Tag der Vollendung vermerkt das eigene
@@ -944,7 +957,9 @@ einmal je Woche und Gerät.
   («Wappen vollendet: …») – genannt wird, wer es geschafft hat, nie, wer
   noch unterwegs ist (Leitgedanke 4).
 - **Die Sammlung:** «Mein Fortschritt» zeigt das Wappen jeder Woche –
-  vollendet oder auf dem Weg dorthin.
+  vollendet oder auf dem Weg dorthin. Der Verlauf darüber heisst «Seit du
+  dabei bist» und zeigt so viele Wochen, wie jemand dabei ist – am Anfang
+  eine, dann zwei, dann drei (`impulseWeeksSince`, ab `firstSeenWeek`).
 
 Zeichen, Farbe und Spruch wählt die Redaktion am Wochenthema; ohne
 Angabe leitet sich das Wappen aus der Woche ab (`defaultCrest`).
@@ -978,10 +993,30 @@ In der Redaktion bietet der Kasten «Themenpaket» zwei Wege:
   Vergangene Wochen bleiben weg, und dank fester IDs (`fsy26-w41-…`)
   holt ein späterer Lauf nur nach, was fehlt.
 
+**Texte nachführen.** Das Paket überschreibt nie, was schon in der
+Datenbank steht. Ändert sich ein Text im Paket – wie im Oktober 2026 die
+Sätze mit dem Blick auf den Sonntag (13.1) –, bliebe eine eingespielte
+Karte beim alten. Darum führt `PACK_TEXT_REVISIONS` die früheren
+Fassungen: Steht an einer Karte noch genau so ein alter Wortlaut,
+erscheint in der Redaktion der Kasten **«Texte des Themenpakets
+nachführen»**, und ein Klick übernimmt die neuen Sätze
+(`planPackTextUpdates`). Was die Redaktion selbst umgeschrieben hat,
+bleibt unberührt; danach verschwindet der Kasten.
+
+**Das Wappen der Woche** lässt sich in der Redaktion ansehen, bevor es
+jemand baut: Der Knopf **«Wappen»** neben «Vorschau der Woche» zeigt es
+im Kleinen und öffnet ein Fenster mit dem Wappen im Grossen und einem
+Schieberegler – vom leeren Schild bis zum vollendeten, jede bereite
+Karte ein Stück, in der Reihenfolge des Feeds. Beim Öffnen spielt es
+einmal ab; am Ende stehen alle Sterne. Unter dem Regler steht, welche
+Karte zuletzt dazugekommen ist.
+
 `tests/impulse-pack.test.ts` hält fest, dass jeder Inhalt die Prüfung
 des Formulars besteht, dass jede Woche mit dem Sonntag ihrer Lektion
 endet, dass nie zwei gleiche Arten aufeinander folgen und dass die IDs
-fest und eindeutig sind.
+fest und eindeutig sind – dazu, dass kein Paket-Text mehr auf die
+Vorbereitung für den Sonntag zielt und dass das Nachführen nur alte
+Wortlaute ersetzt.
 
 ### 13.5 Die Vorschau der Woche: genau die Ansicht der Jugendlichen
 
@@ -1045,6 +1080,13 @@ wählbaren Zeit oder «Zurück auf Montag, 00:00».
   Tagestakt spricht von «dieser Woche» und läuft weiter.
 - Die Vorschau der Redaktion zeigt immer die gewählte Woche, gleich wann
   sie startet.
+- **Heute in der Woche** (`impulseWeekToday`): Läuft eine früher
+  freigeschaltete Woche schon, bevor ihr Montag da ist, lägen am
+  Sonntagabend alle sieben Tage der Tages-Challenge in der Zukunft – und
+  nichts liesse sich abhaken. Bis Montag gilt darum der Montag als heute:
+  Wer am Sonntagabend loslegt, hakt den ersten Tag der neuen Woche ab.
+  Dieselbe Rechnung gilt für die Meilensteine und den Vermerk des
+  Wappens; läuft eine Woche länger, bleibt es beim Sonntag.
 
 `tests/impulse-week-start.test.ts` hält die Regeln fest – auch über den
 Jahreswechsel.

@@ -70,6 +70,24 @@ test('changePreviewProgress: der erste Schreibvorgang legt das Dokument an', () 
   assert.deepEqual(progress.updatedAt, at('t1'))
 })
 
+test('changePreviewProgress: die erste Woche wird einmal vermerkt und bleibt', () => {
+  let progress = changePreviewProgress(
+    null,
+    person,
+    { kind: 'last-seen', week: '2026-W41', firstSeenWeek: '2026-W41' },
+    at('t1'),
+  )
+  assert.equal(progress.firstSeenWeek, '2026-W41')
+  progress = changePreviewProgress(
+    progress,
+    person,
+    { kind: 'last-seen', week: '2026-W42' },
+    at('t2'),
+  )
+  assert.equal(progress.lastSeenWeek, '2026-W42')
+  assert.equal(progress.firstSeenWeek, '2026-W41')
+})
+
 test('changePreviewProgress: Haken der Woche werden zusammengeführt, nicht ersetzt', () => {
   let progress: ImpulseProgress | null = null
   progress = changePreviewProgress(

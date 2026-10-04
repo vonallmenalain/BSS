@@ -357,7 +357,7 @@ export function WocheDeckCard({
       {/* Die Lektion am Sonntag – das Ziel der Woche, mit Weg zum Heft. */}
       {item.lesson?.label && (
         <p className="mt-4 inline-flex flex-wrap items-center justify-center gap-x-1.5 rounded-full bg-amber-500/15 px-3.5 py-1.5 text-sm text-amber-900 dark:text-amber-100">
-          <span className="font-semibold">Am Sonntag:</span>
+          <span className="font-semibold">Lektion:</span>
           {item.lesson.url ? (
             <a href={item.lesson.url} target="_blank" rel="noreferrer" className="hover:underline">
               {item.lesson.label}

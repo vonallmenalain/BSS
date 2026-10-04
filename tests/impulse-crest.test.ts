@@ -275,7 +275,7 @@ test('impulseCrestSteps: alles getan – das Wappen steht', () => {
   assert.equal(crestComplete([]), false)
 })
 
-test('impulseCrestStars: «Bereit für Sonntag» nur, wenn es vor dem Sonntag ganz war', () => {
+test('impulseCrestStars: «Vor Sonntag vollendet» nur, wenn es vor dem Sonntag ganz war', () => {
   const base = { week: '2026-W41', complete: true, goal: null, challengeDays: null }
   assert.equal(impulseCrestStars({ ...base, completedOn: '2026-10-10' }).sunday, true)
   assert.equal(impulseCrestStars({ ...base, completedOn: '2026-10-11' }).sunday, false)

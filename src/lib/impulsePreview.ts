@@ -121,7 +121,8 @@ export function withPreviewDocs<T extends { id: string }>(real: T[], preview: T[
  *   angeschaute Karten und Vertiefungen) – dazu oder weg, wie
  *   `arrayUnion` und `arrayRemove`;
  * - `list`: dasselbe für die Listen am Dokument (Amen, Gemerkt, Gemeldet);
- * - `last-seen`: die zuletzt angeschaute Woche.
+ * - `last-seen`: die zuletzt angeschaute Woche – beim ersten Mal auch die
+ *   erste (`firstSeenWeek`).
  */
 export type PreviewProgressChange =
   | {
@@ -137,7 +138,7 @@ export type PreviewProgressChange =
       add: boolean
     }
   | { kind: 'list'; field: 'amens' | 'favorites' | 'reports'; value: string; add: boolean }
-  | { kind: 'last-seen'; week: string }
+  | { kind: 'last-seen'; week: string; firstSeenWeek?: string }
 
 /** `arrayUnion` bzw. `arrayRemove` auf einer Liste. */
 function toggleEntry(list: string[] | undefined, value: string, add: boolean): string[] {
@@ -181,6 +182,10 @@ export function changePreviewProgress(
     case 'list':
       return { ...next, [change.field]: toggleEntry(base[change.field], change.value, change.add) }
     case 'last-seen':
-      return { ...next, lastSeenWeek: change.week }
+      return {
+        ...next,
+        lastSeenWeek: change.week,
+        ...(change.firstSeenWeek ? { firstSeenWeek: change.firstSeenWeek } : {}),
+      }
   }
 }

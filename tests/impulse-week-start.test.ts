@@ -2,7 +2,13 @@ import assert from 'node:assert/strict'
 import { test } from 'node:test'
 
 import { format } from 'date-fns'
-import { impulseCurrentWeek, impulseWeekStarts, weekStartBounds } from '../src/lib/impulse.ts'
+import {
+  impulseCurrentWeek,
+  impulseWeeksSince,
+  impulseWeekStarts,
+  impulseWeekToday,
+  weekStartBounds,
+} from '../src/lib/impulse.ts'
 
 /*
  * Der Start einer Woche lässt sich verschieben: Die Redaktion schaltet das
@@ -108,4 +114,35 @@ test('weekStartBounds: frühestens Montag der Woche davor, spätestens Sonntagab
   assert.equal(format(bounds.earliest, 'yyyy-MM-dd HH:mm'), '2026-10-05 00:00')
   assert.equal(format(bounds.latest, 'yyyy-MM-dd HH:mm'), '2026-10-18 23:59')
   assert.equal(weekStartBounds('keine-woche'), null)
+})
+
+test('impulseWeekToday: früher freigeschaltet – bis Montag gilt der Montag als heute', () => {
+  // Sonntagabend, 4. Oktober: Woche 41 läuft schon – sie wurde früher freigeschaltet.
+  assert.equal(impulseWeekToday('2026-W41', at(2026, 10, 4, 19, 30)), '2026-10-05')
+  // In der eigenen Woche ist heute heute.
+  assert.equal(impulseWeekToday('2026-W41', at(2026, 10, 7, 9)), '2026-10-07')
+  // Läuft eine Woche länger, bleibt es beim Sonntag.
+  assert.equal(impulseWeekToday('2026-W41', at(2026, 10, 13, 8)), '2026-10-11')
+  // Ein unbrauchbarer Schlüssel lässt den Kalendertag stehen.
+  assert.equal(impulseWeekToday('keine-woche', at(2026, 10, 4, 19)), '2026-10-04')
+})
+
+test('impulseWeeksSince: so viele Wochen, wie man dabei ist', () => {
+  // Neu dabei: eine Woche.
+  assert.deepEqual(impulseWeeksSince('2026-W41', []), ['2026-W41'])
+  assert.deepEqual(impulseWeeksSince('2026-W41', [undefined, null, '2026-W41']), ['2026-W41'])
+  // Seit zwei Wochen dabei: drei Punkte, die laufende zuletzt.
+  assert.deepEqual(impulseWeeksSince('2026-W43', ['2026-W42', '2026-W41']), [
+    '2026-W41',
+    '2026-W42',
+    '2026-W43',
+  ])
+  // Über den Jahreswechsel – 2026 hat eine Woche 53.
+  assert.deepEqual(impulseWeeksSince('2027-W01', ['2026-W52']), [
+    '2026-W52',
+    '2026-W53',
+    '2027-W01',
+  ])
+  // Künftige Wochen und Unsinn zählen nicht.
+  assert.deepEqual(impulseWeeksSince('2026-W41', ['2026-W45', 'keine-woche']), ['2026-W41'])
 })
