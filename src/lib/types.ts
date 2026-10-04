@@ -54,6 +54,8 @@ export type Role =
   | 'ap_editor'
   /** Nur der AP-Kalender, ausschliesslich lesend */
   | 'ap_viewer'
+  /** Nur der Bereich «Anti Doom» – für die AP's selbst */
+  | 'impulse_only'
   | 'pending'
 
 export const ROLE_LABELS: Record<Role, string> = {
@@ -66,6 +68,7 @@ export const ROLE_LABELS: Record<Role, string> = {
   assistant: 'Assistent',
   ap_editor: 'AP-Kalender · bearbeiten',
   ap_viewer: 'AP-Kalender · nur ansehen',
+  impulse_only: 'Nur Anti Doom',
   pending: 'Wartet auf Freigabe',
 }
 
@@ -255,6 +258,15 @@ export const AP_ACCESS_ROLES: Role[] = [...FULL_ACCESS_ROLES, ...AP_ONLY_ROLES]
 export const AP_WRITE_ROLES: Role[] = [...FULL_ACCESS_ROLES, 'ap_editor']
 
 /**
+ * Die Rolle, die ausser «Anti Doom» nichts sieht – für die AP's selbst.
+ *
+ * Bei allen anderen Rollen hängt «Anti Doom» am Schalter `impulse` des
+ * Kontos; diese Rolle bringt den Bereich von sich aus mit. Dieselbe Regel
+ * steht in `firestore.rules` (`impulseAccess`).
+ */
+export const IMPULSE_ONLY_ROLE: Role = 'impulse_only'
+
+/**
  * Die Reihenfolge der Konten in der Benutzerverwaltung.
  *
  * Nach Namen sortiert stünde ein AP-Zugang mitten in der Bischofschaft,
@@ -276,6 +288,8 @@ export const ROLE_ORDER: Role[] = [
   'assistant',
   'ap_editor',
   'ap_viewer',
+  // Wer nur «Anti Doom» sieht, sieht am wenigsten – zuunterst vor den Wartenden.
+  'impulse_only',
   'pending',
 ]
 
@@ -308,7 +322,7 @@ export const ADMIN_EMAIL = 'alain.sc2@gmail.com'
  * zweite; welche Aufgabe jemand in der Bischofschaft hat, lässt sich danach
  * jederzeit umstellen, ohne dass sich am Zugriff etwas ändert.
  */
-export type AccessLevel = 'full' | 'assistant' | 'ap_write' | 'ap_read'
+export type AccessLevel = 'full' | 'assistant' | 'ap_write' | 'ap_read' | 'impulse'
 
 export const ACCESS_LEVELS: { value: AccessLevel; role: Role; label: string; hint: string }[] = [
   {
@@ -334,6 +348,12 @@ export const ACCESS_LEVELS: { value: AccessLevel; role: Role; label: string; hin
     role: 'ap_viewer',
     label: 'Nur AP-Kalender · ansehen',
     hint: 'Sieht ausschliesslich «Aktivitäten AP’s», ohne etwas ändern zu können.',
+  },
+  {
+    value: 'impulse',
+    role: 'impulse_only',
+    label: 'Nur Anti Doom',
+    hint: 'Sieht ausschliesslich den Bereich «Anti Doom» – für die AP’s selbst.',
   },
 ]
 

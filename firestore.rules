@@ -16,6 +16,7 @@ rules_version = '2';
 //   assistant           – Assistenz der Abendmahlsversammlung, Bereiche einzeln
 //   ap_editor           – nur der AP-Kalender, mit Schreibrecht
 //   ap_viewer           – nur der AP-Kalender, ausschliesslich lesend
+//   impulse_only        – nur der Bereich «Anti Doom», für die AP's selbst
 //   pending             – wartet auf Freigabe, kein Datenzugriff
 //
 // Innerhalb der Bischofschaft beschreibt die Rolle die Aufgabe, nicht den
@@ -234,18 +235,23 @@ service cloud.firestore {
      * eine Redaktion, die ihren eigenen Bereich nicht lesen dürfte, wäre
      * ein Widerspruch. `pending` bleibt draussen, auch wenn ein Feld
      * gesetzt sein sollte.
+     *
+     * Die Ausnahme ist die Rolle `impulse_only` («Nur Anti Doom»): Sie
+     * sieht ausser diesem Bereich nichts und bringt ihn darum von sich
+     * aus mit, ohne Schalter.
      */
     function impulseAccess() {
       return isAdmin()
         || (hasProfile()
           && userDoc().active == true
-          && userDoc().role in [
-               'bishop', 'counselor1', 'counselor2',
-               'executive_secretary', 'secretary', 'counselor',
-               'ap_editor', 'ap_viewer'
-             ]
-          && (userDoc().get('impulse', false) == true
-              || userDoc().get('impulseEditor', false) == true));
+          && (userDoc().role == 'impulse_only'
+              || (userDoc().role in [
+                    'bishop', 'counselor1', 'counselor2',
+                    'executive_secretary', 'secretary', 'counselor',
+                    'ap_editor', 'ap_viewer'
+                  ]
+                  && (userDoc().get('impulse', false) == true
+                      || userDoc().get('impulseEditor', false) == true))));
     }
 
     // Darf im Bereich «Impuls» Inhalte pflegen und moderieren – die
@@ -259,7 +265,7 @@ service cloud.firestore {
           && userDoc().role in [
                'bishop', 'counselor1', 'counselor2',
                'executive_secretary', 'secretary', 'counselor',
-               'ap_editor', 'ap_viewer'
+               'ap_editor', 'ap_viewer', 'impulse_only'
              ]
           && userDoc().get('impulseEditor', false) == true);
     }
@@ -271,10 +277,12 @@ service cloud.firestore {
      * sich sagen lassen, wenn es etwas Neues gibt. Was jemand dann
      * tatsächlich bekommt, hängt an seinen Einstellungen und daran, was
      * er ohnehin sehen dürfte: Der Versand schaut für die Traktanden auf
-     * den Vollzugriff und für den Impuls auf den Schalter am Konto.
+     * den Vollzugriff und für den Impuls auf den Schalter am Konto (bzw.
+     * die Rolle «Nur Anti Doom»). Darum zählt hier auch `impulseAccess()`:
+     * Wer nur «Anti Doom» sieht, soll sich daran erinnern lassen können.
      */
     function notifyAccess() {
-      return isAdmin() || apAccess();
+      return isAdmin() || apAccess() || impulseAccess();
     }
 
     /*

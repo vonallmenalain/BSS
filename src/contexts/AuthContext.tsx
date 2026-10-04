@@ -38,6 +38,7 @@ import {
   assistantWriteOf,
   BISHOPRIC_ROLES,
   FULL_ACCESS_ROLES,
+  IMPULSE_ONLY_ROLE,
   type AppUser,
   type AssistantArea,
   type Role,
@@ -129,9 +130,10 @@ interface AuthContextValue {
   /**
    * Darf den Bereich «Anti Doom» sehen – den geistigen Bereich für die AP’s.
    *
-   * Hängt am Schalter `impulse` des Profils und nicht an der Rolle;
-   * vergeben wird er in der Benutzerverwaltung, und zwar allein vom
-   * Administrator-Konto. Das Administrator-Konto selbst sieht den Bereich
+   * Hängt am Schalter `impulse` des Profils und nicht an der Rolle –
+   * ausser bei der Rolle «Nur Anti Doom», die den Bereich von sich aus
+   * mitbringt. Vergeben wird beides in der Benutzerverwaltung, und zwar
+   * allein vom Administrator-Konto. Das Administrator-Konto selbst sieht den Bereich
    * immer – so bleibt er beim Aufbau ohne einen einzigen gesetzten
    * Schalter erst einmal nur dort sichtbar.
    */
@@ -373,11 +375,15 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     const assistantWriteAreas = assistantWriteOf(profile)
     const isAssistant = assistantAreas.length > 0
 
+    // Die Rolle «Nur Anti Doom» bringt den Bereich von sich aus mit; bei
+    // allen anderen hängt er am Schalter des Kontos.
     const canViewImpulse =
       isAdmin ||
       (active &&
         role !== 'pending' &&
-        (profile?.impulse === true || profile?.impulseEditor === true))
+        (role === IMPULSE_ONLY_ROLE ||
+          profile?.impulse === true ||
+          profile?.impulseEditor === true))
 
     /*
      * Der Ort, an dem dieses Konto zu Hause ist.

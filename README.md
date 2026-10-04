@@ -3227,6 +3227,11 @@ rechtfertigt, haben sie aber nicht.
 Und es gibt den **Assistenten** – für die Vorbereitung der
 Abendmahlsversammlung (siehe [«Assistenz»](#assistenz-der-abendmahlsversammlung)).
 
+Zuletzt die Rolle **Nur Anti Doom** – für die AP's selbst, die allein den
+geistigen Bereich «Anti Doom» sehen sollen. Bei allen anderen Rollen hängt
+«Anti Doom» am Haken neben der Rollenwahl; diese Rolle bringt den Bereich von
+sich aus mit, der Haken steht bei ihr fest gesetzt da.
+
 | Rolle                         | Zugriff                                                            |
 | ----------------------------- | ------------------------------------------------------------------ |
 | **Bischof**                   | alles                                                              |
@@ -3237,6 +3242,7 @@ Abendmahlsversammlung (siehe [«Assistenz»](#assistenz-der-abendmahlsversammlun
 | **Assistent**                 | nur die angehakten Bereiche: _Ansprachen_, _Musik_, _Gebet_        |
 | **AP-Kalender · bearbeiten**  | nur «Aktivitäten AP's», mit Schreibrecht                           |
 | **AP-Kalender · nur ansehen** | nur «Aktivitäten AP's», ohne Schreibrecht                          |
+| **Nur Anti Doom**             | nur «Anti Doom» – mitmachen wie alle, Inhalte pflegt die Redaktion |
 | _Wartet auf Freigabe_         | nichts                                                             |
 
 Wozu dann überhaupt Rollen mit Vollzugriff? Sie halten fest, wer welche
@@ -3252,8 +3258,12 @@ vergibt Rollen, lädt die [Sicherung](#sicherung) herunter und sieht die
 Durchgesetzt wird die Trennung in `firestore.rules` und nicht erst in der
 Oberfläche: Ein AP-Zugang erreicht genau zwei Sammlungen (`apActivities`,
 `apMonths`) sowie lesend die Einstellungen – wegen des Gemeindenamens in der
-Kopfzeile. Jede andere Abfrage lehnt der Server ab. `npm run test:rules`
-prüft das in beide Richtungen.
+Kopfzeile. Die Rolle «Nur Anti Doom» erreicht die Sammlungen des Bereichs
+(`impulseItems`, `impulseAnswers`, `impulseProgress`, `impulseComments`,
+`impulseSubmissions`), das eigene Profil und die eigenen Benachrichtigungen –
+nicht einmal die Einstellungen; «Anti Doom» braucht den Gemeindenamen nicht.
+Jede andere Abfrage lehnt der Server ab. `npm run test:rules` prüft das in
+beide Richtungen.
 
 Die beiden AP-Rollen sind deshalb **keine Rollen zum Lesen mehr**: Der Plan
 selbst steht unter `/ap` ohnehin jedem offen (siehe [«Wer den Plan
@@ -3391,12 +3401,12 @@ Datenbank und sieht nichts. In der App der Bischofschaft steht das dann
 **zuoberst auf der Übersicht** – ein Klick darauf führt geradewegs zu
 **Einstellungen → Benutzer und Rollen**, wo das Konto in einem Kasten
 **«Neue Registrierungen»** steht. Ohne diesen Hinweis merkte es nur die
-wartende Person selbst. Zur Wahl stehen dort vier Zugriffsstufen –
+wartende Person selbst. Zur Wahl stehen dort fünf Zugriffsstufen –
 Vollzugriff, Assistenz der Abendmahlsversammlung, nur AP-Kalender mit
-Schreibrecht, nur AP-Kalender zum Ansehen –, bei Vollzugriff zusätzlich die
-Aufgabe in der Bischofschaft und bei der Assistenz je Bereich die Wahl
-zwischen _Kein Zugriff_, _Nur lesen_ und _Bearbeiten_ (zu Beginn alle drei zum
-Bearbeiten). Ein Klick auf **Freischalten** wirkt sofort;
+Schreibrecht, nur AP-Kalender zum Ansehen, nur Anti Doom –, bei Vollzugriff
+zusätzlich die Aufgabe in der Bischofschaft und bei der Assistenz je Bereich
+die Wahl zwischen _Kein Zugriff_, _Nur lesen_ und _Bearbeiten_ (zu Beginn alle
+drei zum Bearbeiten). Ein Klick auf **Freischalten** wirkt sofort;
 **Ablehnen** entfernt das Profil wieder.
 
 Freischalten darf jedes Konto mit Vollzugriff, nicht nur der Bischof. Die
@@ -3405,8 +3415,9 @@ Zugriffsstufe lässt sich später jederzeit in der Liste darunter ändern.
 Diese Liste steht **nach Rollen** und nicht nach Namen: zuoberst die
 Bischofschaft mit Vollzugriff – Bischof, 1. und 2. Ratgeber, Finanzsekretär,
 Sekretär –, darunter die Assistenz, dann die Konten, die den AP-Kalender
-bearbeiten dürfen, und zuunterst jene, die ihn nur ansehen. Bei einer
-Assistenz steht die Auswahl der drei Bereiche gleich neben der Rollenwahl, und
+bearbeiten dürfen, dann jene, die ihn nur ansehen, und zuunterst die Konten,
+die nur «Anti Doom» sehen. Bei einer Assistenz steht die Auswahl der drei
+Bereiche gleich neben der Rollenwahl, und
 unter dem Namen steht, was sie damit darf – «Musik (bearbeiten), Ansprachen
 (nur lesen)». Innerhalb derselben Rolle bleibt es
 alphabetisch. So steht beieinander, was dieselben Rechte hat, statt dass sich

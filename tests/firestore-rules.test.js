@@ -40,6 +40,10 @@ const SECRETARY = 'uid-sekretaer'
 const AP_EDITOR = 'uid-ap-schreibend'
 const AP_VIEWER = 'uid-ap-lesend'
 const IMPULSE_AP = 'uid-impuls-ap'
+/** Die Rolle «Nur Anti Doom» – der Bereich gehört zur Rolle, ohne Schalter. */
+const IMPULSE_ONLY = 'uid-nur-anti-doom'
+/** Dieselbe Rolle, deaktiviert. */
+const IMPULSE_ONLY_INACTIVE = 'uid-nur-anti-doom-inaktiv'
 /** Assistenz mit allen drei Bereichen. */
 const ASSISTANT_ALL = 'uid-assistenz-alle'
 /** Assistenz allein für die Musik – die Probe aufs Exempel. */
@@ -142,6 +146,20 @@ async function seed() {
       role: 'ap_viewer',
       active: true,
       impulse: true,
+    })
+
+    // Die Rolle «Nur Anti Doom»: ohne Schalter – den Bereich bringt die Rolle mit.
+    await setDoc(doc(db, 'users', IMPULSE_ONLY), {
+      email: `${IMPULSE_ONLY}@example.ch`,
+      displayName: 'Nur Anti Doom',
+      role: 'impulse_only',
+      active: true,
+    })
+    await setDoc(doc(db, 'users', IMPULSE_ONLY_INACTIVE), {
+      email: `${IMPULSE_ONLY_INACTIVE}@example.ch`,
+      displayName: 'Nur Anti Doom (deaktiviert)',
+      role: 'impulse_only',
+      active: false,
     })
 
     // Inhalte des Bereichs «Impuls»: eine bereite Woche und ein Entwurf.
@@ -328,6 +346,8 @@ const asSecretary = () => testEnv.authenticatedContext(SECRETARY).firestore()
 const asApEditor = () => testEnv.authenticatedContext(AP_EDITOR).firestore()
 const asApViewer = () => testEnv.authenticatedContext(AP_VIEWER).firestore()
 const asImpulseAp = () => testEnv.authenticatedContext(IMPULSE_AP).firestore()
+const asImpulseOnly = () => testEnv.authenticatedContext(IMPULSE_ONLY).firestore()
+const asImpulseOnlyInactive = () => testEnv.authenticatedContext(IMPULSE_ONLY_INACTIVE).firestore()
 const asAssistant = () => testEnv.authenticatedContext(ASSISTANT_ALL).firestore()
 const asMusicAssistant = () => testEnv.authenticatedContext(ASSISTANT_MUSIC).firestore()
 const asAssistantWithoutArea = () => testEnv.authenticatedContext(ASSISTANT_NONE).firestore()
@@ -1359,6 +1379,227 @@ describe('Impuls', () => {
       await assertFails(getDocs(collection(asPending(), 'impulseSubmissions')))
       await assertFails(getDocs(collection(asAnonymous(), 'impulseSubmissions')))
     })
+  })
+})
+
+/* ------------------------------------------------------------------ */
+
+/*
+ * Die Rolle «Nur Anti Doom» – für die AP's, die allein diesen Bereich
+ * sehen sollen.
+ *
+ * Bei allen anderen Rollen hängt «Anti Doom» am Schalter `impulse`; diese
+ * Rolle bringt den Bereich von sich aus mit. Dafür bleibt alles andere zu –
+ * die Gemeinde, die Benutzerliste, die Einstellungen und alles, was hinter
+ * der Anmeldung am AP-Kalender hängt. Offen bleibt nur, was ohnehin der
+ * ganzen Welt offensteht (die beiden Pläne). Und wie überall heisst
+ * deaktiviert: draussen.
+ */
+describe('Rolle «Nur Anti Doom»', () => {
+  it('sieht den Bereich ohne Schalter', async () => {
+    for (const name of [
+      'impulseItems',
+      'impulseAnswers',
+      'impulseProgress',
+      'impulseComments',
+      'impulseSubmissions',
+    ]) {
+      await assertSucceeds(getDocs(collection(asImpulseOnly(), name)))
+    }
+    await assertSucceeds(getDoc(doc(asImpulseOnly(), 'impulseItems', 'impuls-woche')))
+  })
+
+  it('macht mit wie jedes Konto im Bereich – auf den eigenen Namen', async () => {
+    await assertSucceeds(
+      setDoc(doc(asImpulseOnly(), 'impulseAnswers', `frage-1_${IMPULSE_ONLY}`), {
+        itemId: 'frage-1',
+        uid: IMPULSE_ONLY,
+        firstName: 'Mia',
+        choiceIndex: 1,
+        correct: true,
+      }),
+    )
+    await assertSucceeds(
+      setDoc(doc(asImpulseOnly(), 'impulseProgress', IMPULSE_ONLY), {
+        uid: IMPULSE_ONLY,
+        firstName: 'Mia',
+        weeks: { '2026-W33': { goal: true, days: ['2026-08-12'] } },
+      }),
+    )
+    // Für jemand anderen bleibt es verboten.
+    await assertFails(
+      setDoc(doc(asImpulseOnly(), 'impulseProgress', IMPULSE_AP), {
+        uid: IMPULSE_AP,
+        firstName: 'Fremd',
+      }),
+    )
+    // Aufräumen, damit die übrigen Tests den Ausgangszustand vorfinden.
+    await testEnv.withSecurityRulesDisabled(async (context) => {
+      await deleteDoc(doc(context.firestore(), 'impulseAnswers', `frage-1_${IMPULSE_ONLY}`))
+      await deleteDoc(doc(context.firestore(), 'impulseProgress', IMPULSE_ONLY))
+    })
+  })
+
+  it('pflegt keine Inhalte – die Redaktion bleibt am eigenen Schalter', async () => {
+    await assertFails(
+      setDoc(doc(asImpulseOnly(), 'impulseItems', 'versuch'), {
+        week: '2026-W33',
+        kind: 'impuls',
+        status: 'ready',
+        title: 'Selbst gemacht',
+      }),
+    )
+    await assertFails(
+      updateDoc(doc(asImpulseOnly(), 'impulseItems', 'impuls-woche'), { title: 'Umbenannt' }),
+    )
+    await assertFails(deleteDoc(doc(asImpulseOnly(), 'impulseItems', 'impuls-woche')))
+  })
+
+  it('mit dem Redaktions-Schalter pflegt sie Inhalte', async () => {
+    await testEnv.withSecurityRulesDisabled(async (context) => {
+      await updateDoc(doc(context.firestore(), 'users', IMPULSE_ONLY), { impulseEditor: true })
+    })
+    // Aufgeräumt wird auch, wenn eine Prüfung scheitert – sonst trüge das
+    // Konto den Schalter in die folgenden Tests hinein.
+    try {
+      await assertSucceeds(
+        setDoc(doc(asImpulseOnly(), 'impulseItems', 'nur-anti-doom-neu'), {
+          week: null,
+          kind: 'quiz',
+          status: 'draft',
+          title: 'Aus dem Fragenpool',
+        }),
+      )
+      await assertSucceeds(deleteDoc(doc(asImpulseOnly(), 'impulseItems', 'nur-anti-doom-neu')))
+    } finally {
+      await testEnv.withSecurityRulesDisabled(async (context) => {
+        await updateDoc(doc(context.firestore(), 'users', IMPULSE_ONLY), { impulseEditor: false })
+      })
+    }
+  })
+
+  it('sieht sonst nichts – auch nicht, was am AP-Kalender hinter der Anmeldung hängt', async () => {
+    const as = asImpulseOnly
+    for (const name of [
+      'members',
+      'callings',
+      'agendaItems',
+      'meetings',
+      'notes',
+      'talks',
+      'prayers',
+      'hymns',
+      'sacramentMeetings',
+      'announcementSeries',
+      'monthlyDuties',
+      'calendarFeeds',
+      'accessLog',
+      'pushTokens',
+    ]) {
+      await assertFails(getDocs(collection(as(), name)))
+    }
+    await assertFails(getDoc(doc(as(), 'members', 'mitglied-1')))
+    await assertFails(getDoc(doc(as(), 'agendaItems', 'offen')))
+    await assertFails(getDoc(doc(as(), 'sacramentMeetings', '2026-08-09')))
+    await assertFails(getDoc(doc(as(), 'settings', 'app')))
+    // Die Benutzerliste bleibt zu – das eigene Profil bleibt lesbar.
+    await assertFails(getDocs(collection(as(), 'users')))
+    await assertFails(getDoc(doc(as(), 'users', BISHOP)))
+    await assertSucceeds(getDoc(doc(as(), 'users', IMPULSE_ONLY)))
+  })
+
+  it('schreibt nirgends ausserhalb des Bereichs', async () => {
+    const as = asImpulseOnly
+    await assertFails(
+      setDoc(doc(as(), 'agendaItems', 'nur-anti-doom'), {
+        title: 'Versuch',
+        kind: 'traktandum',
+        status: 'new',
+        meetingId: null,
+        order: 1,
+      }),
+    )
+    await assertFails(updateDoc(doc(as(), 'members', 'mitglied-1'), { city: 'Bern' }))
+    await assertFails(setDoc(doc(as(), 'settings', 'app'), { wardName: 'Versuch' }))
+    await assertFails(updateDoc(doc(as(), 'apActivities', 'aktivitaet-1'), { title: 'Umbenannt' }))
+    await assertFails(updateDoc(doc(as(), 'cleaningWeeks', '2026-06-29'), { note: 'Versuch' }))
+  })
+
+  it('gibt sich weder eine andere Rolle noch einen Schalter', async () => {
+    const own = () => doc(asImpulseOnly(), 'users', IMPULSE_ONLY)
+    await assertFails(updateDoc(own(), { role: 'secretary' }))
+    await assertFails(updateDoc(own(), { role: 'ap_viewer' }))
+    await assertFails(updateDoc(own(), { impulseEditor: true }))
+    await assertFails(updateDoc(own(), { active: false }))
+    // Der eigene Name bleibt Selbstbedienung.
+    await assertSucceeds(updateDoc(own(), { displayName: 'Nur Anti Doom B' }))
+  })
+
+  it('vergibt allein der Administrator – ein neues Konto bringt sie nicht mit', async () => {
+    try {
+      await assertFails(updateDoc(doc(asSecretary(), 'users', PENDING), { role: 'impulse_only' }))
+      await assertSucceeds(updateDoc(doc(asBishop(), 'users', PENDING), { role: 'impulse_only' }))
+    } finally {
+      await testEnv.withSecurityRulesDisabled(async (context) => {
+        await updateDoc(doc(context.firestore(), 'users', PENDING), { role: 'pending' })
+      })
+    }
+    const neu = testEnv.authenticatedContext('uid-nur-anti-doom-neu').firestore()
+    await assertFails(
+      setDoc(doc(neu, 'users', 'uid-nur-anti-doom-neu'), {
+        email: 'nur-anti-doom-neu@example.ch',
+        displayName: 'Neu',
+        role: 'impulse_only',
+        active: true,
+      }),
+    )
+  })
+
+  it('lässt sich an «Anti Doom» erinnern', async () => {
+    await assertSucceeds(
+      setDoc(doc(asImpulseOnly(), 'pushTokens', 'geraet-nur-anti-doom'), {
+        uid: IMPULSE_ONLY,
+        token: 'geraet-nur-anti-doom',
+      }),
+    )
+    await assertSucceeds(deleteDoc(doc(asImpulseOnly(), 'pushTokens', 'geraet-nur-anti-doom')))
+    await assertSucceeds(
+      setDoc(doc(asImpulseOnly(), 'notificationSettings', IMPULSE_ONLY), {
+        uid: IMPULSE_ONLY,
+        impuls: { on: true, mode: 'weekly', weekday: 1, time: '08:00' },
+        agenda: { on: false },
+        meeting: { on: false },
+        ap: { on: false, hoursBefore: 24, scope: 'alle' },
+      }),
+    )
+    await assertSucceeds(getDoc(doc(asImpulseOnly(), 'notificationSettings', IMPULSE_ONLY)))
+  })
+
+  it('deaktiviert heisst draussen', async () => {
+    const as = asImpulseOnlyInactive
+    await assertFails(getDocs(collection(as(), 'impulseItems')))
+    await assertFails(getDoc(doc(as(), 'impulseItems', 'impuls-woche')))
+    await assertFails(
+      setDoc(doc(as(), 'impulseAnswers', `frage-1_${IMPULSE_ONLY_INACTIVE}`), {
+        itemId: 'frage-1',
+        uid: IMPULSE_ONLY_INACTIVE,
+        firstName: 'Noa',
+        choiceIndex: 1,
+        correct: true,
+      }),
+    )
+    await assertFails(
+      setDoc(doc(as(), 'pushTokens', 'geraet-inaktiv'), {
+        uid: IMPULSE_ONLY_INACTIVE,
+        token: 'geraet-inaktiv',
+      }),
+    )
+    await assertFails(
+      setDoc(doc(as(), 'notificationSettings', IMPULSE_ONLY_INACTIVE), {
+        uid: IMPULSE_ONLY_INACTIVE,
+        impuls: { on: true, mode: 'weekly', weekday: 1, time: '08:00' },
+      }),
+    )
   })
 })
 
