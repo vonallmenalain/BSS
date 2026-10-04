@@ -77,8 +77,9 @@ import {
   impulseAnswerId,
   impulseCrestStars,
   impulseCrestSteps,
-  impulseWeekKey,
+  impulseCurrentWeek,
   impulseWeekMilestones,
+  impulseWeekStarts,
   itemsForWeek,
   participatedWeeks,
   puzzleSolution,
@@ -281,7 +282,12 @@ function ImpulsPage() {
   const feedOpen = openKey !== null && isDeckSection(openKey)
   const state = (location.state ?? null) as ImpulsLocationState | null
 
-  const todayKey = impulseWeekKey(now)
+  /* Die laufende Woche – meist die Kalenderwoche; die Redaktion kann den
+     Start einer Woche verschieben (`impulseCurrentWeek`). Die Vorschau
+     zeigt immer die Woche, die sie spielt. */
+  const todayKey = preview
+    ? preview.week
+    : impulseCurrentWeek(now, impulseWeekStarts(itemsState.data))
   const visible = visibleImpulseItems(itemsState.data, todayKey)
   const thisWeekAll = itemsForWeek(visible, todayKey)
   const feedCards = thisWeekAll.filter((entry) => entry.kind === 'feed')

@@ -37,7 +37,7 @@ import { PUTZPLAN_PREVIEW, usePutzplanPreview } from '@/hooks/usePutzplanPreview
 import { useEnsureMonthlyDuties } from '@/hooks/useMonthlyDuties'
 import { useNow } from '@/hooks/useNow'
 import { useImpulseItems, useImpulseProgress } from '@/hooks/useFirestore'
-import { impulseWeekKey, visibleImpulseItems } from '@/lib/impulse'
+import { impulseCurrentWeek, impulseWeekStarts, visibleImpulseItems } from '@/lib/impulse'
 import { UserAvatar } from '@/components/ui/Avatar'
 import { ASSISTANT_AREA_LABELS, ASSISTANT_AREA_PATHS, ROLE_LABELS } from '@/lib/types'
 import { UpdatePrompt } from '@/components/UpdatePrompt'
@@ -132,7 +132,7 @@ export function Layout() {
   const impulseItems = useImpulseItems()
   const impulseProgress = useImpulseProgress()
   const nowForImpulse = useNow()
-  const impulseWeek = impulseWeekKey(nowForImpulse)
+  const impulseWeek = impulseCurrentWeek(nowForImpulse, impulseWeekStarts(impulseItems.data))
   const impulseDot =
     canViewImpulse &&
     !impulseItems.loading &&

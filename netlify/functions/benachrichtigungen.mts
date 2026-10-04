@@ -11,7 +11,7 @@ import {
   dueCleaningWeek,
   parseCleaningReminder,
 } from '../../src/lib/cleaningReminder.ts'
-import { impulseWeekKey } from '../../src/lib/impulse.ts'
+import { impulseCurrentWeek, impulseWeekKey, weekKeyOffset } from '../../src/lib/impulse.ts'
 import {
   agendaDue,
   agendaMessage,
@@ -542,14 +542,56 @@ export default async function handler(): Promise<Response> {
   )
 
   if (impulsWaiting.length > 0) {
-    const week = impulseWeekKey(now)
-    const ready = await runQuery(client, {
-      from: [{ collectionId: 'impulseItems' }],
-      where: {
-        compositeFilter: { op: 'AND', filters: [equals('week', week), equals('status', 'ready')] },
-      },
-      limit: 1,
-    })
+    /*
+     * Die laufende Woche – wie in der App (`impulseCurrentWeek`): Die
+     * Redaktion kann den Start einer Woche verschieben, am Wochenthema
+     * (`startsAt`). Darum zuerst die Wochenthemen dieser und der nächsten
+     * Kalenderwoche.
+     */
+    const calendar = impulseWeekKey(now)
+    const neighbours = [calendar, weekKeyOffset(calendar, 1)].filter(
+      (key): key is string => key !== null,
+    )
+    const themes = (
+      await Promise.all(
+        neighbours.map((key) =>
+          runQuery(client, {
+            from: [{ collectionId: 'impulseItems' }],
+            where: {
+              compositeFilter: {
+                op: 'AND',
+                filters: [equals('week', key), equals('kind', 'impuls')],
+              },
+            },
+            limit: 5,
+          }),
+        ),
+      )
+    ).flat()
+    const starts = new Map<string, number>()
+    for (const theme of themes) {
+      const key = theme.fields?.week?.stringValue as string | undefined
+      const at = timestamp(theme, 'startsAt')
+      if (key && at && theme.fields?.status?.stringValue === 'ready') starts.set(key, at.getTime())
+    }
+    const week = impulseCurrentWeek(now, starts)
+
+    // Hat die neue Woche noch nicht begonnen, weil ihr Start verschoben
+    // ist, wartet die Erinnerung – sie kündigte sonst die alte ein zweites
+    // Mal als neu an.
+    const ready =
+      week < calendar
+        ? []
+        : await runQuery(client, {
+            from: [{ collectionId: 'impulseItems' }],
+            where: {
+              compositeFilter: {
+                op: 'AND',
+                filters: [equals('week', week), equals('status', 'ready')],
+              },
+            },
+            limit: 1,
+          })
 
     // Eine leere Woche bleibt still – und merkt sich auch nichts: Kommt der
     // Inhalt eine Stunde später, greift die Erinnerung noch im Nachlauf.

@@ -4,10 +4,12 @@ import {
   arrayUnion,
   collection,
   deleteDoc,
+  deleteField,
   doc,
   getDocsFromServer,
   serverTimestamp,
   setDoc,
+  Timestamp,
   updateDoc,
   writeBatch,
   type WriteBatch,
@@ -339,6 +341,24 @@ export async function saveImpulseComment(
       text: text.trim(),
       hidden: false,
       createdAt: serverTimestamp(),
+      updatedAt: serverTimestamp(),
+    }),
+  )
+}
+
+/**
+ * Den Start einer Woche verschieben – am Wochenthema (`startsAt`). Früher,
+ * damit das neue Thema schon am Sonntagabend da ist, oder später; `null`
+ * setzt ihn auf Montag, 00:00, zurück. Was die Jugendlichen daraus sehen,
+ * rechnet `impulseCurrentWeek`.
+ */
+export async function setImpulseWeekStart(
+  themeId: string,
+  startsAt: Date | null,
+): Promise<SaveOutcome> {
+  return commit(
+    updateDoc(doc(db, COLLECTIONS.impulseItems, themeId), {
+      startsAt: startsAt ? Timestamp.fromDate(startsAt) : deleteField(),
       updatedAt: serverTimestamp(),
     }),
   )

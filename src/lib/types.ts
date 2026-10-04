@@ -3653,6 +3653,13 @@ export interface ImpulseItem extends WithId {
   lesson?: ImpulseSource | null
   /** Wie das Wochen-Wappen aussieht – beim Wochenthema. */
   crest?: ImpulseCrest | null
+  /**
+   * Nur beim Wochenthema: wann die Woche bei den Jugendlichen beginnt, wenn
+   * es nicht Montag, 00:00, sein soll – früher (das neue Thema schon am
+   * Sonntagabend) oder später (die alte Woche läuft länger). Ohne Angabe
+   * gilt der Montag (siehe `impulseCurrentWeek`).
+   */
+  startsAt?: TS | null
   /** Das Bild der Karte – jede Art darf eines tragen. */
   image?: ImpulseImage | null
   /**

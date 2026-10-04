@@ -29,6 +29,7 @@ import { AppMenuButton } from '@/components/AppMenuButton'
 import { ConfirmDialog } from '@/components/ui/Modal'
 import { ImpulseEditorPreview } from '@/components/impulse/ImpulseEditorPreview'
 import { ImpulseItemForm } from '@/components/impulse/ImpulseItemForm'
+import { ImpulseWeekStart } from '@/components/impulse/ImpulseWeekStart'
 import { cn } from '@/lib/utils'
 import {
   allowsMultiple,
@@ -127,6 +128,7 @@ export function ImpulsRedaktion() {
 
   const weekItems = itemsForWeek(itemsState.data, selectedWeek)
   const weekDrafts = weekItems.filter((item) => item.status === 'draft').length
+  const weekTheme = weekItems.find((item) => item.kind === 'impuls') ?? null
   const countOf = (week: string) => itemsState.data.filter((item) => item.week === week).length
 
   /* ---------------- Bearbeiten und Anlegen ---------------- */
@@ -452,8 +454,8 @@ export function ImpulsRedaktion() {
           <h2 className="text-sm font-semibold">Woche</h2>
           <p className="hint mt-1 mb-3">
             Ein Inhalt erscheint bei den AP’s, sobald er <strong>bereit</strong> ist und seine
-            Woche beginnt – veröffentlicht wird die neue Woche automatisch jeden Montag, nicht
-            manuell.
+            Woche beginnt – die neue Woche startet automatisch am Montag, 00:00. Soll sie früher
+            oder später starten, lässt sich das unten bei «Start» einstellen.
           </p>
           <div className="flex items-center gap-2">
             <button
@@ -526,6 +528,7 @@ export function ImpulsRedaktion() {
               Vorschau der Woche
             </button>
           </div>
+          <ImpulseWeekStart key={selectedWeek} week={selectedWeek} theme={weekTheme} />
         </section>
 
         {/* ---------- Die Karten der Woche, nach Art gruppiert ---------- */}

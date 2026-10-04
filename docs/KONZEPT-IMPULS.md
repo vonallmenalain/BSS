@@ -615,6 +615,8 @@ impulseItems/{id}              eine Karte oder Frage
                                ├─ source    { label, url }        – Pflicht
                                ├─ quiz      { form, optionen[], antwort, erklärung }
                                ├─ order     Reihenfolge im Feed
+                               ├─ startsAt  nur am Wochenthema: verschobener Start
+                                            der Woche (siehe 13.6)
                                └─ status    entwurf | bereit – veröffentlicht wird
                                             durch den Kalender: Woche beginnt, Inhalt
                                             erscheint (kein Handgriff am Montag)
@@ -989,3 +991,30 @@ Die einzelne Karte und die Einreichung schaut die Redaktion weiterhin im
 Fenster an (`ImpulseEditorPreview`). `tests/impulse-preview.test.ts`
 hält den gespielten Tag und die Regeln fest, nach denen ein
 Schreibvorgang den Stand verändert.
+
+### 13.6 Den Start einer Woche verschieben
+
+Die neue Woche beginnt am Montag, 00:00 – so bleibt es meistens. Wenn die
+Redaktion das neue Thema schon früher freischalten will (etwa am
+Sonntagabend nach der Kirche) oder die alte Woche länger laufen soll,
+verschiebt sie den Start: in der Redaktion bei der gewählten Woche unter
+**«Start»** – mit «Jetzt freischalten», «Heute, 19:00», einer frei
+wählbaren Zeit oder «Zurück auf Montag, 00:00».
+
+- **Gespeichert am Wochenthema** (`startsAt`). Ohne Wochenthema bleibt
+  es beim Montag, und ein Entwurf verschiebt noch nichts – sonst begänne
+  eine Woche, deren Thema niemand sieht. Eine Regeländerung braucht es
+  nicht: Das Wochenthema darf die Redaktion ohnehin schreiben.
+- **Der Rahmen:** frühestens am Montag der Woche davor, spätestens am
+  Sonntag der Woche selbst. Die Woche davor endet entsprechend früher
+  oder später.
+- **Eine Rechnung für alle:** `impulseCurrentWeek` sagt, welche Woche
+  gerade läuft – für die Seite der Jugendlichen, den Punkt in der
+  Navigation und die Erinnerung (`benachrichtigungen.mts`). Hat eine
+  verschobene Woche noch nicht begonnen, wartet die Erinnerung, statt
+  die alte Woche ein zweites Mal als neu anzukündigen.
+- Die Vorschau der Redaktion zeigt immer die gewählte Woche, gleich wann
+  sie startet.
+
+`tests/impulse-week-start.test.ts` hält die Regeln fest – auch über den
+Jahreswechsel.

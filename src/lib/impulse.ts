@@ -67,6 +67,65 @@ export function weekKeyOffset(key: string, offset: number): string | null {
 }
 
 /**
+ * Die verschobenen Wochenstarts, in Millisekunden je Woche – aus den
+ * bereiten Wochenthemen, die einen eigenen Start tragen (`startsAt`). Ein
+ * Entwurf verschiebt nichts: Sonst begänne eine Woche, deren Thema noch
+ * gar nicht zu sehen ist.
+ */
+export function impulseWeekStarts(
+  items: {
+    kind: ImpulseKind
+    status: string
+    week: string | null
+    startsAt?: { toMillis(): number } | null
+  }[],
+): Map<string, number> {
+  const starts = new Map<string, number>()
+  for (const item of items) {
+    if (item.kind !== 'impuls' || item.status !== 'ready' || typeof item.week !== 'string') continue
+    if (item.startsAt) starts.set(item.week, item.startsAt.toMillis())
+  }
+  return starts
+}
+
+/**
+ * Die laufende Woche des Bereichs.
+ *
+ * Normalerweise die Kalenderwoche: Montag, 00:00, beginnt die neue. Die
+ * Redaktion kann den Start einer Woche aber verschieben (`startsAt` am
+ * Wochenthema, gesammelt von `impulseWeekStarts`): früher, damit das neue
+ * Thema etwa schon am Sonntagabend da ist, oder später, damit die alte
+ * Woche länger läuft. Geschaut wird auf die Nachbarn – die nächste Woche
+ * kann vorgezogen, die eigene verschoben werden.
+ */
+export function impulseCurrentWeek(
+  now: Date | number,
+  starts: ReadonlyMap<string, number>,
+): string {
+  const calendar = impulseWeekKey(now)
+  const time = typeof now === 'number' ? now : now.getTime()
+  const next = weekKeyOffset(calendar, 1)
+  const nextStart = next ? starts.get(next) : undefined
+  if (next && nextStart !== undefined && time >= nextStart) return next
+  const ownStart = starts.get(calendar)
+  if (ownStart !== undefined && time < ownStart) return weekKeyOffset(calendar, -1) ?? calendar
+  return calendar
+}
+
+/**
+ * Wann eine Woche beginnen darf, wenn die Redaktion sie verschiebt: frühestens
+ * am Montag der Woche davor (so weit schaut `impulseCurrentWeek` voraus),
+ * spätestens am Sonntag der Woche selbst.
+ */
+export function weekStartBounds(week: string): { earliest: Date; latest: Date } | null {
+  const start = weekStart(week)
+  if (!start) return null
+  const latest = addDays(start, 6)
+  latest.setHours(23, 59, 0, 0)
+  return { earliest: addDays(start, -7), latest }
+}
+
+/**
  * «10.–16. August 2026»; über Monatsgrenzen «31. August – 6. September
  * 2026», über Jahresgrenzen mit beiden Jahren. Ein unbrauchbarer Schlüssel
  * bleibt stehen, wie er ist – besser als ein leerer Kopf.
