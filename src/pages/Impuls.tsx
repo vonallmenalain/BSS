@@ -178,16 +178,24 @@ interface ImpulsLocationState {
  * Die Vorschau ist dieselbe Seite in einer gespielten Umgebung
  * (`ImpulsePreviewProvider`): Sie zeigt die gewählte Woche, als liefe sie,
  * genau so, wie sie die Jugendlichen sehen – nur mit der Leiste
- * «Vorschau verlassen» oben, und ohne dass etwas gespeichert wird. Ob
- * eine Vorschau läuft, steht im Verlauf (`state.vorschau`); nur wer die
+ * «Vorschau verlassen» oben, und ohne dass etwas gespeichert wird.
+ * Begonnen wird sie über den Verlauf (`state.vorschau`); nur wer die
  * Redaktion führen darf, bekommt sie.
+ *
+ * Einmal begonnen, bleibt sie, solange man im Bereich ist: Die Seite
+ * bleibt beim Springen zwischen Karten und Räumen montiert, und auch ein
+ * Schritt ohne Vermerk – etwa über das App-Menü – führt so nicht still in
+ * die echte Ansicht, wo das Anschauen gespeichert würde. Sie endet mit
+ * «Vorschau verlassen» oder wenn der Bereich verlassen wird.
  */
 export function Impuls() {
   const { canEditImpulse } = useAuth()
   const location = useLocation()
   const navigate = useNavigate()
   const requested = (location.state as ImpulsLocationState | null)?.vorschau
-  const previewWeek = canEditImpulse && typeof requested === 'string' ? requested : null
+  const [startedWeek, setStartedWeek] = useState(typeof requested === 'string' ? requested : null)
+  if (typeof requested === 'string' && requested !== startedWeek) setStartedWeek(requested)
+  const previewWeek = canEditImpulse ? startedWeek : null
   const exitPreview = useCallback(
     () => navigate('/anti-doom/redaktion', { replace: true }),
     [navigate],

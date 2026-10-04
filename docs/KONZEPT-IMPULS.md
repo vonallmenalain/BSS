@@ -979,9 +979,11 @@ gespielten Tag und «Vorschau verlassen».
   reagieren Wappen, Sterne, Ergebnisse und Feier wie echt. Auch die
   Statistik am Gerät und die gemerkte Feier bleiben unberührt.
 - **Kein Weg hinaus ohne es zu merken:** Jeder Schritt in der Vorschau
-  trägt die Woche im Verlauf mit (`state.vorschau`, `useImpulseNavigate`);
-  auch Zurück- und Vorblättern bleibt Vorschau. Wer den Bereich verlässt,
-  lässt den Stand fallen.
+  trägt die Woche im Verlauf mit (`state.vorschau`, `useImpulseNavigate`,
+  ebenso die Links des App-Menüs in den Bereich); auch Zurück- und
+  Vorblättern bleibt Vorschau. Und solange man im Bereich ist, bleibt sie
+  auch bei einem Schritt ohne Vermerk bestehen. Sie endet mit «Vorschau
+  verlassen» oder wenn der Bereich verlassen wird – und mit ihr der Stand.
 
 Die einzelne Karte und die Einreichung schaut die Redaktion weiterhin im
 Fenster an (`ImpulseEditorPreview`). `tests/impulse-preview.test.ts`
