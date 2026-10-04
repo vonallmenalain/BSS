@@ -23,6 +23,7 @@ import {
   pushEnabled,
   pushSupported,
 } from '@/services/push'
+import { notificationAreas } from '@/lib/access'
 import { AP_NOTIFY_SCOPE_LABELS, type ApNotifyScope, type NotificationMode } from '@/lib/types'
 
 /**
@@ -36,10 +37,12 @@ import { AP_NOTIFY_SCOPE_LABELS, type ApNotifyScope, type NotificationMode } fro
  * ist, wird angeschrieben statt versteckt: ein fehlender Schlüssel, ein
  * Browser ohne Web-Push, eine vom Browser verweigerte Erlaubnis.
  *
- * Zuunterst die Putzplan-Erinnerung – für jedes Konto, in jeder Rolle. Sie
- * gehört nicht zum Konto, sondern zum Gerät, und braucht weder den
- * Schalter oben noch eine Rolle mit Benachrichtigungen: Dieselbe
- * Einstellung gibt es ohne Anmeldung über dem Putzplan.
+ * Jede Rolle sieht genau ihre Bereiche (`notificationAreas`): «Nur Anti
+ * Doom» allein die Erinnerung an die neue Woche, ein AP-Zugang allein die
+ * Termine. Zuunterst die Putzplan-Erinnerung – nur für den Vollzugriff. Sie
+ * gehört nicht zum Konto, sondern zum Gerät, und braucht den Schalter oben
+ * nicht. Wer keinen Vollzugriff hat, findet dieselbe Einstellung dort, wo
+ * der Putzplan öffentlich steht: am Knopf «Erinnerung» über dem Plan.
  */
 export function NotificationsModal({ open, onClose }: { open: boolean; onClose: () => void }) {
   return (
@@ -59,9 +62,9 @@ export function NotificationsModal({ open, onClose }: { open: boolean; onClose: 
 
 function NotificationsPanel() {
   const { profile, isApproved, canViewAp, canViewImpulse } = useAuth()
-  // Wer Benachrichtigungen am Konto bekommen kann – dieselbe Linie wie im
-  // Benutzermenü. Die Putzplan-Erinnerung braucht sie nicht.
-  const mayNotify = isApproved || canViewAp || canViewImpulse
+  // Welche Abschnitte dieses Konto sieht – dieselbe Linie wie im Benutzermenü.
+  const areas = notificationAreas({ isApproved, canViewAp, canViewImpulse })
+  const mayNotify = areas.device
   const toast = useToast()
   const { settings, loading } = useNotificationSettings()
 
@@ -173,7 +176,7 @@ function NotificationsPanel() {
       )}
 
       {/* --- Anti Doom ---------------------------------------------- */}
-      {canViewImpulse && (
+      {areas.impulse && (
         <section>
           <SectionTitle icon={<Sparkles className="size-4" aria-hidden />}>Anti Doom</SectionTitle>
 
@@ -267,7 +270,7 @@ function NotificationsPanel() {
       )}
 
       {/* --- AP-Kalender ------------------------------------------- */}
-      {canViewAp && (
+      {areas.ap && (
         <section>
           <SectionTitle icon={<Tent className="size-4" aria-hidden />}>AP-Kalender</SectionTitle>
 
@@ -395,7 +398,7 @@ function NotificationsPanel() {
       )}
 
       {/* --- Sitzungen --------------------------------------------- */}
-      {isApproved && (
+      {areas.meetings && (
         <section>
           <SectionTitle icon={<CalendarClock className="size-4" aria-hidden />}>
             Sitzungen
@@ -443,8 +446,8 @@ function NotificationsPanel() {
           </p>
         )}
 
-      {/* --- Putzplan ---------------------------------------------- */}
-      <CleaningReminderSection besideDevice={mayNotify} />
+      {/* --- Putzplan – nur für den Vollzugriff --------------------- */}
+      {areas.cleaning && <CleaningReminderSection besideDevice={mayNotify} />}
     </div>
   )
 }
