@@ -9,6 +9,7 @@ import {
   Eye,
   Inbox,
   Pencil,
+  PenLine,
   Plus,
   RotateCcw,
   Send,
@@ -46,9 +47,10 @@ import {
   upcomingWeekKeys,
 } from '@/lib/impulse'
 import { IMPULSE_KIND_THEME, IMPULSE_SECTIONS } from '@/lib/impulseSections'
-import { isPackItem, PACK_WEEKS, planPackItems } from '@/lib/impulsePack'
+import { isPackItem, PACK_WEEKS, planPackCorrections, planPackItems } from '@/lib/impulsePack'
 import {
   applyDifficultyCleanup,
+  applyPackCorrections,
   createPackItems,
   deleteImpulseSubmission,
   restartImpulseContent,
@@ -291,6 +293,35 @@ export function ImpulsRedaktion() {
     }
   }
 
+  /*
+   * Korrekturen aus dem Themenpaket (`PACK_CORRECTIONS`): Trägt eine
+   * Karte noch genau den alten Text, lässt sich der neue hier mit einem
+   * Klick übernehmen. Was die Redaktion selbst geändert hat, bleibt – der
+   * Kasten erscheint dann gar nicht.
+   */
+  const [correcting, setCorrecting] = useState(false)
+  const [corrected, setCorrected] = useState(false)
+  const correctionPlans = useMemo(() => planPackCorrections(itemsState.data), [itemsState.data])
+  const runCorrections = async () => {
+    if (correcting || correctionPlans.length === 0) return
+    setCorrecting(true)
+    try {
+      const outcome = await applyPackCorrections(correctionPlans)
+      setCorrected(true)
+      toast.saved(
+        `Korrektur übernommen – ${
+          correctionPlans.length === 1 ? 'eine Karte' : `${correctionPlans.length} Karten`
+        } angepasst.`,
+        outcome,
+      )
+    } catch (error) {
+      console.error(error)
+      toast.error('Die Korrektur konnte nicht übernommen werden.')
+    } finally {
+      setCorrecting(false)
+    }
+  }
+
   /* Antworten und Beiträge je Inhalt – für die Zahl an der Zeile und
      fürs Miträumen beim Löschen. */
   const answersByItem = useMemo(() => {
@@ -489,6 +520,52 @@ export function ImpulsRedaktion() {
             >
               <Eraser className="size-4" aria-hidden />
               {cleaning ? 'Wird bereinigt …' : 'Jetzt bereinigen'}
+            </button>
+          </section>
+        )}
+
+        {correctionPlans.length > 0 && !corrected && (
+          <section className="card p-4 sm:p-5">
+            <h2 className="flex items-center gap-2 text-sm font-semibold">
+              <PenLine className="size-4 text-slate-400" aria-hidden />
+              Korrektur aus dem Themenpaket
+            </h2>
+            <p className="hint mt-1">
+              {correctionPlans.length === 1
+                ? 'Für eine Karte gibt'
+                : `Für ${correctionPlans.length} Karten gibt`}{' '}
+              es im Themenpaket einen neuen Text. Übernommen wird er nur, wo noch der ursprüngliche
+              steht – was du selbst geändert hast, bleibt.
+            </p>
+            <ul className="mt-3 space-y-2 text-sm">
+              {correctionPlans.map((correction) => {
+                const item = itemsState.data.find((entry) => entry.id === correction.id)
+                return (
+                  <li
+                    key={`${correction.id}:${correction.field}`}
+                    className="rounded-xl border border-slate-200 px-3 py-2.5 dark:border-slate-800"
+                  >
+                    <span className="hint mt-0 block">
+                      {item
+                        ? `${IMPULSE_KIND_LABELS[item.kind]}${item.week ? ` · ${formatWeekRange(item.week)}` : ''}`
+                        : correction.id}
+                    </span>
+                    <span className="mt-1 block text-slate-500 line-through dark:text-slate-400">
+                      {correction.from}
+                    </span>
+                    <span className="mt-0.5 block font-medium">{correction.to}</span>
+                  </li>
+                )
+              })}
+            </ul>
+            <button
+              type="button"
+              className="btn-secondary mt-3"
+              onClick={() => void runCorrections()}
+              disabled={correcting}
+            >
+              <PenLine className="size-4" aria-hidden />
+              {correcting ? 'Wird übernommen …' : 'Übernehmen'}
             </button>
           </section>
         )}
