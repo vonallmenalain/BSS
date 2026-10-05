@@ -164,7 +164,7 @@ in Folge».
 
 **Sonntag.** Die Frage der Woche wird aufgelöst: Wer geantwortet hat, sieht
 die Auflösung samt Erklärung – und was die anderen geantwortet haben. In der
-Gruppenleiste ist zu sehen: 8 von 11 waren diese Woche dabei. In der
+Gruppenleiste ist zu sehen: Acht waren diese Woche dabei. In der
 Kollegiumsstunde sagt der Berater: «Wer hat den Hund gefunden?» – und das
 Gespräch ist lanciert.
 
@@ -195,7 +195,7 @@ Bereich.
                           Fortschritt je Person
                        (Serie, Abzeichen, Favoriten)
                                    │
-                          Gruppenbild «8 von 11 dabei»
+                          Gruppenbild «8 dabei»
 ```
 
 ### 5.1 Wochenimpuls – das Herzstück
@@ -297,8 +297,9 @@ Stolz sagen können, dass ich etwas geschafft habe».
   eigene Zeile), die Frage der Woche. So beantwortet «21 von 22», welche
   Karte die fehlende ist, und «Dabei!» sagt, wofür es das gibt. Das Offene
   steht zuoberst, das Erledigte darunter – es mahnt nicht, es erklärt.
-- **Gruppenbild.** Eine Leiste: «Diese Woche dabei: 8 von 11» mit den Kürzeln
-  bzw. Vornamen derer, die dabei waren – die Form der Anerkennung, die
+- **Gruppenbild.** Eine Leiste: «Diese Woche dabei: 8» mit den Kürzeln
+  bzw. Vornamen derer, die dabei waren – ohne Gesamtzahl, die vor allem
+  sagte, wer fehlt (siehe 13.8). Die Form der Anerkennung, die
   motiviert, ohne zu beschämen. Dazu, wenn gewünscht, ein **gemeinsames
   Ziel**: «Als Kollegium zusammen 40 Kapitel in diesem Monat» mit einem
   Balken, zu dem jeder beiträgt. Das dreht Wettbewerb in Zusammenarbeit.
@@ -872,7 +873,9 @@ Am 12. August 2026 besprochen und festgelegt:
 3. **Reihenfolge:** Die Antworten der anderen erscheinen erst nach der
    eigenen Antwort.
 4. **Gruppenleiste:** Die Namen der Beteiligten werden gezeigt – ohne
-   Hervorhebung der Fehlenden.
+   Hervorhebung der Fehlenden und ohne Gesamtzahl. Im Raum «Diese Woche
+   dabei» ist vorerst auch der Stand der Wappen aller Beteiligten zu sehen
+   – eine bewusste Ausnahme (siehe 13.8).
 5. **Wochenziel:** Selbstauskunft genügt, keine Kontrolle.
 6. **Rhythmus:** Wöchentlich – Veröffentlichung am Montag, Auflösung am
    Sonntag. Dazu kommt die **Tages-Challenge** als kleiner täglicher Haken
@@ -1251,17 +1254,17 @@ es gross, samt Sternen (`ImpulseGroupRoom`). Gerechnet wird jedes Wappen
 wie das eigene, aus Fortschritt und Antworten der Person (`weekCrests` in
 `lib/impulse`); das eigene steht vorn und heisst «Du». Das geht bewusst
 einen Schritt weiter als die Leiste, die nur nennt, wer fertig ist: Hier
-sieht man auch, wer noch unterwegs ist. Die Grenzen bleiben – nur wer
+sieht man auch, wer noch unterwegs ist – vorerst so entschieden, als
+bewusste Ausnahme vom Leitgedanken 4. Die Grenzen bleiben – nur wer
 dabei ist, steht da; eine Galerie nach Vornamen, keine Rangliste; und
 welche Karten jemandem fehlen, sieht nur die Person selbst.
 
-**Der Nenner der Leiste.** «2 von 3» zählt im Nenner, wer je dabei war –
-ein Haken, eine Antwort, ein Beitrag, eine Runde im Minispiel, in
-irgendeiner Woche (`everParticipated`). Früher zählte jedes
-Fortschrittsdokument mit, also auch, wer «Anti Doom» bloss geöffnet hatte;
-nach dem Zurücksetzen einer Woche standen so die Testkonten noch im
-Nenner. Ist niemand ausser den Beteiligten je dabei gewesen, steht nur die
-Zahl.
+**Nur die Zahl.** Die Leiste sagt «2» – wie viele diese Woche dabei sind,
+ohne «von 3». Die Gesamtzahl sagte vor allem, wer fehlt, und wen sie
+mitzählen soll, weiss die App ohnehin nicht: Früher zählte jedes
+Fortschrittsdokument mit, also auch, wer «Anti Doom» bloss geöffnet hatte,
+und nach dem Zurücksetzen einer Woche standen so die Testkonten noch
+darin. Auch der Raum «Diese Woche dabei» nennt nur die Zahl.
 
 **Eine Woche zurücksetzen.** Ganz unten in der Redaktion – für die Zeit des
 Ausprobierens, bevor der Link an alle geht. Zurückgesetzt wird, was die

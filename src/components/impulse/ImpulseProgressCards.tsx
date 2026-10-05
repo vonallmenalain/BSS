@@ -208,8 +208,10 @@ export function ChallengeCard({
 }
 
 /**
- * Die Gruppenleiste: wer diese Woche dabei war – Vornamen, keine
- * Rangliste, keine Hervorhebung der Fehlenden. Darunter, wer sein
+ * Die Gruppenleiste: wer diese Woche dabei war – Vornamen und ihre Zahl,
+ * keine Rangliste, keine Hervorhebung der Fehlenden. Eine Gesamtzahl
+ * («2 von 3») gibt es bewusst nicht: Sie sagte vor allem, wer fehlt –
+ * und wen sie mitzählen soll, weiss die App ohnehin nicht. Darunter, wer sein
  * Wochen-Wappen schon vollendet hat: genannt wird, wer es geschafft hat,
  * nie, wer noch unterwegs ist.
  *
@@ -219,13 +221,10 @@ export function ChallengeCard({
  */
 export function GroupCard({
   participants,
-  total,
   crestNames = [],
   onOpen,
 }: {
   participants: { uid: string; firstName: string }[]
-  /** Alle, die je im Bereich mitgemacht haben – der Nenner der Leiste. */
-  total: number
   /** Wer das Wappen der Woche schon vollendet hat. */
   crestNames?: { uid: string; firstName: string }[]
   /** Den Raum mit den Wappen öffnen – vom Klickpunkt her. */
@@ -237,12 +236,7 @@ export function GroupCard({
       <span className="hint flex items-center gap-1.5 font-medium">
         <Users className="size-4" aria-hidden />
         Diese Woche dabei
-        {participants.length > 0 && (
-          <span className="ms-auto">
-            {participants.length}
-            {total > participants.length && ` von ${total}`}
-          </span>
-        )}
+        {participants.length > 0 && <span className="ms-auto">{participants.length}</span>}
       </span>
       {participants.length === 0 ? (
         <span className="mt-2 block text-sm text-slate-600 dark:text-slate-300">
