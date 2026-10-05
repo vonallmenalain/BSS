@@ -14,11 +14,13 @@ import type { ImpulseItemInput } from '@/services/impulse'
 import {
   IMPULSE_CREST_PALETTE_LABELS,
   IMPULSE_CREST_SYMBOL_LABELS,
+  IMPULSE_GAME_LABELS,
   IMPULSE_KIND_LABELS,
   IMPULSE_POLL_FORM_LABELS,
   IMPULSE_QUIZ_FORM_LABELS,
   type ImpulseCrestPalette,
   type ImpulseCrestSymbol,
+  type ImpulseGameId,
   type ImpulseKind,
   type ImpulsePoll,
   type ImpulsePollForm,
@@ -38,19 +40,24 @@ import {
  * ohne dass zwei Formulare gepflegt werden müssen.
  *
  * `idPrefix` hält die Element-IDs auseinander, falls beide Formulare je
- * einmal gleichzeitig offen sind.
+ * einmal gleichzeitig offen sind. `kinds` schränkt die Arten ein – die
+ * Mitmach-Ecke bietet das Minispiel nicht an: Ein Spiel ist Code, keine
+ * Karte zum Ausfüllen.
  */
 export function ImpulseItemFields({
   input,
   setInput,
   idPrefix = 'impulse',
   kindSibling,
+  kinds = Object.keys(IMPULSE_KIND_LABELS) as ImpulseKind[],
 }: {
   input: ImpulseItemInput
   setInput: React.Dispatch<React.SetStateAction<ImpulseItemInput>>
   idPrefix?: string
   /** Ein Feld neben der Art – die Redaktion stellt dort die Woche hin. */
   kindSibling?: React.ReactNode
+  /** Die Arten zur Auswahl – sonst alle. */
+  kinds?: readonly ImpulseKind[]
 }) {
   /* Das Zuschneidefenster hängt am Bild-Link – es kommt und geht mit dem
      Knopf daneben (siehe `ImpulseImageCropper`). */
@@ -99,8 +106,10 @@ export function ImpulseItemFields({
   const pieces = puzzlePieces(input.puzzleText)
 
   /* Nur die Feed-Karten kennen den Wisch nach links – also auch nur sie
-     das Feld «Vertiefung». Wochenziel und Tages-Challenge sind Kacheln. */
-  const hasDeepening = input.kind !== 'wochenziel' && input.kind !== 'tageschallenge'
+     das Feld «Vertiefung». Wochenziel und Tages-Challenge sind Kacheln,
+     und das Minispiel gehört dem Spiel. */
+  const isGame = input.kind === 'spiel'
+  const hasDeepening = input.kind !== 'wochenziel' && input.kind !== 'tageschallenge' && !isGame
 
   /* Reine Schriftstellen-Zeilen in der Vertiefung («Alma 32:27») lassen
      sich mit einem Tipp verlinken – zur Form «Alma 32:27 – https://…»,
@@ -122,7 +131,7 @@ export function ImpulseItemFields({
               setInput((value) => ({ ...value, kind: event.target.value as ImpulseKind }))
             }
           >
-            {(Object.keys(IMPULSE_KIND_LABELS) as ImpulseKind[]).map((kind) => (
+            {kinds.map((kind) => (
               <option key={kind} value={kind}>
                 {IMPULSE_KIND_LABELS[kind]}
               </option>
@@ -138,7 +147,10 @@ export function ImpulseItemFields({
             ? 'Frage'
             : input.kind === 'bilderraetsel'
               ? 'Frage zum Bild'
-              : input.kind === 'impuls' || input.kind === 'video' || input.kind === 'puzzle'
+              : input.kind === 'impuls' ||
+                  input.kind === 'video' ||
+                  input.kind === 'puzzle' ||
+                  isGame
                 ? 'Titel'
                 : input.kind === 'feed'
                   ? 'Text der Karte'
@@ -170,7 +182,9 @@ export function ImpulseItemFields({
                               ? 'Frag ein Familienmitglied, wann es Nephis Beispiel gefolgt ist …'
                               : input.kind === 'feed'
                                 ? '«Blickt in jedem Gedanken auf mich …»'
-                                : 'Kraft aus den Schriften'
+                                : isGame
+                                  ? 'Gut für dich?'
+                                  : 'Kraft aus den Schriften'
           }
         />
       </div>
@@ -193,7 +207,9 @@ export function ImpulseItemFields({
                   ? 'Ein Satz, warum sich dieses Gespräch lohnt …'
                   : input.kind === 'video'
                     ? 'Ein Satz, worauf beim Schauen zu achten ist …'
-                    : 'Ein Satz, der Lust macht, dranzubleiben …'
+                    : isGame
+                      ? 'Ein Satz, worum es geht – die Regeln erklärt das Spiel selbst …'
+                      : 'Ein Satz, der Lust macht, dranzubleiben …'
           }
         />
       </div>
@@ -532,6 +548,34 @@ export function ImpulseItemFields({
         </fieldset>
       )}
 
+      {/* Das Minispiel: Welches Spiel die Karte spielt. Jedes Spiel ist
+          fertiger Code – hier wird gewählt, nicht gebaut. */}
+      {isGame && (
+        <div>
+          <label className="label" htmlFor={`${idPrefix}-game`}>
+            Spiel
+          </label>
+          <select
+            id={`${idPrefix}-game`}
+            className="input"
+            value={input.game}
+            onChange={(event) =>
+              setInput((value) => ({ ...value, game: event.target.value as ImpulseGameId }))
+            }
+          >
+            {(Object.keys(IMPULSE_GAME_LABELS) as ImpulseGameId[]).map((game) => (
+              <option key={game} value={game}>
+                {IMPULSE_GAME_LABELS[game]}
+              </option>
+            ))}
+          </select>
+          <p className="hint mt-1">
+            Das Minispiel steht im Feed immer ganz zuletzt. Je Person zählt der beste Lauf; die
+            Rangliste zeigt nur Namen, die die Spielenden selbst eintragen.
+          </p>
+        </div>
+      )}
+
       {/* Das Video der Video-Karte – ein Link, kein Upload. Was daraus
           wird, liest `lib/impulseVideo` an der Adresse ab; die Zeile
           darunter sagt es sofort, damit niemand erst in der Vorschau
@@ -579,67 +623,71 @@ export function ImpulseItemFields({
           Vorschaubild, sonst das Bild zum Thema. Im Vollbild-Feed füllt
           es die erste Seite der Karte; der Text kommt beim zweiten Wisch
           darüber. */}
-      <fieldset className="space-y-3 rounded-xl border border-slate-200 p-3 dark:border-slate-700">
-        <legend className="label px-1">
-          {input.kind === 'bilderraetsel'
-            ? 'Bild'
-            : input.kind === 'video'
-              ? 'Vorschaubild (optional)'
-              : 'Bild (optional)'}
-        </legend>
-        <div>
-          <label className="label" htmlFor={`${idPrefix}-image-url`}>
-            Bild-Link
-          </label>
-          <div className="flex gap-2">
-            <input
-              id={`${idPrefix}-image-url`}
-              className="input min-w-0 flex-1"
-              type="url"
-              value={input.imageUrl}
-              onChange={(event) =>
-                /* Ein anderes Bild, ein anderer Ausschnitt: Die alten Masse
+      {!isGame && (
+        <fieldset className="space-y-3 rounded-xl border border-slate-200 p-3 dark:border-slate-700">
+          <legend className="label px-1">
+            {input.kind === 'bilderraetsel'
+              ? 'Bild'
+              : input.kind === 'video'
+                ? 'Vorschaubild (optional)'
+                : 'Bild (optional)'}
+          </legend>
+          <div>
+            <label className="label" htmlFor={`${idPrefix}-image-url`}>
+              Bild-Link
+            </label>
+            <div className="flex gap-2">
+              <input
+                id={`${idPrefix}-image-url`}
+                className="input min-w-0 flex-1"
+                type="url"
+                value={input.imageUrl}
+                onChange={(event) =>
+                  /* Ein anderes Bild, ein anderer Ausschnitt: Die alten Masse
                    gälten für ein Bild, das nicht mehr dasteht. */
-                setInput((value) => ({ ...value, imageUrl: event.target.value, imageCrop: null }))
-              }
-              placeholder="https://www.churchofjesuschrist.org/media/…"
-            />
-            <button
-              type="button"
-              className="btn-secondary shrink-0"
-              onClick={() => setCropping(true)}
-              disabled={!imageUrl}
-            >
-              <Crop className="size-4" aria-hidden />
-              Ausschnitt
-            </button>
+                  setInput((value) => ({ ...value, imageUrl: event.target.value, imageCrop: null }))
+                }
+                placeholder="https://www.churchofjesuschrist.org/media/…"
+              />
+              <button
+                type="button"
+                className="btn-secondary shrink-0"
+                onClick={() => setCropping(true)}
+                disabled={!imageUrl}
+              >
+                <Crop className="size-4" aria-hidden />
+                Ausschnitt
+              </button>
+            </div>
+            <p className="hint mt-1">
+              Aus der Mediathek der Kirche: Bildadresse kopieren und hier einsetzen.
+            </p>
           </div>
-          <p className="hint mt-1">
-            Aus der Mediathek der Kirche: Bildadresse kopieren und hier einsetzen.
-          </p>
-        </div>
-        <div>
-          <label className="label" htmlFor={`${idPrefix}-image-alt`}>
-            Bildbeschreibung (optional)
-          </label>
-          <input
-            id={`${idPrefix}-image-alt`}
-            className="input"
-            value={input.imageAlt}
-            onChange={(event) => setInput((value) => ({ ...value, imageAlt: event.target.value }))}
-            placeholder={
-              input.kind === 'bilderraetsel'
-                ? 'Ein Tempel bei Sonnenuntergang – ohne die Lösung zu verraten'
-                : 'Was auf dem Bild zu sehen ist'
-            }
-          />
-        </div>
-        {/* Die Vorschau zeigt, was die Karte zeigt – mit Ausschnitt, wenn
+          <div>
+            <label className="label" htmlFor={`${idPrefix}-image-alt`}>
+              Bildbeschreibung (optional)
+            </label>
+            <input
+              id={`${idPrefix}-image-alt`}
+              className="input"
+              value={input.imageAlt}
+              onChange={(event) =>
+                setInput((value) => ({ ...value, imageAlt: event.target.value }))
+              }
+              placeholder={
+                input.kind === 'bilderraetsel'
+                  ? 'Ein Tempel bei Sonnenuntergang – ohne die Lösung zu verraten'
+                  : 'Was auf dem Bild zu sehen ist'
+              }
+            />
+          </div>
+          {/* Die Vorschau zeigt, was die Karte zeigt – mit Ausschnitt, wenn
             einer gewählt ist. */}
-        {imageUrl && (
-          <ImpulseCropPreview url={imageUrl} alt={input.imageAlt} crop={input.imageCrop} />
-        )}
-      </fieldset>
+          {imageUrl && (
+            <ImpulseCropPreview url={imageUrl} alt={input.imageAlt} crop={input.imageCrop} />
+          )}
+        </fieldset>
+      )}
 
       {cropping && imageUrl && (
         <ImpulseImageCropper
@@ -651,21 +699,23 @@ export function ImpulseItemFields({
         />
       )}
 
-      <SourceFields
-        heading={
-          /* Aufgaben brauchen keine Fundstelle – Material schon
+      {!isGame && (
+        <SourceFields
+          heading={
+            /* Aufgaben brauchen keine Fundstelle – Material schon
              (siehe `readyProblems`). */
-          input.kind === 'impuls' || input.kind === 'quiz' || input.kind === 'puzzle'
-            ? 'Quelle'
-            : 'Quelle (optional)'
-        }
-        idLabel={`${idPrefix}-source`}
-        idUrl={`${idPrefix}-source-url`}
-        labelValue={input.sourceLabel}
-        urlValue={input.sourceUrl}
-        onLabel={(next) => setInput((value) => ({ ...value, sourceLabel: next }))}
-        onUrl={(next) => setInput((value) => ({ ...value, sourceUrl: next }))}
-      />
+            input.kind === 'impuls' || input.kind === 'quiz' || input.kind === 'puzzle'
+              ? 'Quelle'
+              : 'Quelle (optional)'
+          }
+          idLabel={`${idPrefix}-source`}
+          idUrl={`${idPrefix}-source-url`}
+          labelValue={input.sourceLabel}
+          urlValue={input.sourceUrl}
+          onLabel={(next) => setInput((value) => ({ ...value, sourceLabel: next }))}
+          onUrl={(next) => setInput((value) => ({ ...value, sourceUrl: next }))}
+        />
+      )}
 
       {(input.kind === 'quiz' || input.kind === 'bilderraetsel') && (
         <fieldset className="space-y-3 rounded-xl border border-slate-200 p-3 dark:border-slate-700">

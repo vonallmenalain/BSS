@@ -4,6 +4,7 @@ import {
   Bookmark,
   CheckCircle2,
   Flame,
+  Gamepad2,
   HeartHandshake,
   History,
   LayoutList,
@@ -41,6 +42,7 @@ export type ImpulseSectionKey =
   | 'frage'
   | 'feed'
   | 'teilen'
+  | 'spiel'
   | 'ziel'
   | 'challenge'
   | 'fortschritt'
@@ -69,8 +71,10 @@ export interface ImpulseSection {
 }
 
 /*
- * Fünfzehn Bereiche, fünfzehn Farbtöne – bewusst weit auseinander, damit
- * die Farbe allein schon sagt, wo man ist.
+ * Sechzehn Bereiche, sechzehn Farbtöne – bewusst weit auseinander, damit
+ * die Farbe allein schon sagt, wo man ist. Das Minispiel trägt als
+ * einziges einen Verlauf (Pink in Orange): Die Töne des Regenbogens sind
+ * vergeben, und ein Spiel darf bunter sein als der Rest.
  *
  * Die Vollbild-Töne sind Schleier, keine Vollflächen: Sie steigen oben
  * satt ein, laufen über eine Zwischenstufe aus und enden im Grund der
@@ -187,6 +191,18 @@ export const IMPULSE_SECTIONS: Record<ImpulseSectionKey, ImpulseSection> = {
     ring: 'text-cyan-600 dark:text-cyan-400',
     bar: 'bg-cyan-600 dark:bg-cyan-400',
   },
+  spiel: {
+    key: 'spiel',
+    label: 'Minispiel',
+    short: 'Spiel',
+    icon: Gamepad2,
+    iconBox: 'bg-gradient-to-br from-pink-500 to-orange-400 text-white',
+    text: 'text-pink-700 dark:text-pink-300',
+    wash: 'from-pink-300/90 via-orange-200/40 dark:from-pink-500/40 dark:via-orange-500/12',
+    chipActive: 'bg-pink-600 text-white dark:bg-pink-400 dark:text-pink-950',
+    ring: 'text-pink-500 dark:text-pink-400',
+    bar: 'bg-gradient-to-r from-pink-500 to-orange-400',
+  },
   ziel: {
     key: 'ziel',
     label: 'Wochenziel',
@@ -272,6 +288,7 @@ export const IMPULSE_SECTION_ORDER: ImpulseSectionKey[] = [
   'frage',
   'feed',
   'teilen',
+  'spiel',
   'ziel',
   'challenge',
   'fortschritt',
@@ -301,6 +318,7 @@ export const IMPULSE_DECK_SECTIONS = [
   'frage',
   'feed',
   'teilen',
+  'spiel',
 ] as const
 export type ImpulseDeckSectionKey = (typeof IMPULSE_DECK_SECTIONS)[number]
 
@@ -328,8 +346,8 @@ export function isRoomSection(key: ImpulseSectionKey): key is ImpulseRoomSection
  * Die Inhaltsarten, die als Karten im Vollbild-Feed liegen. Die
  * Reihenfolge hier ist die der Redaktions-Sparten; im Feed selbst zählt
  * der Platz, den die Redaktion jeder Karte gibt (`deckOrder` in
- * `lib/impulse`) – nur das Wochenthema steht immer vorn und die
- * Teilen-Aufgabe immer hinten.
+ * `lib/impulse`) – nur das Wochenthema steht immer vorn, die
+ * Teilen-Aufgabe hinten und das Minispiel ganz zuletzt.
  */
 export const IMPULSE_DECK_KINDS = [
   'impuls',
@@ -341,6 +359,7 @@ export const IMPULSE_DECK_KINDS = [
   'frage',
   'feed',
   'teilen',
+  'spiel',
 ] as const
 export type ImpulseDeckKind = (typeof IMPULSE_DECK_KINDS)[number]
 
@@ -360,6 +379,7 @@ export const IMPULSE_KIND_SECTION: Record<ImpulseDeckKind, ImpulseDeckSectionKey
   frage: 'frage',
   feed: 'feed',
   teilen: 'teilen',
+  spiel: 'spiel',
 }
 
 /**
@@ -408,6 +428,8 @@ export function sectionForItem(item: ImpulseItem, todayKey: string): ImpulseSect
       return 'frage'
     case 'teilen':
       return 'teilen'
+    case 'spiel':
+      return 'spiel'
     default:
       return 'woche'
   }

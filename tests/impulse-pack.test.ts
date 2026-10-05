@@ -140,6 +140,21 @@ test('Themenpaket: der Feed wechselt den Takt – und endet mit der Teilen-Aufga
   }
 })
 
+test('Themenpaket: die Woche zum Wort der Weisheit endet mit ihrem Minispiel', () => {
+  const plans = packWeekPlans(PACK_WEEKS[0])
+  const last = plans.at(-1)!
+  assert.equal(last.id, 'fsy26-w41-spiel')
+  assert.equal(last.kind, 'spiel')
+  assert.equal(last.game, 'sortieren')
+  assert.equal(last.status, 'ready')
+  // Höchstens ein Minispiel je Woche – und nur dort, wo das Paket eines vorsieht.
+  for (const week of PACK_WEEKS) {
+    const games = packWeekPlans(week).filter((plan) => plan.kind === 'spiel')
+    assert.ok(games.length <= 1, week.week)
+    assert.equal(games.length, week.game ? 1 : 0, week.week)
+  }
+})
+
 test('Themenpaket: der Feed liegt im Bereich genau in der Reihenfolge des Pakets', () => {
   for (const week of PACK_WEEKS) {
     const plans = packWeekPlans(week).filter(

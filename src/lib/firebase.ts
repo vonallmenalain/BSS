@@ -125,6 +125,8 @@ export const COLLECTIONS = {
   impulseComments: 'impulseComments',
   /** Einreichungen aus der Mitmach-Ecke – die Redaktion prüft und übernimmt */
   impulseSubmissions: 'impulseSubmissions',
+  /** Ranglisten der Minispiele – der beste Lauf je Spiel und Konto, ID «{itemId}_{uid}» */
+  impulseGameScores: 'impulseGameScores',
   /** Geräte-Adressen für Benachrichtigungen, Dokument-ID ist das Token */
   pushTokens: 'pushTokens',
   /** Was jemand benachrichtigt bekommen will, Dokument-ID ist die UID */

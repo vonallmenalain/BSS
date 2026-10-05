@@ -27,6 +27,7 @@ import {
   type CleaningWeek,
   type ImpulseAnswer,
   type ImpulseComment,
+  type ImpulseGameScore,
   type ImpulseItem,
   type ImpulseProgress,
   type ImpulseSubmission,
@@ -621,6 +622,18 @@ export function useImpulseSubmissions() {
   const { canViewImpulse } = useAuth()
   const state = useCollection<ImpulseSubmission>(COLLECTIONS.impulseSubmissions, canViewImpulse)
   return useMemo(() => ({ ...state, data: byDate(state.data, 'createdAt', 'asc') }), [state])
+}
+
+/**
+ * Die Ranglisten der Minispiele – der beste Lauf je Spiel und Konto.
+ *
+ * Der ganze Bestand: Jede Liste zeigt alle, die gespielt haben, und das
+ * Wappen zählt die erste Runde wie eine Antwort. Bei einem Kollegium und
+ * einem Spiel je Woche bleibt das eine Handvoll Dokumente.
+ */
+export function useImpulseGameScores() {
+  const { canViewImpulse } = useAuth()
+  return useCollection<ImpulseGameScore>(COLLECTIONS.impulseGameScores, canViewImpulse)
 }
 
 /* ------------------------------------------------------------------ */

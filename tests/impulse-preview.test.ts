@@ -88,6 +88,19 @@ test('changePreviewProgress: die erste Woche wird einmal vermerkt und bleibt', (
   assert.equal(progress.firstSeenWeek, '2026-W41')
 })
 
+test('changePreviewProgress: der Name der Rangliste bleibt neben allem anderen stehen', () => {
+  let progress = changePreviewProgress(
+    null,
+    person,
+    { kind: 'last-seen', week: '2026-W41', firstSeenWeek: '2026-W41' },
+    at('t1'),
+  )
+  progress = changePreviewProgress(progress, person, { kind: 'game-name', name: 'Levin' }, at('t2'))
+  assert.equal(progress.gameName, 'Levin')
+  assert.equal(progress.lastSeenWeek, '2026-W41')
+  assert.equal(progress.firstSeenWeek, '2026-W41')
+})
+
 test('changePreviewProgress: Haken der Woche werden zusammengeführt, nicht ersetzt', () => {
   let progress: ImpulseProgress | null = null
   progress = changePreviewProgress(
@@ -205,6 +218,7 @@ test('withPreviewDocs: die Vorschau liegt über dem Bestand', () => {
     comments: [],
     progress: null,
     submissions: [],
+    gameScores: [],
     celebrated: '',
   })
 })

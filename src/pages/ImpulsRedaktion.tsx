@@ -21,6 +21,7 @@ import { useNow } from '@/hooks/useNow'
 import {
   useImpulseAnswers,
   useImpulseComments,
+  useImpulseGameScores,
   useImpulseItems,
   useImpulseSubmissions,
 } from '@/hooks/useFirestore'
@@ -306,8 +307,22 @@ export function ImpulsRedaktion() {
     return map
   }, [commentsState.data])
 
+  /* Die Ranglisten der Minispiele – je Spiel, wer gespielt hat. */
+  const scoresState = useImpulseGameScores()
+  const scoresByItem = useMemo(() => {
+    const map = new Map<string, string[]>()
+    for (const score of scoresState.data) {
+      const list = map.get(score.itemId) ?? []
+      list.push(score.id)
+      map.set(score.itemId, list)
+    }
+    return map
+  }, [scoresState.data])
+
   const answerCount = (item: ImpulseItem) =>
-    (answersByItem.get(item.id)?.length ?? 0) + (commentsByItem.get(item.id)?.length ?? 0)
+    (answersByItem.get(item.id)?.length ?? 0) +
+    (commentsByItem.get(item.id)?.length ?? 0) +
+    (scoresByItem.get(item.id)?.length ?? 0)
 
   /* Die Mitmach-Ecke: offene Einreichungen prüfen und übernehmen – und
      die übernommenen bleiben aufklappbar stehen, als Chronik dessen, was
@@ -373,9 +388,10 @@ export function ImpulsRedaktion() {
                 .map((week) => week.theme.lesson.label.replace(/^Erfahre mehr über /, ''))
                 .join(' · ')}
               . Je Woche ein Wochenthema mit eigenem Wappen, dazu Umfragen, Quizfragen, ein
-              Vers-Puzzle, «Fakt oder Mythos?», «Was würdest du tun?», offene Fragen,
-              Feed-Karten, Wochenziel, Tages-Challenge und Teilen-Aufgabe – alles «bereit».
-              Vergangene Wochen bleiben weg; eingespielt wird, was noch fehlt ({packPlans.length}{' '}
+              Vers-Puzzle, «Fakt oder Mythos?», «Was würdest du tun?», offene Fragen, Feed-Karten,
+              Wochenziel, Tages-Challenge und Teilen-Aufgabe – und zum Wort der Weisheit das
+              Minispiel «Gut für dich?». Alles «bereit». Vergangene Wochen bleiben weg; eingespielt
+              wird, was noch fehlt ({packPlans.length}{' '}
               {packPlans.length === 1 ? 'Inhalt' : 'Inhalte'}).
             </p>
             {legacyItems.length > 0 && (
@@ -782,6 +798,7 @@ export function ImpulsRedaktion() {
           weekChoices={weekChoices}
           answerIds={editor.itemId ? (answersByItem.get(editor.itemId) ?? []) : []}
           commentIds={editor.itemId ? (commentsByItem.get(editor.itemId) ?? []) : []}
+          scoreIds={editor.itemId ? (scoresByItem.get(editor.itemId) ?? []) : []}
           todayKey={todayKey}
           onSaved={
             editor.fromSubmissionId
@@ -869,6 +886,7 @@ const KIND_GROUP_LABELS: Record<ImpulseKind, string> = {
   frage: 'Frage der Woche',
   feed: 'Feed-Karten',
   teilen: 'Teilen-Aufgabe',
+  spiel: 'Minispiel',
 }
 
 /**
@@ -961,6 +979,12 @@ function WeekKindGroup({
                           {answerCount(item)} {answerCount(item) === 1 ? 'Antwort' : 'Antworten'}
                         </>
                       )}
+                    {item.kind === 'spiel' && answerCount(item) > 0 && (
+                      <>
+                        {' · '}
+                        {answerCount(item)} {answerCount(item) === 1 ? 'hat' : 'haben'} gespielt
+                      </>
+                    )}
                   </span>
                 </span>
                 <Pencil

@@ -15,15 +15,17 @@ import {
   type WriteBatch,
 } from '@/lib/db'
 // Am Protokoll vorbei – warum, steht bei `setImpulseLastSeenWeek`.
-import { setDoc as fbSetDoc } from 'firebase/firestore'
+import { setDoc as fbSetDoc, writeBatch as fbWriteBatch } from 'firebase/firestore'
 import { db, COLLECTIONS } from '@/lib/firebase'
 import { forgetDoc } from '@/lib/collectionStore'
 import { commit, requireOnline, type SaveOutcome } from '@/lib/sync'
 import { impulseAnswerId, impulseFirstName, quizAnswerCorrect } from '@/lib/impulse'
+import { cleanGameName, cleanGameScore } from '@/lib/impulseGame'
 import type { PackPlan } from '@/lib/impulsePack'
 import type {
   ImpulseCrestPalette,
   ImpulseCrestSymbol,
+  ImpulseGameId,
   ImpulseImageCrop,
   ImpulseItem,
   ImpulseKind,
@@ -94,6 +96,8 @@ export interface ImpulseItemInput {
   crestSymbol: ImpulseCrestSymbol | ''
   crestPalette: ImpulseCrestPalette
   crestMotto: string
+  /** Minispiel: welches Spiel die Karte spielt. */
+  game: ImpulseGameId
 }
 
 export const EMPTY_IMPULSE_QUIZ: ImpulseQuiz = {
@@ -170,6 +174,7 @@ export function emptyImpulseItem(
     crestSymbol: '',
     crestPalette: 'smaragd',
     crestMotto: '',
+    game: 'sortieren',
   }
 }
 
@@ -207,6 +212,7 @@ export function toImpulseInput(item: ImpulseItem): ImpulseItemInput {
     crestSymbol: item.crest?.symbol ?? '',
     crestPalette: item.crest?.palette ?? 'smaragd',
     crestMotto: item.crest?.motto ?? '',
+    game: item.game ?? 'sortieren',
   }
 }
 
@@ -275,6 +281,8 @@ export async function saveImpulseItem(
             motto: input.crestMotto.trim(),
           }
         : null,
+    // Das Spiel gehört zum Minispiel.
+    game: input.kind === 'spiel' ? input.game : null,
     updatedAt: serverTimestamp(),
   }
 
@@ -290,9 +298,10 @@ export async function saveImpulseItem(
 }
 
 /**
- * Einen Inhalt entfernen – mitsamt seinen Antworten und Beiträgen.
+ * Einen Inhalt entfernen – mitsamt seinen Antworten, Beiträgen und, beim
+ * Minispiel, seiner Rangliste.
  *
- * Beides kommt vom Aufrufer: Der hat den Bestand ohnehin abonniert, und so
+ * Alles kommt vom Aufrufer: Der hat den Bestand ohnehin abonniert, und so
  * funktioniert das Löschen auch ohne Verbindung. Ein verwaister Rest wäre
  * kein Schaden, nur Unordnung.
  */
@@ -300,6 +309,7 @@ export async function deleteImpulseItem(
   id: string,
   answerIds: string[] = [],
   commentIds: string[] = [],
+  scoreIds: string[] = [],
 ): Promise<SaveOutcome> {
   const outcome = await commit(
     Promise.all([
@@ -308,11 +318,13 @@ export async function deleteImpulseItem(
       ...commentIds.map((commentId) =>
         deleteDoc(doc(db, COLLECTIONS.impulseComments, commentId)),
       ),
+      ...scoreIds.map((scoreId) => deleteDoc(doc(db, COLLECTIONS.impulseGameScores, scoreId))),
     ]),
   )
   forgetDoc(COLLECTIONS.impulseItems, id)
   for (const answerId of answerIds) forgetDoc(COLLECTIONS.impulseAnswers, answerId)
   for (const commentId of commentIds) forgetDoc(COLLECTIONS.impulseComments, commentId)
+  for (const scoreId of scoreIds) forgetDoc(COLLECTIONS.impulseGameScores, scoreId)
   return outcome
 }
 
@@ -872,8 +884,8 @@ export async function createPackItems(
 }
 
 /**
- * Neu starten: alle bisherigen Inhalte löschen – mitsamt ihren Antworten
- * und Beiträgen – und das Themenpaket einspielen.
+ * Neu starten: alle bisherigen Inhalte löschen – mitsamt ihren Antworten,
+ * Beiträgen und Ranglisten – und das Themenpaket einspielen.
  *
  * Das ist der eine Handgriff, der nicht rückgängig zu machen ist; die
  * Redaktion bestätigt ihn ausdrücklich. Bewusst stehen bleiben der
@@ -901,20 +913,23 @@ export async function restartImpulseContent(input: {
 }): Promise<void> {
   requireOnline()
   const itemIds = new Set(input.itemIds)
-  const [answers, comments] = await Promise.all([
+  const [answers, comments, scores] = await Promise.all([
     getDocsFromServer(collection(db, COLLECTIONS.impulseAnswers)),
     getDocsFromServer(collection(db, COLLECTIONS.impulseComments)),
+    getDocsFromServer(collection(db, COLLECTIONS.impulseGameScores)),
   ])
-  const answerIds = answers.docs
-    .filter((entry) => itemIds.has(String(entry.get('itemId'))))
-    .map((entry) => entry.id)
-  const commentIds = comments.docs
-    .filter((entry) => itemIds.has(String(entry.get('itemId'))))
-    .map((entry) => entry.id)
+  const ofItems = (snapshot: typeof answers) =>
+    snapshot.docs
+      .filter((entry) => itemIds.has(String(entry.get('itemId'))))
+      .map((entry) => entry.id)
+  const answerIds = ofItems(answers)
+  const commentIds = ofItems(comments)
+  const scoreIds = ofItems(scores)
 
   const deletions = [
     ...answerIds.map((id) => doc(db, COLLECTIONS.impulseAnswers, id)),
     ...commentIds.map((id) => doc(db, COLLECTIONS.impulseComments, id)),
+    ...scoreIds.map((id) => doc(db, COLLECTIONS.impulseGameScores, id)),
     ...input.itemIds.map((id) => doc(db, COLLECTIONS.impulseItems, id)),
   ]
   const deletionBatches = chunks(deletions).map((part) => {
@@ -926,6 +941,7 @@ export async function restartImpulseContent(input: {
   for (const id of input.itemIds) forgetDoc(COLLECTIONS.impulseItems, id)
   for (const id of answerIds) forgetDoc(COLLECTIONS.impulseAnswers, id)
   for (const id of commentIds) forgetDoc(COLLECTIONS.impulseComments, id)
+  for (const id of scoreIds) forgetDoc(COLLECTIONS.impulseGameScores, id)
 }
 
 /**
@@ -1056,5 +1072,95 @@ export async function markImpulseCrest(
       },
       { merge: true },
     ),
+  )
+}
+
+/* ------------------------------------------------------------------ */
+/* Minispiele                                                          */
+/* ------------------------------------------------------------------ */
+
+/**
+ * Der beste Lauf in einem Minispiel – der eigene Eintrag der Rangliste.
+ *
+ * Geschrieben wird nur, was besser ist als der bisherige Bestwert: Das
+ * entscheidet der Aufrufer aus dem abonnierten Bestand, und die
+ * Zugriffsregeln lassen ohnehin nichts sinken. Wie oft jemand gespielt
+ * hat, steht nirgends. `hidden` schreibt die App nie – das gehört der
+ * Redaktion, und ein neuer Bestwert holt einen ausgeblendeten Eintrag
+ * nicht zurück.
+ *
+ * Am Protokoll vorbei wie der Spielstand des Wappens: Eine Runde ist
+ * keine Änderung am Bestand der Gemeinde.
+ */
+export async function saveImpulseGameScore(
+  item: Pick<ImpulseItem, 'id' | 'week' | 'game'>,
+  user: { uid: string; displayName: string },
+  points: number,
+  name: string,
+): Promise<SaveOutcome> {
+  return commit(
+    fbSetDoc(
+      doc(db, COLLECTIONS.impulseGameScores, impulseAnswerId(item.id, user.uid)),
+      {
+        itemId: item.id,
+        uid: user.uid,
+        week: item.week ?? '',
+        game: item.game ?? 'sortieren',
+        name: cleanGameName(name),
+        best: cleanGameScore(points),
+        bestAt: serverTimestamp(),
+        updatedAt: serverTimestamp(),
+      },
+      { merge: true },
+    ),
+  )
+}
+
+/**
+ * Der Name in den Ranglisten – am eigenen Fortschritt, und gleich in jedem
+ * eigenen Eintrag nachgeführt (`scoreIds`, alle bestehenden): Wer sich
+ * umbenennt, steht überall unter dem neuen Namen und nicht in einer Liste
+ * so und in der nächsten anders. Ein Stapel, damit beides zusammen gilt.
+ */
+export async function setImpulseGameName(
+  user: { uid: string; displayName: string },
+  name: string,
+  scoreIds: readonly string[],
+): Promise<SaveOutcome> {
+  const clean = cleanGameName(name)
+  const batch = fbWriteBatch(db)
+  batch.set(
+    doc(db, COLLECTIONS.impulseProgress, user.uid),
+    {
+      uid: user.uid,
+      firstName: impulseFirstName(user.displayName),
+      gameName: clean,
+      updatedAt: serverTimestamp(),
+    },
+    { merge: true },
+  )
+  for (const scoreId of scoreIds) {
+    batch.update(doc(db, COLLECTIONS.impulseGameScores, scoreId), {
+      name: clean,
+      updatedAt: serverTimestamp(),
+    })
+  }
+  return commit(batch.commit())
+}
+
+/**
+ * Einen Eintrag der Rangliste aus- oder wieder einblenden – allein die
+ * Redaktion, etwa bei einem Namen, der nicht in die Liste gehört. Die
+ * Person selbst sieht ihren Eintrag weiterhin.
+ */
+export async function setImpulseGameScoreHidden(
+  scoreId: string,
+  hidden: boolean,
+): Promise<SaveOutcome> {
+  return commit(
+    updateDoc(doc(db, COLLECTIONS.impulseGameScores, scoreId), {
+      hidden,
+      updatedAt: serverTimestamp(),
+    }),
   )
 }

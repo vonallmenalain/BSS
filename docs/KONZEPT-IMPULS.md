@@ -620,6 +620,7 @@ sich weder Rolle noch Schalter selbst – und deaktiviert bleibt sie draussen.
 | Inhalte (Karten, Fragen, Wochen) | Impuls-Zugang | nur Redaktion |
 | Antworten & Fortschritt | Impuls-Zugang | **nur die eigene Person** (UID im Dokumentpfad) |
 | Beiträge zur Frage der Woche | Impuls-Zugang | anlegen: die eigene Person; ausblenden: Redaktion |
+| Ranglisten der Minispiele | Impuls-Zugang | der eigene beste Lauf (steigt nur); ausblenden und löschen: Redaktion |
 | Einstellungen des Bereichs | Impuls-Zugang | nur Redaktion |
 
 Durchgesetzt wie überall in `firestore.rules`, nicht in der Oberfläche. Die
@@ -1121,3 +1122,89 @@ wählbaren Zeit oder «Zurück auf Montag, 00:00».
 
 `tests/impulse-week-start.test.ts` hält die Regeln fest – auch über den
 Jahreswechsel.
+
+### 13.7 Das Minispiel der Woche
+
+Die letzte Karte des Feeds ist ein Spiel: kurz, schnell, mit einer
+Rangliste – im Stil der Mini-Games (games.alae.app), etwa von Turmbau. Es
+soll sich anfühlen wie jede andere Karte und zugleich die Belohnung nach
+den Karten sein.
+
+**Die Karte.** Eine eigene Kartenart, `spiel` («Minispiel»), höchstens eine
+je Woche und im Feed immer ganz zuletzt – hinter der Teilen-Aufgabe, auch
+in der gemischten Reihenfolge (`deckOrder`). Auf der Karte stehen das
+Spiel, «Spielen», der eigene Rekord samt Platz und die Rangliste. Gespielt
+wird im Vollbild darüber (`ImpulseGameStage`): Der Feed gehört dem
+senkrechten Wisch, das Spiel dem waagrechten – auf derselben Fläche gäbe
+das ein Gerangel. Ein **X** oben rechts bricht ab (was bis dahin geschafft
+ist, zählt); danach steht wieder die Karte da, an derselben Stelle, und
+der Feed lässt sich weiterwischen. Escape schliesst nur das Spiel, nicht
+den Feed; geht das Telefon in den Hintergrund, hält die Runde an.
+
+**Das erste Spiel: «Gut für dich?»** – zum Wort der Weisheit. Von oben
+fallen Gegenstände: Weizen, Brot, Obst, Rüebli, Wasser, Milch, Joggen,
+Velo, Schlaf – und Zigarette, Vape, Bier, Wein, Schnaps, Cocktail, Sekt,
+Kaffee, Drogen. Der unterste trägt einen Ring; ein Wisch nach rechts legt
+ihn zu «Gut für dich», einer nach links zu «Nein, danke» (Tippen auf die
+linke bzw. rechte Hälfte geht auch, am Rechner die Pfeiltasten). Daneben
+greifen oder ihn bis zur Linie fallen lassen kostet ein Leben; drei gibt
+es, zehn richtige am Stück geben eines zurück. Ein Fehler zeigt kurz, wohin
+der Gegenstand gehört hätte («Kaffee: Nein, danke») – das Spiel lehrt
+nebenbei. Bewusst fehlt, was nicht klar Ja oder Nein ist (Pommes,
+Schokolade, Energydrinks).
+
+**Das Tempo** zieht von Anfang an an und hat ab etwa vierzig Sekunden einen
+zweiten Schub, den auf Dauer niemand hält (`sortPace`). Eine Uhr gibt es
+nicht – sie gäbe jedem fehlerfreien Lauf dieselbe Zahl, und eine
+Rangliste, in der oben alle gleich stehen, ist keine. Ausgespielt mit
+einem nachgebildeten Spieler (`tests/impulse-game.test.ts`): Anfänger
+kommen auf gut 20 Sekunden, der Durchschnitt auf gut 30, die Besten auf
+knapp 55 – keine Runde dauert länger als eine Minute.
+
+**Flüssig auch auf älteren Telefonen.** Gezeichnet wird auf eine Leinwand,
+wie Turmbau: jeder Gegenstand einmal vorgezeichnet und danach nur noch
+gestempelt, der Hintergrund fertig auf einer zweiten Leinwand, gerechnet
+mit der verstrichenen Zeit statt mit Bildern, die Pixeldichte auf 2
+begrenzt. React kennt nur die Ränder (Einführung, Ergebnis, X); die Runde
+selbst läuft ohne einen einzigen Render. Gemessen im Chromium mit
+Handy-Massen: knapp 60 Bilder je Sekunde, mit vierfach gedrosselter CPU
+noch über 50.
+
+**Die Rangliste.** Je Spiel-Karte und Konto **ein** Eintrag mit dem besten
+Lauf (`impulseGameScores/{itemId}_{uid}`) – wie oft jemand gespielt hat,
+steht nirgends, auch nicht in der Datenbank. Nach der ersten Runde fragt
+die Karte nach einem Namen für die Liste; vorgeschlagen ist der Vorname,
+ein Spitzname geht genauso. Der Name liegt am eigenen Fortschritt
+(`gameName`) und gilt für jede weitere Runde und die Spiele der nächsten
+Wochen; «Name ändern» führt ihn in allen eigenen Einträgen nach. Ohne
+Namen sieht nur die Person selbst ihren Eintrag. Gleichstand heisst
+gleicher Platz, wer früher dort war, steht oben; der eigene Platz steht
+immer da, auch weit hinten.
+
+**Die Zugriffsregeln** lassen einen Eintrag nur auf den eigenen Namen
+entstehen, den Bestwert nur steigen (ganze Zahl bis 9999) und den Namen
+höchstens 20 Zeichen lang sein. Aus- und wieder einblenden kann allein die
+Redaktion – direkt in der Rangliste der Karte (das Auge neben jedem
+fremden Eintrag); ein neuer Bestwert holt einen ausgeblendeten Eintrag
+nicht zurück. Fälschen lässt sich ein Bestwert trotzdem, wer die
+Datenbank unmittelbar beschreibt: Das Spiel läuft auf dem Gerät – eine
+Rangliste unter Freunden, keine Urkunde.
+
+**Das Wappen** zählt die erste Runde wie eine Antwort: Wer einmal gespielt
+hat, hat die Karte geschafft. Ebenso zählt sie als Beteiligung (Serie,
+Gruppenleiste).
+
+**In der Redaktion** ist «Minispiel» eine Art wie jede andere: anlegen,
+Spiel wählen, Titel und ein Satz dazu, «bereit». Die Sparte zählt, wie
+viele gespielt haben; wer die Karte löscht, löscht ihre Rangliste mit. Die
+Vorschau einer einzelnen Karte lässt sich spielen, speichert aber nichts;
+in der Vorschau der Woche lebt der Lauf im Arbeitsspeicher wie jede andere
+Antwort. In der Mitmach-Ecke lässt sich ein Minispiel nicht einreichen –
+ein Spiel ist Code, keine Karte zum Ausfüllen. Das Themenpaket bringt
+«Gut für dich?» für die Woche zum Wort der Weisheit mit; der Kasten
+«Themenpaket» bietet es an, solange es fehlt.
+
+**Ein weiteres Spiel** kommt als neuer Schlüssel in `ImpulseGameId`
+(`lib/types`) samt Zeichnung in `components/impulse/game` – die Karte, die
+Rangliste und die Regeln bleiben dieselben.
+

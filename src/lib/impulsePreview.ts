@@ -3,6 +3,7 @@ import { impulseWeekKey, weekStart } from './impulse.ts'
 import type {
   ImpulseAnswer,
   ImpulseComment,
+  ImpulseGameScore,
   ImpulseProgress,
   ImpulseSubmission,
   ImpulseWeekProgress,
@@ -37,6 +38,8 @@ export interface ImpulsePreviewData {
   /** Das Fortschrittsdokument der gespielten Person – `null`, bis etwas geschieht. */
   progress: ImpulseProgress | null
   submissions: ImpulseSubmission[]
+  /** Die Runden im Minispiel – der beste Lauf der gespielten Person. */
+  gameScores: ImpulseGameScore[]
   /**
    * Die Feier des Wappens. Im Bereich merkt sich das Gerät, dass sie
    * gelaufen ist (localStorage); die Vorschau soll sie bei jedem Besuch
@@ -46,7 +49,14 @@ export interface ImpulsePreviewData {
 }
 
 export function emptyPreviewData(): ImpulsePreviewData {
-  return { answers: [], comments: [], progress: null, submissions: [], celebrated: '' }
+  return {
+    answers: [],
+    comments: [],
+    progress: null,
+    submissions: [],
+    gameScores: [],
+    celebrated: '',
+  }
 }
 
 /** Montag bis Sonntag, 0 bis 6. */
@@ -122,7 +132,8 @@ export function withPreviewDocs<T extends { id: string }>(real: T[], preview: T[
  *   `arrayUnion` und `arrayRemove`;
  * - `list`: dasselbe für die Listen am Dokument (Amen, Gemerkt, Gemeldet);
  * - `last-seen`: die zuletzt angeschaute Woche – beim ersten Mal auch die
- *   erste (`firstSeenWeek`).
+ *   erste (`firstSeenWeek`);
+ * - `game-name`: der Name in den Ranglisten der Minispiele.
  */
 export type PreviewProgressChange =
   | {
@@ -139,6 +150,7 @@ export type PreviewProgressChange =
     }
   | { kind: 'list'; field: 'amens' | 'favorites' | 'reports'; value: string; add: boolean }
   | { kind: 'last-seen'; week: string; firstSeenWeek?: string }
+  | { kind: 'game-name'; name: string }
 
 /** `arrayUnion` bzw. `arrayRemove` auf einer Liste. */
 function toggleEntry(list: string[] | undefined, value: string, add: boolean): string[] {
@@ -187,5 +199,7 @@ export function changePreviewProgress(
         lastSeenWeek: change.week,
         ...(change.firstSeenWeek ? { firstSeenWeek: change.firstSeenWeek } : {}),
       }
+    case 'game-name':
+      return { ...next, gameName: change.name }
   }
 }

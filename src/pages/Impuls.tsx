@@ -27,6 +27,7 @@ import {
 } from '@/hooks/useImpulseRuntime'
 import {
   useImpulseAnswers,
+  useImpulseGameScores,
   useImpulseComments,
   useImpulseItems,
   useImpulseProgress,
@@ -56,6 +57,7 @@ import { ImpulseShareCard } from '@/components/impulse/ImpulseShareCard'
 import { ImpulseVideoPlayer } from '@/components/impulse/ImpulseVideoPlayer'
 import { ImpulseSubmitCard } from '@/components/impulse/ImpulseSubmitCard'
 import { ImpulseFeedCard } from '@/components/impulse/ImpulseFeedCard'
+import { ImpulseGameCard } from '@/components/impulse/game/ImpulseGameCard'
 import {
   ImpulseFeedScreen,
   type ImpulseDeckCard,
@@ -262,6 +264,11 @@ function ImpulsPage() {
   const submissionsState = previewData
     ? { ...realSubmissions, data: withPreviewDocs(realSubmissions.data, previewData.submissions) }
     : realSubmissions
+  /* Die Ranglisten der Minispiele – in der Vorschau mit ihrem Lauf darüber. */
+  const realScores = useImpulseGameScores()
+  const scoresData = previewData
+    ? withPreviewDocs(realScores.data, previewData.gameScores)
+    : realScores.data
 
   const sectionKey: ImpulseSectionKey | null = isImpulseSection(bereich) ? bereich : null
   const settingsOpen = bereich === 'einstellungen'
@@ -322,6 +329,10 @@ function ImpulsPage() {
   const weekOfItem = (itemId: string) => itemsById.get(itemId)?.week ?? null
   const myAnswers = answersState.data.filter((answer) => answer.uid === uid)
   const myComments = commentsState.data.filter((comment) => comment.uid === uid)
+  /* Die eigenen Einträge in den Ranglisten – die erste Runde eines
+     Minispiels zählt wie eine Antwort, und ein neuer Name gilt in allen. */
+  const myScores = scoresData.filter((score) => score.uid === uid)
+  const myScoreIds = myScores.map((score) => score.id)
   /* Alle Antworten je Karte – Quiz, Umfrage und Puzzle zeigen nach der
      eigenen, wie das Kollegium geantwortet hat. */
   const answersByItem = new Map<string, ImpulseAnswer[]>()
@@ -331,10 +342,17 @@ function ImpulsPage() {
     answersByItem.set(answer.itemId, list)
   }
   const answersOf = (item: ImpulseItem) => answersByItem.get(item.id) ?? []
-  /* Was ich beantwortet habe – Quiz, Umfrage, Puzzle und Frage der Woche. */
-  const myAnswered = new Set([...myAnswers, ...myComments].map((entry) => entry.itemId))
-  // Antworten und Beiträge zählen gleichermassen als Beteiligung.
-  const participated = participatedWeeks(myProgress, [...myAnswers, ...myComments], weekOfItem)
+  /* Was ich beantwortet habe – Quiz, Umfrage, Puzzle, Frage der Woche und
+     die Minispiele, die ich gespielt habe. */
+  const myAnswered = new Set(
+    [...myAnswers, ...myComments, ...myScores].map((entry) => entry.itemId),
+  )
+  // Antworten, Beiträge und Runden zählen gleichermassen als Beteiligung.
+  const participated = participatedWeeks(
+    myProgress,
+    [...myAnswers, ...myComments, ...myScores],
+    weekOfItem,
+  )
   const streak = computeStreak(participated, todayKey)
   /* Der Verlauf in «Mein Fortschritt»: so viele Wochen, wie ich dabei bin.
      Beginnt mit der ersten geöffneten Woche (`firstSeenWeek`) – oder, wo
@@ -345,9 +363,16 @@ function ImpulsPage() {
     ...participated,
     ...Object.keys(myProgress?.weeks ?? {}),
   ])
+  /* Wer gespielt hat, war dabei – mit dem Vornamen aus dem Fortschritt,
+     nicht dem Namen der Rangliste (der ist frei gewählt). */
+  const scorePeople = scoresData.map((score) => ({
+    itemId: score.itemId,
+    uid: score.uid,
+    firstName: progressState.byUid.get(score.uid)?.firstName ?? '',
+  }))
   const participants = weekParticipants(
     progressState.data,
-    [...answersState.data, ...commentsState.data],
+    [...answersState.data, ...commentsState.data, ...scorePeople],
     weekOfItem,
     todayKey,
   )
@@ -356,6 +381,7 @@ function ImpulsPage() {
     ...progressState.data.map((progress) => progress.uid),
     ...answersState.data.map((answer) => answer.uid),
     ...commentsState.data.map((comment) => comment.uid),
+    ...scoresData.map((score) => score.uid),
   ]).size
 
   const myWeek = (week: string): ImpulseWeekProgress => myProgress?.weeks?.[week] ?? {}
@@ -423,7 +449,7 @@ function ImpulsPage() {
     week: todayKey,
     cards: crestCards,
     progressDocs: progressState.data,
-    answers: [...answersState.data, ...commentsState.data],
+    answers: [...answersState.data, ...commentsState.data, ...scoresData],
   })
 
   /* Die Favoritensammlung – in der Reihenfolge des Merkens. */
@@ -596,6 +622,16 @@ function ImpulsPage() {
             progressDocs={progressState.data}
           />
         )
+      case 'spiel':
+        return (
+          <ImpulseGameCard
+            item={item}
+            scores={scoresData.filter((score) => score.itemId === item.id)}
+            gameName={myProgress?.gameName ?? ''}
+            ownScoreIds={myScoreIds}
+            plain
+          />
+        )
       default:
         return <WocheDeckCard item={item} progressDocs={progressState.data} />
     }
@@ -659,6 +695,18 @@ function ImpulsPage() {
             note={myWeek(viewWeek).share === true ? 'besprochen' : null}
           />
         )
+      case 'spiel':
+        /* Der Endstand der Woche – gespielt wird nur in der laufenden. */
+        return (
+          <ImpulseGameCard
+            item={item}
+            scores={scoresData.filter((score) => score.itemId === item.id)}
+            gameName={myProgress?.gameName ?? ''}
+            ownScoreIds={myScoreIds}
+            closed
+            plain
+          />
+        )
       default:
         /* Amen und Merken bleiben auch rückblickend lebendig – sie
            hängen am Inhalt, nicht an der Woche. */
@@ -701,12 +749,16 @@ function ImpulsPage() {
       })
   /* Gemischt bleibt gemischt: Der Schlüssel Konto+Woche hält den Feed
      die Woche über in derselben Ordnung (siehe `seededShuffle`) – nur
-     das Wochenthema bleibt immer die erste Karte. */
+     das Wochenthema bleibt immer die erste Karte und das Minispiel die
+     letzte. */
   const wocheEntries = deckEntries.filter((card) => card.section === 'woche')
-  const restEntries = deckEntries.filter((card) => card.section !== 'woche')
+  const gameEntries = deckEntries.filter((card) => card.section === 'spiel')
+  const restEntries = deckEntries.filter(
+    (card) => card.section !== 'woche' && card.section !== 'spiel',
+  )
   const deckCards =
     order === 'zufall'
-      ? [...wocheEntries, ...seededShuffle(restEntries, `${uid}:${viewWeek}`)]
+      ? [...wocheEntries, ...seededShuffle(restEntries, `${uid}:${viewWeek}`), ...gameEntries]
       : deckEntries
 
   /* ---------------- Sprünge in den Feed ---------------- */
