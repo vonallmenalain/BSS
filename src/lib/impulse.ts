@@ -647,30 +647,6 @@ function weekStateParticipated(state: ImpulseWeekProgress | null | undefined): b
 }
 
 /**
- * Wer je dabei war – der Nenner der Gruppenleiste («2 von 5»).
- *
- * Dabei heisst dasselbe wie für die einzelne Woche: ein Haken im
- * Fortschritt, eine Antwort, ein Beitrag oder eine Runde im Minispiel –
- * nur in irgendeiner Woche. Wer «Anti Doom» bloss geöffnet hat, hat zwar
- * ein Fortschrittsdokument, war aber nie dabei; zählte er mit, stünden
- * nach dem Zurücksetzen der Woche die Testkonten noch im Nenner.
- */
-export function everParticipated(
-  progressDocs: readonly Pick<ImpulseProgress, 'uid' | 'weeks'>[],
-  /** Antworten, Beiträge und Ranglisten-Einträge aller. */
-  responses: readonly Pick<ImpulseAnswer, 'uid'>[],
-): Set<string> {
-  const uids = new Set<string>()
-  for (const progress of progressDocs) {
-    if (progress.uid && Object.values(progress.weeks ?? {}).some(weekStateParticipated)) {
-      uids.add(progress.uid)
-    }
-  }
-  for (const response of responses) if (response.uid) uids.add(response.uid)
-  return uids
-}
-
-/**
  * Die Wochen, seit jemand bei «Anti Doom» dabei ist – älteste zuerst, die
  * laufende zuletzt.
  *

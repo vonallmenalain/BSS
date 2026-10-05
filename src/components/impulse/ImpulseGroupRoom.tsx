@@ -21,7 +21,6 @@ export function ImpulseGroupRoom({
   week,
   crest,
   people,
-  total,
   uid,
 }: {
   week: string
@@ -29,8 +28,6 @@ export function ImpulseGroupRoom({
   crest: ImpulseCrest
   /** Wer dabei ist, mit Wappen (`weekCrests`) – nach Vornamen. */
   people: ImpulsePersonCrest[]
-  /** Alle, die je mitgemacht haben – derselbe Nenner wie in der Gruppenleiste. */
-  total: number
   /** Das eigene Konto – sein Wappen steht vorn und heisst «Du». */
   uid: string
 }) {
@@ -59,9 +56,8 @@ export function ImpulseGroupRoom({
   return (
     <div className="space-y-3">
       <p className="hint">
-        {people.length}
-        {total > people.length && ` von ${total}`} {people.length === 1 ? 'ist' : 'sind'} diese
-        Woche dabei – jede und jeder mit dem eigenen Wappen. Ein Tipp zeigt es gross.
+        {people.length} {people.length === 1 ? 'ist' : 'sind'} diese Woche dabei – jede und jeder
+        mit dem eigenen Wappen. Ein Tipp zeigt es gross.
         {completed > 0 &&
           ` ${completed} ${completed === 1 ? 'Wappen ist' : 'Wappen sind'} schon vollendet.`}
       </p>

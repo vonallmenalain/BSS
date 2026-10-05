@@ -77,7 +77,6 @@ import {
   crestComplete,
   daysUntilSunday,
   deckOrder,
-  everParticipated,
   formatWeekRange,
   impulseAnswerId,
   impulseCrestStars,
@@ -384,13 +383,6 @@ function ImpulsPage() {
     weekOfItem,
     todayKey,
   )
-  /* Der Nenner der Gruppenleiste: alle, die je mitgemacht haben – nicht,
-     wer bloss einmal hineingeschaut hat (`everParticipated`). */
-  const total = everParticipated(progressState.data, [
-    ...answersState.data,
-    ...commentsState.data,
-    ...scoresData,
-  ]).size
 
   const myWeek = (week: string): ImpulseWeekProgress => myProgress?.weeks?.[week] ?? {}
 
@@ -1208,7 +1200,6 @@ function ImpulsPage() {
             week={todayKey}
             crest={crestDesign}
             people={groupCrests}
-            total={total}
             uid={uid}
           />
         )
@@ -1452,7 +1443,6 @@ function ImpulsPage() {
           <div className="animate-imp-rise mt-3" style={{ animationDelay: '150ms' }}>
             <GroupCard
               participants={participants}
-              total={total}
               crestNames={crestNames}
               onOpen={(origin) => openSection('dabei', origin)}
             />
