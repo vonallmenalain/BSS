@@ -11,6 +11,12 @@ import type { ImpulseProgress } from './types.ts'
  * Rangliste. Wahlweise für alle oder nur für einzelne Personen, und
  * wahlweise nur Teile davon (`ImpulseResetPart`).
  *
+ * Statt der einen Woche gehen auch **alle Wochen** auf einmal
+ * (`allWeeks`) – der Neustart vor dem Start: Dann verschwinden auch die
+ * Spuren früherer Wochen, etwa aus der Zeit vor dem Themenpaket, deren
+ * Karten es längst nicht mehr gibt. «Seit du dabei bist» und die Serie
+ * beginnen danach von vorn.
+ *
  * Hier wird nur gerechnet, ohne Datenbank: wer in der Woche Spuren hat,
  * wie viele – und welche Dokumente und Felder ein Zurücksetzen anfasst.
  * Das Fenster der Redaktion zeigt damit vorher, was geschieht; der Dienst
@@ -40,7 +46,7 @@ export const IMPULSE_RESET_PARTS: readonly {
   {
     key: 'progress',
     label: 'Angeschaute Karten, Wappen und Haken',
-    hint: 'Was im Feed angeschaut wurde, das Wappen samt seinen Sternen, die Haken bei Wochenziel, Tages-Challenge und Teilen-Aufgabe.',
+    hint: 'Was im Feed angeschaut wurde, das Wappen samt seinen Sternen, die Haken bei Wochenziel, Tages-Challenge und Teilen-Aufgabe – über alle Wochen auch, seit wann jemand dabei ist.',
   },
   {
     key: 'answers',
@@ -55,12 +61,12 @@ export const IMPULSE_RESET_PARTS: readonly {
   {
     key: 'game',
     label: 'Minispiel-Rangliste',
-    hint: 'Die Einträge der Woche. Steht danach jemand in keiner Rangliste mehr, fragt das Spiel nach der nächsten Runde wieder nach dem Namen.',
+    hint: 'Die Einträge in den Ranglisten. Steht danach jemand in keiner mehr, fragt das Spiel nach der nächsten Runde wieder nach dem Namen.',
   },
   {
     key: 'reactions',
     label: 'Amen, Gemerktes und Meldungen',
-    hint: 'Zu den Karten und Beiträgen dieser Woche.',
+    hint: 'Zu den Karten und Beiträgen – dieser Woche oder aller Wochen.',
   },
 ]
 
@@ -98,17 +104,21 @@ export interface ImpulseResetSource {
   scores: readonly ImpulseResetResponse[]
 }
 
-/** Was zurückgesetzt wird: wessen Spuren und welche Teile davon. */
+/** Was zurückgesetzt wird: wessen Spuren, welche Teile davon – und aus welchen Wochen. */
 export interface ImpulseResetSelection {
-  /** `null`: alle, die in der Woche Spuren haben – sonst genau diese Konten. */
+  /** `null`: alle, die Spuren haben – sonst genau diese Konten. */
   people: ReadonlySet<string> | null
   parts: ReadonlySet<ImpulseResetPart>
+  /** Alle Wochen statt nur `source.week` – auch die Spuren früherer Wochen. */
+  allWeeks?: boolean
 }
 
-/** Eine Person mit Spuren in der Woche – für die Liste im Fenster. */
+/** Eine Person mit Spuren – für die Liste im Fenster. */
 export interface ImpulseResetPerson {
   uid: string
   firstName: string
+  /** Wochen mit eigenem Fortschritt. */
+  weeks: number
   /** Angeschaute Karten. */
   cards: number
   /** Haken: Wochenziel, Tage der Tages-Challenge, Teilen-Aufgabe. */
@@ -127,14 +137,14 @@ export interface ImpulseResetPerson {
 /** Was an einem Fortschrittsdokument wegkommt. */
 export interface ImpulseProgressReset {
   uid: string
-  /** Die ganze Woche aus `weeks`. */
-  week: boolean
+  /** Ganze Wochen aus `weeks` – ihre Schlüssel, «2026-W41». */
+  weeks: string[]
   amens: string[]
   favorites: string[]
   reports: string[]
-  /** `lastSeenWeek` ist diese Woche – das Feld kommt weg. */
+  /** `lastSeenWeek` kommt weg – es ist diese Woche (oder alle Wochen gehen). */
   lastSeenWeek: boolean
-  /** `firstSeenWeek` ist diese Woche – das Feld kommt weg. */
+  /** `firstSeenWeek` kommt weg – ebenso. */
   firstSeenWeek: boolean
   /** Der Name in den Ranglisten – wenn danach kein Eintrag mehr bleibt. */
   gameName: boolean
@@ -150,36 +160,64 @@ export interface ImpulseResetPlan {
   people: string[]
 }
 
-/** Gehört ein Eintrag aus Amen, Gemerktem oder Meldungen zur Woche? */
-function weekReference(itemIds: ReadonlySet<string>) {
-  const prefixes = [...itemIds].map((id) => `${id}_`)
-  return (entry: string) =>
-    itemIds.has(entry) || prefixes.some((prefix) => entry.startsWith(prefix))
+/** Was zur gewählten Zeitspanne gehört: die eine Woche – oder alles. */
+interface ResetScope {
+  allWeeks: boolean
+  week: string
+  /** Gehört ein Inhalt dazu? */
+  item: (itemId: string) => boolean
+  /** Gehört ein Eintrag aus Amen, Gemerktem oder Meldungen dazu? */
+  reference: (entry: string) => boolean
 }
 
-/** Was ein Fortschrittsdokument in der Woche trägt. */
-function progressTrace(progress: ImpulseResetProgress, week: string) {
-  const state = progress.weeks?.[week]
+function resetScope(source: ImpulseResetSource, allWeeks = false): ResetScope {
+  if (allWeeks) return { allWeeks, week: source.week, item: () => true, reference: () => true }
+  const items = new Set(source.itemIds)
+  /* Karten tragen ihre eigene ID, Beiträge «{inhalt}_{konto}». */
+  const prefixes = [...items].map((id) => `${id}_`)
   return {
-    hasWeek: Boolean(state),
-    cards: state?.cards?.length ?? 0,
-    ticks:
-      (state?.goal === true ? 1 : 0) +
-      Math.min(state?.days?.length ?? 0, 7) +
-      (state?.share === true ? 1 : 0),
-    crest: Boolean(state?.crest),
-    lastSeenWeek: progress.lastSeenWeek === week,
-    firstSeenWeek: progress.firstSeenWeek === week,
+    allWeeks,
+    week: source.week,
+    item: (itemId) => items.has(itemId),
+    reference: (entry) => items.has(entry) || prefixes.some((prefix) => entry.startsWith(prefix)),
+  }
+}
+
+/** Was ein Fortschrittsdokument in der Zeitspanne trägt. */
+function progressTrace(progress: ImpulseResetProgress, scope: ResetScope) {
+  const weeks = Object.entries(progress.weeks ?? {}).filter(
+    ([key, state]) => Boolean(state) && (scope.allWeeks || key === scope.week),
+  )
+  const states = weeks.map(([, state]) => state)
+  const seen = (field: string | undefined) =>
+    scope.allWeeks ? Boolean(field) : field === scope.week
+  return {
+    weeks: weeks.map(([key]) => key),
+    cards: states.reduce((sum, state) => sum + (state.cards?.length ?? 0), 0),
+    ticks: states.reduce(
+      (sum, state) =>
+        sum +
+        (state.goal === true ? 1 : 0) +
+        Math.min(state.days?.length ?? 0, 7) +
+        (state.share === true ? 1 : 0),
+      0,
+    ),
+    crest: states.some((state) => Boolean(state.crest)),
+    lastSeenWeek: seen(progress.lastSeenWeek),
+    firstSeenWeek: seen(progress.firstSeenWeek),
   }
 }
 
 /**
- * Wer in der Woche Spuren hat – sortiert nach Vornamen, mit den Zahlen
- * je Teil. Spuren sind alles, was ein Zurücksetzen entfernen würde.
+ * Wer Spuren hat – in der Woche oder, mit `allWeeks`, überhaupt –,
+ * sortiert nach Vornamen, mit den Zahlen je Teil. Spuren sind alles, was
+ * ein Zurücksetzen entfernen würde.
  */
-export function impulseResetPeople(source: ImpulseResetSource): ImpulseResetPerson[] {
-  const items = new Set(source.itemIds)
-  const ofWeek = weekReference(items)
+export function impulseResetPeople(
+  source: ImpulseResetSource,
+  options: { allWeeks?: boolean } = {},
+): ImpulseResetPerson[] {
+  const scope = resetScope(source, options.allWeeks)
   const people = new Map<string, ImpulseResetPerson>()
   const person = (uid: string): ImpulseResetPerson => {
     const known = people.get(uid)
@@ -187,6 +225,7 @@ export function impulseResetPeople(source: ImpulseResetSource): ImpulseResetPers
     const fresh: ImpulseResetPerson = {
       uid,
       firstName: '',
+      weeks: 0,
       cards: 0,
       ticks: 0,
       crest: false,
@@ -202,16 +241,17 @@ export function impulseResetPeople(source: ImpulseResetSource): ImpulseResetPers
 
   for (const progress of source.progress) {
     if (!progress.uid) continue
-    const trace = progressTrace(progress, source.week)
+    const trace = progressTrace(progress, scope)
     const reactions = [
       ...(progress.amens ?? []),
       ...(progress.favorites ?? []),
       ...(progress.reports ?? []),
-    ].filter(ofWeek).length
-    const hasProgress = trace.hasWeek || trace.lastSeenWeek || trace.firstSeenWeek
+    ].filter(scope.reference).length
+    const hasProgress = trace.weeks.length > 0 || trace.lastSeenWeek || trace.firstSeenWeek
     if (!hasProgress && reactions === 0) continue
     const entry = person(progress.uid)
     entry.firstName = progress.firstName || entry.firstName
+    entry.weeks = trace.weeks.length
     entry.cards = trace.cards
     entry.ticks = trace.ticks
     entry.crest = trace.crest
@@ -224,7 +264,7 @@ export function impulseResetPeople(source: ImpulseResetSource): ImpulseResetPers
     key: 'answers' | 'comments' | 'scores',
   ) => {
     for (const response of responses) {
-      if (!items.has(response.itemId) || !response.uid) continue
+      if (!scope.item(response.itemId) || !response.uid) continue
       const entry = person(response.uid)
       entry[key] += 1
       if (!entry.firstName && response.firstName) entry.firstName = response.firstName
@@ -243,6 +283,55 @@ export function impulseResetPeople(source: ImpulseResetSource): ImpulseResetPers
 }
 
 /**
+ * Wer Spuren **ausserhalb** der Woche hat – aus anderen Wochen oder zu
+ * Karten, die es nicht mehr gibt. Das ist, was nach dem Zurücksetzen der
+ * einen Woche noch übrig bliebe: Eine erste Woche von früher etwa lässt
+ * «Seit du dabei bist» weiterzählen. Erst «alle Wochen» entfernt es.
+ * Die Konten, ohne bestimmte Reihenfolge.
+ */
+export function impulseResetOlderPeople(source: ImpulseResetSource): string[] {
+  const scope = resetScope(source)
+  const uids = new Set<string>()
+  const other = (week: string | undefined) => Boolean(week) && week !== source.week
+  for (const progress of source.progress) {
+    if (!progress.uid) continue
+    const older =
+      Object.entries(progress.weeks ?? {}).some(([key, state]) => Boolean(state) && other(key)) ||
+      other(progress.lastSeenWeek) ||
+      other(progress.firstSeenWeek) ||
+      [...(progress.amens ?? []), ...(progress.favorites ?? []), ...(progress.reports ?? [])].some(
+        (entry) => !scope.reference(entry),
+      )
+    if (older) uids.add(progress.uid)
+  }
+  for (const response of [...source.answers, ...source.comments, ...source.scores]) {
+    if (response.uid && !scope.item(response.itemId)) uids.add(response.uid)
+  }
+  return [...uids]
+}
+
+/**
+ * Hat die Redaktion am Fortschritt zurückgesetzt? Ganze Wochen und die
+ * erste oder letzte gesehene Woche verschwinden nur so – wer selbst
+ * abhakt, ändert bloss, was in einer Woche steht, oder trägt Neues ein.
+ *
+ * Für die Geräte der Betroffenen: Ihr Fortschritt kommt sofort an, die
+ * gelöschten Antworten, Beiträge und Ranglisten-Einträge sähe der
+ * schrittweise Abgleich erst beim nächsten Start (`lib/collectionStore`).
+ */
+export function impulseProgressWasReset(
+  before: Pick<ImpulseProgress, 'weeks' | 'lastSeenWeek' | 'firstSeenWeek'>,
+  after: Pick<ImpulseProgress, 'weeks' | 'lastSeenWeek' | 'firstSeenWeek'>,
+): boolean {
+  const weeks = new Set(Object.keys(after.weeks ?? {}))
+  return (
+    Object.keys(before.weeks ?? {}).some((week) => !weeks.has(week)) ||
+    (Boolean(before.lastSeenWeek) && !after.lastSeenWeek) ||
+    (Boolean(before.firstSeenWeek) && !after.firstSeenWeek)
+  )
+}
+
+/**
  * Was ein Zurücksetzen anfasst: welche Dokumente gelöscht werden und was
  * an welchem Fortschritt wegkommt.
  *
@@ -255,17 +344,20 @@ export function impulseResetPeople(source: ImpulseResetSource): ImpulseResetPers
  * nur weg, wenn danach kein einziger Eintrag der Person mehr bleibt –
  * dann fragt das Spiel nach der nächsten Runde wieder danach, wie beim
  * ersten Mal.
+ *
+ * Mit `allWeeks` gehört alles dazu: jede Woche im Fortschritt, jede
+ * Antwort, jeder Beitrag und Eintrag – auch zu Karten, die es nicht mehr
+ * gibt –, alle Reaktionen und die erste und letzte gesehene Woche.
  */
 export function planImpulseReset(
   source: ImpulseResetSource,
   selection: ImpulseResetSelection,
 ): ImpulseResetPlan {
-  const items = new Set(source.itemIds)
-  const ofWeek = weekReference(items)
+  const scope = resetScope(source, selection.allWeeks)
   const parts = selection.parts
   const selected = (uid: string) => selection.people === null || selection.people.has(uid)
   const pick = (responses: readonly ImpulseResetResponse[]) =>
-    responses.filter((response) => items.has(response.itemId) && selected(response.uid))
+    responses.filter((response) => scope.item(response.itemId) && selected(response.uid))
 
   const answers = parts.has('answers') ? pick(source.answers) : []
   const comments = parts.has('comments') ? pick(source.comments) : []
@@ -280,19 +372,20 @@ export function planImpulseReset(
   for (const doc of source.progress) {
     if (!doc.uid) continue
     const own = selected(doc.uid)
-    const trace = progressTrace(doc, source.week)
+    const trace = progressTrace(doc, scope)
     const resetProgress = own && parts.has('progress')
     const resetReactions = own && parts.has('reactions')
     /* Eigene Reaktionen der Woche – und die aller zu gelöschten Beiträgen. */
     const drop = (list: readonly string[] | undefined, withComments: boolean) =>
       (list ?? []).filter(
         (entry) =>
-          (resetReactions && ofWeek(entry)) || (withComments && removedComments.has(entry)),
+          (resetReactions && scope.reference(entry)) ||
+          (withComments && removedComments.has(entry)),
       )
     const ownScores = source.scores.filter((score) => score.uid === doc.uid)
     const entry: ImpulseProgressReset = {
       uid: doc.uid,
-      week: resetProgress && trace.hasWeek,
+      weeks: resetProgress ? trace.weeks : [],
       amens: drop(doc.amens, true),
       favorites: drop(doc.favorites, false),
       reports: drop(doc.reports, true),
@@ -305,7 +398,7 @@ export function planImpulseReset(
         ownScores.every((score) => removedScores.has(score.id)),
     }
     const changes =
-      entry.week ||
+      entry.weeks.length > 0 ||
       entry.lastSeenWeek ||
       entry.firstSeenWeek ||
       entry.gameName ||
@@ -338,7 +431,7 @@ export function describeImpulseReset(plan: ImpulseResetPlan): string {
   )
   const count = (n: number, one: string, many: string) => n > 0 && `${n} ${n === 1 ? one : many}`
   const parts = [
-    plan.progress.some((entry) => entry.week) && 'Karten, Wappen und Haken',
+    plan.progress.some((entry) => entry.weeks.length > 0) && 'Karten, Wappen und Haken',
     count(plan.answerIds.length, 'Antwort', 'Antworten'),
     count(plan.commentIds.length, 'Beitrag', 'Beiträge'),
     count(plan.scoreIds.length, 'Ranglisten-Eintrag', 'Ranglisten-Einträge'),

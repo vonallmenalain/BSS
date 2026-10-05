@@ -3,6 +3,7 @@ import { test } from 'node:test'
 
 import {
   computeStreak,
+  everParticipated,
   formatWeekRange,
   impulseAnswerId,
   impulseWeekKey,
@@ -460,6 +461,19 @@ test('weekParticipants: Vornamen aus Fortschritt und Antworten, ohne Doppelte', 
     participants.map((person) => person.firstName),
     ['Dario', 'Elias', 'Levin'],
   )
+})
+
+test('everParticipated: der Nenner zählt, wer je mitgemacht hat – nicht, wer bloss schaute', () => {
+  const progress: ImpulseProgress[] = [
+    { id: 'a', uid: 'a', firstName: 'Levin', weeks: { '2026-W33': { goal: true } } },
+    // Karten angeschaut, aber nichts abgehakt – und nach dem Zurücksetzen ganz leer.
+    { id: 'b', uid: 'b', firstName: 'Dario', weeks: { '2026-W33': { cards: ['x'] } } },
+    { id: 'c', uid: 'c', firstName: 'Nico', lastSeenWeek: '2026-W33' },
+    { id: 'd', uid: 'd', firstName: 'Elias', weeks: { '2026-W30': { feed: true } } },
+  ]
+  const responses = [{ uid: 'e' }, { uid: 'a' }]
+  assert.deepEqual([...everParticipated(progress, responses)].sort(), ['a', 'd', 'e'])
+  assert.equal(everParticipated([], []).size, 0)
 })
 
 /*

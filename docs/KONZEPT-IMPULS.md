@@ -999,7 +999,8 @@ einmal je Woche und Gerät.
   der ersten Karte einsteigt, an der noch etwas fehlt.
 - **Miteinander:** Wer sein Wappen schon hat, steht in der Gruppenleiste
   («Wappen vollendet: …») – genannt wird, wer es geschafft hat, nie, wer
-  noch unterwegs ist (Leitgedanke 4).
+  noch unterwegs ist (Leitgedanke 4). Hinter der Leiste liegt seit 13.8
+  der Raum «Diese Woche dabei» mit dem Wappen jeder Person, die dabei ist.
 - **Die Sammlung:** «Mein Fortschritt» zeigt das Wappen jeder Woche –
   vollendet oder auf dem Weg dorthin. Der Verlauf darüber heisst «Seit du
   dabei bist» und zeigt so viele Wochen, wie jemand dabei ist – am Anfang
@@ -1237,21 +1238,59 @@ die Aufgaben. Wer bloss Text markiert, bleibt ebenfalls stehen.
 Aufgaben, die die laufende Woche hat – ein «Video» in einer Woche ohne
 Video führte ins Leere. Dazu kamen die Umfrage, das Vers-Puzzle und das
 Minispiel: Ein Tipp auf «Minispiel» öffnet den Feed bei der Spielkarte, mit
-dem Knopf «Spielen». Die Werkzeuge (Mein Fortschritt, Gemerkt,
-Mitmach-Ecke, Einstellungen) stehen jede Woche da. In der Vorschau der
-Redaktion zeigt das Menü die gespielte Woche.
+dem Knopf «Spielen». Die Werkzeuge (Mein Fortschritt, Diese Woche dabei,
+Gemerkt, Mitmach-Ecke, Einstellungen) stehen jede Woche da. In der Vorschau
+der Redaktion zeigt das Menü die gespielte Woche.
+
+**«Diese Woche dabei» als Raum.** Die Gruppenleiste unter den Kacheln ist
+ein Knopf, sobald jemand dabei ist («Die Wappen ansehen»). Er öffnet den
+Vollbild-Raum `dabei` (Purpur, im Wechsler «Dabei», im Menü «Diese Woche
+dabei»): das Wochen-Wappen jeder Person, die dabei ist – so weit gefüllt,
+wie sie gekommen ist, mit «7/18» oder «vollendet» darunter. Ein Tipp zeigt
+es gross, samt Sternen (`ImpulseGroupRoom`). Gerechnet wird jedes Wappen
+wie das eigene, aus Fortschritt und Antworten der Person (`weekCrests` in
+`lib/impulse`); das eigene steht vorn und heisst «Du». Das geht bewusst
+einen Schritt weiter als die Leiste, die nur nennt, wer fertig ist: Hier
+sieht man auch, wer noch unterwegs ist. Die Grenzen bleiben – nur wer
+dabei ist, steht da; eine Galerie nach Vornamen, keine Rangliste; und
+welche Karten jemandem fehlen, sieht nur die Person selbst.
+
+**Der Nenner der Leiste.** «2 von 3» zählt im Nenner, wer je dabei war –
+ein Haken, eine Antwort, ein Beitrag, eine Runde im Minispiel, in
+irgendeiner Woche (`everParticipated`). Früher zählte jedes
+Fortschrittsdokument mit, also auch, wer «Anti Doom» bloss geöffnet hatte;
+nach dem Zurücksetzen einer Woche standen so die Testkonten noch im
+Nenner. Ist niemand ausser den Beteiligten je dabei gewesen, steht nur die
+Zahl.
 
 **Eine Woche zurücksetzen.** Ganz unten in der Redaktion – für die Zeit des
 Ausprobierens, bevor der Link an alle geht. Zurückgesetzt wird, was die
 Leute in der gewählten Woche getan haben; die Karten selbst bleiben. Ein
 Fenster zeigt vorher, was geschieht, und lässt es einstellen:
 
-- **wer:** alle mit Spuren in der Woche oder einzelne Personen – je Person
-  steht, was sie getan hat («18 Karten · Wappen · 3 Haken · 5 Antworten»);
+- **welche Wochen:** die oben gewählte – oder **alle Wochen**, der
+  Neustart vor dem Start (siehe unten);
+- **wer:** alle mit Spuren oder einzelne Personen – je Person steht, was
+  sie getan hat («18 Karten · Wappen · 3 Haken · 5 Antworten», über alle
+  Wochen dazu «3 Wochen»);
 - **was:** angeschaute Karten, Wappen und Haken (die ganze Woche im
   Fortschritt, dazu die zuletzt bzw. zuerst gesehene Woche, wenn es diese
   ist) · Antworten · Beiträge zur Frage der Woche · Minispiel-Rangliste ·
   Amen, Gemerktes und Meldungen zu den Karten und Beiträgen der Woche.
+
+**Alle Wochen.** Wer nur die laufende Woche zurücksetzt, behält, was aus
+früheren Wochen stammt – auch aus der Zeit des Testens, etwa vor dem
+Themenpaket, dessen Karten es nicht mehr gibt. Daran hängt «Seit du dabei
+bist»: Es zählt ab der ersten Woche (`firstSeenWeek`, sonst die früheste
+mit eigenem Fortschritt oder eigener Antwort) und stand darum nach dem
+Zurücksetzen der Woche noch bei neun. Mit «Alle Wochen» geht alles:
+jede Woche im Fortschritt, jede Antwort, jeder Beitrag und
+Ranglisten-Eintrag (auch zu gelöschten Karten), alle Amen, Gemerktes und
+Meldungen und die erste und letzte gesehene Woche. Danach beginnen
+«Seit du dabei bist» und die Serie wieder bei einer Woche. Die Karte in
+der Redaktion sagt, wer noch Spuren aus anderen Wochen hat
+(`impulseResetOlderPeople`) – das Fenster öffnet gleich bei «Alle
+Wochen», wenn die gewählte Woche selbst leer ist.
 
 Die Zahlen folgen der Auswahl; erst «Zurücksetzen» schreibt. Gerechnet wird
 in `lib/impulseReset` (ohne Datenbank, `tests/impulse-reset.test.ts`), beim
@@ -1272,8 +1311,13 @@ Vorname anfassen kann sie nicht – Selbstauskunft gilt weiter.
 
 **Auf den Geräten.** Geschrieben werden zuerst die Löschungen, dann der
 Fortschritt. Bei den Betroffenen kommt der zurückgesetzte Fortschritt
-sofort an; verschwindet die Woche daraus, liest die App Antworten,
-Beiträge und Ranglisten gleich frisch (der schrittweise Abgleich sähe die
-Löschungen sonst erst beim nächsten Start). Und die Feier des Wappens gilt
-auf dem Gerät nicht mehr, sobald das Wappen wieder leer dasteht: Wer es
-neu baut, wird neu gefeiert.
+sofort an; verschwindet eine Woche oder die erste bzw. letzte gesehene
+Woche daraus – das tut nur die Redaktion (`impulseProgressWasReset`) –,
+liest die App Antworten, Beiträge und Ranglisten gleich frisch (der
+schrittweise Abgleich sähe die Löschungen sonst erst beim nächsten Start).
+Die erste Woche, die danach neu vermerkt wird, kommt allein aus dem
+Fortschritt, nicht aus den Antworten: Auf einem zweiten Gerät stehen die
+gelöschten Antworten noch kurz im Zwischenspeicher und holten sonst den
+alten Anfang zurück. Und die Feier des Wappens gilt auf dem Gerät nicht
+mehr, sobald das Wappen wieder leer dasteht: Wer es neu baut, wird neu
+gefeiert.

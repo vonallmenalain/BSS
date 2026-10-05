@@ -18,6 +18,7 @@ import type {
   ImpulsePuzzle,
   ImpulseQuiz,
   ImpulseSource,
+  ImpulseWeekProgress,
 } from './types.ts'
 
 /*
@@ -626,19 +627,47 @@ export function participatedWeeks(
 ): Set<string> {
   const weeks = new Set<string>()
   for (const [week, state] of Object.entries(progress?.weeks ?? {})) {
-    if (
-      state?.goal === true ||
-      (state?.days?.length ?? 0) > 0 ||
-      state?.feed === true ||
-      state?.share === true
-    )
-      weeks.add(week)
+    if (weekStateParticipated(state)) weeks.add(week)
   }
   for (const answer of answers) {
     const week = weekOfItem(answer.itemId)
     if (week) weeks.add(week)
   }
   return weeks
+}
+
+/** Steht im Stand einer Woche ein Haken – Wochenziel, ein Tag, Feed oder Teilen? */
+function weekStateParticipated(state: ImpulseWeekProgress | null | undefined): boolean {
+  return (
+    state?.goal === true ||
+    (state?.days?.length ?? 0) > 0 ||
+    state?.feed === true ||
+    state?.share === true
+  )
+}
+
+/**
+ * Wer je dabei war – der Nenner der Gruppenleiste («2 von 5»).
+ *
+ * Dabei heisst dasselbe wie für die einzelne Woche: ein Haken im
+ * Fortschritt, eine Antwort, ein Beitrag oder eine Runde im Minispiel –
+ * nur in irgendeiner Woche. Wer «Anti Doom» bloss geöffnet hat, hat zwar
+ * ein Fortschrittsdokument, war aber nie dabei; zählte er mit, stünden
+ * nach dem Zurücksetzen der Woche die Testkonten noch im Nenner.
+ */
+export function everParticipated(
+  progressDocs: readonly Pick<ImpulseProgress, 'uid' | 'weeks'>[],
+  /** Antworten, Beiträge und Ranglisten-Einträge aller. */
+  responses: readonly Pick<ImpulseAnswer, 'uid'>[],
+): Set<string> {
+  const uids = new Set<string>()
+  for (const progress of progressDocs) {
+    if (progress.uid && Object.values(progress.weeks ?? {}).some(weekStateParticipated)) {
+      uids.add(progress.uid)
+    }
+  }
+  for (const response of responses) if (response.uid) uids.add(response.uid)
+  return uids
 }
 
 /**
@@ -874,13 +903,7 @@ export function weekParticipants(
 ): { uid: string; firstName: string }[] {
   const byUid = new Map<string, string>()
   for (const progress of progressDocs) {
-    const state = progress.weeks?.[week]
-    if (
-      state?.goal === true ||
-      (state?.days?.length ?? 0) > 0 ||
-      state?.feed === true ||
-      state?.share === true
-    ) {
+    if (weekStateParticipated(progress.weeks?.[week])) {
       byUid.set(progress.uid, progress.firstName || '–')
     }
   }
@@ -1065,14 +1088,7 @@ export function crestCompleters(input: {
   answers: readonly Pick<ImpulseAnswer, 'itemId' | 'uid'>[]
 }): { uid: string; firstName: string }[] {
   if (input.cards.length === 0) return []
-  const cardIds = new Set(input.cards.map((card) => card.id))
-  const answeredBy = new Map<string, Set<string>>()
-  for (const answer of input.answers) {
-    if (!cardIds.has(answer.itemId)) continue
-    const set = answeredBy.get(answer.uid) ?? new Set<string>()
-    set.add(answer.itemId)
-    answeredBy.set(answer.uid, set)
-  }
+  const answeredBy = answeredCardsByUid(input.cards, input.answers)
   return input.progressDocs
     .filter((progress) => {
       const state = progress.weeks?.[input.week]
@@ -1089,6 +1105,83 @@ export function crestCompleters(input: {
     })
     .map((progress) => ({ uid: progress.uid, firstName: progress.firstName || '–' }))
     .sort((a, b) => a.firstName.localeCompare(b.firstName, 'de'))
+}
+
+/** Welche Karten jede Person beantwortet, abgestimmt, gelöst oder gespielt hat. */
+function answeredCardsByUid(
+  cards: readonly Pick<ImpulseItem, 'id'>[],
+  answers: readonly Pick<ImpulseAnswer, 'itemId' | 'uid'>[],
+): Map<string, Set<string>> {
+  const cardIds = new Set(cards.map((card) => card.id))
+  const answeredBy = new Map<string, Set<string>>()
+  for (const answer of answers) {
+    if (!cardIds.has(answer.itemId)) continue
+    const set = answeredBy.get(answer.uid) ?? new Set<string>()
+    set.add(answer.itemId)
+    answeredBy.set(answer.uid, set)
+  }
+  return answeredBy
+}
+
+/** Das Wappen einer Person in einer Woche – wie weit, ob ganz, welche Sterne. */
+export interface ImpulsePersonCrest {
+  uid: string
+  firstName: string
+  /** Geschaffte Karten. */
+  done: number
+  /** Karten des Wappens. */
+  total: number
+  complete: boolean
+  stars: ImpulseCrestStars
+}
+
+/**
+ * Das Wappen jeder Person, die in der Woche dabei ist – für den Raum
+ * «Diese Woche dabei». Gerechnet aus ihrem Fortschritt und ihren
+ * Antworten, mit denselben Regeln wie das eigene Wappen
+ * (`impulseCrestSteps`, `impulseCrestStars`).
+ *
+ * In der Reihenfolge von `people` – dort nach Vornamen, nicht nach dem
+ * Stand: eine Galerie, keine Rangliste.
+ */
+export function weekCrests(input: {
+  week: string
+  cards: readonly Pick<ImpulseItem, 'id' | 'kind' | 'title' | 'deepening'>[]
+  people: readonly { uid: string; firstName: string }[]
+  progressDocs: readonly ImpulseProgress[]
+  /** Antworten (Quiz, Umfrage, Puzzle), Beiträge (Frage der Woche) und Ranglisten-Einträge aller. */
+  answers: readonly Pick<ImpulseAnswer, 'itemId' | 'uid'>[]
+  /** Hat die Woche ein Wochenziel bzw. eine Tages-Challenge? Sonst gibt es den Stern nicht. */
+  goal: boolean
+  challenge: boolean
+}): ImpulsePersonCrest[] {
+  const answeredBy = answeredCardsByUid(input.cards, input.answers)
+  const progressBy = new Map(input.progressDocs.map((progress) => [progress.uid, progress]))
+  return input.people.map((person) => {
+    const state: ImpulseWeekProgress = progressBy.get(person.uid)?.weeks?.[input.week] ?? {}
+    const steps = impulseCrestSteps({
+      cards: input.cards,
+      seen: new Set(state.cards ?? []),
+      deepened: new Set(state.deepened ?? []),
+      answered: answeredBy.get(person.uid) ?? new Set(),
+      shared: state.share === true,
+    })
+    const complete = crestComplete(steps)
+    return {
+      uid: person.uid,
+      firstName: person.firstName,
+      done: steps.filter((step) => step.done).length,
+      total: steps.length,
+      complete,
+      stars: impulseCrestStars({
+        week: input.week,
+        complete,
+        completedOn: state.crest ?? null,
+        goal: input.goal ? state.goal === true : null,
+        challengeDays: input.challenge ? Math.min((state.days ?? []).length, 7) : null,
+      }),
+    }
+  })
 }
 
 /**

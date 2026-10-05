@@ -122,6 +122,7 @@ const IMPULSE_CHILDREN: { to: string; label: string; kind?: ImpulseKind }[] = [
   { to: '/anti-doom/ziel', label: 'Wochenziel', kind: 'wochenziel' },
   { to: '/anti-doom/challenge', label: 'Tages-Challenge', kind: 'tageschallenge' },
   { to: '/anti-doom/fortschritt', label: 'Mein Fortschritt' },
+  { to: '/anti-doom/dabei', label: 'Diese Woche dabei' },
   { to: '/anti-doom/gemerkt', label: 'Gemerkt' },
   { to: '/anti-doom/mitmachen', label: 'Mitmach-Ecke' },
   { to: '/anti-doom/einstellungen', label: 'Anti-Doom-Einstellungen' },

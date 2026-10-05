@@ -4,6 +4,8 @@ import { test } from 'node:test'
 import {
   describeImpulseReset,
   IMPULSE_RESET_PARTS,
+  impulseProgressWasReset,
+  impulseResetOlderPeople,
   impulseResetPeople,
   planImpulseReset,
   type ImpulseResetPart,
@@ -95,6 +97,7 @@ test('Spuren: wer in der Woche etwas getan hat – mit den Zahlen je Teil', () =
   assert.deepEqual(levin, {
     uid: 'levin',
     firstName: 'Levin',
+    weeks: 1,
     cards: 2,
     ticks: 3,
     crest: true,
@@ -130,7 +133,7 @@ test('Alles für alle: die Woche ist danach wie neu – frühere Wochen bleiben'
   const levin = plan.progress.find((entry) => entry.uid === 'levin')
   assert.deepEqual(levin, {
     uid: 'levin',
-    week: true,
+    weeks: [WEEK],
     amens: ['feed', 'frage_mia'],
     favorites: ['feed'],
     reports: ['frage_mia'],
@@ -150,7 +153,7 @@ test('Alles für alle: die Woche ist danach wie neu – frühere Wochen bleiben'
     plan.progress.find((entry) => entry.uid === 'noah'),
     {
       uid: 'noah',
-      week: false,
+      weeks: [],
       amens: [],
       favorites: [],
       reports: [],
@@ -177,7 +180,7 @@ test('Eine Person: nur ihre Spuren – das Amen der anderen zu ihrem Beitrag geh
   const mia = plan.progress.find((entry) => entry.uid === 'mia')
   assert.deepEqual(mia, {
     uid: 'mia',
-    week: false,
+    weeks: [],
     amens: ['frage_levin'],
     favorites: [],
     reports: [],
@@ -208,7 +211,7 @@ test('Nur die Beiträge: ihre Amen und Meldungen gehen mit, auch ohne «Reaktion
   assert.deepEqual(levin?.amens, ['frage_mia'])
   assert.deepEqual(levin?.favorites, [])
   assert.deepEqual(levin?.reports, ['frage_mia'])
-  assert.equal(levin?.week, false)
+  assert.deepEqual(levin?.weeks, [])
 })
 
 test('Nur die Reaktionen: Amen, Gemerktes und Meldungen der Woche – nicht die von früher', () => {
@@ -216,7 +219,7 @@ test('Nur die Reaktionen: Amen, Gemerktes und Meldungen der Woche – nicht die 
   const levin = plan.progress.find((entry) => entry.uid === 'levin')
   assert.deepEqual(levin?.amens, ['feed', 'frage_mia'])
   assert.deepEqual(levin?.favorites, ['feed'])
-  assert.equal(levin?.week, false)
+  assert.deepEqual(levin?.weeks, [])
   assert.equal(levin?.gameName, false)
   assert.deepEqual(plan.answerIds, [])
 })
@@ -256,4 +259,107 @@ test('Rückmeldung: wer, und was alles mitgeht', () => {
   // Noah hat die Woche bloss geöffnet – es bleibt bei der Person.
   const one = planImpulseReset(source(), { people: new Set(['noah']), parts: ALL_PARTS })
   assert.equal(describeImpulseReset(one), '1 Person')
+})
+
+test('Alle Wochen: jede Woche, jede Antwort, jede Reaktion – auch von früher', () => {
+  const people = impulseResetPeople(source(), { allWeeks: true })
+  // Lea hat nur in W40 Spuren – über alle Wochen gehört sie dazu.
+  assert.deepEqual(
+    people.map((person) => person.firstName),
+    ['Lea', 'Levin', 'Mia', 'Noah'],
+  )
+  const levin = people.find((person) => person.uid === 'levin')
+  assert.equal(levin?.weeks, 2)
+  assert.equal(levin?.cards, 3)
+  // Wochenziel in beiden Wochen, zwei Tage der Tages-Challenge.
+  assert.equal(levin?.ticks, 4)
+  // Amen, Gemerktes und Meldungen – auch zur Karte «alt».
+  assert.equal(levin?.reactions, 6)
+
+  const plan = planImpulseReset(source(), { people: null, parts: ALL_PARTS, allWeeks: true })
+  assert.deepEqual(plan.answerIds.sort(), ['alt_lea', 'quiz_levin', 'quiz_mia'])
+  assert.deepEqual(plan.scoreIds.sort(), ['spiel-alt_mia', 'spiel_levin', 'spiel_mia'])
+  assert.deepEqual(plan.people.sort(), ['lea', 'levin', 'mia', 'noah'])
+  assert.deepEqual(
+    plan.progress.find((entry) => entry.uid === 'levin'),
+    {
+      uid: 'levin',
+      weeks: [WEEK, '2026-W40'],
+      amens: ['feed', 'frage_mia', 'alt'],
+      favorites: ['feed', 'alt'],
+      reports: ['frage_mia'],
+      lastSeenWeek: true,
+      // Die erste Woche geht mit – «Seit du dabei bist» beginnt von vorn.
+      firstSeenWeek: true,
+      gameName: true,
+    },
+  )
+  const mia = plan.progress.find((entry) => entry.uid === 'mia')
+  // Auch der Eintrag von früher ist weg: Das Spiel fragt wieder nach dem Namen.
+  assert.equal(mia?.gameName, true)
+  const lea = plan.progress.find((entry) => entry.uid === 'lea')
+  assert.deepEqual(lea?.weeks, ['2026-W40'])
+  assert.equal(lea?.lastSeenWeek, true)
+  assert.equal(
+    describeImpulseReset(plan),
+    '4 Personen: Karten, Wappen und Haken, 3 Antworten, 2 Beiträge, 3 Ranglisten-Einträge, 7 Amen/Gemerkt',
+  )
+})
+
+test('Alle Wochen für eine Person: die anderen behalten ihre Wochen', () => {
+  const plan = planImpulseReset(source(), {
+    people: new Set(['lea']),
+    parts: ALL_PARTS,
+    allWeeks: true,
+  })
+  assert.deepEqual(plan.answerIds, ['alt_lea'])
+  assert.deepEqual(plan.scoreIds, [])
+  assert.deepEqual(plan.people, ['lea'])
+  assert.deepEqual(
+    plan.progress.map((entry) => entry.uid),
+    ['lea'],
+  )
+})
+
+test('Spuren aus anderen Wochen: wer nach dem Zurücksetzen der Woche noch welche hätte', () => {
+  // Levin: W40 und die erste Woche W40; Lea: W40; Mia: der Ranglisten-Eintrag von früher.
+  assert.deepEqual(impulseResetOlderPeople(source()).sort(), ['lea', 'levin', 'mia'])
+  // Nach «alle Wochen» bleibt nichts.
+  const data = source()
+  data.progress = data.progress.map((progress) => ({
+    uid: progress.uid,
+    firstName: progress.firstName,
+  }))
+  data.answers = []
+  data.comments = []
+  data.scores = []
+  assert.deepEqual(impulseResetOlderPeople(data), [])
+  // Eine erste Woche von früher allein genügt – sie lässt «Seit du dabei bist» weiterzählen.
+  data.progress = [{ uid: 'ben', firstName: 'Ben', firstSeenWeek: '2026-W33' }]
+  assert.deepEqual(impulseResetOlderPeople(data), ['ben'])
+})
+
+test('Zurückgesetzt? Nur die Redaktion lässt Wochen und gesehene Wochen verschwinden', () => {
+  const before = {
+    weeks: { [WEEK]: { cards: ['quiz'] }, '2026-W40': { goal: true } },
+    lastSeenWeek: WEEK,
+    firstSeenWeek: '2026-W40',
+  }
+  // Selbst abhaken oder eine neue Woche öffnen ist kein Zurücksetzen.
+  assert.equal(
+    impulseProgressWasReset(before, {
+      ...before,
+      weeks: { ...before.weeks, [WEEK]: { cards: [] }, '2026-W42': { goal: true } },
+      lastSeenWeek: '2026-W42',
+    }),
+    false,
+  )
+  assert.equal(impulseProgressWasReset({}, before), false)
+  // Eine Woche weg, die letzte oder die erste gesehene Woche weg: zurückgesetzt.
+  assert.equal(
+    impulseProgressWasReset(before, { ...before, weeks: { '2026-W40': { goal: true } } }),
+    true,
+  )
+  assert.equal(impulseProgressWasReset(before, { ...before, lastSeenWeek: undefined }), true)
+  assert.equal(impulseProgressWasReset(before, { weeks: before.weeks, lastSeenWeek: WEEK }), true)
 })

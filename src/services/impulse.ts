@@ -952,9 +952,9 @@ export async function restartImpulseContent(input: {
 }
 
 /** Was an einem Fortschrittsdokument wegkommt – als Felder für `update`. */
-function progressResetFields(entry: ImpulseProgressReset, week: string) {
+function progressResetFields(entry: ImpulseProgressReset) {
   const fields: Record<string, unknown> = { updatedAt: serverTimestamp() }
-  if (entry.week) fields[`weeks.${week}`] = deleteField()
+  for (const week of entry.weeks) fields[`weeks.${week}`] = deleteField()
   if (entry.amens.length > 0) fields.amens = arrayRemove(...entry.amens)
   if (entry.favorites.length > 0) fields.favorites = arrayRemove(...entry.favorites)
   if (entry.reports.length > 0) fields.reports = arrayRemove(...entry.reports)
@@ -965,8 +965,9 @@ function progressResetFields(entry: ImpulseProgressReset, week: string) {
 }
 
 /**
- * Eine Woche zurücksetzen – für alle oder einzelne Personen, ganz oder in
- * Teilen (`lib/impulseReset`). Die Karten der Woche bleiben stehen.
+ * Eine Woche zurücksetzen – oder alle Wochen –, für alle oder einzelne
+ * Personen, ganz oder in Teilen (`lib/impulseReset`). Die Karten bleiben
+ * stehen.
  *
  * Wie der Neustart verlangt das eine Verbindung, und was dazugehört, wird
  * frisch beim Server erfragt statt aus den Abos der Seite genommen: Was
@@ -1026,10 +1027,7 @@ export async function resetImpulseWeek(input: {
   const progressBatches = chunks(plan.progress).map((part) => {
     const batch = writeBatch(db)
     for (const entry of part) {
-      batch.update(
-        doc(db, COLLECTIONS.impulseProgress, entry.uid),
-        progressResetFields(entry, input.week),
-      )
+      batch.update(doc(db, COLLECTIONS.impulseProgress, entry.uid), progressResetFields(entry))
     }
     return batch
   })
