@@ -1,13 +1,41 @@
-import { defineConfig } from 'vite'
+import { defineConfig, type Plugin } from 'vite'
 import react from '@vitejs/plugin-react'
 import tailwindcss from '@tailwindcss/vite'
 import { VitePWA } from 'vite-plugin-pwa'
 import path from 'node:path'
+import { applySharePreview, sharePreviewPages } from './src/lib/sharePreview.ts'
+
+/**
+ * Eigene Seiten für geteilte Links: Neben `index.html` legt der Build für
+ * «Anti Doom» Kopien mit eigenem Titel, eigener Beschreibung und dem
+ * AP-Wappen als Bild ab – Messenger lesen die Vorschau aus dem HTML, ohne
+ * die App zu starten (siehe `src/lib/sharePreview.ts`). Gebaut wird aus
+ * dem fertigen `index.html`, mit denselben Skripten und Stilen.
+ */
+function sharePreviews(): Plugin {
+  return {
+    name: 'bss:share-previews',
+    apply: 'build',
+    enforce: 'post',
+    generateBundle(_options, bundle) {
+      const index = bundle['index.html']
+      if (!index || index.type !== 'asset') {
+        this.error('Link-Vorschau: index.html fehlt im Build.')
+      }
+      const html =
+        typeof index.source === 'string' ? index.source : new TextDecoder().decode(index.source)
+      for (const page of sharePreviewPages()) {
+        this.emitFile({ type: 'asset', fileName: page.file, source: applySharePreview(html, page) })
+      }
+    },
+  }
+}
 
 export default defineConfig({
   plugins: [
     react(),
     tailwindcss(),
+    sharePreviews(),
     VitePWA({
       registerType: 'prompt',
       injectRegister: null,
@@ -76,8 +104,10 @@ export default defineConfig({
         globPatterns: ['**/*.{js,css,html,svg,png,ico,woff2}'],
         // Der Service Worker der Benachrichtigungen gehört nicht in
         // den Precache: Der Browser holt SW-Skripte ohnehin am Cache vorbei,
-        // und Netlify liefert ihn bewusst mit «max-age=0» aus.
-        globIgnores: ['**/push-sw.js'],
+        // und Netlify liefert ihn bewusst mit «max-age=0» aus. Ebenso die
+        // Seiten und das Bild für geteilte Links – sie sind für Messenger
+        // da; die App selbst startet offline aus `index.html`.
+        globIgnores: ['**/push-sw.js', 'anti-doom.html', 'anti-doom/**', 'icons/ap-share-*.png'],
         cleanupOutdatedCaches: true,
         clientsClaim: true,
         navigateFallback: '/index.html',

@@ -6,6 +6,9 @@
  *  - `ap`        AP-Rollen (nur AP-Kalender oder nur Anti Doom): das Wappen
  *  - `kalender`  der öffentliche AP-Kalender ohne Anmeldung
  *  - `putzplan`  der öffentliche Putzplan ohne Anmeldung
+ *  - `teilen`    das Bild in der Vorschau geteilter «Anti Doom»-Links
+ *                (`src/lib/sharePreview.ts`): das Wappen vollflächig, ohne
+ *                runde Ecken – die setzt der Messenger selbst
  *
  * Die erzeugten PNGs liegen unter `public/icons/` (das Apple-Icon der
  * Bischofschaft unter `public/`) und sind eingecheckt – das Script muss nur
@@ -143,6 +146,7 @@ const SETS = {
       svg: shape('apple', board(LUCIDE.calendar)),
     },
   ],
+  teilen: [{ file: 'icons/ap-share-512.png', size: 512, svg: shape('apple', AP_ART) }],
   putzplan: [
     { file: 'icons/putzplan-192.png', size: 192, svg: shape('any', board(LUCIDE.broom)) },
     { file: 'icons/putzplan-512.png', size: 512, svg: shape('any', board(LUCIDE.broom)) },
