@@ -681,13 +681,43 @@ service cloud.firestore {
      * bei den Antworten darf umgehakt werden (ein Versehen beim Ziel ist
      * kein Quizversuch). Lesen dürfen alle im Bereich – die Gruppenleiste
      * «diese Woche dabei» lebt davon. Wegräumen kann die Redaktion.
+     *
+     * Die Redaktion darf eine Woche auch **zurücksetzen** – etwa nach dem
+     * Testen, bevor der Link an alle geht. Dafür darf sie am fremden
+     * Fortschritt wegnehmen, nie etwas eintragen (`resetOnly`): ganze
+     * Wochen aus `weeks`, Einträge aus `amens`, `favorites` und
+     * `reports`, und die Felder `lastSeenWeek`, `firstSeenWeek` und
+     * `gameName` als Ganzes. Neu setzen oder ändern kann sie nichts davon,
+     * und Konto und Vorname bleiben, wie sie sind – Selbstauskunft gilt
+     * weiterhin.
      */
     match /impulseProgress/{userId} {
+      function resetOnly() {
+        let before = resource.data;
+        let after = request.resource.data;
+        let diff = after.diff(before);
+        return diff.affectedKeys().hasOnly(['weeks', 'amens', 'favorites', 'reports',
+              'lastSeenWeek', 'firstSeenWeek', 'gameName', 'updatedAt'])
+          && diff.addedKeys().hasOnly(['updatedAt'])
+          && !diff.changedKeys().hasAny(['lastSeenWeek', 'firstSeenWeek', 'gameName'])
+          && (!('weeks' in diff.changedKeys())
+            || (after.weeks.diff(before.weeks).addedKeys().size() == 0
+              && after.weeks.diff(before.weeks).changedKeys().size() == 0))
+          && (!('amens' in diff.changedKeys()) || after.amens.hasOnly(before.amens))
+          && (!('favorites' in diff.changedKeys()) || after.favorites.hasOnly(before.favorites))
+          && (!('reports' in diff.changedKeys()) || after.reports.hasOnly(before.reports));
+      }
+
       allow read: if impulseAccess();
 
-      allow create, update: if impulseAccess()
+      allow create: if impulseAccess()
         && request.auth.uid == userId
         && request.resource.data.uid == userId;
+
+      allow update: if (impulseAccess()
+          && request.auth.uid == userId
+          && request.resource.data.uid == userId)
+        || (impulseWrite() && resetOnly());
 
       allow delete: if impulseWrite();
     }

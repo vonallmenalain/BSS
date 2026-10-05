@@ -23,6 +23,7 @@ import {
   useImpulseComments,
   useImpulseGameScores,
   useImpulseItems,
+  useImpulseProgress,
   useImpulseSubmissions,
 } from '@/hooks/useFirestore'
 import { PageHeader } from '@/components/ui/Pickers'
@@ -32,6 +33,7 @@ import { ImpulseCrestPreviewButton } from '@/components/impulse/ImpulseCrestPrev
 import { ImpulseEditorPreview } from '@/components/impulse/ImpulseEditorPreview'
 import { ImpulseItemForm } from '@/components/impulse/ImpulseItemForm'
 import { ImpulseWeekStart } from '@/components/impulse/ImpulseWeekStart'
+import { ImpulseWeekReset } from '@/components/impulse/ImpulseWeekReset'
 import { cn } from '@/lib/utils'
 import {
   allowsMultiple,
@@ -114,7 +116,11 @@ export function ImpulsRedaktion() {
     return [...weekChoices, ...far]
   }, [weekChoices, plannedWeeks])
   const pastWeeks = useMemo(
-    () => plannedWeeks.filter((week) => week < todayKey).sort().reverse(),
+    () =>
+      plannedWeeks
+        .filter((week) => week < todayKey)
+        .sort()
+        .reverse(),
     [plannedWeeks, todayKey],
   )
   /* Für die Pfeile: alle wählbaren Wochen in zeitlicher Reihenfolge. */
@@ -354,6 +360,23 @@ export function ImpulsRedaktion() {
   /* Der Fragenpool: Karten ohne Woche – zugeklappt am Ende der Seite. */
   const pool = itemsState.data.filter((item) => item.week === null)
   const [showPool, setShowPool] = useState(false)
+
+  /*
+   * Ganz unten: die gewählte Woche zurücksetzen – was die Leute darin
+   * getan haben, für alle oder einzelne (`ImpulseWeekReset`). Dafür
+   * braucht es neben Antworten, Beiträgen und Ranglisten auch den
+   * Fortschritt aller.
+   */
+  const progressState = useImpulseProgress()
+  const resetSource = {
+    week: selectedWeek,
+    itemIds: weekItems.map((item) => item.id),
+    progress: progressState.data,
+    answers: answersState.data,
+    comments: commentsState.data,
+    scores: scoresState.data,
+  }
+  const resetLoading = !contentLoaded || progressState.loading || scoresState.loading
 
   return (
     <>
@@ -786,6 +809,9 @@ export function ImpulsRedaktion() {
             Noch keine Karten – lege oben in einer Sparte die erste an.
           </p>
         )}
+
+        {/* ---------- Woche zurücksetzen ---------- */}
+        <ImpulseWeekReset week={selectedWeek} source={resetSource} loading={resetLoading} />
       </div>
 
       {editor && (

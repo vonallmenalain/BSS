@@ -64,6 +64,7 @@ import {
   type ImpulseDeckTarget,
 } from '@/components/impulse/ImpulseFeedScreen'
 import { SectionTile } from '@/components/impulse/ImpulseHomeTiles'
+import { ImpulseMissionTasks } from '@/components/impulse/ImpulseMissionTasks'
 import { ImpulseSettingsModal, type ImpulseOrder } from '@/components/impulse/ImpulseSettingsModal'
 import { ImpulseScreen, type ScreenOrigin } from '@/components/impulse/ImpulseScreen'
 import { ImpulseStats } from '@/components/impulse/ImpulseStats'
@@ -106,6 +107,7 @@ import {
   type ImpulseSectionKey,
 } from '@/lib/impulseSections'
 import { recordImpulseOpen, trackImpulseTime } from '@/lib/impulseUsage'
+import { refreshImpulseResponses } from '@/services/impulse'
 import { impulseVideoSource } from '@/lib/impulseVideo'
 import {
   IMPULSE_KIND_LABELS,
@@ -137,10 +139,11 @@ const SEEN_DWELL_MS = 900
  * Vertiefung erfasst hat. Kein Endlos-Feed: Nach der letzten Karte ist
  * Schluss.
  *
- * Unter dem Wochenthema liegen die **Kacheln**, die bewusst nicht Teil
- * des Feeds sind: Wochenziel, Tages-Challenge, Mein Fortschritt, Gemerkt,
- * Mitmach-Ecke – und «Diese Woche dabei». Jede Kachel öffnet ihren
- * Vollbild-Raum; im Feed sind sie verschwunden.
+ * In der Mission der Woche stehen auch die beiden **Aufgaben** –
+ * Wochenziel und Tages-Challenge, gleich abhakbar. Darunter liegen die
+ * **Kacheln**, die bewusst nicht Teil des Feeds sind: Mein Fortschritt,
+ * Gemerkt, Mitmach-Ecke – und «Diese Woche dabei». Jede Kachel und jede
+ * Aufgabe öffnet ihren Vollbild-Raum; im Feed sind sie verschwunden.
  *
  * Die Navigation wohnt im App-Menü: «Anti Doom» klappt dort auf, ein
  * Punkt pro Bereich – die Feed-Bereiche springen im Feed genau zur Karte
@@ -970,10 +973,21 @@ function ImpulsPage() {
     }
   }
 
-  /* Die Aufgaben der laufenden Woche – für die Kacheln und ihre Räume. */
+  /* Die Aufgaben der laufenden Woche – in der Mission und in ihren Räumen. */
   const goalItem = thisWeekAll.find((item) => item.kind === 'wochenziel') ?? null
   const challengeItem = thisWeekAll.find((item) => item.kind === 'tageschallenge') ?? null
   const challengeDays = Math.min((myWeek(todayKey).days ?? []).length, 7)
+  const missionTasks =
+    goalItem || challengeItem ? (
+      <ImpulseMissionTasks
+        week={todayKey}
+        goal={goalItem}
+        goalDone={myWeek(todayKey).goal === true}
+        challenge={challengeItem}
+        challengeDays={myWeek(todayKey).days ?? []}
+        onOpen={openSection}
+      />
+    ) : null
 
   /* -------------- Das Wappen: Sterne, Vermerk und Feier -------------- */
 
@@ -1012,6 +1026,40 @@ function ImpulsPage() {
   const setCelebrated = preview ? preview.setCelebrated : storeCelebration
   const celebrationTag = `${uid}:${todayKey}`
   const celebrating = Boolean(uid) && crestIsComplete && celebrated !== celebrationTag
+  /*
+   * Hat die Redaktion die Woche zurückgesetzt, steht das Wappen wieder leer
+   * da – ohne den Tag, an dem es vollendet war (`crest`). Dann gilt auch
+   * die Feier auf diesem Gerät nicht mehr: Wer es neu baut, wird neu
+   * gefeiert.
+   */
+  const celebrationStale =
+    Boolean(uid) &&
+    !progressState.loading &&
+    celebrated === celebrationTag &&
+    !crestIsComplete &&
+    !myWeek(todayKey).crest
+  useEffect(() => {
+    if (celebrationStale) setCelebrated('')
+  }, [celebrationStale, setCelebrated])
+
+  /*
+   * Das Zurücksetzen kommt beim eigenen Fortschritt sofort an: Die Woche
+   * verschwindet daraus. Die gelöschten Antworten, Beiträge und
+   * Ranglisten-Einträge sähe der schrittweise Abgleich dagegen erst beim
+   * nächsten Start – darum werden sie dann gleich frisch gelesen. Eine
+   * ganze Woche entfernt allein die Redaktion; das eigene Abhaken ändert
+   * bloss, was darin steht.
+   */
+  const hasWeekProgress = Boolean(myProgress?.weeks?.[todayKey])
+  const weekProgressSeen = useRef<{ uid: string; week: string; has: boolean } | null>(null)
+  useEffect(() => {
+    if (preview || progressState.loading || !myProgress) return
+    const before = weekProgressSeen.current
+    if (before?.uid === uid && before.week === todayKey && before.has && !hasWeekProgress) {
+      refreshImpulseResponses()
+    }
+    weekProgressSeen.current = { uid, week: todayKey, has: hasWeekProgress }
+  }, [preview, progressState.loading, myProgress, uid, todayKey, hasWeekProgress])
 
   /* Die erste Karte, an der noch etwas fehlt – dort setzt «Weiter swipen» an. */
   const firstOpenStep = crestSteps.find((step) => !step.done) ?? null
@@ -1258,6 +1306,7 @@ function ImpulsPage() {
                 .map((person) => person.firstName)}
               resumeCardId={firstOpenStep ? deckIdOf(firstOpenStep) : null}
               onOpen={openFeed}
+              tasks={missionTasks}
             />
           ) : (
             (() => {
@@ -1297,28 +1346,18 @@ function ImpulsPage() {
           </section>
         )}
 
-        {/* Die Kacheln unter dem Wochenthema – Aufgaben und Werkzeuge,
-            bewusst nicht Teil des Feeds: Im Vollbild sind sie weg. */}
+        {/* Eine Woche ohne Karten, aber mit Aufgaben: Ohne Mission stehen
+            Wochenziel und Tages-Challenge für sich. */}
+        {deckCards.length === 0 && viewWeek === todayKey && missionTasks && (
+          <div className="card animate-imp-rise mt-3 p-1.5" style={{ animationDelay: '60ms' }}>
+            {missionTasks}
+          </div>
+        )}
+
+        {/* Die Kacheln unter dem Wochenthema – die Werkzeuge, bewusst nicht
+            Teil des Feeds: Im Vollbild sind sie weg. Die Aufgaben der Woche
+            stehen in der Mission selbst. */}
         <div className="mt-3 grid grid-cols-2 gap-3">
-          {goalItem && (
-            <SectionTile
-              section="ziel"
-              status={goalItem.title}
-              done={myWeek(todayKey).goal === true}
-              delay="60ms"
-              onOpen={openSection}
-            />
-          )}
-          {challengeItem && (
-            <SectionTile
-              section="challenge"
-              status={challengeItem.title}
-              badge={`${challengeDays}/7`}
-              done={challengeDays >= 7}
-              delay="90ms"
-              onOpen={openSection}
-            />
-          )}
           <SectionTile
             section="fortschritt"
             status={
@@ -1326,7 +1365,7 @@ function ImpulsPage() {
                 ? `${streak.current} ${streak.current === 1 ? 'Woche' : 'Wochen'} in Folge · ${milestonesEarned} von ${milestones.length} Meilensteinen`
                 : 'Deine Serie beginnt mit dem ersten Haken.'
             }
-            delay="120ms"
+            delay="60ms"
             onOpen={openSection}
           />
           <SectionTile
@@ -1336,7 +1375,7 @@ function ImpulsPage() {
                 ? `${favoriteItems.length} ${favoriteItems.length === 1 ? 'Karte' : 'Karten'} gesammelt`
                 : 'Auf den Feed-Karten wartet «Merken».'
             }
-            delay="150ms"
+            delay="90ms"
             onOpen={openSection}
           />
           <div className="col-span-2">
@@ -1354,14 +1393,14 @@ function ImpulsPage() {
                     } eingereicht`
                   : undefined
               }
-              delay="180ms"
+              delay="120ms"
               onOpen={openSection}
             />
           </div>
         </div>
 
         {!itemsState.loading && (
-          <div className="animate-imp-rise mt-3" style={{ animationDelay: '210ms' }}>
+          <div className="animate-imp-rise mt-3" style={{ animationDelay: '150ms' }}>
             <GroupCard participants={participants} total={total} crestNames={crestNames} />
           </div>
         )}
@@ -1499,9 +1538,13 @@ function ImpulsPage() {
  * Tage es noch sind. In der Mitte das Wochen-Wappen, das mit jeder
  * geschafften Karte wächst, darunter der Stand als Balken. Der grosse
  * Knopf führt in den Feed: beim ersten Mal an den Anfang, danach
- * genau zur ersten Karte, an der noch etwas fehlt. Und wer aus dem
- * Kollegium sein Wappen schon hat, steht klein darunter – Anerkennung,
- * kein Wettrennen.
+ * genau zur ersten Karte, an der noch etwas fehlt. Dasselbe tut ein Tipp
+ * aufs Wappen oder irgendwo sonst auf die Kachel.
+ *
+ * Unter dem Knopf stehen die Aufgaben der Woche (`tasks`): Wochenziel und
+ * Tages-Challenge, gleich abhakbar – sie bringen die beiden übrigen Sterne.
+ * Und wer aus dem Kollegium sein Wappen schon hat, steht klein darunter –
+ * Anerkennung, kein Wettrennen.
  *
  * Die Farben bringt das Wappen der Woche mit: Jede Woche fühlt sich ein
  * wenig anders an.
@@ -1517,6 +1560,7 @@ function MissionHero({
   completers,
   resumeCardId,
   onOpen,
+  tasks = null,
 }: {
   item: ImpulseItem | null
   week: string
@@ -1531,21 +1575,39 @@ function MissionHero({
   /** Die erste Karte, an der noch etwas fehlt – `null`, wenn alles geschafft ist. */
   resumeCardId: string | null
   onOpen: (origin: ScreenOrigin, cardId?: string) => void
+  /** Die Aufgaben der Woche – Wochenziel und Tages-Challenge (`ImpulseMissionTasks`). */
+  tasks?: React.ReactNode
 }) {
   const colors = CREST_PALETTES[crest.palette] ?? CREST_PALETTES.smaragd
   const complete = total > 0 && done >= total
   const share = total > 0 ? Math.min(done / total, 1) : 0
   const live = daysLeft !== null
 
-  const open = (event: React.MouseEvent<HTMLElement>, cardId?: string) => {
+  /* Beim ersten Mal an den Anfang, danach zur ersten offenen Karte. */
+  const resumeAt = done > 0 && resumeCardId ? resumeCardId : undefined
+  /** Knopf und Wappen: Der Feed wächst aus ihrer Mitte. */
+  const resume = (event: React.MouseEvent<HTMLElement>) => {
     const rect = event.currentTarget.getBoundingClientRect()
-    onOpen({ x: rect.left + rect.width / 2, y: rect.top + rect.height / 2 }, cardId)
+    onOpen({ x: rect.left + rect.width / 2, y: rect.top + rect.height / 2 }, resumeAt)
   }
-  const resume = (event: React.MouseEvent<HTMLElement>) =>
-    open(event, done > 0 && resumeCardId ? resumeCardId : undefined)
+  /*
+   * Ein Tipp irgendwo auf die Kachel öffnet den Feed wie der grosse Knopf –
+   * von der Stelle aus, an der getippt wurde. Was ein eigenes Ziel hat,
+   * bleibt bei sich: Knöpfe, Links und die Aufgaben der Woche. Und wer
+   * bloss Text markiert, will nicht in den Feed.
+   */
+  const resumeFromCard = (event: React.MouseEvent<HTMLElement>) => {
+    const target = event.target as HTMLElement
+    if (target.closest('a, button, input, select, textarea, label, [data-mission-tasks]')) return
+    if (window.getSelection()?.toString()) return
+    onOpen({ x: event.clientX, y: event.clientY }, resumeAt)
+  }
 
   return (
-    <section className="card animate-imp-rise relative overflow-hidden rounded-3xl text-center">
+    <section
+      onClick={resumeFromCard}
+      className="card animate-imp-rise relative overflow-hidden rounded-3xl text-center"
+    >
       {/* Der Schein der Woche – in den Farben ihres Wappens. */}
       <div
         aria-hidden
@@ -1643,6 +1705,8 @@ function MissionHero({
                 : 'Weiter swipen'}
           <ChevronRight className="size-4" aria-hidden />
         </button>
+
+        {tasks && <div className="-mx-2 mt-6 sm:mx-0">{tasks}</div>}
 
         {item?.lesson?.label && (
           <p className="mt-4 text-sm text-slate-600 dark:text-slate-300">

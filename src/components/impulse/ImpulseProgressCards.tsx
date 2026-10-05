@@ -1,10 +1,7 @@
-import { useState } from 'react'
 import { Check, CheckCircle2, Repeat, Shield, Users } from 'lucide-react'
-import { useToast } from '@/contexts/ToastContext'
 import { cn } from '@/lib/utils'
-import { impulseWeekToday, weekDays } from '@/lib/impulse'
 import { CardEmoji, ImpulseItemImage, SourceLink } from '@/components/impulse/ImpulseCards'
-import { useImpulseAuth, useImpulseNow, useImpulseWrites } from '@/hooks/useImpulseRuntime'
+import { CHALLENGE_DAY_LABELS, useChallengeDays, useWeekGoal } from '@/hooks/useImpulseTasks'
 import type { ImpulseItem } from '@/lib/types'
 
 /*
@@ -14,11 +11,12 @@ import type { ImpulseItem } from '@/lib/types'
  * nicht nach, sie glauben es. Die Serie wohnt seit dem Kachel-Umbau in
  * «Mein Fortschritt» (`ImpulseStats`).
  *
- * Wie die Quizkarte kennen beide Aufgaben-Karten einen Vorschau-Modus:
- * Dort lebt der Haken nur im Fenster, gespeichert wird nichts.
+ * Die beiden Aufgaben-Karten sind die Vollbild-Räume; dieselben Haken
+ * stehen auch in der Mission der Woche (`ImpulseMissionTasks`). Beide
+ * teilen sich die Logik (`hooks/useImpulseTasks`). Wie die Quizkarte
+ * kennen die Karten einen Vorschau-Modus: Dort lebt der Haken nur im
+ * Fenster, gespeichert wird nichts.
  */
-
-const DAY_LABELS = ['Mo', 'Di', 'Mi', 'Do', 'Fr', 'Sa', 'So']
 
 /** Das Wochenziel: eine Aufgabe für die Woche, ein Haken. */
 export function GoalCard({
@@ -35,42 +33,7 @@ export function GoalCard({
   /** Ohne Bereichszeile – im Vollbild steht der Bereich schon im Kopf. */
   plain?: boolean
 }) {
-  const { profile } = useImpulseAuth()
-  const { setImpulseWeekGoal } = useImpulseWrites()
-  const toast = useToast()
-  const [busy, setBusy] = useState(false)
-  const [previewDone, setPreviewDone] = useState(false)
-  /*
-   * Ob der Haken **in dieser Sitzung** gesetzt wurde – nur dann springt
-   * er herein. Ein schon erledigtes Ziel steht beim Öffnen einfach da:
-   * Bewegung zeigt den Wechsel, nicht den Bestand.
-   */
-  const [celebrate, setCelebrate] = useState(false)
-
-  const isDone = preview ? previewDone : done
-
-  const toggle = async () => {
-    setCelebrate(!isDone)
-    if (preview) {
-      setPreviewDone((value) => !value)
-      return
-    }
-    if (!profile || busy) return
-    setBusy(true)
-    try {
-      const outcome = await setImpulseWeekGoal(
-        { uid: profile.id, displayName: profile.displayName },
-        week,
-        !done,
-      )
-      toast.saved(!done ? 'Wochenziel geschafft – stark!' : 'Haken zurückgenommen.', outcome)
-    } catch (error) {
-      console.error(error)
-      toast.error('Das konnte nicht gespeichert werden.')
-    } finally {
-      setBusy(false)
-    }
-  }
+  const { isDone, busy, celebrate, toggle } = useWeekGoal(week, done, preview)
 
   return (
     <section className={plain ? undefined : 'card p-5'}>
@@ -154,57 +117,8 @@ export function ChallengeCard({
   /** Ohne Bereichszeile – im Vollbild steht der Bereich schon im Kopf. */
   plain?: boolean
 }) {
-  const { profile } = useImpulseAuth()
-  const { setImpulseChallengeDay } = useImpulseWrites()
-  const toast = useToast()
-  const now = useImpulseNow()
-  /* Gesperrt wird je Tag, nicht die ganze Reihe: Wer schnell hintereinander
-     mehrere Tage antippt, soll keinen Tipp verlieren, solange der erste
-     noch gespeichert wird. */
-  const [busyDays, setBusyDays] = useState<ReadonlySet<string>>(new Set())
-  const [previewDays, setPreviewDays] = useState<Set<string>>(new Set())
-  /* Wie beim Wochenziel: Nur der eben gesetzte Haken springt – die
-     schon abgehakten Tage stehen beim Öffnen still da. */
-  const [celebrateDay, setCelebrateDay] = useState<string | null>(null)
-
-  const allDays = weekDays(week)
-  // Bei einer früher freigeschalteten Woche gilt bis Montag der Montag als heute.
-  const today = impulseWeekToday(week, now)
-  const checked = preview ? previewDays : new Set(days)
-  const doneCount = allDays.filter((day) => checked.has(day)).length
-
-  const toggle = async (day: string) => {
-    setCelebrateDay(checked.has(day) ? null : day)
-    if (preview) {
-      setPreviewDays((value) => {
-        const next = new Set(value)
-        if (next.has(day)) next.delete(day)
-        else next.add(day)
-        return next
-      })
-      return
-    }
-    if (!profile || busyDays.has(day)) return
-    setBusyDays((current) => new Set(current).add(day))
-    try {
-      const outcome = await setImpulseChallengeDay(
-        { uid: profile.id, displayName: profile.displayName },
-        week,
-        day,
-        !checked.has(day),
-      )
-      toast.saved(!checked.has(day) ? 'Tag abgehakt.' : 'Haken zurückgenommen.', outcome)
-    } catch (error) {
-      console.error(error)
-      toast.error('Das konnte nicht gespeichert werden.')
-    } finally {
-      setBusyDays((current) => {
-        const next = new Set(current)
-        next.delete(day)
-        return next
-      })
-    }
-  }
+  const { allDays, today, checked, doneCount, busyDays, celebrateDay, isFuture, toggle } =
+    useChallengeDays(week, days, preview)
 
   return (
     <section className={plain ? undefined : 'card p-5'}>
@@ -242,15 +156,15 @@ export function ChallengeCard({
         {allDays.map((day, index) => {
           const isChecked = checked.has(day)
           const isToday = day === today
-          const isFuture = !preview && day > today
+          const future = isFuture(day)
           return (
             <button
               key={day}
               type="button"
               onClick={() => void toggle(day)}
-              disabled={isFuture || busyDays.has(day)}
+              disabled={future || busyDays.has(day)}
               aria-pressed={isChecked}
-              aria-label={`${DAY_LABELS[index]} abhaken`}
+              aria-label={`${CHALLENGE_DAY_LABELS[index]} abhaken`}
               className={cn(
                 'flex flex-1 flex-col items-center gap-1.5 rounded-lg border py-2 text-xs transition active:scale-95',
                 isChecked
@@ -258,12 +172,12 @@ export function ChallengeCard({
                   : isToday
                     ? 'border-brand-400 dark:border-brand-600 hover:bg-slate-50 dark:hover:bg-slate-800/60'
                     : 'border-slate-200 dark:border-slate-700',
-                isFuture
+                future
                   ? 'opacity-40'
                   : !isChecked && 'hover:bg-slate-50 dark:hover:bg-slate-800/60',
               )}
             >
-              <span>{DAY_LABELS[index]}</span>
+              <span>{CHALLENGE_DAY_LABELS[index]}</span>
               <span
                 className={cn(
                   'grid size-5 place-items-center rounded-full border',

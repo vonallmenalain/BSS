@@ -17,11 +17,18 @@ import {
 // Am Protokoll vorbei – warum, steht bei `setImpulseLastSeenWeek`.
 import { setDoc as fbSetDoc, writeBatch as fbWriteBatch } from 'firebase/firestore'
 import { db, COLLECTIONS } from '@/lib/firebase'
-import { forgetDoc } from '@/lib/collectionStore'
+import { forgetDoc, resyncCollections } from '@/lib/collectionStore'
 import { commit, requireOnline, type SaveOutcome } from '@/lib/sync'
 import { impulseAnswerId, impulseFirstName, quizAnswerCorrect } from '@/lib/impulse'
 import { cleanGameName, cleanGameScore } from '@/lib/impulseGame'
 import type { PackPlan } from '@/lib/impulsePack'
+import {
+  planImpulseReset,
+  type ImpulseProgressReset,
+  type ImpulseResetPlan,
+  type ImpulseResetProgress,
+  type ImpulseResetSelection,
+} from '@/lib/impulseReset'
 import type {
   ImpulseCrestPalette,
   ImpulseCrestSymbol,
@@ -942,6 +949,109 @@ export async function restartImpulseContent(input: {
   for (const id of answerIds) forgetDoc(COLLECTIONS.impulseAnswers, id)
   for (const id of commentIds) forgetDoc(COLLECTIONS.impulseComments, id)
   for (const id of scoreIds) forgetDoc(COLLECTIONS.impulseGameScores, id)
+}
+
+/** Was an einem Fortschrittsdokument wegkommt – als Felder für `update`. */
+function progressResetFields(entry: ImpulseProgressReset, week: string) {
+  const fields: Record<string, unknown> = { updatedAt: serverTimestamp() }
+  if (entry.week) fields[`weeks.${week}`] = deleteField()
+  if (entry.amens.length > 0) fields.amens = arrayRemove(...entry.amens)
+  if (entry.favorites.length > 0) fields.favorites = arrayRemove(...entry.favorites)
+  if (entry.reports.length > 0) fields.reports = arrayRemove(...entry.reports)
+  if (entry.lastSeenWeek) fields.lastSeenWeek = deleteField()
+  if (entry.firstSeenWeek) fields.firstSeenWeek = deleteField()
+  if (entry.gameName) fields.gameName = deleteField()
+  return fields
+}
+
+/**
+ * Eine Woche zurücksetzen – für alle oder einzelne Personen, ganz oder in
+ * Teilen (`lib/impulseReset`). Die Karten der Woche bleiben stehen.
+ *
+ * Wie der Neustart verlangt das eine Verbindung, und was dazugehört, wird
+ * frisch beim Server erfragt statt aus den Abos der Seite genommen: Was
+ * sie noch nicht kennen, bliebe sonst stehen. Gerechnet wird mit derselben
+ * Auswahl wie im Fenster, nur eben mit dem neuesten Stand – kam
+ * inzwischen eine Antwort dazu, geht sie mit.
+ *
+ * Geschrieben wird in zwei Schritten (`commitInOrder`): zuerst die
+ * Löschungen, dann der Fortschritt. Kommt dieser bei einem anderen Gerät
+ * an, sind die Antworten also schon weg – das Gerät liest sie dann gleich
+ * frisch (`refreshImpulseResponses`). Reisst die Verbindung mittendrin ab,
+ * holt ein zweiter Lauf nach, was fehlt: Er rechnet wieder vom Bestand aus.
+ */
+export async function resetImpulseWeek(input: {
+  week: string
+  itemIds: string[]
+  selection: ImpulseResetSelection
+}): Promise<ImpulseResetPlan> {
+  requireOnline()
+  const [answers, comments, scores, progress] = await Promise.all([
+    getDocsFromServer(collection(db, COLLECTIONS.impulseAnswers)),
+    getDocsFromServer(collection(db, COLLECTIONS.impulseComments)),
+    getDocsFromServer(collection(db, COLLECTIONS.impulseGameScores)),
+    getDocsFromServer(collection(db, COLLECTIONS.impulseProgress)),
+  ])
+  const responses = (snapshot: typeof answers) =>
+    snapshot.docs.map((entry) => ({
+      id: entry.id,
+      itemId: String(entry.get('itemId') ?? ''),
+      uid: String(entry.get('uid') ?? ''),
+    }))
+  const plan = planImpulseReset(
+    {
+      week: input.week,
+      itemIds: input.itemIds,
+      answers: responses(answers),
+      comments: responses(comments),
+      scores: responses(scores),
+      // Die Dokument-ID ist das Konto – sie gilt, auch wo das Feld fehlte.
+      progress: progress.docs.map(
+        (entry) => ({ ...entry.data(), uid: entry.id }) as ImpulseResetProgress,
+      ),
+    },
+    input.selection,
+  )
+
+  const deletions = [
+    ...plan.answerIds.map((id) => doc(db, COLLECTIONS.impulseAnswers, id)),
+    ...plan.commentIds.map((id) => doc(db, COLLECTIONS.impulseComments, id)),
+    ...plan.scoreIds.map((id) => doc(db, COLLECTIONS.impulseGameScores, id)),
+  ]
+  const deletionBatches = chunks(deletions).map((part) => {
+    const batch = writeBatch(db)
+    for (const reference of part) batch.delete(reference)
+    return batch
+  })
+  const progressBatches = chunks(plan.progress).map((part) => {
+    const batch = writeBatch(db)
+    for (const entry of part) {
+      batch.update(
+        doc(db, COLLECTIONS.impulseProgress, entry.uid),
+        progressResetFields(entry, input.week),
+      )
+    }
+    return batch
+  })
+  await commitInOrder([...deletionBatches, ...progressBatches])
+  for (const id of plan.answerIds) forgetDoc(COLLECTIONS.impulseAnswers, id)
+  for (const id of plan.commentIds) forgetDoc(COLLECTIONS.impulseComments, id)
+  for (const id of plan.scoreIds) forgetDoc(COLLECTIONS.impulseGameScores, id)
+  return plan
+}
+
+/**
+ * Antworten, Beiträge und Ranglisten frisch vom Server lesen – nachdem die
+ * Redaktion eine Woche zurückgesetzt hat (`resetImpulseWeek`). Der
+ * schrittweise Abgleich sähe die Löschungen sonst erst beim nächsten
+ * Start (`lib/collectionStore`).
+ */
+export function refreshImpulseResponses(): void {
+  resyncCollections([
+    COLLECTIONS.impulseAnswers,
+    COLLECTIONS.impulseComments,
+    COLLECTIONS.impulseGameScores,
+  ])
 }
 
 /**

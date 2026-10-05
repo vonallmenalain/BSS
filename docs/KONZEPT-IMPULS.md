@@ -618,7 +618,7 @@ sich weder Rolle noch Schalter selbst – und deaktiviert bleibt sie draussen.
 | Sammlung | Lesen | Schreiben |
 | ------------------ | ---------------------- | ------------------------------------------------ |
 | Inhalte (Karten, Fragen, Wochen) | Impuls-Zugang | nur Redaktion |
-| Antworten & Fortschritt | Impuls-Zugang | **nur die eigene Person** (UID im Dokumentpfad) |
+| Antworten & Fortschritt | Impuls-Zugang | **nur die eigene Person** (UID im Dokumentpfad); eine Woche zurücksetzen – nur wegnehmen, nie eintragen: Redaktion |
 | Beiträge zur Frage der Woche | Impuls-Zugang | anlegen: die eigene Person; ausblenden: Redaktion |
 | Ranglisten der Minispiele | Impuls-Zugang | der eigene beste Lauf (steigt nur); ausblenden und löschen: Redaktion |
 | Einstellungen des Bereichs | Impuls-Zugang | nur Redaktion |
@@ -713,6 +713,8 @@ impulseSubmissions/{id}        Einreichung aus der Mitmach-Ecke
                                             still entfernt (Leitgedanke 1)
 
 impulseProgress/{uid}          der persönliche Stand – schreibt nur die Person
+                               (die Redaktion darf eine Woche zurücksetzen:
+                               nur wegnehmen, siehe 13.8)
                                ├─ firstName                 (mitgeschrieben)
                                ├─ lastSeenWeek              – der stille Punkt
                                │            in der Navigation hängt daran
@@ -771,9 +773,12 @@ Thema.
   «AP» und «Impuls».
 - **Einstieg «Dashboard»:** das Wochenthema (der Wochenimpuls) gross im
   Zentrum, noch ohne Wischen – ein Tipp öffnet den Vollbild-Feed bei der
-  ersten Karte. Darunter die Kacheln, die bewusst nicht Teil des Feeds sind:
-  Wochenziel, Tages-Challenge, Mein Fortschritt, Gemerkt, Mitmach-Ecke und
-  «Diese Woche dabei». Eine Bildschirmhöhe, keine Unterseitenpflicht.
+  ersten Karte. In derselben Kachel stehen unter dem grossen Knopf
+  Wochenziel und Tages-Challenge, gleich abhakbar (siehe
+  [13.8](#138-mission-menü-und-zurücksetzen)). Darunter die Kacheln, die
+  bewusst nicht Teil des Feeds sind: Mein Fortschritt, Gemerkt,
+  Mitmach-Ecke und «Diese Woche dabei». Eine Bildschirmhöhe, keine
+  Unterseitenpflicht.
 - **Feed im Vollbild**, Karte für Karte, vertikal gewischt – nur die Karte
   und der Menüknopf oben links, alle Kacheln sind verschwunden. Reihenfolge:
   Wochenimpuls, Quiz, Bilderrätsel, Video, Frage der Woche, Feed-Karten,
@@ -1208,3 +1213,67 @@ ein Spiel ist Code, keine Karte zum Ausfüllen. Das Themenpaket bringt
 (`lib/types`) samt Zeichnung in `components/impulse/game` – die Karte, die
 Rangliste und die Regeln bleiben dieselben.
 
+### 13.8 Mission, Menü und Zurücksetzen
+
+**Die Aufgaben in der Mission.** Wochenziel und Tages-Challenge waren zwei
+eigene Kacheln unter der Mission der Woche. Jetzt stehen sie in der
+Mission selbst (`ImpulseMissionTasks`), unter dem grossen Knopf – der
+bleibt das Erste, was ins Auge fällt. Sie gehören dorthin, weil sie die
+beiden übrigen Sterne über dem Wappen bringen: Wer das Ziel abhakt, sieht
+den Stern gleich darüber aufleuchten. Jede Aufgabe hat zwei Teile: oben sie
+selbst – ein Tipp öffnet den Vollbild-Raum mit dem ganzen Text und der
+Quelle –, darunter der Haken: «Geschafft? Hier abhaken.» beim Ziel, die
+sieben Tage bei der Challenge (künftige Tage warten). Abgehakt wird mit
+derselben Logik wie im Raum (`hooks/useImpulseTasks`). Eine Woche ohne
+Karten, aber mit Aufgaben zeigt sie für sich.
+
+**Die ganze Kachel führt in den Feed.** Nicht nur der Knopf und das Wappen:
+Ein Tipp irgendwo auf die Mission öffnet den Feed – bei der ersten Karte,
+an der noch etwas fehlt, und von der Stelle aus, an der getippt wurde.
+Ausgenommen ist, was ein eigenes Ziel hat: Knöpfe, Links (die Lektion) und
+die Aufgaben. Wer bloss Text markiert, bleibt ebenfalls stehen.
+
+**Das Menü zeigt die Woche.** Im Menü stehen nur noch die Karten und
+Aufgaben, die die laufende Woche hat – ein «Video» in einer Woche ohne
+Video führte ins Leere. Dazu kamen die Umfrage, das Vers-Puzzle und das
+Minispiel: Ein Tipp auf «Minispiel» öffnet den Feed bei der Spielkarte, mit
+dem Knopf «Spielen». Die Werkzeuge (Mein Fortschritt, Gemerkt,
+Mitmach-Ecke, Einstellungen) stehen jede Woche da. In der Vorschau der
+Redaktion zeigt das Menü die gespielte Woche.
+
+**Eine Woche zurücksetzen.** Ganz unten in der Redaktion – für die Zeit des
+Ausprobierens, bevor der Link an alle geht. Zurückgesetzt wird, was die
+Leute in der gewählten Woche getan haben; die Karten selbst bleiben. Ein
+Fenster zeigt vorher, was geschieht, und lässt es einstellen:
+
+- **wer:** alle mit Spuren in der Woche oder einzelne Personen – je Person
+  steht, was sie getan hat («18 Karten · Wappen · 3 Haken · 5 Antworten»);
+- **was:** angeschaute Karten, Wappen und Haken (die ganze Woche im
+  Fortschritt, dazu die zuletzt bzw. zuerst gesehene Woche, wenn es diese
+  ist) · Antworten · Beiträge zur Frage der Woche · Minispiel-Rangliste ·
+  Amen, Gemerktes und Meldungen zu den Karten und Beiträgen der Woche.
+
+Die Zahlen folgen der Auswahl; erst «Zurücksetzen» schreibt. Gerechnet wird
+in `lib/impulseReset` (ohne Datenbank, `tests/impulse-reset.test.ts`), beim
+Zurücksetzen noch einmal mit dem frischen Stand vom Server
+(`resetImpulseWeek`) – kam inzwischen eine Antwort dazu, geht sie mit.
+Zwei Feinheiten: Werden Beiträge gelöscht, verschwinden auch die Amen und
+Meldungen **aller** dazu – sonst hinge an einem neuen Beitrag derselben
+Person (gleiche ID) das Amen von gestern. Und der Name in den Ranglisten
+gehört zum Konto, nicht zur Woche: Er kommt nur weg, wenn danach kein
+Eintrag der Person mehr bleibt; dann fragt das Spiel nach der nächsten
+Runde wieder danach.
+
+**Die Regel dazu.** Am fremden Fortschritt darf die Redaktion nur
+wegnehmen (`resetOnly` in `firestore.rules`): ganze Wochen aus `weeks`,
+Einträge aus `amens`, `favorites` und `reports`, und `lastSeenWeek`,
+`firstSeenWeek` und `gameName` als Ganzes. Eintragen, ändern oder Konto und
+Vorname anfassen kann sie nicht – Selbstauskunft gilt weiter.
+
+**Auf den Geräten.** Geschrieben werden zuerst die Löschungen, dann der
+Fortschritt. Bei den Betroffenen kommt der zurückgesetzte Fortschritt
+sofort an; verschwindet die Woche daraus, liest die App Antworten,
+Beiträge und Ranglisten gleich frisch (der schrittweise Abgleich sähe die
+Löschungen sonst erst beim nächsten Start). Und die Feier des Wappens gilt
+auf dem Gerät nicht mehr, sobald das Wappen wieder leer dasteht: Wer es
+neu baut, wird neu gefeiert.

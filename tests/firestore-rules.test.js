@@ -10,6 +10,7 @@
  *
  * Ausführen:  npm run test:rules
  */
+import assert from 'node:assert/strict'
 import { readFileSync } from 'node:fs'
 import { after, before, describe, it } from 'node:test'
 import {
@@ -18,12 +19,16 @@ import {
   initializeTestEnvironment,
 } from '@firebase/rules-unit-testing'
 import {
+  arrayRemove,
+  arrayUnion,
   collection,
   deleteDoc,
+  deleteField,
   doc,
   getDoc,
   getDocs,
   query,
+  serverTimestamp,
   setDoc,
   updateDoc,
   where,
@@ -1192,6 +1197,95 @@ describe('Impuls', () => {
     it('wegräumen darf allein die Redaktion', async () => {
       await assertFails(deleteDoc(doc(asImpulseAp(), 'impulseProgress', IMPULSE_AP)))
       await assertSucceeds(deleteDoc(doc(asBishop(), 'impulseProgress', IMPULSE_AP)))
+    })
+
+    /*
+     * Eine Woche zurücksetzen: Die Redaktion darf am fremden Fortschritt
+     * nur wegnehmen – eine ganze Woche, Einträge aus Amen, Gemerktem und
+     * Meldungen, und die Felder der zuletzt und zuerst gesehenen Woche und
+     * den Spielnamen. Eintragen kann sie nichts: Selbstauskunft gilt weiter.
+     */
+    const seedProgress = () =>
+      testEnv.withSecurityRulesDisabled(async (context) => {
+        await setDoc(doc(context.firestore(), 'impulseProgress', IMPULSE_AP), {
+          uid: IMPULSE_AP,
+          firstName: 'Levin',
+          weeks: {
+            '2026-W41': { goal: true, cards: ['quiz'], crest: '2026-10-06' },
+            '2026-W40': { goal: true },
+          },
+          amens: ['quiz', 'feed', 'frage_mia'],
+          favorites: ['quiz', 'alt'],
+          reports: ['frage_mia'],
+          lastSeenWeek: '2026-W41',
+          firstSeenWeek: '2026-W41',
+          gameName: 'Blitz',
+        })
+      })
+
+    it('die Redaktion setzt eine Woche zurück – sie nimmt nur weg', async () => {
+      await seedProgress()
+      await assertSucceeds(
+        updateDoc(doc(asBishop(), 'impulseProgress', IMPULSE_AP), {
+          'weeks.2026-W41': deleteField(),
+          amens: arrayRemove('quiz', 'frage_mia'),
+          favorites: arrayRemove('quiz'),
+          reports: arrayRemove('frage_mia'),
+          lastSeenWeek: deleteField(),
+          firstSeenWeek: deleteField(),
+          gameName: deleteField(),
+          updatedAt: serverTimestamp(),
+        }),
+      )
+      const after = await getDoc(doc(asBishop(), 'impulseProgress', IMPULSE_AP))
+      assert.deepEqual(Object.keys(after.get('weeks')), ['2026-W40'])
+      assert.deepEqual(after.get('amens'), ['feed'])
+      assert.equal(after.get('firstName'), 'Levin')
+    })
+
+    it('… und trägt dabei nichts ein: kein Haken, keine Woche, kein Amen, kein Name', async () => {
+      await seedProgress()
+      const ref = doc(asBishop(), 'impulseProgress', IMPULSE_AP)
+      // Ein Haken mehr oder weniger in einer bestehenden Woche
+      await assertFails(updateDoc(ref, { 'weeks.2026-W41.share': true }))
+      await assertFails(updateDoc(ref, { 'weeks.2026-W40.goal': false }))
+      // Eine neue Woche
+      await assertFails(updateDoc(ref, { 'weeks.2026-W42': { goal: true } }))
+      // Ein Amen, ein Gemerktes, eine Meldung dazu
+      await assertFails(updateDoc(ref, { amens: arrayUnion('neu') }))
+      await assertFails(updateDoc(ref, { favorites: arrayUnion('neu') }))
+      await assertFails(updateDoc(ref, { reports: arrayUnion('frage_levin') }))
+      // Eine andere Woche, ein anderer Name – statt sie bloss zu entfernen
+      await assertFails(updateDoc(ref, { lastSeenWeek: '2026-W39' }))
+      await assertFails(updateDoc(ref, { firstSeenWeek: '2026-W39' }))
+      await assertFails(updateDoc(ref, { gameName: 'Anders' }))
+      // Konto, Vorname und neue Felder bleiben tabu
+      await assertFails(updateDoc(ref, { firstName: 'Fremd' }))
+      await assertFails(updateDoc(ref, { uid: BISHOP }))
+      await assertFails(updateDoc(ref, { notiz: 'von der Redaktion' }))
+    })
+
+    it('zurücksetzen darf allein die Redaktion – auch mit dem Schalter, ohne Admin', async () => {
+      await seedProgress()
+      // Jemand anderes im Bereich darf es nicht …
+      await assertFails(
+        updateDoc(doc(asImpulseOnly(), 'impulseProgress', IMPULSE_AP), {
+          'weeks.2026-W41': deleteField(),
+        }),
+      )
+      // … die Redaktion mit dem Schalter «Anti Doom + Redaktion» schon.
+      await testEnv.withSecurityRulesDisabled(async (context) => {
+        await updateDoc(doc(context.firestore(), 'users', SECRETARY), { impulseEditor: true })
+      })
+      await assertSucceeds(
+        updateDoc(doc(asSecretary(), 'impulseProgress', IMPULSE_AP), {
+          'weeks.2026-W41': deleteField(),
+          updatedAt: serverTimestamp(),
+        }),
+      )
+      await testEnv.withSecurityRulesDisabled(async (context) => {
+        await updateDoc(doc(context.firestore(), 'users', SECRETARY), { impulseEditor: false })
+      })
     })
   })
 
