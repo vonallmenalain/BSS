@@ -873,7 +873,9 @@ Am 12. August 2026 besprochen und festgelegt:
 3. **Reihenfolge:** Die Antworten der anderen erscheinen erst nach der
    eigenen Antwort.
 4. **Gruppenleiste:** Die Namen der Beteiligten werden gezeigt – ohne
-   Hervorhebung der Fehlenden.
+   Hervorhebung der Fehlenden und ohne Gesamtzahl. Im Raum «Diese Woche
+   dabei» ist vorerst auch der Stand der Wappen aller Beteiligten zu sehen
+   – eine bewusste Ausnahme (siehe 13.8).
 5. **Wochenziel:** Selbstauskunft genügt, keine Kontrolle.
 6. **Rhythmus:** Wöchentlich – Veröffentlichung am Montag, Auflösung am
    Sonntag. Dazu kommt die **Tages-Challenge** als kleiner täglicher Haken
@@ -1252,7 +1254,8 @@ es gross, samt Sternen (`ImpulseGroupRoom`). Gerechnet wird jedes Wappen
 wie das eigene, aus Fortschritt und Antworten der Person (`weekCrests` in
 `lib/impulse`); das eigene steht vorn und heisst «Du». Das geht bewusst
 einen Schritt weiter als die Leiste, die nur nennt, wer fertig ist: Hier
-sieht man auch, wer noch unterwegs ist. Die Grenzen bleiben – nur wer
+sieht man auch, wer noch unterwegs ist – vorerst so entschieden, als
+bewusste Ausnahme vom Leitgedanken 4. Die Grenzen bleiben – nur wer
 dabei ist, steht da; eine Galerie nach Vornamen, keine Rangliste; und
 welche Karten jemandem fehlen, sieht nur die Person selbst.
 
