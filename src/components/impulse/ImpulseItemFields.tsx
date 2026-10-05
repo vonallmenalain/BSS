@@ -476,7 +476,7 @@ export function ImpulseItemFields({
               </div>
               <p className="hint mt-0">
                 Ganze Zahlen, höchstens {POLL_SCALE_MAX_STEPS} Schritte – nach der Stimme zeigt die
-                Karte die Verteilung und den Schnitt im Kollegium.
+                Karte die Verteilung und den Durchschnitt.
               </p>
             </div>
           )}
