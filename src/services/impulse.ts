@@ -1074,6 +1074,26 @@ export async function applyDifficultyCleanup(
 }
 
 /**
+ * Korrekturen des Themenpakets übernehmen – ein Klick in der Redaktion.
+ *
+ * Welche anstehen, rechnet `planPackCorrections` (lib/impulsePack) aus dem
+ * abonnierten Bestand: nur Inhalte, die noch genau den alten Text tragen.
+ * Ein Stapel, alles oder nichts – wie beim Bereinigen der Hinweise.
+ */
+export async function applyPackCorrections(
+  corrections: { id: string; field: 'title' | 'body'; to: string }[],
+): Promise<SaveOutcome> {
+  const batch = writeBatch(db)
+  for (const correction of corrections) {
+    batch.update(doc(db, COLLECTIONS.impulseItems, correction.id), {
+      [correction.field]: correction.to,
+      updatedAt: serverTimestamp(),
+    })
+  }
+  return commit(batch.commit())
+}
+
+/**
  * Eine Quizfrage beantworten – ein Versuch, auf den eigenen Namen.
  *
  * Richtig oder falsch wird bei der Auswahl gleich hier bestimmt; die

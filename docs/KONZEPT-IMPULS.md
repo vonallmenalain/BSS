@@ -1041,6 +1041,17 @@ In der Redaktion bietet der Kasten «Themenpaket» zwei Wege:
   Vergangene Wochen bleiben weg, und dank fester IDs (`fsy26-w41-…`)
   holt ein späterer Lauf nur nach, was fehlt.
 
+**Korrekturen am Paket.** Weil das Paket nichts überschreibt, was schon
+da ist, erreicht eine Textkorrektur im Paket nur, wer es neu einspielt.
+Für alle anderen steht sie in `PACK_CORRECTIONS`: Trägt eine Karte noch
+genau den alten Text, zeigt die Redaktion den Kasten «Korrektur aus dem
+Themenpaket» mit altem und neuem Text, und ein Klick übernimmt ihn
+(`planPackCorrections`, `applyPackCorrections`). Was die Redaktion selbst
+geändert hat, bleibt. Die erste Korrektur: Die Teilen-Aufgabe zum Wort der
+Weisheit fragt nicht mehr «deine Eltern oder Grosseltern», sondern
+«jemanden in deinem Umfeld» – nicht alle haben Eltern oder Grosseltern,
+die mitreden können.
+
 **Das Wappen der Woche** lässt sich in der Redaktion ansehen, bevor es
 jemand baut: Der Knopf **«Wappen»** neben «Vorschau der Woche» zeigt es
 im Kleinen und öffnet ein Fenster mit dem Wappen im Grossen und einem

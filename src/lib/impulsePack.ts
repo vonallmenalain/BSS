@@ -469,7 +469,7 @@ export const PACK_WEEKS: PackWeek[] = [
         kind: 'teilen',
         emoji: '🗣️',
         title:
-          'Frag deine Eltern oder Grosseltern: Wann hat ihnen das Wort der Weisheit schon geholfen?',
+          'Frag jemanden in deinem Umfeld: «Wann hat dir das Wort der Weisheit schon geholfen?»',
         body:
           'Oder bereite für deine Familie einen gesunden Snack zu – wie beim Kochwettbewerb im ' +
           'Oktoberheft – und erzählt euch beim Essen von LuB 89:18–21. Danach hier abhaken.',
@@ -1860,4 +1860,52 @@ export function planPackItems(existing: Pick<ImpulseItem, 'id'>[], todayKey: str
   return PACK_WEEKS.filter((week) => week.week >= todayKey)
     .flatMap(packWeekPlans)
     .filter((entry) => !existingIds.has(entry.id))
+}
+
+/* ------------------------------------------------------------------ */
+/* Korrekturen                                                         */
+/* ------------------------------------------------------------------ */
+
+/** Ein Text des Pakets, der nach dem Einspielen geändert wurde. */
+export interface PackCorrection {
+  /** Die feste ID des Inhalts – «fsy26-w41-teilen». */
+  id: string
+  field: 'title' | 'body'
+  /** Der Text, wie ihn das Paket zuerst eingespielt hat. */
+  from: string
+  /** Der Text, wie er jetzt im Paket steht. */
+  to: string
+}
+
+/**
+ * Korrekturen am Paket, nachdem es schon eingespielt war.
+ *
+ * Das Paket legt jeden Inhalt nur einmal an und überschreibt danach
+ * nichts (`planPackItems`) – was die Redaktion bearbeitet hat, bleibt
+ * ihr. Eine Korrektur im Paket erreicht darum nur, wer es neu einspielt.
+ * Für alle anderen steht sie hier: Trägt ein Inhalt noch genau den alten
+ * Text, bietet die Redaktion an, den neuen zu übernehmen
+ * (`planPackCorrections`). Wer den Text inzwischen selbst geändert hat,
+ * wird nicht überschrieben.
+ */
+export const PACK_CORRECTIONS: readonly PackCorrection[] = [
+  /* Nicht alle haben Eltern oder Grosseltern, die mitreden können oder
+     wollen – gefragt ist jemand aus dem Umfeld. */
+  {
+    id: 'fsy26-w41-teilen',
+    field: 'title',
+    from: 'Frag deine Eltern oder Grosseltern: Wann hat ihnen das Wort der Weisheit schon geholfen?',
+    to: 'Frag jemanden in deinem Umfeld: «Wann hat dir das Wort der Weisheit schon geholfen?»',
+  },
+]
+
+/** Welche Korrekturen anstehen: Inhalte, die noch genau den alten Text tragen. */
+export function planPackCorrections(
+  items: readonly Pick<ImpulseItem, 'id' | 'title' | 'body'>[],
+): PackCorrection[] {
+  const byId = new Map(items.map((item) => [item.id, item]))
+  return PACK_CORRECTIONS.filter((correction) => {
+    const item = byId.get(correction.id)
+    return item !== undefined && (item[correction.field] ?? '') === correction.from
+  })
 }

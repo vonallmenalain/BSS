@@ -13,9 +13,11 @@ import {
 } from '../src/lib/impulse.ts'
 import {
   isPackItem,
+  PACK_CORRECTIONS,
   PACK_ID_PREFIX,
   PACK_WEEKS,
   packWeekPlans,
+  planPackCorrections,
   planPackItems,
 } from '../src/lib/impulsePack.ts'
 import { IMPULSE_CREST_PALETTE_LABELS, IMPULSE_CREST_SYMBOL_LABELS } from '../src/lib/types.ts'
@@ -275,4 +277,30 @@ test('Themenpaket: keine Vorbereitung auf den Sonntag, nichts zum Mitbringen', (
   for (const plan of ALL) {
     assert.doesNotMatch(textsOf(plan), sundayPrep, plan.id)
   }
+})
+
+test('Korrekturen: der neue Text steht auch im Paket – ein frischer Lauf spielt ihn gleich ein', () => {
+  const plans = new Map(PACK_WEEKS.flatMap(packWeekPlans).map((entry) => [entry.id, entry]))
+  for (const correction of PACK_CORRECTIONS) {
+    const entry = plans.get(correction.id)
+    assert.ok(entry, `${correction.id} gehört nicht zum Paket`)
+    assert.equal(entry[correction.field], correction.to)
+    assert.notEqual(correction.from, correction.to)
+  }
+})
+
+test('Korrekturen: nur wo noch der alte Text steht – Bearbeitetes bleibt', () => {
+  const correction = PACK_CORRECTIONS[0]
+  const item = (title: string) => ({ id: correction.id, title, body: '' })
+  assert.deepEqual(planPackCorrections([item(correction.from)]), [correction])
+  // Schon übernommen, von der Redaktion selbst geändert oder gar nicht eingespielt: nichts.
+  assert.deepEqual(planPackCorrections([item(correction.to)]), [])
+  assert.deepEqual(planPackCorrections([item('Eigener Text der Redaktion')]), [])
+  assert.deepEqual(planPackCorrections([]), [])
+})
+
+test('Teilen in der Woche zum Wort der Weisheit: gefragt ist jemand aus dem Umfeld', () => {
+  const teilen = PACK_WEEKS.flatMap(packWeekPlans).find((entry) => entry.id === 'fsy26-w41-teilen')
+  assert.match(teilen?.title ?? '', /jemanden in deinem Umfeld/)
+  assert.doesNotMatch(teilen?.title ?? '', /Eltern|Grosseltern/)
 })
