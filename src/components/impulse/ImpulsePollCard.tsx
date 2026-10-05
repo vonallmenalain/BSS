@@ -287,7 +287,7 @@ function ChoiceResult({ result, mine }: { result: ImpulsePollResult; mine: numbe
   )
 }
 
-/** Das Ergebnis einer Skala: Säulen je Wert, der eigene Wert hervorgehoben, dazu der Schnitt. */
+/** Das Ergebnis einer Skala: Säulen je Wert, der eigene hervorgehoben, dazu der Durchschnitt. */
 function ScaleResult({
   poll,
   result,
@@ -349,7 +349,7 @@ function ScaleResult({
         )}
         {result.average !== null && (
           <>
-            Schnitt im Kollegium:{' '}
+            Durchschnitt:{' '}
             <span className="font-semibold">
               {result.average.toLocaleString('de-CH')}
               {unit}
