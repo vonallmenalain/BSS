@@ -4,10 +4,11 @@ import { IMPULSE_SECTIONS, type ImpulseSectionKey } from '@/lib/impulseSections'
 import type { ScreenOrigin } from '@/components/impulse/ImpulseScreen'
 
 /*
- * Die Kacheln unter dem Wochenthema: Wochenziel, Tages-Challenge, Mein
- * Fortschritt, Gemerkt und die Mitmach-Ecke. Sie gehören bewusst nicht
- * zum Vollbild-Feed – sie sind die Werkzeuge und Aufgaben neben den
- * Karten der Woche, und sie verschwinden, sobald der Feed offen ist.
+ * Die Kacheln unter dem Wochenthema: Mein Fortschritt, Gemerkt und die
+ * Mitmach-Ecke. Sie gehören bewusst nicht zum Vollbild-Feed – sie sind die
+ * Werkzeuge neben den Karten der Woche, und sie verschwinden, sobald der
+ * Feed offen ist. Die Aufgaben der Woche (Wochenziel, Tages-Challenge)
+ * stehen in der Mission selbst (`ImpulseMissionTasks`).
  * Ein Tipp öffnet den Vollbild-Raum des Bereichs, von der Kachel her
  * (der Klickpunkt wird zum transform-origin des Raums).
  */

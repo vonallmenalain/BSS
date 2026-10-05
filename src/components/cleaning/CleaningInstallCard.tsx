@@ -11,8 +11,8 @@ import { isIos, isStandalone, promptInstall } from '@/lib/install'
  * Tab ist bald verschwunden. Als App liegt er auf dem Startbildschirm, einen
  * Fingertipp entfernt – auf dem iPhone ist das zudem die Voraussetzung für
  * die Erinnerung. Installiert wird der Putzplan allein, unter eigenem Namen
- * (`public/putzplan.webmanifest`, eingesetzt von `pages/Cleaning`): ohne
- * Anmeldung, die man ohnehin nicht hat.
+ * und mit eigenem Symbol (`public/putzplan.webmanifest`, eingesetzt von
+ * `lib/appIdentity`): ohne Anmeldung, die man ohnehin nicht hat.
  *
  * Wo der Browser einen Knopf erlaubt (Chrome, Edge, Android), gibt es einen.
  * Auf dem iPhone steht, wie es geht. Wer die App schon offen hat oder den

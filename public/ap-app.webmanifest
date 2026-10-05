@@ -1,0 +1,24 @@
+{
+  "id": "/ap-app",
+  "name": "AP – Kalender und Anti Doom",
+  "short_name": "AP",
+  "description": "Die Aktivitäten der AP's und «Anti Doom» – für alle, die in der App den AP-Teil sehen.",
+  "lang": "de-CH",
+  "dir": "ltr",
+  "start_url": "/?source=pwa-ap",
+  "scope": "/",
+  "display": "standalone",
+  "orientation": "any",
+  "theme_color": "#0f172a",
+  "background_color": "#0f172a",
+  "icons": [
+    { "src": "/icons/ap-192.png", "sizes": "192x192", "type": "image/png", "purpose": "any" },
+    { "src": "/icons/ap-512.png", "sizes": "512x512", "type": "image/png", "purpose": "any" },
+    {
+      "src": "/icons/ap-maskable-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "maskable"
+    }
+  ]
+}

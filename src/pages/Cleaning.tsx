@@ -82,7 +82,7 @@ type Scope = 'upcoming' | 'past' | 'all'
  * Wochen einer Gruppe als Abo oder Datei im eigenen Kalender (siehe
  * `CleaningCalendarDialog`). Wer ohne Konto liest, bekommt dazu den Hinweis,
  * den Putzplan als App zu installieren; installiert wird er unter eigenem
- * Namen und beginnt auf dieser Seite (`usePutzplanManifest`).
+ * Namen und Symbol und beginnt auf dieser Seite (`lib/appIdentity`).
  *
  * **Die Vorschau.** Mit Vollzugriff zeigt «Vorschau öffentlicher Putzplan»
  * dieselbe Seite so, wie sie ohne Konto aussieht – Anschlagbrett statt
@@ -116,8 +116,6 @@ export function Cleaning() {
   const remindable = pushConfigured()
 
   const today = toDateInput(new Date())
-
-  usePutzplanManifest(asGuest)
 
   /*
    * Stimmt die Anmeldung der Erinnerung noch? Browser vergeben ihre Adresse
@@ -497,33 +495,6 @@ export function Cleaning() {
       )}
     </>
   )
-}
-
-/**
- * Ohne Konto wird der Putzplan als eigene App installiert.
- *
- * Das Manifest der App beginnt bei «/» – ohne Konto hiesse das: bei der
- * Anmeldung. Solange jemand ohne Konto den Putzplan liest, zeigt der Link
- * im Kopf der Seite deshalb auf `public/putzplan.webmanifest`: eigener
- * Name, eigenes Symbol auf dem Startbildschirm, Start auf dieser Seite.
- * Beim Verlassen kommt das Manifest der App zurück. Dazu der Name, den
- * Safari dem Symbol auf dem Home-Bildschirm gibt.
- */
-function usePutzplanManifest(active: boolean) {
-  useEffect(() => {
-    if (!active) return
-    const link = document.querySelector<HTMLLinkElement>('link[rel="manifest"]')
-    const title = document.querySelector<HTMLMetaElement>('meta[name="apple-mobile-web-app-title"]')
-    const before = { href: link?.getAttribute('href') ?? null, title: title?.content ?? null }
-
-    link?.setAttribute('href', '/putzplan.webmanifest')
-    if (title) title.content = 'Putzplan'
-
-    return () => {
-      if (link && before.href !== null) link.setAttribute('href', before.href)
-      if (title && before.title !== null) title.content = before.title
-    }
-  }, [active])
 }
 
 /* ------------------------------------------------------------------ */

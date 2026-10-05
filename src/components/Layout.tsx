@@ -37,9 +37,20 @@ import { PUTZPLAN_PREVIEW, usePutzplanPreview } from '@/hooks/usePutzplanPreview
 import { useEnsureMonthlyDuties } from '@/hooks/useMonthlyDuties'
 import { useNow } from '@/hooks/useNow'
 import { useImpulseItems, useImpulseProgress } from '@/hooks/useFirestore'
-import { impulseCurrentWeek, impulseWeekStarts, visibleImpulseItems } from '@/lib/impulse'
+import {
+  impulseCurrentWeek,
+  impulseWeekStarts,
+  itemsForWeek,
+  visibleImpulseItems,
+} from '@/lib/impulse'
 import { UserAvatar } from '@/components/ui/Avatar'
-import { ASSISTANT_AREA_LABELS, ASSISTANT_AREA_PATHS, ROLE_LABELS } from '@/lib/types'
+import {
+  ASSISTANT_AREA_LABELS,
+  ASSISTANT_AREA_PATHS,
+  ROLE_LABELS,
+  type ImpulseItem,
+  type ImpulseKind,
+} from '@/lib/types'
 import { NotificationsModal } from '@/components/NotificationsModal'
 import { notificationAreas } from '@/lib/access'
 
@@ -88,28 +99,43 @@ const SACRAMENT_CHILDREN = [
  * «Anti Doom» klappt im Menü auf wie die Abendmahlsversammlung.
  *
  * Die ersten Punkte sind die Karten des Vollbild-Feeds – ein Tipp öffnet
- * den Feed genau bei dieser Karte. Danach die Räume (Wochenziel,
- * Tages-Challenge, Fortschritt, Gemerkt, Mitmach-Ecke) und zuunterst die
- * Anti-Doom-Einstellungen (Reihenfolge der Karten, Rückblick in frühere
- * Wochen). Die Liste steht fest, auch wenn eine Woche einmal keine
- * Quizfrage hat – ein Menü, das je nach Woche anders aussieht, wäre
- * keines.
+ * den Feed genau bei dieser Karte, beim Minispiel also gleich beim Knopf
+ * «Spielen». Danach die Räume (Wochenziel, Tages-Challenge, Fortschritt,
+ * Gemerkt, Mitmach-Ecke) und zuunterst die Anti-Doom-Einstellungen
+ * (Reihenfolge der Karten, Rückblick in frühere Wochen).
+ *
+ * Karten und Aufgaben stehen nur da, wenn die laufende Woche sie hat
+ * (`kind`): Ein Eintrag «Video» in einer Woche ohne Video führte ins
+ * Leere. Die Werkzeuge darunter gibt es jede Woche.
  */
-const IMPULSE_CHILDREN = [
-  { to: '/anti-doom/woche', label: 'Wochenthema' },
-  { to: '/anti-doom/quiz', label: 'Quizfrage' },
-  { to: '/anti-doom/bilderraetsel', label: 'Bilderrätsel' },
-  { to: '/anti-doom/video', label: 'Video' },
-  { to: '/anti-doom/frage', label: 'Frage der Woche' },
-  { to: '/anti-doom/feed', label: 'Feed' },
-  { to: '/anti-doom/teilen', label: 'Teilen' },
-  { to: '/anti-doom/ziel', label: 'Wochenziel' },
-  { to: '/anti-doom/challenge', label: 'Tages-Challenge' },
+const IMPULSE_CHILDREN: { to: string; label: string; kind?: ImpulseKind }[] = [
+  { to: '/anti-doom/woche', label: 'Wochenthema', kind: 'impuls' },
+  { to: '/anti-doom/umfrage', label: 'Umfrage', kind: 'umfrage' },
+  { to: '/anti-doom/quiz', label: 'Quizfrage', kind: 'quiz' },
+  { to: '/anti-doom/puzzle', label: 'Vers-Puzzle', kind: 'puzzle' },
+  { to: '/anti-doom/bilderraetsel', label: 'Bilderrätsel', kind: 'bilderraetsel' },
+  { to: '/anti-doom/video', label: 'Video', kind: 'video' },
+  { to: '/anti-doom/frage', label: 'Frage der Woche', kind: 'frage' },
+  { to: '/anti-doom/feed', label: 'Feed', kind: 'feed' },
+  { to: '/anti-doom/teilen', label: 'Teilen', kind: 'teilen' },
+  { to: '/anti-doom/spiel', label: 'Minispiel', kind: 'spiel' },
+  { to: '/anti-doom/ziel', label: 'Wochenziel', kind: 'wochenziel' },
+  { to: '/anti-doom/challenge', label: 'Tages-Challenge', kind: 'tageschallenge' },
   { to: '/anti-doom/fortschritt', label: 'Mein Fortschritt' },
   { to: '/anti-doom/gemerkt', label: 'Gemerkt' },
   { to: '/anti-doom/mitmachen', label: 'Mitmach-Ecke' },
   { to: '/anti-doom/einstellungen', label: 'Anti-Doom-Einstellungen' },
 ]
+
+/** Die Unterpunkte von «Anti Doom» für eine Woche – ohne Karten, die sie nicht hat. */
+function impulseMenu(items: ImpulseItem[], week: string): { to: string; label: string }[] {
+  const kinds = new Set(
+    itemsForWeek(visibleImpulseItems(items, week), week).map((item) => item.kind),
+  )
+  return IMPULSE_CHILDREN.filter((child) => !child.kind || kinds.has(child.kind)).map(
+    ({ to, label }) => ({ to, label }),
+  )
+}
 
 export function Layout() {
   const { settings } = useData()
@@ -117,6 +143,7 @@ export function Layout() {
     isApproved,
     canViewAp,
     canViewImpulse,
+    canEditImpulse,
     isAssistant,
     assistantAreas,
     isGuest,
@@ -143,6 +170,15 @@ export function Layout() {
   const [menuOpen, setMenuOpen] = useState(false)
   const [notificationsOpen, setNotificationsOpen] = useState(false)
   const location = useLocation()
+
+  /* Die Karten und Aufgaben, die das Menü von «Anti Doom» anbietet: die der
+     laufenden Woche – in der Vorschau der Redaktion die der gespielten
+     (`state.vorschau`, siehe `Impuls`). */
+  const previewWeek = (location.state as { vorschau?: unknown } | null)?.vorschau
+  const impulseChildren = impulseMenu(
+    impulseItems.data,
+    canEditImpulse && typeof previewWeek === 'string' ? previewWeek : impulseWeek,
+  )
 
   /*
    * «Anti Doom» ist eine App in der App – und fühlt sich nur so an, wenn die
@@ -234,7 +270,7 @@ export function Layout() {
     shortLabel: 'Anti Doom',
     icon: Sparkles,
     dot: impulseDot,
-    children: IMPULSE_CHILDREN,
+    children: impulseChildren,
   }
 
   /*
