@@ -14,6 +14,8 @@ import { ToastProvider } from '@/contexts/ToastContext'
 import { useAccessLog } from '@/hooks/useAccessLog'
 import { usePushNavigation } from '@/hooks/usePushNavigation'
 import { isStandalone, rememberBoard, rememberedBoard } from '@/lib/install'
+import { appIdentityFor, applyAppIdentity } from '@/lib/appIdentity'
+import { usePutzplanPreview } from '@/hooks/usePutzplanPreview'
 import { Layout } from '@/components/Layout'
 import { ErrorBoundary } from '@/components/ErrorBoundary'
 import { LoadingScreen } from '@/components/ui/Feedback'
@@ -112,8 +114,8 @@ function isPublicPath(pathname: string): boolean {
  * zuletzt ohne Konto offen war: Wer den Putzplan als App aufs Telefon
  * gelegt hat, will den Putzplan sehen und nicht eine Anmeldung, für die er
  * kein Konto hat. Meist sorgt dafür schon das eigene Manifest des
- * Putzplans (siehe `pages/Cleaning`) – das hier fängt die Browser auf, die
- * beim Installieren beim Manifest der App bleiben.
+ * Anschlagbretts (siehe `lib/appIdentity`) – das hier fängt die Browser
+ * auf, die beim Installieren beim Manifest der App bleiben.
  */
 function guestTarget(pathname: string): string {
   if (pathname === '/' && isStandalone()) return rememberedBoard() ?? '/anmelden'
@@ -318,6 +320,32 @@ function PushNavigation() {
   return null
 }
 
+/**
+ * Welche App sich installieren würde – Symbol und Name je nach Zugang
+ * (`lib/appIdentity`): die Bischofschaft, die AP's oder, ohne Konto, das
+ * Anschlagbrett. Solange die Anmeldung geprüft wird, bleibt der Stand der
+ * Seite stehen.
+ */
+function AppIdentitySwitch() {
+  const { loading, isApproved, isAssistant, canViewAp, canViewImpulse } = useAuth()
+  const { pathname } = useLocation()
+  const preview = usePutzplanPreview()
+  const identity = loading
+    ? null
+    : appIdentityFor({
+        isApproved,
+        isAssistant,
+        canViewAp,
+        canViewImpulse,
+        pathname,
+        putzplanPreview: preview.active,
+      })
+  useEffect(() => {
+    if (identity) applyAppIdentity(identity)
+  }, [identity])
+  return null
+}
+
 export default function App() {
   return (
     <ErrorBoundary>
@@ -325,6 +353,7 @@ export default function App() {
         <PushNavigation />
         <ToastProvider>
           <AuthProvider>
+            <AppIdentitySwitch />
             <DataProvider>
               <Routes>
                 <Route path="/anmelden" element={<LoginRoute />} />

@@ -1843,8 +1843,9 @@ seines Kontos ausschaltet, behält sie – und umgekehrt.
 **«Den Putzplan als App»**: mit dem Knopf **Installieren**, wo der Browser das
 erlaubt (Chrome, Edge, Android), auf dem iPhone mit der Anleitung (Teilen →
 «Zum Home-Bildschirm»). Installiert wird der Putzplan allein, unter eigenem
-Namen: Solange jemand ohne Konto die Seite liest, zeigt sie auf ein eigenes
-Manifest (`public/putzplan.webmanifest`), das auf `/putzplan` startet. Für
+Namen und mit eigenem Symbol: Solange jemand ohne Konto die Seite liest,
+zeigt sie auf ein eigenes Manifest (`public/putzplan.webmanifest`), das auf
+`/putzplan` startet (siehe [PWA](#pwa)). Für
 Browser, die beim Manifest der App bleiben, beginnt die installierte App ohne
 Konto auf dem Anschlagbrett, das zuletzt offen war, statt bei der Anmeldung.
 Der Hinweis lässt sich wegklicken; das Gerät merkt es sich.
@@ -3690,9 +3691,26 @@ Pendenzen und Notizen.
 > sofort geht es, indem man sie einmal entfernt und neu zum Startbildschirm
 > hinzufügt.
 
-**Der Putzplan allein.** Ohne Konto lässt sich auch nur der Putzplan
-installieren, unter eigenem Namen und mit Start auf `/putzplan` – siehe
-[«Erinnerung und App»](#erinnerung-und-app).
+**Symbol und Name je nach Zugang.** Wer die App installiert, bekommt die
+App, die zu seinem Zugang passt (`src/lib/appIdentity.ts`):
+
+| Zugang | Name auf dem Startbildschirm | Symbol | Manifest |
+| ------------------------------------------- | ---------------------- | --------------------------------- | -------------------------------- |
+| Vollzugriff und Assistenz                   | Bischofschaft          | «BS» in Gemeindeblau (wie bisher) | aus `vite.config.ts`             |
+| AP-Rollen (nur AP-Kalender oder Anti Doom)  | AP                     | das Wappen mit «AP»               | `public/ap-app.webmanifest`      |
+| ohne Konto auf dem AP-Kalender (`/ap`)      | AP-Kalender            | Kalender, hell                    | `public/ap-kalender.webmanifest` |
+| ohne Konto auf dem Putzplan (`/putzplan`)   | Putzplan               | Besen, hell                       | `public/putzplan.webmanifest`    |
+
+Umgeschaltet wird, was der Browser beim Installieren liest: der Link aufs
+Manifest und – fürs iPhone, das dafür nicht das Manifest nimmt – Symbol und
+Name im Kopf der Seite. Der Zugang geht vor der Adresse: Wer zur
+Bischofschaft gehört, installiert auch vom Putzplan aus die App der
+Bischofschaft. Die beiden Anschlagbretter installieren sich als eigene kleine
+App mit Start auf ihrer Seite – siehe
+[«Erinnerung und App»](#erinnerung-und-app). Eine schon installierte App
+behält Symbol und Namen, mit denen sie installiert wurde; für das neue Symbol
+einmal entfernen und neu hinzufügen. Die Symbole erzeugt
+`scripts/generate-icons.mjs`.
 
 ---
 
