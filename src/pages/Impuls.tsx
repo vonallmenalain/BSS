@@ -65,6 +65,7 @@ import {
 } from '@/components/impulse/ImpulseFeedScreen'
 import { SectionTile } from '@/components/impulse/ImpulseHomeTiles'
 import { ImpulseMissionTasks } from '@/components/impulse/ImpulseMissionTasks'
+import { ImpulseGroupRoom } from '@/components/impulse/ImpulseGroupRoom'
 import { ImpulseSettingsModal, type ImpulseOrder } from '@/components/impulse/ImpulseSettingsModal'
 import { ImpulseScreen, type ScreenOrigin } from '@/components/impulse/ImpulseScreen'
 import { ImpulseStats } from '@/components/impulse/ImpulseStats'
@@ -76,6 +77,7 @@ import {
   crestComplete,
   daysUntilSunday,
   deckOrder,
+  everParticipated,
   formatWeekRange,
   impulseAnswerId,
   impulseCrestStars,
@@ -90,6 +92,7 @@ import {
   puzzleSolution,
   seededShuffle,
   visibleImpulseItems,
+  weekCrests,
   weekParticipants,
   type ImpulseCrestStars,
   type ImpulseCrestStep,
@@ -107,6 +110,7 @@ import {
   type ImpulseSectionKey,
 } from '@/lib/impulseSections'
 import { recordImpulseOpen, trackImpulseTime } from '@/lib/impulseUsage'
+import { impulseProgressWasReset } from '@/lib/impulseReset'
 import { refreshImpulseResponses } from '@/services/impulse'
 import { impulseVideoSource } from '@/lib/impulseVideo'
 import {
@@ -115,6 +119,7 @@ import {
   type ImpulseComment,
   type ImpulseCrest,
   type ImpulseItem,
+  type ImpulseProgress,
   type ImpulseWeekProgress,
 } from '@/lib/types'
 
@@ -379,12 +384,12 @@ function ImpulsPage() {
     weekOfItem,
     todayKey,
   )
-  // Der Nenner der Gruppenleiste: alle, die je mitgemacht haben.
-  const total = new Set([
-    ...progressState.data.map((progress) => progress.uid),
-    ...answersState.data.map((answer) => answer.uid),
-    ...commentsState.data.map((comment) => comment.uid),
-    ...scoresData.map((score) => score.uid),
+  /* Der Nenner der Gruppenleiste: alle, die je mitgemacht haben – nicht,
+     wer bloss einmal hineingeschaut hat (`everParticipated`). */
+  const total = everParticipated(progressState.data, [
+    ...answersState.data,
+    ...commentsState.data,
+    ...scoresData,
   ]).size
 
   const myWeek = (week: string): ImpulseWeekProgress => myProgress?.weeks?.[week] ?? {}
@@ -486,6 +491,10 @@ function ImpulsPage() {
    * Mit dem ersten Blick bekommt der Fortschritt auch seine erste Woche
    * (`firstSeenWeek`) – einmal, dann bleibt sie stehen. Wer schon vorher
    * dabei war, bekommt die früheste Woche, die sein Fortschritt kennt.
+   * Bewusst nur der Fortschritt, nicht die Antworten: Nach einem
+   * Zurücksetzen über alle Wochen fehlt das Feld wieder, und auf einem
+   * zweiten Gerät stehen die gelöschten Antworten dann noch kurz im
+   * Zwischenspeicher – sie sollen den alten Anfang nicht zurückholen.
    */
   const firstSeenMissing = Boolean(profile) && !progressState.loading && !myProgress?.firstSeenWeek
   const seenPending =
@@ -493,7 +502,12 @@ function ImpulsPage() {
     !itemsState.loading &&
     thisWeekAll.length > 0 &&
     (myProgress?.lastSeenWeek !== todayKey || firstSeenMissing)
-  const firstSeenWeek = firstSeenMissing ? myWeeks[0] : undefined
+  const firstSeenWeek = firstSeenMissing
+    ? impulseWeeksSince(todayKey, [
+        myProgress?.lastSeenWeek,
+        ...Object.keys(myProgress?.weeks ?? {}),
+      ])[0]
+    : undefined
   useEffect(() => {
     if (!seenPending || !profile) return
     writes
@@ -1043,23 +1057,22 @@ function ImpulsPage() {
   }, [celebrationStale, setCelebrated])
 
   /*
-   * Das Zurücksetzen kommt beim eigenen Fortschritt sofort an: Die Woche
-   * verschwindet daraus. Die gelöschten Antworten, Beiträge und
-   * Ranglisten-Einträge sähe der schrittweise Abgleich dagegen erst beim
-   * nächsten Start – darum werden sie dann gleich frisch gelesen. Eine
-   * ganze Woche entfernt allein die Redaktion; das eigene Abhaken ändert
-   * bloss, was darin steht.
+   * Das Zurücksetzen kommt beim eigenen Fortschritt sofort an: Wochen
+   * verschwinden daraus, oder die erste und letzte gesehene Woche – was
+   * allein die Redaktion entfernt (`impulseProgressWasReset`). Die
+   * gelöschten Antworten, Beiträge und Ranglisten-Einträge sähe der
+   * schrittweise Abgleich dagegen erst beim nächsten Start – darum werden
+   * sie dann gleich frisch gelesen.
    */
-  const hasWeekProgress = Boolean(myProgress?.weeks?.[todayKey])
-  const weekProgressSeen = useRef<{ uid: string; week: string; has: boolean } | null>(null)
+  const progressSeen = useRef<{ uid: string; progress: ImpulseProgress } | null>(null)
   useEffect(() => {
     if (preview || progressState.loading || !myProgress) return
-    const before = weekProgressSeen.current
-    if (before?.uid === uid && before.week === todayKey && before.has && !hasWeekProgress) {
+    const before = progressSeen.current
+    if (before?.uid === uid && impulseProgressWasReset(before.progress, myProgress)) {
       refreshImpulseResponses()
     }
-    weekProgressSeen.current = { uid, week: todayKey, has: hasWeekProgress }
-  }, [preview, progressState.loading, myProgress, uid, todayKey, hasWeekProgress])
+    progressSeen.current = { uid, progress: myProgress }
+  }, [preview, progressState.loading, myProgress, uid])
 
   /* Die erste Karte, an der noch etwas fehlt – dort setzt «Weiter swipen» an. */
   const firstOpenStep = crestSteps.find((step) => !step.done) ?? null
@@ -1102,9 +1115,35 @@ function ImpulsPage() {
     ]
   })
 
+  /*
+   * «Diese Woche dabei»: das Wappen jeder Person, die dabei ist – aus
+   * ihrem Fortschritt und ihren Antworten gerechnet (`weekCrests`). Das
+   * eigene trägt den Stand dieser Seite, damit es hier genau so dasteht
+   * wie in der Mission, auch bevor der Tag der Vollendung vermerkt ist.
+   */
+  const groupCrests = weekCrests({
+    week: todayKey,
+    cards: crestCards,
+    people: participants,
+    progressDocs: progressState.data,
+    answers: [...answersState.data, ...commentsState.data, ...scoresData],
+    goal: goalItem !== null,
+    challenge: challengeItem !== null,
+  }).map((person) =>
+    person.uid === uid
+      ? {
+          ...person,
+          done: crestDone,
+          total: crestSteps.length,
+          complete: crestIsComplete,
+          stars: crestStars,
+        }
+      : person,
+  )
+
   /* Welche Räume der Wechsler anbietet – die Kacheln, nicht die Karten. */
   const availableSections: ImpulseSectionKey[] = (
-    ['ziel', 'challenge', 'fortschritt', 'gemerkt', 'wochen', 'mitmachen'] as const
+    ['ziel', 'challenge', 'fortschritt', 'dabei', 'gemerkt', 'wochen', 'mitmachen'] as const
   ).filter((key) => {
     switch (key) {
       case 'ziel':
@@ -1161,6 +1200,16 @@ function ImpulsPage() {
             favoritesCount={favoriteItems.length}
             milestones={milestones}
             crests={crestHistory}
+          />
+        )
+      case 'dabei':
+        return (
+          <ImpulseGroupRoom
+            week={todayKey}
+            crest={crestDesign}
+            people={groupCrests}
+            total={total}
+            uid={uid}
           />
         )
       case 'gemerkt':
@@ -1401,7 +1450,12 @@ function ImpulsPage() {
 
         {!itemsState.loading && (
           <div className="animate-imp-rise mt-3" style={{ animationDelay: '150ms' }}>
-            <GroupCard participants={participants} total={total} crestNames={crestNames} />
+            <GroupCard
+              participants={participants}
+              total={total}
+              crestNames={crestNames}
+              onOpen={(origin) => openSection('dabei', origin)}
+            />
           </div>
         )}
       </div>

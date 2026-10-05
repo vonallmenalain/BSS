@@ -16,6 +16,7 @@ import {
   puzzleSolved,
   readyProblems,
   shuffledPuzzlePieces,
+  weekCrests,
 } from '../src/lib/impulse.ts'
 import { defaultCrest, revealedCells } from '../src/lib/impulseCrest.ts'
 import type { ImpulseItem, ImpulsePoll, ImpulseProgress } from '../src/lib/types.ts'
@@ -331,6 +332,63 @@ test('crestCompleters: genannt wird, wer es geschafft hat – sonst niemand', ()
     crestCompleters({ week: '2026-W41', cards: [], progressDocs: [], answers: [] }),
     [],
   )
+})
+
+test('weekCrests: das Wappen jeder Person – in ihrer Reihenfolge, mit Sternen', () => {
+  const crests = weekCrests({
+    week: '2026-W41',
+    cards: CARDS,
+    people: [
+      { uid: 'u1', firstName: 'Luca' },
+      { uid: 'u3', firstName: 'Mia' },
+      // Ohne Fortschritt – etwa nur über eine Antwort dabei.
+      { uid: 'u4', firstName: 'Noah' },
+    ],
+    progressDocs: [
+      {
+        id: 'u1',
+        uid: 'u1',
+        firstName: 'Luca',
+        weeks: {
+          '2026-W41': {
+            cards: ['thema', 'feed'],
+            deepened: ['thema'],
+            share: true,
+            goal: true,
+            days: ['2026-10-05', '2026-10-06'],
+            crest: '2026-10-08',
+          },
+        },
+      },
+      {
+        id: 'u3',
+        uid: 'u3',
+        firstName: 'Mia',
+        weeks: { '2026-W41': { cards: ['thema'] }, '2026-W40': { cards: ['feed'] } },
+      },
+    ],
+    answers: [
+      { itemId: 'umfrage', uid: 'u1' },
+      { itemId: 'frage', uid: 'u1' },
+      { itemId: 'umfrage', uid: 'u4' },
+      // Eine Antwort aus einer anderen Woche zählt nicht.
+      { itemId: 'alt', uid: 'u3' },
+    ],
+    goal: true,
+    challenge: false,
+  })
+  assert.deepEqual(
+    crests.map((person) => [person.firstName, person.done, person.total, person.complete]),
+    [
+      ['Luca', 5, 5, true],
+      // Das Thema ohne Vertiefung ist noch nicht geschafft.
+      ['Mia', 0, 5, false],
+      ['Noah', 1, 5, false],
+    ],
+  )
+  // Vor Sonntag vollendet, Wochenziel geschafft – eine Tages-Challenge gibt es nicht.
+  assert.deepEqual(crests[0].stars, { sunday: true, goal: true, challenge: null })
+  assert.deepEqual(crests[1].stars, { sunday: false, goal: false, challenge: null })
 })
 
 test('daysUntilSunday: 6 am Montag, 0 am Sonntag', () => {

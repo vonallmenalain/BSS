@@ -15,6 +15,7 @@ import {
   Repeat,
   Search,
   Send,
+  Users,
   type LucideIcon,
 } from 'lucide-react'
 import type { ImpulseItem, ImpulseKind } from './types.ts'
@@ -46,6 +47,7 @@ export type ImpulseSectionKey =
   | 'ziel'
   | 'challenge'
   | 'fortschritt'
+  | 'dabei'
   | 'gemerkt'
   | 'wochen'
   | 'mitmachen'
@@ -71,10 +73,12 @@ export interface ImpulseSection {
 }
 
 /*
- * Sechzehn Bereiche, sechzehn Farbtöne – bewusst weit auseinander, damit
+ * Siebzehn Bereiche, siebzehn Farbtöne – bewusst weit auseinander, damit
  * die Farbe allein schon sagt, wo man ist. Das Minispiel trägt als
  * einziges einen Verlauf (Pink in Orange): Die Töne des Regenbogens sind
- * vergeben, und ein Spiel darf bunter sein als der Rest.
+ * vergeben, und ein Spiel darf bunter sein als der Rest. «Diese Woche
+ * dabei» nimmt das satte Purpur – zwischen dem Violett des Quiz und dem
+ * Fuchsia der Mitmach-Ecke, aber dunkler als beide.
  *
  * Die Vollbild-Töne sind Schleier, keine Vollflächen: Sie steigen oben
  * satt ein, laufen über eine Zwischenstufe aus und enden im Grund der
@@ -239,6 +243,18 @@ export const IMPULSE_SECTIONS: Record<ImpulseSectionKey, ImpulseSection> = {
     ring: 'text-orange-500 dark:text-orange-400',
     bar: 'bg-orange-500 dark:bg-orange-400',
   },
+  dabei: {
+    key: 'dabei',
+    label: 'Diese Woche dabei',
+    short: 'Dabei',
+    icon: Users,
+    iconBox: 'bg-purple-600 text-white',
+    text: 'text-purple-700 dark:text-purple-300',
+    wash: 'from-purple-300/90 via-purple-200/40 dark:from-purple-500/40 dark:via-purple-500/12',
+    chipActive: 'bg-purple-600 text-white dark:bg-purple-400 dark:text-purple-950',
+    ring: 'text-purple-600 dark:text-purple-400',
+    bar: 'bg-purple-600 dark:bg-purple-400',
+  },
   gemerkt: {
     key: 'gemerkt',
     label: 'Gemerkt',
@@ -292,6 +308,7 @@ export const IMPULSE_SECTION_ORDER: ImpulseSectionKey[] = [
   'ziel',
   'challenge',
   'fortschritt',
+  'dabei',
   'gemerkt',
   'wochen',
   'mitmachen',
@@ -304,9 +321,9 @@ export const IMPULSE_SECTION_ORDER: ImpulseSectionKey[] = [
  * Inhalt, das Wochenthema immer zuoberst, und die Adresse
  * `/anti-doom/<bereich>` schlägt den Feed genau dort auf. **Raum-Bereiche**
  * öffnen ihren eigenen Vollbild-Raum: die beiden Aufgaben neben dem Feed
- * (Wochenziel, Tages-Challenge) und die Werkzeuge (Fortschritt, Gemerkt,
- * Rückblick, Mitmach-Ecke) – sie sind Kacheln des Dashboards, keine
- * Feed-Karten.
+ * (Wochenziel, Tages-Challenge), die Werkzeuge (Fortschritt, Gemerkt,
+ * Rückblick, Mitmach-Ecke) und die Gruppe («Diese Woche dabei») – sie
+ * sind Kacheln des Dashboards, keine Feed-Karten.
  */
 export const IMPULSE_DECK_SECTIONS = [
   'woche',
@@ -326,6 +343,7 @@ export const IMPULSE_ROOM_SECTIONS = [
   'ziel',
   'challenge',
   'fortschritt',
+  'dabei',
   'gemerkt',
   'wochen',
   'mitmachen',

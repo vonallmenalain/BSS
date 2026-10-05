@@ -1,7 +1,9 @@
-import { Check, CheckCircle2, Repeat, Shield, Users } from 'lucide-react'
+import { Check, CheckCircle2, ChevronRight, Repeat, Shield, Users } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { CardEmoji, ImpulseItemImage, SourceLink } from '@/components/impulse/ImpulseCards'
+import type { ScreenOrigin } from '@/components/impulse/ImpulseScreen'
 import { CHALLENGE_DAY_LABELS, useChallengeDays, useWeekGoal } from '@/hooks/useImpulseTasks'
+import { IMPULSE_SECTIONS } from '@/lib/impulseSections'
 import type { ImpulseItem } from '@/lib/types'
 
 /*
@@ -210,21 +212,29 @@ export function ChallengeCard({
  * Rangliste, keine Hervorhebung der Fehlenden. Darunter, wer sein
  * Wochen-Wappen schon vollendet hat: genannt wird, wer es geschafft hat,
  * nie, wer noch unterwegs ist.
+ *
+ * Mit `onOpen` ist die ganze Leiste ein Knopf: Sie öffnet den Raum
+ * «Diese Woche dabei» mit dem Wappen jeder Person (`ImpulseGroupRoom`) –
+ * solange jemand dabei ist; davor gibt es nichts zu zeigen.
  */
 export function GroupCard({
   participants,
   total,
   crestNames = [],
+  onOpen,
 }: {
   participants: { uid: string; firstName: string }[]
   /** Alle, die je im Bereich mitgemacht haben – der Nenner der Leiste. */
   total: number
   /** Wer das Wappen der Woche schon vollendet hat. */
   crestNames?: { uid: string; firstName: string }[]
+  /** Den Raum mit den Wappen öffnen – vom Klickpunkt her. */
+  onOpen?: (origin: ScreenOrigin) => void
 }) {
-  return (
-    <section className="card p-5">
-      <p className="hint flex items-center gap-1.5 font-medium">
+  /* Im Knopf ist nur Fliesstext erlaubt – darum Spannen statt Absätze. */
+  const body = (
+    <>
+      <span className="hint flex items-center gap-1.5 font-medium">
         <Users className="size-4" aria-hidden />
         Diese Woche dabei
         {participants.length > 0 && (
@@ -233,25 +243,53 @@ export function GroupCard({
             {total > participants.length && ` von ${total}`}
           </span>
         )}
-      </p>
+      </span>
       {participants.length === 0 ? (
-        <p className="mt-2 text-sm text-slate-600 dark:text-slate-300">
+        <span className="mt-2 block text-sm text-slate-600 dark:text-slate-300">
           Diese Woche war noch niemand dabei – mach den Anfang.
-        </p>
+        </span>
       ) : (
-        <p className="mt-2 text-sm text-slate-600 dark:text-slate-300">
+        <span className="mt-2 block text-sm text-slate-600 dark:text-slate-300">
           {participants.map((person) => person.firstName).join(' · ')}
-        </p>
+        </span>
       )}
       {crestNames.length > 0 && (
-        <p className="mt-3 flex items-start gap-1.5 border-t border-slate-200 pt-3 text-sm text-slate-600 dark:border-slate-800 dark:text-slate-300">
+        <span className="mt-3 flex items-start gap-1.5 border-t border-slate-200 pt-3 text-sm text-slate-600 dark:border-slate-800 dark:text-slate-300">
           <Shield className="mt-0.5 size-4 shrink-0 text-amber-500" aria-hidden />
           <span>
             <span className="font-medium text-slate-900 dark:text-slate-100">Wappen vollendet:</span>{' '}
             {crestNames.map((person) => person.firstName).join(' · ')}
           </span>
-        </p>
+        </span>
       )}
-    </section>
+    </>
+  )
+
+  if (!onOpen || participants.length === 0) {
+    return <section className="card p-5">{body}</section>
+  }
+  return (
+    <button
+      type="button"
+      onClick={(event) => {
+        const rect = event.currentTarget.getBoundingClientRect()
+        onOpen({ x: rect.left + rect.width / 2, y: rect.top + rect.height / 2 })
+      }}
+      className="card group block w-full p-5 text-left transition hover:-translate-y-0.5 hover:shadow-md active:scale-[0.98] active:shadow-xs"
+    >
+      {body}
+      <span
+        className={cn(
+          'mt-3 flex items-center gap-0.5 text-xs font-medium',
+          IMPULSE_SECTIONS.dabei.text,
+        )}
+      >
+        Die Wappen ansehen
+        <ChevronRight
+          className="size-3.5 transition-transform group-hover:translate-x-0.5"
+          aria-hidden
+        />
+      </span>
+    </button>
   )
 }

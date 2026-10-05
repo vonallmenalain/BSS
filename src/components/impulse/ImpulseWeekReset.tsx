@@ -3,11 +3,13 @@ import { RotateCcw, TriangleAlert } from 'lucide-react'
 import { useData } from '@/contexts/DataContext'
 import { useToast } from '@/contexts/ToastContext'
 import { Modal } from '@/components/ui/Modal'
+import { SegmentedControl } from '@/components/ui/Pickers'
 import { cn } from '@/lib/utils'
 import { formatWeekRange } from '@/lib/impulse'
 import {
   describeImpulseReset,
   IMPULSE_RESET_PARTS,
+  impulseResetOlderPeople,
   impulseResetPeople,
   planImpulseReset,
   type ImpulseResetPart,
@@ -17,6 +19,9 @@ import {
 } from '@/lib/impulseReset'
 import { resetImpulseWeek } from '@/services/impulse'
 
+/** Die eine Woche – oder alle Wochen auf einmal. */
+type ResetSpan = 'week' | 'all'
+
 /**
  * «Woche zurücksetzen» – ganz unten in der Redaktion.
  *
@@ -25,14 +30,20 @@ import { resetImpulseWeek } from '@/services/impulse'
  * Wappen, Haken, Antworten, Beiträge, Ranglisten. Die Karten selbst
  * bleiben stehen; zurückgesetzt wird, was die Leute getan haben.
  *
- * Vor dem Zurücksetzen zeigt ein Fenster, was genau geschieht: wer in der
- * Woche Spuren hat und wie viele, und welche Teile mitgehen. Beides lässt
- * sich einstellen – alle oder einzelne Personen, alles oder nur Teile –,
- * und die Zahlen folgen der Auswahl. Erst «Zurücksetzen» schreibt.
+ * Vor dem Zurücksetzen zeigt ein Fenster, was genau geschieht: wer Spuren
+ * hat und wie viele, und welche Teile mitgehen. Alles lässt sich
+ * einstellen – die oben gewählte Woche oder alle Wochen, alle oder
+ * einzelne Personen, alles oder nur Teile –, und die Zahlen folgen der
+ * Auswahl. Erst «Zurücksetzen» schreibt.
  *
- * Gilt für die oben gewählte Woche (`week`). Der Bestand (`source`) kommt
- * aus den Abos der Seite; beim Zurücksetzen rechnet der Dienst mit dem
- * frischen Stand vom Server noch einmal (`resetImpulseWeek`).
+ * «Alle Wochen» ist der Neustart vor dem Start: Auch was aus früheren
+ * Wochen übrig ist, verschwindet, und «Seit du dabei bist» beginnt für
+ * die Betroffenen wieder bei einer Woche. Die Karte hier sagt darum
+ * gleich, wer solche Spuren noch hat.
+ *
+ * Der Bestand (`source`) kommt aus den Abos der Seite; beim Zurücksetzen
+ * rechnet der Dienst mit dem frischen Stand vom Server noch einmal
+ * (`resetImpulseWeek`).
  */
 export function ImpulseWeekReset({
   week,
@@ -45,12 +56,15 @@ export function ImpulseWeekReset({
   loading: boolean
 }) {
   const people = useMemo(() => impulseResetPeople(source), [source])
+  const peopleAll = useMemo(() => impulseResetPeople(source, { allWeeks: true }), [source])
+  const older = useMemo(() => new Set(impulseResetOlderPeople(source)), [source])
   const [open, setOpen] = useState(false)
   const { usersById } = useData()
   /* Mit Vollzugriff steht der ganze Name da, sonst der Vorname aus dem
      Fortschritt – mehr kennt die Redaktion von den Jugendlichen nicht. */
   const nameOf = (person: ImpulseResetPerson) =>
     usersById.get(person.uid)?.displayName || person.firstName || 'Ohne Namen'
+  const olderPeople = peopleAll.filter((person) => older.has(person.uid))
 
   return (
     <>
@@ -62,24 +76,39 @@ export function ImpulseWeekReset({
         <p className="hint mt-1">
           Für die Zeit des Ausprobierens: Was in der oben gewählten Woche ({formatWeekRange(week)})
           angeschaut, abgehakt, beantwortet und gespielt wurde, wird entfernt – für alle oder für
-          einzelne Personen. Die Karten selbst bleiben. Vorher zeigt ein Fenster genau, was
-          zurückgesetzt wird.
+          einzelne Personen. Mit «Alle Wochen» auch alles aus früheren Wochen; danach beginnt «Seit
+          du dabei bist» wieder bei einer Woche. Die Karten selbst bleiben. Vorher zeigt ein Fenster
+          genau, was zurückgesetzt wird.
         </p>
-        <p className="mt-2 text-sm text-slate-600 dark:text-slate-300">
-          {loading
-            ? 'Wird geladen …'
-            : people.length === 0
-              ? 'In dieser Woche hat noch niemand etwas getan – es gibt nichts zurückzusetzen.'
-              : `${people.length} ${people.length === 1 ? 'Person hat' : 'Personen haben'} Spuren in dieser Woche: ${people.map(nameOf).join(', ')}.`}
-        </p>
+        <div className="mt-2 space-y-1 text-sm text-slate-600 dark:text-slate-300">
+          {loading ? (
+            <p>Wird geladen …</p>
+          ) : peopleAll.length === 0 ? (
+            <p>Es hat noch niemand etwas getan – es gibt nichts zurückzusetzen.</p>
+          ) : (
+            <>
+              <p>
+                {people.length === 0
+                  ? 'In dieser Woche hat noch niemand etwas getan.'
+                  : `${people.length} ${people.length === 1 ? 'Person hat' : 'Personen haben'} Spuren in dieser Woche: ${people.map(nameOf).join(', ')}.`}
+              </p>
+              {olderPeople.length > 0 && (
+                <p>
+                  Aus anderen Wochen {olderPeople.length === 1 ? 'hat' : 'haben'} noch{' '}
+                  {olderPeople.map(nameOf).join(', ')} Spuren – die entfernt «Alle Wochen».
+                </p>
+              )}
+            </>
+          )}
+        </div>
         <button
           type="button"
           className="btn-secondary mt-3 text-rose-700 dark:text-rose-300"
           onClick={() => setOpen(true)}
-          disabled={loading || people.length === 0}
+          disabled={loading || peopleAll.length === 0}
         >
           <RotateCcw className="size-4" aria-hidden />
-          Woche zurücksetzen …
+          Zurücksetzen …
         </button>
       </section>
 
@@ -87,7 +116,8 @@ export function ImpulseWeekReset({
         <WeekResetDialog
           week={week}
           source={source}
-          people={people}
+          /* Hat die Woche nichts, aber frühere Wochen, geht es um diese. */
+          initialSpan={people.length === 0 ? 'all' : 'week'}
           nameOf={nameOf}
           onClose={() => setOpen(false)}
         />
@@ -96,15 +126,17 @@ export function ImpulseWeekReset({
   )
 }
 
-/** «18 Karten · Wappen · 3 Haken · 5 Antworten» – was eine Person in der Woche getan hat. */
-function personSummary(person: ImpulseResetPerson): string {
+/** «18 Karten · Wappen · 3 Haken · 5 Antworten» – was eine Person getan hat. */
+function personSummary(person: ImpulseResetPerson, allWeeks: boolean): string {
   const parts = [
-    /* Wer bloss hineingeschaut hat, hat trotzdem einen Stand in der Woche. */
+    /* Über alle Wochen: in wie vielen davon jemand einen Stand hat. */
+    allWeeks && person.weeks > 0 && `${person.weeks} ${person.weeks === 1 ? 'Woche' : 'Wochen'}`,
+    /* Wer bloss hineingeschaut hat, hat trotzdem einen Stand. */
     person.progress &&
       person.cards === 0 &&
       person.ticks === 0 &&
       !person.crest &&
-      'Woche geöffnet',
+      (allWeeks ? 'Anti Doom geöffnet' : 'Woche geöffnet'),
     person.cards > 0 && `${person.cards} ${person.cards === 1 ? 'Karte' : 'Karten'}`,
     person.crest && 'Wappen',
     person.ticks > 0 && `${person.ticks} Haken`,
@@ -121,7 +153,7 @@ function partCount(part: ImpulseResetPart, plan: ImpulseResetPlan): string {
   switch (part) {
     case 'progress': {
       const count = plan.progress.filter(
-        (entry) => entry.week || entry.lastSeenWeek || entry.firstSeenWeek,
+        (entry) => entry.weeks.length > 0 || entry.lastSeenWeek || entry.firstSeenWeek,
       ).length
       return `${count} ${count === 1 ? 'Person' : 'Personen'}`
     }
@@ -150,26 +182,32 @@ function planIsEmpty(plan: ImpulseResetPlan): boolean {
 }
 
 /**
- * Das Fenster vor dem Zurücksetzen: wer, was – und in Zahlen, was das heisst.
+ * Das Fenster vor dem Zurücksetzen: welche Wochen, wer, was – und in
+ * Zahlen, was das heisst.
  */
 function WeekResetDialog({
   week,
   source,
-  people,
+  initialSpan,
   nameOf,
   onClose,
 }: {
   week: string
   source: ImpulseResetSource
-  people: ImpulseResetPerson[]
+  initialSpan: ResetSpan
   nameOf: (person: ImpulseResetPerson) => string
   onClose: () => void
 }) {
   const toast = useToast()
+  const [span, setSpan] = useState<ResetSpan>(initialSpan)
+  const allWeeks = span === 'all'
+  const people = useMemo(() => impulseResetPeople(source, { allWeeks }), [source, allWeeks])
   /*
    * Alle oder einzelne: Solange «alle» gilt, nimmt das Zurücksetzen auch
    * mit, wer erst während des Fensters dazukommt. Wer einen Haken
    * wegnimmt, wählt einzeln; sind wieder alle angehakt, gilt wieder «alle».
+   * Die Wahl bleibt beim Wechsel der Wochen stehen – sie gilt für die
+   * Personen, die in der Liste stehen.
    */
   const [everyone, setEveryone] = useState(true)
   const [chosen, setChosen] = useState<ReadonlySet<string>>(new Set())
@@ -199,9 +237,10 @@ function WeekResetDialog({
       return next
     })
 
-  const selectedPeople = everyone ? null : chosen
-  const plan = planImpulseReset(source, { people: selectedPeople, parts })
-  const chosenCount = everyone ? people.length : chosen.size
+  const listed = people.filter((person) => chosen.has(person.uid))
+  const selectedPeople = everyone ? null : new Set(listed.map((person) => person.uid))
+  const plan = planImpulseReset(source, { people: selectedPeople, parts, allWeeks })
+  const chosenCount = everyone ? people.length : listed.length
   const nothing = planIsEmpty(plan)
 
   const run = async () => {
@@ -211,9 +250,11 @@ function WeekResetDialog({
       const done = await resetImpulseWeek({
         week,
         itemIds: [...source.itemIds],
-        selection: { people: selectedPeople, parts },
+        selection: { people: selectedPeople, parts, allWeeks },
       })
-      toast.success(`Woche zurückgesetzt – ${describeImpulseReset(done)}.`)
+      toast.success(
+        `${allWeeks ? 'Alle Wochen' : 'Woche'} zurückgesetzt – ${describeImpulseReset(done)}.`,
+      )
       onClose()
     } catch (error) {
       console.error(error)
@@ -230,8 +271,8 @@ function WeekResetDialog({
     <Modal
       open
       onClose={busy ? () => undefined : onClose}
-      title="Woche zurücksetzen"
-      description={formatWeekRange(week)}
+      title={allWeeks ? 'Alle Wochen zurücksetzen' : 'Woche zurücksetzen'}
+      description={allWeeks ? 'Auch was aus früheren Wochen übrig ist' : formatWeekRange(week)}
       size="md"
       footer={
         <>
@@ -251,6 +292,27 @@ function WeekResetDialog({
       }
     >
       <div className="space-y-5 text-sm">
+        {/* ---------- Welche Wochen ---------- */}
+        <section>
+          <h3 className="text-xs font-semibold tracking-wide text-slate-500 uppercase dark:text-slate-400">
+            Welche Wochen
+          </h3>
+          <SegmentedControl<ResetSpan>
+            className="mt-1.5"
+            value={span}
+            onChange={setSpan}
+            options={[
+              { value: 'week', label: 'Diese Woche' },
+              { value: 'all', label: 'Alle Wochen' },
+            ]}
+          />
+          <p className="hint mt-1.5">
+            {allWeeks
+              ? 'Jede Woche, auch vom Testen vor dem Start und zu Karten, die es nicht mehr gibt. Danach beginnen «Seit du dabei bist» und die Serie wieder von vorn.'
+              : `Nur ${formatWeekRange(week)} – was in anderen Wochen war, bleibt stehen.`}
+          </p>
+        </section>
+
         {/* ---------- Wer ---------- */}
         <section>
           <div className="flex items-center gap-2">
@@ -269,29 +331,37 @@ function WeekResetDialog({
               type="button"
               className="btn-ghost btn-sm"
               onClick={() => chooseAll(false)}
-              disabled={!everyone && chosen.size === 0}
+              disabled={!everyone && listed.length === 0}
             >
               Keine
             </button>
           </div>
-          <ul className="mt-1.5 divide-y divide-slate-200 rounded-xl border border-slate-200 dark:divide-slate-800 dark:border-slate-800">
-            {people.map((person) => (
-              <li key={person.uid}>
-                <label className="flex cursor-pointer items-start gap-3 px-3 py-2.5">
-                  <input
-                    type="checkbox"
-                    className="checkbox mt-0.5"
-                    checked={isChosen(person.uid)}
-                    onChange={() => togglePerson(person.uid)}
-                  />
-                  <span className="min-w-0 flex-1">
-                    <span className="block truncate font-medium">{nameOf(person)}</span>
-                    <span className="hint mt-0 block">{personSummary(person)}</span>
-                  </span>
-                </label>
-              </li>
-            ))}
-          </ul>
+          {people.length === 0 ? (
+            <p className="mt-1.5 rounded-xl border border-slate-200 px-3 py-2.5 text-slate-500 dark:border-slate-800 dark:text-slate-400">
+              {allWeeks
+                ? 'Es hat noch niemand etwas getan.'
+                : 'In dieser Woche hat noch niemand etwas getan – «Alle Wochen» zeigt, was aus früheren übrig ist.'}
+            </p>
+          ) : (
+            <ul className="mt-1.5 divide-y divide-slate-200 rounded-xl border border-slate-200 dark:divide-slate-800 dark:border-slate-800">
+              {people.map((person) => (
+                <li key={person.uid}>
+                  <label className="flex cursor-pointer items-start gap-3 px-3 py-2.5">
+                    <input
+                      type="checkbox"
+                      className="checkbox mt-0.5"
+                      checked={isChosen(person.uid)}
+                      onChange={() => togglePerson(person.uid)}
+                    />
+                    <span className="min-w-0 flex-1">
+                      <span className="block truncate font-medium">{nameOf(person)}</span>
+                      <span className="hint mt-0 block">{personSummary(person, allWeeks)}</span>
+                    </span>
+                  </label>
+                </li>
+              ))}
+            </ul>
+          )}
         </section>
 
         {/* ---------- Was ---------- */}
@@ -303,7 +373,11 @@ function WeekResetDialog({
             {IMPULSE_RESET_PARTS.map((part) => {
               const count = partCount(
                 part.key,
-                planImpulseReset(source, { people: selectedPeople, parts: new Set([part.key]) }),
+                planImpulseReset(source, {
+                  people: selectedPeople,
+                  parts: new Set([part.key]),
+                  allWeeks,
+                }),
               )
               return (
                 <li key={part.key}>
@@ -350,7 +424,7 @@ function WeekResetDialog({
           <span>
             {nothing
               ? 'Mit dieser Auswahl gibt es nichts zurückzusetzen.'
-              : `Zurückgesetzt wird für ${describeImpulseReset(plan)}. Die Karten der Woche bleiben. Das lässt sich nicht rückgängig machen.`}
+              : `Zurückgesetzt wird ${allWeeks ? 'über alle Wochen ' : ''}für ${describeImpulseReset(plan)}. Die Karten bleiben. Das lässt sich nicht rückgängig machen.`}
           </span>
         </p>
       </div>
