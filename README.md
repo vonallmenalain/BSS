@@ -3712,6 +3712,23 @@ behält Symbol und Namen, mit denen sie installiert wurde; für das neue Symbol
 einmal entfernen und neu hinzufügen. Die Symbole erzeugt
 `scripts/generate-icons.mjs`.
 
+**Geteilte Links auf «Anti Doom».** Wer `bss.alae.app/anti-doom` in WhatsApp,
+Signal, Telegram oder iMessage teilt, bekommt in der Vorschau das Wappen der
+AP's und einen eigenen Text statt «Bischofschaft» mit dem blauen «BS».
+Messenger lesen die Vorschau aus dem HTML, ohne die App zu starten – und als
+Single-Page-App lieferte sie für jede Adresse dasselbe `index.html`. Darum
+legt der Build für `/anti-doom` und jeden seiner Bereiche eine eigene Seite
+ab (`anti-doom.html`, `anti-doom/quiz.html` …): dieselbe App mit eigenem
+Titel, eigener Beschreibung und `og:*`-Angaben (`src/lib/sharePreview.ts`,
+Plugin in `vite.config.ts`). Netlify liefert eine vorhandene Datei vor dem
+Rückfall auf `index.html`. Text und Bild stehen in `ANTI_DOOM_PREVIEW`; das
+Bild (`public/icons/ap-share-512.png`) erzeugt
+`node scripts/generate-icons.mjs teilen`.
+
+> Messenger merken sich eine Vorschau eine Weile. Ein schon geteilter Link
+> zeigt das neue Bild erst später – zum Ausprobieren hilft ein angehängtes
+> `?v=2`.
+
 ---
 
 ## Benachrichtigungen
