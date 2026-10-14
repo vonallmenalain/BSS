@@ -49,6 +49,7 @@ import {
 import { IMPULSE_KIND_THEME, IMPULSE_SECTIONS } from '@/lib/impulseSections'
 import { isPackItem, PACK_WEEKS, planPackCorrections, planPackItems } from '@/lib/impulsePack'
 import { tallyPollChoices } from '@/lib/impulsePoll'
+import { joinNames } from '@/lib/notifications'
 import {
   applyDifficultyCleanup,
   applyPackCorrections,
@@ -217,6 +218,7 @@ export function ImpulsRedaktion() {
   const legacyAnswers = answersState.data.filter((answer) => legacyIds.has(answer.itemId))
   const legacyComments = commentsState.data.filter((comment) => legacyIds.has(comment.itemId))
   const packWeeksAhead = PACK_WEEKS.filter((week) => week.week >= todayKey)
+  const packGames = packWeeksAhead.flatMap((week) => (week.game ? [`«${week.game.title}»`] : []))
 
   const seedPack = async () => {
     if (seeding || packPlans.length === 0) return
@@ -456,11 +458,26 @@ export function ImpulsRedaktion() {
                 .join(' · ')}
               . Je Woche ein Wochenthema mit eigenem Wappen, dazu Umfragen, Quizfragen, ein
               Vers-Puzzle, «Fakt oder Mythos?», «Was würdest du tun?», offene Fragen, Feed-Karten,
-              Wochenziel, Tages-Challenge und Teilen-Aufgabe – und zum Wort der Weisheit das
-              Minispiel «Gut für dich?». Alles «bereit». Vergangene Wochen bleiben weg; eingespielt
-              wird, was noch fehlt ({packPlans.length}{' '}
-              {packPlans.length === 1 ? 'Inhalt' : 'Inhalte'}).
+              Wochenziel, Tages-Challenge und Teilen-Aufgabe
+              {packGames.length > 0 &&
+                ` – und als letzte Karte ${packGames.length === 1 ? 'das Minispiel' : 'die Minispiele'} ${joinNames(packGames)}`}
+              . Alles «bereit». Vergangene Wochen bleiben weg; eingespielt wird, was noch fehlt (
+              {packPlans.length} {packPlans.length === 1 ? 'Inhalt' : 'Inhalte'}).
             </p>
+            {/* Ist das Paket schon da, kommt nur Nachgeliefertes – etwa ein neues
+                Minispiel. Dann steht hier genau, was der Klick anlegt: Auch eine
+                Karte, die die Redaktion bewusst gelöscht hat, käme sonst
+                unbemerkt zurück. */}
+            {packStarted && packPlans.length <= 12 && (
+              <ul className="mt-2 space-y-0.5 text-sm">
+                {packPlans.map((plan) => (
+                  <li key={plan.id}>
+                    <span className="font-medium">{IMPULSE_KIND_LABELS[plan.kind]}</span> «
+                    {plan.title}» <span className="hint mt-0">· {formatWeekRange(plan.week)}</span>
+                  </li>
+                ))}
+              </ul>
+            )}
             {legacyItems.length > 0 && (
               <p className="mt-2 text-sm text-amber-800 dark:text-amber-200">
                 Bisher im Bereich: {legacyItems.length}{' '}

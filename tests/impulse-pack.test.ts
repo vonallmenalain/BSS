@@ -142,19 +142,50 @@ test('Themenpaket: der Feed wechselt den Takt – und endet mit der Teilen-Aufga
   }
 })
 
-test('Themenpaket: die Woche zum Wort der Weisheit endet mit ihrem Minispiel', () => {
-  const plans = packWeekPlans(PACK_WEEKS[0])
-  const last = plans.at(-1)!
-  assert.equal(last.id, 'fsy26-w41-spiel')
-  assert.equal(last.kind, 'spiel')
-  assert.equal(last.game, 'sortieren')
-  assert.equal(last.status, 'ready')
+test('Themenpaket: die Wochen im Oktober enden mit ihrem Minispiel – jede mit einem eigenen', () => {
+  const expected = [
+    ['2026-W41', 'fsy26-w41-spiel', 'sortieren'],
+    ['2026-W42', 'fsy26-w42-spiel', 'abwehren'],
+    ['2026-W43', 'fsy26-w43-spiel', 'springen'],
+    ['2026-W44', 'fsy26-w44-spiel', 'befreien'],
+  ] as const
+  for (const [weekKey, id, game] of expected) {
+    const week = PACK_WEEKS.find((entry) => entry.week === weekKey)!
+    const last = packWeekPlans(week).at(-1)!
+    assert.equal(last.id, id)
+    assert.equal(last.kind, 'spiel')
+    assert.equal(last.game, game)
+    assert.equal(last.status, 'ready')
+    assert.equal(last.order, week.deck.length + 1, `${weekKey}: nach allen Karten`)
+    assert.ok(!`${last.title} ${last.body}`.includes('ß'), `${weekKey}: Schweizer Schreibweise`)
+  }
   // Höchstens ein Minispiel je Woche – und nur dort, wo das Paket eines vorsieht.
   for (const week of PACK_WEEKS) {
     const games = packWeekPlans(week).filter((plan) => plan.kind === 'spiel')
     assert.ok(games.length <= 1, week.week)
     assert.equal(games.length, week.game ? 1 : 0, week.week)
   }
+  // Kein Spiel zweimal: Jede Woche bringt einen neuen Griff.
+  const games = PACK_WEEKS.flatMap((week) => (week.game ? [week.game.game] : []))
+  assert.equal(new Set(games).size, games.length)
+})
+
+test('Themenpaket: ein schon eingespieltes Paket holt die neuen Minispiele nach – nur sie', () => {
+  /* So kam schon «Gut für dich?» in den Bereich: Das Paket lag längst in
+     der Datenbank, der Kasten «Themenpaket» bot danach genau das Fehlende
+     an. Mitten in der Woche zum Gesetz der Keuschheit fehlen die Spiele
+     dieser und der zwei folgenden Wochen – die vergangene bleibt weg. */
+  const before = PACK_WEEKS.flatMap(packWeekPlans).filter(
+    (plan) => !['fsy26-w42-spiel', 'fsy26-w43-spiel', 'fsy26-w44-spiel'].includes(plan.id),
+  )
+  assert.deepEqual(
+    planPackItems(before, '2026-W42').map((plan) => [plan.id, plan.game]),
+    [
+      ['fsy26-w42-spiel', 'abwehren'],
+      ['fsy26-w43-spiel', 'springen'],
+      ['fsy26-w44-spiel', 'befreien'],
+    ],
+  )
 })
 
 test('Themenpaket: der Feed liegt im Bereich genau in der Reihenfolge des Pakets', () => {
