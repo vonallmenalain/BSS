@@ -24,8 +24,11 @@ rules_version = '2';
 // und sehen alles. Die Liste unten muss mit `FULL_ACCESS_ROLES` in
 // src/lib/types.ts übereinstimmen.
 //
-// Eine Ausnahme gibt es: Benutzer und Rollen verwaltet ausschliesslich das
+// Eine Ausnahme gibt es: Benutzer und Rollen verwaltet das
 // Administrator-Konto (siehe `isAdmin()`), erkannt an seiner Anmelde-E-Mail.
+// Die Bischofschaft – Bischof und Ratgeber – darf daneben die Zugänge ohne
+// Vollzugriff vergeben und ändern (siehe `users`); alles mit Vollzugriff
+// bleibt dem Administrator-Konto.
 //
 // Die beiden AP-Rollen sind die Ausnahme. Der Aktivitätenplan wird mit den
 // Beratern und der Jugendführung geteilt; die haben keine Aufgabe, die
@@ -67,9 +70,9 @@ rules_version = '2';
 // «Leitung», «Bekanntmachungen» und «Angelegenheiten» mit sich brächten.
 // Welche der drei Bereiche offenstehen, steht am Konto im Feld
 // `assistantAreas` (`talks`, `music`, `prayers`); die Rolle allein öffnet
-// nichts. Vergeben wird das Feld – wie `role` und `active` – allein vom
-// Administrator-Konto, und die Selbst-Update-Regel sperrt es gegen die
-// eigene Hand.
+// nichts. Vergeben wird das Feld – wie `role` – vom Administrator-Konto
+// oder von der Bischofschaft (siehe `users`), und die Selbst-Update-Regel
+// sperrt es gegen die eigene Hand.
 //
 // Die Assistenz erreicht damit genau: `talks` (mit dem Haken «Ansprachen»),
 // `prayers` (mit «Gebet»), die Sonntage in `sacramentMeetings` (alle drei
@@ -96,7 +99,8 @@ rules_version = '2';
 // Unabhängig von der Rolle steht der Bereich «Impuls» – der geistige
 // Bereich für die AP's (docs/KONZEPT-IMPULS.md). Wer ihn sieht, sagt das
 // Feld `impulse` am Benutzer; wer Inhalte pflegen darf, das Feld
-// `impulseEditor`. Beide vergibt allein das Administrator-Konto, und das
+// `impulseEditor`. Beide vergibt das Administrator-Konto – bei Konten ohne
+// Vollzugriff auch die Bischofschaft (siehe `users`) –, und das
 // Administrator-Konto sieht den Bereich immer. Die Sammlungen des Bereichs
 // folgen mit der nächsten Etappe – verriegelt ist ab sofort, dass sich
 // niemand die beiden Schalter selbst setzt.
@@ -111,7 +115,8 @@ service cloud.firestore {
     }
 
     /*
-     * Das Administrator-Konto – verwaltet als Einziges Benutzer und Rollen.
+     * Das Administrator-Konto – verwaltet Benutzer und Rollen; die
+     * Bischofschaft nur die Zugänge ohne Vollzugriff (siehe `users`).
      *
      * Erkannt an der Anmelde-E-Mail aus dem Auth-Token, nicht am Profil in
      * der Datenbank: Das Token stammt von Firebase Authentication und lässt
@@ -140,6 +145,21 @@ service cloud.firestore {
              'bishop', 'counselor1', 'counselor2',
              'executive_secretary', 'secretary', 'counselor'
            ];
+    }
+
+    // Die Bischofschaft im engeren Sinn – Bischof und Ratgeber (samt der
+    // alten Sammelrolle). Sie verwaltet die Zugänge ohne Vollzugriff
+    // (siehe `users`); dieselbe Liste steht als `BISHOPRIC_ROLES` in
+    // src/lib/types.ts.
+    function bishopric() {
+      return approved()
+        && userDoc().role in ['bishop', 'counselor1', 'counselor2', 'counselor'];
+    }
+
+    // Die Rollen ohne Vollzugriff – was die Bischofschaft vergeben darf
+    // (`LIMITED_ROLES` in src/lib/types.ts).
+    function limitedRole(role) {
+      return role in ['assistant', 'ap_editor', 'ap_viewer', 'impulse_only', 'pending'];
     }
 
     // Darf den AP-Kalender lesen – Vollzugriff eingeschlossen.
@@ -338,10 +358,31 @@ service cloud.firestore {
         && unchanged('assistantWrite');
 
       // Benutzer verwalten – freischalten, Rollen zuweisen, deaktivieren,
-      // löschen – darf ausschliesslich der Administrator. Damit genügt ein
-      // kompromittiertes Bischofschafts-Konto nicht mehr, um alle übrigen
-      // Konten zu übernehmen oder auszusperren.
+      // löschen – darf der Administrator. Damit genügt ein kompromittiertes
+      // Bischofschafts-Konto nicht, um alle übrigen Konten zu übernehmen oder
+      // auszusperren.
       allow update: if isAdmin();
+
+      // Die Bischofschaft – Bischof und Ratgeber – verwaltet daneben die
+      // Zugänge **ohne** Vollzugriff: Assistenz, AP-Kalender, «Nur Anti
+      // Doom» und wer noch wartet. Sie darf ein solches Konto freischalten,
+      // seine Rolle innerhalb dieser Zugänge wechseln, die Bereiche der
+      // Assistenz setzen und «Anti Doom» (samt Redaktion) zulassen.
+      //
+      // Alles, was Vollzugriff hat oder bekommen soll, bleibt dem
+      // Administrator: Vorher wie nachher muss die Rolle eine ohne
+      // Vollzugriff sein. Ein kompromittiertes Konto der Bischofschaft kann
+      // so niemandem den ganzen Bestand öffnen und kein Konto mit
+      // Vollzugriff aussperren. Aktivstatus, Name und alle übrigen Felder
+      // fasst sie nicht an, ebenso wenig das Administrator-Konto selbst.
+      allow update: if bishopric()
+        && limitedRole(resource.data.role)
+        && limitedRole(request.resource.data.role)
+        && resource.data.get('email', '').lower() != 'alain.sc2@gmail.com'
+        && request.resource.data.diff(resource.data).affectedKeys().hasOnly([
+             'role', 'assistantAreas', 'assistantWrite', 'impulse', 'impulseEditor',
+             'updatedAt'
+           ]);
 
       allow delete: if isAdmin();
     }

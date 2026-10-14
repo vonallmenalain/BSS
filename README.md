@@ -3268,9 +3268,20 @@ sie steuern die Freigabe neuer Konten.
 
 Daneben steht das **Administrator-Konto**. Es ist keine Rolle, sondern eine
 einzelne Anmelde-E-Mail (`ADMIN_EMAIL` in `src/lib/types.ts`, dieselbe
-Adresse in `firestore.rules`): Es schaltet als Einziges neue Konten frei und
-vergibt Rollen, lädt die [Sicherung](#sicherung) herunter und sieht die
-[Admin-Importe](#admin-importe).
+Adresse in `firestore.rules`): Es vergibt jeden Zugang – auch den
+Vollzugriff –, deaktiviert und entfernt Konten, lädt die
+[Sicherung](#sicherung) herunter und sieht die [Admin-Importe](#admin-importe).
+
+**Die Bischofschaft – Bischof, 1. und 2. Ratgeber – verwaltet die Zugänge
+ohne Vollzugriff.** Sie schaltet neue Registrierungen frei und ändert bei
+Konten ohne Vollzugriff die Rolle (Assistenz, AP-Kalender, Nur Anti Doom,
+Wartet auf Freigabe), die Bereiche der Assistenz und «Anti Doom» samt
+Redaktion. Den Vollzugriff sieht sie dabei ausgegraut: Alles, was ihn hat
+oder bekommen soll, bleibt dem Administrator-Konto, ebenso Deaktivieren und
+Entfernen. Die Sekretäre verwalten keine Konten. Auch das steht in
+`firestore.rules` (`bishopric`, `limitedRole`) und nicht bloss in der
+Oberfläche – ein kompromittiertes Konto der Bischofschaft kann so niemandem
+den ganzen Bestand öffnen.
 
 Durchgesetzt wird die Trennung in `firestore.rules` und nicht erst in der
 Oberfläche: Ein AP-Zugang erreicht genau zwei Sammlungen (`apActivities`,
@@ -3427,20 +3438,22 @@ die Wahl zwischen _Kein Zugriff_, _Nur lesen_ und _Bearbeiten_ (zu Beginn alle
 drei zum Bearbeiten). Ein Klick auf **Freischalten** wirkt sofort;
 **Ablehnen** entfernt das Profil wieder.
 
-Freischalten darf jedes Konto mit Vollzugriff, nicht nur der Bischof. Die
-Zugriffsstufe lässt sich später jederzeit in der Liste darunter ändern.
+Freischalten dürfen das Administrator-Konto und die Bischofschaft (Bischof,
+1. und 2. Ratgeber). Für die Bischofschaft ist «Vollzugriff» ausgegraut, und
+der Kasten beginnt ohne Vorauswahl – sie entscheidet bewusst. «Ablehnen»
+bleibt dem Administrator-Konto. Die Zugriffsstufe lässt sich später
+jederzeit in der Liste darunter ändern.
 
-Diese Liste steht **nach Rollen** und nicht nach Namen: zuoberst die
-Bischofschaft mit Vollzugriff – Bischof, 1. und 2. Ratgeber, Finanzsekretär,
-Sekretär –, darunter die Assistenz, dann die Konten, die den AP-Kalender
-bearbeiten dürfen, dann jene, die ihn nur ansehen, und zuunterst die Konten,
-die nur «Anti Doom» sehen. Bei einer Assistenz steht die Auswahl der drei
-Bereiche gleich neben der Rollenwahl, und
-unter dem Namen steht, was sie damit darf – «Musik (bearbeiten), Ansprachen
-(nur lesen)». Innerhalb derselben Rolle bleibt es
-alphabetisch. So steht beieinander, was dieselben Rechte hat, statt dass sich
-ein AP-Zugang zwischen die Bischofschaft schiebt, nur weil sein Name mit A
-beginnt.
+Diese Liste ist **nach Zugang gegliedert** – Vollzugriff, Assistenz, nur
+AP-Kalender, nur Anti Doom –, je mit Überschrift und Anzahl; innerhalb davon
+nach Rolle und dann alphabetisch. So steht beieinander, was dieselben Rechte
+hat. Jedes Konto zeigt Name und E-Mail ganz, darunter die beschrifteten
+Felder: **Zugang**, bei der Assistenz die **Bereiche**, **Anti Doom**
+(«Nein», «Mitmachen», «Mitmachen + Redaktion»; bei «Nur Anti Doom» gehört
+der Bereich zur Rolle, dort fehlt «Nein»), **Mitglied** und **Im AP-Plan
+als**. Am Telefon stehen die Felder untereinander, am Bildschirm
+nebeneinander. Wer ein Konto nicht ändern darf, liest dort in einer Zeile,
+was es sieht. Was die Zugänge bedeuten, steht aufgeklappt über der Liste.
 
 Jede und jeder kann die **eigene Rolle** anpassen, unter
 **Einstellungen → Mein Profil** oder in der Liste unter **Benutzer und

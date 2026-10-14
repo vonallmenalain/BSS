@@ -4,16 +4,22 @@ import { test } from 'node:test'
 
 import {
   accessOf,
+  canAssignRole,
+  canManageUser,
   impulseAssignable,
   impulseFieldsFor,
   impulseLevelOf,
   notificationAreas,
+  roleManagementOf,
 } from '../src/lib/access.ts'
 import {
   ADMIN_EMAIL,
   ASSISTANT_AREA_PATHS,
+  BISHOPRIC_ROLES,
+  FULL_ACCESS_ROLES,
   IMPULSE_ONLY_ROLE,
   IMPULSE_SWITCH_ROLES,
+  LIMITED_ROLES,
   ROLE_LABELS,
 } from '../src/lib/types.ts'
 import type { AppUser, Role } from '../src/lib/types.ts'
@@ -138,6 +144,70 @@ test('dieselben Rollen wie in den Zugriffsregeln (impulseAccess, impulseWrite)',
   }
   assert.deepEqual(rolesIn('impulseAccess'), [...IMPULSE_SWITCH_ROLES].sort())
   assert.deepEqual(rolesIn('impulseWrite'), [...IMPULSE_SWITCH_ROLES, IMPULSE_ONLY_ROLE].sort())
+})
+
+/* ------------------------------------------------------------------ */
+/* Benutzerverwaltung: Administrator und Bischofschaft                 */
+/* ------------------------------------------------------------------ */
+
+const managementOf = (role: Role, email: string | null = null, patch: Partial<AppUser> = {}) =>
+  roleManagementOf(accessOf(user(role, patch), email))
+
+test('Benutzer verwalten: alles das Administrator-Konto, die Bischofschaft ohne Vollzugriff', () => {
+  assert.equal(managementOf('secretary', ADMIN_EMAIL), 'all')
+  for (const role of ['bishop', 'counselor1', 'counselor2', 'counselor'] as const) {
+    assert.equal(managementOf(role), 'limited', role)
+  }
+  // Sekretäre haben Vollzugriff, verwalten aber niemanden.
+  assert.equal(managementOf('secretary'), 'none')
+  assert.equal(managementOf('executive_secretary'), 'none')
+  assert.equal(managementOf('ap_editor'), 'none')
+  // Ein deaktivierter Bischof verwaltet nichts mehr.
+  assert.equal(managementOf('bishop', null, { active: false }), 'none')
+})
+
+test('die Bischofschaft vergibt jede Rolle ohne Vollzugriff – und keine mit', () => {
+  for (const role of LIMITED_ROLES) assert.equal(canAssignRole('limited', role), true, role)
+  for (const role of FULL_ACCESS_ROLES) {
+    assert.equal(canAssignRole('limited', role), false, role)
+    assert.equal(canAssignRole('all', role), true, role)
+  }
+  assert.equal(canAssignRole('none', 'ap_viewer'), false)
+})
+
+test('die Bischofschaft ändert nur Konten ohne Vollzugriff – nie das Administrator-Konto', () => {
+  const account = (role: Role, email = 'jemand@example.ch') => ({ role, email })
+  assert.equal(canManageUser('limited', account('ap_viewer'), false), true)
+  assert.equal(canManageUser('limited', account('impulse_only'), false), true)
+  assert.equal(canManageUser('limited', account('assistant'), false), true)
+  assert.equal(canManageUser('limited', account('secretary'), false), false)
+  assert.equal(canManageUser('limited', account('counselor2'), false), false)
+  assert.equal(
+    canManageUser('limited', account('ap_viewer', ADMIN_EMAIL.toUpperCase()), false),
+    false,
+  )
+  assert.equal(canManageUser('none', account('ap_viewer'), false), false)
+  // Das Administrator-Konto darf alles, die eigene Zeile eingeschlossen.
+  assert.equal(canManageUser('all', account('secretary'), true), true)
+})
+
+test('dieselben Listen wie in den Zugriffsregeln (bishopric, limitedRole)', () => {
+  const rules = readFileSync(new URL('../firestore.rules', import.meta.url), 'utf8')
+  const listIn = (signature: string) => {
+    const start = rules.indexOf(`function ${signature}`)
+    assert.notEqual(start, -1, signature)
+    const body = rules.slice(start, rules.indexOf('\n    }', start))
+    const list = /role in \[([^\]]*)\]/.exec(body)
+    assert.ok(list, signature)
+    return [...list[1].matchAll(/'([a-z_0-9]+)'/g)].map((match) => match[1]).sort()
+  }
+  assert.deepEqual(listIn('bishopric()'), [...BISHOPRIC_ROLES].sort())
+  assert.deepEqual(listIn('limitedRole(role)'), [...LIMITED_ROLES].sort())
+  // Keine Rolle ist beides: Was die Bischofschaft vergibt, öffnet nie den ganzen Bestand.
+  assert.deepEqual(
+    LIMITED_ROLES.filter((role) => FULL_ACCESS_ROLES.includes(role)),
+    [],
+  )
 })
 
 test('Assistenz: zu Hause im ersten Bereich – ohne Bereich draussen', () => {

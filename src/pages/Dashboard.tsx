@@ -54,6 +54,7 @@ import {
   upcomingWeekdays,
 } from '@/lib/dates'
 import { isDutyItem } from '@/lib/monthlyDuties'
+import { roleManagementOf } from '@/lib/access'
 import { dayKey, standingWaits } from '@/lib/standing'
 import { cn } from '@/lib/utils'
 import { sortForMeeting, sortForPendenzen } from '@/services/agenda'
@@ -94,7 +95,8 @@ import {
  * schon da, bevor der erste Schnappschuss aus Firestore eintrifft.
  */
 export function Dashboard() {
-  const { profile, isAdmin } = useAuth()
+  const { profile, isAdmin, isApproved, role } = useAuth()
+  const management = roleManagementOf({ isAdmin, isApproved, role })
   const { settings, members, users } = useData()
   const navigate = useNavigate()
   const { data: meetings, loading: meetingsLoading } = useMeetings(20)
@@ -596,9 +598,10 @@ export function Dashboard() {
         }
       />
 
-      {/* Freischalten kann nur das Administrator-Konto – allen anderen
-          würde der Hinweis eine Tür zeigen, die für sie zu ist. */}
-      {isAdmin && pendingUsers.length > 0 && (
+      {/* Freischalten können das Administrator-Konto und die Bischofschaft
+          (diese ohne Vollzugriff) – allen anderen würde der Hinweis eine
+          Tür zeigen, die für sie zu ist. */}
+      {management !== 'none' && pendingUsers.length > 0 && (
         <Link
           to="/einstellungen#benutzer"
           className="card card-hover mb-4 flex items-center gap-3 border-amber-200 bg-amber-50/70 p-4 dark:border-amber-800 dark:bg-amber-950/40"

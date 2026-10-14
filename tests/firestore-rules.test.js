@@ -840,6 +840,85 @@ describe('Rollen und Rechteausweitung', () => {
     await assertFails(updateDoc(doc(asCounselor1(), 'users', BISHOP), { active: false }))
   })
 
+  /*
+   * Die Bischofschaft – Bischof und Ratgeber – verwaltet die Zugänge ohne
+   * Vollzugriff: freischalten, zwischen Assistenz, AP-Kalender und «Nur Anti
+   * Doom» wechseln, Bereiche und «Anti Doom» zulassen. Was Vollzugriff hat
+   * oder bekommen soll, bleibt dem Administrator-Konto.
+   */
+  it('lässt die Bischofschaft Zugänge ohne Vollzugriff vergeben und ändern', async () => {
+    await assertSucceeds(updateDoc(doc(asCounselor1(), 'users', PENDING), { role: 'ap_viewer' }))
+    await assertSucceeds(
+      updateDoc(doc(asCounselor2(), 'users', PENDING), {
+        role: 'ap_editor',
+        impulse: true,
+        impulseEditor: false,
+      }),
+    )
+    await assertSucceeds(
+      updateDoc(doc(asLegacyCounselor(), 'users', PENDING), {
+        role: 'assistant',
+        assistantAreas: ['music'],
+        assistantWrite: ['music'],
+      }),
+    )
+    await assertSucceeds(updateDoc(doc(asCounselor1(), 'users', AP_VIEWER), { role: 'ap_editor' }))
+    await assertSucceeds(updateDoc(doc(asCounselor1(), 'users', AP_VIEWER), { role: 'pending' }))
+
+    await testEnv.withSecurityRulesDisabled(async (context) => {
+      const db = context.firestore()
+      for (const [uid, role, displayName] of [
+        [PENDING, 'pending', 'Wartend'],
+        [AP_VIEWER, 'ap_viewer', 'Berater (lesend)'],
+      ]) {
+        await setDoc(doc(db, 'users', uid), {
+          email: `${uid}@example.ch`,
+          displayName,
+          role,
+          active: true,
+        })
+      }
+    })
+  })
+
+  it('lässt der Bischofschaft den Vollzugriff verschlossen', async () => {
+    // Niemand bekommt von ihr Vollzugriff …
+    await assertFails(updateDoc(doc(asCounselor1(), 'users', PENDING), { role: 'secretary' }))
+    await assertFails(updateDoc(doc(asCounselor2(), 'users', AP_VIEWER), { role: 'bishop' }))
+    // … und kein Konto mit Vollzugriff wird angefasst – weder die Rolle
+    // noch «Anti Doom», auch das eigene nicht.
+    await assertFails(updateDoc(doc(asCounselor1(), 'users', SECRETARY), { role: 'ap_viewer' }))
+    await assertFails(updateDoc(doc(asCounselor1(), 'users', SECRETARY), { impulse: true }))
+    await assertFails(updateDoc(doc(asCounselor1(), 'users', COUNSELOR1), { role: 'counselor2' }))
+    // Aktivstatus, Name und Löschen bleiben dem Administrator-Konto.
+    await assertFails(updateDoc(doc(asCounselor1(), 'users', AP_VIEWER), { active: false }))
+    await assertFails(
+      updateDoc(doc(asCounselor1(), 'users', AP_VIEWER), { displayName: 'Umbenannt' }),
+    )
+    await assertFails(deleteDoc(doc(asCounselor1(), 'users', AP_VIEWER)))
+    // Sekretäre und AP-Zugänge verwalten niemanden.
+    await assertFails(updateDoc(doc(asSecretary(), 'users', AP_VIEWER), { role: 'ap_editor' }))
+    await assertFails(updateDoc(doc(asSecretary(), 'users', PENDING), { role: 'ap_viewer' }))
+    await assertFails(updateDoc(doc(asApEditor(), 'users', AP_VIEWER), { role: 'ap_editor' }))
+
+    // Das Administrator-Konto bleibt unberührt – auch wenn es einmal eine
+    // Rolle ohne Vollzugriff trüge.
+    await testEnv.withSecurityRulesDisabled(async (context) => {
+      await setDoc(doc(context.firestore(), 'users', 'uid-admin-zweitkonto'), {
+        email: ADMIN_EMAIL.toUpperCase(),
+        displayName: 'Admin',
+        role: 'ap_viewer',
+        active: true,
+      })
+    })
+    await assertFails(
+      updateDoc(doc(asCounselor1(), 'users', 'uid-admin-zweitkonto'), { role: 'pending' }),
+    )
+    await testEnv.withSecurityRulesDisabled(async (context) => {
+      await deleteDoc(doc(context.firestore(), 'users', 'uid-admin-zweitkonto'))
+    })
+  })
+
   it('lässt den Administrator freischalten, Rollen ändern und deaktivieren', async () => {
     await assertSucceeds(updateDoc(doc(asBishop(), 'users', PENDING), { role: 'secretary' }))
     await assertSucceeds(updateDoc(doc(asBishop(), 'users', SECRETARY), { active: false }))

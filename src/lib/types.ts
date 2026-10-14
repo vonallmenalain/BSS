@@ -245,8 +245,30 @@ export const FULL_ACCESS_ROLES: Role[] = [
   'counselor',
 ]
 
-/** Rollen der Bischofschaft im engeren Sinn – leiten die Abendmahlsversammlung. */
+/**
+ * Rollen der Bischofschaft im engeren Sinn – leiten die Abendmahlsversammlung.
+ *
+ * Sie verwalten zudem die Zugänge ohne Vollzugriff (`LIMITED_ROLES`).
+ * Dieselbe Liste steht in `firestore.rules` (`bishopric`) – beide müssen
+ * zusammen geändert werden.
+ */
 export const BISHOPRIC_ROLES: Role[] = ['bishop', 'counselor1', 'counselor2', 'counselor']
+
+/**
+ * Die Rollen ohne Vollzugriff – Assistenz, AP-Kalender, «Nur Anti Doom» und
+ * wer noch wartet.
+ *
+ * Genau diese darf neben dem Administrator-Konto auch die Bischofschaft
+ * vergeben und ändern; alles mit Vollzugriff bleibt dem Administrator-Konto.
+ * Dieselbe Liste steht in `firestore.rules` (`limitedRole`).
+ */
+export const LIMITED_ROLES: Role[] = [
+  'assistant',
+  'ap_editor',
+  'ap_viewer',
+  'impulse_only',
+  'pending',
+]
 
 /** Rollen, die ausser dem AP-Kalender nichts sehen. */
 export const AP_ONLY_ROLES: Role[] = ['ap_editor', 'ap_viewer']
