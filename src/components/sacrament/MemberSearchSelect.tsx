@@ -2,6 +2,7 @@ import { useMemo, useState, type ReactNode } from 'react'
 import { Pencil, Search, UserPlus, X } from 'lucide-react'
 import { useData } from '@/contexts/DataContext'
 import { Avatar } from '@/components/ui/Avatar'
+import { isOnMission } from '@/lib/mission'
 import { matchesSearch } from '@/lib/utils'
 import type { Member } from '@/lib/types'
 
@@ -219,6 +220,14 @@ export function MemberSearchSelect({
                 <span className="min-w-0 flex-1 truncate text-sm">
                   {member.firstName} {member.lastName}
                 </span>
+                {/* Die Suche geht über die ganze Gemeinde – auch über die, die
+                    gerade nicht da sind. Wählbar bleiben sie: Wer gezielt
+                    sucht, weiss meist, was er tut. */}
+                {isOnMission(member) && (
+                  <span className="shrink-0 text-xs text-sky-700 dark:text-sky-400">
+                    auf Mission
+                  </span>
+                )}
                 {meta && <span className="shrink-0 text-xs text-slate-400">{meta(member)}</span>}
               </button>
             </li>

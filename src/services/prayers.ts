@@ -2,6 +2,7 @@ import { deleteDoc, doc, serverTimestamp, setDoc, Timestamp, updateDoc } from '@
 import { db, COLLECTIONS } from '@/lib/firebase'
 import { forgetDoc } from '@/lib/collectionStore'
 import { prayerAvailability } from '@/lib/availability'
+import { isOnMission } from '@/lib/mission'
 import { addDays, differenceInMonths, toDate, toDateInput } from '@/lib/dates'
 import { commit, type SaveOutcome } from '@/lib/sync'
 import type { Member, Prayer, PrayerSlot } from '@/lib/types'
@@ -162,6 +163,9 @@ export interface PrayerCandidate {
  * Gleiche Logik wie bei den Ansprachen: Zuoberst steht, wer noch nie gebetet
  * hat, danach der längste Abstand. Bereits eingeteilte Personen rutschen nach
  * hinten, bleiben aber sichtbar.
+ *
+ * Wer auf Mission ist, fehlt immer – auch mit `includeHeld`: Er ist nicht
+ * «übersprungen», sondern nicht da (siehe `lib/mission`).
  */
 export function rankPrayerCandidates(
   members: Member[],
@@ -179,6 +183,7 @@ export function rankPrayerCandidates(
       // «Heute nicht» nimmt jemanden für ein paar Wochen heraus. Mit
       // `includeHeld` lässt sich nachsehen, wen das gerade betrifft.
       .filter((member) => includeHeld || !isPrayerHeld(member, now))
+      .filter((member) => !isOnMission(member, now))
       .map((member) => {
         const lastDate = lastByMember.get(member.id) ?? null
         const monthsSince = lastDate ? differenceInMonths(now, lastDate) : null

@@ -268,6 +268,9 @@ export function Talks() {
         gapMonths: settings.talkGapMonths,
         onlyActive: false,
         minAge: 0,
+        // Wer auf Mission ist, steht nie in den Vorschlägen – gesucht werden
+        // soll er trotzdem können.
+        includeMission: true,
       }),
     [members, talks, settings.talkGapMonths],
   )
@@ -931,7 +934,7 @@ function CandidateList({
           items={otherHits}
           listKey={`${filter.search.trim()}|${JSON.stringify(filter)}`}
           pageSize={30}
-          hint="Diese Personen passen zur Suche, werden aber durch die Filter ausgeblendet – etwa weil sie nicht als aktiv geführt sind, unter dem Mindestalter liegen oder erst kürzlich gesprochen haben."
+          hint="Diese Personen passen zur Suche, werden aber durch die Filter ausgeblendet – etwa weil sie nicht als aktiv geführt sind, unter dem Mindestalter liegen, erst kürzlich gesprochen haben oder auf Mission sind."
         >
           {(page) => (
             <CandidateRows
@@ -967,89 +970,107 @@ function CandidateRows({
 }) {
   return (
     <ul className="card divide-list overflow-hidden">
-      {entries.map(({ member, age, monthsSince: months, alreadyPlanned, onHold, holdUntil }) => (
-        <li
-          key={member.id}
-          className={cn(
-            'flex items-center gap-3 px-4 py-3',
-            (alreadyPlanned || onHold) && 'opacity-50',
-          )}
-        >
-          <Avatar name={`${member.firstName} ${member.lastName}`} id={member.id} size="md" />
+      {entries.map(
+        ({
+          member,
+          age,
+          monthsSince: months,
+          alreadyPlanned,
+          onHold,
+          holdUntil,
+          onMission,
+          missionUntil,
+        }) => (
+          <li
+            key={member.id}
+            className={cn(
+              'flex items-center gap-3 px-4 py-3',
+              (alreadyPlanned || onHold || onMission) && 'opacity-50',
+            )}
+          >
+            <Avatar name={`${member.firstName} ${member.lastName}`} id={member.id} size="md" />
 
-          <div className="min-w-0 flex-1">
-            <MemberLink
-              memberId={member.id}
-              label="Ansprachen"
-              className="block truncate text-sm font-medium hover:underline"
-            >
-              {member.firstName} {member.lastName}
-            </MemberLink>
-            <p className="text-xs text-slate-500 dark:text-slate-400">
-              {months === null ? (
-                <span className="font-medium text-amber-600 dark:text-amber-400">
-                  Noch nie gesprochen
-                </span>
-              ) : (
-                <>
-                  Zuletzt vor {months} Monaten
-                  {member.lastTalkDate && ` (${formatDate(member.lastTalkDate)})`}
-                </>
-              )}
-              {age !== null && ` · ${age} Jahre`}
-              {member.status !== 'active' && ' · inaktiv'}
-              {alreadyPlanned && ' · bereits eingeplant'}
-              {onHold &&
-                (holdUntil
-                  ? ` · nicht anfragen bis ${formatDate(holdUntil)}`
-                  : ' · nicht anfragen')}
-            </p>
-          </div>
-
-          {!readOnly && (
-            <div className="flex shrink-0 items-center gap-1">
-              <button
-                type="button"
-                className="btn-secondary btn-sm"
-                onClick={() => onAssign(member)}
-                // Ausgenommen heisst «nicht anfragen»: Wer es trotzdem will,
-                // nimmt die Person nebenan wieder auf.
-                disabled={alreadyPlanned || onHold}
+            <div className="min-w-0 flex-1">
+              <MemberLink
+                memberId={member.id}
+                label="Ansprachen"
+                className="block truncate text-sm font-medium hover:underline"
               >
-                <Plus className="size-3.5" aria-hidden />
-                Anfragen
-              </button>
-
-              {/* Kein Löschen und kein Status: Wer im Moment nicht angefragt
-                werden soll, ist mit einem Griff wieder da. */}
-              <button
-                type="button"
-                className="btn-ghost btn-sm"
-                onClick={() => void onToggleHold(member, onHold)}
-                aria-label={
-                  onHold
-                    ? `${member.firstName} ${member.lastName} wieder anfragen`
-                    : `${member.firstName} ${member.lastName} nicht mehr anfragen`
-                }
-                title={
-                  onHold
-                    ? 'Wieder in die Vorschläge aufnehmen'
-                    : 'Nicht anfragen – blendet die Person aus den Vorschlägen aus'
-                }
-              >
-                {onHold ? (
-                  <RotateCcw className="size-3.5" aria-hidden />
+                {member.firstName} {member.lastName}
+              </MemberLink>
+              <p className="text-xs text-slate-500 dark:text-slate-400">
+                {months === null ? (
+                  <span className="font-medium text-amber-600 dark:text-amber-400">
+                    Noch nie gesprochen
+                  </span>
                 ) : (
-                  <UserMinus className="size-3.5" aria-hidden />
+                  <>
+                    Zuletzt vor {months} Monaten
+                    {member.lastTalkDate && ` (${formatDate(member.lastTalkDate)})`}
+                  </>
                 )}
-                <span className="hidden sm:inline">
-                  {onHold ? 'Wieder anfragen' : 'Nicht anfragen'}
-                </span>
-              </button>
+                {age !== null && ` · ${age} Jahre`}
+                {member.status !== 'active' && ' · inaktiv'}
+                {alreadyPlanned && ' · bereits eingeplant'}
+                {onHold &&
+                  (holdUntil
+                    ? ` · nicht anfragen bis ${formatDate(holdUntil)}`
+                    : ' · nicht anfragen')}
+                {onMission &&
+                  (missionUntil
+                    ? ` · auf Mission bis ${formatDate(missionUntil)}`
+                    : ' · auf Mission')}
+              </p>
             </div>
-          )}
-        </li>
-      ))}
+
+            {/* Auf Mission lässt sich weder anfragen noch ausnehmen: Das
+              regelt allein das Profil, und nach der Rückkehr steht die
+              Person von selbst wieder da. */}
+            {!readOnly && !onMission && (
+              <div className="flex shrink-0 items-center gap-1">
+                <button
+                  type="button"
+                  className="btn-secondary btn-sm"
+                  onClick={() => onAssign(member)}
+                  // Ausgenommen heisst «nicht anfragen»: Wer es trotzdem will,
+                  // nimmt die Person nebenan wieder auf.
+                  disabled={alreadyPlanned || onHold}
+                >
+                  <Plus className="size-3.5" aria-hidden />
+                  Anfragen
+                </button>
+
+                {/* Kein Löschen und kein Status: Wer im Moment nicht angefragt
+                werden soll, ist mit einem Griff wieder da. */}
+                <button
+                  type="button"
+                  className="btn-ghost btn-sm"
+                  onClick={() => void onToggleHold(member, onHold)}
+                  aria-label={
+                    onHold
+                      ? `${member.firstName} ${member.lastName} wieder anfragen`
+                      : `${member.firstName} ${member.lastName} nicht mehr anfragen`
+                  }
+                  title={
+                    onHold
+                      ? 'Wieder in die Vorschläge aufnehmen'
+                      : 'Nicht anfragen – blendet die Person aus den Vorschlägen aus'
+                  }
+                >
+                  {onHold ? (
+                    <RotateCcw className="size-3.5" aria-hidden />
+                  ) : (
+                    <UserMinus className="size-3.5" aria-hidden />
+                  )}
+                  <span className="hidden sm:inline">
+                    {onHold ? 'Wieder anfragen' : 'Nicht anfragen'}
+                  </span>
+                </button>
+              </div>
+            )}
+          </li>
+        ),
+      )}
     </ul>
   )
 }

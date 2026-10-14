@@ -342,7 +342,11 @@ test('wer noch in keiner Gruppe steht – Erwachsene, auf Wunsch auch Kinder', (
   const child = member('Kind', 'Muster', {
     birthDate: { toDate: () => new Date(2015, 5, 1) } as never,
   })
-  const all = [...MEMBERS, child]
+  const missionar = member('Elder', 'Muster', {
+    missionFrom: new Date(2026, 0, 15) as never,
+    missionUntil: new Date(2028, 0, 14, 23, 59, 59) as never,
+  })
+  const all = [...MEMBERS, child, missionar]
   assert.equal(assignedMemberIds(GROUPS).size, 5)
 
   const open = unassignedMembers(all, GROUPS, today).map(
@@ -352,6 +356,7 @@ test('wer noch in keiner Gruppe steht – Erwachsene, auf Wunsch auch Kinder', (
   assert.ok(!open.includes('Anna Muster'), 'eingeteilt')
   assert.ok(!open.includes('Alt Muster'), 'inaktiv')
   assert.ok(!open.includes('Kind Muster'), 'minderjährig')
+  assert.ok(!open.includes('Elder Muster'), 'auf Mission')
   assert.ok(unassignedMembers(all, GROUPS, today, true).some((entry) => entry.id === child.id))
   // Nach Nachname sortiert.
   assert.equal(open[0], 'Lea Beispiel')

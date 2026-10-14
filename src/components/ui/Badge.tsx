@@ -2,6 +2,8 @@ import type { ReactNode } from 'react'
 import { Repeat } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { formatDayKey, standingTitle } from '@/lib/standing'
+import { formatDate } from '@/lib/dates'
+import type { Mission } from '@/lib/mission'
 import {
   ITEM_KIND_LABELS,
   ITEM_STATUS_LABELS,
@@ -170,4 +172,36 @@ const CALLING_STATUS_STYLES: Record<CallingStatus, string> = {
 
 export function CallingStatusBadge({ status }: { status: CallingStatus }) {
   return <Badge className={CALLING_STATUS_STYLES[status]}>{CALLING_STATUS_LABELS[status]}</Badge>
+}
+
+/* ------------------------------------------------------------------ */
+/* Vollzeitmission                                                     */
+/* ------------------------------------------------------------------ */
+
+/**
+ * Die Mission als Etikett neben dem Namen – im Profil und in der
+ * Mitgliederliste (siehe `lib/mission`).
+ *
+ * Während der Mission und davor: Eine bevorstehende Mission erklärt, warum
+ * die Person unter den Berufungen noch fehlt und in den Vorschlägen noch
+ * steht. Nach der Rückkehr steht nichts mehr da – dann steht die Mission
+ * im Profil unter den früheren Berufungen.
+ */
+export function MissionBadge({ mission }: { mission: Mission | null }) {
+  if (!mission || mission.phase === 'returned') return null
+  const away = mission.phase === 'away'
+  return (
+    <Badge
+      className="bg-sky-100 text-sky-800 dark:bg-sky-950 dark:text-sky-200"
+      title={
+        away
+          ? 'Erscheint während der Mission in keiner Vorschlagsliste und nicht unter «Ohne Berufung»'
+          : 'Bis zum Beginn der Mission steht die Person noch in den Vorschlägen'
+      }
+    >
+      {away
+        ? `Auf Mission${mission.until ? ` bis ${formatDate(mission.until)}` : ''}`
+        : `Mission ab ${formatDate(mission.from)}`}
+    </Badge>
+  )
 }

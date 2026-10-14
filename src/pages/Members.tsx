@@ -4,7 +4,7 @@ import { useData } from '@/contexts/DataContext'
 import { EmptyState, SkeletonList } from '@/components/ui/Feedback'
 import { OtherResults } from '@/components/ui/OtherResults'
 import { PageHeader } from '@/components/ui/Pickers'
-import { MemberStatusBadge } from '@/components/ui/Badge'
+import { MemberStatusBadge, MissionBadge } from '@/components/ui/Badge'
 import { Avatar } from '@/components/ui/Avatar'
 import {
   MenuAction,
@@ -20,6 +20,7 @@ import { usePrayers } from '@/hooks/useFirestore'
 import { useUrlState } from '@/hooks/useUrlState'
 import { MemberLink } from '@/components/ui/MemberLink'
 import { formatDate, getAge, monthsSince, toDate } from '@/lib/dates'
+import { missionOf } from '@/lib/mission'
 import { formatPhone, telHref } from '@/lib/utils'
 import { lastPrayerByMember } from '@/services/prayers'
 import { filterMembers, sortMembers, type MemberFilter } from '@/services/members'
@@ -242,6 +243,7 @@ function MemberRow({ member, lastPrayer }: { member: Member; lastPrayer?: Map<st
               {member.lastName}, {member.firstName}
             </span>
             {member.status !== 'active' && <MemberStatusBadge status={member.status} />}
+            <MissionBadge mission={missionOf(member)} />
           </div>
           <p className="mt-0.5 flex flex-wrap items-center gap-x-3 text-xs text-slate-500 dark:text-slate-400">
             {age !== null && <span>{age} Jahre</span>}

@@ -1656,6 +1656,17 @@ export interface Member extends WithId {
   /** Wann diese Entscheidung zuletzt getroffen wurde */
   prayerAvailabilityChangedAt?: TS | null
 
+  /**
+   * Vollzeitmission – erster Tag.
+   *
+   * Steht hier ein Datum, ist der Haken «Auf Mission» gesetzt. Solange die
+   * Mission läuft, fehlt die Person in jeder Vorschlagsliste und unter
+   * «Ohne Berufung»; ausgewertet wird das in `lib/mission`.
+   */
+  missionFrom?: TS | null
+  /** Voraussichtliche Rückkehr – der letzte Tag der Mission */
+  missionUntil?: TS | null
+
   /** Freie Notiz, z. B. Kontaktperson, Besonderheiten, Betreuungshinweise */
   notes?: string
   /**
@@ -2032,6 +2043,14 @@ export interface Calling extends WithId {
   sustainedDate: TS | null
   setApartDate: TS | null
   releasedDate: TS | null
+  /**
+   * Voraussichtliches Ende einer laufenden Aufgabe.
+   *
+   * Allein bei der Vollzeitmission gesetzt, die nicht aus dem LCR kommt,
+   * sondern aus dem Haken «Auf Mission» am Mitglied (siehe `lib/mission`):
+   * Bei ihr ist die Rückkehr das, was man wissen will.
+   */
+  plannedEndDate?: TS | null
 
   /** Wer spricht die Berufung aus / setzt ein? */
   responsibleId?: string | null

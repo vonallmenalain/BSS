@@ -1,5 +1,6 @@
 import { talkAvailability } from './availability.ts'
 import { getAge, monthsSince, startOfDay, toDate } from './dates.ts'
+import { missionOf } from './mission.ts'
 import { matchesSearch } from './utils.ts'
 import { ACTIVE_TALK_STATUSES, type Member, type Talk } from './types.ts'
 
@@ -26,6 +27,10 @@ export interface TalkCandidate {
   onHold: boolean
   /** Bis wann der Vermerk gilt; `null` heisst «auf Weiteres» */
   holdUntil: Date | null
+  /** Gerade auf Mission – anfragen lässt sich niemand, der nicht da ist (siehe `lib/mission`). */
+  onMission: boolean
+  /** Voraussichtliche Rückkehr; `null`, wenn offen oder nicht auf Mission */
+  missionUntil: Date | null
   /** Je höher, desto dringender ist eine Anfrage */
   score: number
 }
@@ -75,27 +80,46 @@ export function plannedTalkMemberIds(talks: Talk[], from: Date = new Date()): Se
  * `minAge` hält die Kinder heraus. Ohne diese Grenze stünden sie zuoberst,
  * denn sie haben noch nie gesprochen. Wer kein Geburtsdatum hat, bleibt in
  * der Liste: Ein fehlendes Datum ist kein Grund, jemanden zu übergehen.
+ *
+ * **Wer auf Mission ist, fällt dagegen ganz heraus** – er ist nicht da, und
+ * kein Filter macht ihn anfragbar. Nur die Suche neben den Filtern holt ihn
+ * mit `includeMission` zurück, damit «wann hat sie zuletzt gesprochen?» auch
+ * für sie eine Antwort hat.
  */
 export function rankTalkCandidates(
   members: Member[],
   plannedTalks: Talk[],
-  options: { gapMonths?: number; onlyActive?: boolean; minAge?: number; now?: Date } = {},
+  options: {
+    gapMonths?: number
+    onlyActive?: boolean
+    minAge?: number
+    includeMission?: boolean
+    now?: Date
+  } = {},
 ): TalkCandidate[] {
-  const { gapMonths = 18, onlyActive = true, minAge = 0, now = new Date() } = options
+  const {
+    gapMonths = 18,
+    onlyActive = true,
+    minAge = 0,
+    includeMission = false,
+    now = new Date(),
+  } = options
   const plannedMemberIds = plannedTalkMemberIds(plannedTalks, now)
 
   return members
-    .map((member) => ({ member, age: getAge(member.birthDate) }))
-    .filter(({ member, age }) => {
+    .map((member) => ({ member, age: getAge(member.birthDate), mission: missionOf(member, now) }))
+    .filter(({ member, age, mission }) => {
       if (onlyActive && member.status !== 'active') return false
       if (minAge > 0 && age !== null && age < minAge) return false
+      if (!includeMission && mission?.phase === 'away') return false
       return true
     })
-    .map(({ member, age }) => {
+    .map(({ member, age, mission }) => {
       const months = monthsSince(member.lastTalkDate)
       const alreadyPlanned = plannedMemberIds.has(member.id)
       const availability = talkAvailability(member, now)
       const onHold = !availability.available
+      const onMission = mission?.phase === 'away'
 
       // Noch nie gesprochen erhält bewusst mehr Gewicht als der reine Zeitabstand.
       let score = months === null ? gapMonths * 2 + 24 : months
@@ -103,6 +127,7 @@ export function rankTalkCandidates(
       // Ausgenommene stehen auch dann zuunterst, wenn sie eingeblendet
       // werden – sie sind die Antwort auf «wer kommt sonst noch in Frage?».
       if (onHold) score -= 2000
+      if (onMission) score -= 4000
 
       return {
         member,
@@ -112,6 +137,8 @@ export function rankTalkCandidates(
         alreadyPlanned,
         onHold,
         holdUntil: onHold ? availability.until : null,
+        onMission,
+        missionUntil: onMission ? (mission?.until ?? null) : null,
         score,
       }
     })
@@ -200,6 +227,8 @@ export function filterTalkCandidates(
 ): TalkCandidate[] {
   const byYear = filter.years.length > 0
   return candidates.filter((candidate) => {
+    // Auch «Ausgenommene zeigen» holt niemanden von der Mission zurück.
+    if (candidate.onMission) return false
     if (candidate.onHold && !filter.showOnHold) return false
 
     if (byYear) {

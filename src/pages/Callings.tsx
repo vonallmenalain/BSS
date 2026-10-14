@@ -21,6 +21,7 @@ import {
   ViewMenu,
 } from '@/components/ui/ViewMenu'
 import { getAge, toDate } from '@/lib/dates'
+import { missionCallings } from '@/lib/mission'
 import { cn, compareNames, groupBy, matchesSearch } from '@/lib/utils'
 import {
   activeCallings,
@@ -92,8 +93,22 @@ export function Callings() {
    * gerade gilt, steht damit zuvorderst; abgeschnitten wird höchstens
    * Vergangenheit.
    */
-  const { data: callings, loading: callingsLoading } = useCallings(2000)
+  const { data: lcrCallings, loading: callingsLoading } = useCallings(2000)
   const { members, membersById, loading: membersLoading } = useData()
+
+  /*
+   * Dazu die Vollzeitmissionen – aus dem Haken «Auf Mission» am Mitglied.
+   *
+   * Im LCR sind sie keine Berufung der Gemeinde, für die Frage dieser Seite
+   * aber eine Aufgabe wie jede andere: Wer auf Mission ist, gehört nicht
+   * unter «Ohne Berufung». Als Eintrag in derselben Liste zählt die Mission
+   * überall dort mit, wo nach einer laufenden Berufung gefragt wird, und
+   * steht unter «Ausserhalb der Einheit» (siehe `lib/mission`).
+   */
+  const callings = useMemo(
+    () => [...lcrCallings, ...missionCallings(members)],
+    [lcrCallings, members],
+  )
   /* Die Suche steht in der Adresse – damit «Zurück» aus einem Profil
      dieselbe Liste wiederfindet (siehe `hooks/useUrlState`). Alles Übrige
      steht hinter «Ansicht» und bleibt am Gerät. */
@@ -171,7 +186,8 @@ export function Callings() {
    * Gezählt wird gegen den **ganzen** Bestand und nicht gegen die gewählte
    * Gruppe: Wer eine Berufung hat, hat sie auch dann, wenn seine Berufung
    * gerade ausgeblendet ist. Berufungen ausserhalb der Einheit – Pfahl,
-   * Seminar, Institut – zählen mit; auch sie sind eine Aufgabe.
+   * Seminar, Institut – zählen mit; auch sie sind eine Aufgabe. Ebenso die
+   * Vollzeitmission: Wer auf Mission ist, steht hier nicht.
    *
    * Die Wahl einer Sparte wirkt hier deshalb nicht: «Ohne Berufung und nur
    * die PV» hat keine Antwort – wer keine Berufung hat, steht in keiner
@@ -650,7 +666,7 @@ function WithoutCallingSection({
       </h2>
       <p className="hint mb-2">
         Mitglieder, zu denen keine laufende Berufung erfasst ist. Berufungen ausserhalb der Einheit
-        – Pfahl, Seminar, Institut – zählen mit.
+        – Pfahl, Seminar, Institut – zählen mit, ebenso eine laufende Vollzeitmission.
       </p>
       <MemberRows entries={entries} callings={callings} />
     </section>

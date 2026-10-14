@@ -21,7 +21,7 @@ import { useCallingRounds, useMemberCallings, usePrayers, useTalks } from '@/hoo
 import { Modal } from '@/components/ui/Modal'
 import { EmptyState } from '@/components/ui/Feedback'
 import { Avatar } from '@/components/ui/Avatar'
-import { CallingStatusBadge, StatusBadge } from '@/components/ui/Badge'
+import { CallingStatusBadge, MissionBadge, StatusBadge } from '@/components/ui/Badge'
 import { CallingRowSummary } from '@/components/agenda/CallingChanges'
 import { FOCUS_PARAM } from '@/components/agenda/MeetingFocus'
 import {
@@ -30,6 +30,7 @@ import {
   type CallingRowMatch,
 } from '@/lib/callingChanges'
 import { prayerAvailability, talkAvailability, type Availability } from '@/lib/availability'
+import { defaultMissionUntil, missionCalling, missionOf, type Mission } from '@/lib/mission'
 import { isOrganizationTag, organizationsOf } from '@/lib/organizations'
 import { formatDate, getAge, monthsSince, toDate, toDateInput } from '@/lib/dates'
 import { cn, formatPhone, telHref } from '@/lib/utils'
@@ -48,6 +49,7 @@ import {
   TALK_KIND_LABELS,
   type AgendaItem,
   type Calling,
+  type Gender,
   type Member,
   type MemberStatus,
   type Prayer,
@@ -98,10 +100,13 @@ export function MemberDetail() {
     [prayers, memberId],
   )
 
-  const memberCallings = useMemo(
-    () => (memberId ? callingsForMember(callings, memberId) : []),
-    [callings, memberId],
-  )
+  /* Die Vollzeitmission steht mit darunter – sie kommt nicht aus dem LCR,
+     sondern aus dem Haken «Auf Mission» (siehe `lib/mission`). */
+  const memberCallings = useMemo(() => {
+    if (!memberId) return []
+    const mission = member ? missionCalling(member) : null
+    return callingsForMember(mission ? [...callings, mission] : callings, memberId)
+  }, [callings, memberId, member])
 
   /*
    * Wohin diese Person gehört – PV, JD/AP, JAE, AE.
@@ -178,6 +183,7 @@ export function MemberDetail() {
 
   const talkStatus = talkAvailability(member)
   const prayerStatus = prayerAvailability(member)
+  const mission = missionOf(member)
 
   return (
     <>
@@ -212,6 +218,7 @@ export function MemberDetail() {
                 {member.firstName} {member.lastName}
               </h1>
               <StatusToggle member={member} />
+              <MissionBadge mission={mission} />
               {/* Der Vermerk «nicht anfragen» – hier sichtbar, damit er nicht
                   in den Listen verschwindet, die er selbst ausblendet. */}
               <HoldBadge status={talkStatus} topic="Ansprachen" />
@@ -327,9 +334,9 @@ export function MemberDetail() {
               beide werden gleich beantwortet – zuletzt dran, und ob eine
               Anfrage im Moment überhaupt in Frage kommt. */}
           <div className="space-y-4">
-            <TalkPanel talks={memberTalks} member={member} status={talkStatus} />
+            <TalkPanel talks={memberTalks} member={member} status={talkStatus} mission={mission} />
             <div className="border-t border-slate-200 pt-4 dark:border-slate-800">
-              <PrayerPanel prayers={memberPrayers} status={prayerStatus} />
+              <PrayerPanel prayers={memberPrayers} status={prayerStatus} mission={mission} />
             </div>
           </div>
         </section>
@@ -485,7 +492,26 @@ function HoldBadge({ status, topic }: { status: Availability; topic: string }) {
  * steht dabei – ein «nicht anfragen» ohne Zeitpunkt lässt offen, ob es von
  * letzter Woche stammt oder von vor drei Jahren.
  */
-function AvailabilityNote({ status, topic }: { status: Availability; topic: string }) {
+function AvailabilityNote({
+  status,
+  topic,
+  mission,
+}: {
+  status: Availability
+  topic: string
+  mission: Mission | null
+}) {
+  // Die Mission geht jedem Vermerk vor: Wer nicht da ist, wird nicht
+  // angefragt – ganz gleich, was am Haken steht.
+  if (mission?.phase === 'away') {
+    return (
+      <p className="mt-1 text-xs text-sky-700 dark:text-sky-400">
+        Auf Mission{mission.until && ` bis ${formatDate(mission.until)}`} – nicht für {topic}{' '}
+        anfragen
+      </p>
+    )
+  }
+
   if (!status.available) {
     return (
       <p className="mt-1 text-xs text-amber-700 dark:text-amber-400">
@@ -517,10 +543,12 @@ function TalkPanel({
   talks,
   member,
   status,
+  mission,
 }: {
   talks: Talk[]
   member: Member
   status: Availability
+  mission: Mission | null
 }) {
   const now = new Date()
   const months = monthsSince(member.lastTalkDate)
@@ -545,7 +573,7 @@ function TalkPanel({
         )}
       </p>
 
-      <AvailabilityNote status={status} topic="Ansprachen" />
+      <AvailabilityNote status={status} topic="Ansprachen" mission={mission} />
 
       {talks.length > 0 && (
         <ul className="divide-list -mx-1 mt-2 text-sm">
@@ -586,7 +614,15 @@ function TalkPanel({
  * Vergangenheit. Was noch bevorsteht, steht in der Liste darunter und ist
  * dort als kommend angeschrieben.
  */
-function PrayerPanel({ prayers, status }: { prayers: Prayer[]; status: Availability }) {
+function PrayerPanel({
+  prayers,
+  status,
+  mission,
+}: {
+  prayers: Prayer[]
+  status: Availability
+  mission: Mission | null
+}) {
   const now = new Date()
   const last = prayers.map((prayer) => toDate(prayer.date)).find((date) => date && date <= now)
   const months = monthsSince(last)
@@ -611,7 +647,7 @@ function PrayerPanel({ prayers, status }: { prayers: Prayer[]; status: Availabil
         )}
       </p>
 
-      <AvailabilityNote status={status} topic="Gebete" />
+      <AvailabilityNote status={status} topic="Gebete" mission={mission} />
 
       {prayers.length > 0 && (
         <ul className="divide-list -mx-1 mt-2 text-sm">
@@ -686,6 +722,10 @@ interface FormState {
   talkHoldUntil: string
   availableForPrayers: boolean
   prayerHoldUntil: string
+  /** Der Haken «Auf Mission» – mit erstem und letztem Tag */
+  onMission: boolean
+  missionFrom: string
+  missionUntil: string
   notes: string
   tags: string
 }
@@ -697,6 +737,9 @@ const EMPTY: FormState = {
   talkHoldUntil: '',
   availableForPrayers: true,
   prayerHoldUntil: '',
+  onMission: false,
+  missionFrom: '',
+  missionUntil: '',
   notes: '',
   tags: '',
 }
@@ -731,8 +774,8 @@ function holdChanged(before: Availability, available: boolean, until: Date | nul
  *
  * Bearbeiten lässt sich, was allein diese App führt – der Status, wann jemand
  * zuletzt gesprochen hat, ob er für Ansprachen und Gebete angefragt werden
- * kann, dazu Notiz und Schlagworte. Anlegen lässt sich hier niemand; auch das
- * geschieht beim Import.
+ * kann und ob er auf Mission ist, dazu Notiz und Schlagworte. Anlegen lässt
+ * sich hier niemand; auch das geschieht beim Import.
  */
 export function MemberForm({
   open,
@@ -762,6 +805,12 @@ export function MemberForm({
       talkHoldUntil: talk.available ? '' : toDateInput(talk.until),
       availableForPrayers: prayer.available,
       prayerHoldUntil: prayer.available ? '' : toDateInput(prayer.until),
+      // Anders als die Vermerke bleibt eine abgeschlossene Mission angehakt:
+      // Sie ist dann ein Stück Lebenslauf und steht unter den früheren
+      // Berufungen. Wer sie loswerden will, nimmt den Haken weg.
+      onMission: member.missionFrom != null,
+      missionFrom: toDateInput(member.missionFrom),
+      missionUntil: toDateInput(member.missionUntil),
       notes: member.notes ?? '',
       // Ohne JAE und AE: Die kommen aus den Listen des LCR und stehen im
       // Profil als eigene Etiketten. Hier stünden sie als Text zum Ändern da,
@@ -804,6 +853,12 @@ export function MemberForm({
 
         availableForPrayers: form.availableForPrayers,
         prayerHoldUntil: prayerUntil,
+
+        // Der erste Tag ab Tagesbeginn, der letzte bis zu seinem Ende – wie
+        // beim «bis wann» der Vermerke (siehe `holdDate`).
+        missionFrom:
+          form.onMission && form.missionFrom ? new Date(`${form.missionFrom}T00:00:00`) : null,
+        missionUntil: form.onMission ? holdDate(form.missionUntil) : null,
 
         notes: form.notes.trim(),
         // Die Schlagworte der Organisationen bleiben, wie sie sind – sie
@@ -911,6 +966,14 @@ export function MemberForm({
           onChange={(next) => setForm((current) => ({ ...current, ...next }))}
           availableKey="availableForPrayers"
           untilKey="prayerHoldUntil"
+        />
+
+        <MissionField
+          gender={member.gender}
+          active={form.onMission}
+          from={form.missionFrom}
+          until={form.missionUntil}
+          onChange={(next) => setForm((current) => ({ ...current, ...next }))}
         />
 
         <div>
@@ -1095,6 +1158,130 @@ function AvailabilityField<A extends string, U extends string>({
       )}
 
       {changedAt && <p className="hint">Zuletzt geändert am {formatDate(changedAt)}.</p>}
+    </div>
+  )
+}
+
+/**
+ * Der Haken «Auf Mission» – mit «Von» und «Bis».
+ *
+ * Wer den Haken setzt, findet beide Daten schon ausgefüllt: das «Von» auf
+ * heute, das «Bis» nach der üblichen Dauer – zwei Jahre für Männer,
+ * anderthalb für Frauen (siehe `lib/mission`). Wird das «Von» verschoben,
+ * wandert das «Bis» mit, solange es die Vorgabe ist; von Hand gesetzt bleibt
+ * es stehen.
+ *
+ * Darunter steht, was der Zeitraum gerade bewirkt. Eine Mission, die erst
+ * kommt oder schon vorbei ist, hält niemanden aus den Listen – das soll
+ * niemanden überraschen, der den Haken gesetzt sieht.
+ */
+function MissionField({
+  gender,
+  active,
+  from,
+  until,
+  onChange,
+}: {
+  gender: Gender
+  active: boolean
+  from: string
+  until: string
+  onChange: (patch: Partial<Pick<FormState, 'onMission' | 'missionFrom' | 'missionUntil'>>) => void
+}) {
+  const today = toDateInput(new Date())
+  // «yyyy-MM-dd» lässt sich als Text vergleichen.
+  const phase = !from
+    ? null
+    : from > today
+      ? 'planned'
+      : until && until < today
+        ? 'returned'
+        : 'away'
+
+  return (
+    <div className="rounded-lg border border-slate-200 p-3 dark:border-slate-700">
+      <label className="flex cursor-pointer items-start gap-3">
+        <input
+          type="checkbox"
+          className="checkbox mt-0.5"
+          checked={active}
+          onChange={(event) => {
+            if (!event.target.checked) {
+              onChange({ onMission: false, missionFrom: '', missionUntil: '' })
+              return
+            }
+            const start = from || today
+            onChange({
+              onMission: true,
+              missionFrom: start,
+              missionUntil: until || defaultMissionUntil(start, gender),
+            })
+          }}
+        />
+        <span className="text-sm">
+          Auf Mission
+          <span className="hint mt-0.5 block">
+            Während der Mission steht die Person in keiner Vorschlagsliste – weder für Ansprachen
+            noch für Gebete – und nicht unter «Ohne Berufung». Unter den Berufungen steht sie als
+            «Vollzeitmission».
+          </span>
+        </span>
+      </label>
+
+      {active && (
+        <div className="mt-3 border-t border-slate-200 pt-3 dark:border-slate-700">
+          <div className="grid gap-4 sm:grid-cols-2">
+            <div>
+              <label className="label" htmlFor="m-mission-from">
+                Von
+              </label>
+              <input
+                id="m-mission-from"
+                type="date"
+                className="input"
+                required
+                value={from}
+                onChange={(event) => {
+                  const next = event.target.value
+                  const follows = !until || until === defaultMissionUntil(from, gender)
+                  onChange({
+                    missionFrom: next,
+                    missionUntil: follows ? defaultMissionUntil(next, gender) : until,
+                  })
+                }}
+              />
+            </div>
+            <div>
+              <label className="label" htmlFor="m-mission-until">
+                Bis
+              </label>
+              <input
+                id="m-mission-until"
+                type="date"
+                className="input"
+                min={from || undefined}
+                value={until}
+                onChange={(event) => onChange({ missionUntil: event.target.value })}
+              />
+            </div>
+          </div>
+          <p className="hint">
+            Vorgabe: 2 Jahre für Männer, 1½ Jahre für Frauen. Nach dem «Bis» steht die Person von
+            selbst wieder in den Vorschlägen; leer heisst «offen».
+          </p>
+          {phase === 'planned' && (
+            <p className="hint text-sky-700 dark:text-sky-400">
+              Die Mission beginnt erst – bis dahin steht die Person noch in den Listen.
+            </p>
+          )}
+          {phase === 'returned' && (
+            <p className="hint text-sky-700 dark:text-sky-400">
+              Die Mission ist abgeschlossen: Die Person steht wieder in allen Listen, die Mission
+              unter den früheren Berufungen.
+            </p>
+          )}
+        </div>
+      )}
     </div>
   )
 }
