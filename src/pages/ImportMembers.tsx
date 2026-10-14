@@ -5,8 +5,6 @@ import {
   ArrowLeft,
   ArrowRight,
   CheckCircle2,
-  ChevronLeft,
-  ChevronRight,
   ClipboardList,
   FileSpreadsheet,
   Loader2,
@@ -15,6 +13,7 @@ import {
 import { useData } from '@/contexts/DataContext'
 import { useToast } from '@/contexts/ToastContext'
 import { ImportNav } from '@/components/ImportNav'
+import { PreviewTable } from '@/components/ImportShell'
 import { PageHeader } from '@/components/ui/Pickers'
 import { SummaryTile } from '@/components/ui/Feedback'
 import { cn } from '@/lib/utils'
@@ -527,7 +526,7 @@ export function ImportMembers() {
 
           <MissingMembers missing={preview.removals} kept={kept} onChange={setKept} />
 
-          <PreviewTable rows={preview.rows} />
+          <MemberPreviewTable rows={preview.rows} />
 
           {progress && (
             <div className="mt-4">
@@ -771,22 +770,15 @@ const ROW_FILTER_LABELS: Record<RowFilter, string> = {
   warnings: 'Mit Hinweis',
 }
 
-/** Wie viele Zeilen je Seite – «0» heisst alle. */
-const PAGE_SIZES = [25, 50, 100, 250, 0]
-
 /**
  * Die Vorschau Zeile für Zeile – ganz, nicht nur die ersten hundert.
  *
- * Ein Verzeichnis hat leicht über zweihundert Personen, und gerade die
- * Zeilen weiter unten wollen geprüft sein. Deshalb lässt sich blättern und
- * die Seitengrösse wählen («Alle» zeigt alles auf einmal), und der Filter
- * holt heraus, was einen zweiten Blick verdient: was neu angelegt wird
- * und wo ein Hinweis steht.
+ * Blättern und Seitengrösse bringt die gemeinsame `PreviewTable` mit; hier
+ * kommt der Filter dazu. Er holt heraus, was einen zweiten Blick verdient:
+ * was neu angelegt wird und wo ein Hinweis steht.
  */
-function PreviewTable({ rows }: { rows: ImportPreview['rows'] }) {
+function MemberPreviewTable({ rows }: { rows: ImportPreview['rows'] }) {
   const [filter, setFilter] = useState<RowFilter>('all')
-  const [pageSize, setPageSize] = useState(100)
-  const [page, setPage] = useState(0)
 
   const counts: Record<RowFilter, number> = {
     all: rows.length,
@@ -802,15 +794,15 @@ function PreviewTable({ rows }: { rows: ImportPreview['rows'] }) {
         ? rows.filter((row) => row.warnings.length > 0)
         : rows.filter((row) => row.action === filter)
 
-  const size = pageSize === 0 ? Math.max(filtered.length, 1) : pageSize
-  const pages = Math.max(1, Math.ceil(filtered.length / size))
-  const current = Math.min(page, pages - 1)
-  const from = current * size
-  const shown = filtered.slice(from, from + size)
-
   return (
-    <div className="card overflow-hidden">
-      <div className="flex flex-wrap items-center gap-2 border-b border-slate-200 px-3 py-2 dark:border-slate-700">
+    <PreviewTable
+      columns={['Aktion', 'Name', 'Geburtsdatum', 'Kontakt', 'Hinweise']}
+      rows={filtered}
+      resetKey={filter}
+      footnote={
+        <>{filter !== 'all' && ` · gefiltert aus ${rows.length}`} – importiert werden immer alle.</>
+      }
+      toolbar={
         <div className="flex flex-wrap gap-1" role="group" aria-label="Zeilen filtern">
           {(Object.keys(ROW_FILTER_LABELS) as RowFilter[])
             .filter((key) => key === 'all' || counts[key] > 0)
@@ -819,10 +811,7 @@ function PreviewTable({ rows }: { rows: ImportPreview['rows'] }) {
                 key={key}
                 type="button"
                 aria-pressed={filter === key}
-                onClick={() => {
-                  setFilter(key)
-                  setPage(0)
-                }}
+                onClick={() => setFilter(key)}
                 className={cn(
                   'rounded-full px-2.5 py-1 text-xs font-medium transition',
                   filter === key
@@ -834,105 +823,38 @@ function PreviewTable({ rows }: { rows: ImportPreview['rows'] }) {
               </button>
             ))}
         </div>
-        <label className="ms-auto flex items-center gap-1.5 text-xs text-slate-500 dark:text-slate-400">
-          Zeilen je Seite
-          <select
-            className="input w-auto py-1 text-xs"
-            value={pageSize}
-            onChange={(event) => {
-              setPageSize(Number(event.target.value))
-              setPage(0)
-            }}
-          >
-            {PAGE_SIZES.map((value) => (
-              <option key={value} value={value}>
-                {value === 0 ? 'Alle' : value}
-              </option>
-            ))}
-          </select>
-        </label>
-      </div>
-
-      <div className="overflow-x-auto">
-        <table className="w-full text-sm">
-          <thead className="border-b border-slate-200 bg-slate-50 text-left dark:border-slate-700 dark:bg-slate-800/60">
-            <tr>
-              <th className="px-3 py-2 font-medium">Aktion</th>
-              <th className="px-3 py-2 font-medium">Name</th>
-              <th className="px-3 py-2 font-medium">Geburtsdatum</th>
-              <th className="px-3 py-2 font-medium">Kontakt</th>
-              <th className="px-3 py-2 font-medium">Hinweise</th>
-            </tr>
-          </thead>
-          <tbody className="divide-y divide-slate-100 dark:divide-slate-800">
-            {shown.map((row) => (
-              <tr key={row.rowIndex} className={row.action === 'skip' ? 'opacity-50' : ''}>
-                <td className="px-3 py-2">
-                  <span
-                    className={cn(
-                      'badge',
-                      row.action === 'create'
-                        ? 'bg-emerald-100 text-emerald-800 dark:bg-emerald-950 dark:text-emerald-200'
-                        : row.action === 'update'
-                          ? 'bg-sky-100 text-sky-800 dark:bg-sky-950 dark:text-sky-200'
-                          : 'bg-slate-100 text-slate-500 dark:bg-slate-800',
-                    )}
-                  >
-                    {row.action === 'create' ? 'Neu' : row.action === 'update' ? 'Update' : 'Skip'}
-                  </span>
-                </td>
-                <td className="px-3 py-2 font-medium">
-                  {row.data.lastName}
-                  {row.data.firstName && `, ${row.data.firstName}`}
-                </td>
-                <td className="tabular px-3 py-2 text-slate-500 dark:text-slate-400">
-                  {row.birthDate?.toLocaleDateString('de-CH') ?? '—'}
-                </td>
-                <td className="max-w-48 truncate px-3 py-2 text-slate-500 dark:text-slate-400">
-                  {row.data.email || row.data.mobile || row.data.phone || '—'}
-                </td>
-                <td className="px-3 py-2 text-xs text-amber-700 dark:text-amber-400">
-                  {row.warnings.join(' · ')}
-                </td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
-      </div>
-
-      <div className="flex flex-wrap items-center justify-between gap-2 border-t border-slate-200 px-3 py-2 dark:border-slate-700">
-        <p className="tabular text-xs text-slate-500 dark:text-slate-400">
-          {filtered.length === 0
-            ? 'Keine Zeilen'
-            : `Zeilen ${from + 1}–${from + shown.length} von ${filtered.length}`}
-          {filter !== 'all' && ` · gefiltert aus ${rows.length}`} – importiert werden immer alle.
-        </p>
-        {pages > 1 && (
-          <div className="flex items-center gap-1">
-            <button
-              type="button"
-              className="btn-ghost btn-sm"
-              onClick={() => setPage(current - 1)}
-              disabled={current === 0}
-              aria-label="Vorherige Seite"
+      }
+      renderRow={(row) => (
+        <tr key={row.rowIndex} className={row.action === 'skip' ? 'opacity-50' : ''}>
+          <td className="px-3 py-2">
+            <span
+              className={cn(
+                'badge',
+                row.action === 'create'
+                  ? 'bg-emerald-100 text-emerald-800 dark:bg-emerald-950 dark:text-emerald-200'
+                  : row.action === 'update'
+                    ? 'bg-sky-100 text-sky-800 dark:bg-sky-950 dark:text-sky-200'
+                    : 'bg-slate-100 text-slate-500 dark:bg-slate-800',
+              )}
             >
-              <ChevronLeft className="size-4" aria-hidden />
-            </button>
-            <span className="tabular text-xs text-slate-500 dark:text-slate-400">
-              Seite {current + 1} von {pages}
+              {row.action === 'create' ? 'Neu' : row.action === 'update' ? 'Update' : 'Skip'}
             </span>
-            <button
-              type="button"
-              className="btn-ghost btn-sm"
-              onClick={() => setPage(current + 1)}
-              disabled={current >= pages - 1}
-              aria-label="Nächste Seite"
-            >
-              <ChevronRight className="size-4" aria-hidden />
-            </button>
-          </div>
-        )}
-      </div>
-    </div>
+          </td>
+          <td className="px-3 py-2 font-medium">
+            {row.data.lastName}
+            {row.data.firstName && `, ${row.data.firstName}`}
+          </td>
+          <td className="tabular px-3 py-2 text-slate-500 dark:text-slate-400">
+            {row.birthDate?.toLocaleDateString('de-CH') ?? '—'}
+          </td>
+          <td className="max-w-48 truncate px-3 py-2 text-slate-500 dark:text-slate-400">
+            {row.data.email || row.data.mobile || row.data.phone || '—'}
+          </td>
+          <td className="px-3 py-2 text-xs text-amber-700 dark:text-amber-400">
+            {row.warnings.join(' · ')}
+          </td>
+        </tr>
+      )}
+    />
   )
 }

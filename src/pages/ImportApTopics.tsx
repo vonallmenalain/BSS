@@ -364,8 +364,10 @@ export function ImportApTopics() {
             </div>
           )}
 
-          <PreviewTable columns={['Sonntag', 'Lektion', 'Thema', '']} total={rows.length}>
-            {rows.map((row) => {
+          <PreviewTable
+            columns={['Sonntag', 'Lektion', 'Thema', '']}
+            rows={rows}
+            renderRow={(row) => {
               const overwrite = row.action === 'replace' && !kept.has(row.date)
               return (
                 <tr key={row.date}>
@@ -387,8 +389,8 @@ export function ImportApTopics() {
                   </td>
                 </tr>
               )
-            })}
-          </PreviewTable>
+            }}
+          />
 
           <StepButtons
             onBack={() => setStep('source')}

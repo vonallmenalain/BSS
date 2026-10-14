@@ -380,9 +380,8 @@ function PastedCallings({ source, picker }: { source: CallingSource; picker: Rea
 
           <PreviewTable
             columns={['Aktion', 'Name', 'Berufung', 'Organisation', 'Bestätigt', 'Hinweise']}
-            total={preview.rows.length}
-          >
-            {preview.rows.slice(0, 100).map((row, index) => (
+            rows={preview.rows}
+            renderRow={(row, index) => (
               <tr
                 key={`${row.memberName}-${row.parsed.position}-${index}`}
                 className={row.action === 'skip' ? 'opacity-50' : ''}
@@ -405,8 +404,8 @@ function PastedCallings({ source, picker }: { source: CallingSource; picker: Rea
                   {row.warnings.join(' · ')}
                 </td>
               </tr>
-            ))}
-          </PreviewTable>
+            )}
+          />
 
           {changes.length > 0 && (
             <ChangeList
@@ -697,9 +696,8 @@ export function ImportMinistering() {
 
           <PreviewTable
             columns={['Person', 'Betreuungspartner', 'Betreuungsauftrag', 'Hinweise']}
-            total={preview.rows.length}
-          >
-            {preview.rows.slice(0, 100).map((row, index) => (
+            rows={preview.rows}
+            renderRow={(row, index) => (
               <tr
                 key={`${row.entry.fullName}-${index}`}
                 className={row.action === 'skip' ? 'opacity-50' : ''}
@@ -715,8 +713,8 @@ export function ImportMinistering() {
                   {row.warnings.join(' · ')}
                 </td>
               </tr>
-            ))}
-          </PreviewTable>
+            )}
+          />
 
           <ProgressBar progress={progress} />
 

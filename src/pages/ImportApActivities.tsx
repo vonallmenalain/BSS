@@ -279,9 +279,8 @@ export function ImportApActivities() {
               'BSS',
               'Berater',
             ]}
-            total={plan.activities.length}
-          >
-            {plan.activities.slice(0, 100).map((entry) => (
+            rows={plan.activities}
+            renderRow={(entry) => (
               <tr key={`${entry.row}-${entry.date}`}>
                 <td className="tabular w-14 px-3 py-2 text-slate-400">{entry.row}</td>
                 <td className="tabular px-3 py-2 whitespace-nowrap text-slate-500 dark:text-slate-400">
@@ -305,8 +304,8 @@ export function ImportApActivities() {
                   {entry.advisor || ''}
                 </td>
               </tr>
-            ))}
-          </PreviewTable>
+            )}
+          />
 
           <ProgressBar progress={progress} />
 

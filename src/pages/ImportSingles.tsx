@@ -228,9 +228,8 @@ export function ImportSingles() {
 
           <PreviewTable
             columns={['Aus der Liste', 'Geburtsdatum', 'Zugeordnet', 'Hinweise']}
-            total={preview.rows.length}
-          >
-            {preview.rows.slice(0, 100).map((row, index) => (
+            rows={preview.rows}
+            renderRow={(row, index) => (
               <tr
                 key={`${row.person.fullName}-${index}`}
                 className={row.action === 'skip' ? 'opacity-50' : ''}
@@ -253,8 +252,8 @@ export function ImportSingles() {
                   </span>
                 </td>
               </tr>
-            ))}
-          </PreviewTable>
+            )}
+          />
 
           <ProgressBar progress={progress} />
 

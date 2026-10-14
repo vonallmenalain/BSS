@@ -373,16 +373,18 @@ export function ImportHymns() {
             </Warning>
           )}
 
-          <PreviewTable columns={['Nr.', 'Titel']} total={rows.length}>
-            {rows.slice(0, 100).map((row) => (
+          <PreviewTable
+            columns={['Nr.', 'Titel']}
+            rows={rows}
+            renderRow={(row) => (
               <tr key={`${row.number}${row.suffix}`}>
                 <td className="tabular w-20 px-3 py-2 text-slate-500 dark:text-slate-400">
                   {hymnCode(book, row.number, row.suffix)}
                 </td>
                 <td className="px-3 py-2">{row.title}</td>
               </tr>
-            ))}
-          </PreviewTable>
+            )}
+          />
 
           <ProgressBar progress={progress} />
 

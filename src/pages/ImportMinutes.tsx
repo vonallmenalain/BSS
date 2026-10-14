@@ -276,9 +276,8 @@ export function ImportMinutes() {
 
           <PreviewTable
             columns={['Datum', 'Traktanden', 'Erstes Traktandum']}
-            total={parsed.meetings.length}
-          >
-            {parsed.meetings.slice(0, 100).map((meeting) => (
+            rows={parsed.meetings}
+            renderRow={(meeting) => (
               <tr key={meeting.date}>
                 <td className="tabular px-3 py-2 whitespace-nowrap text-slate-500 dark:text-slate-400">
                   {formatDate(minutesDate(meeting.date, settings.meetingTime))}
@@ -286,8 +285,8 @@ export function ImportMinutes() {
                 <td className="tabular w-24 px-3 py-2 text-slate-400">{meeting.items.length}</td>
                 <td className="px-3 py-2">{meeting.items[0]?.title ?? '—'}</td>
               </tr>
-            ))}
-          </PreviewTable>
+            )}
+          />
 
           {parsed.pending.length > 0 && (
             <div className="card mt-4 p-4">
