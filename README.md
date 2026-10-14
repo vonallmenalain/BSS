@@ -2640,7 +2640,13 @@ Drag-and-drop. Die erste Zeile mit Inhalt gilt als Spaltenüberschrift.
 
 Beim wiederholten Import erkennt die App bestehende Personen – zuerst über die
 Mitglieds-Nummer, sonst über Name und Geburtsdatum, notfalls über den Namen
-allein (dann mit Warnung). Drei Schalter schützen gepflegte Daten:
+allein (dann mit Warnung). **Umlaute zählen in beiden Schreibweisen:** «Römer»
+ist «Roemer», «Bürge» ist «Buerge» (`lib/memberMatch`, geprüft in
+`tests/member-match.test.ts`). Das LCR wechselt die Schreibweise gelegentlich;
+ohne diese Regel legte der Import die Person neu an und entfernte die
+bisherige samt ihrem Verlauf. Ändert sich die Schreibweise, übernimmt der
+Import die neue und sagt es in der Vorschau («Bisher ‹Roemer, Aaron Erich› –
+Schreibweise wird übernommen»). Drei Schalter schützen gepflegte Daten:
 
 - **Leere Zellen ignorieren** – ein leeres Feld löscht nichts Bestehendes
 - **Notizen behalten** – in der App erfasste Notizen bleiben unangetastet
@@ -2658,8 +2664,16 @@ dem der Wegzug nachvollzogen wird.
 
 Die Vorschau nennt die Betroffenen deshalb **namentlich** und nicht bloss als
 Zahl – ein versehentlich nur halb kopiertes Verzeichnis fällt an den Namen
-sofort auf, an einer Zahl erst hinterher. Wer bewusst nur einen Ausschnitt
-einliest, schaltet das Entfernen im selben Kasten ab.
+sofort auf, an einer Zahl erst hinterher. Bei jeder Person stehen Alter, Ort,
+Status und letzte Ansprache, und **jede lässt sich einzeln abwählen**: Wer
+vorerst bleiben soll, bleibt, die übrigen werden entfernt. Der Haken oben
+wählt alle oder keine – wer bewusst nur einen Ausschnitt einliest, nimmt
+dort alle weg.
+
+**Die Vorschau zeigt alle Zeilen**, nicht nur die ersten hundert: Sie lässt
+sich blättern, die Zeilenzahl je Seite ist wählbar (25 bis «Alle»), und ein
+Filter holt heraus, was einen zweiten Blick verdient – «Neu», «Aktualisieren»,
+«Übersprungen», «Mit Hinweis».
 
 Gelöscht wird erst, wenn alles Übrige geschrieben ist: Bricht der Import in
 der Mitte ab, ist zu wenig geschrieben – aber nichts zu viel entfernt.

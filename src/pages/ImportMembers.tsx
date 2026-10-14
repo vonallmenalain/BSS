@@ -5,6 +5,8 @@ import {
   ArrowLeft,
   ArrowRight,
   CheckCircle2,
+  ChevronLeft,
+  ChevronRight,
   ClipboardList,
   FileSpreadsheet,
   Loader2,
@@ -16,6 +18,7 @@ import { ImportNav } from '@/components/ImportNav'
 import { PageHeader } from '@/components/ui/Pickers'
 import { SummaryTile } from '@/components/ui/Feedback'
 import { cn } from '@/lib/utils'
+import { formatDate, getAge } from '@/lib/dates'
 import {
   buildPreview,
   DEFAULT_IMPORT_OPTIONS,
@@ -30,7 +33,7 @@ import {
   type ParsedSheet,
 } from '@/services/import'
 import { parsePastedDirectory, type PastedPerson } from '@/services/importPaste'
-import type { Member } from '@/lib/types'
+import { MEMBER_STATUS_LABELS, type Member } from '@/lib/types'
 
 type Step = 'upload' | 'mapping' | 'preview' | 'done'
 type Source = 'text' | 'file'
@@ -71,6 +74,13 @@ export function ImportMembers() {
   const [progress, setProgress] = useState<{ done: number; total: number } | null>(null)
   const [result, setResult] = useState<ImportResult | null>(null)
   const [dragging, setDragging] = useState(false)
+  /*
+   * Wer trotz fehlender Zeile in der Quelle bleiben soll – einzeln
+   * abgewählt. Gemerkt wird, wer **bleibt**, nicht wer geht: So ist jede
+   * Person, die neu in die Liste «fehlt in der Quelle» rückt, zunächst zum
+   * Entfernen vorgesehen, wie es der Normalfall will.
+   */
+  const [kept, setKept] = useState<Set<string>>(() => new Set())
 
   const handleFile = useCallback(
     async (file: File) => {
@@ -117,13 +127,21 @@ export function ImportMembers() {
 
   const hasName = mapping.some((field) => ['lastName', 'firstName', 'fullName'].includes(field))
 
+  /** Wer tatsächlich entfernt wird – alle Fehlenden ausser den abgewählten. */
+  const removals = useMemo(
+    () => (preview ? preview.removals.filter((member) => !kept.has(member.id)) : []),
+    [preview, kept],
+  )
+
   const start = async () => {
     if (!preview) return
     setBusy(true)
     setProgress({ done: 0, total: preview.createCount + preview.updateCount })
     try {
-      const outcome = await runImport(preview, options, (done, total) =>
-        setProgress({ done, total }),
+      const outcome = await runImport(
+        { ...preview, removals },
+        { ...options, removeMissing: removals.length > 0 },
+        (done, total) => setProgress({ done, total }),
       )
       setResult(outcome)
       setStep('done')
@@ -150,6 +168,7 @@ export function ImportMembers() {
     setMapping([])
     setResult(null)
     setSourceLabel('')
+    setKept(new Set())
   }
 
   return (
@@ -457,7 +476,7 @@ export function ImportMembers() {
               className="text-sky-600 dark:text-sky-400"
             />
             <SummaryTile
-              value={options.removeMissing ? preview.removals.length : 0}
+              value={removals.length}
               label="Entfernen"
               className="text-rose-600 dark:text-rose-400"
             />
@@ -506,68 +525,9 @@ export function ImportMembers() {
             ))}
           </div>
 
-          <MissingMembers
-            removals={preview.removals}
-            enabled={options.removeMissing}
-            onToggle={(next) => setOptions((current) => ({ ...current, removeMissing: next }))}
-          />
+          <MissingMembers missing={preview.removals} kept={kept} onChange={setKept} />
 
-          <div className="card overflow-x-auto">
-            <table className="w-full text-sm">
-              <thead className="border-b border-slate-200 bg-slate-50 text-left dark:border-slate-700 dark:bg-slate-800/60">
-                <tr>
-                  <th className="px-3 py-2 font-medium">Aktion</th>
-                  <th className="px-3 py-2 font-medium">Name</th>
-                  <th className="px-3 py-2 font-medium">Geburtsdatum</th>
-                  <th className="px-3 py-2 font-medium">Kontakt</th>
-                  <th className="px-3 py-2 font-medium">Hinweise</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-slate-100 dark:divide-slate-800">
-                {preview.rows.slice(0, 100).map((row) => (
-                  <tr key={row.rowIndex} className={row.action === 'skip' ? 'opacity-50' : ''}>
-                    <td className="px-3 py-2">
-                      <span
-                        className={cn(
-                          'badge',
-                          row.action === 'create'
-                            ? 'bg-emerald-100 text-emerald-800 dark:bg-emerald-950 dark:text-emerald-200'
-                            : row.action === 'update'
-                              ? 'bg-sky-100 text-sky-800 dark:bg-sky-950 dark:text-sky-200'
-                              : 'bg-slate-100 text-slate-500 dark:bg-slate-800',
-                        )}
-                      >
-                        {row.action === 'create'
-                          ? 'Neu'
-                          : row.action === 'update'
-                            ? 'Update'
-                            : 'Skip'}
-                      </span>
-                    </td>
-                    <td className="px-3 py-2 font-medium">
-                      {row.data.lastName}
-                      {row.data.firstName && `, ${row.data.firstName}`}
-                    </td>
-                    <td className="tabular px-3 py-2 text-slate-500 dark:text-slate-400">
-                      {row.birthDate?.toLocaleDateString('de-CH') ?? '—'}
-                    </td>
-                    <td className="max-w-48 truncate px-3 py-2 text-slate-500 dark:text-slate-400">
-                      {row.data.email || row.data.mobile || row.data.phone || '—'}
-                    </td>
-                    <td className="px-3 py-2 text-xs text-amber-700 dark:text-amber-400">
-                      {row.warnings.join(' · ')}
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-            {preview.rows.length > 100 && (
-              <p className="border-t border-slate-200 px-3 py-2 text-center text-xs text-slate-400 dark:border-slate-700">
-                Vorschau auf 100 Zeilen begrenzt – importiert werden alle {preview.rows.length}{' '}
-                Zeilen.
-              </p>
-            )}
-          </div>
+          <PreviewTable rows={preview.rows} />
 
           {progress && (
             <div className="mt-4">
@@ -596,19 +556,11 @@ export function ImportMembers() {
               type="button"
               className="btn-primary"
               onClick={() => void start()}
-              disabled={
-                busy ||
-                preview.createCount +
-                  preview.updateCount +
-                  (options.removeMissing ? preview.removals.length : 0) ===
-                  0
-              }
+              disabled={busy || preview.createCount + preview.updateCount + removals.length === 0}
             >
               {busy && <Loader2 className="size-4 animate-spin" aria-hidden />}
               {preview.createCount + preview.updateCount} Datensätze importieren
-              {options.removeMissing &&
-                preview.removals.length > 0 &&
-                `, ${preview.removals.length} entfernen`}
+              {removals.length > 0 && `, ${removals.length} entfernen`}
             </button>
           </div>
         </>
@@ -689,56 +641,298 @@ function PasteStatus({ people, hasText }: { people: PastedPerson[]; hasText: boo
  *
  * Genau deshalb steht hier eine Namensliste und keine blosse Zahl: Ein
  * versehentlich nur halb kopiertes Verzeichnis fällt an den Namen sofort
- * auf, an einer Zahl erst hinterher. Wer bewusst einen Ausschnitt einliest,
- * schaltet das Entfernen hier ab.
+ * auf, an einer Zahl erst hinterher. **Jede Person lässt sich einzeln
+ * abwählen** – wer etwa erst nach einem Gespräch wegfallen soll, bleibt
+ * vorerst, während die übrigen gehen. Der Haken oben wählt alle oder keine.
+ * Damit man nicht im Blindflug entscheidet, steht bei jeder Person, was
+ * die App über sie weiss: Alter, Ort, Status, letzte Ansprache.
  */
 function MissingMembers({
-  removals,
-  enabled,
-  onToggle,
+  missing,
+  kept,
+  onChange,
 }: {
-  removals: Member[]
-  enabled: boolean
-  onToggle: (next: boolean) => void
+  missing: Member[]
+  /** Wer bleibt – abgewählt. */
+  kept: Set<string>
+  onChange: (next: Set<string>) => void
 }) {
-  if (removals.length === 0) return null
+  if (missing.length === 0) return null
 
-  const names = removals
-    .map((member) => `${member.lastName}, ${member.firstName}`)
-    .sort((a, b) => a.localeCompare(b, 'de-CH'))
+  const sorted = [...missing].sort((a, b) =>
+    `${a.lastName}, ${a.firstName}`.localeCompare(`${b.lastName}, ${b.firstName}`, 'de-CH'),
+  )
+  const selected = sorted.filter((member) => !kept.has(member.id)).length
+  const all = selected === sorted.length
+  const none = selected === 0
+
+  const toggle = (id: string) => {
+    const next = new Set(kept)
+    if (next.has(id)) next.delete(id)
+    else next.add(id)
+    onChange(next)
+  }
 
   return (
-    <div
-      className={cn('card mb-4 space-y-3 p-4', enabled && 'border-rose-300 dark:border-rose-900')}
-    >
+    <div className={cn('card mb-4 space-y-3 p-4', !none && 'border-rose-300 dark:border-rose-900')}>
       <label className="flex cursor-pointer items-start gap-3">
         <input
           type="checkbox"
           className="mt-0.5 size-4 rounded"
-          checked={enabled}
-          onChange={(event) => onToggle(event.target.checked)}
+          checked={all}
+          ref={(element) => {
+            if (element) element.indeterminate = !all && !none
+          }}
+          onChange={() => onChange(all ? new Set(sorted.map((member) => member.id)) : new Set())}
+          aria-label="Alle Fehlenden entfernen"
         />
         <span>
-          <span className="flex items-center gap-2 text-sm font-medium">
+          <span className="flex flex-wrap items-center gap-x-2 text-sm font-medium">
             <AlertTriangle className="size-4 text-rose-500" aria-hidden />
-            {removals.length} erfasste {removals.length === 1 ? 'Person' : 'Personen'} fehlen in der
-            Quelle – entfernen
+            {missing.length} erfasste {missing.length === 1 ? 'Person fehlt' : 'Personen fehlen'} in
+            der Quelle
+            <span className="font-normal text-slate-500 dark:text-slate-400">
+              · {selected} {selected === 1 ? 'wird' : 'werden'} entfernt
+            </span>
           </span>
           <span className="hint mt-0.5 block">
-            Die eingefügte Seite gilt als der ganze Bestand. Wer bewusst nur einen Ausschnitt
-            einliest, schaltet das hier ab. Erfasste Ansprachen und Berufungen bleiben bestehen,
-            verlieren aber ihren Bezug.
+            Die eingefügte Seite gilt als der ganze Bestand. Wähle ab, wer vorerst bleiben soll –
+            wer bewusst nur einen Ausschnitt einliest, nimmt oben alle weg. Erfasste Ansprachen und
+            Berufungen bleiben bestehen, verlieren aber ihren Bezug.
           </span>
         </span>
       </label>
 
-      <ul className="max-h-40 overflow-y-auto text-sm text-slate-600 dark:text-slate-300">
-        {names.map((name) => (
-          <li key={name} className={cn('py-0.5', enabled && 'line-through')}>
-            {name}
-          </li>
-        ))}
+      <ul className="max-h-80 divide-y divide-slate-100 overflow-y-auto rounded-lg border border-slate-200 dark:divide-slate-800 dark:border-slate-700">
+        {sorted.map((member) => {
+          const remove = !kept.has(member.id)
+          const age = getAge(member.birthDate)
+          const facts = [
+            age !== null ? `${age} Jahre` : null,
+            member.city || null,
+            member.status !== 'active' ? MEMBER_STATUS_LABELS[member.status] : null,
+            member.lastTalkDate
+              ? `Ansprache ${formatDate(member.lastTalkDate)}`
+              : 'noch keine Ansprache',
+          ].filter(Boolean)
+          return (
+            <li key={member.id}>
+              <label className="flex cursor-pointer items-start gap-3 px-3 py-2 hover:bg-slate-50 dark:hover:bg-slate-800/60">
+                <input
+                  type="checkbox"
+                  className="mt-0.5 size-4 rounded"
+                  checked={remove}
+                  onChange={() => toggle(member.id)}
+                  aria-label={`${member.lastName}, ${member.firstName} entfernen`}
+                />
+                <span className="min-w-0 flex-1">
+                  <span
+                    className={cn(
+                      'block text-sm',
+                      remove
+                        ? 'text-slate-500 line-through dark:text-slate-400'
+                        : 'font-medium text-slate-800 dark:text-slate-100',
+                    )}
+                  >
+                    {member.lastName}, {member.firstName}
+                  </span>
+                  <span className="block text-xs text-slate-500 dark:text-slate-400">
+                    {facts.join(' · ')}
+                  </span>
+                </span>
+                <span
+                  className={cn(
+                    'badge shrink-0',
+                    remove
+                      ? 'bg-rose-100 text-rose-800 dark:bg-rose-950 dark:text-rose-200'
+                      : 'bg-slate-100 text-slate-600 dark:bg-slate-800 dark:text-slate-300',
+                  )}
+                >
+                  {remove ? 'Entfernen' : 'Bleibt'}
+                </span>
+              </label>
+            </li>
+          )
+        })}
       </ul>
+    </div>
+  )
+}
+
+/* ------------------------------------------------------------------ */
+
+type RowFilter = 'all' | 'create' | 'update' | 'skip' | 'warnings'
+
+const ROW_FILTER_LABELS: Record<RowFilter, string> = {
+  all: 'Alle',
+  create: 'Neu',
+  update: 'Aktualisieren',
+  skip: 'Übersprungen',
+  warnings: 'Mit Hinweis',
+}
+
+/** Wie viele Zeilen je Seite – «0» heisst alle. */
+const PAGE_SIZES = [25, 50, 100, 250, 0]
+
+/**
+ * Die Vorschau Zeile für Zeile – ganz, nicht nur die ersten hundert.
+ *
+ * Ein Verzeichnis hat leicht über zweihundert Personen, und gerade die
+ * Zeilen weiter unten wollen geprüft sein. Deshalb lässt sich blättern und
+ * die Seitengrösse wählen («Alle» zeigt alles auf einmal), und der Filter
+ * holt heraus, was einen zweiten Blick verdient: was neu angelegt wird
+ * und wo ein Hinweis steht.
+ */
+function PreviewTable({ rows }: { rows: ImportPreview['rows'] }) {
+  const [filter, setFilter] = useState<RowFilter>('all')
+  const [pageSize, setPageSize] = useState(100)
+  const [page, setPage] = useState(0)
+
+  const counts: Record<RowFilter, number> = {
+    all: rows.length,
+    create: rows.filter((row) => row.action === 'create').length,
+    update: rows.filter((row) => row.action === 'update').length,
+    skip: rows.filter((row) => row.action === 'skip').length,
+    warnings: rows.filter((row) => row.warnings.length > 0).length,
+  }
+  const filtered =
+    filter === 'all'
+      ? rows
+      : filter === 'warnings'
+        ? rows.filter((row) => row.warnings.length > 0)
+        : rows.filter((row) => row.action === filter)
+
+  const size = pageSize === 0 ? Math.max(filtered.length, 1) : pageSize
+  const pages = Math.max(1, Math.ceil(filtered.length / size))
+  const current = Math.min(page, pages - 1)
+  const from = current * size
+  const shown = filtered.slice(from, from + size)
+
+  return (
+    <div className="card overflow-hidden">
+      <div className="flex flex-wrap items-center gap-2 border-b border-slate-200 px-3 py-2 dark:border-slate-700">
+        <div className="flex flex-wrap gap-1" role="group" aria-label="Zeilen filtern">
+          {(Object.keys(ROW_FILTER_LABELS) as RowFilter[])
+            .filter((key) => key === 'all' || counts[key] > 0)
+            .map((key) => (
+              <button
+                key={key}
+                type="button"
+                aria-pressed={filter === key}
+                onClick={() => {
+                  setFilter(key)
+                  setPage(0)
+                }}
+                className={cn(
+                  'rounded-full px-2.5 py-1 text-xs font-medium transition',
+                  filter === key
+                    ? 'bg-brand-600 text-white'
+                    : 'bg-slate-100 text-slate-600 hover:bg-slate-200 dark:bg-slate-800 dark:text-slate-300 dark:hover:bg-slate-700',
+                )}
+              >
+                {ROW_FILTER_LABELS[key]} <span className="tabular opacity-75">{counts[key]}</span>
+              </button>
+            ))}
+        </div>
+        <label className="ms-auto flex items-center gap-1.5 text-xs text-slate-500 dark:text-slate-400">
+          Zeilen je Seite
+          <select
+            className="input w-auto py-1 text-xs"
+            value={pageSize}
+            onChange={(event) => {
+              setPageSize(Number(event.target.value))
+              setPage(0)
+            }}
+          >
+            {PAGE_SIZES.map((value) => (
+              <option key={value} value={value}>
+                {value === 0 ? 'Alle' : value}
+              </option>
+            ))}
+          </select>
+        </label>
+      </div>
+
+      <div className="overflow-x-auto">
+        <table className="w-full text-sm">
+          <thead className="border-b border-slate-200 bg-slate-50 text-left dark:border-slate-700 dark:bg-slate-800/60">
+            <tr>
+              <th className="px-3 py-2 font-medium">Aktion</th>
+              <th className="px-3 py-2 font-medium">Name</th>
+              <th className="px-3 py-2 font-medium">Geburtsdatum</th>
+              <th className="px-3 py-2 font-medium">Kontakt</th>
+              <th className="px-3 py-2 font-medium">Hinweise</th>
+            </tr>
+          </thead>
+          <tbody className="divide-y divide-slate-100 dark:divide-slate-800">
+            {shown.map((row) => (
+              <tr key={row.rowIndex} className={row.action === 'skip' ? 'opacity-50' : ''}>
+                <td className="px-3 py-2">
+                  <span
+                    className={cn(
+                      'badge',
+                      row.action === 'create'
+                        ? 'bg-emerald-100 text-emerald-800 dark:bg-emerald-950 dark:text-emerald-200'
+                        : row.action === 'update'
+                          ? 'bg-sky-100 text-sky-800 dark:bg-sky-950 dark:text-sky-200'
+                          : 'bg-slate-100 text-slate-500 dark:bg-slate-800',
+                    )}
+                  >
+                    {row.action === 'create' ? 'Neu' : row.action === 'update' ? 'Update' : 'Skip'}
+                  </span>
+                </td>
+                <td className="px-3 py-2 font-medium">
+                  {row.data.lastName}
+                  {row.data.firstName && `, ${row.data.firstName}`}
+                </td>
+                <td className="tabular px-3 py-2 text-slate-500 dark:text-slate-400">
+                  {row.birthDate?.toLocaleDateString('de-CH') ?? '—'}
+                </td>
+                <td className="max-w-48 truncate px-3 py-2 text-slate-500 dark:text-slate-400">
+                  {row.data.email || row.data.mobile || row.data.phone || '—'}
+                </td>
+                <td className="px-3 py-2 text-xs text-amber-700 dark:text-amber-400">
+                  {row.warnings.join(' · ')}
+                </td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+
+      <div className="flex flex-wrap items-center justify-between gap-2 border-t border-slate-200 px-3 py-2 dark:border-slate-700">
+        <p className="tabular text-xs text-slate-500 dark:text-slate-400">
+          {filtered.length === 0
+            ? 'Keine Zeilen'
+            : `Zeilen ${from + 1}–${from + shown.length} von ${filtered.length}`}
+          {filter !== 'all' && ` · gefiltert aus ${rows.length}`} – importiert werden immer alle.
+        </p>
+        {pages > 1 && (
+          <div className="flex items-center gap-1">
+            <button
+              type="button"
+              className="btn-ghost btn-sm"
+              onClick={() => setPage(current - 1)}
+              disabled={current === 0}
+              aria-label="Vorherige Seite"
+            >
+              <ChevronLeft className="size-4" aria-hidden />
+            </button>
+            <span className="tabular text-xs text-slate-500 dark:text-slate-400">
+              Seite {current + 1} von {pages}
+            </span>
+            <button
+              type="button"
+              className="btn-ghost btn-sm"
+              onClick={() => setPage(current + 1)}
+              disabled={current >= pages - 1}
+              aria-label="Nächste Seite"
+            >
+              <ChevronRight className="size-4" aria-hidden />
+            </button>
+          </div>
+        )}
+      </div>
     </div>
   )
 }

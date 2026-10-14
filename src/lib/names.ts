@@ -96,3 +96,20 @@ export function matchesGivenNames(source: string, target: string): boolean {
 export function sameGivenNames(a: string, b: string): boolean {
   return spelledOut(a) === spelledOut(b)
 }
+
+/**
+ * Die Vergleichsformen einer Person – Nachname und Vorname zusammen,
+ * «nachname|vorname».
+ *
+ * Jede Form des Nachnamens mit jeder des Vornamens: So trifft «Römer,
+ * Aaron» auf «Roemer, Aaron» – das LCR schreibt den Umlaut mal aus und mal
+ * nicht, und ein Import, der das übersieht, legt dieselbe Person neu an
+ * und löscht die alte samt ihrem Verlauf.
+ */
+export function personKeys(lastName: string, firstName: string): string[] {
+  const keys = new Set<string>()
+  for (const last of nameKeys(lastName)) {
+    for (const first of nameKeys(firstName)) keys.add(`${last}|${first}`)
+  }
+  return [...keys]
+}
