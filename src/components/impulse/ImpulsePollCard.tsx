@@ -1,8 +1,35 @@
-import { useState } from 'react'
-import { Check, EyeOff, Lightbulb, Lock, RotateCcw } from 'lucide-react'
+import { useId, useState } from 'react'
+import {
+  Check,
+  ChevronDown,
+  ChevronUp,
+  Eye,
+  EyeOff,
+  Lightbulb,
+  Lock,
+  PenLine,
+  Plus,
+  RotateCcw,
+} from 'lucide-react'
 import { useToast } from '@/contexts/ToastContext'
 import { cn } from '@/lib/utils'
 import { pollResults, type ImpulsePollResult } from '@/lib/impulse'
+import {
+  matchPollText,
+  POLL_CUSTOM_MAX,
+  POLL_CUSTOM_SHOWN,
+  pollAllowsCustom,
+  pollChoiceId,
+  pollRowsShown,
+  pollTextUsable,
+  pollVoteChoice,
+  resolvePollReply,
+  tallyPollChoices,
+  type ImpulsePollReply,
+  type PollRow,
+  type PollTally,
+  type PollVote,
+} from '@/lib/impulsePoll'
 import { CardEmoji, ContributorLine, SourceLink } from '@/components/impulse/ImpulseCards'
 import { ImpulseCardActions } from '@/components/impulse/ImpulseCardActions'
 import { useImpulseAuth, useImpulseWrites } from '@/hooks/useImpulseRuntime'
@@ -22,6 +49,15 @@ import type { ImpulseAnswer, ImpulseItem, ImpulsePoll, ImpulseProgress } from '@
  * und die **Skala** (ein Regler zwischen zwei Enden, dann «Abstimmen»).
  * Eine Stimme pro Person; umentscheiden gibt es nicht – sie liegt in
  * `impulseAnswers`, und die Regeln lassen keine Änderung zu.
+ *
+ * Bei der Auswahl darf jemand eine **eigene Antwort** hinzufügen, wenn
+ * keine passt (sofern die Redaktion es nicht abgeschaltet hat): Sie ist
+ * dann die eigene Stimme, erscheint ohne Namen als weitere Möglichkeit
+ * – angeschrieben mit «von jemandem hinzugefügt» – und lässt sich von den
+ * anderen ebenfalls wählen. Gleiche Texte zählen als eine Antwort; die
+ * Rechnung dazu steht in `lib/impulsePoll`. Die Redaktion kann eine
+ * hinzugefügte Antwort ausblenden – direkt hier, mit dem Auge daneben,
+ * wie bei den Beiträgen zur Frage der Woche.
  *
  * Im Vorschau-Modus (`preview`) wird nichts gespeichert; die Stimme lebt
  * nur im Fenster, und ein Knopf setzt sie zurück. Im Rückblick
@@ -45,14 +81,14 @@ export function ImpulsePollCard({
   closed?: boolean
   progressDocs?: ImpulseProgress[]
 }) {
-  const { profile } = useImpulseAuth()
-  const { answerImpulsePoll } = useImpulseWrites()
+  const { profile, canEditImpulse } = useImpulseAuth()
+  const { answerImpulsePoll, setImpulsePollAnswerHidden } = useImpulseWrites()
   const toast = useToast()
   const poll = item.poll
   const uid = profile?.id ?? ''
   const [busy, setBusy] = useState(false)
   /** Die eben abgegebene Stimme – das Ergebnis, bevor der Server antwortet. */
-  const [local, setLocal] = useState<number | null>(null)
+  const [local, setLocal] = useState<ImpulsePollReply | null>(null)
   const [justVoted, setJustVoted] = useState(false)
   const [value, setValue] = useState<number>(() =>
     poll ? Math.round((poll.min + poll.max) / 2) : 0,
@@ -60,24 +96,50 @@ export function ImpulsePollCard({
 
   if (!poll) return null
 
+  /* Ausblenden kann die Redaktion – nicht in der Vorschau, dort schaut
+     eine gespielte Person. */
+  const moderate = canEditImpulse && !preview
+  const hidden = item.hiddenPollAnswers ?? []
   const stored = preview ? null : (answers.find((answer) => answer.uid === uid) ?? null)
-  const mine: number | null = typeof stored?.choiceIndex === 'number' ? stored.choiceIndex : local
+  const own: PollVote | null = stored ?? local
+  const voted = own !== null
   const others = preview ? [] : answers.filter((answer) => answer.uid !== uid)
-  const result = pollResults(poll, [...others, ...(mine !== null ? [{ choiceIndex: mine }] : [])])
+  const votes = own ? [...others, own] : others
 
-  const vote = async (choice: number) => {
-    if (busy || mine !== null) return
+  const isChoice = poll.form === 'choice'
+  const ownChoice = own && isChoice ? pollVoteChoice(poll, own) : null
+  const ownId = ownChoice ? pollChoiceId(ownChoice) : null
+  /* Das Ergebnis: bei der Auswahl samt hinzugefügten Antworten, nach
+     Stimmen geordnet. Vor der eigenen Stimme stehen die hinzugefügten in
+     der Reihenfolge, in der sie kamen – ohne Zahlen. */
+  const tally = isChoice
+    ? tallyPollChoices(poll, votes, { hidden, reveal: ownId, showHidden: moderate })
+    : null
+  const before = isChoice
+    ? tallyPollChoices(poll, others, { hidden, showHidden: moderate, order: 'added' })
+    : null
+  const allowCustom = pollAllowsCustom(poll)
+  const offered = allowCustom && before ? before.custom : []
+  const result = isChoice ? null : pollResults(poll, votes)
+  const total = tally?.total ?? result?.total ?? 0
+  const mineValue = typeof own?.choiceIndex === 'number' ? own.choiceIndex : null
+
+  const vote = async (reply: ImpulsePollReply, added = false) => {
+    if (busy || voted) return
     setJustVoted(true)
-    setLocal(choice)
+    setLocal(reply)
     if (preview || !profile) return
     setBusy(true)
     try {
       const outcome = await answerImpulsePoll(
         item,
         { uid: profile.id, displayName: profile.displayName },
-        choice,
+        reply,
       )
-      toast.saved('Stimme abgegeben.', outcome)
+      toast.saved(
+        added ? 'Antwort hinzugefügt – sie ist deine Stimme.' : 'Stimme abgegeben.',
+        outcome,
+      )
     } catch (error) {
       console.error(error)
       setLocal(null)
@@ -88,7 +150,22 @@ export function ImpulsePollCard({
     }
   }
 
-  const waiting = others.length
+  const toggleHidden = (row: PollRow) => {
+    setImpulsePollAnswerHidden(item, row.label, !row.hidden)
+      .then((outcome) =>
+        toast.saved(
+          row.hidden ? 'Die Antwort ist wieder zu sehen.' : 'Die Antwort ist ausgeblendet.',
+          outcome,
+        ),
+      )
+      .catch((error) => {
+        console.error(error)
+        toast.error('Die Antwort konnte nicht geändert werden.')
+      })
+  }
+  const onToggleHidden = moderate ? toggleHidden : undefined
+
+  const waiting = before ? before.total : others.length
 
   return (
     <section className={plain ? undefined : 'card p-5'}>
@@ -101,32 +178,50 @@ export function ImpulsePollCard({
       )}
       <ContributorLine item={item} />
 
-      {mine === null && !closed ? (
+      {!voted && !closed ? (
         <>
           {poll.form === 'choice' ? (
-            <div
-              className={cn(
-                'mt-4 gap-2',
-                poll.options.length === 2 ? 'grid grid-cols-2' : 'flex flex-col',
+            <>
+              <div
+                className={cn(
+                  'mt-4 gap-2',
+                  poll.options.length === 2 ? 'grid grid-cols-2' : 'flex flex-col',
+                )}
+                role="group"
+                aria-label="Möglichkeiten"
+              >
+                {poll.options.map((option, index) => (
+                  <button
+                    key={index}
+                    type="button"
+                    disabled={busy}
+                    onClick={() => void vote({ choiceIndex: index })}
+                    className={cn(
+                      'rounded-xl bg-slate-100 px-3.5 py-3 text-left text-sm font-medium transition hover:bg-slate-200/70 active:scale-[0.98] disabled:opacity-60 dark:bg-white/5 dark:hover:bg-white/10',
+                      poll.options.length === 2 && 'py-5 text-center text-base',
+                    )}
+                  >
+                    {option}
+                  </button>
+                ))}
+              </div>
+              {offered.length > 0 && (
+                <CustomChoices
+                  rows={offered}
+                  busy={busy}
+                  onVote={(row) => void vote({ text: row.label })}
+                  onToggleHidden={onToggleHidden}
+                />
               )}
-              role="group"
-              aria-label="Möglichkeiten"
-            >
-              {poll.options.map((option, index) => (
-                <button
-                  key={index}
-                  type="button"
-                  disabled={busy}
-                  onClick={() => void vote(index)}
-                  className={cn(
-                    'rounded-xl bg-slate-100 px-3.5 py-3 text-left text-sm font-medium transition hover:bg-slate-200/70 active:scale-[0.98] disabled:opacity-60 dark:bg-white/5 dark:hover:bg-white/10',
-                    poll.options.length === 2 && 'py-5 text-center text-base',
-                  )}
-                >
-                  {option}
-                </button>
-              ))}
-            </div>
+              {allowCustom && (
+                <OwnAnswer
+                  poll={poll}
+                  offered={offered}
+                  busy={busy}
+                  onSubmit={(reply, added) => void vote(reply, added)}
+                />
+              )}
+            </>
           ) : (
             <ScaleInput poll={poll} value={value} onChange={setValue} />
           )}
@@ -143,15 +238,16 @@ export function ImpulsePollCard({
                 type="button"
                 className="btn-primary"
                 disabled={busy}
-                onClick={() => void vote(value)}
+                onClick={() => void vote({ choiceIndex: value })}
               >
                 <Check className="size-4" aria-hidden />
                 Abstimmen
               </button>
             )}
             {/* Abgestimmt wird ohne Namen – auch in der Stimme selbst steht er
-                nicht (`answerImpulsePoll`). Das darf jede und jeder wissen,
-                bevor sie sich entscheiden. */}
+                nicht (`answerImpulsePoll`), und eine eigene Antwort trägt
+                ihn ebenso wenig. Das darf jede und jeder wissen, bevor sie
+                sich entscheiden. */}
             <p className="hint mt-0 flex w-full items-center gap-1.5">
               <EyeOff className="size-3.5 shrink-0" aria-hidden />
               Anonym – dein Name wird nicht geteilt.
@@ -160,14 +256,18 @@ export function ImpulsePollCard({
         </>
       ) : (
         <div className={cn('mt-4 space-y-3', justVoted && 'animate-imp-rise')}>
-          {poll.form === 'choice' ? (
-            <ChoiceResult result={result} mine={mine} />
+          {tally ? (
+            <ChoiceResult tally={tally} ownId={ownId} onToggleHidden={onToggleHidden} />
           ) : (
-            <ScaleResult poll={poll} result={result} mine={mine} />
+            result && <ScaleResult poll={poll} result={result} mine={mineValue} />
           )}
           <p className="hint">
-            {result.total} {result.total === 1 ? 'Stimme' : 'Stimmen'} · anonym
-            {closed && mine === null && ' · abgestimmt wurde in jener Woche'}
+            {total} {total === 1 ? 'Stimme' : 'Stimmen'} · anonym
+            {closed && !voted && ' · abgestimmt wurde in jener Woche'}
+            {moderate &&
+              tally &&
+              tally.hiddenVotes > 0 &&
+              ` · ${tally.hiddenVotes} für Ausgeblendetes, nicht gezählt`}
           </p>
           {poll.explanation && (
             <p className="flex gap-2 text-sm whitespace-pre-line text-slate-600 dark:text-slate-300">
@@ -201,6 +301,231 @@ export function ImpulsePollCard({
         />
       )}
     </section>
+  )
+}
+
+/**
+ * Die Kennzeichnung einer hinzugefügten Antwort – dass sie nicht von der
+ * Redaktion stammt, aber nicht, von wem. Ist sie ausgeblendet, sagt das
+ * nur der Redaktion etwas: Wer sie selbst gewählt hat, sieht sie still
+ * weiter (siehe `tallyPollChoices`).
+ */
+function AddedNote({ row, moderate }: { row: PollRow; moderate: boolean }) {
+  return (
+    <span className="mt-0.5 block text-[11px] font-normal text-slate-500 no-underline dark:text-slate-400">
+      <PenLine className="me-1 inline-block size-3 align-[-0.125em]" aria-hidden />
+      von jemandem hinzugefügt
+      {moderate && row.hidden && (
+        <span className="block text-amber-700 dark:text-amber-300">
+          Ausgeblendet – die anderen sehen sie nicht mehr.
+        </span>
+      )}
+    </span>
+  )
+}
+
+/** Das Auge der Redaktion: eine hinzugefügte Antwort aus- oder wieder einblenden. */
+function HideToggle({ row, onToggle }: { row: PollRow; onToggle: (row: PollRow) => void }) {
+  return (
+    <button
+      type="button"
+      className="btn-ghost shrink-0 px-2"
+      onClick={() => onToggle(row)}
+      aria-label={row.hidden ? `«${row.label}» wieder zeigen` : `«${row.label}» ausblenden`}
+      title={
+        row.hidden
+          ? 'Wieder zeigen'
+          : 'Ausblenden – die anderen sehen die Antwort und ihre Stimmen dann nicht mehr'
+      }
+    >
+      {row.hidden ? (
+        <Eye className="size-4" aria-hidden />
+      ) : (
+        <EyeOff className="size-4" aria-hidden />
+      )}
+    </button>
+  )
+}
+
+/** «3 weitere Antworten zeigen» – und wieder zurück. */
+function MoreToggle({
+  more,
+  expanded,
+  onToggle,
+}: {
+  more: number
+  expanded: boolean
+  onToggle: () => void
+}) {
+  if (!expanded && more === 0) return null
+  return (
+    <button
+      type="button"
+      className="btn-ghost btn-sm self-start"
+      aria-expanded={expanded}
+      onClick={onToggle}
+    >
+      {expanded ? (
+        <ChevronUp className="size-4" aria-hidden />
+      ) : (
+        <ChevronDown className="size-4" aria-hidden />
+      )}
+      {expanded
+        ? 'Weniger zeigen'
+        : `${more} weitere ${more === 1 ? 'Antwort' : 'Antworten'} zeigen`}
+    </button>
+  )
+}
+
+/**
+ * Die hinzugefügten Antworten vor der eigenen Stimme – wählbar wie die
+ * vorgegebenen, in der Reihenfolge, in der sie kamen; sind es mehr als
+ * vier, stehen drei da und der Rest hinter «weitere». Ausgeblendete
+ * erscheinen nur der Redaktion, gestrichen und nicht wählbar.
+ */
+function CustomChoices({
+  rows,
+  busy,
+  onVote,
+  onToggleHidden,
+}: {
+  rows: PollRow[]
+  busy: boolean
+  onVote: (row: PollRow) => void
+  onToggleHidden?: (row: PollRow) => void
+}) {
+  const [expanded, setExpanded] = useState(false)
+  const { shown, more } = expanded
+    ? { shown: rows, more: 0 }
+    : pollRowsShown(rows, POLL_CUSTOM_SHOWN)
+  return (
+    <div className="mt-2 flex flex-col gap-2" role="group" aria-label="Hinzugefügte Antworten">
+      {shown.map((row) => (
+        <div key={row.id} className="flex items-stretch gap-1">
+          <button
+            type="button"
+            disabled={busy || row.hidden}
+            onClick={() => onVote(row)}
+            className={cn(
+              'min-w-0 flex-1 rounded-xl bg-slate-100 px-3.5 py-2.5 text-left text-sm font-medium transition hover:bg-slate-200/70 active:scale-[0.98] disabled:opacity-60 dark:bg-white/5 dark:hover:bg-white/10',
+              row.hidden && 'border border-dashed border-slate-300 dark:border-slate-600',
+            )}
+          >
+            <span className={cn('block break-words', row.hidden && 'line-through')}>
+              {row.label}
+            </span>
+            <AddedNote row={row} moderate={Boolean(onToggleHidden)} />
+          </button>
+          {onToggleHidden && <HideToggle row={row} onToggle={onToggleHidden} />}
+        </div>
+      ))}
+      {rows.length > POLL_CUSTOM_SHOWN + 1 && (
+        <MoreToggle more={more} expanded={expanded} onToggle={() => setExpanded((on) => !on)} />
+      )}
+    </div>
+  )
+}
+
+/**
+ * «Eigene Antwort hinzufügen» – zuerst nur ein gestrichelter Knopf, ein
+ * Tipp öffnet das Feld. Gibt es den Text schon (vorgegeben oder schon
+ * hinzugefügt), sagt das der Hinweis darunter, und der Knopf stimmt
+ * dafür, statt eine Doppelung anzulegen.
+ */
+function OwnAnswer({
+  poll,
+  offered,
+  busy,
+  onSubmit,
+}: {
+  poll: ImpulsePoll
+  offered: PollRow[]
+  busy: boolean
+  onSubmit: (reply: ImpulsePollReply, added: boolean) => void
+}) {
+  const [open, setOpen] = useState(false)
+  const [draft, setDraft] = useState('')
+  const inputId = useId()
+
+  const usable = pollTextUsable(draft)
+  const match = usable ? matchPollText(poll, draft, offered) : null
+  /* Eine ausgeblendete Antwort sieht hier nur die Redaktion – für alle
+     anderen ist sie kein Treffer, der Text kommt einfach dazu. */
+  const existing =
+    match?.kind === 'option' ? match.label : match && !match.row.hidden ? match.row.label : null
+
+  const close = () => {
+    setOpen(false)
+    setDraft('')
+  }
+  const submit = () => {
+    const reply = resolvePollReply(poll, draft, offered)
+    if (!reply || busy) return
+    onSubmit(reply, existing === null)
+  }
+
+  if (!open) {
+    return (
+      <button
+        type="button"
+        disabled={busy}
+        onClick={() => setOpen(true)}
+        className="mt-2 flex w-full items-center gap-2 rounded-xl border border-dashed border-slate-300 px-3.5 py-2.5 text-left text-sm font-medium text-slate-600 transition hover:border-slate-400 hover:text-slate-800 active:scale-[0.98] disabled:opacity-60 dark:border-slate-600 dark:text-slate-300 dark:hover:border-slate-500 dark:hover:text-slate-100"
+      >
+        <Plus className="size-4 shrink-0" aria-hidden />
+        Eigene Antwort hinzufügen
+      </button>
+    )
+  }
+
+  return (
+    <form
+      className="mt-2 rounded-xl border border-slate-200 p-3 dark:border-slate-700"
+      onSubmit={(event) => {
+        event.preventDefault()
+        submit()
+      }}
+    >
+      <label className="label" htmlFor={inputId}>
+        Deine eigene Antwort
+      </label>
+      <input
+        id={inputId}
+        className="input"
+        value={draft}
+        maxLength={POLL_CUSTOM_MAX}
+        autoComplete="off"
+        enterKeyHint="send"
+        // Der Knopf davor hat das Feld eben erst geöffnet – also gleich hinein.
+        autoFocus
+        placeholder="Was fehlt dir hier?"
+        onChange={(event) => setDraft(event.target.value)}
+        onKeyDown={(event) => {
+          // Escape schliesst nur das Feld, nicht gleich den ganzen Feed.
+          if (event.key === 'Escape') {
+            event.stopPropagation()
+            close()
+          }
+        }}
+      />
+      <p className="hint mt-1.5">
+        {existing
+          ? `Gibt es schon: «${existing}» – deine Stimme zählt dort.`
+          : 'Ohne deinen Namen – die anderen können sie danach auch wählen. Sie ist deine Stimme und lässt sich nicht mehr ändern.'}
+        {draft.length > POLL_CUSTOM_MAX - 20 && (
+          <span className="tabular"> {`${draft.length}/${POLL_CUSTOM_MAX}`}</span>
+        )}
+      </p>
+      <div className="mt-2 flex flex-wrap justify-end gap-2">
+        <button type="button" className="btn-secondary" disabled={busy} onClick={close}>
+          Abbrechen
+        </button>
+        <button type="submit" className="btn-primary" disabled={busy || !usable}>
+          <Check className="size-4" aria-hidden />
+          {existing ? 'Dafür stimmen' : 'Hinzufügen'}
+        </button>
+      </div>
+    </form>
   )
 }
 
@@ -241,48 +566,116 @@ function ScaleInput({
   )
 }
 
-/** Das Ergebnis einer Auswahl: ein Balken je Möglichkeit, die eigene angeschrieben. */
-function ChoiceResult({ result, mine }: { result: ImpulsePollResult; mine: number | null }) {
-  const top = Math.max(...result.bars.map((bar) => bar.count))
+/**
+ * Das Ergebnis einer Auswahl: ein Balken je Möglichkeit, die eigene
+ * angeschrieben. Darunter die hinzugefügten Antworten, nach Stimmen
+ * geordnet und eingeklappt wie vor der Stimme – die eigene Wahl bleibt
+ * dabei immer sichtbar.
+ */
+function ChoiceResult({
+  tally,
+  ownId,
+  onToggleHidden,
+}: {
+  tally: PollTally
+  ownId: string | null
+  onToggleHidden?: (row: PollRow) => void
+}) {
+  const [expanded, setExpanded] = useState(false)
+  const top = Math.max(
+    0,
+    ...[...tally.options, ...tally.custom].filter((row) => row.counted).map((row) => row.count),
+  )
+  const { shown, more } = expanded
+    ? { shown: tally.custom, more: 0 }
+    : pollRowsShown(tally.custom, POLL_CUSTOM_SHOWN, ownId)
   return (
-    <div className="space-y-2">
-      {result.bars.map((bar) => {
-        const chosen = bar.value === mine
-        return (
-          <div
-            key={bar.value}
-            className={cn(
-              'relative overflow-hidden rounded-xl bg-slate-100 px-3.5 py-3 text-sm dark:bg-white/5',
-              chosen && 'ring-2 ring-blue-500/70 dark:ring-blue-400/70',
-            )}
-          >
-            <span
-              aria-hidden
-              className={cn(
-                'imp-meter absolute inset-y-0 left-0 w-full',
-                chosen ? 'bg-blue-500/30 dark:bg-blue-400/30' : 'bg-slate-400/20 dark:bg-white/10',
-              )}
-              style={{ '--imp-share': String(bar.share) } as React.CSSProperties}
-            />
-            <span className="relative flex items-center gap-3">
-              <span
-                className={cn('min-w-0 flex-1', bar.count === top && top > 0 && 'font-semibold')}
-              >
-                {bar.label}
-                {chosen && (
-                  <span className="ms-2 inline-flex items-center gap-0.5 text-[11px] font-medium text-blue-700 dark:text-blue-300">
-                    <Check className="size-3" aria-hidden />
-                    Deine Wahl
-                  </span>
-                )}
-              </span>
-              <span className="tabular shrink-0 font-semibold">
-                {Math.round(bar.share * 100)} %
-              </span>
-            </span>
+    <div className="flex flex-col gap-2">
+      {[...tally.options, ...shown].map((row) => {
+        const bar = (
+          <ResultBar
+            row={row}
+            chosen={row.id === ownId}
+            top={top}
+            moderate={Boolean(onToggleHidden)}
+          />
+        )
+        return row.custom && onToggleHidden ? (
+          <div key={row.id} className="flex items-stretch gap-1">
+            {bar}
+            <HideToggle row={row} onToggle={onToggleHidden} />
+          </div>
+        ) : (
+          <div key={row.id} className="flex">
+            {bar}
           </div>
         )
       })}
+      {tally.custom.length > POLL_CUSTOM_SHOWN + 1 && (
+        <MoreToggle more={more} expanded={expanded} onToggle={() => setExpanded((on) => !on)} />
+      )}
+    </div>
+  )
+}
+
+/**
+ * Ein Balken des Ergebnisses. Eine ausgeblendete Antwort, die nicht
+ * mitzählt, sieht nur die Redaktion – gestrichelt, mit der Zahl ihrer
+ * Stimmen statt eines Anteils.
+ */
+function ResultBar({
+  row,
+  chosen,
+  top,
+  moderate,
+}: {
+  row: PollRow
+  chosen: boolean
+  top: number
+  moderate: boolean
+}) {
+  return (
+    <div
+      className={cn(
+        'relative min-w-0 flex-1 overflow-hidden rounded-xl bg-slate-100 px-3.5 py-3 text-sm dark:bg-white/5',
+        chosen && 'ring-2 ring-blue-500/70 dark:ring-blue-400/70',
+        !row.counted &&
+          'border border-dashed border-slate-300 bg-transparent dark:border-slate-600 dark:bg-transparent',
+      )}
+    >
+      <span
+        aria-hidden
+        className={cn(
+          'imp-meter absolute inset-y-0 left-0 w-full',
+          chosen ? 'bg-blue-500/30 dark:bg-blue-400/30' : 'bg-slate-400/20 dark:bg-white/10',
+        )}
+        style={{ '--imp-share': String(row.share) } as React.CSSProperties}
+      />
+      <span className="relative flex items-center gap-3">
+        <span className="min-w-0 flex-1">
+          <span
+            className={cn(
+              'break-words',
+              row.counted && row.count === top && top > 0 && 'font-semibold',
+              !row.counted && 'line-through',
+            )}
+          >
+            {row.label}
+          </span>
+          {chosen && (
+            <span className="ms-2 inline-flex items-center gap-0.5 text-[11px] font-medium text-blue-700 dark:text-blue-300">
+              <Check className="size-3" aria-hidden />
+              Deine Wahl
+            </span>
+          )}
+          {row.custom && <AddedNote row={row} moderate={moderate} />}
+        </span>
+        <span className="tabular shrink-0 font-semibold">
+          {row.counted
+            ? `${Math.round(row.share * 100)} %`
+            : `${row.count} ${row.count === 1 ? 'Stimme' : 'Stimmen'}`}
+        </span>
+      </span>
     </div>
   )
 }

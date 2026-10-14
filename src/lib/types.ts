@@ -3485,12 +3485,22 @@ export const IMPULSE_POLL_FORM_LABELS: Record<ImpulsePollForm, string> = {
  * eigenen Stimme, und es erscheint nur als Zahl: Wer was gewählt hat,
  * zeigt die Karte nicht. Die Stimme selbst liegt in `impulseAnswers`
  * (`choiceIndex` ist bei der Auswahl die Möglichkeit, bei der Skala der
- * Wert); eine Stimme pro Person, wie ein Quizversuch.
+ * Wert; bei einer eigenen Antwort steht stattdessen ihr Text in `text`);
+ * eine Stimme pro Person, wie ein Quizversuch.
  */
 export interface ImpulsePoll {
   form: ImpulsePollForm
   /** Bei `choice`: die Möglichkeiten in der angezeigten Reihenfolge (2–6). */
   options: string[]
+  /**
+   * Bei `choice`: Darf jemand neben den Möglichkeiten eine eigene Antwort
+   * hinzufügen, die dann alle wählen können? Fehlt das Feld, gilt «ja» –
+   * so bekommen auch die Umfragen von vor der Einführung die eigene
+   * Antwort, ohne dass die Redaktion jede öffnen muss. Abschalten lohnt
+   * sich, wo eine freie Antwort nicht passt (ein klares Entweder-oder).
+   * Siehe `lib/impulsePoll`.
+   */
+  allowCustom?: boolean
   /** Bei `scale`: die beiden Enden – ganze Zahlen, höchstens 20 Schritte. */
   min: number
   max: number
@@ -3715,6 +3725,19 @@ export interface ImpulseItem extends WithId {
   quiz?: ImpulseQuiz | null
   /** Die Umfrage – bei der Art `umfrage`. */
   poll?: ImpulsePoll | null
+  /**
+   * Bei der Umfrage: eigene Antworten, die die Redaktion ausgeblendet hat –
+   * als Text, verglichen über `pollTextKey` (lib/impulsePoll). Eine
+   * ausgeblendete Antwort verschwindet samt ihren Stimmen aus dem
+   * Ergebnis der anderen; wer sie gewählt hat, sieht sie weiterhin als
+   * eigene Wahl. Wer denselben Text später noch einmal eintippt, landet
+   * ebenfalls im Ausgeblendeten.
+   *
+   * Bewusst neben `poll` statt darin: Das Redaktionsformular schreibt
+   * `poll` beim Speichern als Ganzes – eine Liste darin ginge dabei
+   * verloren, wenn das Formular schon vor dem Ausblenden offen war.
+   */
+  hiddenPollAnswers?: string[]
   /** Das Vers-Puzzle – bei der Art `puzzle`. */
   puzzle?: ImpulsePuzzle | null
   /**
@@ -3882,7 +3905,12 @@ export interface ImpulseAnswer extends WithId {
    * gewählte Wert.
    */
   choiceIndex?: number | null
-  /** Bei `text`: die eingetippte Antwort. Beim Puzzle: der gebaute Satz. */
+  /**
+   * Bei `text`: die eingetippte Antwort. Beim Puzzle: der gebaute Satz.
+   * Bei der Umfrage: die eigene Antwort (dann ist `choiceIndex` leer) –
+   * auch, wer eine von jemand anderem hinzugefügte Antwort wählt,
+   * schreibt ihren Text hierher (siehe `lib/impulsePoll`).
+   */
   text?: string
   /**
    * Richtig beantwortet? Bei der Suchfrage `null` – sie wird nicht

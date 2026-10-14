@@ -638,7 +638,8 @@ den Kalender.
 - **Anonym mitmachen.** Der eigene Name soll kein Grund sein, nichts zu
   schreiben. Umfragen sind immer anonym – der Hinweis «Anonym – dein Name
   wird nicht geteilt» steht bei jeder, und in der Stimme selbst steht kein
-  Vorname. Bei der Frage der Woche gibt es den Haken **«Meinen Namen nicht
+  Vorname. Das gilt auch für eine eigene Antwort: Sie heisst für alle nur
+  «von jemandem hinzugefügt» (siehe 13.9). Bei der Frage der Woche gibt es den Haken **«Meinen Namen nicht
   anzeigen»**: Die anderen sehen dann «Anonym», der Vorname steht nicht im
   Beitrag; die Redaktion sieht weiterhin, von wem er stammt («Anonym ·
   Levin»), denn wer moderiert, muss im Ernstfall nachfragen können – so
@@ -675,7 +676,10 @@ impulseItems/{id}              eine Karte oder Frage
                                ├─ quiz      { form, optionen[], antwort, erklärung }
                                ├─ order     Reihenfolge im Feed
                                ├─ startsAt  nur am Wochenthema: verschobener Start
-                                            der Woche (siehe 13.6)
+                               │            der Woche (siehe 13.6)
+                               ├─ hiddenPollAnswers[]  nur an der Umfrage: eigene
+                               │            Antworten, die die Redaktion
+                               │            ausgeblendet hat (siehe 13.9)
                                └─ status    entwurf | bereit – veröffentlicht wird
                                             durch den Kalender: Woche beginnt, Inhalt
                                             erscheint (kein Handgriff am Montag)
@@ -683,7 +687,9 @@ impulseItems/{id}              eine Karte oder Frage
 impulseAnswers/{itemId_uid}    genau eine Antwort pro Person und Frage
                                ├─ uid, firstName            (mitgeschrieben –
                                │            bei Umfragen leer: sie sind anonym)
-                               ├─ choice / text, correct
+                               ├─ choice / text, correct    (Umfrage mit eigener
+                               │            Antwort: der Text statt des Index –
+                               │            auch, wer sie danach wählt; 13.9)
                                └─ answeredAt
 
 impulseComments/{itemId_uid}   Beitrag zur Frage der Woche – eine Antwort
@@ -942,7 +948,8 @@ bleibt ein Stern – als Termin, nicht als Vorbereitung.
   Balken mit Prozenten bzw. als Säulen mit dem Schnitt –, und es bleibt
   bei Zahlen: Wer was gewählt hat, zeigt die Karte nie. So lässt sich
   auch dort ehrlich antworten, wo es persönlich wird. Nach der Stimme
-  folgt ein Gedanke aus den Schriften oder dem Wegweiser.
+  folgt ein Gedanke aus den Schriften oder dem Wegweiser. Passt keine
+  Möglichkeit, darf man eine eigene hinzufügen (siehe 13.9).
 - **Vers-Puzzle** (`puzzle`) – die Teile eines Verses liegen gemischt
   da, wer sie in der richtigen Reihenfolge antippt, baut den Vers. Ein
   Versuch, wie beim Quiz; danach steht der Vers richtig da, und die
@@ -1335,3 +1342,82 @@ gelöschten Antworten noch kurz im Zwischenspeicher und holten sonst den
 alten Anfang zurück. Und die Feier des Wappens gilt auf dem Gerät nicht
 mehr, sobald das Wappen wieder leer dasteht: Wer es neu baut, wird neu
 gefeiert.
+
+### 13.9 Eigene Antworten in der Umfrage
+
+Passt keine der vorgegebenen Möglichkeiten, darf man bei einer Auswahl-Umfrage
+(auch «Was würdest du tun?») **eine eigene Antwort hinzufügen**. Sie ist
+zugleich die eigene Stimme – eine Stimme pro Person bleibt die Regel –, und
+die anderen sehen sie danach als weitere Möglichkeit und können sie ebenfalls
+wählen. Die Skala kennt keine eigenen Antworten.
+
+**Auf der Karte.** Unter den vorgegebenen Möglichkeiten stehen die schon
+hinzugefügten, jede mit der Zeile «von jemandem hinzugefügt» – nie mit einem
+Namen. Vor der eigenen Stimme stehen sie in der Reihenfolge, in der sie
+kamen, ohne Zahlen: Eine Rangfolge verriete schon das Ergebnis, und die Liste
+spränge unter dem Finger, sobald jemand abstimmt. Danach kommt der
+gestrichelte Knopf «Eigene Antwort hinzufügen»; er öffnet ein Feld
+(höchstens 80 Zeichen, eine Zeile). Gibt es den Text schon, sagt das der
+Hinweis darunter («Gibt es schon: … – deine Stimme zählt dort»), und der
+Knopf heisst «Dafür stimmen». Im Ergebnis stehen die hinzugefügten Antworten
+unter den vorgegebenen, nach Stimmen geordnet, mit Balken und Prozenten wie
+alle anderen. Sind es mehr als vier, stehen drei da und der Rest hinter
+«2 weitere Antworten zeigen» – vor wie nach der Stimme; die eigene Wahl
+bleibt immer sichtbar. So bleibt die Karte am Telefon überschaubar.
+
+**Gleiches zählt als eines.** Verglichen wird ohne Gross/klein, Leerzeichen
+und Satzzeichen («Nein, danke!» = «nein danke»), «ß» gilt als «ss»; Umlaute
+und Emoji bleiben unterschieden. Gezeigt wird die Schreibweise der ersten
+Stimme. Wer genau eine vorgegebene Möglichkeit eintippt, stimmt für sie. Ein
+Text aus nichts als Satzzeichen ist keine Antwort.
+
+**Das Datenmodell – ohne neue Sammlung, ohne neue Regel.** Die Stimme liegt
+wie jede andere in `impulseAnswers/{itemId}_{uid}`: `choiceIndex` bleibt
+leer, der Text steht in `text`. Wer eine hinzugefügte Antwort wählt,
+schreibt denselben Text. Eine hinzugefügte Antwort ist also keine eigene
+Zeile mit Urheberin, sondern die Summe aller Stimmen mit diesem Text – sie
+lebt weiter, auch wenn die erste Stimme dafür wegfällt. Gezählt wird beim
+Lesen (`tallyPollChoices` in `lib/impulsePoll`, ohne Datenbank geprüft in
+`tests/impulse-poll.test.ts`). Die bestehende Regel lässt das zu: Sie prüft
+ID und Konto, nicht die Felder. Was sie nicht prüft, ist die Länge des
+Textes – wer an der App vorbei schreibt, bekommt trotzdem nur 80 Zeichen auf
+die Karte (die Anzeige kürzt), und Unpassendes blendet die Redaktion aus.
+Dieselbe Abwägung wie bei den Beiträgen zur Frage der Woche, die ebenfalls
+keine Längengrenze in den Regeln haben.
+
+**Anonym.** Die Stimme trägt wie jede Umfrage-Stimme keinen Vornamen; am
+Dokument hängt nur das Konto, wie bei allen Stimmen – für «eine pro
+Person». Die Oberfläche zeigt nie, wer eine Antwort hinzugefügt oder
+gewählt hat, auch der Redaktion nicht.
+
+**Moderation.** Die Redaktion sieht neben jeder hinzugefügten Antwort ein
+Auge – auf der Karte selbst, wie bei den Beiträgen zur Frage der Woche und
+der Rangliste. Ausgeblendetes steht für sie gestrichelt und durchgestrichen
+da, mit der Zahl seiner Stimmen. Gespeichert wird das am Inhalt
+(`hiddenPollAnswers`, der Text), nicht an den Stimmen: Die lassen die Regeln
+niemanden ändern, und die Liste liegt bewusst neben `poll`, damit ein offenes
+Redaktionsformular sie beim Speichern nicht überschreibt. **Was mit den
+Stimmen geschieht:** Sie bleiben gespeichert, zählen aber nicht mehr – die
+Antwort fällt samt ihren Stimmen aus dem Ergebnis und der Gesamtzahl der
+anderen. Wer sie gewählt hat, hat seine Stimme abgegeben und bekommt keine
+zweite (die ID erzwingt es), sieht die Antwort aber still weiter als
+«Deine Wahl» – wie den eigenen Eintrag in der Rangliste; eine angeschriebene
+Abfuhr entmutigte (Leitgedanke 1). Tippt später jemand denselben Text ein,
+landet er ebenfalls im Ausgeblendeten. «Wieder zeigen» macht alles
+rückgängig. Wer eine Stimme wirklich zurückgeben will, kann sie wie bisher
+beim Zurücksetzen der Woche löschen (13.8).
+
+**Abschalten je Umfrage.** Im Formular steht bei der Auswahl der Haken
+**«Eigene Antworten zulassen»**, vorgegeben ist er gesetzt. Fehlt das Feld
+(alle Umfragen von vorher), gilt ebenfalls «ja» – so bekommen auch die
+laufenden Umfragen die eigene Antwort, ohne dass die Redaktion jede öffnen
+muss. Abschalten lohnt sich, wo eine freie Antwort nicht passt. Ohne Haken
+bietet die Karte weder das Feld noch die hinzugefügten Antworten zur Wahl
+an; was schon abgegeben wurde, zählt im Ergebnis weiter. In der Liste der
+Redaktion steht bei einer Umfrage, wie viele Antworten hinzugekommen sind
+(«5 Antworten · 2 hinzugefügt»).
+
+**Vorschau.** In der Vorschau einer Karte lässt sich eine eigene Antwort
+ausprobieren; sie lebt nur im Fenster. In der Vorschau der Woche landet sie
+im Arbeitsspeicher wie jede andere Stimme; moderiert wird dort nicht – die
+gespielte Person ist keine Redaktion.

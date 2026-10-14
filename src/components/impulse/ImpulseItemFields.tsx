@@ -407,6 +407,23 @@ export function ImpulseItemFields({
                   Möglichkeit
                 </button>
               )}
+              {/* Die eigene Antwort: Standard ist «ja» – auch Umfragen, die das
+                  Feld noch nicht kennen, bieten sie an (`pollAllowsCustom`).
+                  Ausblenden kann die Redaktion direkt auf der Karte. */}
+              <label className="flex cursor-pointer items-center gap-2 pt-1.5 text-sm">
+                <input
+                  type="checkbox"
+                  className="size-4"
+                  checked={poll.allowCustom !== false}
+                  onChange={(event) => setPoll({ allowCustom: event.target.checked })}
+                />
+                Eigene Antworten zulassen
+              </label>
+              <p className="hint mt-0">
+                Wer abstimmt, darf eine eigene Antwort hinzufügen – ohne Namen, als «von jemandem
+                hinzugefügt»; die anderen können sie danach ebenfalls wählen. Unpassendes blendet
+                die Redaktion auf der Karte mit dem Auge aus.
+              </p>
             </div>
           ) : (
             <div className="space-y-3">

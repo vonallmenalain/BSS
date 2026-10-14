@@ -107,6 +107,7 @@ const FIELD_LABELS: Record<string, string> = {
   endTime: 'Ende',
   extendedDate: 'Berufen am',
   group: 'Gruppe',
+  hiddenPollAnswers: 'Ausgeblendete Antworten',
   history: 'Verlauf',
   hymns: 'Lieder',
   impulse: 'Anti-Doom-Zugang',

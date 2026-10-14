@@ -71,6 +71,7 @@ import { ImpulseScreen, type ScreenOrigin } from '@/components/impulse/ImpulseSc
 import { ImpulseStats } from '@/components/impulse/ImpulseStats'
 import { ImpulsePreviewProvider } from '@/components/impulse/ImpulsePreviewMode'
 import { withPreviewDocs } from '@/lib/impulsePreview'
+import { pollChoiceId, pollVoteChoice, tallyPollChoices } from '@/lib/impulsePoll'
 import {
   computeStreak,
   crestCompleters,
@@ -2336,7 +2337,9 @@ function PastQuiz({ item, answer }: { item: ImpulseItem; answer: ImpulseAnswer |
 /**
  * Eine Umfrage aus einer früheren Woche – das Ergebnis steht offen da,
  * abgestimmt wird nicht mehr: Eine Stimme im Nachhinein zählte sonst
- * rückwirkend zur Beteiligung einer Woche, die vorbei ist.
+ * rückwirkend zur Beteiligung einer Woche, die vorbei ist. Gezählt wird
+ * wie auf der Karte (`tallyPollChoices`): eigene Antworten zählen mit,
+ * ausgeblendete nicht – ausser der eigenen Wahl.
  */
 function PastPoll({
   item,
@@ -2349,19 +2352,24 @@ function PastPoll({
 }) {
   const poll = item.poll
   if (!poll) return null
-  const votes = answers.filter((answer) => typeof answer.choiceIndex === 'number')
-  const own = typeof mine?.choiceIndex === 'number' ? mine.choiceIndex : null
-  const ownLabel =
-    own === null
-      ? null
-      : poll.form === 'choice'
-        ? (poll.options[own] ?? null)
-        : `${own}${poll.unit ? ` ${poll.unit}` : ''}`
+  let count: number
+  let ownLabel: string | null
+  if (poll.form === 'choice') {
+    const ownChoice = mine ? pollVoteChoice(poll, mine) : null
+    const ownId = ownChoice ? pollChoiceId(ownChoice) : null
+    const tally = tallyPollChoices(poll, answers, { hidden: item.hiddenPollAnswers, reveal: ownId })
+    count = tally.total
+    ownLabel = [...tally.options, ...tally.custom].find((row) => row.id === ownId)?.label ?? null
+  } else {
+    count = answers.filter((answer) => typeof answer.choiceIndex === 'number').length
+    const own = typeof mine?.choiceIndex === 'number' ? mine.choiceIndex : null
+    ownLabel = own === null ? null : `${own}${poll.unit ? ` ${poll.unit}` : ''}`
+  }
   return (
     <div>
       <p className="text-sm font-medium">{item.title}</p>
       <p className="hint mt-0.5">
-        Umfrage · {votes.length} {votes.length === 1 ? 'Stimme' : 'Stimmen'}
+        Umfrage · {count} {count === 1 ? 'Stimme' : 'Stimmen'}
         {ownLabel && ` · deine Wahl: ${ownLabel}`}
       </p>
       {poll.explanation && <p className="hint mt-0.5 whitespace-pre-line">{poll.explanation}</p>}
