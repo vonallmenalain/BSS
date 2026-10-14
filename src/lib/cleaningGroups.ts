@@ -1,5 +1,6 @@
 // Mit Dateiendung, damit sich das Modul auch ohne Bundler ausführen lässt
 // (`node --test`). Vite und TypeScript lösen das genauso auf.
+import { isOnMission } from './mission.ts'
 import type { CleaningGroup, CleaningGroupEntry, Gender, Member } from './types.ts'
 import { matchesSearch } from './utils.ts'
 
@@ -324,7 +325,15 @@ export function homeWithAssignedParents<
 export function unassignedMembers<
   T extends Pick<
     Member,
-    'id' | 'firstName' | 'lastName' | 'status' | 'birthDate' | 'street' | 'zip'
+    | 'id'
+    | 'firstName'
+    | 'lastName'
+    | 'status'
+    | 'birthDate'
+    | 'street'
+    | 'zip'
+    | 'missionFrom'
+    | 'missionUntil'
   >,
 >(
   members: readonly T[],
@@ -334,14 +343,18 @@ export function unassignedMembers<
 ): T[] {
   const assigned = assignedMemberIds(groups)
   const atHome = everyone ? new Map<string, number>() : homeWithAssignedParents(members, groups)
-  return members
-    .filter((member) => member.status === 'active' && !assigned.has(member.id))
-    .filter((member) => everyone || (isAdult(member, today) && !atHome.has(member.id)))
-    .sort(
-      (a, b) =>
-        a.lastName.localeCompare(b.lastName, 'de-CH') ||
-        a.firstName.localeCompare(b.firstName, 'de-CH'),
-    )
+  return (
+    members
+      .filter((member) => member.status === 'active' && !assigned.has(member.id))
+      // Wer auf Mission ist, putzt nicht – und fehlt deshalb auch nicht.
+      .filter((member) => !isOnMission(member, today))
+      .filter((member) => everyone || (isAdult(member, today) && !atHome.has(member.id)))
+      .sort(
+        (a, b) =>
+          a.lastName.localeCompare(b.lastName, 'de-CH') ||
+          a.firstName.localeCompare(b.firstName, 'de-CH'),
+      )
+  )
 }
 
 /** Wo ein Mitglied eingeteilt ist – Gruppe und Eintrag. */

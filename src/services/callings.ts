@@ -136,6 +136,12 @@ function startedAt(calling: Calling): number {
  */
 export function callingPeriod(calling: Calling): string {
   const from = calling.setApartDate ?? calling.sustainedDate ?? calling.extendedDate
+  if (isRunning(calling) && calling.plannedEndDate) {
+    // Die Vollzeitmission: Bei ihr zählt, wann die Person zurückkommt.
+    return from
+      ? `${formatDate(from)} – ${formatDate(calling.plannedEndDate)}`
+      : `bis ${formatDate(calling.plannedEndDate)}`
+  }
   if (isRunning(calling)) return from ? `seit ${formatDate(from)}` : ''
   if (from && calling.releasedDate)
     return `${formatDate(from)} – ${formatDate(calling.releasedDate)}`

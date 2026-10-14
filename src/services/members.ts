@@ -47,6 +47,8 @@ const MEMBER_DATE_FIELDS = [
   'talkAvailabilityChangedAt',
   'prayerHoldUntil',
   'prayerAvailabilityChangedAt',
+  'missionFrom',
+  'missionUntil',
 ] as const
 
 type MemberDateField = (typeof MEMBER_DATE_FIELDS)[number]

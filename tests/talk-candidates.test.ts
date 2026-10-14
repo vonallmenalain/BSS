@@ -78,6 +78,8 @@ const kandidat = (partial: Partial<TalkCandidate> & { member?: Member } = {}): T
   alreadyPlanned: false,
   onHold: false,
   holdUntil: null,
+  onMission: false,
+  missionUntil: null,
   score: 0,
   ...partial,
 })
@@ -205,6 +207,58 @@ test('Ausgenommene stehen zuunterst', () => {
     ['offen', 'zurueck'],
   )
   assert.equal(ranked[1].onHold, true)
+})
+
+test('wer auf Mission ist, fehlt in den Vorschlägen', () => {
+  const members = [
+    member('weg', {
+      missionFrom: new Date('2026-02-01T00:00:00') as never,
+      missionUntil: new Date('2028-01-31T23:59:59') as never,
+    }),
+    member('da'),
+  ]
+  const ranked = rankTalkCandidates(members, [], { now: JETZT })
+
+  assert.deepEqual(
+    ranked.map((c) => c.member.id),
+    ['da'],
+  )
+})
+
+test('die Suche neben den Filtern findet auch, wer auf Mission ist', () => {
+  const members = [
+    member('weg', {
+      missionFrom: new Date('2026-02-01T00:00:00') as never,
+      missionUntil: new Date('2028-01-31T23:59:59') as never,
+    }),
+  ]
+  const [weg] = rankTalkCandidates(members, [], { now: JETZT, includeMission: true })
+
+  assert.equal(weg.onMission, true)
+  assert.deepEqual(weg.missionUntil, new Date('2028-01-31T23:59:59'))
+  // Auch «Ausgenommene zeigen» holt niemanden von der Mission zurück.
+  assert.equal(
+    filterTalkCandidates([weg], filter({ showOnHold: true, onlyOverdue: false }), 18).length,
+    0,
+  )
+})
+
+test('vor dem ersten und nach dem letzten Tag steht man in den Vorschlägen', () => {
+  const members = [
+    // Die Abschiedsansprache will jemand einplanen.
+    member('bald', {
+      missionFrom: new Date('2026-09-01T00:00:00') as never,
+      missionUntil: new Date('2028-08-31T23:59:59') as never,
+    }),
+    member('zurueck', {
+      missionFrom: new Date('2024-06-01T00:00:00') as never,
+      missionUntil: new Date('2026-05-31T23:59:59') as never,
+    }),
+  ]
+  const ranked = rankTalkCandidates(members, [], { now: JETZT })
+
+  assert.deepEqual(ranked.map((c) => c.member.id).sort(), ['bald', 'zurueck'])
+  assert.ok(ranked.every((c) => !c.onMission))
 })
 
 /* ------------------------------------------------------------------ */
