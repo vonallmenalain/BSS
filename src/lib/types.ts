@@ -3426,15 +3426,30 @@ export const IMPULSE_KIND_LABELS: Record<ImpulseKind, string> = {
  * Welches Spiel eine Minispiel-Karte spielt.
  *
  * Jedes Spiel ist Code, kein Inhalt – die Redaktion wählt es aus, statt
- * es zu bauen. Fürs Erste gibt es eines, zum Wort der Weisheit:
- * `sortieren` – Gesundes und Schädliches fällt von oben und will auf die
- * richtige Seite. Ein neues Spiel kommt mit einem neuen Schlüssel dazu
- * (`components/impulse/game`); alte Ranglisten bleiben bei ihrem Spiel.
+ * es zu bauen. Jedes hat seinen eigenen Griff, damit nicht jede Woche
+ * dasselbe in neuen Farben kommt:
+ *
+ * - `sortieren` – «Gut für dich?», Wort der Weisheit: Gesundes und
+ *   Schädliches fällt von oben und will auf die richtige Seite (wischen).
+ * - `abwehren` – «Schild hoch!», Keuschheit: den Schild um das Herz
+ *   drehen, dunkle Pfeile abwehren, Lichter hereinlassen (tippen, ziehen).
+ * - `springen` – «Keine Ausreden!», Helamans junge Krieger: laufen, über
+ *   Ausreden springen, Aufgaben einsammeln (tippen, halten).
+ * - `befreien` – «Ketten sprengen», Wahrheit: Notlügen wegtippen, bevor
+ *   sie zur Kette werden (tippen auf neun Plätze).
+ *
+ * Ein neues Spiel kommt mit einem neuen Schlüssel dazu (Regeln in
+ * `lib/impulseGame*`, Bild in `components/impulse/game`, eingetragen in
+ * `components/impulse/game/games.ts`); alte Ranglisten bleiben bei ihrem
+ * Spiel.
  */
-export type ImpulseGameId = 'sortieren'
+export type ImpulseGameId = 'sortieren' | 'abwehren' | 'springen' | 'befreien'
 
 export const IMPULSE_GAME_LABELS: Record<ImpulseGameId, string> = {
   sortieren: 'Gut für dich? – Gesundes und Schädliches sortieren',
+  abwehren: 'Schild hoch! – Dunkles abwehren, Licht hereinlassen',
+  springen: 'Keine Ausreden! – laufen, springen, Aufgaben einsammeln',
+  befreien: 'Ketten sprengen – Notlügen wegtippen, bevor sie zur Kette werden',
 }
 
 /**

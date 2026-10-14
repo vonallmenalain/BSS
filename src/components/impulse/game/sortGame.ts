@@ -7,6 +7,20 @@ import {
   sortPace,
   type SortItem,
 } from '@/lib/impulseGame'
+import {
+  clamp,
+  drawHeart,
+  easeIn,
+  easeOut,
+  EMOJI_FONT,
+  MAX_DPR,
+  MAX_STEP,
+  roundRect,
+  UI_FONT,
+  type GameEngine,
+  type GameEngineEvents,
+  type GameEngineOptions,
+} from '@/components/impulse/game/canvasKit'
 
 /*
  * «Gut für dich?» – das Minispiel zum Wort der Weisheit, auf einer Leinwand.
@@ -40,26 +54,9 @@ import {
 
 export type SortSide = 'left' | 'right'
 
-export interface SortGameOptions {
-  canvas: HTMLCanvasElement
-  /** Dunkle Darstellung – die Farben folgen dem Bereich. */
-  dark: boolean
-  /** Weniger Bewegung: kein Wackeln, weniger Funken. */
-  reducedMotion: boolean
-  /** Platz oben, den die Seite für sich braucht (Knopf «Abbrechen», Notch). */
-  topInset: number
-  /** Platz unten (Home-Leiste). */
-  bottomInset: number
-  /** Zufall – in den Prüfungen fest, sonst `Math.random`. */
-  random?: () => number
-  /** Zittern beim Treffer – das Telefon, wo es eines hat. */
-  vibrate?: (pattern: number | number[]) => void
-}
-
-export interface SortGameEvents {
-  /** Die Runde ist vorbei – nach dem letzten Leben und dem Ausklang. */
-  onEnd: (points: number) => void
-}
+/** Dieselben Angaben wie bei jedem Minispiel (`canvasKit`). */
+export type SortGameOptions = GameEngineOptions
+export type SortGameEvents = GameEngineEvents
 
 type Phase = 'ready' | 'play' | 'over' | 'done'
 
@@ -109,20 +106,12 @@ interface Floater {
   color: string
 }
 
-/** Länger als das rechnet ein einzelner Schritt nie – nach einem Tabwechsel. */
-const MAX_STEP = 0.05
 /** So lange dauert der Flug in eine Seite. */
 const FLY_S = 0.3
 /** Vom letzten Leben bis zum Ergebnis. */
 const END_S = 0.95
 /** Wie lange der Hinweis «← Nein, danke · Gut für dich →» mindestens steht. */
 const HINT_S = 3
-const MAX_DPR = 2
-
-const EMOJI_FONT =
-  '"Apple Color Emoji","Segoe UI Emoji","Noto Color Emoji","Segoe UI Symbol",sans-serif'
-const UI_FONT =
-  'ui-rounded,"SF Pro Rounded",system-ui,-apple-system,"Segoe UI",Roboto,"Helvetica Neue",Arial,sans-serif'
 
 interface Palette {
   skyTop: string
@@ -184,11 +173,7 @@ const DARK: Palette = {
   danger: 'rgba(248, 113, 113, 0.5)',
 }
 
-const clamp = (value: number, min: number, max: number) => Math.max(min, Math.min(max, value))
-const easeOut = (k: number) => 1 - (1 - k) * (1 - k)
-const easeIn = (k: number) => k * k
-
-export class SortGame {
+export class SortGame implements GameEngine {
   private readonly canvas: HTMLCanvasElement
   private readonly g: CanvasRenderingContext2D
   private readonly options: SortGameOptions
@@ -1016,47 +1001,6 @@ export class SortGame {
     g.fillText(this.toast.text, this.width / 2, y + h / 2 + 0.5)
     g.globalAlpha = 1
   }
-}
-
-/** Ein Rechteck mit runden Ecken – ohne `roundRect`, das ältere Browser nicht kennen. */
-function roundRect(
-  g: CanvasRenderingContext2D,
-  x: number,
-  y: number,
-  w: number,
-  h: number,
-  r: number,
-) {
-  const radius = Math.max(0, Math.min(r, w / 2, h / 2))
-  g.beginPath()
-  g.moveTo(x + radius, y)
-  g.lineTo(x + w - radius, y)
-  g.quadraticCurveTo(x + w, y, x + w, y + radius)
-  g.lineTo(x + w, y + h - radius)
-  g.quadraticCurveTo(x + w, y + h, x + w - radius, y + h)
-  g.lineTo(x + radius, y + h)
-  g.quadraticCurveTo(x, y + h, x, y + h - radius)
-  g.lineTo(x, y + radius)
-  g.quadraticCurveTo(x, y, x + radius, y)
-  g.closePath()
-}
-
-/** Ein Herz um seinen Mittelpunkt, `size` breit. */
-function drawHeart(
-  g: CanvasRenderingContext2D,
-  cx: number,
-  cy: number,
-  size: number,
-  color: string,
-) {
-  const s = size / 2
-  g.fillStyle = color
-  g.beginPath()
-  g.moveTo(cx, cy + s * 0.85)
-  g.bezierCurveTo(cx - s * 1.25, cy - s * 0.05, cx - s * 0.75, cy - s * 1.15, cx, cy - s * 0.45)
-  g.bezierCurveTo(cx + s * 0.75, cy - s * 1.15, cx + s * 1.25, cy - s * 0.05, cx, cy + s * 0.85)
-  g.closePath()
-  g.fill()
 }
 
 /* ------------------------------------------------------------------ */

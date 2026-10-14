@@ -712,6 +712,17 @@ export const PACK_WEEKS: PackWeek[] = [
         source: FSY_OCTOBER('Dritter Sonntag'),
       },
     ],
+    /* Der Schild des Glaubens wehrt die feurigen Pfeile ab (Epheser 6:16) –
+       und der 13. Glaubensartikel aus dem Feed lässt das Gute herein. */
+    game: {
+      game: 'abwehren',
+      emoji: '🛡️',
+      title: 'Schild hoch!',
+      body:
+        'Pop-ups, Gruppendruck, grobe Sprache – dreh deinen Schild und wehr ab, was auf dein ' +
+        'Herz zufliegt. Aber lass das Gute durch: Musik, Freunde, Gebet. Es wird schnell ' +
+        'schneller – wie lange hältst du stand?',
+    },
   },
 
   /* ================================================================ */
@@ -934,6 +945,17 @@ export const PACK_WEEKS: PackWeek[] = [
         source: verse('Alma 53:20'),
       },
     ],
+    /* «Mutig, stark und regsam» (Alma 53:20) – regsam heisst anpacken statt
+       warten; verwundet, aber nicht gefallen (Alma 57:25). */
+    game: {
+      game: 'springen',
+      emoji: '🏃',
+      title: 'Keine Ausreden!',
+      body:
+        'Mutig, stark, regsam – wie Helamans junge Krieger: Spring über «Später» und «Keine ' +
+        'Lust» und sammle unterwegs Gebet, Schriften und Ämtli ein. Drei Treffer, dann ist ' +
+        'Schluss – wer schafft am meisten?',
+    },
   },
 
   /* ================================================================ */
@@ -1164,6 +1186,18 @@ export const PACK_WEEKS: PackWeek[] = [
         body: 'Oder frag jemanden aus deiner Familie nach so einem Erlebnis. Danach hier abhaken.',
       },
     ],
+    /* Kleine Lügen wachsen: erst eine dünne Schnur, dann starke Stricke
+       (vgl. 2 Nephi 26:22) – die Tages-Challenge heisst «Sieben Tage ohne
+       Notlüge». Die Wahrheit macht frei (Johannes 8:32). */
+    game: {
+      game: 'befreien',
+      emoji: '🔓',
+      title: 'Ketten sprengen',
+      body:
+        '«Bin gleich da», «Hab’s nicht gesehen» – Notlügen fangen als dünne Schnur an und ' +
+        'werden zur Kette. Tippe sie weg, solange sie dünn sind: je früher, desto mehr Punkte. ' +
+        'Der Schlüssel der Wahrheit sprengt alles.',
+    },
   },
 
   /* ================================================================ */

@@ -1180,6 +1180,50 @@ der Gegenstand gehört hätte («Kaffee: Nein, danke») – das Spiel lehrt
 nebenbei. Bewusst fehlt, was nicht klar Ja oder Nein ist (Pommes,
 Schokolade, Energydrinks).
 
+**Drei weitere Spiele – jedes mit eigenem Griff.** Statt «Gut für dich?»
+dreimal neu einzufärben, spielt sich jede Woche anders. Alle haben drei
+Leben, ein Tempo, das von Anfang an anzieht, Punkte als Rangliste und
+denselben Ablauf (Erklärung, Runde, Ergebnis):
+
+- **«Schild hoch!»** (`abwehren`, Keuschheit, 12.–18. Okt.): In der Mitte
+  das Herz, rundum ein Schild; aus vier Richtungen fliegen dunkle Pfeile
+  heran – Pop-up, Video im Chat, grobe Sprache, Gruppendruck, Handy im
+  Bett – und ab und zu ein Licht – gute Musik, Freunde, Gebet, Schriften.
+  Ein Tipp dorthin, woher etwas kommt, dreht den Schild (Finger liegen
+  lassen und im Kreis ziehen geht auch, am Rechner Pfeiltasten oder WASD).
+  Ein abgewehrter Pfeil zählt einen Punkt, ein vorbeigelassener kostet ein
+  Leben. Lichter sollen durch: Kommt eines ans Herz, zählt es drei und
+  bringt ein Leben zurück; vor dem Schild prallt es ab. Das Bild: der
+  Schild des Glaubens gegen die feurigen Pfeile (Epheser 6:16) – und der
+  13. Glaubensartikel aus derselben Woche: Keusch sein heisst auch, das
+  Gute hereinzulassen. Nichts im Spiel zeigt, was es meint; die Wörter
+  stammen aus den Karten der Woche.
+- **«Keine Ausreden!»** (`springen`, Helamans junge Krieger, 19.–25. Okt.):
+  Ein Läufer mit Schild, von der Seite gesehen; ihm kommen Ausreden
+  entgegen – «Später», «Keine Lust», «Nur noch kurz», «Zweifel» –, klein,
+  hoch oder doppelt. Ein Tipp irgendwo (Leertaste, Pfeil nach oben) lässt
+  ihn springen, länger drücken springt höher. Jede Hürde und jede
+  eingesammelte Aufgabe (beten, Schriften, helfen, Ämtli) zählt einen
+  Punkt; ein Treffer ist eine Wunde, drei beenden die Runde, zehn Hürden am
+  Stück heilen eine – «mutig, stark und regsam» (Alma 53:20), verwundet,
+  aber nicht gefallen (Alma 57:25). Schneller wird hier die ganze Welt
+  (`runTempo`), nicht nur die Hürden: Jede bleibt mit demselben Sprung zu
+  schaffen, nur das Zeitfenster wird enger. Wie weit man voraus sieht, ist
+  in Körperhöhen fest – ein breiter Bildschirm zeigt nicht früher, was
+  kommt.
+- **«Ketten sprengen»** (`befreien`, «Die Wahrheit befreit dich»,
+  26. Okt.–1. Nov.): Neun Plätze; auf ihnen tauchen Notlügen auf – «Bin
+  gleich da», «Hab’s nicht gesehen», «Der Hund war’s» –, um jede eine
+  Schnur, die sich zusammenzieht und zur Kette wird. Ein Tipp sprengt sie:
+  als Schnur drei Punkte, als Strick zwei, als Kette einen (die kleine Zahl
+  daneben sagt es). Schnappt sie zu, kostet das ein Leben. Der Schlüssel
+  der Wahrheit sprengt alles auf dem Feld und bringt ein Leben zurück. Ein
+  Tipp ins Leere lähmt kurz – wildes Tippen überall lohnt sich nicht. Am
+  Rechner die Ziffern 1–9, der Ziffernblock oder Q bis C. Das Bild: kleine
+  Lügen wachsen, erst eine dünne Schnur, dann starke Stricke (vgl.
+  2 Nephi 26:22); die Tages-Challenge derselben Woche heisst «Sieben Tage
+  ohne Notlüge».
+
 **Das Tempo** zieht von Anfang an an und hat ab etwa vierzig Sekunden einen
 zweiten Schub, den auf Dauer niemand hält (`sortPace`). Eine Uhr gibt es
 nicht – sie gäbe jedem fehlerfreien Lauf dieselbe Zahl, und eine
@@ -1188,6 +1232,18 @@ einem nachgebildeten Spieler (`tests/impulse-game.test.ts`): Anfänger
 kommen auf gut 20 Sekunden, der Durchschnitt auf gut 30, die Besten auf
 knapp 55 – keine Runde dauert länger als eine Minute.
 
+Bei den drei neueren Spielen liegen die Regeln als Klasse ohne Leinwand in
+`lib/impulseGameShield`, `lib/impulseGameRun` und `lib/impulseGameChain`;
+die Leinwand rechnet mit genau diesem Code, und der Test spielt ihn mit je
+200 nachgebildeten Runden für Anfänger, Durchschnitt und Spitze durch
+(Median der Rundenlänge):
+
+| Spiel             | Anfänger | Durchschnitt | Spitze (längste Runde) |
+| ----------------- | -------- | ------------ | ---------------------- |
+| «Schild hoch!»    | 22 s     | 32 s         | 49 s (52 s)            |
+| «Keine Ausreden!» | 20 s     | 36 s         | 49 s (54 s)            |
+| «Ketten sprengen» | 24 s     | 33 s         | 50 s (55 s)            |
+
 **Flüssig auch auf älteren Telefonen.** Gezeichnet wird auf eine Leinwand,
 wie Turmbau: jeder Gegenstand einmal vorgezeichnet und danach nur noch
 gestempelt, der Hintergrund fertig auf einer zweiten Leinwand, gerechnet
@@ -1195,7 +1251,10 @@ mit der verstrichenen Zeit statt mit Bildern, die Pixeldichte auf 2
 begrenzt. React kennt nur die Ränder (Einführung, Ergebnis, X); die Runde
 selbst läuft ohne einen einzigen Render. Gemessen im Chromium mit
 Handy-Massen: knapp 60 Bilder je Sekunde, mit vierfach gedrosselter CPU
-noch über 50.
+noch über 50. Die drei neueren Spiele teilen dafür ein Gerüst
+(`components/impulse/game/canvasGame`: Bildschleife, Anhalten, Masse,
+Punkte und Herzen, Funken, Ausklang) und halten mit Handy-Massen knapp
+60 Bilder je Sekunde, auch mit vierfach gedrosselter CPU.
 
 **Die Rangliste.** Je Spiel-Karte und Konto **ein** Eintrag mit dem besten
 Lauf (`impulseGameScores/{itemId}_{uid}`) – wie oft jemand gespielt hat,
@@ -1228,12 +1287,24 @@ Vorschau einer einzelnen Karte lässt sich spielen, speichert aber nichts;
 in der Vorschau der Woche lebt der Lauf im Arbeitsspeicher wie jede andere
 Antwort. In der Mitmach-Ecke lässt sich ein Minispiel nicht einreichen –
 ein Spiel ist Code, keine Karte zum Ausfüllen. Das Themenpaket bringt
-«Gut für dich?» für die Woche zum Wort der Weisheit mit; der Kasten
-«Themenpaket» bietet es an, solange es fehlt.
+für die vier Oktoberwochen je ein Spiel mit – «Gut für dich?», «Schild
+hoch!», «Keine Ausreden!», «Ketten sprengen» – als letzte Karte der Woche
+(`fsy26-w41-spiel` bis `fsy26-w44-spiel`). War das Paket schon
+eingespielt, bietet der Kasten «Themenpaket» genau das Fehlende an und
+zählt es einzeln auf (vergangene Wochen bleiben weg); ein Klick auf
+«Einspielen» legt es an. Kommt ein Spiel mitten in einer laufenden Woche
+dazu, hat ihr Wappen eine Karte mehr: Wer es schon ganz hatte, spielt eine
+Runde, dann steht es wieder.
 
 **Ein weiteres Spiel** kommt als neuer Schlüssel in `ImpulseGameId`
-(`lib/types`) samt Zeichnung in `components/impulse/game` – die Karte, die
-Rangliste und die Regeln bleiben dieselben.
+(`lib/types`, mit Namen in `IMPULSE_GAME_LABELS` und Einheit in
+`GAME_UNITS`), mit seinen Regeln in `lib/impulseGame*`, seiner Zeichnung
+und Steuerung in `components/impulse/game` und einem Eintrag in
+`components/impulse/game/games.ts` (Spiel samt Steuerung und Erklärung).
+Die Bühne, die Karte, die Rangliste und die Zugriffsregeln bleiben
+dieselben – die Ranglisten hängen an der Karte (`itemId`), nicht am Spiel.
+Kennt eine ältere App den Schlüssel nicht, bittet die Karte, neu zu laden,
+statt ein falsches Spiel zu starten.
 
 ### 13.8 Mission, Menü und Zurücksetzen
 

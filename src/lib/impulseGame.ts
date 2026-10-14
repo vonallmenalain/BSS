@@ -9,6 +9,12 @@ import type { ImpulseGameId, ImpulseGameScore } from './types.ts'
  * dass eine Runde wirklich kurz bleibt, ohne ein einziges Bild zu
  * zeichnen (`tests/impulse-game.test.ts` spielt sie mit einem
  * nachgebildeten Spieler durch).
+ *
+ * Hier stehen das Gemeinsame und «Gut für dich?». Die Regeln der
+ * späteren Spiele liegen je in einer eigenen Datei daneben, als Klasse,
+ * die eine ganze Runde ohne Leinwand rechnet: `impulseGameShield`
+ * («Schild hoch!»), `impulseGameRun` («Keine Ausreden!») und
+ * `impulseGameChain` («Ketten sprengen»).
  */
 
 /* ------------------------------------------------------------------ */
@@ -247,9 +253,21 @@ export function nextSortItem(
   return pool[Math.floor(random() * pool.length) % pool.length]
 }
 
-/** Was ein Spiel für die Liste zählt – fürs Erste nur dieses eine. */
+/**
+ * Was ein Spiel für die Liste zählt. Alle zählen Punkte – eine eigene
+ * Einheit je Spiel («Meter», «Hürden») machte die Liste nicht klarer,
+ * nur die Regeln länger.
+ */
 export const GAME_UNITS: Record<ImpulseGameId, { one: string; many: string }> = {
   sortieren: { one: 'Punkt', many: 'Punkte' },
+  abwehren: { one: 'Punkt', many: 'Punkte' },
+  springen: { one: 'Punkt', many: 'Punkte' },
+  befreien: { one: 'Punkt', many: 'Punkte' },
+}
+
+/** Kennt diese Version der App das Spiel? Eine Karte aus einer neueren Version vielleicht nicht. */
+export function isImpulseGameId(value: unknown): value is ImpulseGameId {
+  return typeof value === 'string' && Object.hasOwn(GAME_UNITS, value)
 }
 
 export function gameUnit(game: ImpulseGameId, points: number): string {

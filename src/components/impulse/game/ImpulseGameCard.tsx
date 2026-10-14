@@ -7,6 +7,7 @@ import {
   GAME_NAME_MAX,
   gameRanking,
   gameUnit,
+  isImpulseGameId,
   type GameRankRow,
 } from '@/lib/impulseGame'
 import { CardEmoji } from '@/components/impulse/ImpulseCards'
@@ -32,6 +33,10 @@ import type { ImpulseGameId, ImpulseGameScore, ImpulseItem } from '@/lib/types'
  * Im Rückblick (`closed`) steht der Endstand, gespielt wird nicht mehr.
  * In der Vorschau der Redaktion (`preview`) wird nichts gespeichert: Der
  * Rekord lebt nur, solange die Vorschau offen ist.
+ *
+ * Welches Spiel läuft, sagt `item.game`. Kennt diese Version der App den
+ * Schlüssel nicht – die Karte stammt aus einer neueren –, steht statt
+ * «Spielen» die Bitte, die App neu zu laden; die Rangliste bleibt sichtbar.
  */
 export function ImpulseGameCard({
   item,
@@ -61,7 +66,8 @@ export function ImpulseGameCard({
   const [localBest, setLocalBest] = useState<number | null>(null)
   const playRef = useRef<HTMLButtonElement>(null)
   const uid = profile?.id ?? ''
-  const game: ImpulseGameId = item.game ?? 'sortieren'
+  const known = isImpulseGameId(item.game ?? 'sortieren')
+  const game: ImpulseGameId = known ? (item.game ?? 'sortieren') : 'sortieren'
   const user = profile ? { uid: profile.id, displayName: profile.displayName } : null
 
   const own = scores.find((score) => score.uid === uid) ?? null
@@ -149,6 +155,10 @@ export function ImpulseGameCard({
         <p className="hint mt-3">
           Das Spiel dieser Woche ist vorbei – so steht die Rangliste am Schluss.
         </p>
+      ) : !known ? (
+        <p className="hint mt-3 rounded-xl border border-dashed border-slate-300 p-3 text-center dark:border-slate-700">
+          Dieses Spiel ist neuer als deine App. Lade die Seite neu, dann kannst du mitspielen.
+        </p>
       ) : (
         <>
           <button
@@ -208,8 +218,9 @@ export function ImpulseGameCard({
         )}
       </div>
 
-      {open && (
+      {open && known && (
         <ImpulseGameStage
+          game={game}
           title={item.title}
           onClose={closeStage}
           onRoundEnd={roundEnd}

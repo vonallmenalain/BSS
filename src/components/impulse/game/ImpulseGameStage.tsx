@@ -1,9 +1,17 @@
-import { useEffect, useLayoutEffect, useRef, useState, type ReactNode } from 'react'
+import {
+  useEffect,
+  useLayoutEffect,
+  useRef,
+  useState,
+  type ComponentType,
+  type ReactNode,
+} from 'react'
 import { createPortal } from 'react-dom'
 import { Pause, Play, X } from 'lucide-react'
 import { cn } from '@/lib/utils'
-import { SORT_SIDES } from '@/lib/impulseGame'
-import { attachSortControls, SortGame } from '@/components/impulse/game/sortGame'
+import type { ImpulseGameId } from '@/lib/types'
+import type { GameEngine } from '@/components/impulse/game/canvasKit'
+import { IMPULSE_GAMES } from '@/components/impulse/game/games'
 
 /*
  * Die Bühne eines Minispiels – ein Vollbild über dem Feed.
@@ -16,9 +24,13 @@ import { attachSortControls, SortGame } from '@/components/impulse/game/sortGame
  * danach steht wieder die Karte da, an derselben Stelle im Feed, und der
  * Wisch nach oben oder unten geht weiter wie immer.
  *
- * Ablauf: Einführung (die zwei Seiten, ein Knopf) → Runde → Ergebnis.
- * «Nochmal» startet direkt die nächste Runde, ohne Einführung. Geht die
- * App in den Hintergrund, hält die Runde an und wartet auf einen Tipp.
+ * Ablauf: Einführung (die Erklärung des Spiels, ein Knopf) → Runde →
+ * Ergebnis. «Nochmal» startet direkt die nächste Runde, ohne Einführung.
+ * Geht die App in den Hintergrund, hält die Runde an und wartet auf einen
+ * Tipp.
+ *
+ * Welches Spiel auf die Leinwand kommt, sagt `game` – nachgeschlagen in
+ * `games.ts`. Die Bühne selbst ist für alle Spiele dieselbe.
  */
 
 export interface GameRoundInfo {
@@ -27,6 +39,13 @@ export interface GameRoundInfo {
 }
 
 type StagePhase = 'intro' | 'play' | 'paused' | 'result'
+
+/**
+ * So lange nach dem Erscheinen nimmt die Ergebnistafel keinen Tipp an.
+ * Wer am Ende der Runde noch wild tippt (oder die Leertaste hält, um zu
+ * springen), träfe sonst gleich «Nochmal» – und sähe sein Ergebnis nie.
+ */
+const RESULT_GUARD_MS = 600
 
 /** Der Abstand, den Notch und Home-Leiste brauchen – gemessen, nicht geraten. */
 function safeInsets(): { top: number; bottom: number } {
@@ -46,11 +65,14 @@ function safeInsets(): { top: number; bottom: number } {
 const reducedMotion = () => window.matchMedia('(prefers-reduced-motion: reduce)').matches
 
 export function ImpulseGameStage({
+  game,
   title,
   onClose,
   onRoundEnd,
   renderResult,
 }: {
+  /** Welches Spiel – bleibt, solange die Bühne offen ist. */
+  game: ImpulseGameId
   title: string
   /** Die Bühne schliessen – die Karte steht wieder da. */
   onClose: () => void
@@ -64,7 +86,8 @@ export function ImpulseGameStage({
 }) {
   const surfaceRef = useRef<HTMLDivElement>(null)
   const canvasRef = useRef<HTMLCanvasElement>(null)
-  const gameRef = useRef<SortGame | null>(null)
+  const gameRef = useRef<GameEngine | null>(null)
+  const resultAt = useRef(0)
   const [phase, setPhase] = useState<StagePhase>('intro')
   const phaseRef = useRef<StagePhase>('intro')
   const [result, setResult] = useState<{ points: number; info: GameRoundInfo } | null>(null)
@@ -87,7 +110,8 @@ export function ImpulseGameStage({
     const surface = surfaceRef.current
     if (!canvas || !surface) return
     const insets = safeInsets()
-    const game = new SortGame(
+    const { engine, detach } = IMPULSE_GAMES[game].mount(
+      surface,
       {
         canvas,
         dark: document.documentElement.classList.contains('dark'),
@@ -105,27 +129,26 @@ export function ImpulseGameStage({
       {
         onEnd: (points) => {
           const info = roundEndRef.current(points)
+          resultAt.current = performance.now()
           setResult({ points, info })
           go('result')
         },
       },
+      () => phaseRef.current === 'play',
     )
-    gameRef.current = game
+    gameRef.current = engine
     // Für die Prüfskripte – nur beim Entwickeln, im fertigen Bau fällt die Zeile weg.
     if (import.meta.env.DEV)
-      (window as unknown as { __impulseGame?: SortGame }).__impulseGame = game
-    const detach = attachSortControls(surface, (side) => {
-      if (phaseRef.current === 'play') game.input(side)
-    })
-    const observer = new ResizeObserver(() => game.resize())
+      (window as unknown as { __impulseGame?: GameEngine }).__impulseGame = engine
+    const observer = new ResizeObserver(() => engine.resize())
     observer.observe(surface)
     return () => {
       observer.disconnect()
       detach()
-      game.destroy()
+      engine.destroy()
       gameRef.current = null
     }
-  }, [])
+  }, [game])
 
   /* In den Hintergrund: Die Runde hält an und wartet auf einen Tipp. */
   useEffect(() => {
@@ -145,6 +168,9 @@ export function ImpulseGameStage({
     gameRef.current?.start()
     go('play')
   }
+
+  /* Die Ergebnistafel: Knöpfe erst nach einem Augenblick (`RESULT_GUARD_MS`). */
+  const settled = () => performance.now() - resultAt.current >= RESULT_GUARD_MS
 
   const resume = () => {
     gameRef.current?.resume()
@@ -233,7 +259,9 @@ export function ImpulseGameStage({
         </button>
       </div>
 
-      {phase === 'intro' && <StageIntro title={title} onStart={start} />}
+      {phase === 'intro' && (
+        <StageIntro title={title} Intro={IMPULSE_GAMES[game].Intro} onStart={start} />
+      )}
 
       {phase === 'paused' && (
         <StagePanel>
@@ -262,13 +290,17 @@ export function ImpulseGameStage({
         <StagePanel wide>
           {renderResult(result)}
           <div className="mt-5 grid grid-cols-2 gap-2">
-            <button type="button" className="btn-secondary justify-center py-3" onClick={close}>
+            <button
+              type="button"
+              className="btn-secondary justify-center py-3"
+              onClick={() => settled() && close()}
+            >
               Fertig
             </button>
             <button
               type="button"
               className="btn-primary justify-center border-0 bg-gradient-to-r from-pink-500 to-orange-400 py-3 text-base text-white hover:from-pink-600 hover:to-orange-500"
-              onClick={start}
+              onClick={() => settled() && start()}
               autoFocus
             >
               <Play className="size-5" aria-hidden />
@@ -298,35 +330,23 @@ function StagePanel({ children, wide = false }: { children: ReactNode; wide?: bo
   )
 }
 
-/** Die Einführung: die zwei Seiten – mit Beispielen – und ein Knopf. */
-function StageIntro({ title, onStart }: { title: string; onStart: () => void }) {
+/** Die Einführung: Titel, die Erklärung des Spiels und ein Knopf. */
+function StageIntro({
+  title,
+  Intro,
+  onStart,
+}: {
+  title: string
+  Intro: ComponentType
+  onStart: () => void
+}) {
   return (
     <StagePanel wide>
       <p className="text-xs font-semibold tracking-wide text-pink-600 uppercase dark:text-pink-300">
         Minispiel
       </p>
       <h2 className="mt-1 text-2xl font-bold text-balance">{title}</h2>
-      <div className="mt-4 grid grid-cols-2 gap-2 text-sm">
-        <div className="rounded-2xl bg-red-50 p-3 text-red-800 ring-1 ring-red-200 dark:bg-red-500/10 dark:text-red-200 dark:ring-red-400/30">
-          <p className="text-2xl leading-none" aria-hidden>
-            🚬 🍺 ☕
-          </p>
-          <p className="mt-2 font-semibold">← {SORT_SIDES.left}</p>
-          <p className="text-xs opacity-80">nach links wischen</p>
-        </div>
-        <div className="rounded-2xl bg-green-50 p-3 text-green-800 ring-1 ring-green-200 dark:bg-green-500/10 dark:text-green-200 dark:ring-green-400/30">
-          <p className="text-2xl leading-none" aria-hidden>
-            🥦 🌾 🏃
-          </p>
-          <p className="mt-2 font-semibold">{SORT_SIDES.right} →</p>
-          <p className="text-xs opacity-80">nach rechts wischen</p>
-        </div>
-      </div>
-      <p className="mt-4 text-sm text-slate-600 dark:text-slate-300">
-        Dran ist der Gegenstand mit dem Ring. Wische ihn auf die richtige Seite – oder tippe links
-        bzw. rechts –, bevor er unten ankommt. Drei Leben, zehn richtige am Stück geben eines
-        zurück. Und es wird schnell schneller.
-      </p>
+      <Intro />
       <button
         type="button"
         onClick={onStart}
