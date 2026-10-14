@@ -48,6 +48,7 @@ import {
 } from '@/lib/impulse'
 import { IMPULSE_KIND_THEME, IMPULSE_SECTIONS } from '@/lib/impulseSections'
 import { isPackItem, PACK_WEEKS, planPackCorrections, planPackItems } from '@/lib/impulsePack'
+import { tallyPollChoices } from '@/lib/impulsePoll'
 import {
   applyDifficultyCleanup,
   applyPackCorrections,
@@ -361,6 +362,18 @@ export function ImpulsRedaktion() {
     (commentsByItem.get(item.id)?.length ?? 0) +
     (scoresByItem.get(item.id)?.length ?? 0)
 
+  /* Wie viele eigene Antworten eine Umfrage bekommen hat – ein Hinweis,
+     wo es etwas anzuschauen gibt. Ausgeblendet wird auf der Karte selbst,
+     wie bei den Beiträgen zur Frage der Woche. */
+  const customAnswerCount = (item: ImpulseItem) =>
+    item.kind === 'umfrage' && item.poll?.form === 'choice'
+      ? tallyPollChoices(
+          item.poll,
+          answersState.data.filter((answer) => answer.itemId === item.id),
+          { hidden: item.hiddenPollAnswers, showHidden: true },
+        ).custom.length
+      : 0
+
   /* Die Mitmach-Ecke: offene Einreichungen prüfen und übernehmen – und
      die übernommenen bleiben aufklappbar stehen, als Chronik dessen, was
      die AP's beigesteuert haben. */
@@ -660,6 +673,7 @@ export function ImpulsRedaktion() {
             kind={kind}
             items={weekItems.filter((item) => item.kind === kind)}
             answerCount={answerCount}
+            customAnswerCount={customAnswerCount}
             onOpen={openItem}
             onPreview={previewItem}
             onCreate={() => openNew(kind)}
@@ -1004,6 +1018,7 @@ function WeekKindGroup({
   kind,
   items,
   answerCount,
+  customAnswerCount,
   onOpen,
   onPreview,
   onCreate,
@@ -1011,6 +1026,8 @@ function WeekKindGroup({
   kind: ImpulseKind
   items: ImpulseItem[]
   answerCount: (item: ImpulseItem) => number
+  /** Bei Umfragen: wie viele eigene Antworten dazugekommen sind. */
+  customAnswerCount: (item: ImpulseItem) => number
   onOpen: (item: ImpulseItem) => void
   onPreview: (item: ImpulseItem) => void
   onCreate: () => void
@@ -1082,6 +1099,7 @@ function WeekKindGroup({
                           {answerCount(item)} {answerCount(item) === 1 ? 'Antwort' : 'Antworten'}
                         </>
                       )}
+                    {customAnswerCount(item) > 0 && ` · ${customAnswerCount(item)} hinzugefügt`}
                     {item.kind === 'spiel' && answerCount(item) > 0 && (
                       <>
                         {' · '}

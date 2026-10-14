@@ -1141,6 +1141,49 @@ describe('Impuls', () => {
       )
     })
 
+    /*
+     * Die eigene Antwort in der Umfrage braucht keine eigene Regel: Sie ist
+     * eine gewöhnliche Stimme, nur mit Text statt Index (lib/impulsePoll) –
+     * und ausgeblendet wird am Inhalt, wo ohnehin allein die Redaktion
+     * schreibt.
+     */
+    it('Umfrage: eigene Antwort als gewöhnliche Stimme – ausblenden nur die Redaktion', async () => {
+      const vote = doc(asImpulseAp(), 'impulseAnswers', `umfrage-1_${IMPULSE_AP}`)
+      await assertSucceeds(
+        setDoc(vote, {
+          itemId: 'umfrage-1',
+          uid: IMPULSE_AP,
+          firstName: '',
+          choiceIndex: null,
+          text: 'Mit den Eltern reden',
+          correct: null,
+        }),
+      )
+      // Umentscheiden gibt es auch mit eigener Antwort nicht.
+      await assertFails(updateDoc(vote, { text: 'Doch etwas anderes' }))
+
+      await assertSucceeds(
+        setDoc(doc(asBishop(), 'impulseItems', 'umfrage-1'), {
+          week: '2026-W33',
+          kind: 'umfrage',
+          status: 'ready',
+          title: 'Was würdest du tun?',
+        }),
+      )
+      await assertFails(
+        updateDoc(doc(asImpulseAp(), 'impulseItems', 'umfrage-1'), {
+          hiddenPollAnswers: arrayUnion('Mit den Eltern reden'),
+        }),
+      )
+      await assertSucceeds(
+        updateDoc(doc(asBishop(), 'impulseItems', 'umfrage-1'), {
+          hiddenPollAnswers: arrayUnion('Mit den Eltern reden'),
+        }),
+      )
+      await assertSucceeds(deleteDoc(doc(asBishop(), 'impulseItems', 'umfrage-1')))
+      await assertSucceeds(deleteDoc(doc(asBishop(), 'impulseAnswers', `umfrage-1_${IMPULSE_AP}`)))
+    })
+
     it('wegräumen darf allein die Redaktion', async () => {
       await assertFails(deleteDoc(doc(asImpulseAp(), 'impulseAnswers', `frage-1_${IMPULSE_AP}`)))
       // Das Administrator-Konto ist die Redaktion – und räumt zugleich auf.

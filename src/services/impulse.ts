@@ -21,6 +21,7 @@ import { forgetDoc, resyncCollections } from '@/lib/collectionStore'
 import { commit, requireOnline, type SaveOutcome } from '@/lib/sync'
 import { impulseAnswerId, impulseFirstName, quizAnswerCorrect } from '@/lib/impulse'
 import { cleanGameName, cleanGameScore } from '@/lib/impulseGame'
+import { cleanPollText, pollHiddenEntries, type ImpulsePollReply } from '@/lib/impulsePoll'
 import type { PackPlan } from '@/lib/impulsePack'
 import {
   planImpulseReset,
@@ -118,6 +119,7 @@ export const EMPTY_IMPULSE_QUIZ: ImpulseQuiz = {
 export const EMPTY_IMPULSE_POLL: ImpulsePoll = {
   form: 'choice',
   options: ['', ''],
+  allowCustom: true,
   min: 1,
   max: 10,
   minLabel: '',
@@ -136,6 +138,8 @@ function cleanPoll(poll: ImpulsePoll): ImpulsePoll {
   return {
     form: poll.form,
     options: poll.form === 'choice' ? poll.options.map((option) => option.trim()) : [],
+    // Ausdrücklich gespeichert – ein fehlendes Feld hiesse ebenfalls «ja».
+    allowCustom: poll.allowCustom !== false,
     min: Math.round(Number(poll.min)),
     max: Math.round(Number(poll.max)),
     minLabel: poll.minLabel.trim(),
@@ -399,6 +403,35 @@ export async function setImpulseCommentHidden(
   return commit(
     updateDoc(doc(db, COLLECTIONS.impulseComments, commentId), {
       hidden,
+      updatedAt: serverTimestamp(),
+    }),
+  )
+}
+
+/**
+ * Moderation: eine eigene Antwort einer Umfrage ausblenden – oder wieder
+ * zeigen. Allein die Redaktion; gespeichert am Inhalt
+ * (`hiddenPollAnswers`), denn die Stimmen selbst lassen die Regeln
+ * niemanden ändern.
+ *
+ * Die Stimmen bleiben dabei, wie sie sind: Wer für die Antwort gestimmt
+ * hat, hat seine Stimme abgegeben und bekommt keine zweite – sie zählt
+ * nur nicht mehr mit. «Zeigen» macht alles rückgängig und nimmt jede
+ * Schreibweise der Antwort aus der Liste.
+ */
+export async function setImpulsePollAnswerHidden(
+  item: Pick<ImpulseItem, 'id' | 'hiddenPollAnswers'>,
+  text: string,
+  hidden: boolean,
+): Promise<SaveOutcome> {
+  const entries = hidden
+    ? [cleanPollText(text)]
+    : pollHiddenEntries(item.hiddenPollAnswers ?? [], text)
+  // Nichts auszublenden bzw. nichts mehr in der Liste – dann gibt es nichts zu schreiben.
+  if (entries.length === 0 || !entries[0]) return 'synced'
+  return commit(
+    updateDoc(doc(db, COLLECTIONS.impulseItems, item.id), {
+      hiddenPollAnswers: hidden ? arrayUnion(...entries) : arrayRemove(...entries),
       updatedAt: serverTimestamp(),
     }),
   )
@@ -1132,21 +1165,25 @@ export async function answerImpulseQuiz(
  * Änderung zu). Bei der Auswahl ist der Wert der Index der Möglichkeit,
  * bei der Skala der Wert selbst. Richtig oder falsch gibt es nicht.
  *
+ * Eine eigene Antwort – oder eine, die jemand anders hinzugefügt hat –
+ * kommt als Text (`{ text }`); `choiceIndex` bleibt dann leer. Welche
+ * Stimmen zusammengehören, rechnet die Auszählung (`lib/impulsePoll`).
+ *
  * Abgestimmt wird anonym: Der Vorname bleibt leer – gezeigt wird ohnehin
  * nur das Ergebnis, und so steht er auch in der Stimme selbst nicht.
  */
 export async function answerImpulsePoll(
   item: ImpulseItem,
   user: { uid: string; displayName: string },
-  value: number,
+  reply: ImpulsePollReply,
 ): Promise<SaveOutcome> {
   return commit(
     setDoc(doc(db, COLLECTIONS.impulseAnswers, impulseAnswerId(item.id, user.uid)), {
       itemId: item.id,
       uid: user.uid,
       firstName: '',
-      choiceIndex: value,
-      text: '',
+      choiceIndex: 'text' in reply ? null : reply.choiceIndex,
+      text: 'text' in reply ? cleanPollText(reply.text) : '',
       correct: null,
       answeredAt: serverTimestamp(),
       updatedAt: serverTimestamp(),

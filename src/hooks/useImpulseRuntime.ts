@@ -12,6 +12,7 @@ import { useAuth } from '@/contexts/AuthContext'
 import { useNow } from '@/hooks/useNow'
 import { impulseAnswerId, impulseFirstName, quizAnswerCorrect } from '@/lib/impulse'
 import { cleanGameName, cleanGameScore } from '@/lib/impulseGame'
+import { cleanPollText } from '@/lib/impulsePoll'
 import {
   PREVIEW_UID,
   changePreviewProgress,
@@ -43,6 +44,7 @@ import {
   setImpulseGameName,
   setImpulseGameScoreHidden,
   setImpulseLastSeenWeek,
+  setImpulsePollAnswerHidden,
   setImpulseReport,
   setImpulseWeekGoal,
   setImpulseWeekShare,
@@ -68,6 +70,7 @@ export const REAL_IMPULSE_WRITES = {
   answerImpulseQuiz,
   answerImpulsePoll,
   answerImpulsePuzzle,
+  setImpulsePollAnswerHidden,
   saveImpulseComment,
   setImpulseCommentHidden,
   setImpulseReport,
@@ -220,10 +223,21 @@ export function previewImpulseWrites(
         text: reply.text?.trim() ?? '',
         correct: quizAnswerCorrect(item, reply),
       }),
-    answerImpulsePoll: async (item, user, value) =>
-      answer(item.id, user, { choiceIndex: value, text: '', correct: null }, true),
+    answerImpulsePoll: async (item, user, reply) =>
+      answer(
+        item.id,
+        user,
+        'text' in reply
+          ? { choiceIndex: null, text: cleanPollText(reply.text), correct: null }
+          : { choiceIndex: reply.choiceIndex, text: '', correct: null },
+        true,
+      ),
     answerImpulsePuzzle: async (item, user, attempt, correct) =>
       answer(item.id, user, { choiceIndex: null, text: attempt.trim(), correct }),
+    /* Ausgeblendet wird am Inhalt, und Inhalte kennt die Vorschau nur aus
+       der Datenbank. Moderiert wird in der Vorschau ohnehin nicht – die
+       gespielte Person ist keine Redaktion (`useImpulseAuth`). */
+    setImpulsePollAnswerHidden: async () => done(),
 
     saveImpulseComment: async (item, user, text, isNew, anonymous = false) => {
       const id = impulseAnswerId(item.id, user.uid)
