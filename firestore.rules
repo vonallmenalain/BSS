@@ -658,7 +658,14 @@ service cloud.firestore {
      * (die zweite Antwort wäre ein `update`, und das gibt es nicht:
      * ein Versuch, keine Korrektur). Lesen dürfen alle im Bereich –
      * die Auflösung und später das Gruppenbild leben davon.
-     * Wegräumen kann allein die Redaktion, etwa Testantworten.
+     * Wegräumen kann die Redaktion, etwa Testantworten.
+     *
+     * Die eine Ausnahme ist die **Umfrage**: Sie ist eine Meinung und kein
+     * Versuch, und die eigene Stimme darf man zurücknehmen – um danach neu
+     * zu wählen. Dafür darf die Person ihr eigenes Dokument löschen, aber
+     * nur, wenn der Inhalt, zu dem es gehört, eine Umfrage ist. Beim Quiz
+     * und beim Puzzle bleibt es dabei: Ein Versuch lässt sich nicht
+     * wiederholen.
      */
     match /impulseAnswers/{answerId} {
       allow read: if impulseAccess();
@@ -669,7 +676,11 @@ service cloud.firestore {
 
       allow update: if false;
 
-      allow delete: if impulseWrite();
+      allow delete: if impulseWrite()
+        || (impulseAccess()
+          && resource.data.uid == request.auth.uid
+          && get(/databases/$(database)/documents/impulseItems/$(resource.data.itemId)).data.kind
+               == 'umfrage');
     }
 
     /*

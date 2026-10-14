@@ -949,7 +949,9 @@ bleibt ein Stern – als Termin, nicht als Vorbereitung.
   bei Zahlen: Wer was gewählt hat, zeigt die Karte nie. So lässt sich
   auch dort ehrlich antworten, wo es persönlich wird. Nach der Stimme
   folgt ein Gedanke aus den Schriften oder dem Wegweiser. Passt keine
-  Möglichkeit, darf man eine eigene hinzufügen (siehe 13.9).
+  Möglichkeit, darf man eine eigene hinzufügen (siehe 13.9). Anders als
+  beim Quiz lässt sich die Stimme zurücknehmen, solange die Woche läuft
+  (siehe 13.10).
 - **Vers-Puzzle** (`puzzle`) – die Teile eines Verses liegen gemischt
   da, wer sie in der richtigen Reihenfolge antippt, baut den Vers. Ein
   Versuch, wie beim Quiz; danach steht der Vers richtig da, und die
@@ -1475,8 +1477,30 @@ zweite (die ID erzwingt es), sieht die Antwort aber still weiter als
 «Deine Wahl» – wie den eigenen Eintrag in der Rangliste; eine angeschriebene
 Abfuhr entmutigte (Leitgedanke 1). Tippt später jemand denselben Text ein,
 landet er ebenfalls im Ausgeblendeten. «Wieder zeigen» macht alles
-rückgängig. Wer eine Stimme wirklich zurückgeben will, kann sie wie bisher
-beim Zurücksetzen der Woche löschen (13.8).
+rückgängig. Die Person selbst kann ihre Stimme zurücknehmen und neu wählen
+(13.10); die Redaktion räumt Stimmen weiterhin beim Zurücksetzen der Woche
+weg (13.8).
+
+### 13.10 Die eigene Stimme zurücknehmen
+
+Eine Umfrage ist kein Versuch wie das Quiz, sondern eine Meinung – und die
+darf man sich anders überlegen. **Ein zweites Antippen der eigenen Wahl
+nimmt die Stimme zurück**; das Ergebnis sagt es darunter («Nochmals auf
+deine Wahl tippen nimmt die Stimme zurück»), bei der Skala steht dafür
+«Stimme zurücknehmen». Danach steht die Auswahl wieder da, samt allen
+hinzugefügten Antworten – auch denen, die nach der eigenen Stimme dazukamen.
+Wer schon abgestimmt hat, sieht solche Antworten im Ergebnis ohnehin; zum
+Wählen braucht es den Umweg über das Zurücknehmen.
+
+Im Rückblick auf eine vergangene Woche geht das nicht – dort wird gar nicht
+mehr abgestimmt. Das Wappenteil der Karte fällt mit der Stimme weg und kommt
+mit der neuen zurück; gezählt wird ja, ob jemand mitgemacht hat.
+
+**Die Regel.** Das Dokument der Stimme wird gelöscht (`withdrawImpulsePoll`).
+Löschen darf die Person nur ihr eigenes und nur, wenn der Inhalt eine
+Umfrage ist (`kind == 'umfrage'`, nachgeschlagen am Inhalt). Beim Quiz und
+beim Vers-Puzzle bleibt es dabei: ein Versuch, keine Korrektur. Geprüft in
+`tests/firestore-rules.test.js`.
 
 **Abschalten je Umfrage.** Im Formular steht bei der Auswahl der Haken
 **«Eigene Antworten zulassen»**, vorgegeben ist er gesetzt. Fehlt das Feld

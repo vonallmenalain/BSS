@@ -1184,6 +1184,59 @@ describe('Impuls', () => {
       await assertSucceeds(deleteDoc(doc(asBishop(), 'impulseAnswers', `umfrage-1_${IMPULSE_AP}`)))
     })
 
+    /*
+     * Die Umfrage ist eine Meinung und kein Versuch: Die eigene Stimme darf
+     * man zurücknehmen und neu wählen. Fremde Stimmen bleiben tabu, und
+     * beim Quiz bleibt der Versuch, wie er war.
+     */
+    it('Umfrage: die eigene Stimme zurücknehmen und neu wählen – beim Quiz nicht', async () => {
+      const item = (id, kind) =>
+        setDoc(doc(asBishop(), 'impulseItems', id), {
+          week: '2026-W33',
+          kind,
+          status: 'ready',
+          title: 'Eine Frage',
+        })
+      const vote = (db, uid, itemId, extra = {}) =>
+        setDoc(doc(db, 'impulseAnswers', `${itemId}_${uid}`), {
+          itemId,
+          uid,
+          firstName: '',
+          choiceIndex: 0,
+          text: '',
+          correct: null,
+          ...extra,
+        })
+      await assertSucceeds(item('umfrage-2', 'umfrage'))
+      await assertSucceeds(item('quiz-2', 'quiz'))
+
+      await assertSucceeds(vote(asImpulseAp(), IMPULSE_AP, 'umfrage-2'))
+      await assertSucceeds(vote(asImpulseOnly(), IMPULSE_ONLY, 'umfrage-2'))
+      // Die Stimme einer anderen Person nimmt niemand zurück.
+      await assertFails(
+        deleteDoc(doc(asImpulseAp(), 'impulseAnswers', `umfrage-2_${IMPULSE_ONLY}`)),
+      )
+      // Die eigene schon – und danach lässt sich neu wählen.
+      await assertSucceeds(
+        deleteDoc(doc(asImpulseAp(), 'impulseAnswers', `umfrage-2_${IMPULSE_AP}`)),
+      )
+      await assertSucceeds(vote(asImpulseAp(), IMPULSE_AP, 'umfrage-2', { choiceIndex: 2 }))
+
+      // Ein Quizversuch lässt sich nicht zurücknehmen und wiederholen.
+      await assertSucceeds(vote(asImpulseAp(), IMPULSE_AP, 'quiz-2', { correct: false }))
+      await assertFails(deleteDoc(doc(asImpulseAp(), 'impulseAnswers', `quiz-2_${IMPULSE_AP}`)))
+
+      for (const id of [
+        `umfrage-2_${IMPULSE_AP}`,
+        `umfrage-2_${IMPULSE_ONLY}`,
+        `quiz-2_${IMPULSE_AP}`,
+      ]) {
+        await assertSucceeds(deleteDoc(doc(asBishop(), 'impulseAnswers', id)))
+      }
+      await assertSucceeds(deleteDoc(doc(asBishop(), 'impulseItems', 'umfrage-2')))
+      await assertSucceeds(deleteDoc(doc(asBishop(), 'impulseItems', 'quiz-2')))
+    })
+
     it('wegräumen darf allein die Redaktion', async () => {
       await assertFails(deleteDoc(doc(asImpulseAp(), 'impulseAnswers', `frage-1_${IMPULSE_AP}`)))
       // Das Administrator-Konto ist die Redaktion – und räumt zugleich auf.

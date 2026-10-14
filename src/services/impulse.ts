@@ -1161,9 +1161,11 @@ export async function answerImpulseQuiz(
  * Bei einer Umfrage abstimmen – eine Stimme, auf den eigenen Namen.
  *
  * Dieselbe Sammlung und dieselbe ID wie beim Quiz: eine Stimme pro
- * Person, und umentscheiden gibt es nicht (die Regeln lassen keine
- * Änderung zu). Bei der Auswahl ist der Wert der Index der Möglichkeit,
- * bei der Skala der Wert selbst. Richtig oder falsch gibt es nicht.
+ * Person. Ändern lässt sie sich nicht (die Regeln lassen kein Update
+ * zu) – wer sich umentscheidet, nimmt sie zurück
+ * (`withdrawImpulsePoll`) und stimmt neu ab. Bei der Auswahl ist der
+ * Wert der Index der Möglichkeit, bei der Skala der Wert selbst. Richtig
+ * oder falsch gibt es nicht.
  *
  * Eine eigene Antwort – oder eine, die jemand anders hinzugefügt hat –
  * kommt als Text (`{ text }`); `choiceIndex` bleibt dann leer. Welche
@@ -1189,6 +1191,26 @@ export async function answerImpulsePoll(
       updatedAt: serverTimestamp(),
     }),
   )
+}
+
+/**
+ * Die eigene Stimme einer Umfrage zurücknehmen.
+ *
+ * Anders als beim Quiz ist eine Umfrage kein Versuch, sondern eine
+ * Meinung – und die darf man sich anders überlegen, solange die Woche
+ * läuft. Die Stimme verschwindet dabei ganz; danach lässt sich wieder
+ * abstimmen, auch für eine Antwort, die jemand inzwischen hinzugefügt
+ * hat. Die Regeln erlauben das Löschen nur bei Umfragen und nur der
+ * eigenen Stimme (`firestore.rules`, «Impuls»).
+ */
+export async function withdrawImpulsePoll(
+  item: Pick<ImpulseItem, 'id'>,
+  user: { uid: string },
+): Promise<SaveOutcome> {
+  const id = impulseAnswerId(item.id, user.uid)
+  const outcome = await commit(deleteDoc(doc(db, COLLECTIONS.impulseAnswers, id)))
+  forgetDoc(COLLECTIONS.impulseAnswers, id)
+  return outcome
 }
 
 /**
