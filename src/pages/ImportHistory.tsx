@@ -305,9 +305,8 @@ export function ImportHistory() {
           <h2 className="mb-2 text-sm font-semibold">Personen mit neuem Verlauf</h2>
           <PreviewTable
             columns={['Name', 'Ansprachen neu', 'Letzte Ansprache']}
-            total={preview.members.length}
-          >
-            {preview.members.slice(0, 100).map((row) => (
+            rows={preview.members}
+            renderRow={(row) => (
               <tr key={row.memberId}>
                 <td className="px-3 py-2 font-medium">{row.memberName}</td>
                 <td className="tabular px-3 py-2 text-slate-500 dark:text-slate-400">
@@ -317,8 +316,8 @@ export function ImportHistory() {
                   {row.lastTalkDate ?? '—'}
                 </td>
               </tr>
-            ))}
-          </PreviewTable>
+            )}
+          />
 
           <ProgressBar progress={progress} />
 

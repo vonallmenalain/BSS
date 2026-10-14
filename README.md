@@ -2670,10 +2670,12 @@ vorerst bleiben soll, bleibt, die übrigen werden entfernt. Der Haken oben
 wählt alle oder keine – wer bewusst nur einen Ausschnitt einliest, nimmt
 dort alle weg.
 
-**Die Vorschau zeigt alle Zeilen**, nicht nur die ersten hundert: Sie lässt
-sich blättern, die Zeilenzahl je Seite ist wählbar (25 bis «Alle»), und ein
-Filter holt heraus, was einen zweiten Blick verdient – «Neu», «Aktualisieren»,
-«Übersprungen», «Mit Hinweis».
+**Die Vorschau zeigt alle Zeilen**, nicht nur die ersten hundert – bei jedem
+Import, von den Mitgliedern über Berufungen und Betreuung bis zu den
+Liederlisten: Sie lässt sich blättern, und die Zeilenzahl je Seite ist wählbar
+(25 bis «Alle»). Beim Mitgliederimport holt zusätzlich ein Filter heraus, was
+einen zweiten Blick verdient – «Neu», «Aktualisieren», «Übersprungen», «Mit
+Hinweis».
 
 Gelöscht wird erst, wenn alles Übrige geschrieben ist: Bricht der Import in
 der Mitte ab, ist zu wenig geschrieben – aber nichts zu viel entfernt.

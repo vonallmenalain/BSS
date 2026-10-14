@@ -1,6 +1,14 @@
-import type { ReactNode } from 'react'
+import { useRef, useState, type ReactNode } from 'react'
 import { Link } from 'react-router-dom'
-import { AlertTriangle, ArrowLeft, ArrowRight, CheckCircle2, Loader2 } from 'lucide-react'
+import {
+  AlertTriangle,
+  ArrowLeft,
+  ArrowRight,
+  CheckCircle2,
+  ChevronLeft,
+  ChevronRight,
+  Loader2,
+} from 'lucide-react'
 import { cn } from '@/lib/utils'
 
 /**
@@ -130,37 +138,137 @@ export function PasteCard({
   )
 }
 
+/** Wie viele Zeilen je Seite – «0» heisst alle. */
+const PAGE_SIZES = [25, 50, 100, 250, 0]
+
 /**
- * Tabelle der Vorschau. Zeigt höchstens 100 Zeilen – geschrieben werden
- * alle, aber niemand prüft tausend Zeilen am Bildschirm.
+ * Tabelle der Vorschau – Zeile für Zeile, und zwar ganz.
+ *
+ * Eine Liste aus dem LCR hat leicht ein paar hundert Zeilen, und gerade die
+ * weiter unten wollen geprüft sein. Deshalb lässt sich blättern und die
+ * Seitengrösse wählen («Alle» zeigt alles auf einmal). Bei höchstens 25
+ * Zeilen fällt beides weg; dann passt ohnehin alles auf eine Seite.
+ *
+ * `toolbar` steht links neben der Seitengrösse, etwa ein Filter, und
+ * `footnote` hinter dem Zeilenzähler. Wechselt `resetKey` – etwa der
+ * Filter –, beginnt die Vorschau wieder auf der ersten Seite.
  */
-export function PreviewTable({
+export function PreviewTable<T>({
   columns,
-  total,
-  children,
+  rows,
+  renderRow,
+  toolbar,
+  footnote,
+  resetKey,
 }: {
   columns: string[]
-  total: number
-  children: ReactNode
+  rows: readonly T[]
+  /** Eine Zeile `<tr>`; `index` zählt über alle Seiten hinweg. */
+  renderRow: (row: T, index: number) => ReactNode
+  toolbar?: ReactNode
+  footnote?: ReactNode
+  resetKey?: string
 }) {
+  const [pageSize, setPageSize] = useState(100)
+  const [page, setPage] = useState(0)
+  const [seenKey, setSeenKey] = useState(resetKey)
+  const top = useRef<HTMLDivElement>(null)
+
+  if (seenKey !== resetKey) {
+    setSeenKey(resetKey)
+    setPage(0)
+  }
+
+  const size = pageSize === 0 ? Math.max(rows.length, 1) : pageSize
+  const pages = Math.max(1, Math.ceil(rows.length / size))
+  const current = Math.min(page, pages - 1)
+  const from = current * size
+  const shown = rows.slice(from, from + size)
+  const controls = toolbar !== undefined || rows.length > PAGE_SIZES[0]
+
+  // Geblättert wird unten; die neue Seite soll oben beginnen, nicht dort.
+  const goTo = (next: number) => {
+    setPage(next)
+    const card = top.current
+    if (card && card.getBoundingClientRect().top < 0) card.scrollIntoView({ block: 'start' })
+  }
+
   return (
-    <div className="card overflow-x-auto">
-      <table className="w-full text-sm">
-        <thead className="border-b border-slate-200 bg-slate-50 text-left dark:border-slate-700 dark:bg-slate-800/60">
-          <tr>
-            {columns.map((column) => (
-              <th key={column} className="px-3 py-2 font-medium">
-                {column}
-              </th>
-            ))}
-          </tr>
-        </thead>
-        <tbody className="divide-y divide-slate-100 dark:divide-slate-800">{children}</tbody>
-      </table>
-      {total > 100 && (
-        <p className="border-t border-slate-200 px-3 py-2 text-center text-xs text-slate-400 dark:border-slate-700">
-          Vorschau auf 100 Zeilen begrenzt – geschrieben werden alle {total} Zeilen.
-        </p>
+    <div ref={top} className="card scroll-mt-16 overflow-hidden">
+      {controls && (
+        <div className="flex flex-wrap items-center gap-2 border-b border-slate-200 px-3 py-2 dark:border-slate-700">
+          {toolbar}
+          <label className="ms-auto flex items-center gap-1.5 text-xs text-slate-500 dark:text-slate-400">
+            Zeilen je Seite
+            <select
+              className="input w-auto py-1 text-xs"
+              value={pageSize}
+              onChange={(event) => {
+                setPageSize(Number(event.target.value))
+                setPage(0)
+              }}
+            >
+              {PAGE_SIZES.map((value) => (
+                <option key={value} value={value}>
+                  {value === 0 ? 'Alle' : value}
+                </option>
+              ))}
+            </select>
+          </label>
+        </div>
+      )}
+
+      <div className="overflow-x-auto">
+        <table className="w-full text-sm">
+          <thead className="border-b border-slate-200 bg-slate-50 text-left dark:border-slate-700 dark:bg-slate-800/60">
+            <tr>
+              {columns.map((column) => (
+                <th key={column} className="px-3 py-2 font-medium">
+                  {column}
+                </th>
+              ))}
+            </tr>
+          </thead>
+          <tbody className="divide-y divide-slate-100 dark:divide-slate-800">
+            {shown.map((row, index) => renderRow(row, from + index))}
+          </tbody>
+        </table>
+      </div>
+
+      {controls && (
+        <div className="flex flex-wrap items-center justify-between gap-2 border-t border-slate-200 px-3 py-2 dark:border-slate-700">
+          <p className="tabular text-xs text-slate-500 dark:text-slate-400">
+            {rows.length === 0
+              ? 'Keine Zeilen'
+              : `Zeilen ${from + 1}–${from + shown.length} von ${rows.length}`}
+            {footnote}
+          </p>
+          {pages > 1 && (
+            <div className="flex items-center gap-1">
+              <button
+                type="button"
+                className="btn-ghost btn-sm"
+                onClick={() => goTo(current - 1)}
+                disabled={current === 0}
+                aria-label="Vorherige Seite"
+              >
+                <ChevronLeft className="size-4" aria-hidden />
+              </button>
+              <span className="tabular text-xs text-slate-500 dark:text-slate-400">
+                Seite {current + 1} von {pages}
+              </span>
+              <button
+                type="button"
+                className="btn-ghost btn-sm"
+                onClick={() => goTo(current + 1)}
+                disabled={current >= pages - 1}
+                aria-label="Nächste Seite"
+              >
+                <ChevronRight className="size-4" aria-hidden />
+              </button>
+            </div>
+          )}
+        </div>
       )}
     </div>
   )

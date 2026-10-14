@@ -372,9 +372,8 @@ export function ImportCallingHistory({ picker }: { picker: ReactNode }) {
           <h2 className="mb-2 text-sm font-semibold">Was geschrieben wird</h2>
           <PreviewTable
             columns={['Aktion', 'Name', 'Berufung', 'Organisation', 'Zeitraum', 'Hinweise']}
-            total={preview.rows.length}
-          >
-            {preview.rows.slice(0, 100).map((row) => (
+            rows={preview.rows}
+            renderRow={(row) => (
               <tr key={row.calling.ref} className={row.action === 'create' ? '' : 'opacity-50'}>
                 <td className="px-3 py-2">
                   <ActionBadge action={row.action} />
@@ -393,8 +392,8 @@ export function ImportCallingHistory({ picker }: { picker: ReactNode }) {
                   {row.warnings.join(' · ')}
                 </td>
               </tr>
-            ))}
-          </PreviewTable>
+            )}
+          />
 
           <ProgressBar progress={progress} />
 
