@@ -50,6 +50,7 @@ import {
   setImpulseWeekShare,
   submissionCard,
   updateImpulseSubmission,
+  withdrawImpulsePoll,
 } from '@/services/impulse'
 
 /**
@@ -69,6 +70,7 @@ import {
 export const REAL_IMPULSE_WRITES = {
   answerImpulseQuiz,
   answerImpulsePoll,
+  withdrawImpulsePoll,
   answerImpulsePuzzle,
   setImpulsePollAnswerHidden,
   saveImpulseComment,
@@ -232,6 +234,11 @@ export function previewImpulseWrites(
           : { choiceIndex: reply.choiceIndex, text: '', correct: null },
         true,
       ),
+    withdrawImpulsePoll: async (item, user) => {
+      const id = impulseAnswerId(item.id, user.uid)
+      update((data) => ({ ...data, answers: removePreviewDoc(data.answers, id) }))
+      return done()
+    },
     answerImpulsePuzzle: async (item, user, attempt, correct) =>
       answer(item.id, user, { choiceIndex: null, text: attempt.trim(), correct }),
     /* Ausgeblendet wird am Inhalt, und Inhalte kennt die Vorschau nur aus

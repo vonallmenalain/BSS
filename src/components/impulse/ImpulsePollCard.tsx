@@ -82,7 +82,7 @@ export function ImpulsePollCard({
   progressDocs?: ImpulseProgress[]
 }) {
   const { profile, canEditImpulse } = useImpulseAuth()
-  const { answerImpulsePoll, setImpulsePollAnswerHidden } = useImpulseWrites()
+  const { answerImpulsePoll, withdrawImpulsePoll, setImpulsePollAnswerHidden } = useImpulseWrites()
   const toast = useToast()
   const poll = item.poll
   const uid = profile?.id ?? ''
@@ -149,6 +149,37 @@ export function ImpulsePollCard({
       setBusy(false)
     }
   }
+
+  /*
+   * Die eigene Stimme zurücknehmen – ein zweites Antippen der eigenen Wahl.
+   *
+   * Eine Umfrage ist kein Versuch wie das Quiz, sondern eine Meinung, und
+   * die darf man sich anders überlegen: etwa, weil inzwischen jemand eine
+   * Antwort hinzugefügt hat, die besser passt. Danach steht die Auswahl
+   * wieder da, samt allen hinzugefügten Antworten. Im Rückblick nicht –
+   * dort wird gar nicht mehr abgestimmt.
+   */
+  const withdraw = async () => {
+    if (busy || !voted || closed) return
+    if (preview || !profile) {
+      setLocal(null)
+      setJustVoted(false)
+      return
+    }
+    setBusy(true)
+    try {
+      const outcome = await withdrawImpulsePoll(item, { uid: profile.id })
+      setLocal(null)
+      setJustVoted(false)
+      toast.saved('Stimme zurückgenommen – du kannst neu wählen.', outcome)
+    } catch (error) {
+      console.error(error)
+      toast.error('Die Stimme konnte nicht zurückgenommen werden.')
+    } finally {
+      setBusy(false)
+    }
+  }
+  const onWithdraw = voted && !closed && !busy ? () => void withdraw() : undefined
 
   const toggleHidden = (row: PollRow) => {
     setImpulsePollAnswerHidden(item, row.label, !row.hidden)
@@ -257,9 +288,34 @@ export function ImpulsePollCard({
       ) : (
         <div className={cn('mt-4 space-y-3', justVoted && 'animate-imp-rise')}>
           {tally ? (
-            <ChoiceResult tally={tally} ownId={ownId} onToggleHidden={onToggleHidden} />
+            <ChoiceResult
+              tally={tally}
+              ownId={ownId}
+              onToggleHidden={onToggleHidden}
+              onWithdraw={onWithdraw}
+            />
           ) : (
             result && <ScaleResult poll={poll} result={result} mine={mineValue} />
+          )}
+          {voted && !closed && (
+            <p className="hint mt-0 flex flex-wrap items-center gap-x-2 gap-y-1">
+              <RotateCcw className="size-3.5 shrink-0" aria-hidden />
+              {tally ? (
+                'Nochmals auf deine Wahl tippen nimmt die Stimme zurück.'
+              ) : (
+                <>
+                  Anders überlegt?
+                  <button
+                    type="button"
+                    className="font-medium text-blue-700 underline-offset-2 hover:underline disabled:opacity-60 dark:text-blue-300"
+                    disabled={busy}
+                    onClick={() => void withdraw()}
+                  >
+                    Stimme zurücknehmen
+                  </button>
+                </>
+              )}
+            </p>
           )}
           <p className="hint">
             {total} {total === 1 ? 'Stimme' : 'Stimmen'} · anonym
@@ -576,10 +632,13 @@ function ChoiceResult({
   tally,
   ownId,
   onToggleHidden,
+  onWithdraw,
 }: {
   tally: PollTally
   ownId: string | null
   onToggleHidden?: (row: PollRow) => void
+  /** Die eigene Wahl ist antippbar und nimmt die Stimme zurück – fehlt im Rückblick. */
+  onWithdraw?: () => void
 }) {
   const [expanded, setExpanded] = useState(false)
   const top = Math.max(
@@ -592,14 +651,24 @@ function ChoiceResult({
   return (
     <div className="flex flex-col gap-2">
       {[...tally.options, ...shown].map((row) => {
-        const bar = (
-          <ResultBar
-            row={row}
-            chosen={row.id === ownId}
-            top={top}
-            moderate={Boolean(onToggleHidden)}
-          />
+        const chosen = row.id === ownId
+        const meter = (
+          <ResultBar row={row} chosen={chosen} top={top} moderate={Boolean(onToggleHidden)} />
         )
+        const bar =
+          chosen && onWithdraw ? (
+            <button
+              type="button"
+              onClick={onWithdraw}
+              title="Nochmals antippen nimmt deine Stimme zurück"
+              aria-label={`Deine Wahl «${row.label}» zurücknehmen`}
+              className="flex min-w-0 flex-1 rounded-xl text-left transition hover:opacity-90 active:scale-[0.98]"
+            >
+              {meter}
+            </button>
+          ) : (
+            meter
+          )
         return row.custom && onToggleHidden ? (
           <div key={row.id} className="flex items-stretch gap-1">
             {bar}

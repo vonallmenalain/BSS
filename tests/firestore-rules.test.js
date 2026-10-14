@@ -840,6 +840,85 @@ describe('Rollen und Rechteausweitung', () => {
     await assertFails(updateDoc(doc(asCounselor1(), 'users', BISHOP), { active: false }))
   })
 
+  /*
+   * Die Bischofschaft – Bischof und Ratgeber – verwaltet die Zugänge ohne
+   * Vollzugriff: freischalten, zwischen Assistenz, AP-Kalender und «Nur Anti
+   * Doom» wechseln, Bereiche und «Anti Doom» zulassen. Was Vollzugriff hat
+   * oder bekommen soll, bleibt dem Administrator-Konto.
+   */
+  it('lässt die Bischofschaft Zugänge ohne Vollzugriff vergeben und ändern', async () => {
+    await assertSucceeds(updateDoc(doc(asCounselor1(), 'users', PENDING), { role: 'ap_viewer' }))
+    await assertSucceeds(
+      updateDoc(doc(asCounselor2(), 'users', PENDING), {
+        role: 'ap_editor',
+        impulse: true,
+        impulseEditor: false,
+      }),
+    )
+    await assertSucceeds(
+      updateDoc(doc(asLegacyCounselor(), 'users', PENDING), {
+        role: 'assistant',
+        assistantAreas: ['music'],
+        assistantWrite: ['music'],
+      }),
+    )
+    await assertSucceeds(updateDoc(doc(asCounselor1(), 'users', AP_VIEWER), { role: 'ap_editor' }))
+    await assertSucceeds(updateDoc(doc(asCounselor1(), 'users', AP_VIEWER), { role: 'pending' }))
+
+    await testEnv.withSecurityRulesDisabled(async (context) => {
+      const db = context.firestore()
+      for (const [uid, role, displayName] of [
+        [PENDING, 'pending', 'Wartend'],
+        [AP_VIEWER, 'ap_viewer', 'Berater (lesend)'],
+      ]) {
+        await setDoc(doc(db, 'users', uid), {
+          email: `${uid}@example.ch`,
+          displayName,
+          role,
+          active: true,
+        })
+      }
+    })
+  })
+
+  it('lässt der Bischofschaft den Vollzugriff verschlossen', async () => {
+    // Niemand bekommt von ihr Vollzugriff …
+    await assertFails(updateDoc(doc(asCounselor1(), 'users', PENDING), { role: 'secretary' }))
+    await assertFails(updateDoc(doc(asCounselor2(), 'users', AP_VIEWER), { role: 'bishop' }))
+    // … und kein Konto mit Vollzugriff wird angefasst – weder die Rolle
+    // noch «Anti Doom», auch das eigene nicht.
+    await assertFails(updateDoc(doc(asCounselor1(), 'users', SECRETARY), { role: 'ap_viewer' }))
+    await assertFails(updateDoc(doc(asCounselor1(), 'users', SECRETARY), { impulse: true }))
+    await assertFails(updateDoc(doc(asCounselor1(), 'users', COUNSELOR1), { role: 'counselor2' }))
+    // Aktivstatus, Name und Löschen bleiben dem Administrator-Konto.
+    await assertFails(updateDoc(doc(asCounselor1(), 'users', AP_VIEWER), { active: false }))
+    await assertFails(
+      updateDoc(doc(asCounselor1(), 'users', AP_VIEWER), { displayName: 'Umbenannt' }),
+    )
+    await assertFails(deleteDoc(doc(asCounselor1(), 'users', AP_VIEWER)))
+    // Sekretäre und AP-Zugänge verwalten niemanden.
+    await assertFails(updateDoc(doc(asSecretary(), 'users', AP_VIEWER), { role: 'ap_editor' }))
+    await assertFails(updateDoc(doc(asSecretary(), 'users', PENDING), { role: 'ap_viewer' }))
+    await assertFails(updateDoc(doc(asApEditor(), 'users', AP_VIEWER), { role: 'ap_editor' }))
+
+    // Das Administrator-Konto bleibt unberührt – auch wenn es einmal eine
+    // Rolle ohne Vollzugriff trüge.
+    await testEnv.withSecurityRulesDisabled(async (context) => {
+      await setDoc(doc(context.firestore(), 'users', 'uid-admin-zweitkonto'), {
+        email: ADMIN_EMAIL.toUpperCase(),
+        displayName: 'Admin',
+        role: 'ap_viewer',
+        active: true,
+      })
+    })
+    await assertFails(
+      updateDoc(doc(asCounselor1(), 'users', 'uid-admin-zweitkonto'), { role: 'pending' }),
+    )
+    await testEnv.withSecurityRulesDisabled(async (context) => {
+      await deleteDoc(doc(context.firestore(), 'users', 'uid-admin-zweitkonto'))
+    })
+  })
+
   it('lässt den Administrator freischalten, Rollen ändern und deaktivieren', async () => {
     await assertSucceeds(updateDoc(doc(asBishop(), 'users', PENDING), { role: 'secretary' }))
     await assertSucceeds(updateDoc(doc(asBishop(), 'users', SECRETARY), { active: false }))
@@ -1182,6 +1261,59 @@ describe('Impuls', () => {
       )
       await assertSucceeds(deleteDoc(doc(asBishop(), 'impulseItems', 'umfrage-1')))
       await assertSucceeds(deleteDoc(doc(asBishop(), 'impulseAnswers', `umfrage-1_${IMPULSE_AP}`)))
+    })
+
+    /*
+     * Die Umfrage ist eine Meinung und kein Versuch: Die eigene Stimme darf
+     * man zurücknehmen und neu wählen. Fremde Stimmen bleiben tabu, und
+     * beim Quiz bleibt der Versuch, wie er war.
+     */
+    it('Umfrage: die eigene Stimme zurücknehmen und neu wählen – beim Quiz nicht', async () => {
+      const item = (id, kind) =>
+        setDoc(doc(asBishop(), 'impulseItems', id), {
+          week: '2026-W33',
+          kind,
+          status: 'ready',
+          title: 'Eine Frage',
+        })
+      const vote = (db, uid, itemId, extra = {}) =>
+        setDoc(doc(db, 'impulseAnswers', `${itemId}_${uid}`), {
+          itemId,
+          uid,
+          firstName: '',
+          choiceIndex: 0,
+          text: '',
+          correct: null,
+          ...extra,
+        })
+      await assertSucceeds(item('umfrage-2', 'umfrage'))
+      await assertSucceeds(item('quiz-2', 'quiz'))
+
+      await assertSucceeds(vote(asImpulseAp(), IMPULSE_AP, 'umfrage-2'))
+      await assertSucceeds(vote(asImpulseOnly(), IMPULSE_ONLY, 'umfrage-2'))
+      // Die Stimme einer anderen Person nimmt niemand zurück.
+      await assertFails(
+        deleteDoc(doc(asImpulseAp(), 'impulseAnswers', `umfrage-2_${IMPULSE_ONLY}`)),
+      )
+      // Die eigene schon – und danach lässt sich neu wählen.
+      await assertSucceeds(
+        deleteDoc(doc(asImpulseAp(), 'impulseAnswers', `umfrage-2_${IMPULSE_AP}`)),
+      )
+      await assertSucceeds(vote(asImpulseAp(), IMPULSE_AP, 'umfrage-2', { choiceIndex: 2 }))
+
+      // Ein Quizversuch lässt sich nicht zurücknehmen und wiederholen.
+      await assertSucceeds(vote(asImpulseAp(), IMPULSE_AP, 'quiz-2', { correct: false }))
+      await assertFails(deleteDoc(doc(asImpulseAp(), 'impulseAnswers', `quiz-2_${IMPULSE_AP}`)))
+
+      for (const id of [
+        `umfrage-2_${IMPULSE_AP}`,
+        `umfrage-2_${IMPULSE_ONLY}`,
+        `quiz-2_${IMPULSE_AP}`,
+      ]) {
+        await assertSucceeds(deleteDoc(doc(asBishop(), 'impulseAnswers', id)))
+      }
+      await assertSucceeds(deleteDoc(doc(asBishop(), 'impulseItems', 'umfrage-2')))
+      await assertSucceeds(deleteDoc(doc(asBishop(), 'impulseItems', 'quiz-2')))
     })
 
     it('wegräumen darf allein die Redaktion', async () => {

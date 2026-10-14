@@ -5,9 +5,11 @@ import {
   ASSISTANT_AREA_PATHS,
   assistantAreasOf,
   assistantWriteOf,
+  BISHOPRIC_ROLES,
   FULL_ACCESS_ROLES,
   IMPULSE_ONLY_ROLE,
   IMPULSE_SWITCH_ROLES,
+  LIMITED_ROLES,
   ROLE_LABELS,
   type AppUser,
   type AssistantArea,
@@ -119,6 +121,56 @@ export function accessOf(profile: AppUser | null, email: string | null | undefin
     hasAccess: isApproved || canViewAp || canViewImpulse || isAssistant,
     unknownRole: role !== null && !Object.hasOwn(ROLE_LABELS, role),
   }
+}
+
+/**
+ * Wie weit ein Konto Benutzer und Rollen verwalten darf.
+ *
+ * - `all` – das Administrator-Konto: alles, auch Vollzugriff, Aktivstatus
+ *   und das Entfernen von Konten.
+ * - `limited` – die Bischofschaft (Bischof, Ratgeber): die Zugänge ohne
+ *   Vollzugriff (`LIMITED_ROLES`) – freischalten, die Rolle innerhalb dieser
+ *   Zugänge wechseln, die Bereiche der Assistenz und «Anti Doom» zulassen.
+ *   Wer Vollzugriff hat oder bekommen soll, bleibt dem Administrator-Konto.
+ * - `none` – alle übrigen.
+ *
+ * Durchgesetzt wird das in `firestore.rules` (`users`); hier steht, was die
+ * Benutzerverwaltung zur Wahl stellt.
+ */
+export type RoleManagement = 'all' | 'limited' | 'none'
+
+export function roleManagementOf(
+  access: Pick<Access, 'isAdmin' | 'isApproved' | 'role'>,
+): RoleManagement {
+  if (access.isAdmin) return 'all'
+  if (access.isApproved && access.role && BISHOPRIC_ROLES.includes(access.role)) return 'limited'
+  return 'none'
+}
+
+/**
+ * Darf dieses Konto die Rolle (samt Bereichen und «Anti Doom») eines
+ * anderen ändern?
+ *
+ * Die Bischofschaft nur bei Konten ohne Vollzugriff – und nie beim
+ * Administrator-Konto oder bei sich selbst; das eigene Konto hat ohnehin
+ * Vollzugriff. Gleich streng wie die Zugriffsregeln, damit die Oberfläche
+ * nichts anbietet, was danach scheitert.
+ */
+export function canManageUser(
+  management: RoleManagement,
+  target: { role: Role; email: string },
+  isSelf: boolean,
+): boolean {
+  if (management === 'all') return true
+  if (management === 'none' || isSelf) return false
+  if (target.email.toLowerCase() === ADMIN_EMAIL) return false
+  return LIMITED_ROLES.includes(target.role)
+}
+
+/** Darf dieses Konto die Rolle `role` vergeben? Vollzugriff nur das Administrator-Konto. */
+export function canAssignRole(management: RoleManagement, role: Role): boolean {
+  if (management === 'all') return true
+  return management === 'limited' && LIMITED_ROLES.includes(role)
 }
 
 /**

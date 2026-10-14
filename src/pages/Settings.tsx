@@ -41,7 +41,15 @@ import {
   updateUserProfile,
 } from '@/services/users'
 import { formatRelative } from '@/lib/dates'
-import { impulseAssignable, impulseLevelOf, type ImpulseLevel } from '@/lib/access'
+import {
+  canAssignRole,
+  canManageUser,
+  impulseAssignable,
+  impulseLevelOf,
+  roleManagementOf,
+  type ImpulseLevel,
+  type RoleManagement,
+} from '@/lib/access'
 import {
   ADMIN_IMPORTS,
   ADMIN_IMPORT_LABEL,
@@ -59,6 +67,7 @@ import {
   AREA_ACCESS_ORDER,
   ASSIGNABLE_ROLES,
   ASSISTANT_AREA_LABELS,
+  FULL_ACCESS_ROLES,
   ASSISTANT_AREAS,
   assistantAccessOf,
   assistantAccessSummary,
@@ -74,7 +83,10 @@ import {
 } from '@/lib/types'
 
 export function Settings() {
-  const { profile, isAdmin } = useAuth()
+  const { profile, isAdmin, isApproved, role } = useAuth()
+  /* Wer hier Rollen vergibt: das Administrator-Konto alles, die
+     Bischofschaft die Zugänge ohne Vollzugriff (siehe `roleManagementOf`). */
+  const management = roleManagementOf({ isAdmin, isApproved, role })
   const { settings, users } = useData()
   const toast = useToast()
 
@@ -446,42 +458,54 @@ export function Settings() {
             <ShieldCheck className="size-4 text-slate-400" aria-hidden />
             Benutzer und Rollen
           </h2>
-          <p className="hint mb-4">
-            Bischof, 1. und 2. Ratgeber sowie die Sekretäre haben dieselben Berechtigungen und sehen
-            alles. Die Rolle hält fest, wer welche Aufgabe hat – etwa wer die Abendmahlsversammlung
-            leitet. Daneben gibt es zwei Zugänge, die <strong>ausschliesslich</strong> «Aktivitäten
-            AP’s» zeigen – einen mit und einen ohne Schreibrecht. Wer{' '}
-            <strong>«Wartet auf Freigabe»</strong> ist, sieht nichts.
+          {/* Was wer verwalten darf, steht in einem Satz da – der Rest steht
+              aufgeklappt bereit: Wer die Liste öffnet, will meist ein Konto
+              ändern und nicht vier Absätze lesen. */}
+          <p className="hint mb-2">
+            {management === 'all'
+              ? 'Als Administrator vergibst und änderst du jeden Zugang.'
+              : management === 'limited'
+                ? 'Als Bischofschaft schaltest du neue Registrierungen frei und änderst alle Zugänge ohne Vollzugriff. Vollzugriff, Deaktivieren und Entfernen bleiben dem Administrator-Konto.'
+                : 'Zugänge vergeben das Administrator-Konto und – ohne Vollzugriff – Bischof und Ratgeber.'}
           </p>
-          <p className="hint mb-4">
-            Neben der Rolle steht, <strong>wer im Mitgliederverzeichnis</strong> zu diesem Konto
-            gehört. Ein Konto ist eine Anmeldung, ein Mitglied ein Eintrag der Gemeinde – erst diese
-            Verknüpfung sagt der App, dass beides dieselbe Person ist.
-          </p>
-          <p className="hint mb-4">
-            Ebenso <strong>«Im AP-Plan als …»</strong>: die Namen, unter denen jemand im
-            Aktivitätenplan steht – etwa «Carden» oder «JM». Damit lässt sich die Erinnerung auf die
-            Termine beschränken, bei denen die Person eingetragen ist.
-          </p>
-          {isAdmin && (
-            <p className="hint mb-4">
-              Die Auswahl neben der Rolle schaltet den geistigen Bereich für die AP’s pro Konto frei
-              – unabhängig von der Rolle, für Vollzugriff wie für AP-Zugänge, in zwei Stufen:{' '}
-              <strong>«Anti Doom»</strong> zum Ansehen und Mitmachen,{' '}
-              <strong>«Anti Doom + Redaktion»</strong> dazu zum Pflegen und Moderieren der Inhalte.
-              Die Rolle <strong>«Nur Anti Doom»</strong> bringt den Bereich von sich aus mit und
-              zeigt sonst nichts – für AP’s, die nur diesen Bereich sehen sollen. Das
-              Administrator-Konto sieht und pflegt ihn immer.
-            </p>
-          )}
-          {!isAdmin && (
-            <p className="hint mb-4">
-              Freischalten, Rollen ändern und Konten entfernen kann nur das Administrator-Konto.
-            </p>
-          )}
+          <details className="mb-4 rounded-lg border border-slate-200 text-xs text-slate-600 dark:border-slate-700 dark:text-slate-300">
+            <summary className="cursor-pointer px-3 py-2 font-medium text-slate-700 dark:text-slate-200">
+              Was die Zugänge bedeuten
+            </summary>
+            <dl className="space-y-2 border-t border-slate-200 px-3 py-3 dark:border-slate-700">
+              <AccessTerm term="Vollzugriff">
+                Bischof, Ratgeber und Sekretäre sehen und bearbeiten alles. Die Rolle hält nur die
+                Aufgabe fest – etwa wer die Abendmahlsversammlung leitet.
+              </AccessTerm>
+              <AccessTerm term="Assistenz">
+                Sieht allein die gewählten Bereiche der Abendmahlsversammlung – Ansprachen, Musik,
+                Gebet –, je Bereich nur lesend oder bearbeitend.
+              </AccessTerm>
+              <AccessTerm term="AP-Kalender">
+                Sieht allein «Aktivitäten AP’s» – bearbeitend oder nur ansehend.
+              </AccessTerm>
+              <AccessTerm term="Nur Anti Doom">
+                Sieht allein den Bereich «Anti Doom» – für die AP’s selbst.
+              </AccessTerm>
+              <AccessTerm term="Anti Doom zusätzlich">
+                Bei Vollzugriff und AP-Kalender zuschaltbar: «Mitmachen» zum Ansehen und Mitmachen,
+                «+ Redaktion» dazu zum Pflegen und Moderieren der Inhalte. Das Administrator-Konto
+                sieht und pflegt den Bereich immer.
+              </AccessTerm>
+              <AccessTerm term="Mitglied">
+                Wer im Mitgliederverzeichnis zu diesem Konto gehört. Erst diese Verknüpfung sagt der
+                App, dass Anmeldung und Eintrag der Gemeinde dieselbe Person sind.
+              </AccessTerm>
+              <AccessTerm term="Im AP-Plan als">
+                Die Namen, unter denen jemand im Aktivitätenplan steht – etwa «Carden» oder «JM».
+                Damit lässt sich die Erinnerung auf die eigenen Termine beschränken.
+              </AccessTerm>
+              <AccessTerm term="Wartet auf Freigabe">Sieht nichts.</AccessTerm>
+            </dl>
+          </details>
 
-          {isAdmin ? (
-            <PendingUsers users={pendingUsers} />
+          {management !== 'none' ? (
+            <PendingUsers users={pendingUsers} management={management} />
           ) : (
             pendingUsers.length > 0 && (
               <p className="mb-5 rounded-xl border border-amber-200 bg-amber-50/60 p-4 text-xs text-amber-800 dark:border-amber-800 dark:bg-amber-950/40 dark:text-amber-200">
@@ -489,21 +513,38 @@ export function Settings() {
                   ? 'Eine neue Registrierung wartet auf Freigabe'
                   : `${pendingUsers.length} neue Registrierungen warten auf Freigabe`}{' '}
                 ({pendingUsers.map((user) => user.displayName || user.email).join(', ')}) –
-                freischalten kann sie nur das Administrator-Konto.
+                freischalten können sie das Administrator-Konto sowie Bischof und Ratgeber.
               </p>
             )
           )}
 
-          <ul className="divide-list">
-            {teamUsers.map((user) => (
-              <UserRow
-                key={user.id}
-                user={user}
-                isSelf={user.id === profile?.id}
-                canManage={isAdmin}
-              />
-            ))}
-          </ul>
+          {/* Nach Zugang gegliedert: Die Frage, mit der man die Liste
+              aufschlägt, ist «wer sieht was?» – die Überschriften
+              beantworten sie, bevor man eine Zeile liest. */}
+          <div className="space-y-5">
+            {ACCESS_GROUPS.map((group) => {
+              const members = teamUsers.filter((user) => accessGroupOf(user.role) === group.key)
+              if (members.length === 0) return null
+              return (
+                <div key={group.key}>
+                  <h3 className="text-xs font-semibold tracking-wide text-slate-500 uppercase dark:text-slate-400">
+                    {group.title}{' '}
+                    <span className="tabular font-normal text-slate-400">{members.length}</span>
+                  </h3>
+                  <ul className="divide-list">
+                    {members.map((user) => (
+                      <UserRow
+                        key={user.id}
+                        user={user}
+                        isSelf={user.id === profile?.id}
+                        management={management}
+                      />
+                    ))}
+                  </ul>
+                </div>
+              )
+            })}
+          </div>
         </section>
 
         {/* ---------- Import ----------
@@ -811,12 +852,15 @@ function AssistantAreaAccess({
   onChange: (next: Record<AssistantArea, AreaAccess>) => void
 }) {
   return (
-    <div className="flex flex-wrap gap-x-4 gap-y-2">
+    <div className="flex flex-col gap-2 sm:flex-row sm:flex-wrap sm:gap-x-4">
       {ASSISTANT_AREAS.map((area) => (
         <label key={area} className="flex items-center gap-1.5 text-sm">
-          <span className="text-slate-600 dark:text-slate-300">{ASSISTANT_AREA_LABELS[area]}</span>
+          {/* Auf dem Telefon untereinander und bündig, daneben in einer Zeile. */}
+          <span className="w-24 shrink-0 text-slate-600 sm:w-auto dark:text-slate-300">
+            {ASSISTANT_AREA_LABELS[area]}
+          </span>
           <select
-            className="input w-auto py-1 text-sm"
+            className="input min-w-0 flex-1 py-1 text-sm sm:w-auto sm:flex-none"
             name={`${name}-${area}`}
             value={access[area]}
             onChange={(event) => onChange({ ...access, [area]: event.target.value as AreaAccess })}
@@ -847,7 +891,14 @@ function AssistantAreaAccess({
  * deshalb nicht die Rolle, sondern der Zugriff; welche Aufgabe jemand in
  * der Bischofschaft hat, lässt sich danach jederzeit umstellen.
  */
-function PendingUsers({ users }: { users: AppUser[] }) {
+function PendingUsers({
+  users,
+  management,
+}: {
+  users: AppUser[]
+  /** Die Bischofschaft (`limited`) vergibt alles ausser dem Vollzugriff. */
+  management: RoleManagement
+}) {
   if (users.length === 0) return null
 
   return (
@@ -863,16 +914,21 @@ function PendingUsers({ users }: { users: AppUser[] }) {
 
       <ul className="mt-3 space-y-3">
         {users.map((user) => (
-          <PendingUserCard key={user.id} user={user} />
+          <PendingUserCard key={user.id} user={user} management={management} />
         ))}
       </ul>
     </div>
   )
 }
 
-function PendingUserCard({ user }: { user: AppUser }) {
+function PendingUserCard({ user, management }: { user: AppUser; management: RoleManagement }) {
   const toast = useToast()
-  const [level, setLevel] = useState<AccessLevel>('full')
+  const admin = management === 'all'
+  /* Das Administrator-Konto beginnt beim Vollzugriff, wie bisher. Die
+     Bischofschaft kann ihn nicht vergeben – sie beginnt ohne Vorauswahl und
+     entscheidet bewusst, statt einen Zugang zu bestätigen, den jemand
+     anderes vorgeschlagen hat. */
+  const [level, setLevel] = useState<AccessLevel | null>(admin ? 'full' : null)
   const [role, setRole] = useState<Role>('secretary')
   /* Zu Beginn steht jeder Bereich offen, und zwar zum Bearbeiten: Wer eine
      Assistenz freischaltet, meint meistens die ganze Vorbereitung – und
@@ -888,10 +944,12 @@ function PendingUserCard({ user }: { user: AppUser }) {
   const lists = assistantListsFrom(access)
 
   const approve = async () => {
+    if (!level) return
     const target =
       level === 'full'
         ? role
         : (ACCESS_LEVELS.find((option) => option.value === level)?.role ?? 'ap_viewer')
+    if (!canAssignRole(management, target)) return
     setBusy(true)
     try {
       /* Bei der Assistenz gehören Rolle, Bereiche und Schreibrechte zusammen –
@@ -929,29 +987,40 @@ function PendingUserCard({ user }: { user: AppUser }) {
 
       <fieldset className="mt-3 space-y-1.5">
         <legend className="sr-only">Zugriff für {user.displayName}</legend>
-        {ACCESS_LEVELS.map((option) => (
-          <label
-            key={option.value}
-            className={cn(
-              'flex cursor-pointer items-start gap-2.5 rounded-lg border p-2.5 transition',
-              level === option.value
-                ? 'border-brand-500 bg-brand-50 dark:border-brand-500 dark:bg-brand-950'
-                : 'border-slate-200 hover:bg-slate-50 dark:border-slate-700 dark:hover:bg-slate-800/60',
-            )}
-          >
-            <input
-              type="radio"
-              name={`access-${user.id}`}
-              className="mt-0.5 size-4"
-              checked={level === option.value}
-              onChange={() => setLevel(option.value)}
-            />
-            <span className="min-w-0 flex-1">
-              <span className="block text-sm font-medium">{option.label}</span>
-              <span className="hint block">{option.hint}</span>
-            </span>
-          </label>
-        ))}
+        {ACCESS_LEVELS.map((option) => {
+          /* Den Vollzugriff vergibt allein das Administrator-Konto – die
+             Bischofschaft sieht ihn ausgegraut, damit klar ist, dass es ihn
+             gibt und wer ihn vergibt. */
+          const allowed = canAssignRole(management, option.role)
+          return (
+            <label
+              key={option.value}
+              className={cn(
+                'flex items-start gap-2.5 rounded-lg border p-2.5 transition',
+                !allowed
+                  ? 'cursor-not-allowed border-slate-200 opacity-50 dark:border-slate-700'
+                  : level === option.value
+                    ? 'border-brand-500 bg-brand-50 dark:border-brand-500 dark:bg-brand-950 cursor-pointer'
+                    : 'cursor-pointer border-slate-200 hover:bg-slate-50 dark:border-slate-700 dark:hover:bg-slate-800/60',
+              )}
+            >
+              <input
+                type="radio"
+                name={`access-${user.id}`}
+                className="mt-0.5 size-4"
+                checked={level === option.value}
+                disabled={!allowed}
+                onChange={() => setLevel(option.value)}
+              />
+              <span className="min-w-0 flex-1">
+                <span className="block text-sm font-medium">{option.label}</span>
+                <span className="hint block">
+                  {allowed ? option.hint : 'Vergibt nur das Administrator-Konto.'}
+                </span>
+              </span>
+            </label>
+          )
+        })}
       </fieldset>
 
       {level === 'assistant' && (
@@ -987,19 +1056,23 @@ function PendingUserCard({ user }: { user: AppUser }) {
       )}
 
       <div className="mt-3 flex flex-wrap justify-end gap-2">
-        <button
-          type="button"
-          className="btn-ghost text-rose-600 dark:text-rose-400"
-          onClick={() => setConfirmReject(true)}
-          disabled={busy}
-        >
-          Ablehnen
-        </button>
+        {/* Ablehnen löscht das Profil – das bleibt wie das Entfernen eines
+            Kontos dem Administrator-Konto vorbehalten. */}
+        {admin && (
+          <button
+            type="button"
+            className="btn-ghost text-rose-600 dark:text-rose-400"
+            onClick={() => setConfirmReject(true)}
+            disabled={busy}
+          >
+            Ablehnen
+          </button>
+        )}
         <button
           type="button"
           className="btn-primary"
           onClick={() => void approve()}
-          disabled={busy || (level === 'assistant' && lists.areas.length === 0)}
+          disabled={busy || !level || (level === 'assistant' && lists.areas.length === 0)}
         >
           <Check className="size-4" aria-hidden />
           Freischalten
@@ -1094,24 +1167,85 @@ function MemberLinkField({ user }: { user: AppUser }) {
       name={orphan}
       onChange={(next) => void save(next.memberId)}
       label={`Mitglied von ${user.displayName}`}
-      placeholder="Mit Mitglied verknüpfen …"
-      className="w-full sm:w-60"
+      placeholder="Mitglied suchen …"
+      className="w-full"
     />
+  )
+}
+
+/**
+ * Die Gruppen der Benutzerliste – nach dem, was ein Konto sieht.
+ *
+ * Eine Rolle, die diese Fassung nicht kennt, kommt unter «Weitere»: Sie
+ * stammt meist aus einer neueren Fassung und soll nicht verschwinden.
+ */
+type AccessGroup = 'full' | 'assistant' | 'ap' | 'impulse' | 'other'
+
+const ACCESS_GROUPS: { key: AccessGroup; title: string }[] = [
+  { key: 'full', title: 'Vollzugriff' },
+  { key: 'assistant', title: 'Assistenz · Abendmahlsversammlung' },
+  { key: 'ap', title: 'Nur AP-Kalender' },
+  { key: 'impulse', title: 'Nur Anti Doom' },
+  { key: 'other', title: 'Weitere' },
+]
+
+function accessGroupOf(role: Role): AccessGroup {
+  if (FULL_ACCESS_ROLES.includes(role)) return 'full'
+  if (role === 'assistant') return 'assistant'
+  if (AP_ONLY_ROLES.includes(role)) return 'ap'
+  if (role === IMPULSE_ONLY_ROLE) return 'impulse'
+  return 'other'
+}
+
+/** Ein Begriff im Kasten «Was die Zugänge bedeuten». */
+function AccessTerm({ term, children }: { term: string; children: React.ReactNode }) {
+  return (
+    <div>
+      <dt className="font-semibold text-slate-700 dark:text-slate-200">{term}</dt>
+      <dd>{children}</dd>
+    </div>
+  )
+}
+
+/** Ein beschriftetes Feld unter einem Konto – die Beschriftung über dem Feld. */
+function UserField({
+  label,
+  className,
+  children,
+}: {
+  label: string
+  className?: string
+  children: React.ReactNode
+}) {
+  return (
+    <div className={cn('min-w-0', className)}>
+      <span className="mb-1 block text-xs font-medium text-slate-500 dark:text-slate-400">
+        {label}
+      </span>
+      {children}
+    </div>
   )
 }
 
 function UserRow({
   user,
   isSelf,
-  canManage,
+  management,
 }: {
   user: AppUser
   isSelf: boolean
-  /** Nur das Administrator-Konto verwaltet Rollen, Status und Konten. */
-  canManage: boolean
+  /**
+   * Wer hier verwaltet: das Administrator-Konto alles, die Bischofschaft
+   * nur Konten ohne Vollzugriff – und davon nur Rolle, Bereiche und
+   * «Anti Doom» (siehe `canManageUser`).
+   */
+  management: RoleManagement
 }) {
   const toast = useToast()
   const [confirmDelete, setConfirmDelete] = useState(false)
+  const admin = management === 'all'
+  /* Rolle, Bereiche der Assistenz und «Anti Doom» dieses Kontos. */
+  const canManage = canManageUser(management, user, isSelf)
 
   const changeRole = async (role: Role) => {
     try {
@@ -1173,160 +1307,195 @@ function UserRow({
    */
   const isAdminAccount = user.email.toLowerCase() === ADMIN_EMAIL
 
-  return (
-    <li className="flex flex-wrap items-center gap-3 py-3">
-      <UserAvatar userId={user.id} name={user.displayName} size="md" />
+  /* Was dieses Konto sieht, in Worten – für alle, die es nicht ändern
+     können. Wer es ändern kann, liest dasselbe an den Feldern ab. */
+  const readOnlySummary = [
+    ROLE_LABELS[user.role] ?? user.role,
+    isAssistant && (summary === '' ? 'kein Bereich freigeschaltet' : summary),
+    impulseOnly && impulseLevel === 'edit' && '+ Redaktion',
+    !impulseOnly && impulseLevel === 'view' && 'mit Anti Doom',
+    !impulseOnly && impulseLevel === 'edit' && !isAdminAccount && 'mit Anti Doom + Redaktion',
+  ]
+    .filter(Boolean)
+    .join(' · ')
 
-      <div className="min-w-0 flex-1">
-        <p className="truncate text-sm font-medium">
-          {user.displayName}
-          {isSelf && <span className="ml-1.5 text-xs text-slate-400">(du)</span>}
-        </p>
-        <p className="truncate text-xs text-slate-500 dark:text-slate-400">
-          {user.email}
-          {apOnly &&
-            (impulseLevel === 'none'
-              ? ' · sieht nur den AP-Kalender'
-              : ' · sieht AP-Kalender und Anti Doom')}
-          {impulseOnly && ' · sieht nur Anti Doom'}
-          {impulseLevel === 'edit' && !isAdminAccount && ' · Anti-Doom-Redaktion'}
-          {isAssistant &&
-            (summary === '' ? ' · sieht nichts – kein Bereich freigeschaltet' : ` · ${summary}`)}
-        </p>
+  const showImpulse = canManage && !isAdminAccount && impulseAssignable(user.role)
+  const showMember = !apOnly && !impulseOnly && (admin || isSelf)
+  const showApNames = AP_ACCESS_ROLES.includes(user.role) && (admin || isSelf)
+  const hasFields = canManage || showMember || showApNames
+
+  return (
+    <li className="py-4">
+      {/* Kopf: Name und E-Mail ganz – nichts wird abgeschnitten, lieber
+          bricht die Zeile um. Die Handgriffe am Konto stehen rechts daneben. */}
+      <div className="flex items-start gap-3">
+        <UserAvatar userId={user.id} name={user.displayName} size="md" />
+        <div className="min-w-0 flex-1">
+          <p className="flex flex-wrap items-center gap-x-1.5 gap-y-0.5 text-sm font-medium break-words">
+            {user.displayName}
+            {isSelf && <span className="text-xs font-normal text-slate-400">(du)</span>}
+            {isAdminAccount && (
+              <span className="badge bg-slate-100 text-slate-600 dark:bg-slate-800 dark:text-slate-300">
+                Administrator
+              </span>
+            )}
+            {!user.active && (
+              <span className="badge bg-amber-100 text-amber-800 dark:bg-amber-950 dark:text-amber-200">
+                deaktiviert
+              </span>
+            )}
+          </p>
+          <p className="text-xs break-all text-slate-500 dark:text-slate-400">{user.email}</p>
+          {!canManage && (
+            <p className="mt-0.5 text-xs text-slate-600 dark:text-slate-300">{readOnlySummary}</p>
+          )}
+        </div>
+
+        {/* Deaktivieren und Entfernen bleiben dem Administrator-Konto – auch
+            bei Konten, deren Rolle die Bischofschaft ändern darf. */}
+        {admin && !isSelf && (
+          <div className="flex shrink-0 items-center gap-1">
+            <button
+              type="button"
+              className="btn-ghost btn-sm"
+              onClick={() => void setUserActive(user.id, !user.active)}
+            >
+              {user.active ? 'Deaktivieren' : 'Aktivieren'}
+            </button>
+            <button
+              type="button"
+              className="btn-ghost p-1.5 text-rose-600 dark:text-rose-400"
+              onClick={() => setConfirmDelete(true)}
+              aria-label={`Profil von ${user.displayName} entfernen`}
+            >
+              <Trash2 className="size-4" aria-hidden />
+            </button>
+          </div>
+        )}
       </div>
 
-      {/* Eine einzige Auswahl für Aufgabe und Zugriff: Bei Vollzugriff sind
-          das dieselbe Frage, und die beiden AP-Zugänge kennen keine Aufgabe.
-          Ohne Verwaltungsrecht steht die Rolle nur da – ändern kann sie das
-          Administrator-Konto, und die Zugriffsregeln setzen das durch. */}
-      {canManage ? (
-        <select
-          className="input w-auto py-1.5 text-sm"
-          value={user.role}
-          onChange={(event) => void changeRole(event.target.value as Role)}
-          aria-label={`Zugriff von ${user.displayName}`}
-        >
-          <optgroup label="Vollzugriff">
-            {/* Die alte Sammelrolle nur zeigen, solange sie noch gesetzt ist. */}
-            {user.role === 'counselor' && (
-              <option value="counselor">{ROLE_LABELS.counselor}</option>
-            )}
-            {ASSIGNABLE_ROLES.map((role) => (
-              <option key={role} value={role}>
-                {ROLE_LABELS[role]}
-              </option>
-            ))}
-          </optgroup>
-          {/* Sich selbst auf einen Ausschnitt zu beschränken oder den Zugang
-              ganz zu entziehen wäre eine Sackgasse – beides steht nur für
-              andere Konten zur Wahl. */}
-          {!isSelf && (
-            <optgroup label="Nur Abendmahlsversammlung">
-              <option value="assistant">{ROLE_LABELS.assistant}</option>
-            </optgroup>
+      {/* Die Felder in einem Raster unter dem Namen, jedes mit seiner
+          Beschriftung: Auf dem Telefon stehen sie untereinander und in voller
+          Breite, am Bildschirm nebeneinander. */}
+      {hasFields && (
+        <div className="mt-3 grid gap-3 sm:grid-cols-2 sm:ps-11 lg:grid-cols-[minmax(0,15rem)_minmax(0,13.5rem)_minmax(0,1fr)_minmax(0,1fr)]">
+          {/* Eine einzige Auswahl für Aufgabe und Zugriff: Bei Vollzugriff
+              sind das dieselbe Frage, und die übrigen Zugänge kennen keine
+              Aufgabe. Ohne Verwaltungsrecht steht der Zugang nur oben in
+              Worten – die Zugriffsregeln setzen das durch. */}
+          {canManage && (
+            <UserField label="Zugang">
+              <select
+                className="input w-full py-1.5 text-sm"
+                value={user.role}
+                onChange={(event) => void changeRole(event.target.value as Role)}
+                aria-label={`Zugang von ${user.displayName}`}
+              >
+                {/* Die Bischofschaft sieht den Vollzugriff ausgegraut: Es gibt
+                    ihn, aber vergeben kann ihn nur das Administrator-Konto. */}
+                <optgroup label={admin ? 'Vollzugriff' : 'Vollzugriff · nur Administrator'}>
+                  {/* Die alte Sammelrolle nur zeigen, solange sie noch gesetzt ist. */}
+                  {user.role === 'counselor' && (
+                    <option value="counselor">{ROLE_LABELS.counselor}</option>
+                  )}
+                  {ASSIGNABLE_ROLES.map((role) => (
+                    <option key={role} value={role} disabled={!canAssignRole(management, role)}>
+                      {ROLE_LABELS[role]}
+                    </option>
+                  ))}
+                </optgroup>
+                {/* Sich selbst auf einen Ausschnitt zu beschränken oder den
+                    Zugang ganz zu entziehen wäre eine Sackgasse – beides steht
+                    nur für andere Konten zur Wahl. */}
+                {!isSelf && (
+                  <optgroup label="Nur Abendmahlsversammlung">
+                    <option value="assistant">{ROLE_LABELS.assistant}</option>
+                  </optgroup>
+                )}
+                {!isSelf && (
+                  <optgroup label="Nur Aktivitäten AP’s">
+                    {AP_ONLY_ROLES.map((role) => (
+                      <option key={role} value={role}>
+                        {ROLE_LABELS[role]}
+                      </option>
+                    ))}
+                  </optgroup>
+                )}
+                {!isSelf && (
+                  <optgroup label="Nur Anti Doom">
+                    <option value={IMPULSE_ONLY_ROLE}>{ROLE_LABELS[IMPULSE_ONLY_ROLE]}</option>
+                  </optgroup>
+                )}
+                {!isSelf && (
+                  <optgroup label="Kein Zugriff">
+                    <option value="pending">{ROLE_LABELS.pending}</option>
+                  </optgroup>
+                )}
+              </select>
+            </UserField>
           )}
-          {!isSelf && (
-            <optgroup label="Nur Aktivitäten AP’s">
-              {AP_ONLY_ROLES.map((role) => (
-                <option key={role} value={role}>
-                  {ROLE_LABELS[role]}
-                </option>
-              ))}
-            </optgroup>
+
+          {/* Welche Bereiche eine Assistenz sieht – und in welchen sie auch
+              arbeitet –, steht am Konto und nicht an der Rolle. */}
+          {canManage && isAssistant && (
+            <UserField label="Bereiche" className="sm:col-span-2 lg:col-span-3">
+              <AssistantAreaAccess
+                name={`bereiche-${user.id}`}
+                access={access}
+                onChange={(next) => void changeAccess(next)}
+              />
+              {summary === '' && (
+                <p className="hint">
+                  Ohne Bereich sieht das Konto nichts – der Zugang ist entzogen.
+                </p>
+              )}
+            </UserField>
           )}
-          {!isSelf && (
-            <optgroup label="Nur Anti Doom">
-              <option value={IMPULSE_ONLY_ROLE}>{ROLE_LABELS[IMPULSE_ONLY_ROLE]}</option>
-            </optgroup>
+
+          {/* «Anti Doom» hängt am Konto und nicht an der Rolle. Das Feld
+              stellt immer dieselbe Frage – was darf dieses Konto dort? –, mit
+              denselben Worten: «Mitmachen» oder «+ Redaktion». Bei «Nur Anti
+              Doom» gehört der Bereich zur Rolle; dort fehlt deshalb «Nein».
+              Bei der Assistenz und bei wartenden Konten fehlt das Feld: Die
+              Zugriffsregeln kennen den Bereich für sie nicht. */}
+          {showImpulse && (
+            <UserField label={impulseOnly ? 'Anti Doom' : 'Anti Doom zusätzlich'}>
+              <select
+                className="input w-full py-1.5 text-sm"
+                value={impulseLevel}
+                onChange={(event) => void changeImpulse(event.target.value as ImpulseLevel)}
+                aria-label={`Anti Doom von ${user.displayName}`}
+              >
+                {!impulseOnly && <option value="none">Nein</option>}
+                <option value="view">Mitmachen</option>
+                <option value="edit">Mitmachen + Redaktion</option>
+              </select>
+            </UserField>
           )}
-          {!isSelf && (
-            <optgroup label="Kein Zugriff">
-              <option value="pending">{ROLE_LABELS.pending}</option>
-            </optgroup>
+
+          {/* Ein AP-Zugang erreicht das Mitgliederverzeichnis gar nicht – für
+              ihn gäbe es nichts, was die Verknüpfung beantworten könnte. Die
+              eigene Verknüpfung darf jede Person selbst setzen; fremde nur
+              das Administrator-Konto. */}
+          {showMember && (
+            <UserField label="Mitglied">
+              <MemberLinkField user={user} />
+            </UserField>
           )}
-        </select>
-      ) : (
-        <span className="text-sm text-slate-600 dark:text-slate-300">
-          {ROLE_LABELS[user.role]}
-          {!user.active && ' · deaktiviert'}
-        </span>
-      )}
 
-      {/* Welche Bereiche eine Assistenz sieht – und in welchen sie auch
-          arbeitet –, steht am Konto und nicht an der Rolle: Der eine sucht
-          die Lieder aus und liest bei den Ansprachen bloss mit, die andere
-          macht alles ausser der Musik. Die Auswahl steht deshalb gleich
-          neben der Rollenwahl – wie der Anti-Doom-Schalter darunter. */}
-      {canManage && isAssistant && (
-        <AssistantAreaAccess
-          name={`bereiche-${user.id}`}
-          access={access}
-          onChange={(next) => void changeAccess(next)}
-        />
-      )}
-
-      {/* «Anti Doom» hängt am Konto und nicht an der Rolle – die Auswahl
-          steht deshalb neben der Rollenwahl, und zwar als Stufe: ohne, nur
-          ansehen, oder ansehen und als Redaktion Inhalte pflegen. Auch wer
-          Vollzugriff hat, bekommt so nur die Ansicht, wenn er nicht
-          redigieren soll. Gesetzt wird sie nur hier; die Zugriffsregeln
-          lassen niemanden die eigenen Felder anfassen. Bei der Rolle «Nur
-          Anti Doom» gehört der Bereich zur Rolle – dort geht es nur noch
-          um die Redaktion. Bei der Assistenz und bei wartenden Konten
-          fehlt die Auswahl: Die Zugriffsregeln kennen den Bereich für sie
-          nicht, eine Wahl bewirkte nichts. */}
-      {canManage && !isAdminAccount && impulseAssignable(user.role) && (
-        <select
-          className="input w-auto py-1.5 text-sm"
-          value={impulseLevel}
-          onChange={(event) => void changeImpulse(event.target.value as ImpulseLevel)}
-          aria-label={`Anti Doom von ${user.displayName}`}
-          title="Was dieses Konto im Bereich «Anti Doom» darf"
-        >
-          {!impulseOnly && <option value="none">Ohne Anti Doom</option>}
-          <option value="view">Anti Doom</option>
-          <option value="edit">Anti Doom + Redaktion</option>
-        </select>
-      )}
-
-      {/* Ein AP-Zugang erreicht das Mitgliederverzeichnis gar nicht – für ihn
-          gäbe es nichts, was die Verknüpfung beantworten könnte. Die
-          Assistenz erreicht es und wird deshalb wie der Vollzugriff
-          behandelt. Die eigene Verknüpfung darf jede Person selbst setzen;
-          fremde nur der Admin. */}
-      {!apOnly && !impulseOnly && (canManage || isSelf) && <MemberLinkField user={user} />}
-
-      {/* Wie die Person im Aktivitätenplan heisst – die Brücke zwischen den
-          Namen dort und dem Konto, für die Erinnerung «nur wo ich
-          eingetragen bin» (siehe `lib/apInvolvement`). Nur bei Konten, die
-          den Plan sehen; die eigenen Namen setzt jede Person selbst. */}
-      {AP_ACCESS_ROLES.includes(user.role) && (canManage || isSelf) && (
-        <ApNamesField
-          user={user}
-          label={`Namen von ${user.displayName} im Aktivitätenplan`}
-          placeholder="Im AP-Plan als …"
-          className="w-full sm:w-48"
-        />
-      )}
-
-      {canManage && !isSelf && (
-        <>
-          <button
-            type="button"
-            className="btn-ghost btn-sm"
-            onClick={() => void setUserActive(user.id, !user.active)}
-          >
-            {user.active ? 'Deaktivieren' : 'Aktivieren'}
-          </button>
-          <button
-            type="button"
-            className="btn-ghost p-1.5 text-rose-600 dark:text-rose-400"
-            onClick={() => setConfirmDelete(true)}
-            aria-label={`Profil von ${user.displayName} entfernen`}
-          >
-            <Trash2 className="size-4" aria-hidden />
-          </button>
-        </>
+          {/* Wie die Person im Aktivitätenplan heisst – für die Erinnerung
+              «nur wo ich eingetragen bin» (siehe `lib/apInvolvement`). */}
+          {showApNames && (
+            <UserField label="Im AP-Plan als">
+              <ApNamesField
+                user={user}
+                label={`Namen von ${user.displayName} im Aktivitätenplan`}
+                placeholder="z. B. Carden, JM"
+                className="w-full"
+              />
+            </UserField>
+          )}
+        </div>
       )}
 
       <ConfirmDialog
