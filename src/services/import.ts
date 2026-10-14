@@ -9,6 +9,7 @@ import { db, COLLECTIONS } from '@/lib/firebase'
 import { resyncCollections } from '@/lib/collectionStore'
 import { parseDirectoryDate } from '@/services/importPaste'
 import { normalize } from '@/lib/utils'
+import { indexMembersForImport, matchImportPerson, memberDisplayName } from '@/lib/memberMatch'
 import { requireOnline } from '@/lib/sync'
 import { buildSearchName } from '@/services/members'
 import type { Gender, Member, MemberStatus } from '@/lib/types'
@@ -301,23 +302,12 @@ export function buildPreview(
   existing: Member[],
 ): ImportPreview {
   const byExternalId = new Map<string, Member>()
-  const byNameAndBirth = new Map<string, Member>()
-  const byName = new Map<string, Member[]>()
-
   for (const member of existing) {
     if (member.externalId) byExternalId.set(member.externalId, member)
-    const nameKey = normalize(`${member.lastName}|${member.firstName}`)
-    const birth = member.birthDate
-      ? (member.birthDate instanceof Timestamp
-          ? member.birthDate.toDate()
-          : new Date(String(member.birthDate))
-        )
-          .toISOString()
-          .slice(0, 10)
-      : ''
-    if (birth) byNameAndBirth.set(`${nameKey}|${birth}`, member)
-    byName.set(nameKey, [...(byName.get(nameKey) ?? []), member])
   }
+  /* Name und Geburtsdatum in jeder Schreibweise – «Römer» trifft «Roemer»
+     (siehe `lib/memberMatch`). */
+  const index = indexMembersForImport(existing)
 
   const rows: ImportRow[] = sheet.rows.map((cells, rowIndex) => {
     const warnings: string[] = []
@@ -349,26 +339,28 @@ export function buildPreview(
     /* Abgleich mit bestehenden Datensätzen */
     let matchId: string | null = null
     let matchReason: ImportRow['matchReason'] = null
+    let matched: Member | null = null
 
-    const nameKey = normalize(`${lastName}|${firstName}`)
     if (externalId && byExternalId.has(externalId)) {
-      matchId = byExternalId.get(externalId)!.id
+      matched = byExternalId.get(externalId)!
       matchReason = 'externalId'
-    } else if (
-      birthDate &&
-      byNameAndBirth.has(`${nameKey}|${birthDate.toISOString().slice(0, 10)}`)
-    ) {
-      matchId = byNameAndBirth.get(`${nameKey}|${birthDate.toISOString().slice(0, 10)}`)!.id
-      matchReason = 'name+birth'
-    } else {
-      const candidates = byName.get(nameKey) ?? []
-      if (candidates.length === 1) {
-        matchId = candidates[0].id
-        matchReason = 'name'
-        warnings.push('Zuordnung nur über den Namen – bitte prüfen')
-      } else if (candidates.length > 1) {
-        warnings.push(`${candidates.length} Personen mit gleichem Namen – keine Zuordnung`)
+    } else if (lastName || firstName) {
+      const match = matchImportPerson(index, lastName, firstName, birthDate)
+      if (match.member) {
+        matched = match.member
+        matchReason = match.reason
+        if (match.reason === 'name') warnings.push('Zuordnung nur über den Namen – bitte prüfen')
+      } else if (match.candidates > 1) {
+        warnings.push(`${match.candidates} Personen mit gleichem Namen – keine Zuordnung`)
       }
+    }
+    if (matched) {
+      matchId = matched.id
+      /* Eine andere Schreibweise wird übernommen – angeschrieben, damit
+         niemand in der Mitgliederliste nach dem alten Namen sucht. */
+      const before = memberDisplayName(matched)
+      const after = memberDisplayName({ lastName, firstName })
+      if (before !== after) warnings.push(`Bisher «${before}» – Schreibweise wird übernommen`)
     }
 
     const valid = Boolean(lastName || firstName)
