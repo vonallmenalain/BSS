@@ -212,8 +212,8 @@ function RequireAuth({ children }: { children: ReactNode }) {
  *
  * Die Sicherheitsregeln lehnen für diese Konten ohnehin jede Abfrage ab –
  * das hier erspart ihnen leere Seiten und Fehlermeldungen und führt sie
- * dorthin, wofür sie freigeschaltet wurden: zum Kalender, und wer nur den
- * Anti-Doom-Schalter trägt, zu «Anti Doom».
+ * dorthin, wofür sie freigeschaltet wurden: wer «Anti Doom» sieht, dorthin,
+ * sonst zum Kalender (siehe `homePath`).
  */
 function RequireFullAccess() {
   const { isApproved, homePath } = useAuth()

@@ -116,8 +116,9 @@ interface AuthContextValue {
   /**
    * Wohin dieses Konto gehört, wenn es nichts anderes verlangt hat.
    *
-   * Der Vollzugriff auf die Übersicht, ein AP-Zugang in den Kalender, die
-   * Assistenz in ihren ersten Bereich. Ohne diese eine Auskunft müsste jede
+   * Der Vollzugriff auf die Übersicht; ohne Vollzugriff, wer «Anti Doom»
+   * sieht, dorthin, die Assistenz in ihren ersten Bereich und ein AP-Zugang
+   * ohne «Anti Doom» in den Kalender. Ohne diese eine Auskunft müsste jede
    * Weiche die Frage neu beantworten – und eine davon käme zu einem anderen
    * Schluss.
    */

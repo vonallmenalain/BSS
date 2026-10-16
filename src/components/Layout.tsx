@@ -327,13 +327,14 @@ export function Layout() {
         { to: '/berufungen', label: 'Berufungen', shortLabel: 'Berufung', icon: Award },
         { to: '/einstellungen', label: 'Einstellungen', shortLabel: 'Mehr', icon: Settings },
       ]
-    : // Ohne Vollzugriff sind der Kalender, die freigeschalteten Bereiche der
-      // Abendmahlsversammlung und – mit Schalter – «Anti Doom» der ganze
-      // Inhalt; dann gehören sie auch in die untere Leiste.
+    : // Ohne Vollzugriff sind «Anti Doom», die freigeschalteten Bereiche der
+      // Abendmahlsversammlung und der Kalender der ganze Inhalt; dann gehören
+      // sie auch in die untere Leiste. «Anti Doom» steht zuoberst – dort
+      // beginnt ein solches Konto auch (`homePath`).
       [
+        ...(canViewImpulse ? [{ ...impulsItem, primary: true }] : []),
         ...(isAssistant ? [assistantItem] : []),
         ...(canViewAp ? [{ ...apItem, primary: true }] : []),
-        ...(canViewImpulse ? [{ ...impulsItem, primary: true }] : []),
       ]
 
   // In der Vorschau des Putzplans wie ohne Konto: keine Navigation.
