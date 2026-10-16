@@ -64,6 +64,7 @@ import {
   type ImpulseDeckTarget,
 } from '@/components/impulse/ImpulseFeedScreen'
 import { SectionTile } from '@/components/impulse/ImpulseHomeTiles'
+import { gameRanking, gameUnit } from '@/lib/impulseGame'
 import { ImpulseMissionTasks } from '@/components/impulse/ImpulseMissionTasks'
 import { ImpulseGroupRoom } from '@/components/impulse/ImpulseGroupRoom'
 import { ImpulseSettingsModal, type ImpulseOrder } from '@/components/impulse/ImpulseSettingsModal'
@@ -926,6 +927,36 @@ function ImpulsPage() {
       state: origin || cardId ? { origin, cardId } : undefined,
     })
 
+  /*
+   * Das Minispiel der Woche hat eine eigene Kachel: Ein Tipp darauf
+   * schlägt den Feed direkt bei seiner Karte auf (sonst die letzte).
+   * Ohne Spiel in der Woche gibt es die Kachel nicht – dann steht die
+   * Mitmach-Ecke wieder allein in ihrer Zeile.
+   */
+  const gameCard = gameEntries[0] ?? null
+  const gameItem = gameCard
+    ? (deckWeekItems.find((item) => item.id === gameCard.itemId) ?? null)
+    : null
+  const gameTileStatus = (() => {
+    if (!gameItem) return ''
+    if (viewWeek !== todayKey) return `${gameItem.title} – so steht der Endstand.`
+    const rows = gameRanking(
+      scoresData.filter((score) => score.itemId === gameItem.id),
+      { ownUid: uid, showHidden: canEditImpulse },
+    )
+    const ownRow = rows.find((row) => row.own)
+    if (!ownRow) return `${gameItem.title} – eine Runde dauert keine Minute.`
+    const best = ownRow.score.best
+    const record = `Dein Rekord: ${best} ${gameUnit(gameItem.game ?? 'sortieren', best)}`
+    if (!ownRow.score.name.trim()) return record
+    const named = rows.filter((row) => row.score.name.trim() !== '').length
+    return `${record} · Platz ${ownRow.rank} von ${named}`
+  })()
+  const openGame = (origin?: ScreenOrigin) =>
+    navigate('/anti-doom/spiel', {
+      state: { origin, cardId: gameCard?.id },
+    })
+
   /** Von Raum zu Raum – ersetzt den Schritt, Zurück führt zur Übersicht. */
   const switchSection = (key: ImpulseSectionKey) => navigate(`/anti-doom/${key}`, { replace: true })
 
@@ -1419,10 +1450,14 @@ function ImpulsPage() {
             delay="90ms"
             onOpen={openSection}
           />
-          <div className="col-span-2">
+          <div className={gameItem ? undefined : 'col-span-2'}>
             <SectionTile
               section="mitmachen"
-              status="Deine Idee für jede Kartenart – auf Wunsch mit deinem Namen auf der Karte."
+              status={
+                gameItem
+                  ? 'Deine Idee für jede Kartenart.'
+                  : 'Deine Idee für jede Kartenart – auf Wunsch mit deinem Namen auf der Karte.'
+              }
               badge={
                 submissionsState.data.filter(
                   (submission) => submission.uid === uid && submission.status === 'open',
@@ -1438,10 +1473,19 @@ function ImpulsPage() {
               onOpen={openSection}
             />
           </div>
+          {gameItem && (
+            <SectionTile
+              section="spiel"
+              label="Minispiel der Woche"
+              status={gameTileStatus}
+              delay="150ms"
+              onOpen={(_key, origin) => openGame(origin)}
+            />
+          )}
         </div>
 
         {!itemsState.loading && (
-          <div className="animate-imp-rise mt-3" style={{ animationDelay: '150ms' }}>
+          <div className="animate-imp-rise mt-3" style={{ animationDelay: '180ms' }}>
             <GroupCard
               participants={participants}
               crestNames={crestNames}
