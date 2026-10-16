@@ -4,13 +4,15 @@ import { IMPULSE_SECTIONS, type ImpulseSectionKey } from '@/lib/impulseSections'
 import type { ScreenOrigin } from '@/components/impulse/ImpulseScreen'
 
 /*
- * Die Kacheln unter dem Wochenthema: Mein Fortschritt, Gemerkt und die
- * Mitmach-Ecke. Sie gehören bewusst nicht zum Vollbild-Feed – sie sind die
- * Werkzeuge neben den Karten der Woche, und sie verschwinden, sobald der
- * Feed offen ist. Die Aufgaben der Woche (Wochenziel, Tages-Challenge)
- * stehen in der Mission selbst (`ImpulseMissionTasks`).
+ * Die Kacheln unter dem Wochenthema: Mein Fortschritt, Gemerkt, die
+ * Mitmach-Ecke und das Minispiel der Woche. Sie gehören bewusst nicht zum
+ * Vollbild-Feed – sie sind die Werkzeuge neben den Karten der Woche, und
+ * sie verschwinden, sobald der Feed offen ist. Die Aufgaben der Woche
+ * (Wochenziel, Tages-Challenge) stehen in der Mission selbst
+ * (`ImpulseMissionTasks`).
  * Ein Tipp öffnet den Vollbild-Raum des Bereichs, von der Kachel her
- * (der Klickpunkt wird zum transform-origin des Raums).
+ * (der Klickpunkt wird zum transform-origin des Raums) – die Kachel des
+ * Minispiels schlägt den Feed direkt bei seiner Karte auf.
  */
 
 /** Der Klickpunkt einer Kachel – von dort wächst der Vollbild-Raum. */
@@ -26,6 +28,7 @@ function tileOrigin(element: HTMLElement): ScreenOrigin {
  */
 export function SectionTile({
   section,
+  label,
   status,
   done = false,
   badge,
@@ -33,6 +36,8 @@ export function SectionTile({
   onOpen,
 }: {
   section: ImpulseSectionKey
+  /** Ein eigener Titel statt des Bereichsnamens («Minispiel der Woche»). */
+  label?: string
   /** Eine Zeile Stand: die Aufgabe, die Serie, die Anzahl … */
   status: string
   /** Erledigt – die Kachel trägt einen Haken statt des Pfeils. */
@@ -66,8 +71,11 @@ export function SectionTile({
         </span>
       </span>
       <span className="min-w-0">
-        <span className="flex items-center gap-2 text-sm font-semibold">
-          <span className="truncate">{theme.label}</span>
+        {/* Auf dem Handy teilen sich zwei Kacheln eine Zeile: Der Titel
+            bricht dann um, statt abgeschnitten zu werden, und die Marke
+            rutscht darunter. */}
+        <span className="flex flex-wrap items-center gap-x-2 gap-y-1 text-sm font-semibold">
+          <span className="min-w-0">{label ?? theme.label}</span>
           {badge && (
             <span className={cn('badge shrink-0 bg-slate-100/90 dark:bg-slate-800/90', theme.text)}>
               {badge}
