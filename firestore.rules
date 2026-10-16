@@ -4,7 +4,10 @@ rules_version = '2';
 //
 // Grundsatz: Die Datenbank enthält Personendaten einer Kirchengemeinde.
 // Lesen darf nur, wer angemeldet UND freigeschaltet wurde. Neue Konten
-// starten mit der Rolle `pending` und sehen nichts.
+// starten ohne Freigabe mit dem Standardzugang – `ap_viewer` mit dem
+// Schalter `impulse`: den (ohnehin öffentlichen) AP-Kalender lesen und
+// «Anti Doom» mitmachen. Keiner der beiden Bereiche trägt Personendaten
+// der Gemeinde; alles Übrige vergibt die Bischofschaft (siehe `users`).
 //
 // Rollen:
 //   bishop              – Bischof
@@ -17,7 +20,8 @@ rules_version = '2';
 //   ap_editor           – nur der AP-Kalender, mit Schreibrecht
 //   ap_viewer           – nur der AP-Kalender, ausschliesslich lesend
 //   impulse_only        – nur der Bereich «Anti Doom», für die AP's selbst
-//   pending             – wartet auf Freigabe, kein Datenzugriff
+//   pending             – kein Datenzugriff (so legen ältere Fassungen der
+//                         App ein neues Konto an)
 //
 // Innerhalb der Bischofschaft beschreibt die Rolle die Aufgabe, nicht den
 // Rechteumfang: Alle freigeschalteten Rollen arbeiten am selben Datenbestand
@@ -101,9 +105,10 @@ rules_version = '2';
 // Feld `impulse` am Benutzer; wer Inhalte pflegen darf, das Feld
 // `impulseEditor`. Beide vergibt das Administrator-Konto – bei Konten ohne
 // Vollzugriff auch die Bischofschaft (siehe `users`) –, und das
-// Administrator-Konto sieht den Bereich immer. Die Sammlungen des Bereichs
-// folgen mit der nächsten Etappe – verriegelt ist ab sofort, dass sich
-// niemand die beiden Schalter selbst setzt.
+// Administrator-Konto sieht den Bereich immer. Ein neues Konto bringt
+// `impulse` von sich aus mit (Standardzugang), `impulseEditor` nie. Die
+// Sammlungen des Bereichs folgen mit der nächsten Etappe – verriegelt ist
+// ab sofort, dass sich niemand die beiden Schalter selbst setzt.
 
 service cloud.firestore {
   match /databases/{database}/documents {
@@ -330,24 +335,45 @@ service cloud.firestore {
       allow get: if signedIn() && (request.auth.uid == userId || approved() || assistantAny());
       allow list: if approved() || assistantAny();
 
-      // Ein neues Konto legt sein eigenes Profil an – zwingend als `pending`.
-      // Damit kann sich niemand selbst Rechte geben. Auch die beiden
-      // Impuls-Schalter darf es nicht mitbringen: Sie blieben sonst als
+      // Ein neues Konto legt sein eigenes Profil an – zwingend mit dem
+      // Standardzugang: `ap_viewer` mit dem Schalter `impulse`, also den
+      // AP-Kalender lesen und «Anti Doom» mitmachen, ohne Redaktion. Dazu
+      // gehört `newAccount`, der Hinweis an die Bischofschaft: Ohne
+      // Freigabe erführe sonst niemand, dass es das Konto gibt, und ohne
+      // die Pflicht liesse er sich beim Anlegen einfach weglassen. Dasselbe
+      // steht als `NEW_ACCOUNT_ACCESS` in src/lib/access.ts.
+      //
+      // Ältere Fassungen der App legen ein neues Konto noch als `pending`
+      // an – das bleibt erlaubt, sonst scheiterte dort die Registrierung.
+      // Ein solches Konto sieht nichts und erscheint wie bisher als offene
+      // Freigabe.
+      //
+      // Mehr kann sich niemand selbst geben: weder eine andere Rolle noch
+      // die Redaktion oder Bereiche der Assistenz. Sie blieben sonst als
       // schlafender Zugang stehen und erwachten mit der Freischaltung.
       allow create: if signedIn()
         && request.auth.uid == userId
-        && request.resource.data.role == 'pending'
         && request.resource.data.active == true
-        && !('impulse' in request.resource.data)
         && !('impulseEditor' in request.resource.data)
         && !('assistantAreas' in request.resource.data)
-        && !('assistantWrite' in request.resource.data);
+        && !('assistantWrite' in request.resource.data)
+        && ((request.resource.data.role == 'ap_viewer'
+              && request.resource.data.get('impulse', false) == true
+              && request.resource.data.get('newAccount', false) == true)
+            || (request.resource.data.role == 'pending'
+              && !('impulse' in request.resource.data)
+              && !('newAccount' in request.resource.data)));
 
       // Das eigene Profil darf jede und jeder pflegen (Name, Verknüpfung,
       // Ansichts-Einstellungen) – aber weder Rolle noch Aktivstatus anfassen,
       // und ebenso wenig die beiden Impuls-Schalter. Das ist die Sperre gegen
       // die Selbstfreischaltung, und sie gilt für wartende wie für
       // freigeschaltete Konten gleichermassen.
+      //
+      // Auch den Hinweis auf das neue Konto räumt die Person nicht selbst
+      // weg – er ist für die Bischofschaft da. Gefragt wird nach den
+      // geänderten Feldern statt mit `unchanged`: Dort ginge das Entfernen
+      // des Feldes durch.
       allow update: if signedIn()
         && request.auth.uid == userId
         && unchanged('role')
@@ -355,7 +381,8 @@ service cloud.firestore {
         && unchanged('impulse')
         && unchanged('impulseEditor')
         && unchanged('assistantAreas')
-        && unchanged('assistantWrite');
+        && unchanged('assistantWrite')
+        && !request.resource.data.diff(resource.data).affectedKeys().hasAny(['newAccount']);
 
       // Benutzer verwalten – freischalten, Rollen zuweisen, deaktivieren,
       // löschen – darf der Administrator. Damit genügt ein kompromittiertes
@@ -367,7 +394,8 @@ service cloud.firestore {
       // Zugänge **ohne** Vollzugriff: Assistenz, AP-Kalender, «Nur Anti
       // Doom» und wer noch wartet. Sie darf ein solches Konto freischalten,
       // seine Rolle innerhalb dieser Zugänge wechseln, die Bereiche der
-      // Assistenz setzen und «Anti Doom» (samt Redaktion) zulassen.
+      // Assistenz setzen, «Anti Doom» (samt Redaktion) zulassen und den
+      // Hinweis auf ein neues Konto wegklicken (`newAccount`).
       //
       // Alles, was Vollzugriff hat oder bekommen soll, bleibt dem
       // Administrator: Vorher wie nachher muss die Rolle eine ohne
@@ -381,7 +409,7 @@ service cloud.firestore {
         && resource.data.get('email', '').lower() != 'alain.sc2@gmail.com'
         && request.resource.data.diff(resource.data).affectedKeys().hasOnly([
              'role', 'assistantAreas', 'assistantWrite', 'impulse', 'impulseEditor',
-             'updatedAt'
+             'newAccount', 'updatedAt'
            ]);
 
       allow delete: if isAdmin();

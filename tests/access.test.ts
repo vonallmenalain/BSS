@@ -9,6 +9,7 @@ import {
   impulseAssignable,
   impulseFieldsFor,
   impulseLevelOf,
+  NEW_ACCOUNT_ACCESS,
   notificationAreas,
   roleManagementOf,
 } from '../src/lib/access.ts'
@@ -144,6 +145,43 @@ test('dieselben Rollen wie in den Zugriffsregeln (impulseAccess, impulseWrite)',
   }
   assert.deepEqual(rolesIn('impulseAccess'), [...IMPULSE_SWITCH_ROLES].sort())
   assert.deepEqual(rolesIn('impulseWrite'), [...IMPULSE_SWITCH_ROLES, IMPULSE_ONLY_ROLE].sort())
+})
+
+/* ------------------------------------------------------------------ */
+/* Neue Konten: der Standardzugang ohne Freigabe                       */
+/* ------------------------------------------------------------------ */
+
+test('ein neues Konto: AP-Kalender lesen und «Anti Doom» – ohne Freigabe, ohne mehr', () => {
+  const fresh = accessOf(user(NEW_ACCOUNT_ACCESS.role, { ...NEW_ACCOUNT_ACCESS }), null)
+  assert.equal(fresh.hasAccess, true)
+  assert.equal(fresh.canViewAp, true)
+  assert.equal(fresh.canEditAp, false)
+  assert.equal(fresh.canViewImpulse, true)
+  assert.equal(fresh.canEditImpulse, false)
+  assert.equal(fresh.isApproved, false)
+  assert.equal(fresh.isAssistant, false)
+  assert.equal(fresh.homePath, '/ap')
+  // Erinnerungen gibt es für beide Bereiche, für Sitzungen und Putzplan nicht.
+  const areas = notificationAreas(fresh)
+  assert.equal(areas.ap, true)
+  assert.equal(areas.impulse, true)
+  assert.equal(areas.meetings, false)
+  assert.equal(areas.cleaning, false)
+  // Die Bischofschaft kann den Zugang danach ändern und den Hinweis wegklicken.
+  assert.equal(LIMITED_ROLES.includes(NEW_ACCOUNT_ACCESS.role), true)
+  assert.equal(
+    canManageUser('limited', { role: NEW_ACCOUNT_ACCESS.role, email: 'neu@example.ch' }, false),
+    true,
+  )
+})
+
+test('der Standardzugang steht genau so in den Zugriffsregeln', () => {
+  const rules = readFileSync(new URL('../firestore.rules', import.meta.url), 'utf8')
+  const start = rules.indexOf('allow create:', rules.indexOf('match /users/{userId}'))
+  const body = rules.slice(start, rules.indexOf(';', start))
+  assert.match(body, new RegExp(`role == '${NEW_ACCOUNT_ACCESS.role}'`))
+  assert.match(body, /get\('impulse', false\) == true/)
+  assert.match(body, /get\('newAccount', false\) == true/)
 })
 
 /* ------------------------------------------------------------------ */

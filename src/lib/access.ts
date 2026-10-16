@@ -124,6 +124,28 @@ export function accessOf(profile: AppUser | null, email: string | null | undefin
 }
 
 /**
+ * Was ein neu registriertes Konto von sich aus mitbringt – ohne Freigabe.
+ *
+ * Den AP-Kalender zum Lesen (er ist ohnehin öffentlich) und «Anti Doom» zum
+ * Mitmachen: die beiden Bereiche, für die sich die AP's ein Konto
+ * einrichten, und keiner davon trägt Personendaten der Gemeinde. Alles
+ * darüber hinaus – Schreibrecht im Kalender, Redaktion, Assistenz,
+ * Vollzugriff – vergibt weiterhin die Bischofschaft.
+ *
+ * `newAccount` stellt das Konto als Hinweis auf die Übersicht der
+ * Bischofschaft, bis jemand ihn wegklickt. Ohne Freigabe erführe sonst
+ * niemand, dass es ein neues Konto gibt.
+ *
+ * Genau diese drei Felder verlangt `firestore.rules` beim Anlegen des
+ * eigenen Profils – beide müssen zusammen geändert werden.
+ */
+export const NEW_ACCOUNT_ACCESS = {
+  role: 'ap_viewer',
+  impulse: true,
+  newAccount: true,
+} as const satisfies Pick<AppUser, 'role' | 'impulse' | 'newAccount'>
+
+/**
  * Wie weit ein Konto Benutzer und Rollen verwalten darf.
  *
  * - `all` – das Administrator-Konto: alles, auch Vollzugriff, Aktivstatus

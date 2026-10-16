@@ -16,9 +16,12 @@ export interface WithId {
 /* ------------------------------------------------------------------ */
 
 /**
- * Rollen der App. `pending` erhält jeder neu registrierte Account, bis ihn
- * jemand aus der Bischofschaft freischaltet – so kann sich niemand selbst
- * Zugriff auf Personendaten verschaffen.
+ * Rollen der App. Ein neu registriertes Konto beginnt ohne Freigabe als
+ * `ap_viewer` mit «Anti Doom» (siehe `NEW_ACCOUNT_ACCESS` in lib/access) –
+ * zwei Bereiche ohne Personendaten. Alles darüber hinaus vergibt die
+ * Bischofschaft; so kann sich niemand selbst Zugriff auf Personendaten
+ * verschaffen. `pending` sieht nichts – so legen ältere Fassungen der App
+ * ein neues Konto noch an, und so lässt sich ein Zugang ganz entziehen.
  *
  * Innerhalb der Bischofschaft beschreibt die Rolle die **Aufgabe**, nicht den
  * Umfang der Rechte: Bischof, beide Ratgeber und die Sekretäre arbeiten am
@@ -749,6 +752,19 @@ export interface AppUser extends WithId {
    * hat, sieht den Bereich, ohne etwas daran zu ändern.
    */
   impulseEditor?: boolean
+  /**
+   * Das Konto ist neu, und die Bischofschaft hat den Hinweis darauf noch
+   * nicht weggeklickt.
+   *
+   * Ein neues Konto bekommt den Standardzugang ohne Freigabe (siehe
+   * `NEW_ACCOUNT_ACCESS` in lib/access) – damit fällt die Frage weg, an der
+   * die Bischofschaft bisher von jeder Registrierung erfahren hat. Dieses
+   * Feld ersetzt sie: Solange es gesetzt ist, steht das Konto als Hinweis
+   * auf der Übersicht. Wegklicken dürfen das Administrator-Konto und die
+   * Bischofschaft; die Person selbst nicht – die Selbst-Update-Regel in
+   * `firestore.rules` sperrt das Feld.
+   */
+  newAccount?: boolean
   /** Farbe für Zuweisungs-Chips (Tailwind-Token-Name, siehe constants.ts) */
   color?: string
   active: boolean

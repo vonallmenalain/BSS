@@ -1,4 +1,4 @@
-import { doc, serverTimestamp, updateDoc, deleteDoc } from '@/lib/db'
+import { doc, deleteField, serverTimestamp, updateDoc, deleteDoc } from '@/lib/db'
 // Am Protokoll vorbei – warum, steht bei `saveApView`.
 import { updateDoc as fbUpdateDoc } from 'firebase/firestore'
 import { db, COLLECTIONS } from '@/lib/firebase'
@@ -139,6 +139,30 @@ export async function setUserImpulseAccess(
       ...impulseFieldsFor(level),
       updatedAt: serverTimestamp(),
     }),
+  )
+}
+
+/**
+ * Klickt den Hinweis auf neue Konten weg – für alle, nicht bloss für sich.
+ *
+ * Wie die Freigabe früher: Hat eine Person aus der Bischofschaft das neue
+ * Konto zur Kenntnis genommen, ist es für die übrigen erledigt. Am Zugang
+ * ändert das nichts; das Konto behält den Standardzugang.
+ *
+ * Das Feld wird entfernt statt auf `false` gesetzt – ein Konto, das nie neu
+ * war, trägt es ebenso wenig. Die Zugriffsregeln lassen das das
+ * Administrator-Konto und die Bischofschaft tun, die Person selbst nicht.
+ */
+export async function dismissNewAccounts(userIds: string[]): Promise<SaveOutcome> {
+  return commit(
+    Promise.all(
+      userIds.map((userId) =>
+        updateDoc(doc(db, COLLECTIONS.users, userId), {
+          newAccount: deleteField(),
+          updatedAt: serverTimestamp(),
+        }),
+      ),
+    ),
   )
 }
 

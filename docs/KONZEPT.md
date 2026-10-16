@@ -577,10 +577,11 @@ sortieren, ohne bei jedem Aufruf sämtliche Ansprachen zu laden.
 
 ### Rechte
 
-Zugriff bekommt nur, wer angemeldet **und** freigeschaltet ist. Neue Konten
-starten als `pending` und sehen nichts – erst ein freigeschaltetes Konto
-vergibt eine Rolle. Durchgesetzt wird das in `firestore.rules`, nicht im
-Frontend.
+Zugriff auf Personendaten bekommt nur, wer angemeldet **und** freigeschaltet
+ist. Neue Konten starten ohne Freigabe mit dem Standardzugang – AP-Kalender
+lesen und «Anti Doom», zwei Bereiche ohne Personendaten der Gemeinde – und
+erscheinen als Hinweis auf der Übersicht der Bischofschaft; alles Weitere
+vergibt sie. Durchgesetzt wird das in `firestore.rules`, nicht im Frontend.
 
 **Eine Ausnahme: der Aktivitätenplan.** Er steht unter `/ap` offen – ohne
 Anmeldung, nur zum Lesen. Er ist das Anschlagbrett der AP's und wird den

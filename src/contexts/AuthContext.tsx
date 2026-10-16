@@ -29,7 +29,7 @@ import { auth, db, COLLECTIONS, isFirebaseConfigured } from '@/lib/firebase'
 import { getInitials } from '@/lib/utils'
 import { commit } from '@/lib/sync'
 import { clearSyncWatermarks, stopCollectionStores } from '@/lib/collectionStore'
-import { accessOf } from '@/lib/access'
+import { accessOf, NEW_ACCOUNT_ACCESS } from '@/lib/access'
 import { BISHOPRIC_ROLES, type AppUser, type AssistantArea, type Role } from '@/lib/types'
 
 interface AuthContextValue {
@@ -278,9 +278,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   /**
    * Legt das Firestore-Profil an, falls es fehlt.
    *
-   * Neue Konten starten immer mit der Rolle `pending`; erst ein bereits
-   * freigeschaltetes Konto vergibt eine Rolle. So kommt niemand ungeprüft an
-   * Personendaten.
+   * Neue Konten starten mit dem Standardzugang (`NEW_ACCOUNT_ACCESS`):
+   * AP-Kalender lesen und «Anti Doom», ohne Freigabe. Alles darüber hinaus
+   * vergibt die Bischofschaft – so kommt niemand ungeprüft an Personendaten.
+   * Dass es das Konto gibt, erfährt sie aus dem Hinweis auf der Übersicht.
    *
    * Auch hier wird über `commit()` geschrieben: Bricht die Verbindung
    * ausgerechnet zwischen Anmeldung und Profilanlage ab, soll die App nicht
@@ -297,7 +298,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           email: user.email ?? '',
           displayName: name,
           initials: getInitials(name),
-          role: 'pending' satisfies Role,
+          ...NEW_ACCOUNT_ACCESS,
           active: true,
           memberId: null,
           createdAt: serverTimestamp(),

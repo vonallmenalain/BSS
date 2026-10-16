@@ -465,7 +465,7 @@ export function Settings() {
             {management === 'all'
               ? 'Als Administrator vergibst und änderst du jeden Zugang.'
               : management === 'limited'
-                ? 'Als Bischofschaft schaltest du neue Registrierungen frei und änderst alle Zugänge ohne Vollzugriff. Vollzugriff, Deaktivieren und Entfernen bleiben dem Administrator-Konto.'
+                ? 'Als Bischofschaft änderst du alle Zugänge ohne Vollzugriff – auch den neuer Konten. Vollzugriff, Deaktivieren und Entfernen bleiben dem Administrator-Konto.'
                 : 'Zugänge vergeben das Administrator-Konto und – ohne Vollzugriff – Bischof und Ratgeber.'}
           </p>
           <details className="mb-4 rounded-lg border border-slate-200 text-xs text-slate-600 dark:border-slate-700 dark:text-slate-300">
@@ -500,7 +500,14 @@ export function Settings() {
                 Die Namen, unter denen jemand im Aktivitätenplan steht – etwa «Carden» oder «JM».
                 Damit lässt sich die Erinnerung auf die eigenen Termine beschränken.
               </AccessTerm>
-              <AccessTerm term="Wartet auf Freigabe">Sieht nichts.</AccessTerm>
+              <AccessTerm term="Neues Konto">
+                Sieht ohne Freigabe den AP-Kalender (nur lesen) und Anti Doom. Auf der Übersicht
+                steht es als Hinweis, bis ihn jemand aus der Bischofschaft wegklickt; mehr Zugriff
+                gibt es hier.
+              </AccessTerm>
+              <AccessTerm term="Wartet auf Freigabe">
+                Sieht nichts – so legen ältere Fassungen der App ein neues Konto an.
+              </AccessTerm>
             </dl>
           </details>
 
@@ -1091,8 +1098,8 @@ function PendingUserCard({ user, management }: { user: AppUser; management: Role
         message={
           <>
             Das Profil von {user.displayName} wird gelöscht. Das Anmeldekonto selbst bleibt in
-            Firebase Authentication bestehen – meldet sich die Person erneut an, erscheint sie
-            wieder als neue Registrierung.
+            Firebase Authentication bestehen – meldet sich die Person erneut an, bekommt sie den
+            Standardzugang eines neuen Kontos (AP-Kalender lesen und Anti Doom).
           </>
         }
         confirmLabel="Ablehnen"
@@ -1344,6 +1351,12 @@ function UserRow({
                 deaktiviert
               </span>
             )}
+            {/* Bis der Hinweis auf der Übersicht weggeklickt ist. */}
+            {user.newAccount === true && (
+              <span className="badge bg-brand-50 text-brand-700 dark:bg-brand-950 dark:text-brand-200">
+                neu
+              </span>
+            )}
           </p>
           <p className="text-xs break-all text-slate-500 dark:text-slate-400">{user.email}</p>
           {!canManage && (
@@ -1511,7 +1524,9 @@ function UserRow({
           <>
             Das Profil von {user.displayName} wird gelöscht und der Zugriff endet sofort. Das
             Anmeldekonto selbst bleibt in Firebase Authentication bestehen – dort kannst du es bei
-            Bedarf ganz löschen.
+            Bedarf ganz löschen. Meldet sich die Person vorher erneut an, bekommt sie den
+            Standardzugang eines neuen Kontos; wer gar nichts mehr sehen soll, wird besser
+            deaktiviert.
           </>
         }
         confirmLabel="Entfernen"

@@ -112,15 +112,16 @@ siehe [Sicherung](#sicherung).
 ### 4. Ersten Benutzer freischalten
 
 Damit sich niemand selbst Zugriff auf Personendaten verschaffen kann, starten
-**alle** neuen Konten mit der Rolle `pending`. Beim allerersten Konto gibt es
-noch niemanden, der freischalten könnte – dieser eine Schritt läuft deshalb
-über die Konsole:
+**alle** neuen Konten mit dem Standardzugang – AP-Kalender lesen und «Anti
+Doom» (siehe [Neue Konten](#neue-konten)). Beim allerersten Konto gibt es noch
+niemanden, der mehr vergeben könnte – dieser eine Schritt läuft deshalb über
+die Konsole:
 
 1. In der App registrieren (E-Mail, Passwort, Name).
 2. Firebase-Konsole → **Firestore Database** → Sammlung `users` → das eigene
    Dokument öffnen.
-3. Feld `role` von `pending` auf `bishop` ändern.
-4. In der App auf «Neu prüfen» klicken.
+3. Feld `role` von `ap_viewer` auf `bishop` ändern.
+4. Die App neu laden.
 
 Alle weiteren Konten schaltest du danach in der App frei:
 **Einstellungen → Benutzer und Rollen**.
@@ -302,7 +303,9 @@ herunter. Die entscheidende Trennlinie verläuft zwischen `pending` und allen
 nichts liest, nichts schreibt und sich nicht selbst freischalten kann – und
 dass umgekehrt jede freigeschaltete Rolle auf denselben Bestand kommt,
 einschliesslich Programm der Abendmahlsversammlung, Gebete, Liederliste und
-Notizen.
+Notizen. Dazu der Standardzugang eines neuen Kontos: dass er genau den
+AP-Kalender zum Lesen und «Anti Doom» öffnet, sich beim Anlegen nicht
+erweitern lässt und den Hinweis an die Bischofschaft nicht weglassen kann.
 
 Dieselben Tests laufen in der CI, bevor Regeln ausgerollt werden.
 
@@ -3278,9 +3281,14 @@ kennen den Bereich für sie nicht, eine Wahl bewirkte nichts.
 | **Nur Anti Doom**             | nur «Anti Doom» – mitmachen wie alle, Inhalte pflegt die Redaktion |
 | _Wartet auf Freigabe_         | nichts                                                             |
 
+Ein **neues Konto** beginnt ohne Freigabe als _AP-Kalender · nur ansehen_ mit
+«Anti Doom» – siehe [Neue Konten](#neue-konten). _Wartet auf Freigabe_ legen
+nur noch ältere Fassungen der App an; die Rolle bleibt, um einem Konto den
+Zugang ganz zu entziehen.
+
 Wozu dann überhaupt Rollen mit Vollzugriff? Sie halten fest, wer welche
 Aufgabe hat – etwa wer die Abendmahlsversammlung leitet oder präsidiert – und
-sie steuern die Freigabe neuer Konten.
+sie steuern, wer mehr bekommt als den Standardzugang.
 
 Daneben steht das **Administrator-Konto**. Es ist keine Rolle, sondern eine
 einzelne Anmelde-E-Mail (`ADMIN_EMAIL` in `src/lib/types.ts`, dieselbe
@@ -3289,10 +3297,10 @@ Vollzugriff –, deaktiviert und entfernt Konten, lädt die
 [Sicherung](#sicherung) herunter und sieht die [Admin-Importe](#admin-importe).
 
 **Die Bischofschaft – Bischof, 1. und 2. Ratgeber – verwaltet die Zugänge
-ohne Vollzugriff.** Sie schaltet neue Registrierungen frei und ändert bei
-Konten ohne Vollzugriff die Rolle (Assistenz, AP-Kalender, Nur Anti Doom,
-Wartet auf Freigabe), die Bereiche der Assistenz und «Anti Doom» samt
-Redaktion. Den Vollzugriff sieht sie dabei ausgegraut: Alles, was ihn hat
+ohne Vollzugriff.** Sie ändert bei Konten ohne Vollzugriff – auch bei neuen –
+die Rolle (Assistenz, AP-Kalender, Nur Anti Doom, Wartet auf Freigabe), die
+Bereiche der Assistenz und «Anti Doom» samt Redaktion, und sie klickt den
+Hinweis auf neue Konten weg. Den Vollzugriff sieht sie dabei ausgegraut: Alles, was ihn hat
 oder bekommen soll, bleibt dem Administrator-Konto, ebenso Deaktivieren und
 Entfernen. Die Sekretäre verwalten keine Konten. Auch das steht in
 `firestore.rules` (`bishopric`, `limitedRole`) und nicht bloss in der
@@ -3439,20 +3447,43 @@ Musik weiterhin pflegt – und dass sich niemand Bereiche oder Schreibrechte
 selbst setzen kann. Die Umrechnung zwischen der Auswahl und den beiden Listen
 am Konto steht in `tests/roles.test.ts` (`npm run test:import`).
 
-### Ein neues Konto freischalten
+### Neue Konten
 
-Wer sich registriert, landet mit der Rolle «Wartet auf Freigabe» in der
-Datenbank und sieht nichts. In der App der Bischofschaft steht das dann
-**zuoberst auf der Übersicht** – ein Klick darauf führt geradewegs zu
-**Einstellungen → Benutzer und Rollen**, wo das Konto in einem Kasten
-**«Neue Registrierungen»** steht. Ohne diesen Hinweis merkte es nur die
-wartende Person selbst. Zur Wahl stehen dort fünf Zugriffsstufen –
-Vollzugriff, Assistenz der Abendmahlsversammlung, nur AP-Kalender mit
+Wer sich registriert, bekommt **ohne Freigabe** den Standardzugang: den
+AP-Kalender zum Lesen (er ist ohnehin öffentlich) und «Anti Doom» zum
+Mitmachen – die beiden Bereiche, für die sich die AP's ein Konto einrichten,
+und keiner davon trägt Personendaten der Gemeinde. In der Datenbank steht das
+Konto als `ap_viewer` mit `impulse: true`; mehr kann es sich beim Anlegen
+nicht geben, das setzt `firestore.rules` durch.
+
+Damit die Bischofschaft trotzdem davon erfährt, steht das Konto **zuoberst
+auf der Übersicht** als Hinweis **«Ein neues Konto wurde erstellt»** – mit
+Name und dem, was es sieht. Ein Tipp darauf führt zu **Einstellungen →
+Benutzer und Rollen**, wo das Konto mit dem Kennzeichen **neu** steht und
+sich der Zugang wie bei jedem anderen ändern lässt. Das **Kreuz** daneben
+klickt den Hinweis weg – für die ganze Bischofschaft, wie früher eine
+erledigte Freigabe. Am Zugang ändert das nichts. Wegklicken dürfen das
+Administrator-Konto sowie Bischof und Ratgeber, die Person selbst nicht
+(Feld `newAccount` am Konto, gesperrt gegen die eigene Hand).
+
+Soll ein Konto gar nichts sehen, deaktiviert es das Administrator-Konto.
+Entfernen genügt dafür nicht: Meldet sich die Person wieder an, legt die App
+ihr Profil neu an – mit dem Standardzugang.
+
+### Ältere Registrierungen freischalten
+
+Ältere Fassungen der App legen ein neues Konto noch mit der Rolle «Wartet auf
+Freigabe» an; es sieht nichts. Auch das steht dann **zuoberst auf der
+Übersicht** – ein Klick darauf führt geradewegs zu **Einstellungen → Benutzer
+und Rollen**, wo das Konto in einem Kasten **«Neue Registrierungen»** steht.
+Zur Wahl stehen dort fünf Zugriffsstufen – Vollzugriff, Assistenz der
+Abendmahlsversammlung, nur AP-Kalender mit
 Schreibrecht, nur AP-Kalender zum Ansehen, nur Anti Doom –, bei Vollzugriff
 zusätzlich die Aufgabe in der Bischofschaft und bei der Assistenz je Bereich
 die Wahl zwischen _Kein Zugriff_, _Nur lesen_ und _Bearbeiten_ (zu Beginn alle
 drei zum Bearbeiten). Ein Klick auf **Freischalten** wirkt sofort;
-**Ablehnen** entfernt das Profil wieder.
+**Ablehnen** entfernt das Profil wieder – meldet sich die Person erneut an,
+bekommt sie den Standardzugang eines neuen Kontos.
 
 Freischalten dürfen das Administrator-Konto und die Bischofschaft (Bischof,
 1. und 2. Ratgeber). Für die Bischofschaft ist «Vollzugriff» ausgegraut, und

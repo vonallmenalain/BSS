@@ -227,7 +227,8 @@ export function Login() {
         </div>
 
         <p className="mt-4 text-center text-xs text-slate-400">
-          Neue Konten werden erst nach Freigabe durch die Bischofschaft aktiv.
+          Ein neues Konto sieht sofort den AP-Kalender und «Anti Doom». Weitere Bereiche schaltet
+          die Bischofschaft frei.
         </p>
       </div>
     </div>
