@@ -5,22 +5,31 @@
  * Ein junger Krieger läuft, und ihm kommen Ausreden entgegen: «Später»,
  * «Keine Lust», «Nur noch kurz». Ein Tipp – oder die Leertaste – lässt
  * ihn springen; wer länger drückt, springt höher. Jede Hürde, über die er
- * kommt, zählt einen Punkt, ebenso jede Lücke, über die er springt, und
- * jede Aufgabe, die er unterwegs einsammelt: beten, Schriften, helfen,
- * Ämtli. Wer an eine Ausrede stösst oder in eine Lücke fällt, ist
- * verwundet – drei Wunden, und die Runde ist vorbei. Zehn Hindernisse am
+ * kommt, zählt einen Punkt, ebenso jede Lücke und jede Kluft, die er
+ * überwindet, und jede Aufgabe, die er unterwegs einsammelt: beten,
+ * Schriften, helfen, Ämtli. Wer an eine Ausrede stösst oder in eine Lücke fällt, ist
+ * verwundet – drei Wunden, und die Runde ist vorbei. Fünfzehn Hindernisse am
  * Stück ohne Treffer heilen eine.
  *
- * **Etagen.** Nach etwa fünf Sekunden tun sich Lücken im Boden auf, und
- * darüber schweben Bretter – die erste Etage. Wer lang drückt, kommt
- * hinauf; dort oben liegen mehr Aufgaben, unten zählen die Hürden und
- * Lücken. Bequemer ist es oben nicht: Bald stehen auch dort Ausreden.
- * Später kommt eine zweite Etage dazu, erreichbar nur von der ersten
- * aus – mit den meisten Aufgaben. Die Bretter trägt man von unten
- * durch (wie in jedem Jump-'n'-Run), gelandet wird nur von oben. Wo ein
- * Brett endet, fällt man eine Etage tiefer – dort ist immer Platz zum
- * Landen. Wer in eine Lücke fällt, wird aufgefangen: Die Lücke wird zur
- * Brücke, er läuft weiter, eine Wunde ärmer.
+ * **Etagen und Routen.** Nach etwa fünf Sekunden tun sich Lücken im
+ * Boden auf, und darüber schweben Bretter – die erste Etage. Dann kommen
+ * Prüfungen, die mehr verlangen als einen Sprung:
+ * - **Klüfte** sind zu breit, um sie vom Boden aus zu überspringen.
+ *   Hinüber führt nur ein Brett darüber – wer unten bleibt, fällt.
+ * - **Trittsteine**: kurze Bretter mitten in einer Kluft. Man muss genau
+ *   auf ihnen landen und von dort genau weiterspringen.
+ * - **Gabelungen**: Das untere Brett endet über dem Abgrund, nur das
+ *   obere (die zweite Etage) führt hinüber. Wer nicht rechtzeitig
+ *   hinaufspringt, fällt.
+ * - **Weite Lücken**: so breit, dass nur ein voller, genau getimter
+ *   Sprung hinüberreicht.
+ * Die Bretter trägt man von unten durch (wie in jedem Jump-'n'-Run),
+ * gelandet wird nur von oben. Wer in eine Lücke oder Kluft fällt, wird
+ * aufgefangen: Sie wird zur Brücke, er läuft weiter, eine Wunde ärmer.
+ *
+ * **Aufgaben** gibt es wenige – höchstens eine je Abschnitt –, und keine
+ * liegt einfach am Weg: Jede verlangt einen Sprung im richtigen Moment,
+ * über einer Hürde, im Bogen über einer Lücke, über einem Brett.
  *
  * Das Bild dahinter: Die jungen Krieger waren «mutig, stark und regsam»
  * und treu «zu allen Zeiten und in allem, was ihnen anvertraut war»
@@ -80,9 +89,9 @@ export const RUN_TASKS: readonly RunItem[] = [
   { emoji: '⛪', label: 'Kirche' },
 ]
 
-/** Drei Wunden – und zehn Hindernisse am Stück ohne Treffer heilen eine. */
+/** Drei Wunden – und fünfzehn Hindernisse am Stück ohne Treffer heilen eine. */
 export const RUN_LIVES = 3
-export const RUN_STREAK_FOR_LIFE = 10
+export const RUN_STREAK_FOR_LIFE = 15
 
 /**
  * Die Welt in Körperhöhen und Spielsekunden. Eine Spielsekunde ist am
@@ -147,8 +156,13 @@ export const RUN_PACE = {
   tightenOver: 30,
   /** Ab hier (echte Sekunden) tun sich Lücken auf, und die erste Etage kommt dazu … */
   holesFrom: 4,
-  /** … ab hier die zweite. */
-  upperFrom: 16,
+  /** … ab hier Klüfte mit einem Brett darüber, Trittsteine, Gabelungen, weite Lücken. */
+  bridgesFrom: 7,
+  stonesFrom: 10,
+  forksFrom: 14,
+  preciseFrom: 16,
+  /** Ab hier stehen in einer Kluft manchmal zwei Trittsteine statt einem. */
+  twoStonesFrom: 16,
   /** Ab hier stehen auch auf der ersten Etage Ausreden – mit dieser Wahrscheinlichkeit je Brett. */
   upHurdlesFrom: 12,
   upHurdleChance: 0.45,
@@ -157,6 +171,20 @@ export const RUN_PACE = {
   holeEarly: 1.8,
   holeLate: 2.6,
   holeGrow: 30,
+  /** Eine weite Lücke: nur ein voller Sprung im richtigen Moment reicht hinüber. */
+  preciseMin: 3.5,
+  preciseMax: 4,
+  /**
+   * Eine Kluft: breiter, als irgendein Sprung vom Boden trägt (gut fünfeinhalb
+   * Einheiten, mit dem Nachsprung an der Kante). Unter einer Gabelung noch
+   * breiter – sonst reichte ein Weitsprung von der Spitze des unteren Bretts.
+   */
+  chasmMin: 6.6,
+  chasmMax: 8.4,
+  forkChasmMin: 9.8,
+  forkChasmMax: 11.2,
+  /** So weit ragt das untere Brett einer Gabelung über die Kluft – Platz für den Sprung hinauf. */
+  forkOverhang: 3,
   /** Unter jedem Brettende so viel freier Boden: Wer herunterfällt, landet sicher. */
   landing: 3.5,
 } as const
@@ -202,7 +230,23 @@ export interface RunGap {
   bridged: boolean
   /** Wie bei der Hürde: Nur wer vom Boden aus hinüberspringt, bekommt den Punkt. */
   atLevel: boolean | null
+  /**
+   * Eine Kluft: vom Boden aus nie zu überspringen – hinüber führt nur ein
+   * Brett oder ein Trittstein. Wer sie überquert, bekommt den Punkt, auf
+   * welcher Etage auch immer.
+   */
+  chasm: boolean
 }
+
+/**
+ * Was ein Brett ist:
+ * - `ledge` – ein Brett über dem Boden, unten geht es auch;
+ * - `bridge` – ein Brett über einer Kluft, der einzige Weg hinüber;
+ * - `stone` – ein Trittstein mitten in einer Kluft;
+ * - `deadEnd` – das untere Brett einer Gabelung, es endet über dem Abgrund;
+ * - `upper` – das obere Brett einer Gabelung, es führt hinüber.
+ */
+export type RunPlatformKind = 'ledge' | 'bridge' | 'stone' | 'deadEnd' | 'upper'
 
 export interface RunPlatform {
   id: number
@@ -213,6 +257,7 @@ export interface RunPlatform {
   level: 1 | 2
   /** Die Oberkante über dem Boden (`RUN_LEVELS`). */
   top: number
+  kind: RunPlatformKind
 }
 
 export interface RunTask {
@@ -245,8 +290,14 @@ export type RunEvent =
 const SUBSTEP = 1 / 240
 /** Halbmesser einer Aufgabe – zum Einsammeln. */
 export const RUN_TASK_RADIUS = 0.32
-/** Eine Aufgabe auf einer Etage schwebt so hoch über dem Brett – auf Brusthöhe. */
-const TASK_LIFT = 0.45
+/**
+ * So hoch schwebt eine Aufgabe über einem Brett: über dem Kopf, wer dort
+ * läuft – holen kann sie nur, wer im richtigen Moment hüpft.
+ */
+const TASK_HOP = 1.6
+
+/** Die Abschnitte der Strecke – in der Reihenfolge, in der sie eingeführt werden. */
+type RunSection = 'hurdle' | 'gap' | 'ledge' | 'bridge' | 'stones' | 'fork' | 'precise'
 
 /**
  * Eine Runde «Keine Ausreden!». `press` und `release` sind der Finger
@@ -282,9 +333,8 @@ export class RunRound {
   private nextX = RUN_WORLD.ahead + 1.5
   private nextId = 1
   private spawned = 0
-  /** Die ersten Abschnitte mit Lücken bzw. zweiter Etage führen sie ein. */
-  private introducedHoles = false
-  private introducedUpper = false
+  /** Was schon einmal da war – jede Neuheit kommt zuerst für sich allein. */
+  private readonly introduced = new Set<RunSection>()
   private lastItem: RunItem | null = null
   private lastGap: RunItem | null = null
   private lastTask: RunItem | null = null
@@ -484,7 +534,7 @@ export class RunRound {
       if (gap.atLevel === null && gap.x < this.distance + half) gap.atLevel = this.base === 0
       if (gap.x + gap.w < this.distance - half) {
         gap.passed = true
-        if (!gap.bridged && gap.atLevel === true) {
+        if (!gap.bridged && (gap.atLevel === true || gap.chasm)) {
           this.out.push({ kind: 'leap', gap, healed: this.score() })
         }
       }
@@ -516,45 +566,66 @@ export class RunRound {
   /* ---------------------------------------------------------------- */
 
   /**
-   * Der nächste Abschnitt. Am Anfang nur Hürden; ab `holesFrom` auch
-   * Lücken und die erste Etage, ab `upperFrom` die zweite. Der erste
-   * Abschnitt jeder Neuheit führt sie ein – ein Brett über einer Lücke,
-   * dann ein Brett mit einem zweiten darüber.
+   * Der nächste Abschnitt. Am Anfang nur Hürden; dann kommt jede Neuheit
+   * einmal für sich – ein Brett über einer Lücke, eine Kluft mit Brett,
+   * Trittsteine, eine Gabelung, eine weite Lücke –, und danach wird
+   * gemischt. Je länger die Runde, desto seltener sind blosse Hürden.
    */
   private spawn() {
     const p = RUN_PACE
     const x = this.nextX
-    let end: number
-    if (this.spawned < 3 || this.time < p.holesFrom) {
-      end = this.hurdleSection(x)
-    } else if (!this.introducedHoles) {
-      this.introducedHoles = true
-      end = this.platformSection(x, true)
-    } else if (this.time >= p.upperFrom && !this.introducedUpper) {
-      this.introducedUpper = true
-      end = this.towerSection(x)
-    } else {
-      const roll = this.random()
-      if (this.time < p.upperFrom) {
-        end =
-          roll < 0.4
-            ? this.hurdleSection(x)
-            : roll < 0.65
-              ? this.gapSection(x)
-              : this.platformSection(x, this.random() < 0.65)
+    const t = this.time
+    let section: RunSection = 'hurdle'
+    if (this.spawned >= 3 && t >= p.holesFrom) {
+      const intro = (
+        [
+          ['ledge', p.holesFrom],
+          ['bridge', p.bridgesFrom],
+          ['stones', p.stonesFrom],
+          ['fork', p.forksFrom],
+          ['precise', p.preciseFrom],
+        ] as const
+      ).find(([kind, from]) => t >= from && !this.introduced.has(kind))
+      if (intro) {
+        section = intro[0]
       } else {
-        end =
-          roll < 0.3
-            ? this.hurdleSection(x)
-            : roll < 0.5
-              ? this.gapSection(x)
-              : roll < 0.75
-                ? this.platformSection(x, this.random() < 0.65)
-                : this.towerSection(x)
+        const late = Math.min(1, Math.max(0, (t - p.forksFrom) / 20))
+        const weights: [RunSection, number][] = [
+          ['hurdle', 2.2 - 0.8 * late],
+          ['gap', t >= p.preciseFrom ? 1.2 : 2.2],
+          ['precise', t >= p.preciseFrom ? 1.5 : 0],
+          ['ledge', 1],
+          ['bridge', t >= p.bridgesFrom ? 1 : 0],
+          ['stones', t >= p.stonesFrom ? 2 : 0],
+          ['fork', t >= p.forksFrom ? 1.4 : 0],
+        ]
+        let roll = this.random() * weights.reduce((sum, [, weight]) => sum + weight, 0)
+        for (const [kind, weight] of weights) {
+          roll -= weight
+          if (roll < 0 && weight > 0) {
+            section = kind
+            break
+          }
+        }
       }
     }
+    this.nextX =
+      section === 'gap'
+        ? this.gapSection(x, false)
+        : section === 'precise'
+          ? this.gapSection(x, true)
+          : section === 'ledge'
+            ? this.ledgeSection(x)
+            : section === 'bridge'
+              ? this.bridgeSection(x)
+              : section === 'stones'
+                ? this.stonesSection(x)
+                : section === 'fork'
+                  ? this.forkSection(x)
+                  : this.hurdleSection(x)
+    // Erst danach: Der Abschnitt selbst weiss so noch, ob er der erste seiner Art ist.
+    this.introduced.add(section)
     this.spawned += 1
-    this.nextX = end
   }
 
   /** Abstand bis zum nächsten Abschnitt – in Spielsekunden gewürfelt. */
@@ -565,6 +636,11 @@ export class RunRound {
     return (p.gapMin + (max - p.gapMin) * this.random()) * RUN_WORLD.speed
   }
 
+  /** Nach einem Brett: Platz zum Herunterfallen und Landen. */
+  private afterPlatform(end: number): number {
+    return end + Math.max(this.space(), RUN_PACE.landing)
+  }
+
   /** Wie breit eine Lücke jetzt sein darf – mit der Zeit breiter. */
   private holeWidth(): number {
     const p = RUN_PACE
@@ -573,99 +649,128 @@ export class RunRound {
     return p.holeMin + (max - p.holeMin) * this.random()
   }
 
-  /**
-   * Eine Hürde – und manchmal eine Aufgabe dazu: im Abstand danach, auf
-   * dem Boden oder in Sprunghöhe, oder hoch über der Hürde, für einen
-   * vollen Sprung.
-   */
+  private between(min: number, max: number): number {
+    return min + (max - min) * this.random()
+  }
+
+  /** Eine Hürde – und manchmal hoch darüber eine Aufgabe, nur mit einem vollen Sprung. */
   private hurdleSection(x: number): number {
     const roll = this.random()
     const shape: RunHurdleShape =
-      this.spawned < 3 ? 'small' : roll < 0.55 ? 'small' : roll < 0.8 ? 'tall' : 'double'
+      this.spawned < 3 ? 'small' : roll < 0.5 ? 'small' : roll < 0.8 ? 'tall' : 'double'
     const hurdle = this.addHurdle(x, shape)
-    const gap = this.space()
-    const after = hurdle.x + hurdle.w
-    const taskRoll = this.random()
-    if (taskRoll < 0.22) {
-      // Hoch über der Hürde: nur mit einem vollen Sprung.
+    if (this.spawned >= 3 && this.random() < 0.25)
       this.addTask(hurdle.x + hurdle.w / 2, hurdle.h + 1.05)
-    } else if (taskRoll < 0.6) {
-      // Im Abstand danach: am Boden oder in Sprunghöhe.
-      const air = this.random() < 0.55
-      this.addTask(after + gap * (0.45 + 0.1 * this.random()), air ? 1.55 : 0.42)
-    }
-    return after + gap
+    return hurdle.x + hurdle.w + this.space()
   }
 
-  /** Eine Lücke allein – manchmal mit einer Aufgabe im Bogen darüber. */
-  private gapSection(x: number): number {
-    const gap = this.addGap(x, this.holeWidth())
-    // Auf dem Scheitel eines vollen Sprungs – wer hoch springt, nimmt sie mit.
-    if (this.random() < 0.45) this.addTask(gap.x + gap.w / 2, 2)
+  /**
+   * Eine Lücke allein – manchmal mit einer Aufgabe auf dem Scheitel eines
+   * vollen Sprungs. Eine weite Lücke (`precise`) schafft nur ein voller
+   * Sprung im richtigen Moment; über ihr schwebt nichts, sie ist Prüfung
+   * genug.
+   */
+  private gapSection(x: number, precise: boolean): number {
+    const p = RUN_PACE
+    const width = precise ? this.between(p.preciseMin, p.preciseMax) : this.holeWidth()
+    const gap = this.addGap(x, width)
+    if (!precise && this.random() < 0.35) this.addTask(gap.x + gap.w / 2, 2)
     return gap.x + gap.w + this.space()
   }
 
   /**
-   * Ein Brett auf der ersten Etage, darauf zwei oder drei Aufgaben. Unten
-   * eine Lücke oder eine kleine Hürde – und manchmal eine Aufgabe am
-   * Boden: Wer unten bleibt, sammelt die Punkte fürs Hinüberspringen.
+   * Ein Brett auf der ersten Etage; unten eine Lücke oder eine kleine
+   * Hürde. Beide Wege gehen – über dem Brett schwebt manchmal eine
+   * Aufgabe, für einen Hüpfer oben.
    *
-   * Ab `upHurdlesFrom` steht oben manchmal eine Ausrede, mit einer
-   * Aufgabe davor und einer darüber. Dann bleibt der Boden darunter frei:
-   * Unten ist es sicher, oben gibt es mehr – eine echte Wahl. (Läge unten
-   * auch etwas, trüge der Sprung darüber geradewegs hinauf in die Ausrede.)
+   * Ab `upHurdlesFrom` steht oben manchmal eine Ausrede, eine Aufgabe hoch
+   * darüber. Dann bleibt der Boden darunter frei: Unten ist es sicher,
+   * oben gibt es mehr – eine echte Wahl. (Läge unten auch etwas, trüge
+   * der Sprung darüber geradewegs hinauf in die Ausrede.)
    */
-  private platformSection(x: number, hole: boolean): number {
+  private ledgeSection(x: number): number {
     const p = RUN_PACE
     const px = x + 0.8
-    const pw = 5 + 3 * this.random()
+    const pw = this.between(5, 8)
     const top = RUN_LEVELS[1]
-    this.addPlatform(px, pw, 1)
+    this.addPlatform(px, pw, 1, 'ledge')
     if (this.time >= p.upHurdlesFrom && this.random() < p.upHurdleChance) {
-      const hx = px + 2.2 + (pw - 4.4) * this.random()
-      const hurdle = this.addHurdle(hx, 'small', top)
-      this.addTask(px + 0.9, top + TASK_LIFT)
-      this.addTask(hx + hurdle.w / 2, top + hurdle.h + 1.05)
-      if (this.random() < 0.4) this.addTask(px + pw / 2, 0.42)
-      return px + pw + Math.max(this.space(), p.landing)
+      const hurdle = this.addHurdle(this.between(px + 2.2, px + pw - 2.2), 'small', top)
+      if (this.random() < 0.6) this.addTask(hurdle.x + hurdle.w / 2, top + hurdle.h + 1.05)
+      return this.afterPlatform(px + pw)
     }
-    const count = this.random() < 0.5 ? 2 : 3
-    this.addTaskRow(px + pw / 2, top + TASK_LIFT, count, 1.2)
-    if (hole) {
+    if (this.random() < 0.45) this.addTask(px + pw / 2, top + TASK_HOP)
+    if (this.random() < 0.65 || !this.introduced.has('ledge')) {
       const gw = Math.min(this.holeWidth(), pw - 2.4)
-      const gx = px + 1.2 + (pw - gw - 2.4) * this.random()
-      this.addGap(gx, gw)
-      if (this.random() < 0.4) this.addTask(px + 0.2, 0.42)
+      this.addGap(this.between(px + 1.2, px + pw - 1.2 - gw), gw)
     } else {
-      const hx = px + 1.5 + (pw - 3.5) * this.random()
-      this.addHurdle(hx, 'small')
-      if (this.random() < 0.4) this.addTask(hx + 1.8, 0.42)
+      this.addHurdle(this.between(px + 1.5, px + pw - 2), 'small')
     }
-    return px + pw + Math.max(this.space(), RUN_PACE.landing)
+    return this.afterPlatform(px + pw)
   }
 
   /**
-   * Zwei Etagen übereinander: unten ein langes Brett, darüber ein
-   * kürzeres mit drei Aufgaben – erreichbar nur von unten her. Das obere
-   * endet früh genug, dass man aufs untere fällt, nicht daneben.
+   * Eine Kluft mit einem Brett darüber – der einzige Weg hinüber. Wer
+   * unten bleibt oder nur hüpft, fällt. Manchmal schwebt über der Mitte
+   * eine Aufgabe.
    */
-  private towerSection(x: number): number {
+  private bridgeSection(x: number): number {
+    const p = RUN_PACE
     const px = x + 0.8
-    const pw = 8.5 + 2.5 * this.random()
-    this.addPlatform(px, pw, 1)
-    const qx = px + 2.4 + 0.6 * this.random()
-    const qw = Math.min(3.4 + 1.4 * this.random(), px + pw - 2 - qx)
-    this.addPlatform(qx, qw, 2)
-    this.addTask(px + 1.2, RUN_LEVELS[1] + TASK_LIFT)
-    this.addTaskRow(qx + qw / 2, RUN_LEVELS[2] + TASK_LIFT, 3, 1.1)
-    if (this.random() < 0.7) {
-      const gw = Math.min(this.holeWidth(), pw - 2.4)
-      const gx = px + 1.2 + (pw - gw - 2.4) * this.random()
-      this.addGap(gx, gw)
-    } else {
-      this.addHurdle(px + 1.5 + (pw - 3.5) * this.random(), 'small')
+    const chasm = this.addGap(px + 2.4, this.between(p.chasmMin, p.chasmMax), true)
+    const end = chasm.x + chasm.w + 1.6
+    this.addPlatform(px, end - px, 1, 'bridge')
+    if (this.random() < 0.4) this.addTask(chasm.x + chasm.w / 2, RUN_LEVELS[1] + TASK_HOP)
+    return this.afterPlatform(end)
+  }
+
+  /**
+   * Trittsteine: eine Kluft mit einem – später auch zwei – kurzen Steinen
+   * darin. Wer zu früh oder zu spät abspringt, landet daneben; und vom
+   * letzten Stein muss man noch einmal springen, denn wer bloss
+   * hinunterfällt, fällt in die Kluft. Eine Aufgabe schwebt manchmal im
+   * Bogen dieses letzten Sprungs.
+   */
+  private stonesSection(x: number): number {
+    const p = RUN_PACE
+    const cx = x + 0.6
+    const top = RUN_LEVELS[1]
+    let stoneX = cx + this.between(1, 1.5)
+    let stoneW = this.between(1.4, 1.9)
+    this.addPlatform(stoneX, stoneW, 1, 'stone')
+    if (this.time >= p.twoStonesFrom && this.random() < 0.45) {
+      // Von Mitte zu Mitte etwas weiter, als ein voller Sprung trägt (4,7):
+      // Wer mitten auf dem ersten landet und gleich wieder abspringt, landet
+      // mitten auf dem zweiten.
+      const nextW = this.between(1.4, 1.8)
+      const reach = this.between(4.9, 5.3)
+      stoneX = stoneX + stoneW / 2 + reach - nextW / 2
+      stoneW = nextW
+      this.addPlatform(stoneX, stoneW, 1, 'stone')
     }
-    return px + pw + Math.max(this.space(), RUN_PACE.landing)
+    const last = stoneX + stoneW
+    // Vom letzten Stein bis zum anderen Rand: zu weit, um bloss hinunterzufallen.
+    const far = Math.max(last + this.between(2.4, 3.8), cx + p.chasmMin)
+    this.addGap(cx, far - cx, true)
+    if (this.random() < 0.45) this.addTask(last + Math.min(2.2, (far - last) * 0.6), top + 1.85)
+    return far + this.space()
+  }
+
+  /**
+   * Eine Gabelung über einer Kluft: Das untere Brett endet über dem
+   * Abgrund, das obere führt hinüber. Wer nicht rechtzeitig vom unteren
+   * aufs obere springt, fällt. Manchmal wartet oben eine Aufgabe – für
+   * einen Hüpfer kurz vor dem Ende.
+   */
+  private forkSection(x: number): number {
+    const p = RUN_PACE
+    const px = x + 0.8
+    const chasm = this.addGap(px + 3, this.between(p.forkChasmMin, p.forkChasmMax), true)
+    this.addPlatform(px, chasm.x + p.forkOverhang - px, 1, 'deadEnd')
+    const end = chasm.x + chasm.w + 1.4
+    this.addPlatform(px + 2.4, end - px - 2.4, 2, 'upper')
+    if (this.random() < 0.5) this.addTask(end - 1.6, RUN_LEVELS[2] + TASK_HOP)
+    return this.afterPlatform(end)
   }
 
   private addHurdle(x: number, shape: RunHurdleShape, base = 0): RunHurdle {
@@ -689,7 +794,7 @@ export class RunRound {
     return hurdle
   }
 
-  private addGap(x: number, w: number): RunGap {
+  private addGap(x: number, w: number, chasm = false): RunGap {
     const item = this.pick(RUN_GAPS, this.lastGap)
     this.lastGap = item
     const gap: RunGap = {
@@ -700,22 +805,16 @@ export class RunRound {
       passed: false,
       bridged: false,
       atLevel: null,
+      chasm,
     }
     this.nextId += 1
     this.gaps.push(gap)
     return gap
   }
 
-  private addPlatform(x: number, w: number, level: 1 | 2) {
-    this.platforms.push({ id: this.nextId, x, w, level, top: RUN_LEVELS[level] })
+  private addPlatform(x: number, w: number, level: 1 | 2, kind: RunPlatformKind) {
+    this.platforms.push({ id: this.nextId, x, w, level, top: RUN_LEVELS[level], kind })
     this.nextId += 1
-  }
-
-  /** Aufgaben in einer Reihe, um `center` herum. */
-  private addTaskRow(center: number, y: number, count: number, spacing: number) {
-    for (let index = 0; index < count; index += 1) {
-      this.addTask(center + (index - (count - 1) / 2) * spacing, y)
-    }
   }
 
   private addTask(x: number, y: number) {
