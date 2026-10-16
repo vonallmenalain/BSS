@@ -3286,6 +3286,13 @@ Ein **neues Konto** beginnt ohne Freigabe als _AP-Kalender · nur ansehen_ mit
 nur noch ältere Fassungen der App an; die Rolle bleibt, um einem Konto den
 Zugang ganz zu entziehen.
 
+**Wo ein Konto beginnt** – nach dem Registrieren, nach dem Anmelden und beim
+Öffnen der installierten App: Mit Vollzugriff auf der **Übersicht**. Ohne
+Vollzugriff in **«Anti Doom»**, sobald das Konto den Bereich sieht – also auch
+jedes neue Konto; «Anti Doom» steht dann in der Seitenleiste und in der
+unteren Leiste zuoberst. Sonst im ersten Bereich der Assistenz oder im
+AP-Kalender. Die Weiche dafür ist `homePath` in `src/lib/access.ts`.
+
 Wozu dann überhaupt Rollen mit Vollzugriff? Sie halten fest, wer welche
 Aufgabe hat – etwa wer die Abendmahlsversammlung leitet oder präsidiert – und
 sie steuern, wer mehr bekommt als den Standardzugang.

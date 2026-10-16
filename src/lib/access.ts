@@ -90,19 +90,23 @@ export function accessOf(profile: AppUser | null, email: string | null | undefin
   /*
    * Der Ort, an dem dieses Konto zu Hause ist.
    *
-   * Die Reihenfolge ist die des Zugriffs: Wer alles sieht, beginnt auf der
-   * Übersicht; wer nur Bereiche der Abendmahlsversammlung hat, im ersten
-   * davon; wer nur den Kalender hat, dort. Bleibt nichts übrig, führt der
-   * Weg auf die Startseite – dort steht dann der Wartebereich.
+   * Wer alles sieht, beginnt auf der Übersicht. Ohne Vollzugriff geht «Anti
+   * Doom» allem anderen vor: Dafür richten sich die AP's ein Konto ein –
+   * den Kalender sähen sie auch ohne. Danach der erste Bereich der
+   * Abendmahlsversammlung, dann der Kalender. Bleibt nichts übrig, führt
+   * der Weg auf die Startseite – dort steht dann der Wartebereich.
+   *
+   * Die Assistenz kommt mit «Anti Doom» nicht in Konflikt: Die Zugriffsregeln
+   * kennen den Bereich für sie nicht (`impulseAssignable`).
    */
   const homePath = isApproved
     ? '/'
-    : isAssistant
-      ? ASSISTANT_AREA_PATHS[assistantAreas[0]]
-      : canViewAp
-        ? '/ap'
-        : canViewImpulse
-          ? '/anti-doom'
+    : canViewImpulse
+      ? '/anti-doom'
+      : isAssistant
+        ? ASSISTANT_AREA_PATHS[assistantAreas[0]]
+        : canViewAp
+          ? '/ap'
           : '/'
 
   return {

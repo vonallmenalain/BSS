@@ -71,16 +71,24 @@ test('Vollzugriff beginnt auf der Übersicht, «Anti Doom» nur mit Haken', () =
   assert.equal(secretary.canViewAp, true)
   assert.equal(secretary.homePath, '/')
   assert.equal(secretary.canViewImpulse, false)
-  assert.equal(accessOf(user('secretary', { impulse: true }), null).canViewImpulse, true)
+  // Auch mit «Anti Doom» bleibt die Übersicht der Start – ebenso beim Administrator.
+  const withImpulse = accessOf(user('secretary', { impulse: true }), null)
+  assert.equal(withImpulse.canViewImpulse, true)
+  assert.equal(withImpulse.homePath, '/')
+  assert.equal(accessOf(user('bishop'), ADMIN_EMAIL).homePath, '/')
 })
 
-test('AP-Zugang mit Haken: Kalender und «Anti Doom», zu Hause im Kalender', () => {
+test('AP-Zugang mit Haken: Kalender und «Anti Doom», zu Hause in «Anti Doom»', () => {
   const ap = accessOf(user('ap_viewer', { impulse: true }), null)
   assert.equal(ap.canViewAp, true)
   assert.equal(ap.canEditAp, false)
   assert.equal(ap.canViewImpulse, true)
-  assert.equal(ap.homePath, '/ap')
+  assert.equal(ap.homePath, '/anti-doom')
+  assert.equal(accessOf(user('ap_editor', { impulseEditor: true }), null).homePath, '/anti-doom')
+  // Ohne «Anti Doom» bleibt der Kalender der Start.
+  assert.equal(accessOf(user('ap_viewer'), null).homePath, '/ap')
   assert.equal(accessOf(user('ap_editor'), null).canEditAp, true)
+  assert.equal(accessOf(user('ap_editor'), null).homePath, '/ap')
 })
 
 test('Vollzugriff: «Anti Doom» allein heisst ansehen – redigieren erst mit der Redaktion', () => {
@@ -160,7 +168,7 @@ test('ein neues Konto: AP-Kalender lesen und «Anti Doom» – ohne Freigabe, oh
   assert.equal(fresh.canEditImpulse, false)
   assert.equal(fresh.isApproved, false)
   assert.equal(fresh.isAssistant, false)
-  assert.equal(fresh.homePath, '/ap')
+  assert.equal(fresh.homePath, '/anti-doom')
   // Erinnerungen gibt es für beide Bereiche, für Sitzungen und Putzplan nicht.
   const areas = notificationAreas(fresh)
   assert.equal(areas.ap, true)
