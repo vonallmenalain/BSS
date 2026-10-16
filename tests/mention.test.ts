@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict'
 import { test } from 'node:test'
 
-import { findMentionTrigger, splitMentions } from '../src/lib/mention.ts'
+import { findMentionTrigger, onlyMentions, splitMentions } from '../src/lib/mention.ts'
 
 /*
  * Läuft ohne Bundler direkt in Node: `npm run test:import`.
@@ -70,4 +70,25 @@ test('kommt mit leerem Text und ohne Erwähnungen zurecht', () => {
     splitMentions('Nichts Besonderes', []).map((part) => part.text),
     ['Nichts Besonderes'],
   )
+})
+
+test('erkennt ein Feld, in dem nichts als Namen stehen', () => {
+  const GREGOR = { id: 'm4', name: 'Gregor Weidmann' }
+  const only = (text: string) => onlyMentions(splitMentions(text, [MEIER, GREGOR]))
+
+  // Untereinander, mit Komma oder Strich dazwischen – zum Antippen bleibt
+  // nur der Name.
+  assert.equal(only('Peter Meier'), true)
+  assert.equal(only('Peter Meier\nGregor Weidmann'), true)
+  assert.equal(only('Peter Meier, Gregor Weidmann'), true)
+  assert.equal(only(' Peter Meier – '), true)
+
+  // Sobald ein Wort dabeisteht, führt ein Griff darauf ins Schreiben.
+  assert.equal(only('Peter Meier (angefragt)'), false)
+  assert.equal(only('Peter Meier oder Gregor Weidmann'), false)
+  assert.equal(only('Besuch bei Peter Meier'), false)
+
+  // Ohne Namen gibt es nichts, das wegführen könnte.
+  assert.equal(only('Noch niemand'), false)
+  assert.equal(only(''), false)
 })

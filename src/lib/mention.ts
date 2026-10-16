@@ -114,3 +114,22 @@ export function splitMentions(text: string, mentions: Mention[]): MentionPart[] 
   if (position < text.length) parts.push({ text: text.slice(position) })
   return parts
 }
+
+/**
+ * Steht im Text nichts als Namen?
+ *
+ * Wichtig für ein Feld, das gelesen dasteht und erst beim Antippen zum
+ * Eingabefeld wird: Ein Name darin führt zur Person, gewöhnlicher Text ins
+ * Schreiben. Fehlt der gewöhnliche Text, trifft jeder Griff auf den Text einen
+ * Namen – und das Feld lässt sich auf dem Telefon nicht mehr öffnen. In der
+ * Spalte «Name (Vorschläge)» der Berufungsrunde ist das der Normalfall.
+ *
+ * Was zwischen den Namen steht – ein Komma, ein Zeilenumbruch, ein
+ * Gedankenstrich –, zählt nicht: Darauf zielt niemand.
+ */
+export function onlyMentions(parts: MentionPart[]): boolean {
+  return (
+    parts.some((part) => part.memberId) &&
+    parts.every((part) => part.memberId || !/[\p{L}\p{N}]/u.test(part.text))
+  )
+}
