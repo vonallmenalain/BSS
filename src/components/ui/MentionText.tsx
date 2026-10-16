@@ -1,10 +1,11 @@
 import { useLayoutEffect, useMemo, useRef, useState, type ReactNode } from 'react'
 import { Link, useLocation } from 'react-router-dom'
+import { Pencil } from 'lucide-react'
 import { useData } from '@/contexts/DataContext'
 import { Avatar } from '@/components/ui/Avatar'
 import { MentionField } from '@/components/ui/MentionField'
 import { cn } from '@/lib/utils'
-import { splitMentions, type Mention } from '@/lib/mention'
+import { onlyMentions, splitMentions, type Mention, type MentionPart } from '@/lib/mention'
 import {
   caretOf,
   holdWriting,
@@ -47,16 +48,8 @@ export function MentionText({
   /** Was steht, wenn der Text leer ist. */
   placeholder?: string
 }) {
-  const { membersById } = useData()
   const location = useLocation()
-
-  const parts = useMemo(() => {
-    const mentions: Mention[] = (memberRefs ?? [])
-      .map((id) => membersById.get(id))
-      .filter((member): member is Member => member !== undefined)
-      .map((member) => ({ id: member.id, name: `${member.firstName} ${member.lastName}` }))
-    return splitMentions(text, mentions)
-  }, [text, memberRefs, membersById])
+  const parts = useMentionParts(text, memberRefs)
 
   if (!text) {
     return placeholder ? <span className="text-slate-400">{placeholder}</span> : null
@@ -90,6 +83,18 @@ export function MentionText({
   )
 }
 
+/** Der Text in Stücken – gewöhnlicher Text und die Namen der Erwähnten. */
+function useMentionParts(text: string, memberRefs: string[] | undefined): MentionPart[] {
+  const { membersById } = useData()
+  return useMemo(() => {
+    const mentions: Mention[] = (memberRefs ?? [])
+      .map((id) => membersById.get(id))
+      .filter((member): member is Member => member !== undefined)
+      .map((member) => ({ id: member.id, name: `${member.firstName} ${member.lastName}` }))
+    return splitMentions(text, mentions)
+  }, [text, memberRefs, membersById])
+}
+
 /**
  * Dasselbe Stück Text, geschrieben statt gelesen.
  *
@@ -101,7 +106,8 @@ export function MentionText({
  *
  * Einen Bearbeiten-Knopf gibt es nicht: In der Sitzung wird geschrieben,
  * während gesprochen wird, und jeder Klick, der nur den Schreibmodus einlegt,
- * ist einer zu viel.
+ * ist einer zu viel. Ausgenommen ist ein Feld aus **nichts als Namen** am
+ * Telefon – dort steht ein Stift (siehe unten).
  *
  * Das Feld ist dabei so gross wie der Text, der eben noch dastand: Beim
  * Wechsel wird die Höhe des gelesenen Absatzes gemessen und dem Feld als
@@ -155,6 +161,7 @@ export function MentionEditable({
   /** Höhe des gelesenen Textes im Moment des Wechsels – das Mass für das Feld. */
   const [readHeight, setReadHeight] = useState<number | undefined>(undefined)
   const readRef = useRef<HTMLDivElement>(null)
+  const namesOnly = onlyMentions(useMentionParts(value, memberRefs))
 
   /*
    * Der Merkzettel überlebt genau die Lücke zwischen Abbau und Wiederaufbau.
@@ -234,13 +241,36 @@ export function MentionEditable({
         beginWriting()
       }}
       className={cn(
-        'w-full cursor-text rounded-lg px-3 py-2 break-words whitespace-pre-wrap transition',
+        'relative w-full cursor-text rounded-lg px-3 py-2 break-words whitespace-pre-wrap transition',
         'border border-transparent hover:border-slate-200 hover:bg-slate-50',
         'dark:hover:border-slate-800 dark:hover:bg-slate-800/50',
+        namesOnly && 'pointer-coarse:pr-9',
         className,
       )}
     >
       <MentionText text={value} memberRefs={memberRefs} placeholder={placeholder} />
+      {/*
+        Ein Feld aus nichts als Namen – am Telefon sonst nicht zu öffnen.
+
+        Jeder Griff auf den Text trifft dort einen Namen und führt zur Person.
+        Ins Schreiben käme man nur über die leere Fläche daneben, und die
+        sieht am Telefon niemand: Den Rahmen, der sie am Bildschirm unter dem
+        Zeiger umreisst, gibt es ohne Zeiger nicht. In der Spalte «Name
+        (Vorschläge)» der Berufungsrunde war das Feld deshalb am iPhone
+        schlicht nicht zu bearbeiten.
+
+        Der Stift sagt, wo es ins Schreiben geht, und hält rechts einen
+        Streifen frei, der nie ein Name ist – auch wenn ein langer Name die
+        Zeile füllt. Er ist kein eigener Knopf: Der Griff landet im Feld wie
+        jeder andere neben den Namen. Am Zeigergerät bleibt er weg, dort
+        zeigt der Rahmen das Feld.
+      */}
+      {namesOnly && (
+        <Pencil
+          className="pointer-events-none absolute top-3 right-3 hidden size-3.5 text-slate-400 pointer-coarse:block dark:text-slate-500"
+          aria-hidden
+        />
+      )}
     </div>
   )
 }

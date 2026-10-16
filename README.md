@@ -687,6 +687,13 @@ Alle übrigen Felder sind Freitext und dürfen mehrere Zeilen tragen:
 nichts. In jedem davon öffnet ein `@` die Mitgliederliste, und der eingesetzte
 Name bleibt anklickbar.
 
+Ein Griff auf einen Namen führt zur Person, ein Griff daneben ins Schreiben.
+Steht in einem Feld **nichts als Namen** – in «Name (Vorschläge)» der
+Normalfall –, trifft am Telefon jeder Griff auf den Text einen Namen, und die
+freie Fläche daneben ist ohne Zeiger nicht zu sehen. Dort steht deshalb rechts
+im Feld ein kleiner **Stift**: Wer ihn antippt, schreibt. Am Bildschirm bleibt
+er weg; dort umrahmt der Zeiger das Feld.
+
 **Es ändert nichts.** Was hier steht, ist eine Ideenliste – kein Eintrag wirkt
 auf eine Berufung, ein Mitglied oder die Liste unter «Berufungen». Wer welche
 Berufung hat, sagt weiterhin allein das LCR und der Import von dort.
