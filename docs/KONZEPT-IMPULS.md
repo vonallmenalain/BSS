@@ -1206,31 +1206,44 @@ denselben Ablauf (Erklärung, Runde, Ergebnis):
   noch kurz», «Zweifel» –, klein, hoch oder doppelt. Ein Tipp irgendwo
   (Leertaste, Pfeil nach oben) lässt ihn springen, länger drücken springt
   höher. Nach etwa fünf Sekunden tun sich **Lücken** im Boden auf
-  («Aufschieben», «Verschlafen», «Ablenkung») – und darüber schweben
-  Bretter, die **erste Etage**. Wer lang drückt, kommt hinauf; dort liegen
-  mehr Aufgaben, unten zählt jede Hürde und jede übersprungene Lücke. Ab
-  etwa 16 Sekunden kommt eine **zweite Etage** dazu, erreichbar nur von
-  der ersten aus, mit drei Aufgaben. Bequemer ist es oben nicht: Ab etwa
-  12 Sekunden steht auch auf manchem Brett eine Ausrede, und dann bleibt
-  der Boden darunter frei – unten sicher, oben mehr, eine echte Wahl. Die
-  Bretter trägt man von unten durch, gelandet wird nur von oben; wo ein
-  Brett endet, ist darunter immer Platz zum Landen. Jede Hürde, jede
-  Lücke und jede eingesammelte Aufgabe (beten, Schriften, helfen, Ämtli)
-  zählt einen Punkt – Hindernisse nur, wenn man sie auf ihrer Etage
-  überwindet, nicht, wer oben an ihnen vorbeiläuft. Ein Treffer ist eine
-  Wunde; wer in eine Lücke fällt, ebenso – eine Brücke fängt ihn auf, und
-  er läuft weiter. Drei Wunden beenden die Runde, zehn Hindernisse am
-  Stück heilen eine – «mutig, stark und regsam» (Alma 53:20), verwundet,
-  aber nicht gefallen (Alma 57:25). Schneller wird hier die ganze Welt
-  (`runTempo`), nicht nur die Hürden: Jede bleibt mit demselben Sprung zu
-  schaffen, nur das Zeitfenster wird enger; mit der Zeit rücken zudem die
-  Abschnitte zusammen, und die Lücken werden breiter. Wie weit man voraus
-  sieht, ist in Körperhöhen fest – ein breiter Bildschirm zeigt nicht
-  früher, was kommt. Der Läufer ist gezeichnet, kein Emoji: Sein
-  Laufzyklus hängt an der zurückgelegten Strecke (die Füsse rutschen nie),
-  im Sprung zieht er die Knie an, im Fallen streckt er die Beine, bei
-  jedem Schritt staubt es; Wolken, Berge und Hügel ziehen in eigener Tiefe
-  vorbei.
+  («Aufschieben», «Verschlafen», «Ablenkung») – das erste Mal mit einem
+  Brett darüber, der **ersten Etage**. Danach kommen, jede zuerst für
+  sich, Prüfungen, die mehr verlangen als einen Sprung:
+  - **Klüfte** (ab etwa 7 s): zu breit, um sie vom Boden aus zu
+    überspringen; hinüber führt nur ein Brett darüber. Wer unten bleibt
+    oder nur hüpft, fällt.
+  - **Trittsteine** (ab etwa 10 s, ab 16 s auch zwei hintereinander):
+    kurze Steine mitten in einer Kluft – genau landen, vom Stein genau
+    weiterspringen; wer bloss hinunterfällt, fällt in die Kluft.
+  - **Gabelungen** (ab etwa 14 s): Das untere Brett endet über dem
+    Abgrund, nur das obere – die zweite Etage – führt hinüber. Wer nicht
+    rechtzeitig hinaufspringt, fällt.
+  - **Weite Lücken** (ab etwa 16 s): so breit, dass nur ein voller,
+    genau getimter Sprung hinüberreicht.
+  Daneben bleiben Hürden, gewöhnliche Lücken und Bretter, unter denen es
+  auch unten weitergeht; ab etwa 12 s steht manchmal auch oben eine
+  Ausrede, dann bleibt der Boden darunter frei. Die Bretter trägt man von
+  unten durch, gelandet wird nur von oben. **Aufgaben** gibt es wenige –
+  höchstens eine je Abschnitt –, und keine liegt am Weg: Jede verlangt
+  einen Sprung im richtigen Moment (hoch über einer Hürde, auf dem
+  Scheitel über einer Lücke, im Bogen vom letzten Trittstein, über einem
+  Brett). Jede Hürde, jede Lücke und jede Kluft, die er überwindet, und
+  jede Aufgabe zählt einen Punkt – Hürden und gewöhnliche Lücken nur auf
+  ihrer Etage, nicht, wer oben an ihnen vorbeiläuft. Ein Treffer ist eine
+  Wunde; wer in eine Lücke oder Kluft fällt, ebenso – eine Brücke fängt
+  ihn auf, und er läuft weiter. Drei Wunden beenden die Runde, fünfzehn
+  Hindernisse am Stück heilen eine – «mutig, stark und regsam»
+  (Alma 53:20), verwundet, aber nicht gefallen (Alma 57:25). Schneller
+  wird hier die ganze Welt (`runTempo`), nicht nur die Hürden: Jede
+  Prüfung bleibt mit demselben Sprung zu schaffen, nur das Zeitfenster
+  wird enger. Ein Test lässt einen perfekten Läufer (er rechnet jeden
+  Sprung voraus) 14 Runden à 60 Sekunden laufen: Er kommt ohne eine
+  Wunde durch – keine Prüfung ist unfair. Wie weit man voraus sieht, ist
+  in Körperhöhen fest – ein breiter Bildschirm zeigt nicht früher, was
+  kommt. Der Läufer ist gezeichnet, kein Emoji: Sein Laufzyklus hängt an
+  der zurückgelegten Strecke (die Füsse rutschen nie), im Sprung zieht er
+  die Knie an, im Fallen streckt er die Beine, bei jedem Schritt staubt
+  es; Wolken, Berge und Hügel ziehen in eigener Tiefe vorbei.
 - **«Ketten sprengen»** (`befreien`, «Die Wahrheit befreit dich»,
   26. Okt.–1. Nov.): Neun Plätze; auf ihnen tauchen Notlügen auf – «Bin
   gleich da», «Hab’s nicht gesehen», «Der Hund war’s» –, um jede eine
@@ -1261,7 +1274,7 @@ die Leinwand rechnet mit genau diesem Code, und der Test spielt ihn mit je
 | Spiel             | Anfänger | Durchschnitt | Spitze (längste Runde) |
 | ----------------- | -------- | ------------ | ---------------------- |
 | «Schild hoch!»    | 22 s     | 32 s         | 49 s (52 s)            |
-| «Keine Ausreden!» | 19 s     | 30 s         | 47 s (53 s)            |
+| «Keine Ausreden!» | 21 s     | 27 s         | 45 s (55 s)            |
 | «Ketten sprengen» | 24 s     | 33 s         | 50 s (55 s)            |
 
 **Flüssig auch auf älteren Telefonen.** Gezeichnet wird auf eine Leinwand,

@@ -3,6 +3,7 @@ import {
   RUN_HURDLES,
   RUN_LEVELS,
   RUN_LIVES,
+  RUN_PACE,
   RUN_TASK_RADIUS,
   RUN_TASKS,
   RUN_WORLD,
@@ -513,11 +514,19 @@ export class RunGame extends CanvasGame {
       this.noticed.add(key)
       this.notice = { text, until: this.clock + NOTICE_S }
     }
-    if (round.platforms.some((p) => p.level === 2 && visible(p.x))) {
-      say('upper', 'Zweite Etage – nur von der ersten aus erreichbar')
+    const platform = (kind: RunPlatform['kind']) =>
+      round.platforms.some((p) => p.kind === kind && visible(p.x))
+    if (round.gaps.some((g) => !g.chasm && g.w >= RUN_PACE.preciseMin && visible(g.x))) {
+      say('precise', 'Weite Lücke – lang drücken, genau abspringen')
+    } else if (platform('deadEnd')) {
+      say('fork', 'Das untere Brett endet – rechtzeitig hinauf!')
+    } else if (platform('stone')) {
+      say('stone', 'Trittsteine – genau landen, dann weiter')
+    } else if (platform('bridge')) {
+      say('bridge', 'Zu breit zum Springen – nur oben hinüber')
     } else if (round.hurdles.some((h) => h.base > 0 && visible(h.x))) {
       say('upHurdle', 'Auch oben gibt es Ausreden')
-    } else if (round.platforms.some((p) => p.level === 1 && visible(p.x))) {
+    } else if (platform('ledge')) {
       say('first', 'Lücke! Hinüberspringen – oder lang drücken und hinauf')
     }
   }
@@ -1104,7 +1113,7 @@ export class RunGame extends CanvasGame {
     g.fillRect(x1 - u * 0.04, this.groundY - u * 0.34, u * 0.08, u * 0.36)
   }
 
-  /** Ein Brett: Stein mit Grasnarbe, darunter hängen ein paar Brocken. */
+  /** Ein Brett oder Trittstein mit Grasnarbe. */
   private drawPlatform(platform: RunPlatform) {
     const g = this.g
     const u = this.unit
@@ -1116,6 +1125,39 @@ export class RunGame extends CanvasGame {
     const t = PLATFORM_THICKNESS * u
     const ahead = (platform.x - this.round.distance) / RUN_WORLD.ahead
     g.globalAlpha = clamp((1.12 - ahead) / 0.12, 0, 1)
+    if (platform.kind === 'stone') {
+      // Ein Trittstein: oben flach, darunter ein Brocken, der sich nach unten verjüngt.
+      g.beginPath()
+      g.moveTo(x, top)
+      g.lineTo(x + w, top)
+      g.quadraticCurveTo(x + w + u * 0.06, top + u * 0.5, x + w * 0.56, top + u * 0.95)
+      g.quadraticCurveTo(x - u * 0.06, top + u * 0.55, x, top)
+      g.closePath()
+      g.fillStyle = c.platformBottom
+      g.fill()
+      g.lineWidth = 1.5
+      g.strokeStyle = c.platformEdge
+      g.stroke()
+      g.fillStyle = 'rgba(255, 255, 255, 0.18)'
+      g.beginPath()
+      g.ellipse(x + w * 0.35, top + u * 0.22, w * 0.22, u * 0.08, -0.2, 0, Math.PI * 2)
+      g.fill()
+    } else {
+      this.drawSlab(platform, x, w, top, t)
+    }
+    roundRect(g, x - 1, top - u * 0.04, w + 2, u * 0.13, u * 0.06)
+    g.fillStyle = c.grass
+    g.fill()
+    g.fillStyle = c.grassLight
+    g.fillRect(x + u * 0.08, top - u * 0.04, Math.max(0, w - u * 0.16), Math.max(1.5, u * 0.035))
+    g.globalAlpha = 1
+  }
+
+  /** Ein Brett als Steinplatte, darunter hängen ein paar Brocken. */
+  private drawSlab(platform: RunPlatform, x: number, w: number, top: number, t: number) {
+    const g = this.g
+    const u = this.unit
+    const c = this.colors
     g.fillStyle = c.platformEdge
     for (let k = 0.35; k < platform.w - 0.2; k += 0.7) {
       const hx = this.screenX(platform.x + k)
@@ -1133,12 +1175,6 @@ export class RunGame extends CanvasGame {
     g.lineWidth = 1.5
     g.strokeStyle = c.platformEdge
     g.stroke()
-    roundRect(g, x - 1, top - u * 0.04, w + 2, u * 0.13, u * 0.06)
-    g.fillStyle = c.grass
-    g.fill()
-    g.fillStyle = c.grassLight
-    g.fillRect(x + u * 0.08, top - u * 0.04, Math.max(0, w - u * 0.16), Math.max(1.5, u * 0.035))
-    g.globalAlpha = 1
   }
 
   private drawHurdle(hurdle: RunHurdle) {

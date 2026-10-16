@@ -113,22 +113,17 @@ export function RunIntro() {
             tone="slate"
             emoji="⏰ 🛋️ 🐌"
             title="Ausreden"
-            hint="Hürden und Lücken überspringen"
+            hint="Hürden, Lücken, Klüfte überwinden"
           />
-          <Box
-            tone="amber"
-            emoji="🙏 📖 🧹"
-            title="Aufgaben"
-            hint="einsammeln – oben liegen mehr"
-          />
+          <Box tone="amber" emoji="🙏 📖 🧹" title="Aufgaben" hint="selten – und nur im Sprung" />
         </>
       }
     >
       Tippe irgendwo, um zu springen – länger drücken springt höher. Am Rechner gehen Leertaste und
-      Pfeil nach oben. Bald tun sich Lücken im Boden auf, darüber schweben Etagen: Oben warten mehr
-      Aufgaben, unten zählt jede Hürde und jede Lücke. Drei Treffer oder Stürze beenden die Runde,
-      zehn Hindernisse am Stück heilen eine Wunde – wie bei den jungen Kriegern: verwundet, aber
-      nicht gefallen.
+      Pfeil nach oben. Bald kommen Klüfte, Trittsteine und Gabelungen: Wähl die richtige Route und
+      spring genau, sonst fällst du. Drei Treffer oder Stürze beenden die Runde, fünfzehn
+      Hindernisse am Stück heilen eine Wunde – wie bei den jungen Kriegern: verwundet, aber nicht
+      gefallen.
     </Intro>
   )
 }
