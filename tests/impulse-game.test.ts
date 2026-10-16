@@ -33,8 +33,10 @@ import {
   type ShieldEvent,
 } from '../src/lib/impulseGameShield.ts'
 import {
+  RUN_GAPS,
   RUN_HURDLE_SHAPES,
   RUN_HURDLES,
+  RUN_LEVELS,
   RUN_LIVES,
   RUN_PACE,
   RUN_STREAK_FOR_LIFE,
@@ -43,6 +45,10 @@ import {
   RunRound,
   runTempo,
   type RunEvent,
+  type RunGap,
+  type RunHurdle,
+  type RunPlatform,
+  type RunTask,
 } from '../src/lib/impulseGameRun.ts'
 import {
   CHAIN_KEY,
@@ -580,10 +586,11 @@ test('Schild: eine Runde dauert 20 bis 60 Sekunden – vom Anfänger bis zur Spi
 /* «Keine Ausreden!»                                                   */
 /* ------------------------------------------------------------------ */
 
-test('Laufen: genug Ausreden und Aufgaben, jede mit Emoji und Wort', () => {
+test('Laufen: genug Ausreden, Lücken und Aufgaben, jede mit Emoji und Wort', () => {
   assert.ok(RUN_HURDLES.length >= 5)
+  assert.ok(RUN_GAPS.length >= 4)
   assert.ok(RUN_TASKS.length >= 4)
-  itemsAreClean([...RUN_HURDLES, ...RUN_TASKS], 14)
+  itemsAreClean([...RUN_HURDLES, ...RUN_GAPS, ...RUN_TASKS], 14)
 })
 
 test('Laufen: das Tempo wächst nur – erst sanft, dann mit einem Schub', () => {
@@ -598,13 +605,53 @@ test('Laufen: das Tempo wächst nur – erst sanft, dann mit einem Schub', () =>
   assert.ok(runTempo(60) > 4, 'nach einer Minute hält es niemand mehr')
 })
 
-/** Springt im besten Moment: wenn die Mitte der Hürde so weit weg ist, wie der Sprung bis zum Scheitel trägt. */
+/** Ein voller Sprung vom Boden: wie hoch – und wie weit, bis er wieder unten ist. */
+const FULL_APEX = RUN_WORLD.jumpVelocity ** 2 / (2 * RUN_WORLD.gravityHold)
+const FULL_JUMP =
+  (RUN_WORLD.jumpVelocity / RUN_WORLD.gravityHold +
+    Math.sqrt((2 * FULL_APEX) / RUN_WORLD.gravity)) *
+  RUN_WORLD.speed
+
+type Obstacle = { kind: 'hurdle'; hurdle: RunHurdle } | { kind: 'gap'; gap: RunGap }
+
+/** Die Hindernisse auf seiner Etage, die noch vor ihm liegen – das nächste zuerst. */
+function obstaclesAhead(round: RunRound): Obstacle[] {
+  return [
+    ...round.hurdles
+      .filter((h) => !h.passed && !h.touched && h.base === round.base)
+      .map((hurdle) => ({ kind: 'hurdle' as const, hurdle })),
+    ...round.gaps
+      .filter((g) => round.base === 0 && !g.passed && !g.bridged && g.x > round.distance)
+      .map((gap) => ({ kind: 'gap' as const, gap })),
+  ]
+    .filter((obstacle) => idealLead(obstacle).at > round.distance)
+    .sort((a, b) => idealLead(a).at - idealLead(b).at)
+}
+
+/** Das nächste Hindernis auf seiner Etage. */
+function nextObstacle(round: RunRound): Obstacle | null {
+  return obstaclesAhead(round)[0] ?? null
+}
+
+/**
+ * Wie weit vor dem Hindernis der beste Absprung liegt: bei einer Hürde,
+ * wenn ihre Mitte so weit weg ist, wie der Sprung bis zum Scheitel trägt;
+ * bei einer Lücke so, dass der volle Sprung mittig darüber liegt.
+ */
+function idealLead(obstacle: Obstacle): { at: number; lead: number } {
+  return obstacle.kind === 'hurdle'
+    ? { at: obstacle.hurdle.x + obstacle.hurdle.w / 2, lead: RUN_WORLD.speed * 0.38 }
+    : { at: obstacle.gap.x, lead: (FULL_JUMP - obstacle.gap.w) / 2 }
+}
+
+/** Springt im besten Moment über alles auf seiner Etage – am Boden und oben. */
 function perfectRunner(round: RunRound, options: { short?: boolean } = {}) {
   if (!round.grounded && (options.short || round.vy <= 0)) round.release()
-  const next = round.hurdles.find((hurdle) => !hurdle.passed && !hurdle.touched)
-  if (!next || !round.grounded) return
-  const center = next.x + next.w / 2 - round.distance
-  if (center <= RUN_WORLD.speed * 0.38) round.press()
+  if (!round.grounded) return
+  const next = nextObstacle(round)
+  if (!next) return
+  const { at, lead } = idealLead(next)
+  if (at - round.distance <= lead) round.press()
 }
 
 function runUntil(
@@ -618,6 +665,36 @@ function runUntil(
     if (found) return found
   }
   throw new Error(`kein ${kind}`)
+}
+
+/** Alles, was eine Runde je angelegt hat – auch was längst hinter ihm liegt. */
+function collectWorld(seed: number, seconds: number) {
+  const round = new RunRound(seededRandom(seed))
+  const hurdles = new Map<number, RunHurdle>()
+  const gaps = new Map<number, RunGap & { firstSeen: number }>()
+  const platforms = new Map<number, RunPlatform & { firstSeen: number }>()
+  const tasks = new Map<number, RunTask>()
+  let firstGapReached: number | null = null
+  while (round.time < seconds && !round.over) {
+    perfectRunner(round)
+    round.step(1 / 120)
+    for (const h of round.hurdles) hurdles.set(h.id, h)
+    for (const g of round.gaps) {
+      if (!gaps.has(g.id)) gaps.set(g.id, { ...g, firstSeen: round.time })
+      if (firstGapReached === null && g.x <= round.distance) firstGapReached = round.time
+    }
+    for (const p of round.platforms)
+      if (!platforms.has(p.id)) platforms.set(p.id, { ...p, firstSeen: round.time })
+    for (const t of round.tasks) tasks.set(t.id, t)
+  }
+  return {
+    round,
+    hurdles: [...hurdles.values()],
+    gaps: [...gaps.values()],
+    platforms: [...platforms.values()],
+    tasks: [...tasks.values()],
+    firstGapReached,
+  }
 }
 
 test('Laufen: ein voller Sprung im richtigen Moment schafft jede Hürde', () => {
@@ -651,78 +728,289 @@ test('Laufen: drei Treffer beenden die Runde – dazwischen kurz unverwundbar', 
   assert.ok(round.invulnerable > 0)
   const events: RunEvent[] = []
   while (!round.over && round.time < 60) events.push(...round.step(1 / 120))
-  assert.equal(events.filter((event) => event.kind === 'hit').length, RUN_LIVES - 1)
+  const wounds = events.filter(
+    (event) => event.kind === 'hit' || (event.kind === 'fall' && event.hurt),
+  )
+  assert.equal(wounds.length, RUN_LIVES - 1)
   assert.equal(events.at(-1)?.kind, 'over')
   assert.equal(round.lives, 0)
-  // Ohne Sprung kein Punkt für eine Hürde – auch nicht, wenn er unverwundbar hindurchlief.
+  // Ohne Sprung kein Punkt für ein Hindernis – auch nicht, wenn er unverwundbar hindurchlief.
   assert.equal(
-    events.some((event) => event.kind === 'clear'),
+    events.some((event) => event.kind === 'clear' || event.kind === 'leap'),
     false,
   )
 })
 
-test('Laufen: zehn Hürden am Stück heilen eine Wunde', () => {
+test('Laufen: zehn Hindernisse am Stück heilen eine Wunde', () => {
   const round = new RunRound(seededRandom(21))
   runUntil(round, 'hit')
   assert.equal(round.lives, RUN_LIVES - 1)
   let healed = false
-  for (let index = 0; index < RUN_STREAK_FOR_LIFE && !healed; index += 1) {
-    const event = runUntil(round, 'clear', perfectRunner)
-    healed = event.kind === 'clear' && event.healed
+  let overcome = 0
+  while (!healed && round.time < 120) {
+    perfectRunner(round)
+    for (const event of round.step(1 / 120)) {
+      assert.ok(event.kind !== 'hit' && event.kind !== 'fall', `${event.kind} bei ${round.time}`)
+      if (event.kind === 'clear' || event.kind === 'leap') {
+        overcome += 1
+        healed = event.healed
+      }
+    }
   }
-  assert.ok(healed, 'nach zehn Hürden geheilt')
+  assert.ok(healed, 'nach zehn Hindernissen geheilt')
+  assert.equal(overcome, RUN_STREAK_FOR_LIFE)
   assert.equal(round.lives, RUN_LIVES)
   assert.equal(round.streak, RUN_STREAK_FOR_LIFE)
 })
 
-test('Laufen: zwischen zwei Hürden bleibt immer Platz zum Landen', () => {
-  const round = new RunRound(seededRandom(4))
-  const seen = new Map<number, { x: number; w: number }>()
-  while (round.time < 40 && !round.over) {
-    perfectRunner(round)
-    round.step(1 / 120)
-    for (const hurdle of round.hurdles) seen.set(hurdle.id, { x: hurdle.x, w: hurdle.w })
+test('Laufen: zwischen zwei Hindernissen am Boden bleibt immer Platz zum Landen', () => {
+  for (const seed of [4, 11, 27, 64]) {
+    const world = collectWorld(seed, 60)
+    const ground = [
+      ...world.hurdles.filter((h) => h.base === 0).map((h) => ({ x: h.x, end: h.x + h.w })),
+      ...world.gaps.map((g) => ({ x: g.x, end: g.x + g.w })),
+    ].sort((a, b) => a.x - b.x)
+    assert.ok(ground.length >= 20, `nur ${ground.length} Hindernisse`)
+    for (let index = 1; index < ground.length; index += 1) {
+      const space = ground[index].x - ground[index - 1].end
+      assert.ok(space >= RUN_PACE.gapMin * RUN_WORLD.speed - 1e-9, `Abstand ${space.toFixed(2)}`)
+    }
   }
-  const hurdles = [...seen.values()].sort((a, b) => a.x - b.x)
-  assert.ok(hurdles.length >= 20, `nur ${hurdles.length} Hürden`)
-  for (let index = 1; index < hurdles.length; index += 1) {
-    const gap = hurdles[index].x - (hurdles[index - 1].x + hurdles[index - 1].w)
-    assert.ok(gap >= RUN_PACE.gapMin * RUN_WORLD.speed - 1e-9, `Abstand ${gap.toFixed(2)}`)
+})
+
+test('Laufen: Lücken erst nach etwa fünf Sekunden – mit einem Brett darüber, die zweite Etage später', () => {
+  for (const seed of [3, 8, 15, 42]) {
+    const world = collectWorld(seed, 40)
+    assert.ok(world.firstGapReached !== null, 'keine Lücke')
+    assert.ok(
+      world.firstGapReached >= 4.5 && world.firstGapReached <= 9,
+      `erste Lücke nach ${world.firstGapReached.toFixed(1)} s`,
+    )
+    // Die erste Lücke führt die Etage ein: Über ihr liegt ein Brett.
+    const first = [...world.gaps].sort((a, b) => a.x - b.x)[0]
+    assert.ok(
+      world.platforms.some(
+        (p) => p.level === 1 && p.x <= first.x && p.x + p.w >= first.x + first.w,
+      ),
+      'kein Brett über der ersten Lücke',
+    )
+    const upper = world.platforms.filter((p) => p.level === 2)
+    assert.ok(upper.length > 0, 'keine zweite Etage')
+    assert.ok(
+      upper.every((p) => p.firstSeen >= RUN_PACE.upperFrom),
+      'zweite Etage zu früh',
+    )
+  }
+})
+
+test('Laufen: jede Lücke ist mit einem vollen Sprung zu schaffen', () => {
+  assert.ok(RUN_PACE.holeLate < FULL_JUMP - 1.5, `Lücke ${RUN_PACE.holeLate} zu breit`)
+  const round = new RunRound(seededRandom(5))
+  const gap: RunGap = {
+    id: 9999,
+    x: 2.5,
+    w: RUN_PACE.holeLate,
+    item: RUN_GAPS[0],
+    passed: false,
+    bridged: false,
+    atLevel: null,
+  }
+  round.gaps.push(gap)
+  const event = runUntil(round, 'leap', perfectRunner)
+  assert.ok(event.kind === 'leap' && event.gap === gap)
+  assert.equal(round.lives, RUN_LIVES)
+  assert.equal(round.points, 1)
+})
+
+test('Laufen: wer in eine Lücke fällt, ist verwundet – und läuft auf einer Brücke weiter', () => {
+  const round = new RunRound(seededRandom(5))
+  const gap: RunGap = {
+    id: 9999,
+    x: 2,
+    w: 2,
+    item: RUN_GAPS[1],
+    passed: false,
+    bridged: false,
+    atLevel: null,
+  }
+  round.gaps.push(gap)
+  const event = runUntil(round, 'fall')
+  assert.ok(event.kind === 'fall' && event.gap === gap && event.hurt)
+  assert.equal(round.lives, RUN_LIVES - 1)
+  assert.ok(gap.bridged, 'keine Brücke')
+  assert.ok(round.invulnerable > 0)
+  runUntil(round, 'land')
+  assert.equal(round.y, 0)
+  assert.ok(round.groundAt(gap.x + gap.w / 2), 'die Brücke trägt')
+  // Für eine Lücke, in die er fiel, gibt es keinen Punkt.
+  while (!gap.passed) round.step(1 / 120)
+  assert.equal(round.points, 0)
+})
+
+test('Laufen: vom Boden auf die erste Etage, von dort auf die zweite – nie direkt hinauf', () => {
+  const [, first, second] = RUN_LEVELS
+  assert.ok(first < FULL_APEX - 0.4, 'erste Etage zu hoch')
+  assert.ok(second > FULL_APEX + 0.4, 'zweite Etage vom Boden aus erreichbar')
+  assert.ok(second - first < FULL_APEX - 0.4, 'zweite Etage von der ersten aus zu hoch')
+
+  // Hinauf: gedrückt halten bis zum Scheitel – er landet oben.
+  const round = new RunRound(seededRandom(5))
+  round.platforms.push({ id: 9001, x: 2, w: 6, level: 1, top: first })
+  round.platforms.push({ id: 9002, x: 5, w: 6, level: 2, top: second })
+  round.press()
+  runUntil(round, 'land', (r) => {
+    if (r.vy <= 0) r.release()
+  })
+  assert.equal(round.base, first)
+  // Von dort aus die zweite.
+  round.press()
+  runUntil(round, 'land', (r) => {
+    if (r.vy <= 0) r.release()
+  })
+  assert.equal(round.base, second)
+  // Am Ende des Bretts fällt er hinunter – bis auf den Boden.
+  while (round.base !== 0) round.step(1 / 120)
+  assert.equal(round.y, 0)
+
+  // Vom Boden aus kommt kein Sprung auf die zweite Etage.
+  const low = new RunRound(seededRandom(5))
+  low.platforms.push({ id: 9003, x: 2, w: 8, level: 2, top: second })
+  low.press()
+  runUntil(low, 'land', (r) => {
+    if (r.vy <= 0) r.release()
+  })
+  assert.equal(low.base, 0)
+})
+
+test('Laufen: wer oben über eine Hürde hinwegläuft, bekommt keinen Punkt dafür', () => {
+  const round = new RunRound(seededRandom(5))
+  round.platforms.push({ id: 9001, x: -1, w: 12, level: 1, top: RUN_LEVELS[1] })
+  round.y = RUN_LEVELS[1]
+  round.base = RUN_LEVELS[1]
+  while (round.hurdles.length === 0) round.step(1 / 120)
+  const first = round.hurdles[0]
+  first.x = 6
+  const events: RunEvent[] = []
+  while (!first.passed) events.push(...round.step(1 / 120))
+  assert.equal(
+    events.some((event) => event.kind === 'clear' || event.kind === 'hit'),
+    false,
+  )
+  assert.equal(round.points, 0)
+})
+
+test('Laufen: oben steht später auch eine Ausrede – darunter bleibt der Boden frei', () => {
+  // Wer oben über sie springt, bekommt den Punkt wie am Boden.
+  const round = new RunRound(seededRandom(5))
+  round.platforms.push({ id: 9001, x: -1, w: 14, level: 1, top: RUN_LEVELS[1] })
+  round.y = RUN_LEVELS[1]
+  round.base = RUN_LEVELS[1]
+  while (round.hurdles.length === 0) round.step(1 / 120)
+  const up = round.hurdles[0]
+  up.x = 5
+  up.base = RUN_LEVELS[1]
+  const event = runUntil(round, 'clear', perfectRunner)
+  assert.ok(event.kind === 'clear' && event.hurdle === up)
+  assert.equal(round.lives, RUN_LIVES)
+
+  // Unter einem Brett mit Ausrede liegt nichts: Unten ist es sicher, oben gibt es mehr.
+  let seen = 0
+  for (const seed of [2, 13, 29, 57, 88]) {
+    const world = collectWorld(seed, 45)
+    for (const hurdle of world.hurdles.filter((h) => h.base > 0)) {
+      const p = world.platforms.find((q) => q.x <= hurdle.x && q.x + q.w >= hurdle.x + hurdle.w)
+      assert.ok(p, 'Ausrede ohne Brett')
+      seen += 1
+      const below = [
+        ...world.hurdles.filter((h) => h.base === 0).map((h) => [h.x, h.x + h.w]),
+        ...world.gaps.map((g) => [g.x, g.x + g.w]),
+      ].some(([a, b]) => b > p.x && a < p.x + p.w)
+      assert.ok(!below, 'unter dem Brett mit Ausrede liegt ein Hindernis')
+      assert.ok(hurdle.x >= RUN_PACE.upHurdlesFrom * RUN_WORLD.speed, 'Ausrede oben zu früh')
+    }
+  }
+  assert.ok(seen > 0, 'oben stand nie eine Ausrede')
+})
+
+test('Laufen: oben liegen mehr Aufgaben – und unter jedem Brettende ist Platz zum Landen', () => {
+  for (const seed of [6, 19, 33, 71]) {
+    const world = collectWorld(seed, 45)
+    const on = (p: RunPlatform) =>
+      world.tasks.filter((t) => t.y > p.top && t.y < p.top + 2 && t.x >= p.x && t.x <= p.x + p.w)
+        .length
+    const upper = world.platforms.filter((p) => p.level === 2)
+    const lower = world.platforms.filter((p) => p.level === 1)
+    assert.ok(lower.length >= 3, `nur ${lower.length} Bretter`)
+    for (const p of upper) assert.equal(on(p), 3, 'drei Aufgaben auf der zweiten Etage')
+    for (const p of lower) {
+      const above = upper.some((q) => q.x >= p.x && q.x + q.w <= p.x + p.w)
+      if (!above) assert.ok(on(p) >= 2, 'mindestens zwei Aufgaben auf der ersten Etage')
+      // Darunter höchstens eine Aufgabe am Boden.
+      const below = world.tasks.filter((t) => t.y < 1 && t.x >= p.x && t.x <= p.x + p.w)
+      assert.ok(below.length <= 1, 'zu viel am Boden unter dem Brett')
+      // Wo das Brett endet, liegt weder Lücke noch Hürde: Wer herunterfällt, landet.
+      const end = p.x + p.w
+      const blocked = [
+        ...world.hurdles.filter((h) => h.base === 0).map((h) => [h.x, h.x + h.w]),
+        ...world.gaps.map((g) => [g.x, g.x + g.w]),
+      ].some(([a, b]) => b > end - 1.2 && a < end + RUN_PACE.landing)
+      assert.ok(!blocked, `Brettende bei ${end.toFixed(1)} nicht frei`)
+      // Eine Ausrede oben steht ganz auf dem Brett – mit Anlauf davor und Platz danach.
+      for (const h of world.hurdles.filter((h) => h.base === p.top && h.x >= p.x && h.x < end)) {
+        assert.ok(h.x >= p.x + 2 && h.x + h.w <= end - 1.4, 'Ausrede zu nah am Brettrand')
+      }
+    }
+    if (world.round.time >= RUN_PACE.upHurdlesFrom + 10) {
+      assert.ok(
+        world.hurdles.some((h) => h.base > 0),
+        'oben steht nie eine Ausrede',
+      )
+    }
+    // Von der zweiten Etage fällt man auf die erste, nicht daneben.
+    for (const q of upper) {
+      assert.ok(
+        lower.some((p) => p.x <= q.x && p.x + p.w >= q.x + q.w + 2 - 1e-9),
+        'unter dem Ende der zweiten Etage fehlt die erste',
+      )
+    }
   }
 })
 
 /**
- * Ein nachgebildeter Läufer: sieht eine Hürde, sobald sie auftaucht, und
- * braucht eine Reaktionszeit, bevor er handeln kann. Er will im besten
- * Moment abspringen, liegt aber um eine Streuung (in echten Sekunden)
- * daneben – je schneller die Welt, desto weiter ist das. Ab und zu passt
- * er nicht auf. Er springt immer voll; Aufgaben in der Luft jagt er nicht.
+ * Ein nachgebildeter Läufer: sieht ein Hindernis, sobald es auftaucht,
+ * und braucht eine Reaktionszeit, bevor er handeln kann. Er will im
+ * besten Moment abspringen, liegt aber um eine Streuung (in echten
+ * Sekunden) daneben – je schneller die Welt, desto weiter ist das. Ab und
+ * zu passt er nicht auf. Er springt immer voll; landet er dabei auf einem
+ * Brett, läuft er oben weiter, bis es endet – und springt dort über die
+ * Ausreden seiner Etage. Aufgaben jagt er nicht.
  */
 function playRun(player: { reaction: number; timing: number; lapse: number }, seed: number) {
   const round = new RunRound(seededRandom(seed))
   const noise = seededRandom(seed * 7919 + 13)
   const gauss = gaussian(noise)
-  const ideal = RUN_WORLD.speed * 0.38
   const plans = new Map<number, { seen: number; offset: number; skip: boolean; done: boolean }>()
   while (!round.over && round.time < 300) {
     round.step(1 / 120)
     if (!round.grounded && round.vy <= 0) round.release()
-    for (const hurdle of round.hurdles) {
-      if (hurdle.passed) continue
-      const left = hurdle.x - round.distance
+    if (!round.grounded) continue
+    for (const obstacle of obstaclesAhead(round)) {
+      const { at, lead } = idealLead(obstacle)
+      const left = at - round.distance
       if (left > RUN_WORLD.ahead) break
-      if (!plans.has(hurdle.id))
-        plans.set(hurdle.id, {
+      const id = obstacle.kind === 'hurdle' ? obstacle.hurdle.id : obstacle.gap.id
+      if (!plans.has(id))
+        plans.set(id, {
           seen: round.time + Math.max(0.12, player.reaction + 0.05 * gauss()),
           offset: player.timing * gauss(),
           skip: noise() < player.lapse,
           done: false,
         })
-      const plan = plans.get(hurdle.id)!
+      const plan = plans.get(id)!
       if (plan.done || plan.skip) continue
       // Die Abweichung in echten Sekunden wird beim jetzigen Tempo zu einer Strecke.
-      const target = ideal + plan.offset * RUN_WORLD.speed * runTempo(round.time)
-      if (round.time >= plan.seen && left + hurdle.w / 2 <= target) {
+      const target = lead + plan.offset * RUN_WORLD.speed * runTempo(round.time)
+      if (round.time >= plan.seen && left <= target) {
         round.press()
         plan.done = true
       }
