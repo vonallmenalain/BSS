@@ -4,8 +4,13 @@ import { useAppUpdate } from '@/contexts/AppUpdateContext'
 import { useAuth } from '@/contexts/AuthContext'
 
 /**
- * Wartebereich für Konten, die noch keine Rolle haben.
+ * Wartebereich für Konten, die nichts sehen dürfen.
  * Ohne Freigabe kommt niemand an Personendaten – das ist bewusst so.
+ *
+ * Ein neues Konto landet nicht mehr hier: Es bringt den AP-Kalender und
+ * «Anti Doom» von sich aus mit (`NEW_ACCOUNT_ACCESS`). Hier steht, wer mit
+ * einer älteren Fassung der App registriert hat, wem der Zugang entzogen
+ * oder wer deaktiviert wurde.
  *
  * Hier steht nur, was die wartende Person angeht. Eine Anleitung zum
  * Freischalten stand einmal darunter – sie richtete sich an jemand anderen

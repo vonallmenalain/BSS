@@ -13,9 +13,11 @@ import {
   Cake,
   CheckCircle2,
   UserPlus,
+  X,
 } from 'lucide-react'
 import { useAuth } from '@/contexts/AuthContext'
 import { useData } from '@/contexts/DataContext'
+import { useToast } from '@/contexts/ToastContext'
 import {
   useApActivities,
   useMeetings,
@@ -54,10 +56,11 @@ import {
   upcomingWeekdays,
 } from '@/lib/dates'
 import { isDutyItem } from '@/lib/monthlyDuties'
-import { roleManagementOf } from '@/lib/access'
+import { canManageUser, roleManagementOf } from '@/lib/access'
 import { dayKey, standingWaits } from '@/lib/standing'
 import { cn } from '@/lib/utils'
 import { sortForMeeting, sortForPendenzen } from '@/services/agenda'
+import { dismissNewAccounts } from '@/services/users'
 import {
   openTalkSlots,
   sacramentDocId,
@@ -76,6 +79,7 @@ import {
   normalizePendenzenSort,
   toItemKind,
   type AgendaItem,
+  type AppUser,
   type DashboardArea,
   type DashboardTileId,
   type DashboardView,
@@ -241,6 +245,25 @@ export function Dashboard() {
    * man aufsuchen müsste.
    */
   const pendingUsers = useMemo(() => users.filter((user) => user.role === 'pending'), [users])
+
+  /*
+   * Neue Konten brauchen keine Freigabe mehr – sie bekommen den
+   * Standardzugang von selbst. Damit die Bischofschaft trotzdem davon
+   * erfährt, stehen sie hier, bis jemand den Hinweis wegklickt.
+   *
+   * Nur die Konten, die dieses Konto auch verwalten darf: Hat das
+   * Administrator-Konto jemandem inzwischen Vollzugriff gegeben, wäre der
+   * Hinweis für die Bischofschaft eine Tür, die für sie zu ist – und das
+   * Wegklicken scheiterte an den Zugriffsregeln.
+   */
+  const newUsers = useMemo(
+    () =>
+      users.filter(
+        (user) =>
+          user.newAccount === true && canManageUser(management, user, user.id === profile?.id),
+      ),
+    [users, management, profile?.id],
+  )
 
   const greeting = (() => {
     const hour = new Date().getHours()
@@ -624,6 +647,8 @@ export function Dashboard() {
         </Link>
       )}
 
+      {management !== 'none' && newUsers.length > 0 && <NewAccountsNotice users={newUsers} />}
+
       {nothingVisible ? (
         <div className="card">
           <EmptyState
@@ -691,6 +716,77 @@ export function Dashboard() {
         defaultStatus={nextMeeting?.status === 'running' ? 'pending' : 'new'}
       />
     </>
+  )
+}
+
+/* ------------------------------------------------------------------ */
+/* Neue Konten                                                         */
+/* ------------------------------------------------------------------ */
+
+/**
+ * Der Hinweis auf neue Konten – zum Wegklicken.
+ *
+ * Er steht dort, wo früher die offene Freigabe stand, ist aber keine Frage
+ * mehr, sondern eine Nachricht: Das Konto sieht den AP-Kalender und «Anti
+ * Doom» bereits. Wer mehr geben will, tippt auf den Hinweis und landet bei
+ * den Konten; wer es zur Kenntnis genommen hat, klickt ihn weg – für die
+ * ganze Bischofschaft, wie eine erledigte Freigabe.
+ *
+ * Das Kreuz steht neben dem Link und nicht darin: Ein Knopf in einem Link
+ * wäre für Tastatur und Vorleseprogramm zwei Ziele an derselben Stelle.
+ */
+function NewAccountsNotice({ users }: { users: AppUser[] }) {
+  const toast = useToast()
+  const [busy, setBusy] = useState(false)
+
+  const dismiss = async () => {
+    setBusy(true)
+    try {
+      const outcome = await dismissNewAccounts(users.map((user) => user.id))
+      toast.saved(
+        users.length === 1 ? 'Hinweis auf das neue Konto weggeklickt.' : 'Hinweise weggeklickt.',
+        outcome,
+      )
+    } catch (error) {
+      console.error(error)
+      toast.error('Der Hinweis konnte nicht weggeklickt werden.')
+    } finally {
+      setBusy(false)
+    }
+  }
+
+  return (
+    <div className="card border-brand-200 bg-brand-50/70 dark:border-brand-800 dark:bg-brand-950/40 mb-4 flex items-center gap-1 p-1.5">
+      <Link
+        to="/einstellungen#benutzer"
+        className="hover:bg-brand-100/60 dark:hover:bg-brand-900/40 flex min-w-0 flex-1 items-center gap-3 rounded-lg p-2.5 transition"
+      >
+        <span className="bg-brand-100 text-brand-700 dark:bg-brand-900 dark:text-brand-200 grid size-9 shrink-0 place-items-center rounded-full">
+          <UserPlus className="size-4" aria-hidden />
+        </span>
+        <span className="min-w-0 flex-1">
+          <span className="text-brand-900 dark:text-brand-100 block text-sm font-semibold">
+            {users.length === 1
+              ? 'Ein neues Konto wurde erstellt'
+              : `${users.length} neue Konten wurden erstellt`}
+          </span>
+          <span className="text-brand-800 dark:text-brand-200 block truncate text-xs">
+            {users.map((user) => user.displayName || user.email).join(', ')} –{' '}
+            {users.length === 1 ? 'sieht' : 'sehen'} den AP-Kalender (nur lesen) und Anti Doom.
+          </span>
+        </span>
+      </Link>
+      <button
+        type="button"
+        className="btn-ghost text-brand-700 dark:text-brand-300 shrink-0 p-2"
+        onClick={() => void dismiss()}
+        disabled={busy}
+        aria-label="Hinweis auf neue Konten wegklicken"
+        title="Zur Kenntnis genommen – wegklicken"
+      >
+        <X className="size-4" aria-hidden />
+      </button>
+    </div>
   )
 }
 

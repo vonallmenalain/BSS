@@ -7,6 +7,8 @@
  *
  * Die entscheidende Trennlinie verläuft zwischen `pending` und allen übrigen
  * Rollen: Wer freigeschaltet ist, sieht und darf alles. Wer wartet, sieht nichts.
+ * Ein neues Konto beginnt ohne Freigabe mit dem Standardzugang – AP-Kalender
+ * lesen und «Anti Doom» – und kommt damit an keine Personendaten.
  *
  * Ausführen:  npm run test:rules
  */
@@ -951,24 +953,156 @@ describe('Rollen und Rechteausweitung', () => {
     await assertFails(updateDoc(doc(asSecretary(), 'users', SECRETARY), { active: false }))
   })
 
-  it('lässt ein neues Konto nur ein Profil mit der Rolle «pending» anlegen', async () => {
+  /*
+   * Der Standardzugang eines neuen Kontos: AP-Kalender lesen und «Anti
+   * Doom» – ohne Freigabe, aber auch nicht mehr. Dazu der Hinweis an die
+   * Bischofschaft, der sich beim Anlegen nicht weglassen lässt.
+   */
+  it('lässt ein neues Konto nur den Standardzugang anlegen', async () => {
     const neu = testEnv.authenticatedContext('uid-neu').firestore()
-    await assertFails(
-      setDoc(doc(neu, 'users', 'uid-neu'), {
+    // `undefined` heisst: Das Feld fehlt ganz.
+    const profile = (patch) => {
+      const data = {
         email: 'neu@example.ch',
         displayName: 'Neu',
-        role: 'bishop',
         active: true,
-      }),
-    )
-    await assertSucceeds(
-      setDoc(doc(neu, 'users', 'uid-neu'), {
-        email: 'neu@example.ch',
-        displayName: 'Neu',
+        role: 'ap_viewer',
+        impulse: true,
+        newAccount: true,
+        ...patch,
+      }
+      for (const key of Object.keys(data)) if (data[key] === undefined) delete data[key]
+      return setDoc(doc(neu, 'users', 'uid-neu'), data)
+    }
+    // Mehr als der Standardzugang geht nicht …
+    await assertFails(profile({ role: 'bishop' }))
+    await assertFails(profile({ role: 'ap_editor' }))
+    await assertFails(profile({ role: 'impulse_only' }))
+    await assertFails(profile({ role: 'assistant' }))
+    await assertFails(profile({ impulseEditor: true }))
+    await assertFails(profile({ assistantAreas: ['music'] }))
+    // … und ohne Hinweis an die Bischofschaft auch nicht.
+    await assertFails(profile({ newAccount: false }))
+    await assertFails(profile({ newAccount: undefined }))
+    await assertFails(profile({ impulse: false }))
+    await assertFails(profile({ impulse: undefined }))
+    await assertFails(profile({ active: false }))
+    await assertSucceeds(profile({}))
+    await testEnv.withSecurityRulesDisabled(async (context) => {
+      await deleteDoc(doc(context.firestore(), 'users', 'uid-neu'))
+    })
+  })
+
+  it('lässt ältere Fassungen der App ein neues Konto weiterhin als «pending» anlegen', async () => {
+    const neu = testEnv.authenticatedContext('uid-neu-alt').firestore()
+    const profile = (patch) =>
+      setDoc(doc(neu, 'users', 'uid-neu-alt'), {
+        email: 'neu-alt@example.ch',
+        displayName: 'Neu (alte App)',
         role: 'pending',
         active: true,
+        ...patch,
+      })
+    // Ein wartendes Konto bringt weder den Schalter noch den Hinweis mit.
+    await assertFails(profile({ impulse: true }))
+    await assertFails(profile({ newAccount: true }))
+    await assertSucceeds(profile({}))
+  })
+
+  it('gibt dem Standardzugang den AP-Kalender zum Lesen und «Anti Doom» – sonst nichts', async () => {
+    const uid = 'uid-standard'
+    const as = () => testEnv.authenticatedContext(uid).firestore()
+    await assertSucceeds(
+      setDoc(doc(as(), 'users', uid), {
+        email: 'standard@example.ch',
+        displayName: 'Standard',
+        role: 'ap_viewer',
+        impulse: true,
+        newAccount: true,
+        active: true,
+        memberId: null,
+        createdAt: serverTimestamp(),
+        updatedAt: serverTimestamp(),
+        lastLoginAt: serverTimestamp(),
       }),
     )
+    try {
+      // Der Kalender und «Anti Doom» stehen offen …
+      await assertSucceeds(getDocs(collection(as(), 'apActivities')))
+      await assertSucceeds(getDocs(collection(as(), 'calendarFeeds')))
+      await assertSucceeds(getDoc(doc(as(), 'impulseItems', 'impuls-woche')))
+      await assertSucceeds(getDocs(collection(as(), 'impulseProgress')))
+      await assertSucceeds(
+        setDoc(doc(as(), 'impulseProgress', uid), {
+          uid,
+          firstName: 'Standard',
+          weeks: { '2026-W42': { goal: true, days: ['2026-10-16'] } },
+        }),
+      )
+      // … geändert wird darin nur das Eigene: kein Kalender, keine Inhalte.
+      await assertFails(
+        updateDoc(doc(as(), 'apActivities', 'aktivitaet-1'), { title: 'Umbenannt' }),
+      )
+      await assertFails(
+        updateDoc(doc(as(), 'impulseItems', 'impuls-woche'), { title: 'Umbenannt' }),
+      )
+      // Personendaten bleiben zu.
+      for (const name of ['members', 'callings', 'agendaItems', 'meetings', 'talks', 'users']) {
+        await assertFails(getDocs(collection(as(), name)))
+      }
+      await assertFails(getDoc(doc(as(), 'members', 'mitglied-1')))
+      // Und der Zugang lässt sich nicht selbst erweitern.
+      await assertFails(updateDoc(doc(as(), 'users', uid), { role: 'ap_editor' }))
+      await assertFails(updateDoc(doc(as(), 'users', uid), { impulseEditor: true }))
+    } finally {
+      await testEnv.withSecurityRulesDisabled(async (context) => {
+        await deleteDoc(doc(context.firestore(), 'impulseProgress', uid))
+        await deleteDoc(doc(context.firestore(), 'users', uid))
+      })
+    }
+  })
+
+  /*
+   * Der Hinweis auf ein neues Konto ist für die Bischofschaft da: Sie klickt
+   * ihn weg, wie sie früher die Freigabe erteilt hat. Die Person selbst
+   * kann ihn nicht verschwinden lassen – auch nicht, indem sie das Feld
+   * entfernt.
+   */
+  it('lässt den Hinweis auf ein neues Konto nur die Bischofschaft wegklicken', async () => {
+    const uid = 'uid-hinweis'
+    const seedNew = () =>
+      testEnv.withSecurityRulesDisabled(async (context) => {
+        await setDoc(doc(context.firestore(), 'users', uid), {
+          email: 'hinweis@example.ch',
+          displayName: 'Hinweis',
+          role: 'ap_viewer',
+          impulse: true,
+          newAccount: true,
+          active: true,
+        })
+      })
+    const dismiss = (db) =>
+      updateDoc(doc(db, 'users', uid), { newAccount: deleteField(), updatedAt: serverTimestamp() })
+    const self = () => testEnv.authenticatedContext(uid).firestore()
+    try {
+      await seedNew()
+      // Die Person selbst nicht – weder entfernt noch umgestellt.
+      await assertFails(dismiss(self()))
+      await assertFails(updateDoc(doc(self(), 'users', uid), { newAccount: false }))
+      // Den eigenen Namen pflegt sie weiterhin selbst.
+      await assertSucceeds(updateDoc(doc(self(), 'users', uid), { displayName: 'Hinweis B' }))
+      // Sekretäre und AP-Zugänge verwalten keine Konten.
+      await assertFails(dismiss(asSecretary()))
+      await assertFails(dismiss(asApEditor()))
+      // Die Bischofschaft und das Administrator-Konto schon.
+      await assertSucceeds(dismiss(asCounselor1()))
+      await seedNew()
+      await assertSucceeds(dismiss(asBishop()))
+    } finally {
+      await testEnv.withSecurityRulesDisabled(async (context) => {
+        await deleteDoc(doc(context.firestore(), 'users', uid))
+      })
+    }
   })
 
   it('lässt niemanden das Profil einer anderen Person anlegen', async () => {
