@@ -3726,6 +3726,14 @@ Hinweis mit einer Schaltfläche. So startet die App nicht mitten in der Sitzung
 neu und verliert Eingaben. Der Hinweis steht auf jeder Seite, auch auf der
 Anmeldung (`AppUpdateProvider` in `src/main.tsx`).
 
+**«Aktualisieren» lädt immer neu.** Der Knopf weckt die wartende Version und
+lädt die Seite neu, sobald sie übernimmt; wartet keine mehr (etwa weil ein
+anderes Fenster schon aktualisiert hat), lädt er sofort neu. Früher hing das
+Neuladen an der Bibliothek, und die tat es nur, wenn die Seite schon beim
+Öffnen von einem Service Worker gesteuert war. Beim ersten Öffnen der App ist
+sie das nicht – kam in derselben Sitzung eine neue Version, blieb der Hinweis
+stehen, und jeder Klick ging ins Leere.
+
 **Im Wartebereich wird nicht gefragt.** Dort geht beim Neuladen nichts
 verloren, und oft ist es gerade die neue Version, die das Konto hereinlässt:
 Eine Rolle, die neuer ist als die App auf dem Gerät – etwa «Nur Anti Doom»
