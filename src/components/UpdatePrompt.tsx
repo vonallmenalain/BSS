@@ -1,4 +1,4 @@
-import { RefreshCw, X } from 'lucide-react'
+import { Loader2, RefreshCw, X } from 'lucide-react'
 import { useAppUpdate } from '@/contexts/AppUpdateContext'
 
 /**
@@ -10,7 +10,7 @@ import { useAppUpdate } from '@/contexts/AppUpdateContext'
  * (siehe `AppUpdateProvider`).
  */
 export function UpdatePrompt() {
-  const { needRefresh, applyUpdate, dismiss } = useAppUpdate()
+  const { needRefresh, applying, applyUpdate, dismiss } = useAppUpdate()
 
   if (!needRefresh) return null
 
@@ -19,8 +19,16 @@ export function UpdatePrompt() {
       <div className="border-brand-200 dark:border-brand-800 dark:bg-brand-950 flex items-center gap-3 rounded-xl border bg-white p-3 shadow-lg">
         <RefreshCw className="text-brand-600 dark:text-brand-300 size-5 shrink-0" aria-hidden />
         <p className="flex-1 text-sm font-medium">Eine neue Version ist verfügbar.</p>
-        <button type="button" className="btn-primary btn-sm" onClick={applyUpdate}>
-          Aktualisieren
+        {/* Während des Wechsels gesperrt: Ein zweiter Klick bewirkte nichts
+            Neues, und das Drehen zeigt, dass der erste angekommen ist. */}
+        <button
+          type="button"
+          className="btn-primary btn-sm"
+          onClick={applyUpdate}
+          disabled={applying}
+        >
+          {applying && <Loader2 className="size-4 animate-spin" aria-hidden />}
+          {applying ? 'Wird geladen …' : 'Aktualisieren'}
         </button>
         <button
           type="button"
