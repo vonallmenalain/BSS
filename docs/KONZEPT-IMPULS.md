@@ -1201,18 +1201,36 @@ denselben Ablauf (Erklärung, Runde, Ergebnis):
   Gute hereinzulassen. Nichts im Spiel zeigt, was es meint; die Wörter
   stammen aus den Karten der Woche.
 - **«Keine Ausreden!»** (`springen`, Helamans junge Krieger, 19.–25. Okt.):
-  Ein Läufer mit Schild, von der Seite gesehen; ihm kommen Ausreden
-  entgegen – «Später», «Keine Lust», «Nur noch kurz», «Zweifel» –, klein,
-  hoch oder doppelt. Ein Tipp irgendwo (Leertaste, Pfeil nach oben) lässt
-  ihn springen, länger drücken springt höher. Jede Hürde und jede
-  eingesammelte Aufgabe (beten, Schriften, helfen, Ämtli) zählt einen
-  Punkt; ein Treffer ist eine Wunde, drei beenden die Runde, zehn Hürden am
+  Ein junger Krieger mit Helm, Federbusch und Schild, von der Seite
+  gesehen; ihm kommen Ausreden entgegen – «Später», «Keine Lust», «Nur
+  noch kurz», «Zweifel» –, klein, hoch oder doppelt. Ein Tipp irgendwo
+  (Leertaste, Pfeil nach oben) lässt ihn springen, länger drücken springt
+  höher. Nach etwa fünf Sekunden tun sich **Lücken** im Boden auf
+  («Aufschieben», «Verschlafen», «Ablenkung») – und darüber schweben
+  Bretter, die **erste Etage**. Wer lang drückt, kommt hinauf; dort liegen
+  mehr Aufgaben, unten zählt jede Hürde und jede übersprungene Lücke. Ab
+  etwa 16 Sekunden kommt eine **zweite Etage** dazu, erreichbar nur von
+  der ersten aus, mit drei Aufgaben. Bequemer ist es oben nicht: Ab etwa
+  12 Sekunden steht auch auf manchem Brett eine Ausrede, und dann bleibt
+  der Boden darunter frei – unten sicher, oben mehr, eine echte Wahl. Die
+  Bretter trägt man von unten durch, gelandet wird nur von oben; wo ein
+  Brett endet, ist darunter immer Platz zum Landen. Jede Hürde, jede
+  Lücke und jede eingesammelte Aufgabe (beten, Schriften, helfen, Ämtli)
+  zählt einen Punkt – Hindernisse nur, wenn man sie auf ihrer Etage
+  überwindet, nicht, wer oben an ihnen vorbeiläuft. Ein Treffer ist eine
+  Wunde; wer in eine Lücke fällt, ebenso – eine Brücke fängt ihn auf, und
+  er läuft weiter. Drei Wunden beenden die Runde, zehn Hindernisse am
   Stück heilen eine – «mutig, stark und regsam» (Alma 53:20), verwundet,
   aber nicht gefallen (Alma 57:25). Schneller wird hier die ganze Welt
   (`runTempo`), nicht nur die Hürden: Jede bleibt mit demselben Sprung zu
-  schaffen, nur das Zeitfenster wird enger. Wie weit man voraus sieht, ist
-  in Körperhöhen fest – ein breiter Bildschirm zeigt nicht früher, was
-  kommt.
+  schaffen, nur das Zeitfenster wird enger; mit der Zeit rücken zudem die
+  Abschnitte zusammen, und die Lücken werden breiter. Wie weit man voraus
+  sieht, ist in Körperhöhen fest – ein breiter Bildschirm zeigt nicht
+  früher, was kommt. Der Läufer ist gezeichnet, kein Emoji: Sein
+  Laufzyklus hängt an der zurückgelegten Strecke (die Füsse rutschen nie),
+  im Sprung zieht er die Knie an, im Fallen streckt er die Beine, bei
+  jedem Schritt staubt es; Wolken, Berge und Hügel ziehen in eigener Tiefe
+  vorbei.
 - **«Ketten sprengen»** (`befreien`, «Die Wahrheit befreit dich»,
   26. Okt.–1. Nov.): Neun Plätze; auf ihnen tauchen Notlügen auf – «Bin
   gleich da», «Hab’s nicht gesehen», «Der Hund war’s» –, um jede eine
@@ -1243,7 +1261,7 @@ die Leinwand rechnet mit genau diesem Code, und der Test spielt ihn mit je
 | Spiel             | Anfänger | Durchschnitt | Spitze (längste Runde) |
 | ----------------- | -------- | ------------ | ---------------------- |
 | «Schild hoch!»    | 22 s     | 32 s         | 49 s (52 s)            |
-| «Keine Ausreden!» | 20 s     | 36 s         | 49 s (54 s)            |
+| «Keine Ausreden!» | 19 s     | 30 s         | 47 s (53 s)            |
 | «Ketten sprengen» | 24 s     | 33 s         | 50 s (55 s)            |
 
 **Flüssig auch auf älteren Telefonen.** Gezeichnet wird auf eine Leinwand,

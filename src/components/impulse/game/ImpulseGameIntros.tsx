@@ -109,15 +109,26 @@ export function RunIntro() {
     <Intro
       boxes={
         <>
-          <Box tone="slate" emoji="⏰ 🛋️ 📱" title="Ausreden" hint="darüberspringen" />
-          <Box tone="amber" emoji="🙏 📖 🧹" title="Aufgaben" hint="unterwegs einsammeln" />
+          <Box
+            tone="slate"
+            emoji="⏰ 🛋️ 🐌"
+            title="Ausreden"
+            hint="Hürden und Lücken überspringen"
+          />
+          <Box
+            tone="amber"
+            emoji="🙏 📖 🧹"
+            title="Aufgaben"
+            hint="einsammeln – oben liegen mehr"
+          />
         </>
       }
     >
       Tippe irgendwo, um zu springen – länger drücken springt höher. Am Rechner gehen Leertaste und
-      Pfeil nach oben. Jede Hürde und jede Aufgabe zählt einen Punkt. Nach drei Treffern ist die
-      Runde vorbei, zehn Hürden am Stück heilen eine Wunde – wie bei den jungen Kriegern: verwundet,
-      aber nicht gefallen.
+      Pfeil nach oben. Bald tun sich Lücken im Boden auf, darüber schweben Etagen: Oben warten mehr
+      Aufgaben, unten zählt jede Hürde und jede Lücke. Drei Treffer oder Stürze beenden die Runde,
+      zehn Hindernisse am Stück heilen eine Wunde – wie bei den jungen Kriegern: verwundet, aber
+      nicht gefallen.
     </Intro>
   )
 }
