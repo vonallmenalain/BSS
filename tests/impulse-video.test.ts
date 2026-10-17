@@ -7,7 +7,6 @@ import {
   impulseEmbedHello,
   impulseEmbedMessage,
   impulseEmbedOrigin,
-  impulseEmbedRateMessage,
   impulseEmbedReport,
   impulseEmbedSeekMessage,
   impulseEmbedUrl,
@@ -224,9 +223,6 @@ test('impulseEmbedReport: was YouTube über sich meldet', () => {
     time: 0,
     duration: 58.4,
   })
-  // Wie schnell es läuft – ob die Bremse fürs verdeckte Anlaufen greift.
-  assert.deepEqual(report({ event: 'infoDelivery', info: { playbackRate: 0.25 } }), { rate: 0.25 })
-  assert.equal(report({ event: 'infoDelivery', info: { playbackRate: 0 } }), null)
   // Eine Länge von null ist noch keine – das Video hat sie noch nicht gemeldet.
   assert.equal(report({ event: 'infoDelivery', info: { duration: 0 } }), null)
   assert.equal(report({ event: 'infoDelivery', info: { currentTime: -1 } }), null)
@@ -302,22 +298,6 @@ test('impulseVideoClock: Minuten und Sekunden, wie man sie liest', () => {
   assert.equal(impulseVideoClock(65), '1:05')
   assert.equal(impulseVideoClock(750), '12:30')
   assert.equal(impulseVideoClock(-2), '0:00')
-})
-
-test('impulseEmbedRateMessage: die Bremse fürs verdeckte Anlaufen – und wieder eins', () => {
-  assert.deepEqual(JSON.parse(impulseEmbedRateMessage(youtube, 0.25)!), {
-    event: 'command',
-    func: 'setPlaybackRate',
-    args: [0.25],
-    id: 1,
-    channel: 'widget',
-  })
-  assert.deepEqual(JSON.parse(impulseEmbedRateMessage(youtube, 1)!).args, [1])
-  assert.deepEqual(JSON.parse(impulseEmbedRateMessage(vimeo, 0.25)!), {
-    method: 'setPlaybackRate',
-    value: 0.25,
-  })
-  assert.equal(impulseEmbedRateMessage(file, 1), null)
 })
 
 test('impulseVideoThumbnail: das Vorschaubild von YouTube – nur für YouTube', () => {
