@@ -38,18 +38,18 @@ import {
  *   ist – das spart Daten und hält den Feed leise.
  * - **Mit Ton.** Ein Video ohne Ton ist ein halbes Video; es läuft von
  *   Anfang an laut. Nur wenn der Browser das ablehnt, springt es stumm
- *   an – lieber ein leises Video als ein stehendes Bild. Bei der
- *   Videodatei bedient den Ton ihre eigene Leiste, bei der Fremdkarte
- *   der Knopf unten rechts.
+ *   an – lieber ein leises Video als ein stehendes Bild. Dann steht
+ *   unten rechts ein kleiner Tonknopf.
  * - **Vollbild** ist der Normalfall, nicht ein Knopf: Die Karte selbst
- *   ist der Bildschirm. Die Videodatei bringt ihre eigene Leiste mit.
+ *   ist der Bildschirm.
  * - **Tippen blendet ein und aus, Wischen wischt** – wie bei Reels und
- *   Shorts. Eine eingebettete Fremdkarte (YouTube, Vimeo) behielte jede
- *   Berührung für sich, und der Daumen käme nicht zur nächsten Karte.
- *   Darum gehört die ganze Fläche der App, und sie bringt ihre eigenen
- *   Knöpfe mit (`EmbeddedVideo`): Ein Tipp irgendwo blendet Titel, Text,
- *   Zeit und Ton ein und wieder aus, der Knopf in der Mitte hält an. Ein
- *   Wisch nach oben oder unten rollt den Feed, ein Wisch zur Seite spult.
+ *   Shorts, für die Fremdkarte (`EmbeddedVideo`) wie für die eigene
+ *   Videodatei (`FileVideo`) dieselbe Bedienung der App (`VideoControls`):
+ *   Ein Tipp irgendwo blendet Titel, Text, Zeit und Ton ein und wieder aus,
+ *   der Knopf in der Mitte hält an. Ein Wisch nach oben oder unten rollt
+ *   den Feed, ein Wisch zur Seite spult. Eine Fremdkarte behielte jede
+ *   Berührung für sich; darum gehört die ganze Fläche der App. Die eigene
+ *   Videodatei zeigt dabei gar keine fremden Knöpfe, auch nicht beim Start.
  *
  * Was sich nicht einbetten lässt – eine Videoseite der Kirche etwa,
  * deren Server das verbietet –, wird zur ruhigen Karte mit einem Knopf,
@@ -76,33 +76,6 @@ export function ImpulseVideoPlayer({
    */
   info?: ReactNode
 }) {
-  const videoRef = useRef<HTMLVideoElement>(null)
-
-  /* Die eigene Videodatei: läuft mit der Karte, hält mit ihr an – und
-     beginnt beim Wiederkommen von vorn, wie eine Karte, die man neu
-     aufschlägt. */
-  useEffect(() => {
-    const element = videoRef.current
-    if (!element) return
-    if (!active) {
-      element.pause()
-      element.currentTime = 0
-      return
-    }
-    /* Zuerst mit Ton. Ein abgelehntes Abspielen ist kein Fehler, nur
-       eine Regel des Browsers – dann eben stumm, aber laufend. Den Ton
-       holt sich über die Leiste des Videos zurück, wer ihn will. */
-    element.muted = false
-    const promise = element.play()
-    if (promise) {
-      promise.catch(() => {
-        element.muted = true
-        const quiet = element.play()
-        if (quiet) quiet.catch(() => {})
-      })
-    }
-  }, [active])
-
   /* Nicht einbettbar: ein Vorschaubild (oder ein ruhiger Grund) und der
      Weg hinaus – ohne Versprechen, das die Karte nicht halten kann. */
   if (source.art === 'seite') {
@@ -136,22 +109,7 @@ export function ImpulseVideoPlayer({
     )
   }
 
-  return (
-    <div className="absolute inset-0 bg-black">
-      <video
-        ref={videoRef}
-        src={source.url}
-        poster={poster ?? undefined}
-        className="size-full object-cover"
-        playsInline
-        loop
-        preload="metadata"
-        /* Die Leiste des Videos ist zugleich der Tonknopf. */
-        controls
-        aria-label={title}
-      />
-    </div>
-  )
+  return <FileVideo source={source} poster={poster} title={title} active={active} info={info} />
 }
 
 /** Das Vorschaubild – oder ein ruhiger Grund, wenn es keines gibt. */
@@ -163,6 +121,461 @@ function Poster({ poster }: { poster?: string | null }) {
     <img src={poster} alt="" onError={() => setFailed(poster)} className="size-full object-cover" />
   ) : (
     <div className="size-full bg-gradient-to-b from-slate-800 to-slate-950" />
+  )
+}
+
+/*
+ * ---------------------------------------------------------------------
+ * Die Bedienung der App über einem Video – für die Fremdkarte (YouTube,
+ * Vimeo) wie für die eigene Videodatei dieselbe:
+ *
+ * - **Ein Tipp blendet ein und aus** – überall im Bild, so oft man will:
+ *   Titel, Text und Quelle der Karte samt Amen und Merken (`info`), die
+ *   Zeit, der Ton und die Leiste, in der Mitte der Knopf zum Anhalten.
+ * - **Nur der Knopf in der Mitte hält an** und lässt weiterlaufen.
+ * - **Nach oben und unten wischen** rollt den Feed (die Fläche lässt nur
+ *   das senkrechte Rollen dem Browser, `touch-pan-y`), **zur Seite
+ *   wischen spult** (`useScrub`). Am Rechner spulen die Pfeiltasten.
+ * ---------------------------------------------------------------------
+ */
+
+/**
+ * Spulen mit dem Daumen: Geht er zur Seite, spult er; geht er nach oben
+ * oder unten, rollt der Browser den Feed und meldet das Ende dieses
+ * Daumens (`pointercancel`). Erst ab ein paar Pixeln zur Seite wird
+ * gespult – ein Tipp, der ein wenig verrutscht, bleibt ein Tipp. Die
+ * ganze Breite ist die ganze Länge, gezählt vom Stand beim Aufsetzen.
+ *
+ * Unterwegs bekommt das Video alle `previewEveryMs` die Stelle zu sehen
+ * (`preview`), beim Loslassen die endgültige (`commit`). Nach dem Spulen
+ * folgt ein Klick – den schluckt `consumeScrubbed`, damit er nichts ein-
+ * oder ausblendet.
+ */
+function useScrub({
+  duration,
+  now,
+  width,
+  preview,
+  commit,
+  previewEveryMs,
+}: {
+  duration: () => number
+  now: () => number
+  width: () => number
+  preview: (seconds: number) => void
+  commit: (seconds: number) => void
+  previewEveryMs: number
+}) {
+  const scrub = useRef<{
+    pointer: number
+    x: number
+    y: number
+    from: number
+    width: number
+    to: number
+    active: boolean
+    sentAt: number
+  } | null>(null)
+  const [scrubTo, setScrubTo] = useState<number | null>(null)
+  const scrubbed = useRef(false)
+
+  const onPointerDown = (event: ReactPointerEvent<HTMLElement>) => {
+    scrubbed.current = false
+    if (!(duration() > 0)) return
+    if (event.pointerType === 'mouse' && event.button !== 0) return
+    scrub.current = {
+      pointer: event.pointerId,
+      x: event.clientX,
+      y: event.clientY,
+      from: now(),
+      width: width() || event.currentTarget.clientWidth,
+      to: 0,
+      active: false,
+      sentAt: 0,
+    }
+  }
+
+  const onPointerMove = (event: ReactPointerEvent<HTMLElement>) => {
+    const current = scrub.current
+    if (!current || current.pointer !== event.pointerId) return
+    const dx = event.clientX - current.x
+    const dy = event.clientY - current.y
+    if (!current.active) {
+      if (Math.abs(dx) < 12 || Math.abs(dx) < Math.abs(dy)) return
+      current.active = true
+      event.currentTarget.setPointerCapture(event.pointerId)
+    }
+    current.to = impulseScrubTime(current.from, dx, current.width, duration())
+    setScrubTo(current.to)
+    const at = performance.now()
+    if (at - current.sentAt > previewEveryMs) {
+      current.sentAt = at
+      preview(current.to)
+    }
+  }
+
+  const endScrub = (event: ReactPointerEvent<HTMLElement>) => {
+    const current = scrub.current
+    if (!current || current.pointer !== event.pointerId) return
+    scrub.current = null
+    if (!current.active) return
+    scrubbed.current = true
+    commit(current.to)
+    setScrubTo(null)
+  }
+
+  return {
+    scrubTo,
+    /** Spult der Daumen gerade? Dann gilt seine Stelle, nicht die des Videos. */
+    isScrubbing: () => Boolean(scrub.current?.active),
+    /** War der Klick nur das Ende eines Spulens? Dann zählt er nicht. */
+    consumeScrubbed: () => {
+      const was = scrubbed.current
+      scrubbed.current = false
+      return was
+    },
+    handlers: {
+      onPointerDown,
+      onPointerMove,
+      onPointerUp: endScrub,
+      onPointerCancel: endScrub,
+    },
+  }
+}
+
+type ScrubHandlers = ReturnType<typeof useScrub>['handlers']
+
+/**
+ * Was die App über ein Video legt: die Fläche für Tipp und Wisch, die
+ * Zeit beim Spulen, den Knopf in der Mitte, den kleinen Tonknopf und die
+ * Angaben auf dem dunklen Schleier. Nur Darstellung – was ein Tipp
+ * bewirkt, sagen die Handgriffe.
+ */
+function VideoControls({
+  shown,
+  halted,
+  center,
+  mutedChip,
+  muted,
+  time,
+  duration,
+  scrubTo,
+  info,
+  scrubHandlers,
+  onToggleInfo,
+  onTogglePlay,
+  onToggleSound,
+  onKeyDown,
+}: {
+  shown: boolean
+  /** Steht das Video? Dann zeigt der Knopf in der Mitte «abspielen». */
+  halted: boolean
+  /** Steht der Knopf in der Mitte da – auch ohne Angaben? */
+  center: boolean
+  /** Der kleine Tonknopf ohne Angaben, wenn das Video stumm läuft. */
+  mutedChip: boolean
+  muted: boolean
+  time: number
+  duration: number
+  scrubTo: number | null
+  info?: ReactNode
+  scrubHandlers: ScrubHandlers
+  onToggleInfo: () => void
+  onTogglePlay: () => void
+  onToggleSound: () => void
+  onKeyDown: (event: ReactKeyboardEvent<HTMLButtonElement>) => void
+}) {
+  const scrubbing = scrubTo !== null
+  const visible = shown || scrubbing
+  const progress = duration > 0 ? (Math.min(scrubTo ?? time, duration) / duration) * 100 : 0
+  const soundLabel = muted ? 'Ton einschalten' : 'Ton ausschalten'
+
+  return (
+    <>
+      {/* Die Fläche über dem ganzen Video: Ein Tipp blendet ein und aus,
+          nach oben und unten rollt der Feed, zur Seite spult sie. */}
+      <button
+        type="button"
+        onClick={onToggleInfo}
+        {...scrubHandlers}
+        onKeyDown={onKeyDown}
+        aria-label={shown ? 'Angaben zum Video ausblenden' : 'Angaben zum Video zeigen'}
+        aria-expanded={shown}
+        className="absolute inset-0 cursor-pointer touch-pan-y focus-visible:-outline-offset-4"
+      />
+
+      {/* Wohin der Daumen spult. */}
+      {scrubbing && (
+        <span className="pointer-events-none absolute inset-0 grid place-items-center">
+          <span className="tabular rounded-full bg-slate-950/60 px-4 py-2 text-lg font-semibold text-white backdrop-blur-sm">
+            {impulseVideoClock(scrubTo)}
+            <span className="font-normal opacity-70"> / {impulseVideoClock(duration)}</span>
+          </span>
+        </span>
+      )}
+
+      {/* Der Knopf in der Mitte: anhalten und weiter. Wer auf ihm wischt,
+          wischt wie auf dem Video; beim Spulen tritt er zurück, bleibt aber
+          da – sonst verlöre der Daumen, der auf ihm aufsetzte, seinen Halt. */}
+      {(shown || center) && (
+        <span className="pointer-events-none absolute inset-0 grid place-items-center">
+          <button
+            type="button"
+            onClick={onTogglePlay}
+            {...scrubHandlers}
+            aria-label={halted ? 'Video abspielen' : 'Video anhalten'}
+            className={cn(
+              'pointer-events-auto grid size-[4.5rem] touch-pan-y place-items-center rounded-full bg-slate-950/85 text-white shadow-lg backdrop-blur-md transition active:scale-95',
+              scrubbing && 'opacity-0',
+            )}
+          >
+            {halted ? (
+              <Play className="size-7 translate-x-0.5 fill-current" aria-hidden />
+            ) : (
+              <Pause className="size-7 fill-current" aria-hidden />
+            )}
+          </button>
+        </span>
+      )}
+
+      {/* Ohne Tipp steht nichts über dem Video – ausser dem Ton, wenn er
+          fehlt: sonst fände ihn niemand. */}
+      {mutedChip && !visible && (
+        <div className="pointer-events-none absolute right-0 bottom-0 pb-safe">
+          <button
+            type="button"
+            onClick={onToggleSound}
+            aria-label={soundLabel}
+            className="pointer-events-auto m-3 mb-8 grid size-9 place-items-center rounded-full bg-slate-950/45 text-white backdrop-blur-sm transition active:scale-95"
+          >
+            <VolumeX className="size-4" aria-hidden />
+          </button>
+        </div>
+      )}
+
+      {/* Die Angaben: von unten auf einem dunklen Schleier – Titel, Text,
+          Quelle, Amen und Merken, dann Zeit, Ton und die Leiste. Der
+          Schleier selbst lässt Berührungen durch (ein Tipp darauf ist ein
+          Tipp aufs Video, ein Wisch ein Wisch), nur Links und Knöpfe nehmen
+          sie an. Hell auf dunkel, auch im hellen Modus (`dark`). */}
+      <div
+        className={cn(
+          'dark pointer-events-none absolute inset-x-0 bottom-0 bg-gradient-to-t from-black/85 via-black/50 to-transparent pt-28 pb-safe text-white transition-[opacity,visibility] duration-200',
+          visible ? 'visible opacity-100' : 'invisible opacity-0',
+        )}
+      >
+        {info && (
+          <div className="mx-auto w-full max-w-xl px-4 [&_a]:pointer-events-auto [&_button]:pointer-events-auto [&_h2]:text-xl">
+            {info}
+          </div>
+        )}
+        <div className="mx-auto flex w-full max-w-xl items-center gap-3 px-4 pt-3 pb-2">
+          {duration > 0 && (
+            <span className="tabular text-xs font-medium text-white/85">
+              {impulseVideoClock(scrubTo ?? time)} / {impulseVideoClock(duration)}
+            </span>
+          )}
+          <button
+            type="button"
+            onClick={onToggleSound}
+            aria-label={soundLabel}
+            className={cn(
+              'pointer-events-auto ms-auto flex h-10 items-center gap-1.5 rounded-full bg-white/15 text-white backdrop-blur-sm transition active:scale-95',
+              muted ? 'px-3.5 text-sm font-medium' : 'w-10 justify-center',
+            )}
+          >
+            {muted ? (
+              <>
+                <VolumeX className="size-4" aria-hidden />
+                Ton an
+              </>
+            ) : (
+              <Volume2 className="size-4" aria-hidden />
+            )}
+          </button>
+        </div>
+        {duration > 0 && (
+          <div
+            aria-hidden
+            className={cn(
+              'bg-white/25 transition-[height] duration-150',
+              scrubbing ? 'h-1.5' : 'h-1',
+            )}
+          >
+            <div className="h-full bg-white" style={{ width: `${progress}%` }} />
+          </div>
+        )}
+      </div>
+    </>
+  )
+}
+
+/** Am Rechner: die Pfeiltasten links und rechts, fünf Sekunden je Druck. */
+function arrowSeek(
+  event: ReactKeyboardEvent<HTMLButtonElement>,
+  duration: number,
+  now: number,
+  seek: (seconds: number) => void,
+) {
+  if (event.key !== 'ArrowLeft' && event.key !== 'ArrowRight') return
+  if (!(duration > 0)) return
+  event.preventDefault()
+  const step = event.key === 'ArrowRight' ? 5 : -5
+  seek(Math.min(duration, Math.max(0, now + step)))
+}
+
+/**
+ * Die eigene Videodatei (`…mp4`) – mit derselben Bedienung wie die
+ * Fremdkarte, aber ganz in der Hand der App: kein fremder Rahmen, keine
+ * fremden Knöpfe, nichts über dem Bild, bis man tippt.
+ *
+ * - **Es startet sofort**, wenn die Karte im Bild ist, und hält an, sobald
+ *   man weiterwischt; beim Wiederkommen beginnt es von vorn. Bis das erste
+ *   Bild da ist, steht der dunkle Grund.
+ * - **Mit Ton, wo es geht.** Lehnt der Browser lautes Abspielen ab, läuft
+ *   es stumm, und unten rechts steht der kleine Tonknopf. Geht nicht
+ *   einmal das, steht der Startknopf in der Mitte.
+ * - **Ganz im Bild** (`object-contain`): Die eigenen Shorts sind 9:16 und
+ *   tragen Schrift bis nahe an den Rand – abschneiden hiesse, Wörter zu
+ *   verlieren. Über und unter dem Bild steht der dunkle Grund.
+ * - **Es läuft in Schleife** wie ein Short.
+ */
+function FileVideo({
+  source,
+  poster,
+  title,
+  active,
+  info,
+}: {
+  source: Extract<ImpulseVideoSource, { art: 'datei' }>
+  poster?: string | null
+  title: string
+  active: boolean
+  info?: ReactNode
+}) {
+  const videoRef = useRef<HTMLVideoElement>(null)
+  const [playing, setPlaying] = useState(false)
+  const [muted, setMuted] = useState(false)
+  const [shown, setShown] = useState(false)
+  /* Steht es, weil man angehalten hat – oder weil der Browser nicht
+     einmal stumm abspielen lässt? Dann steht der Startknopf da. */
+  const [paused, setPaused] = useState(false)
+  const [stalled, setStalled] = useState(false)
+  const [time, setTime] = useState(0)
+  const [duration, setDuration] = useState(0)
+
+  /* Läuft mit der Karte, hält mit ihr an – und beginnt beim Wiederkommen
+     von vorn, wie eine Karte, die man neu aufschlägt. */
+  useEffect(() => {
+    const element = videoRef.current
+    if (!element) return
+    if (!active) {
+      element.pause()
+      element.currentTime = 0
+      setShown(false)
+      setPaused(false)
+      setStalled(false)
+      return
+    }
+    /* Zuerst mit Ton. Ein abgelehntes Abspielen ist kein Fehler, nur
+       eine Regel des Browsers – dann eben stumm, aber laufend. */
+    element.muted = false
+    element.play()?.catch(() => {
+      element.muted = true
+      element.play()?.catch(() => setStalled(true))
+    })
+  }, [active])
+
+  const seek = (seconds: number) => {
+    const element = videoRef.current
+    if (!element) return
+    element.currentTime = seconds
+    setTime(seconds)
+  }
+
+  const scrub = useScrub({
+    duration: () => videoRef.current?.duration || 0,
+    now: () => videoRef.current?.currentTime ?? 0,
+    width: () => videoRef.current?.clientWidth ?? 0,
+    preview: (seconds) => {
+      const element = videoRef.current
+      if (!element) return
+      /* Unterwegs das nächste Schlüsselbild – schneller, wo es das gibt. */
+      if (typeof element.fastSeek === 'function') element.fastSeek(seconds)
+      else element.currentTime = seconds
+    },
+    commit: seek,
+    previewEveryMs: 80,
+  })
+
+  const halted = paused || stalled
+  const togglePlay = () => {
+    if (scrub.consumeScrubbed()) return
+    const element = videoRef.current
+    if (!element) return
+    if (element.paused) {
+      setPaused(false)
+      setStalled(false)
+      element.play()?.catch(() => setStalled(true))
+    } else {
+      element.pause()
+      setPaused(true)
+    }
+  }
+
+  /* Der Ton – und wer ihn einschaltet, will das Video auch laufen sehen. */
+  const toggleSound = () => {
+    const element = videoRef.current
+    if (!element) return
+    element.muted = !element.muted
+    if (!element.muted && element.paused && !paused) element.play()?.catch(() => {})
+  }
+
+  return (
+    <div className="absolute inset-0 bg-gradient-to-b from-[#0b1030] to-[#05060c]">
+      <video
+        ref={videoRef}
+        src={source.url}
+        poster={poster ?? undefined}
+        /* Bedient wird über die Fläche der App darüber. */
+        tabIndex={-1}
+        className="pointer-events-none size-full object-contain"
+        playsInline
+        loop
+        preload="auto"
+        aria-label={title}
+        onPlay={() => setPlaying(true)}
+        onPlaying={() => {
+          setPlaying(true)
+          setStalled(false)
+        }}
+        onPause={() => setPlaying(false)}
+        onVolumeChange={(event) => setMuted(event.currentTarget.muted)}
+        onLoadedMetadata={(event) => setDuration(event.currentTarget.duration || 0)}
+        onDurationChange={(event) => setDuration(event.currentTarget.duration || 0)}
+        onTimeUpdate={(event) => {
+          if (!scrub.isScrubbing()) setTime(event.currentTarget.currentTime)
+        }}
+      />
+      <VideoControls
+        shown={shown}
+        halted={halted || !playing}
+        center={halted}
+        mutedChip={muted && playing}
+        muted={muted}
+        time={time}
+        duration={duration}
+        scrubTo={scrub.scrubTo}
+        info={info}
+        scrubHandlers={scrub.handlers}
+        onToggleInfo={() => {
+          if (!scrub.consumeScrubbed()) setShown((value) => !value)
+        }}
+        onTogglePlay={togglePlay}
+        onToggleSound={toggleSound}
+        onKeyDown={(event) => arrowSeek(event, duration, videoRef.current?.currentTime ?? 0, seek)}
+      />
+    </div>
   )
 }
 
@@ -328,20 +741,9 @@ function EmbedFrame({
      weiter, die Fremdkarte meldet nicht jeden Augenblick. */
   const clock = useRef({ time: 0, at: 0 })
   const heard = useRef(false)
-  /* Der Daumen beim Spulen – siehe «Spulen» weiter unten. */
-  const scrub = useRef<{
-    pointer: number
-    x: number
-    y: number
-    from: number
-    width: number
-    to: number
-    active: boolean
-    sentAt: number
-  } | null>(null)
-  const [scrubTo, setScrubTo] = useState<number | null>(null)
-  /* Nach dem Spulen folgt ein Klick – der blendet nichts ein oder aus. */
-  const scrubbed = useRef(false)
+  /* Spult der Daumen gerade? (siehe «Spulen») – für die Meldungen und die
+     Leiste, die einmal aufgesetzt werden. */
+  const scrubRef = useRef<() => boolean>(() => false)
   /* Hat die Person selbst angehalten oder den Ton bedient? */
   const touched = useRef(false)
   /* Meldungen über den Ton gleich nach dem Einschalten sind noch die alten. */
@@ -507,7 +909,7 @@ function EmbedFrame({
         setDuration(report.duration)
       }
       /* Während des Spulens gilt der Daumen, nicht die Meldung. */
-      if (report.time !== undefined && !scrub.current?.active) showTime(report.time)
+      if (report.time !== undefined && !scrubRef.current()) showTime(report.time)
       if (report.ended) finish()
     }
     window.addEventListener('message', onMessage)
@@ -560,10 +962,7 @@ function EmbedFrame({
 
   /* Ein Tipp aufs Bild: einblenden oder ausblenden – sonst nichts. */
   const toggleInfo = () => {
-    if (scrubbed.current) {
-      scrubbed.current = false
-      return
-    }
+    if (scrub.consumeScrubbed()) return
     setShown((value) => !value)
   }
 
@@ -573,10 +972,7 @@ function EmbedFrame({
      dastehen. */
   const halted = paused || stalled || (started && playing === false)
   const togglePlay = () => {
-    if (scrubbed.current) {
-      scrubbed.current = false
-      return
-    }
+    if (scrub.consumeScrubbed()) return
     touched.current = true
     if (halted) {
       send('play')
@@ -596,7 +992,7 @@ function EmbedFrame({
   useEffect(() => {
     if (!playing || !(duration > 0)) return
     const timer = window.setInterval(() => {
-      if (scrub.current?.active) return
+      if (scrubRef.current()) return
       const { time: base, at } = clock.current
       setTime(Math.min(duration, base + (performance.now() - at) / 1000))
     }, 250)
@@ -605,76 +1001,22 @@ function EmbedFrame({
 
   /* ---------------- Spulen ---------------- */
 
-  /*
-   * Ein Daumen auf dem Video: Geht er zur Seite, spult er; geht er nach
-   * oben oder unten, rollt der Browser den Feed und meldet das Ende
-   * dieses Daumens (`pointercancel`). Erst ab ein paar Pixeln zur Seite
-   * wird gespult – ein Tipp, der ein wenig verrutscht, bleibt ein Tipp.
-   * Unterwegs zeigt YouTube die Stelle alle paar Augenblicke an, beim
-   * Loslassen lädt es von dort weiter.
-   */
-
-  const onPointerDown = (event: ReactPointerEvent<HTMLElement>) => {
-    scrubbed.current = false
-    if (!(durationRef.current > 0)) return
-    if (event.pointerType === 'mouse' && event.button !== 0) return
-    scrub.current = {
-      pointer: event.pointerId,
-      x: event.clientX,
-      y: event.clientY,
-      from: currentTime(),
-      width: boxRef.current?.clientWidth ?? event.currentTarget.clientWidth,
-      to: 0,
-      active: false,
-      sentAt: 0,
-    }
-  }
-
-  const onPointerMove = (event: ReactPointerEvent<HTMLElement>) => {
-    const current = scrub.current
-    if (!current || current.pointer !== event.pointerId) return
-    const dx = event.clientX - current.x
-    const dy = event.clientY - current.y
-    if (!current.active) {
-      if (Math.abs(dx) < 12 || Math.abs(dx) < Math.abs(dy)) return
-      current.active = true
-      event.currentTarget.setPointerCapture(event.pointerId)
-    }
-    current.to = impulseScrubTime(current.from, dx, current.width, durationRef.current)
-    setScrubTo(current.to)
-    const now = performance.now()
-    if (now - current.sentAt > 200) {
-      current.sentAt = now
-      seek(current.to, false)
-    }
-  }
-
-  const endScrub = (event: ReactPointerEvent<HTMLElement>) => {
-    const current = scrub.current
-    if (!current || current.pointer !== event.pointerId) return
-    scrub.current = null
-    if (!current.active) return
-    scrubbed.current = true
-    seek(current.to, true)
-    setScrubTo(null)
-    coverFor()
-  }
-
-  const scrubHandlers = {
-    onPointerDown,
-    onPointerMove,
-    onPointerUp: endScrub,
-    onPointerCancel: endScrub,
-  }
-
-  /* Am Rechner: die Pfeiltasten links und rechts, fünf Sekunden je Druck. */
-  const onKeyDown = (event: ReactKeyboardEvent<HTMLButtonElement>) => {
-    if (event.key !== 'ArrowLeft' && event.key !== 'ArrowRight') return
-    if (!(durationRef.current > 0)) return
-    event.preventDefault()
-    const step = event.key === 'ArrowRight' ? 5 : -5
-    seek(Math.min(durationRef.current, Math.max(0, currentTime() + step)), true)
-  }
+  /* Unterwegs zeigt YouTube die Stelle alle paar Augenblicke an, beim
+     Loslassen lädt es von dort weiter (`useScrub`). */
+  const scrub = useScrub({
+    duration: () => durationRef.current,
+    now: currentTime,
+    width: () => boxRef.current?.clientWidth ?? 0,
+    preview: (seconds) => seek(seconds, false),
+    commit: (seconds) => {
+      seek(seconds, true)
+      coverFor()
+    },
+    previewEveryMs: 200,
+  })
+  useEffect(() => {
+    scrubRef.current = scrub.isScrubbing
+  })
 
   /* Der Ton – und wer ihn einschaltet, will das Video auch laufen sehen. */
   const toggleSound = () => {
@@ -687,11 +1029,6 @@ function EmbedFrame({
 
   const embedUrl = impulseEmbedUrl(source, window.location.origin)
   if (!embedUrl) return null
-
-  const scrubbing = scrubTo !== null
-  const visible = shown || scrubbing
-  const progress = duration > 0 ? (Math.min(scrubTo ?? time, duration) / duration) * 100 : 0
-  const soundLabel = muted ? 'Ton einschalten' : 'Ton ausschalten'
 
   return (
     <div ref={boxRef} className="absolute inset-0 overflow-hidden bg-black">
@@ -727,122 +1064,24 @@ function EmbedFrame({
         <Poster poster={poster} />
       </div>
 
-      {/* Die Fläche über dem ganzen Video: Ein Tipp blendet ein und aus,
-          nach oben und unten rollt der Feed, zur Seite spult sie. */}
-      <button
-        type="button"
-        onClick={toggleInfo}
-        {...scrubHandlers}
-        onKeyDown={onKeyDown}
-        aria-label={shown ? 'Angaben zum Video ausblenden' : 'Angaben zum Video zeigen'}
-        aria-expanded={shown}
-        className="absolute inset-0 cursor-pointer touch-pan-y focus-visible:-outline-offset-4"
+      <VideoControls
+        shown={shown}
+        halted={halted}
+        center={halted || cover}
+        mutedChip={started && muted}
+        muted={muted}
+        time={time}
+        duration={duration}
+        scrubTo={scrub.scrubTo}
+        info={info}
+        scrubHandlers={scrub.handlers}
+        onToggleInfo={toggleInfo}
+        onTogglePlay={togglePlay}
+        onToggleSound={toggleSound}
+        onKeyDown={(event) =>
+          arrowSeek(event, durationRef.current, currentTime(), (seconds) => seek(seconds, true))
+        }
       />
-
-      {/* Wohin der Daumen spult. */}
-      {scrubbing && (
-        <span className="pointer-events-none absolute inset-0 grid place-items-center">
-          <span className="tabular rounded-full bg-slate-950/60 px-4 py-2 text-lg font-semibold text-white backdrop-blur-sm">
-            {impulseVideoClock(scrubTo)}
-            <span className="font-normal opacity-70"> / {impulseVideoClock(duration)}</span>
-          </span>
-        </span>
-      )}
-
-      {/* Der Knopf in der Mitte: anhalten und weiter. Er steht mit den
-          Angaben da, immer, wenn das Video steht, und ein paar Sekunden
-          nach dem Weiterlaufen (`cover`). Wer auf ihm wischt,
-          wischt wie auf dem Video; beim Spulen tritt er zurück, bleibt aber
-          da – sonst verlöre der Daumen, der auf ihm aufsetzte, seinen Halt. */}
-      {(shown || halted || cover) && (
-        <span className="pointer-events-none absolute inset-0 grid place-items-center">
-          <button
-            type="button"
-            onClick={togglePlay}
-            {...scrubHandlers}
-            aria-label={halted ? 'Video abspielen' : 'Video anhalten'}
-            className={cn(
-              'pointer-events-auto grid size-[4.5rem] touch-pan-y place-items-center rounded-full bg-slate-950/85 text-white shadow-lg backdrop-blur-md transition active:scale-95',
-              scrubbing && 'opacity-0',
-            )}
-          >
-            {halted ? (
-              <Play className="size-7 translate-x-0.5 fill-current" aria-hidden />
-            ) : (
-              <Pause className="size-7 fill-current" aria-hidden />
-            )}
-          </button>
-        </span>
-      )}
-
-      {/* Ohne Tipp steht nichts über dem Video – ausser dem Ton, wenn er
-          fehlt: sonst fände ihn niemand. Nicht, solange es noch lädt. */}
-      {started && !visible && muted && (
-        <div className="pointer-events-none absolute right-0 bottom-0 pb-safe">
-          <button
-            type="button"
-            onClick={toggleSound}
-            aria-label={soundLabel}
-            className="pointer-events-auto m-3 mb-8 grid size-9 place-items-center rounded-full bg-slate-950/45 text-white backdrop-blur-sm transition active:scale-95"
-          >
-            <VolumeX className="size-4" aria-hidden />
-          </button>
-        </div>
-      )}
-
-      {/* Die Angaben: von unten auf einem dunklen Schleier – Titel, Text,
-          Quelle, Amen und Merken, dann Zeit, Ton und die Leiste. Der
-          Schleier selbst lässt Berührungen durch (ein Tipp darauf ist ein
-          Tipp aufs Video, ein Wisch ein Wisch), nur Links und Knöpfe nehmen
-          sie an. Hell auf dunkel, auch im hellen Modus (`dark`). */}
-      <div
-        className={cn(
-          'dark pointer-events-none absolute inset-x-0 bottom-0 bg-gradient-to-t from-black/85 via-black/50 to-transparent pt-28 pb-safe text-white transition-[opacity,visibility] duration-200',
-          visible ? 'visible opacity-100' : 'invisible opacity-0',
-        )}
-      >
-        {info && (
-          <div className="mx-auto w-full max-w-xl px-4 [&_a]:pointer-events-auto [&_button]:pointer-events-auto [&_h2]:text-xl">
-            {info}
-          </div>
-        )}
-        <div className="mx-auto flex w-full max-w-xl items-center gap-3 px-4 pt-3 pb-2">
-          {duration > 0 && (
-            <span className="tabular text-xs font-medium text-white/85">
-              {impulseVideoClock(scrubTo ?? time)} / {impulseVideoClock(duration)}
-            </span>
-          )}
-          <button
-            type="button"
-            onClick={toggleSound}
-            aria-label={soundLabel}
-            className={cn(
-              'pointer-events-auto ms-auto flex h-10 items-center gap-1.5 rounded-full bg-white/15 text-white backdrop-blur-sm transition active:scale-95',
-              muted ? 'px-3.5 text-sm font-medium' : 'w-10 justify-center',
-            )}
-          >
-            {muted ? (
-              <>
-                <VolumeX className="size-4" aria-hidden />
-                Ton an
-              </>
-            ) : (
-              <Volume2 className="size-4" aria-hidden />
-            )}
-          </button>
-        </div>
-        {duration > 0 && (
-          <div
-            aria-hidden
-            className={cn(
-              'bg-white/25 transition-[height] duration-150',
-              scrubbing ? 'h-1.5' : 'h-1',
-            )}
-          >
-            <div className="h-full bg-white" style={{ width: `${progress}%` }} />
-          </div>
-        )}
-      </div>
     </div>
   )
 }
