@@ -57,12 +57,13 @@ export function ImpulseEditorPreview({
         const image = raw.image
         const media: ImpulseDeckCard['media'] =
           raw.kind === 'video' && videoSource
-            ? ({ active }) => (
+            ? ({ active, info }) => (
                 <ImpulseVideoPlayer
                   source={videoSource}
                   poster={image?.url ?? null}
                   title={raw.title}
                   active={active}
+                  info={info}
                 />
               )
             : image?.url
