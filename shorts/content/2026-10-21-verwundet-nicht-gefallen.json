@@ -1,0 +1,91 @@
+{
+  "id": "2026-10-21-verwundet-nicht-gefallen",
+  "title": "Verwundet, nicht gefallen",
+  "date": "2026-10-21",
+  "series": "Für eine starke Jugend · Oktober",
+  "brand": {
+    "name": "AntiDoom",
+    "label": "Mittwoch, 21.10."
+  },
+  "voice": {
+    "provider": "google",
+    "languageCode": "de-DE",
+    "name": "de-DE-Chirp3-HD-Charon",
+    "speakingRate": 1.0
+  },
+  "pronunciations": [
+    { "phrase": "Helaman", "ipa": "ˈheːlaman" }
+  ],
+  "music": {
+    "src": "music/pad-dawn.mp3",
+    "volume": 0.3,
+    "duckTo": 0.09
+  },
+  "scenes": [
+    {
+      "id": "hook",
+      "type": "bigNumber",
+      "sky": 0,
+      "number": 2060,
+      "label": "junge Krieger",
+      "captionSkipWords": 3,
+      "narration": "Zweitausendsechzig junge Krieger. [pause short] Eine harte Schlacht. [pause short] Und keiner kommt ohne Wunden davon."
+    },
+    {
+      "id": "schlacht",
+      "type": "illustration",
+      "motif": "horizon",
+      "cue": "Doch die jungen Krieger",
+      "sky": 0.15,
+      "ref": "Alma 57:19–21",
+      "narration": "Das feindliche Heer ist viel grösser. [pause short] Doch die jungen Krieger tun genau, was man ihnen sagt."
+    },
+    {
+      "id": "genau",
+      "type": "kinetic",
+      "sky": 0.3,
+      "ref": "Alma 57:21",
+      "lines": ["Nicht ungefähr.", "Genau.", "Wort für Wort."],
+      "narration": "Nicht ungefähr. [pause short] Genau. [pause short] Jeden Befehl, Wort für Wort."
+    },
+    {
+      "id": "gezaehlt",
+      "type": "dotField",
+      "sky": 0.5,
+      "count": 2060,
+      "ref": "Alma 57:25",
+      "completeAt": "Jeder einzelne ist verwundet",
+      "titleAt": "Aber nicht einer ist gefallen",
+      "title": "Nicht gefallen",
+      "narration": "Nach der Schlacht zählt Helaman seine Söhne. [pause short] Jeder einzelne ist verwundet. [pause long] Aber nicht einer ist gefallen."
+    },
+    {
+      "id": "warum",
+      "type": "kinetic",
+      "sky": 0.65,
+      "ref": "Alma 57:26–27",
+      "lines": ["Gottes Macht.", "Ihr Glaube."],
+      "narration": "Wie war das möglich? [pause short] Helaman sagt: Es war Gottes Macht. [pause short] Und ihr Glaube."
+    },
+    {
+      "id": "heute",
+      "type": "kinetic",
+      "sky": 0.85,
+      "lines": ["Hinfallen.", "Umkehren.", "Aufstehen."],
+      "narration": "Gott sucht keine perfekten Menschen. [pause short] Er sucht treue. [pause short] Hinfallen. Umkehren. Aufstehen."
+    },
+    {
+      "id": "frage",
+      "type": "cta",
+      "sky": 1,
+      "question": "Wo willst du diese Woche wieder aufstehen?",
+      "challenge": {
+        "label": "Challenge der Woche",
+        "text": "Jeden Tag eine Aufgabe erledigen, ohne dass dich jemand erinnert."
+      },
+      "footer": "Alma 57:25–27 · Mittwoch, 21. Oktober",
+      "holdAfterSec": 3.5,
+      "narration": "Wo willst du diese Woche wieder aufstehen?"
+    }
+  ]
+}

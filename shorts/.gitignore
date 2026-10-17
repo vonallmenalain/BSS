@@ -1,0 +1,6 @@
+node_modules/
+out/
+.env
+*.part
+# Generierte Vertonung (Cache) – kann jederzeit mit `npm run tts` neu erzeugt werden
+public/episodes/

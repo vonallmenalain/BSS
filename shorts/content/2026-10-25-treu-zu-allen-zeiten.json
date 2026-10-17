@@ -1,0 +1,97 @@
+{
+  "id": "2026-10-25-treu-zu-allen-zeiten",
+  "title": "Treu zu allen Zeiten",
+  "date": "2026-10-25",
+  "series": "Für eine starke Jugend · Oktober",
+  "brand": {
+    "name": "AntiDoom",
+    "label": "Sonntag, 25.10."
+  },
+  "voice": {
+    "provider": "google",
+    "languageCode": "de-DE",
+    "name": "de-DE-Chirp3-HD-Charon",
+    "speakingRate": 1.0
+  },
+  "pronunciations": [
+    { "phrase": "Helaman", "ipa": "ˈheːlaman" }
+  ],
+  "music": {
+    "src": "music/pad-dawn.mp3",
+    "volume": 0.3,
+    "duckTo": 0.09
+  },
+  "scenes": [
+    {
+      "id": "hook",
+      "type": "bigNumber",
+      "sky": 0,
+      "number": 2000,
+      "label": "junge Männer",
+      "captionSkipWords": 3,
+      "narration": "Zweitausend junge Männer. [pause short] Die meisten so alt wie du. [pause short] Und keiner von ihnen hatte je gekämpft."
+    },
+    {
+      "id": "bund",
+      "type": "illustration",
+      "motif": "swords",
+      "sky": 0.1,
+      "ref": "Alma 53:13–19",
+      "narration": "Ihre Väter hatten Gott versprochen, nie mehr zu kämpfen. [pause short] Also traten die Söhne an ihre Stelle."
+    },
+    {
+      "id": "heer",
+      "type": "illustration",
+      "motif": "horizon",
+      "sky": 0.2,
+      "ref": "Alma 56:43–44",
+      "narration": "Dann stehen sie einem riesigen Heer gegenüber. [pause short] Helaman fragt: Wollt ihr kämpfen?"
+    },
+    {
+      "id": "antwort",
+      "type": "quote",
+      "sky": 0.4,
+      "ref": "Alma 56:46",
+      "quote": "Vater, siehe, unser Gott ist mit uns, und er wird nicht zulassen, dass wir fallen.",
+      "narration": "Ihre Antwort: [pause short] Vater, siehe, unser Gott ist mit uns, und er wird nicht zulassen, dass wir fallen."
+    },
+    {
+      "id": "muetter",
+      "type": "quote",
+      "sky": 0.55,
+      "ref": "Alma 56:47–48",
+      "quote": "Wir zweifeln nicht; unsere Mütter haben es gewusst.",
+      "narration": "Woher dieser Mut? [pause short] Ihre Mütter hatten sie gelehrt: Wenn ihr nicht zweifelt, wird Gott euch befreien. [pause long] Und sie sagten: Wir zweifeln nicht; unsere Mütter haben es gewusst."
+    },
+    {
+      "id": "gezaehlt",
+      "type": "dotField",
+      "sky": 0.75,
+      "ref": "Alma 53:20 · 56:55–56",
+      "completeAt": "Nicht einer",
+      "titleAt": "Sie waren treu",
+      "title": "Treu zu allen Zeiten",
+      "narration": "Nach dem Kampf zählt Helaman seine Söhne. [pause short] Nicht einer ist gefallen. [pause long] Sie waren treu zu allen Zeiten."
+    },
+    {
+      "id": "heute",
+      "type": "kinetic",
+      "sky": 0.9,
+      "lines": ["Mit deinem Körper.", "Mit deinem Handy.", "Mit deinen Worten."],
+      "narration": "Treu sein heisst nicht, keine Angst zu haben. [pause short] Es heisst, das Richtige zu tun, auch wenn keiner zuschaut. [pause short] Mit deinem Körper. Mit deinem Handy. Mit deinen Worten."
+    },
+    {
+      "id": "frage",
+      "type": "cta",
+      "sky": 1,
+      "question": "Wo brauchst du diese Woche diesen Mut?",
+      "challenge": {
+        "label": "Challenge der Woche",
+        "text": "Wähle eine Sache, in der du treu bleibst. Jeden Tag."
+      },
+      "footer": "Alma 53:20 · Sonntag, 25. Oktober",
+      "holdAfterSec": 3.5,
+      "narration": "Wo brauchst du diese Woche diesen Mut?"
+    }
+  ]
+}

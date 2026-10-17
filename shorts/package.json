@@ -1,0 +1,38 @@
+{
+  "name": "antidoom-shorts",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Datengetriebene 9:16-Kurzvideos für die AntiDoom-App: Episode-JSON → Google TTS → Remotion → MP4",
+  "type": "module",
+  "engines": {
+    "node": ">=20"
+  },
+  "scripts": {
+    "studio": "remotion studio src/index.ts",
+    "tts": "tsx scripts/tts.ts",
+    "music": "tsx scripts/make-pad.ts",
+    "render": "tsx scripts/render.ts",
+    "still": "tsx scripts/render.ts --still",
+    "typecheck": "tsc --noEmit"
+  },
+  "dependencies": {
+    "@fontsource/anton": "^5.1.0",
+    "@fontsource/cormorant-garamond": "^5.1.0",
+    "@fontsource/inter": "^5.1.0",
+    "@remotion/cli": "4.0.536",
+    "@remotion/fonts": "4.0.536",
+    "@remotion/renderer": "4.0.536",
+    "@remotion/bundler": "4.0.536",
+    "@remotion/transitions": "4.0.536",
+    "react": "^19.0.0",
+    "react-dom": "^19.0.0",
+    "remotion": "4.0.536",
+    "zod": "^3.23.8"
+  },
+  "devDependencies": {
+    "@types/node": "^22.10.0",
+    "@types/react": "^19.0.0",
+    "tsx": "^4.19.0",
+    "typescript": "^5.7.0"
+  }
+}
