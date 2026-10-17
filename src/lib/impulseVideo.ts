@@ -16,7 +16,9 @@
  * (ein fremder Rahmen mit eigenen Knöpfen), aber der Alltag: Vieles, was
  * die AP's teilen wollen, liegt dort. YouTube wird über
  * `youtube-nocookie.com` geladen, damit die App nicht mehr über ihre
- * Leute verrät als nötig.
+ * Leute verrät als nötig. Ein **YouTube-Short** (`/shorts/…`) ist schon
+ * hochkant und passt genau auf den Bildschirm des Feeds; er läuft in
+ * Schleife wie auf YouTube, statt am Ende fremde Vorschläge zu zeigen.
  *
  * **Seite** ist der Rest – etwa eine Videoseite der Kirche selbst. Die
  * lässt sich nicht einbetten (der Server verbietet es), darum wird daraus
@@ -26,7 +28,8 @@
 export type ImpulseVideoSource =
   /** Eine Videodatei – spielt in der App selbst. */
   | { art: 'datei'; url: string }
-  | { art: 'youtube'; id: string; start: number }
+  /** `short`: ein YouTube-Short – hochkant, kurz, läuft in Schleife. */
+  | { art: 'youtube'; id: string; start: number; short: boolean }
   | { art: 'vimeo'; id: string }
   /** Nicht einbettbar – die Karte führt hinaus. */
   | { art: 'seite'; url: string }
@@ -69,12 +72,13 @@ export function impulseVideoSource(raw: string | null | undefined): ImpulseVideo
 
   if (host === 'youtu.be') {
     const id = path.slice(1).split('/')[0]
-    return id ? { art: 'youtube', id, start: startSeconds(url) } : null
+    return id ? { art: 'youtube', id, start: startSeconds(url), short: false } : null
   }
   if (host === 'youtube.com' || host === 'm.youtube.com' || host === 'youtube-nocookie.com') {
     const id =
       url.searchParams.get('v') ?? /^\/(?:embed|shorts|live|v)\/([^/?#]+)/.exec(path)?.[1] ?? null
-    return id ? { art: 'youtube', id, start: startSeconds(url) } : null
+    const short = path.startsWith('/shorts/')
+    return id ? { art: 'youtube', id, start: startSeconds(url), short } : null
   }
   if (host === 'vimeo.com' || host === 'player.vimeo.com') {
     const id = /(\d{6,})/.exec(path)?.[1] ?? null
@@ -95,6 +99,10 @@ export function impulseVideoSource(raw: string | null | undefined): ImpulseVideo
  *
  * Untertitel bleiben aus (`cc_load_policy=0`, `texttrack=false`): Sie
  * legen sich sonst über den Text der Karte.
+ *
+ * Ein Short beginnt am Ende von vorn – so kennt man ihn. YouTube
+ * wiederholt ein eingebettetes Video nur als Wiedergabeliste, darum
+ * steht das Video selbst als einzige Nummer darin (`playlist`).
  */
 export function impulseEmbedUrl(source: ImpulseVideoSource): string | null {
   if (source.art === 'youtube') {
@@ -107,6 +115,10 @@ export function impulseEmbedUrl(source: ImpulseVideoSource): string | null {
       cc_load_policy: '0',
     })
     if (source.start > 0) params.set('start', String(source.start))
+    if (source.short) {
+      params.set('loop', '1')
+      params.set('playlist', source.id)
+    }
     return `https://www.youtube-nocookie.com/embed/${encodeURIComponent(source.id)}?${params}`
   }
   if (source.art === 'vimeo') {

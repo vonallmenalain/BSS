@@ -160,6 +160,14 @@ export interface PackCard {
   quiz?: ImpulseQuiz
   poll?: ImpulsePoll
   puzzle?: ImpulsePuzzle
+  /** Das Video der Video-Karte – im Paket ein YouTube-Short der Kirche (`short`). */
+  videoUrl?: string
+  /**
+   * Nachgereicht: Die Karte kam ins Paket, als es schon eingespielt war.
+   * Sie schiebt sich zwischen ihre Nachbarn, ohne deren Platz zu
+   * verschieben (siehe `deckOrders`).
+   */
+  late?: true
 }
 
 export interface PackTheme extends Omit<PackCard, 'key' | 'kind'> {
@@ -1824,8 +1832,8 @@ export interface PackPlan {
   crest: ImpulseCrest | null
   game: ImpulseGameId | null
   image: null
-  videoUrl: null
-  videoTextPage: null
+  videoUrl: string | null
+  videoTextPage: boolean | null
   contributor: null
 }
 
@@ -1863,20 +1871,48 @@ function plan(
     crest: card.crest ?? null,
     game: card.game ?? null,
     image: null,
-    videoUrl: null,
-    videoTextPage: null,
+    videoUrl: kind === 'video' ? (card.videoUrl ?? null) : null,
+    /* Ein Short hat den Bildschirm für sich – ein Wisch, kein Text darüber. */
+    videoTextPage: kind === 'video' ? false : null,
     contributor: null,
   }
 }
 
+/**
+ * Die Plätze der Karten im Feed, wie das Paket die Woche legt.
+ *
+ * Jede Karte zählt einen Platz weiter – ausser einer nachgereichten
+ * (`late`): Als sie dazukam, lag das Paket schon in der Datenbank, und
+ * dort tragen ihre Nachbarn längst ihre Nummern. Sie nimmt darum keinen
+ * eigenen Platz, sondern einen Bruchteil hinter ihrem Vorgänger (3 wird
+ * 3,5; eine zweite dahinter 3,75). So steht sie im frischen wie im schon
+ * eingespielten Paket an derselben Stelle, und keine Karte rückt.
+ */
+export function deckOrders(deck: readonly Pick<PackCard, 'late'>[]): number[] {
+  let place = 0
+  let gap = 1
+  return deck.map((card) => {
+    if (card.late) {
+      gap /= 2
+      return place + 1 - gap
+    }
+    place += 1
+    gap = 1
+    return place
+  })
+}
+
 /** Alle Inhalte einer Woche, wie das Paket sie anlegt – das Wochenthema zuerst, das Minispiel zuletzt. */
 export function packWeekPlans(week: PackWeek): PackPlan[] {
+  const orders = deckOrders(week.deck)
+  /* Das Minispiel steht hinter der letzten Karte, die einen eigenen Platz hat. */
+  const gameOrder = week.deck.filter((card) => !card.late).length + 1
   return [
     plan(week.week, 'impuls', 'impuls', week.theme, 0),
     plan(week.week, 'wochenziel', 'wochenziel', week.goal, null),
     plan(week.week, 'tageschallenge', 'tageschallenge', week.challenge, null),
-    ...week.deck.map((card, index) => plan(week.week, card.key, card.kind, card, index + 1)),
-    ...(week.game ? [plan(week.week, 'spiel', 'spiel', week.game, week.deck.length + 1)] : []),
+    ...week.deck.map((card, index) => plan(week.week, card.key, card.kind, card, orders[index])),
+    ...(week.game ? [plan(week.week, 'spiel', 'spiel', week.game, gameOrder)] : []),
   ]
 }
 

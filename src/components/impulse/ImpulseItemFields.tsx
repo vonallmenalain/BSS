@@ -907,16 +907,18 @@ export function ImpulseItemFields({
 function videoHint(raw: string): string {
   const source = impulseVideoSource(raw)
   if (!raw.trim()) {
-    return 'YouTube, Vimeo – oder der direkte Link auf die Videodatei (…mp4), etwa aus der Mediathek der Kirche.'
+    return 'YouTube (auch ein Short), Vimeo – oder der direkte Link auf die Videodatei (…mp4), etwa aus der Mediathek der Kirche.'
   }
   if (!source) return 'Das ist noch keine gültige Adresse.'
   switch (source.art) {
     case 'datei':
       return 'Videodatei – läuft in der App, im Vollbild und startet beim Wischen von selbst.'
     case 'youtube':
-      return 'YouTube – wird in der Karte eingebettet und startet stumm beim Wischen.'
+      return source.short
+        ? 'YouTube-Short – füllt hochkant den Bildschirm, startet mit Ton beim Wischen und läuft in Schleife.'
+        : 'YouTube – wird in der Karte eingebettet und startet mit Ton beim Wischen.'
     case 'vimeo':
-      return 'Vimeo – wird in der Karte eingebettet und startet stumm beim Wischen.'
+      return 'Vimeo – wird in der Karte eingebettet und startet mit Ton beim Wischen.'
     default:
       return `${impulseVideoHost(source)} lässt sich nicht einbetten: Die Karte zeigt einen Knopf, der das Video draussen öffnet. Besser läuft ein YouTube-Link oder der direkte Videolink (…mp4).`
   }
