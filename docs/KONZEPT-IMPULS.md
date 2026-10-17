@@ -1701,7 +1701,7 @@ paar Sekunden der Vorhang auf, und in der Mitte steht der Startknopf.
 **Was offen bleibt.** Ob YouTube am Telefon trotz `controls=0` beim Start
 kurz ein eigenes Zeichen über das Bild legt, lässt sich nur am Gerät
 prüfen. Wegtippen liesse es sich nicht mehr – ein Tipp gehört jetzt der
-App –, es verschwindet aber von selbst.
+App –, es verschwindet aber von selbst. (Es tut es – siehe 13.14.)
 
 Im Browser geprüft mit einer Attrappe von YouTube, die jede Berührung
 schluckt: Tipps oben, in der Mitte, unten und am Rand blenden ein und
@@ -1712,3 +1712,44 @@ Wisch nach oben mitten im Bild bringt die nächste Karte; am Ende springt
 der Short an den Anfang und läuft weiter; der Vorhang deckt das Laden zu
 und geht auf, sobald sich das Bild bewegt. Mit der Kennung eines iPhones
 startet das Video stumm; bleibt es stehen, erscheint der Startknopf.
+
+### 13.14 Verdeckt anlaufen – kein Knopf von YouTube beim Start
+
+Am Telefon zeigte sich: Beim Anlaufen legt YouTube trotz `controls=0`
+meistens seinen Knopf zum Anhalten mitten ins Bild und nimmt ihn erst nach
+ein paar Sekunden weg. Abschalten lässt er sich nicht, wegtippen auch
+nicht mehr. Also sieht man ihn gar nicht erst:
+
+- **Das Video läuft verdeckt an.** Der Vorhang (das Vorschaubild; ohne
+  eigenes Bild das von YouTube, `impulseVideoThumbnail`) bleibt liegen,
+  während das Video darunter stumm läuft – so lange, bis YouTube seinen
+  Knopf sicher weggenommen hat (gut drei Sekunden ab dem Moment, in dem
+  sich das Bild bewegt, `WARM_UP_MS`). Dann springt es an den Anfang
+  zurück, der Ton kommt dazu, und der Vorhang geht auf: Das Video beginnt
+  bei der ersten Sekunde, ohne Knopf. Der Preis: Bis das Bild kommt,
+  dauert es ein paar Sekunden länger.
+- **Stumm, damit man nichts doppelt hört.** Den Ton nimmt die Karte schon
+  mit der Anmeldung bei YouTube weg und gibt ihn nach dem Anlaufen zurück;
+  als «stumm» zeigt sie das Video in der Zeit nicht. Bleibt das Video
+  stehen, sobald der Ton zurückkommt (der Browser lässt ihn nicht zu),
+  läuft es stumm weiter, und unten rechts steht «Ton an».
+- **Wer eingreift, beendet das Anlaufen** – mit dem Knopf in der Mitte,
+  dem Ton oder dem Spulen: Dann geht der Vorhang sofort auf.
+- **Der Short beginnt knapp vor dem Ende von vorn** (eine halbe Sekunde,
+  `impulseLoopDue`), solange er noch läuft. Erst ein Video, das steht und
+  wieder anläuft, bringt den Knopf von YouTube zurück; ein Sprung im
+  laufenden Video – so die Annahme – nicht. Geht ein Short doch einmal zu
+  Ende, läuft er verdeckt von vorn an wie beim Start.
+- **Nach dem Weiterlaufen** bleibt der eigene Knopf in der Mitte gut drei
+  Sekunden stehen (`COVER_MS`) – auch bei ausgeblendeten Angaben und nach
+  dem Spulen. Er liegt genau über dem von YouTube und ist grösser; wenn er
+  verschwindet, ist der darunter schon weg.
+
+Im Browser geprüft mit einer Attrappe von YouTube: Gleich bei der Anmeldung
+geht «stumm» hinüber; der Vorhang bleibt, bis das Bild gut drei Sekunden
+läuft, dann folgen der Sprung an den Anfang und der Ton, und der Vorhang
+geht auf; kein «Ton an» in der Zeit dazwischen. Nach dem Weiterlaufen steht
+der eigene Knopf gut drei Sekunden und verschwindet dann. Eine halbe
+Sekunde vor dem Ende springt der Short an den Anfang, ohne dass der Vorhang
+fällt. Ob der Knopf von YouTube so wirklich verborgen bleibt, zeigt erst das
+Telefon.
