@@ -1665,10 +1665,14 @@ Vollbild, und läuft sofort.
   seines Rahmens. Der Rahmen ragt darum über und unter der Karte um einen
   Saum von 160 Pixeln hinaus, den die Karte abschneidet
   (`impulseEmbedBox`, `EMBED_CHROME_BAND`); das Video selbst steht in der
-  Mitte und bleibt ganz. Bis es läuft, deckt ein Vorhang (das
-  Vorschaubild oder Schwarz) den Rahmen zu – sonst blitzten Titel und
-  Startknopf kurz auf. Meldet das Video gar nichts, geht der Vorhang nach
-  drei Sekunden trotzdem auf.
+  Mitte und bleibt ganz. Bis sich das Bild bewegt, deckt ein Vorhang (das
+  Vorschaubild oder ein dunkler Grund) den Rahmen zu – sonst blitzten
+  Titel und Startknopf kurz auf. Massgebend ist, dass das Video wirklich
+  spielt (YouTube-Zustand 1, `running`), nicht bloss lädt (Zustand 3):
+  Solange es lädt, zeigt YouTube noch sein Vorschaubild mit dem grossen
+  Startknopf, und genau den sah man am iPhone ein, zwei Sekunden lang.
+  Der Vorhang geht eine Viertelsekunde danach auf. Meldet das Video gar
+  nichts, geht er nach drei Sekunden trotzdem auf.
 - **Vollbild.** Ein Short (9:16) ist auf einem schlanken Telefon etwas
   schmaler als der Bildschirm; er wird so weit vergrössert, dass keine
   schwarzen Balken bleiben, und an den Seiten fehlt ein schmaler Streifen.
@@ -1677,6 +1681,11 @@ Vollbild, und läuft sofort.
 - **Während es läuft, steht nichts darüber** – ausser einem kleinen
   Lautsprecher unten rechts, solange es stumm läuft. Sonst fände niemand
   den Ton.
+- **Ein Tipp beim Start** blendet nichts ein, er stösst das Video nur an
+  (`playVideo`); der Vorhang bleibt, bis sich das Bild bewegt.
+- **Das Startzeichen** steht nur da, wenn man angehalten hat – oder wenn
+  das Video hängen bleibt: wenn es dreieinhalb Sekunden lang steht, ohne
+  dass jemand angehalten hat. Nie bloss, weil es gerade lädt.
 - **Der erste Tipp zeigt, der zweite hält an.** Der erste Tipp holt von
   unten auf einem dunklen Schleier hervor, was zur Karte gehört: Titel,
   Text, Quelle, Amen und Merken – dieselbe Karte, die sonst als zweiter
