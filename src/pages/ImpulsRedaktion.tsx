@@ -219,6 +219,7 @@ export function ImpulsRedaktion() {
   const legacyComments = commentsState.data.filter((comment) => legacyIds.has(comment.itemId))
   const packWeeksAhead = PACK_WEEKS.filter((week) => week.week >= todayKey)
   const packGames = packWeeksAhead.flatMap((week) => (week.game ? [`«${week.game.title}»`] : []))
+  const packShorts = packWeeksAhead.some((week) => week.deck.some((card) => card.kind === 'video'))
 
   const seedPack = async () => {
     if (seeding || packPlans.length === 0) return
@@ -458,7 +459,8 @@ export function ImpulsRedaktion() {
                 .join(' · ')}
               . Je Woche ein Wochenthema mit eigenem Wappen, dazu Umfragen, Quizfragen, ein
               Vers-Puzzle, «Fakt oder Mythos?», «Was würdest du tun?», offene Fragen, Feed-Karten,
-              Wochenziel, Tages-Challenge und Teilen-Aufgabe
+              {packShorts && ' YouTube-Shorts der Kirche,'} Wochenziel, Tages-Challenge und
+              Teilen-Aufgabe
               {packGames.length > 0 &&
                 ` – und als letzte Karte ${packGames.length === 1 ? 'das Minispiel' : 'die Minispiele'} ${joinNames(packGames)}`}
               . Alles «bereit». Vergangene Wochen bleiben weg; eingespielt wird, was noch fehlt (

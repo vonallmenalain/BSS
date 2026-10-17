@@ -78,10 +78,12 @@ test('scriptureLink: jede Schriftstelle des Themenpakets bekommt ihren Link', ()
     const source = plan.source
     if (!source) continue
     // Jede Quelle des Pakets trägt einen Link – auch die ausserhalb der Schriften.
-    assert.ok(
-      source.url.startsWith('https://www.churchofjesuschrist.org/'),
-      `${plan.id}: «${source.label}» ohne Link`,
-    )
+    // Ein Short vom Kanal der Kirche verweist auf sich selbst.
+    const home =
+      plan.kind === 'video'
+        ? 'https://www.youtube.com/shorts/'
+        : 'https://www.churchofjesuschrist.org/'
+    assert.ok(source.url.startsWith(home), `${plan.id}: «${source.label}» ohne Link`)
     if (!source.url.startsWith(BASE)) continue
     assert.equal(scriptureLink(source.label), source.url, `${plan.id}: «${source.label}»`)
     covered += 1

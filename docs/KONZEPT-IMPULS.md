@@ -1547,3 +1547,43 @@ Redaktion steht bei einer Umfrage, wie viele Antworten hinzugekommen sind
 ausprobieren; sie lebt nur im Fenster. In der Vorschau der Woche landet sie
 im Arbeitsspeicher wie jede andere Stimme; moderiert wird dort nicht – die
 gespielte Person ist keine Redaktion.
+
+### 13.11 YouTube-Shorts der Kirche im Feed
+
+Die Form des Feeds kommt von Reels und Shorts – da liegt es nahe, auch
+echte Shorts zu zeigen. Sie stammen **nur von den offiziellen Kanälen
+der Kirche** (deutsch: `@kirchejesuchristideutsch`, englisch:
+`@churchofjesuschrist`) und laufen als gewöhnliche Video-Karte (siehe
+5.5b): ein Bildschirm, ein Wisch, das Video füllt ihn hochkant.
+
+- **Erkannt am Link.** Ein Link auf `youtube.com/shorts/…` – auch der
+  Teilen-Link der YouTube-App mit `?si=…` – ist ein Short
+  (`impulseVideoSource`, `short`). Er läuft wie auf YouTube in Schleife,
+  statt am Ende Vorschläge zu zeigen (`loop` samt `playlist`, weil YouTube
+  nur eine Wiedergabeliste wiederholt). In der Redaktion genügt es, den
+  Link in eine Video-Karte zu setzen; der Hinweis darunter sagt
+  «YouTube-Short».
+- **Im Themenpaket.** Die Woche zu Helamans jungen Kriegern (19.–25.
+  Oktober) trägt sechs Shorts vom englischen Kanal, verteilt zwischen
+  die Karten, zu denen sie passen: Präsident Eyring zum Glauben als Fels
+  (nach der Umfrage zur Treue), Elder Renlund zum täglichen Erinnern
+  (nach der Skala zum Gebet), «Gott hat Grosses mit dir vor» (nach «Ich
+  bin ein geliebter Sohn Gottes»), Schwester Porter zum Licht in der
+  Dunkelheit (nach dem «Was würdest du tun?» mit den Freunden),
+  Präsident Nelson zur Umkehr (nach «Alle verwundet – keiner gefallen»)
+  und «Wo hast du Gottes Hand gesehen?» vor der Frage der Woche. Vom
+  deutschen Kanal liess sich kein Short finden und prüfen; die Redaktion
+  kann jederzeit einen ergänzen.
+- **Nachgereicht, ohne dass etwas rückt.** Das Paket lag schon in der
+  Datenbank, die Karten der Woche auf den Plätzen 1 bis 13. Die Shorts
+  sind darum als nachgereicht markiert (`late`) und bekommen einen
+  Zwischenplatz hinter ihrer Vorgängerkarte – 1,5, 4,5 … (`deckOrders`).
+  So legt das Nachholen im Kasten «Themenpaket» denselben Feed wie ein
+  frisch eingespieltes Paket, und auch das Minispiel bleibt auf seinem
+  Platz. Das Feld «Platz im Feed» nimmt solche Zwischenplätze an.
+- **Gezählt** wird wie bei jeder Video-Karte: angeschaut, also einen
+  Moment im Bild.
+
+`tests/impulse-video.test.ts` hält die Erkennung und die Schleife fest,
+`tests/impulse-pack.test.ts`, dass jeder Short des Pakets ein Short der
+Kirche ist und dass das Nachholen keine Karte verschiebt.

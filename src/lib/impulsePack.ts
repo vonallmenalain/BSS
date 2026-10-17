@@ -38,6 +38,11 @@ import type {
  * (`order`, über alle Arten hinweg). Jede Woche trägt ihr eigenes
  * Wappen, das sich mit jeder geschafften Karte aufbaut.
  *
+ * **Shorts der Kirche.** Die Woche zu Helamans jungen Kriegern trägt
+ * dazu YouTube-Shorts vom offiziellen Kanal der Kirche – nachgereicht
+ * (`late`), weil das Paket schon eingespielt war: Sie schieben sich
+ * zwischen die Karten, ohne deren Platz zu verschieben (`deckOrders`).
+ *
  * **Alles aus offiziellem Material der Kirche.** Die Grundlage sind die
  * Lektionen im Heft «Für eine starke Jugend», der Wegweiser «Für eine
  * starke Jugend», die heiligen Schriften und die Evangeliumsthemen. Was
@@ -143,6 +148,17 @@ function puzzle(text: string, explanation: string): ImpulsePuzzle {
   return { text, explanation }
 }
 
+/**
+ * Ein YouTube-Short vom offiziellen Kanal der Kirche (@churchofjesuschrist,
+ * auf Englisch) – als Video und als Quelle. Der Link führt auf den Short
+ * selbst; `impulseVideoSource` erkennt ihn und lässt ihn hochkant und in
+ * Schleife laufen.
+ */
+function short(id: string): Pick<PackCard, 'videoUrl' | 'source'> {
+  const url = `https://www.youtube.com/shorts/${id}`
+  return { videoUrl: url, source: source('YouTube-Short der Kirche (Englisch)', url) }
+}
+
 /* ------------------------------------------------------------------ */
 /* Die Wochen                                                          */
 /* ------------------------------------------------------------------ */
@@ -160,6 +176,14 @@ export interface PackCard {
   quiz?: ImpulseQuiz
   poll?: ImpulsePoll
   puzzle?: ImpulsePuzzle
+  /** Das Video der Video-Karte – im Paket ein YouTube-Short der Kirche (`short`). */
+  videoUrl?: string
+  /**
+   * Nachgereicht: Die Karte kam ins Paket, als es schon eingespielt war.
+   * Sie schiebt sich zwischen ihre Nachbarn, ohne deren Platz zu
+   * verschieben (siehe `deckOrders`).
+   */
+  late?: true
 }
 
 export interface PackTheme extends Omit<PackCard, 'key' | 'kind'> {
@@ -777,6 +801,17 @@ export const PACK_WEEKS: PackWeek[] = [
         source: verse('Alma 53:20'),
       },
       {
+        key: 'short-1',
+        kind: 'video',
+        late: true,
+        emoji: '🪨',
+        title: 'Short: Fest auf dem Fels',
+        body:
+          'Präsident Henry B. Eyring: Wer auf dem Fels des Glaubens an Jesus Christus steht, ' +
+          'bleibt standhaft – auch wenn es stürmt. Treu zu allen Zeiten fängt genau dort an.',
+        ...short('wwTlEhh8d7M'),
+      },
+      {
         key: 'feed-1',
         kind: 'feed',
         emoji: '🗡️',
@@ -825,6 +860,18 @@ export const PACK_WEEKS: PackWeek[] = [
         ),
       },
       {
+        key: 'short-2',
+        kind: 'video',
+        late: true,
+        emoji: '🙏',
+        title: 'Short: Denk jeden Tag daran, was Gott für dich getan hat',
+        body:
+          'Elder Dale G. Renlund lädt dich ein, dich jeden Tag an die Grösse des Vaters im ' +
+          'Himmel und Jesu Christi zu erinnern – und an das, was sie für dich getan haben. Ein ' +
+          'guter Anfang für jedes Gebet.',
+        ...short('47BTy7laRWk'),
+      },
+      {
         key: 'quiz-2',
         kind: 'quiz',
         emoji: '👩‍👦',
@@ -848,6 +895,17 @@ export const PACK_WEEKS: PackWeek[] = [
           'kennt uns und weiss, wie er uns in jedem Augenblick unseres Lebens am besten helfen ' +
           'kann.»',
         source: FSY_OCTOBER('Letzter Sonntag und Botschaft von Elder Soares'),
+      },
+      {
+        key: 'short-3',
+        kind: 'video',
+        late: true,
+        emoji: '🌅',
+        title: 'Short: Gott hat Grosses mit dir vor',
+        body:
+          'Gott kann dich aus jeder Dunkelheit herausheben – und er hat eine Absicht mit dir. ' +
+          'Wie die jungen Krieger: Er hat eine Arbeit für dich.',
+        ...short('Gf-PIDcBENs'),
       },
       {
         key: 'quiz-3',
@@ -883,6 +941,17 @@ export const PACK_WEEKS: PackWeek[] = [
         source: verse('Alma 53:20'),
       },
       {
+        key: 'short-4',
+        kind: 'video',
+        late: true,
+        emoji: '🔦',
+        title: 'Short: Du kannst ein Licht in der Dunkelheit sein',
+        body:
+          'Schwester Susan H. Porter: Dein Glaube an Christus kann anderen den Weg zeigen – ' +
+          'auch dann, wenn du dich allein fühlst. Auch unter Freunden.',
+        ...short('GgqQfxM7YqU'),
+      },
+      {
         key: 'puzzle-1',
         kind: 'puzzle',
         emoji: '🧩',
@@ -912,6 +981,17 @@ export const PACK_WEEKS: PackWeek[] = [
         source: verse('Alma 57:25'),
       },
       {
+        key: 'short-5',
+        kind: 'video',
+        late: true,
+        emoji: '🔄',
+        title: 'Short: Umkehr ist ein Geschenk',
+        body:
+          'Präsident Russell M. Nelson über die Umkehr: Sie bringt dich Jesus Christus näher. ' +
+          'Verwundet, aber nicht gefallen – mit ihr steht man wieder auf.',
+        ...short('U8I2wPvpUgc'),
+      },
+      {
         key: 'quiz-4',
         kind: 'quiz',
         emoji: '🔎',
@@ -923,6 +1003,18 @@ export const PACK_WEEKS: PackWeek[] = [
             'Treue zu allen Zeiten.',
         ),
         source: verse('Alma 53:20'),
+      },
+      {
+        key: 'short-6',
+        kind: 'video',
+        late: true,
+        emoji: '🤲',
+        title: 'Short: Wo hast du Gottes Hand gesehen?',
+        body:
+          'Eine Frage zum Mitnehmen: Wo hast du in letzter Zeit Gottes Hand in deinem Leben ' +
+          'gesehen? Helaman schrieb die Bewahrung seiner jungen Krieger der Macht Gottes zu ' +
+          '(Alma 57:26).',
+        ...short('5GCWFfeL7r8'),
       },
       {
         key: 'frage-1',
@@ -1824,8 +1916,8 @@ export interface PackPlan {
   crest: ImpulseCrest | null
   game: ImpulseGameId | null
   image: null
-  videoUrl: null
-  videoTextPage: null
+  videoUrl: string | null
+  videoTextPage: boolean | null
   contributor: null
 }
 
@@ -1863,20 +1955,48 @@ function plan(
     crest: card.crest ?? null,
     game: card.game ?? null,
     image: null,
-    videoUrl: null,
-    videoTextPage: null,
+    videoUrl: kind === 'video' ? (card.videoUrl ?? null) : null,
+    /* Ein Short hat den Bildschirm für sich – ein Wisch, kein Text darüber. */
+    videoTextPage: kind === 'video' ? false : null,
     contributor: null,
   }
 }
 
+/**
+ * Die Plätze der Karten im Feed, wie das Paket die Woche legt.
+ *
+ * Jede Karte zählt einen Platz weiter – ausser einer nachgereichten
+ * (`late`): Als sie dazukam, lag das Paket schon in der Datenbank, und
+ * dort tragen ihre Nachbarn längst ihre Nummern. Sie nimmt darum keinen
+ * eigenen Platz, sondern einen Bruchteil hinter ihrem Vorgänger (3 wird
+ * 3,5; eine zweite dahinter 3,75). So steht sie im frischen wie im schon
+ * eingespielten Paket an derselben Stelle, und keine Karte rückt.
+ */
+export function deckOrders(deck: readonly Pick<PackCard, 'late'>[]): number[] {
+  let place = 0
+  let gap = 1
+  return deck.map((card) => {
+    if (card.late) {
+      gap /= 2
+      return place + 1 - gap
+    }
+    place += 1
+    gap = 1
+    return place
+  })
+}
+
 /** Alle Inhalte einer Woche, wie das Paket sie anlegt – das Wochenthema zuerst, das Minispiel zuletzt. */
 export function packWeekPlans(week: PackWeek): PackPlan[] {
+  const orders = deckOrders(week.deck)
+  /* Das Minispiel steht hinter der letzten Karte, die einen eigenen Platz hat. */
+  const gameOrder = week.deck.filter((card) => !card.late).length + 1
   return [
     plan(week.week, 'impuls', 'impuls', week.theme, 0),
     plan(week.week, 'wochenziel', 'wochenziel', week.goal, null),
     plan(week.week, 'tageschallenge', 'tageschallenge', week.challenge, null),
-    ...week.deck.map((card, index) => plan(week.week, card.key, card.kind, card, index + 1)),
-    ...(week.game ? [plan(week.week, 'spiel', 'spiel', week.game, week.deck.length + 1)] : []),
+    ...week.deck.map((card, index) => plan(week.week, card.key, card.kind, card, orders[index])),
+    ...(week.game ? [plan(week.week, 'spiel', 'spiel', week.game, gameOrder)] : []),
   ]
 }
 
