@@ -10,10 +10,12 @@ import {
   impulseEmbedReport,
   impulseEmbedSeekMessage,
   impulseEmbedUrl,
+  impulseLoopDue,
   impulseScrubTime,
   impulseSoundBlocked,
   impulseVideoClock,
   impulseVideoSource,
+  impulseVideoThumbnail,
 } from '../src/lib/impulseVideo.ts'
 
 /*
@@ -305,4 +307,20 @@ test('impulseVideoClock: Minuten und Sekunden, wie man sie liest', () => {
   assert.equal(impulseVideoClock(65), '1:05')
   assert.equal(impulseVideoClock(750), '12:30')
   assert.equal(impulseVideoClock(-2), '0:00')
+})
+
+test('impulseLoopDue: der Short beginnt knapp vor dem Ende von vorn – solange er noch läuft', () => {
+  assert.equal(impulseLoopDue(10, 30), false)
+  assert.equal(impulseLoopDue(29.4, 30), false)
+  assert.equal(impulseLoopDue(29.5, 30), true)
+  assert.equal(impulseLoopDue(30, 30), true)
+  // Ohne bekannte Länge – oder bei einem Video, kürzer als der Abstand – nie.
+  assert.equal(impulseLoopDue(0, 0), false)
+  assert.equal(impulseLoopDue(0.9, 0.9), false)
+})
+
+test('impulseVideoThumbnail: das Vorschaubild von YouTube – nur für YouTube', () => {
+  assert.equal(impulseVideoThumbnail(youtube), 'https://i.ytimg.com/vi/AbCdEfGhIjK/hqdefault.jpg')
+  assert.equal(impulseVideoThumbnail(vimeo), null)
+  assert.equal(impulseVideoThumbnail(file), null)
 })
