@@ -1645,7 +1645,7 @@ wie der echte Rahmen: Ohne Wischfläche blieb der Wisch hängen, mit ihr
 kommt die nächste Karte – und ein Wisch zur Seite spult, ohne dass der
 Feed rollt.
 
-### 13.13 Beim Start die Mitte frei für YouTube
+### 13.13 Die Mitte gehört YouTube
 
 Gleich nach dem Start legt YouTube eigene Knöpfe und Texte über das Video –
 den Startknopf, Zurück und Weiter, den Titel – und nimmt sie erst nach ein
@@ -1655,24 +1655,27 @@ abfing. Zwei Versuche, die Oberfläche von YouTube ganz zu verbergen
 (abschneiden, verdecken bis zum Start), brachten am Telefon nichts und
 sind wieder zurückgenommen.
 
-Jetzt lässt die Wischfläche in dieser Zeit die Mitte frei (`open` in
-`EmbedFrame`):
+Jetzt bedient man in der Mitte YouTube selbst, das ganze Video lang:
 
-- **Beim Start** deckt sie nur einen Streifen oben und unten ab, je gut
-  ein Viertel der Höhe. Ein Tipp in die Mitte, neben den Startknopf, geht
-  an YouTube, und Knöpfe und Texte verschwinden sofort. Oben und unten
-  wischt man weiter zur nächsten oder vorigen Karte.
-- **Danach** deckt sie wieder alles ab – sobald YouTube den Tipp bekommen
-  hat (die App merkt es daran, dass der Rahmen den Fokus nimmt; der Fokus
-  geht gleich an die Seite zurück, damit Escape und die Pfeiltasten
-  ankommen), spätestens vier Sekunden, nachdem das Video zu laufen
-  begonnen hat, und ohne jede Meldung des Videos nach sieben Sekunden.
-- Ein Tipp direkt ins Video ist zugleich eine Berührung im Video selbst:
-  Lässt der Browser den Ton sonst nicht zu (am iPhone), läuft das Video
-  danach mit Ton.
+- **Die Mitte gehört YouTube** – ein waagrechtes Band über die ganze
+  Breite, gut ein Viertel der Höhe, in dem der Startknopf liegt. Ein Tipp
+  neben den Knopf blendet Titel, Kanal und Knöpfe ein und wieder aus,
+  ohne anzuhalten; ein Tipp auf den Knopf hält an und lässt weiterlaufen.
+  So, wie man es von YouTube kennt – es ist dessen eigene Bedienung.
+- **Oben und unten** liegt je eine Wischfläche der App (gut ein Drittel
+  der Höhe). Dort wischt man zur nächsten oder vorigen Karte, und ein
+  Wisch zur Seite spult (13.12). Ein Wisch, der in der Mitte beginnt,
+  gehört YouTube und wechselt die Karte nicht.
+- **Ton und Leiste** bleiben unten, wie sie waren. Das eigene Startzeichen
+  der Karte entfällt – YouTube zeigt seines.
+- Tippt man in die Mitte, nimmt der Rahmen den Fokus. Daran merkt die
+  Karte, dass jemand selbst eingegriffen hat, und startet das Video nicht
+  mehr von sich aus stumm. Ein Tipp in die Mitte ist zugleich eine
+  Berührung im Video selbst: Lässt der Browser den Ton sonst nicht zu (am
+  iPhone), läuft es danach mit Ton.
 
-Im Browser geprüft mit einer Attrappe von YouTube, die beim Start Knöpfe
-und Titel zeigt und sie bei einem Tipp ins Video ausblendet: Der Tipp neben
-die Knöpfe kommt an und blendet alles aus, danach rollt der Wisch auch in
-der Mitte zur nächsten Karte; aus dem unteren Streifen geht das schon beim
-Start; ohne Tipp deckt die Fläche nach ein paar Sekunden wieder alles ab.
+Im Browser geprüft mit einer Attrappe von YouTube, die sich so verhält: Ein
+Tipp neben den Knopf blendet ein und aus, ohne anzuhalten, auch Sekunden
+nach dem Start; ein Tipp auf den Knopf hält an und lässt weiterlaufen; ein
+Zug zur Seite auf der unteren Fläche spult, ein Wisch nach oben bringt die
+nächste Karte.

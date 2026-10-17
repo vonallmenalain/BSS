@@ -1,10 +1,4 @@
-import {
-  useEffect,
-  useRef,
-  useState,
-  type KeyboardEvent as ReactKeyboardEvent,
-  type PointerEvent as ReactPointerEvent,
-} from 'react'
+import { useEffect, useRef, useState, type PointerEvent as ReactPointerEvent } from 'react'
 import { ExternalLink, Play, Volume2, VolumeX } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import {
@@ -41,11 +35,12 @@ import {
  *   ist der Bildschirm. Die Videodatei bringt ihre eigene Leiste mit.
  * - **Wischen geht auch auf dem Video** – wie bei Reels und Shorts. Eine
  *   eingebettete Fremdkarte (YouTube, Vimeo) behielte jede Berührung für
- *   sich, und der Daumen käme nicht zur nächsten Karte. Darum liegt über
- *   ihr eine Wischfläche (`EmbeddedVideo`): Ein Wisch nach oben oder
- *   unten rollt den Feed, ein Wisch zur Seite spult, ein Tipp hält das
- *   Video an oder lässt es weiterlaufen, und der Knopf unten rechts
- *   schaltet den Ton.
+ *   sich, und der Daumen käme nicht zur nächsten Karte. Darum liegt oben
+ *   und unten eine Wischfläche (`EmbeddedVideo`): Ein Wisch nach oben
+ *   oder unten rollt den Feed, ein Wisch zur Seite spult. Die Mitte
+ *   gehört YouTube – ein Tipp neben den Startknopf blendet dessen
+ *   Angaben und Knöpfe ein und aus, ein Tipp auf den Knopf hält an. Der
+ *   Knopf unten rechts schaltet den Ton.
  *
  * Was sich nicht einbetten lässt – eine Videoseite der Kirche etwa,
  * deren Server das verbietet –, wird zur ruhigen Karte mit einem Knopf,
@@ -203,34 +198,27 @@ function EmbeddedVideo({
 }
 
 /**
- * Die Fremdkarte selbst – unter einer Wischfläche, gesteuert von der App.
+ * Die Fremdkarte selbst – die Mitte gehört ihr, oben und unten liegt eine
+ * Wischfläche der App.
  *
  * Ein Rahmen einer fremden Seite behält jede Berührung für sich: Wer
- * darauf wischt, rollt nicht den Feed, sondern höchstens das Video. Die
- * Wischfläche darüber gehört zur App – auf ihr rollt der Feed wie auf
- * jeder anderen Karte, Reels und Shorts machen es genauso. Die Knöpfe
- * des Anbieters liegen dafür unter ihr; die Karte bringt die nötigen
- * selbst mit und sagt sie der Fremdkarte per Nachricht
- * (`impulseEmbedMessage`):
+ * darauf wischt, rollt nicht den Feed, sondern höchstens das Video.
+ * Getippt soll aber genau dort werden – wie bei YouTube selbst:
  *
- * - **Ein Tipp** hält das Video an oder lässt es weiterlaufen. Steht es,
- *   zeigt die Mitte das Startzeichen.
- * - **Beim Start bleibt die Mitte frei.** Gleich nach dem Start legt
- *   YouTube eigene Knöpfe und Texte übers Video (Startknopf, Zurück und
- *   Weiter, Titel) und nimmt sie erst nach ein paar Sekunden weg – oder
- *   sofort, wenn man ins Video tippt. Damit dieser Tipp ankommt, deckt die
- *   Wischfläche in dieser Zeit nur einen Streifen oben und unten ab
- *   (`open`): Ein Tipp neben den Startknopf geht an YouTube, und alles
- *   verschwindet; oben und unten wischt man weiter. Hat YouTube den Tipp
- *   bekommen – die App merkt es daran, dass der Rahmen den Fokus nimmt –
- *   oder sind ein paar Sekunden seit dem Start vergangen, deckt die
- *   Fläche wieder alles ab.
- * - **Ein Wisch zur Seite spult** – nach rechts vor, nach links zurück;
- *   die ganze Breite ist die ganze Länge, wie bei der Leiste ganz unten.
- *   Nach oben und unten bleibt der Wisch dem Feed: Die Fläche lässt nur
- *   das senkrechte Rollen dem Browser (`touch-pan-y`), das seitliche
- *   bekommt sie selbst. Am Rechner spulen die Pfeiltasten links und
- *   rechts um fünf Sekunden.
+ * - **Die Mitte gehört YouTube**, ein waagrechtes Band über die ganze
+ *   Breite, in dem der Startknopf liegt. Ein Tipp neben den Knopf blendet
+ *   Titel, Kanal und Knöpfe ein und wieder aus; ein Tipp auf den Knopf
+ *   hält an und lässt weiterlaufen. Das gilt das ganze Video lang, denn
+ *   es ist die eigene Bedienung von YouTube.
+ * - **Oben und unten wischt man weiter.** Dort liegt je eine Wischfläche
+ *   der App (gut ein Drittel der Höhe): Auf ihr rollt der Feed zur
+ *   nächsten oder vorigen Karte wie auf jeder anderen Karte. Ein Wisch,
+ *   der in der Mitte beginnt, gehört dagegen YouTube.
+ * - **Ein Wisch zur Seite spult** – auf den Wischflächen, nach rechts
+ *   vor, nach links zurück; die ganze Breite ist die ganze Länge, wie bei
+ *   der Leiste ganz unten. Die Flächen lassen nur das senkrechte Rollen
+ *   dem Browser (`touch-pan-y`), das seitliche bekommen sie selbst. Die
+ *   Karte sagt es der Fremdkarte per Nachricht (`impulseEmbedMessage`).
  * - **Der Ton** sitzt unten rechts.
  * - **Mit Ton, wo es geht.** Lehnt der Browser das laute Abspielen ab
  *   (am iPhone ohne vorherige Berührung im Video immer), meldet die
@@ -240,9 +228,9 @@ function EmbeddedVideo({
  *   eingegriffen, startet die Karte nichts mehr von sich aus.
  *
  * Meldet die Fremdkarte gar nichts (etwa weil der Anbieter seine
- * Schnittstelle ändert), läuft es weiter wie ohne Meldungen: Der Tipp
- * wechselt zwischen Anhalten und Weiterlaufen, der Ton zwischen an und
- * aus – nur der stumme Neustart unterbleibt.
+ * Schnittstelle ändert), bleibt die Bedienung in der Mitte, wie sie ist;
+ * der Ton wechselt zwischen an und aus – nur der stumme Neustart, die
+ * Leiste und das Spulen entfallen.
  */
 function EmbedFrame({ source, title }: { source: ImpulseVideoSource; title: string }) {
   const frameRef = useRef<HTMLIFrameElement>(null)
@@ -273,40 +261,24 @@ function EmbedFrame({ source, title }: { source: ImpulseVideoSource; title: stri
     sentAt: number
   } | null>(null)
   const [scrubTo, setScrubTo] = useState<number | null>(null)
-  /* Nach dem Spulen mit der Maus folgt ein Klick – der hält nicht an. */
-  const scrubbed = useRef(false)
   const touched = useRef(false)
   const sourceRef = useRef(source)
   useEffect(() => {
     sourceRef.current = source
   })
 
-  /* Die Mitte frei für YouTube, solange es beim Start seine Knöpfe zeigt. */
-  const [open, setOpen] = useState(true)
-  const openTimer = useRef<number | undefined>(undefined)
-  const closeAfter = (ms: number) => {
-    window.clearTimeout(openTimer.current)
-    openTimer.current = window.setTimeout(() => setOpen(false), ms)
-  }
-  /* Ein Tipp in den Rahmen gibt ihm den Fokus – dann hat YouTube ihn
-     bekommen und seine Knöpfe weggenommen. Der Fokus geht danach zurück
-     an die Seite, sonst kämen Escape und die Pfeiltasten nicht mehr an. */
+  /* Ein Tipp in die Mitte gibt dem Rahmen den Fokus: Dann hat die Person
+     selbst eingegriffen, und die Karte startet nichts mehr stumm. */
   useEffect(() => {
     const onBlur = () => {
       window.setTimeout(() => {
-        const frame = frameRef.current
-        if (!frame || document.activeElement !== frame) return
-        touched.current = true
-        window.clearTimeout(openTimer.current)
-        setOpen(false)
-        frame.blur()
+        if (frameRef.current && document.activeElement === frameRef.current) {
+          touched.current = true
+        }
       }, 0)
     }
     window.addEventListener('blur', onBlur)
-    return () => {
-      window.removeEventListener('blur', onBlur)
-      window.clearTimeout(openTimer.current)
-    }
+    return () => window.removeEventListener('blur', onBlur)
   }, [])
 
   const showPlaying = (value: boolean) => {
@@ -356,9 +328,6 @@ function EmbedFrame({ source, title }: { source: ImpulseVideoSource; title: stri
       if (!report) return
       if (!heard.current) quietTimer.current = window.setTimeout(() => startQuietly(), 1500)
       heard.current = true
-      /* Läuft es zum ersten Mal, nimmt YouTube seine Knöpfe bald selbst
-         weg – dann deckt die Fläche wieder alles ab. */
-      if (report.playing && playingRef.current !== true) closeAfter(4000)
       if (report.playing !== undefined) showPlaying(report.playing)
       if (report.muted !== undefined) showMuted(report.muted)
       if (report.duration !== undefined) {
@@ -382,8 +351,6 @@ function EmbedFrame({ source, title }: { source: ImpulseVideoSource; title: stri
   const helloTimer = useRef<number | undefined>(undefined)
   useEffect(() => () => window.clearInterval(helloTimer.current), [])
   const onLoad = () => {
-    /* Meldet die Fremdkarte nichts, gilt eine grosszügige Frist. */
-    closeAfter(7000)
     const hello = () => {
       const origin = impulseEmbedOrigin(sourceRef.current)
       const target = frameRef.current?.contentWindow
@@ -399,20 +366,6 @@ function EmbedFrame({ source, title }: { source: ImpulseVideoSource; title: stri
       if (heard.current || tries > 10) window.clearInterval(helloTimer.current)
       else hello()
     }, 400)
-  }
-
-  /* Ein Tipp: anhalten oder weiter. Ohne Meldungen zählt der eigene
-     Stand; mit Meldungen sagt die Fremdkarte, was daraus geworden ist –
-     ein abgelehntes Abspielen soll nicht als laufend dastehen. */
-  const toggle = () => {
-    if (scrubbed.current) {
-      scrubbed.current = false
-      return
-    }
-    touched.current = true
-    const next = !(playingRef.current ?? true)
-    send(next ? 'play' : 'pause')
-    if (!heard.current || !next) showPlaying(next)
   }
 
   /* Zwischen zwei Meldungen rückt die Leiste von selbst weiter. */
@@ -436,16 +389,15 @@ function EmbedFrame({ source, title }: { source: ImpulseVideoSource; title: stri
   }
 
   /*
-   * Ein Daumen auf der Fläche: Geht er zur Seite, spult er; geht er nach
-   * oben oder unten, rollt der Browser den Feed und meldet das Ende
+   * Ein Daumen auf einer Wischfläche: Geht er zur Seite, spult er; geht er
+   * nach oben oder unten, rollt der Browser den Feed und meldet das Ende
    * dieses Daumens (`pointercancel`). Erst ab ein paar Pixeln zur Seite
-   * wird gespult – ein Tipp, der ein wenig verrutscht, bleibt ein Tipp.
+   * wird gespult.
    * Unterwegs zeigt YouTube die Stelle alle paar Augenblicke an, beim
    * Loslassen lädt es von dort weiter.
    */
 
-  const onPointerDown = (event: ReactPointerEvent<HTMLButtonElement>) => {
-    scrubbed.current = false
+  const onPointerDown = (event: ReactPointerEvent<HTMLDivElement>) => {
     if (!(durationRef.current > 0)) return
     if (event.pointerType === 'mouse' && event.button !== 0) return
     scrub.current = {
@@ -460,7 +412,7 @@ function EmbedFrame({ source, title }: { source: ImpulseVideoSource; title: stri
     }
   }
 
-  const onPointerMove = (event: ReactPointerEvent<HTMLButtonElement>) => {
+  const onPointerMove = (event: ReactPointerEvent<HTMLDivElement>) => {
     const current = scrub.current
     if (!current || current.pointer !== event.pointerId) return
     const dx = event.clientX - current.x
@@ -480,24 +432,13 @@ function EmbedFrame({ source, title }: { source: ImpulseVideoSource; title: stri
     }
   }
 
-  const endScrub = (event: ReactPointerEvent<HTMLButtonElement>) => {
+  const endScrub = (event: ReactPointerEvent<HTMLDivElement>) => {
     const current = scrub.current
     if (!current || current.pointer !== event.pointerId) return
     scrub.current = null
     if (!current.active) return
-    scrubbed.current = true
     seek(current.to, true)
     setScrubTo(null)
-  }
-
-  /* Am Rechner: die Pfeiltasten links und rechts, fünf Sekunden je Druck. */
-  const onKeyDown = (event: ReactKeyboardEvent<HTMLButtonElement>) => {
-    if (event.key !== 'ArrowLeft' && event.key !== 'ArrowRight') return
-    if (!(durationRef.current > 0)) return
-    event.preventDefault()
-    touched.current = true
-    const step = event.key === 'ArrowRight' ? 5 : -5
-    seek(Math.min(durationRef.current, Math.max(0, currentTime() + step)), true)
   }
 
   /* Der Ton – und wer ihn einschaltet, will das Video auch laufen sehen. */
@@ -519,48 +460,35 @@ function EmbedFrame({ source, title }: { source: ImpulseVideoSource; title: stri
         src={embedUrl}
         title={title}
         onLoad={onLoad}
-        /* Bedient wird über die Wischfläche – in den Rahmen führt nur beim
-           Start ein Weg, solange YouTube seine Knöpfe zeigt (`open`). */
-        tabIndex={-1}
-        className={cn('size-full', !open && 'pointer-events-none')}
+        /* In der Mitte bedient man YouTube selbst – mit dem Finger wie
+           mit der Tastatur. */
+        className="size-full"
         allow="autoplay; encrypted-media; picture-in-picture; fullscreen"
         allowFullScreen
         /* Die Fremdkarte bekommt so wenig wie möglich mit: kein
            Zugriff auf die App, nur ihr eigenes Fenster. */
         referrerPolicy="strict-origin-when-cross-origin"
       />
-      {open ? (
-        /* Beim Start: nur ein Streifen oben und unten zum Weiterwischen –
-           die Mitte gehört YouTube, damit ein Tipp dort seine Knöpfe und
-           Texte wegnimmt. */
-        <>
-          <div aria-hidden className="absolute inset-x-0 top-0 h-[28%]" />
-          <div aria-hidden className="absolute inset-x-0 bottom-0 h-[28%]" />
-        </>
-      ) : (
-        /* Die Wischfläche: Auf ihr rollt der Feed nach oben und unten, zur
-           Seite spult sie, ein Tipp hält an. */
-        <button
-          type="button"
-          onClick={toggle}
+      {/* Die Wischflächen oben und unten: Auf ihnen rollt der Feed, zur Seite
+          spulen sie. Die Mitte bleibt frei – dort tippt man YouTube an. */}
+      {(['top-0', 'bottom-0'] as const).map((edge) => (
+        <div
+          key={edge}
+          aria-hidden
           onPointerDown={onPointerDown}
           onPointerMove={onPointerMove}
           onPointerUp={endScrub}
           onPointerCancel={endScrub}
-          onKeyDown={onKeyDown}
-          aria-label={playing === false ? 'Video abspielen' : 'Video anhalten'}
-          className="absolute inset-0 cursor-pointer touch-pan-y focus-visible:-outline-offset-4"
-        >
-          {playing === false && scrubTo === null && <PlaySign />}
-          {scrubTo !== null && (
-            <span className="pointer-events-none absolute inset-0 grid place-items-center">
-              <span className="tabular rounded-full bg-slate-950/60 px-4 py-2 text-lg font-semibold text-white backdrop-blur-sm">
-                {impulseVideoClock(scrubTo)}
-                <span className="font-normal opacity-70"> / {impulseVideoClock(duration)}</span>
-              </span>
-            </span>
-          )}
-        </button>
+          className={cn('absolute inset-x-0 h-[36%] touch-pan-y', edge)}
+        />
+      ))}
+      {scrubTo !== null && (
+        <span className="pointer-events-none absolute inset-0 grid place-items-center">
+          <span className="tabular rounded-full bg-slate-950/60 px-4 py-2 text-lg font-semibold text-white backdrop-blur-sm">
+            {impulseVideoClock(scrubTo)}
+            <span className="font-normal opacity-70"> / {impulseVideoClock(duration)}</span>
+          </span>
+        </span>
       )}
       {/* Die Leiste ganz unten: wie weit das Video ist – beim Spulen kräftiger. */}
       {duration > 0 && (
