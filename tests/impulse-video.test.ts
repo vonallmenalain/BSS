@@ -2,8 +2,6 @@ import assert from 'node:assert/strict'
 import { test } from 'node:test'
 
 import {
-  EMBED_CHROME_BAND,
-  impulseEmbedBox,
   impulseEmbedHello,
   impulseEmbedMessage,
   impulseEmbedOrigin,
@@ -11,7 +9,6 @@ import {
   impulseEmbedSeekMessage,
   impulseEmbedUrl,
   impulseScrubTime,
-  impulseSoundBlocked,
   impulseVideoClock,
   impulseVideoSource,
 } from '../src/lib/impulseVideo.ts'
@@ -87,69 +84,6 @@ test('impulseEmbedUrl: YouTube hört auf Nachrichten – und antwortet nur der A
   assert.equal(new URL(impulseEmbedUrl(youtube)!).searchParams.get('origin'), null)
 })
 
-test('impulseEmbedUrl: nur das Video – ohne Leiste und Hinweise des Anbieters', () => {
-  const url = new URL(impulseEmbedUrl(youtube)!)
-  assert.equal(url.searchParams.get('controls'), '0')
-  assert.equal(url.searchParams.get('iv_load_policy'), '3')
-  assert.equal(url.searchParams.get('fs'), '0')
-})
-
-test('impulseEmbedUrl: mit Ton, wo es geht – stumm, wo der Browser ihn ohnehin ablehnt', () => {
-  assert.equal(new URL(impulseEmbedUrl(youtube)!).searchParams.get('mute'), '0')
-  assert.equal(
-    new URL(impulseEmbedUrl(youtube, undefined, { muted: true })!).searchParams.get('mute'),
-    '1',
-  )
-  assert.equal(new URL(impulseEmbedUrl(vimeo)!).searchParams.get('muted'), '0')
-  assert.equal(
-    new URL(impulseEmbedUrl(vimeo, undefined, { muted: true })!).searchParams.get('muted'),
-    '1',
-  )
-})
-
-test('impulseSoundBlocked: iPhone und iPad lassen nie von selbst Ton anlaufen', () => {
-  const iphone =
-    'Mozilla/5.0 (iPhone; CPU iPhone OS 18_6 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/18.6 Mobile/15E148 Safari/604.1'
-  const ipad =
-    'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/18.6 Safari/605.1.15'
-  const android =
-    'Mozilla/5.0 (Linux; Android 15; Pixel 9) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/141.0.0.0 Mobile Safari/537.36'
-  assert.equal(impulseSoundBlocked(iphone, 5), true)
-  // Das iPad meldet sich wie ein Mac – nur mit Berührung.
-  assert.equal(impulseSoundBlocked(ipad, 5), true)
-  assert.equal(impulseSoundBlocked(ipad, 0), false)
-  assert.equal(impulseSoundBlocked(android, 5), false)
-})
-
-/** Gleich bis auf Rundung – Pixel in Bruchteilen. */
-const near = (actual: number, expected: number) =>
-  assert.ok(Math.abs(actual - expected) < 1e-6, `${actual} statt ${expected}`)
-
-test('impulseEmbedBox: ein Short füllt das Telefon – Titel und Kanal liegen ausserhalb', () => {
-  // 390 × 844: Der Short (9:16) wird so gross, dass er die Höhe füllt …
-  const phone = impulseEmbedBox(390, 844, 9 / 16)
-  near(phone.width, 844 * (9 / 16))
-  near(phone.left, (390 - 844 * (9 / 16)) / 2)
-  // … und der Rahmen ragt oben und unten um den Saum hinaus.
-  near(phone.height, 844 + 2 * EMBED_CHROME_BAND)
-  near(phone.top, -EMBED_CHROME_BAND)
-})
-
-test('impulseEmbedBox: ganz im Bild, wo Füllen zu viel abschnitte', () => {
-  // Ein Short am Rechner: daneben schwarz, nichts abgeschnitten.
-  const desktop = impulseEmbedBox(1280, 800, 9 / 16)
-  near(desktop.width, 450)
-  near(desktop.left, (1280 - 450) / 2)
-  near(desktop.top, -EMBED_CHROME_BAND)
-  // Ein Querformat hochkant: volle Breite, darüber und darunter schwarz.
-  const landscape = impulseEmbedBox(390, 844, 16 / 9)
-  near(landscape.width, 390)
-  near(landscape.left, 0)
-  near(landscape.height, 844 + 2 * EMBED_CHROME_BAND)
-  // Ohne Fläche (noch nicht gemessen) bleibt alles, wie es ist.
-  assert.deepEqual(impulseEmbedBox(0, 0, 9 / 16), { width: 0, height: 0, left: 0, top: 0 })
-})
-
 test('impulseEmbedMessage: die Befehle der YouTube-Schnittstelle', () => {
   const func = (command: Parameters<typeof impulseEmbedMessage>[1]) =>
     JSON.parse(impulseEmbedMessage(youtube, command)!)
@@ -196,25 +130,20 @@ test('impulseEmbedHello: die Anmeldung, nach der die Fremdkarte ihren Stand meld
 
 test('impulseEmbedReport: was YouTube über sich meldet', () => {
   const report = (data: unknown) => impulseEmbedReport(youtube, JSON.stringify(data))
-  // Läuft – das Bild bewegt sich.
-  assert.deepEqual(report({ event: 'onStateChange', info: 1 }), { playing: true, running: true })
-  // Soll laufen, lädt aber noch: Noch steht das Vorschaubild mit dem Startknopf da.
-  assert.deepEqual(report({ event: 'onStateChange', info: 3 }), { playing: true, running: false })
+  // Läuft – auch während es nachlädt.
+  assert.deepEqual(report({ event: 'onStateChange', info: 1 }), { playing: true })
+  assert.deepEqual(report({ event: 'onStateChange', info: 3 }), { playing: true })
   // Angehalten, zu Ende, noch nicht gestartet (der Browser hat den Ton abgelehnt), bereit.
   for (const state of [2, 0, -1, 5]) {
-    assert.deepEqual(report({ event: 'onStateChange', info: state }), {
-      playing: false,
-      running: false,
-    })
+    assert.deepEqual(report({ event: 'onStateChange', info: state }), { playing: false })
   }
   assert.deepEqual(
     report({ event: 'infoDelivery', info: { playerState: -1, muted: false, volume: 100 } }),
-    { playing: false, running: false, muted: false },
+    { playing: false, muted: false },
   )
   assert.deepEqual(report({ event: 'infoDelivery', info: { muted: true } }), { muted: true })
   assert.deepEqual(report({ event: 'initialDelivery', info: { playerState: 1 } }), {
     playing: true,
-    running: true,
   })
   // Wo es steht und wie lang es ist – für die Leiste und das Spulen.
   assert.deepEqual(report({ event: 'infoDelivery', info: { currentTime: 3.2 } }), { time: 3.2 })
@@ -234,22 +163,11 @@ test('impulseEmbedReport: was YouTube über sich meldet', () => {
 
 test('impulseEmbedReport: was Vimeo über sich meldet – als Text oder als Objekt', () => {
   assert.deepEqual(impulseEmbedReport(vimeo, JSON.stringify({ event: 'play' })), { playing: true })
-  assert.deepEqual(impulseEmbedReport(vimeo, { event: 'pause' }), {
-    playing: false,
-    running: false,
-  })
-  assert.deepEqual(impulseEmbedReport(vimeo, { event: 'ended' }), {
-    playing: false,
-    running: false,
-  })
-  // Rückt die Zeit vor, bewegt sich das Bild.
+  assert.deepEqual(impulseEmbedReport(vimeo, { event: 'pause' }), { playing: false })
+  assert.deepEqual(impulseEmbedReport(vimeo, { event: 'ended' }), { playing: false })
   assert.deepEqual(
     impulseEmbedReport(vimeo, { event: 'timeupdate', data: { seconds: 12.5, duration: 90 } }),
-    { time: 12.5, duration: 90, running: true },
-  )
-  assert.deepEqual(
-    impulseEmbedReport(vimeo, { event: 'timeupdate', data: { seconds: 0, duration: 90 } }),
-    { time: 0, duration: 90 },
+    { time: 12.5, duration: 90 },
   )
   assert.equal(impulseEmbedReport(vimeo, { event: 'ready' }), null)
   assert.equal(impulseEmbedReport(file, { event: 'play' }), null)

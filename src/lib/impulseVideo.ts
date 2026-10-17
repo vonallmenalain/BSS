@@ -100,15 +100,9 @@ export function impulseVideoSource(raw: string | null | undefined): ImpulseVideo
  * Gesteuert wird die Fremdkarte von der Karte aus, über Nachrichten
  * (`impulseEmbedMessage`): Über dem Video liegt eine Wischfläche, damit
  * der Daumen auch auf dem Video zur nächsten Karte wischt – die Knöpfe
- * des Anbieters erreicht er darum nicht mehr, und YouTube zeigt sie gar
- * nicht erst (`controls=0`, ohne Hinweisfenster `iv_load_policy=3`).
- * Dafür schaltet YouTube seine Schnittstelle ein (`enablejsapi`) und
- * antwortet nur der eigenen Seite (`origin`).
- *
- * **Stumm starten** (`muted`) heisst: sofort laufen. Wo der Browser
- * lautes Abspielen ohnehin ablehnt (am iPhone, siehe
- * `impulseSoundBlocked`), bliebe das Video sonst stehen, und YouTube
- * zeigte Titel, Kanal und seinen grossen Startknopf.
+ * des Anbieters erreicht er darum nicht mehr. Dafür schaltet YouTube
+ * seine Schnittstelle ein (`enablejsapi`) und antwortet nur der eigenen
+ * Seite (`origin`).
  *
  * Untertitel bleiben aus (`cc_load_policy=0`, `texttrack=false`): Sie
  * legen sich sonst über den Text der Karte.
@@ -117,20 +111,12 @@ export function impulseVideoSource(raw: string | null | undefined): ImpulseVideo
  * wiederholt ein eingebettetes Video nur als Wiedergabeliste, darum
  * steht das Video selbst als einzige Nummer darin (`playlist`).
  */
-export function impulseEmbedUrl(
-  source: ImpulseVideoSource,
-  origin?: string,
-  { muted = false }: { muted?: boolean } = {},
-): string | null {
+export function impulseEmbedUrl(source: ImpulseVideoSource, origin?: string): string | null {
   if (source.art === 'youtube') {
     const params = new URLSearchParams({
       autoplay: '1',
-      mute: muted ? '1' : '0',
+      mute: '0',
       playsinline: '1',
-      controls: '0',
-      fs: '0',
-      disablekb: '1',
-      iv_load_policy: '3',
       rel: '0',
       modestbranding: '1',
       cc_load_policy: '0',
@@ -145,72 +131,9 @@ export function impulseEmbedUrl(
     return `https://www.youtube-nocookie.com/embed/${encodeURIComponent(source.id)}?${params}`
   }
   if (source.art === 'vimeo') {
-    return `https://player.vimeo.com/video/${encodeURIComponent(source.id)}?autoplay=1&muted=${muted ? 1 : 0}&texttrack=false&playsinline=1&title=0&byline=0&portrait=0`
+    return `https://player.vimeo.com/video/${encodeURIComponent(source.id)}?autoplay=1&muted=0&texttrack=false&playsinline=1&title=0&byline=0&portrait=0`
   }
   return null
-}
-
-/**
- * Lässt dieser Browser ein eingebettetes Video nie von selbst mit Ton
- * anlaufen? Am iPhone und iPad gilt das immer (in jedem Browser – alle
- * laufen dort auf WebKit); ein iPad meldet sich dabei wie ein Mac, nur
- * mit Berührung. Dort startet die Karte das Video gleich stumm, statt
- * erst einen abgelehnten Start abzuwarten.
- */
-export function impulseSoundBlocked(userAgent: string, maxTouchPoints: number): boolean {
-  if (/iPhone|iPad|iPod/.test(userAgent)) return true
-  return /Macintosh/.test(userAgent) && maxTouchPoints > 1
-}
-
-/** Der Saum über und unter dem Video, in Pixeln – dort zeichnet der Anbieter Titel und Kanal. */
-export const EMBED_CHROME_BAND = 160
-
-/** Wo der Rahmen der Fremdkarte liegt – gemessen an der Fläche der Karte. */
-export interface ImpulseEmbedBox {
-  width: number
-  height: number
-  left: number
-  top: number
-}
-
-/**
- * Der Rahmen der Fremdkarte, so gelegt, dass von ihr nur das Video zu
- * sehen ist.
- *
- * YouTube zeichnet Titel, Kanal und das Zeichen «Shorts» an den oberen
- * und unteren Rand seines Rahmens. Darum ragt der Rahmen über und unter
- * der Karte um einen Saum hinaus (`EMBED_CHROME_BAND`), den die Karte
- * abschneidet; das Video selbst steht in der Mitte und bleibt ganz.
- *
- * Und das Video füllt die Karte, wo das wenig kostet: Ein Short (9:16)
- * ist auf einem schlanken Telefon etwas schmaler als der Bildschirm –
- * dann wird er so weit vergrössert, dass keine schwarzen Balken bleiben,
- * und an den Seiten fehlt ein schmaler Streifen. Ginge mehr als ein
- * Fünftel verloren (ein Querformat hochkant, ein Short am Rechner), steht
- * das Video ganz da, mit Balken.
- *
- * `aspect` ist Breite durch Höhe des Videos – 9/16 für einen Short.
- */
-export function impulseEmbedBox(width: number, height: number, aspect: number): ImpulseEmbedBox {
-  if (!(width > 0) || !(height > 0) || !(aspect > 0)) {
-    return { width, height, left: 0, top: 0 }
-  }
-  // Ganz im Bild …
-  let videoWidth = Math.min(width, height * aspect)
-  let videoHeight = videoWidth / aspect
-  // … oder die Karte füllend, wenn höchstens ein Fünftel wegfällt.
-  const fill = Math.max(width / videoWidth, height / videoHeight)
-  if (fill <= 1.25) {
-    videoWidth *= fill
-    videoHeight *= fill
-  }
-  const frameHeight = Math.max(videoHeight, height) + 2 * EMBED_CHROME_BAND
-  return {
-    width: videoWidth,
-    height: frameHeight,
-    left: (width - videoWidth) / 2,
-    top: (height - frameHeight) / 2,
-  }
 }
 
 /* ------------------------------------------------------------------ */
@@ -222,14 +145,7 @@ export type ImpulseEmbedCommand = 'play' | 'pause' | 'mute' | 'unmute'
 
 /** Was das eingebettete Video über sich meldet – nur, was die Nachricht hergibt. */
 export interface ImpulseEmbedReport {
-  /** Soll es laufen – es läuft oder lädt gerade nach. */
   playing?: boolean
-  /**
-   * Läuft es wirklich – bewegt sich das Bild? Beim Start lädt ein Video
-   * erst (`playing`, aber nicht `running`), und solange zeigt YouTube
-   * noch sein Vorschaubild mit dem grossen Startknopf.
-   */
-  running?: boolean
   muted?: boolean
   /** Wo das Video steht, in Sekunden. */
   time?: number
@@ -352,11 +268,6 @@ function youtubePlaying(state: unknown): boolean | undefined {
   return typeof state === 'number' ? state === 1 || state === 3 : undefined
 }
 
-/** Spielt das YouTube-Video wirklich (1) – nicht bloss geladen oder am Laden? */
-function youtubeRunning(state: unknown): boolean | undefined {
-  return typeof state === 'number' ? state === 1 : undefined
-}
-
 /**
  * Was eine Nachricht der Fremdkarte über ihren Stand sagt – oder `null`,
  * wenn sie nichts dazu sagt (oder gar nicht von ihr stammt).
@@ -379,7 +290,7 @@ export function impulseEmbedReport(
   if (source.art === 'youtube') {
     if (event === 'onStateChange') {
       const playing = youtubePlaying(info)
-      return playing === undefined ? null : { playing, running: youtubeRunning(info) }
+      return playing === undefined ? null : { playing }
     }
     if (
       (event === 'infoDelivery' || event === 'initialDelivery') &&
@@ -394,10 +305,7 @@ export function impulseEmbedReport(
       }
       const report: ImpulseEmbedReport = {}
       const playing = youtubePlaying(playerState)
-      if (playing !== undefined) {
-        report.playing = playing
-        report.running = youtubeRunning(playerState)
-      }
+      if (playing !== undefined) report.playing = playing
       if (typeof muted === 'boolean') report.muted = muted
       const time = seconds(currentTime)
       if (time !== undefined) report.time = time
@@ -408,16 +316,13 @@ export function impulseEmbedReport(
     return null
   }
   if (source.art === 'vimeo') {
-    if (event === 'play') return { playing: true }
-    if (event === 'playing') return { playing: true, running: true }
-    if (event === 'pause' || event === 'ended') return { playing: false, running: false }
+    if (event === 'play' || event === 'playing') return { playing: true }
+    if (event === 'pause' || event === 'ended') return { playing: false }
     if (event === 'timeupdate' || event === 'playProgress') {
       const { data } = message as { data?: { seconds?: unknown; duration?: unknown } }
       const report: ImpulseEmbedReport = {}
       const time = seconds(data?.seconds)
       if (time !== undefined) report.time = time
-      // Die Zeit rückt vor: Das Bild bewegt sich.
-      if (time) report.running = true
       const length = seconds(data?.duration)
       if (length) report.duration = length
       return Object.keys(report).length > 0 ? report : null
