@@ -70,16 +70,21 @@ export interface ImpulseDeckCard {
    * muss, ob es dran ist: `active` sagt, dass die Karte im Bild steht,
    * `stage`, ob der Text schon darüberliegt. Wer eine Fläche mitgibt,
    * bekommt die zweistufige Karte – erst das Bild allein, dann der Text.
+   * Steht die Fläche für sich (`mediaOnly`), bekommt sie den Knoten der
+   * Karte als `info` mit – das Video blendet ihn auf einen Tipp ein.
    */
-  media?: ((state: { active: boolean; stage: ImpulseCardStage }) => ReactNode) | null
+  media?:
+    ((state: { active: boolean; stage: ImpulseCardStage; info?: ReactNode }) => ReactNode) | null
   /**
    * Die Fläche allein – eine Karte, ein Wisch.
    *
    * Der Weg der Video-Karte, wenn die Redaktion keinen Text dazu will:
    * Das Video hat den Bildschirm für sich, und der nächste Wisch bringt
-   * schon die nächste Karte. Der Knoten (`node`) bleibt dann weg – mit
-   * ihm Titel, Quelle und die Handgriffe «Amen» und «Merken». Die
-   * Vertiefung bleibt: Sie liegt seitlich, nicht darüber.
+   * schon die nächste Karte. Der Knoten (`node`) – Titel, Quelle und die
+   * Handgriffe «Amen» und «Merken» – steht dann nicht als eigene Seite
+   * da, sondern geht als `info` an die Fläche: Ein Tipp aufs Video
+   * blendet ihn ein. Die Vertiefung bleibt: Sie liegt seitlich, nicht
+   * darüber.
    */
   mediaOnly?: boolean
   /** Die Vertiefung der Karte – `null`/`undefined` heisst: keine. */
@@ -628,7 +633,7 @@ function FeedCard({
         aria-label={theme.label}
         className="relative h-full snap-start snap-always overflow-hidden"
       >
-        <div className="absolute inset-0">{card.media({ active, stage })}</div>
+        <div className="absolute inset-0">{card.media({ active, stage, info: card.node })}</div>
         {hasDeepening && (
           <div
             ref={panesRef}
