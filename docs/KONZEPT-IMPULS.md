@@ -1644,3 +1644,35 @@ Browser geprüft mit einer Attrappe von YouTube, die jede Berührung schluckt
 wie der echte Rahmen: Ohne Wischfläche blieb der Wisch hängen, mit ihr
 kommt die nächste Karte – und ein Wisch zur Seite spult, ohne dass der
 Feed rollt.
+
+### 13.13 Beim Start die Mitte frei für YouTube
+
+Gleich nach dem Start legt YouTube eigene Knöpfe und Texte über das Video –
+den Startknopf, Zurück und Weiter, den Titel – und nimmt sie erst nach ein
+paar Sekunden wieder weg. Ein Tipp ins Video nähme sie sofort weg; nur kam
+dieser Tipp nicht an, weil die Wischfläche (13.12) jede Berührung
+abfing. Zwei Versuche, die Oberfläche von YouTube ganz zu verbergen
+(abschneiden, verdecken bis zum Start), brachten am Telefon nichts und
+sind wieder zurückgenommen.
+
+Jetzt lässt die Wischfläche in dieser Zeit die Mitte frei (`open` in
+`EmbedFrame`):
+
+- **Beim Start** deckt sie nur einen Streifen oben und unten ab, je gut
+  ein Viertel der Höhe. Ein Tipp in die Mitte, neben den Startknopf, geht
+  an YouTube, und Knöpfe und Texte verschwinden sofort. Oben und unten
+  wischt man weiter zur nächsten oder vorigen Karte.
+- **Danach** deckt sie wieder alles ab – sobald YouTube den Tipp bekommen
+  hat (die App merkt es daran, dass der Rahmen den Fokus nimmt; der Fokus
+  geht gleich an die Seite zurück, damit Escape und die Pfeiltasten
+  ankommen), spätestens vier Sekunden, nachdem das Video zu laufen
+  begonnen hat, und ohne jede Meldung des Videos nach sieben Sekunden.
+- Ein Tipp direkt ins Video ist zugleich eine Berührung im Video selbst:
+  Lässt der Browser den Ton sonst nicht zu (am iPhone), läuft das Video
+  danach mit Ton.
+
+Im Browser geprüft mit einer Attrappe von YouTube, die beim Start Knöpfe
+und Titel zeigt und sie bei einem Tipp ins Video ausblendet: Der Tipp neben
+die Knöpfe kommt an und blendet alles aus, danach rollt der Wisch auch in
+der Mitte zur nächsten Karte; aus dem unteren Streifen geht das schon beim
+Start; ohne Tipp deckt die Fläche nach ein paar Sekunden wieder alles ab.

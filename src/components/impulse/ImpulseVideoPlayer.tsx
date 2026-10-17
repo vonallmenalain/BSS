@@ -215,6 +215,16 @@ function EmbeddedVideo({
  *
  * - **Ein Tipp** hält das Video an oder lässt es weiterlaufen. Steht es,
  *   zeigt die Mitte das Startzeichen.
+ * - **Beim Start bleibt die Mitte frei.** Gleich nach dem Start legt
+ *   YouTube eigene Knöpfe und Texte übers Video (Startknopf, Zurück und
+ *   Weiter, Titel) und nimmt sie erst nach ein paar Sekunden weg – oder
+ *   sofort, wenn man ins Video tippt. Damit dieser Tipp ankommt, deckt die
+ *   Wischfläche in dieser Zeit nur einen Streifen oben und unten ab
+ *   (`open`): Ein Tipp neben den Startknopf geht an YouTube, und alles
+ *   verschwindet; oben und unten wischt man weiter. Hat YouTube den Tipp
+ *   bekommen – die App merkt es daran, dass der Rahmen den Fokus nimmt –
+ *   oder sind ein paar Sekunden seit dem Start vergangen, deckt die
+ *   Fläche wieder alles ab.
  * - **Ein Wisch zur Seite spult** – nach rechts vor, nach links zurück;
  *   die ganze Breite ist die ganze Länge, wie bei der Leiste ganz unten.
  *   Nach oben und unten bleibt der Wisch dem Feed: Die Fläche lässt nur
@@ -271,6 +281,34 @@ function EmbedFrame({ source, title }: { source: ImpulseVideoSource; title: stri
     sourceRef.current = source
   })
 
+  /* Die Mitte frei für YouTube, solange es beim Start seine Knöpfe zeigt. */
+  const [open, setOpen] = useState(true)
+  const openTimer = useRef<number | undefined>(undefined)
+  const closeAfter = (ms: number) => {
+    window.clearTimeout(openTimer.current)
+    openTimer.current = window.setTimeout(() => setOpen(false), ms)
+  }
+  /* Ein Tipp in den Rahmen gibt ihm den Fokus – dann hat YouTube ihn
+     bekommen und seine Knöpfe weggenommen. Der Fokus geht danach zurück
+     an die Seite, sonst kämen Escape und die Pfeiltasten nicht mehr an. */
+  useEffect(() => {
+    const onBlur = () => {
+      window.setTimeout(() => {
+        const frame = frameRef.current
+        if (!frame || document.activeElement !== frame) return
+        touched.current = true
+        window.clearTimeout(openTimer.current)
+        setOpen(false)
+        frame.blur()
+      }, 0)
+    }
+    window.addEventListener('blur', onBlur)
+    return () => {
+      window.removeEventListener('blur', onBlur)
+      window.clearTimeout(openTimer.current)
+    }
+  }, [])
+
   const showPlaying = (value: boolean) => {
     playingRef.current = value
     setPlaying(value)
@@ -318,6 +356,9 @@ function EmbedFrame({ source, title }: { source: ImpulseVideoSource; title: stri
       if (!report) return
       if (!heard.current) quietTimer.current = window.setTimeout(() => startQuietly(), 1500)
       heard.current = true
+      /* Läuft es zum ersten Mal, nimmt YouTube seine Knöpfe bald selbst
+         weg – dann deckt die Fläche wieder alles ab. */
+      if (report.playing && playingRef.current !== true) closeAfter(4000)
       if (report.playing !== undefined) showPlaying(report.playing)
       if (report.muted !== undefined) showMuted(report.muted)
       if (report.duration !== undefined) {
@@ -341,6 +382,8 @@ function EmbedFrame({ source, title }: { source: ImpulseVideoSource; title: stri
   const helloTimer = useRef<number | undefined>(undefined)
   useEffect(() => () => window.clearInterval(helloTimer.current), [])
   const onLoad = () => {
+    /* Meldet die Fremdkarte nichts, gilt eine grosszügige Frist. */
+    closeAfter(7000)
     const hello = () => {
       const origin = impulseEmbedOrigin(sourceRef.current)
       const target = frameRef.current?.contentWindow
@@ -476,38 +519,49 @@ function EmbedFrame({ source, title }: { source: ImpulseVideoSource; title: stri
         src={embedUrl}
         title={title}
         onLoad={onLoad}
-        /* Bedient wird über die Wischfläche – in den Rahmen führt kein Weg. */
+        /* Bedient wird über die Wischfläche – in den Rahmen führt nur beim
+           Start ein Weg, solange YouTube seine Knöpfe zeigt (`open`). */
         tabIndex={-1}
-        className="pointer-events-none size-full"
+        className={cn('size-full', !open && 'pointer-events-none')}
         allow="autoplay; encrypted-media; picture-in-picture; fullscreen"
         allowFullScreen
         /* Die Fremdkarte bekommt so wenig wie möglich mit: kein
            Zugriff auf die App, nur ihr eigenes Fenster. */
         referrerPolicy="strict-origin-when-cross-origin"
       />
-      {/* Die Wischfläche: Auf ihr rollt der Feed nach oben und unten, zur
-          Seite spult sie, ein Tipp hält an. */}
-      <button
-        type="button"
-        onClick={toggle}
-        onPointerDown={onPointerDown}
-        onPointerMove={onPointerMove}
-        onPointerUp={endScrub}
-        onPointerCancel={endScrub}
-        onKeyDown={onKeyDown}
-        aria-label={playing === false ? 'Video abspielen' : 'Video anhalten'}
-        className="absolute inset-0 cursor-pointer touch-pan-y focus-visible:-outline-offset-4"
-      >
-        {playing === false && scrubTo === null && <PlaySign />}
-        {scrubTo !== null && (
-          <span className="pointer-events-none absolute inset-0 grid place-items-center">
-            <span className="tabular rounded-full bg-slate-950/60 px-4 py-2 text-lg font-semibold text-white backdrop-blur-sm">
-              {impulseVideoClock(scrubTo)}
-              <span className="font-normal opacity-70"> / {impulseVideoClock(duration)}</span>
+      {open ? (
+        /* Beim Start: nur ein Streifen oben und unten zum Weiterwischen –
+           die Mitte gehört YouTube, damit ein Tipp dort seine Knöpfe und
+           Texte wegnimmt. */
+        <>
+          <div aria-hidden className="absolute inset-x-0 top-0 h-[28%]" />
+          <div aria-hidden className="absolute inset-x-0 bottom-0 h-[28%]" />
+        </>
+      ) : (
+        /* Die Wischfläche: Auf ihr rollt der Feed nach oben und unten, zur
+           Seite spult sie, ein Tipp hält an. */
+        <button
+          type="button"
+          onClick={toggle}
+          onPointerDown={onPointerDown}
+          onPointerMove={onPointerMove}
+          onPointerUp={endScrub}
+          onPointerCancel={endScrub}
+          onKeyDown={onKeyDown}
+          aria-label={playing === false ? 'Video abspielen' : 'Video anhalten'}
+          className="absolute inset-0 cursor-pointer touch-pan-y focus-visible:-outline-offset-4"
+        >
+          {playing === false && scrubTo === null && <PlaySign />}
+          {scrubTo !== null && (
+            <span className="pointer-events-none absolute inset-0 grid place-items-center">
+              <span className="tabular rounded-full bg-slate-950/60 px-4 py-2 text-lg font-semibold text-white backdrop-blur-sm">
+                {impulseVideoClock(scrubTo)}
+                <span className="font-normal opacity-70"> / {impulseVideoClock(duration)}</span>
+              </span>
             </span>
-          </span>
-        )}
-      </button>
+          )}
+        </button>
+      )}
       {/* Die Leiste ganz unten: wie weit das Video ist – beim Spulen kräftiger. */}
       {duration > 0 && (
         <div className="pointer-events-none absolute inset-x-0 bottom-0 pb-safe" aria-hidden>
