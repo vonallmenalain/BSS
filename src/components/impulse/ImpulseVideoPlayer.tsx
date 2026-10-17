@@ -20,7 +20,6 @@ import {
   impulseSoundBlocked,
   impulseVideoClock,
   impulseVideoHost,
-  impulseVideoThumbnail,
   type ImpulseEmbedBox,
   type ImpulseEmbedCommand,
   type ImpulseVideoSource,
@@ -196,17 +195,14 @@ function EmbeddedVideo({
     const timer = window.setTimeout(() => setEmbedded(active), active ? 180 : 0)
     return () => window.clearTimeout(timer)
   }, [active])
-  /* Ohne eigenes Bild das Vorschaubild von YouTube – dasselbe vor dem
-     Einbetten wie auf dem Vorhang, damit nichts umspringt. */
-  const picture = poster ?? impulseVideoThumbnail(source)
 
   return (
     <div className="absolute inset-0 bg-black">
       {embedded ? (
-        <EmbedFrame source={source} poster={picture} title={title} info={info} />
+        <EmbedFrame source={source} poster={poster} title={title} info={info} />
       ) : (
         <div className="absolute inset-0">
-          <Poster poster={picture} />
+          <Poster poster={poster} />
         </div>
       )}
     </div>
@@ -251,9 +247,10 @@ function EmbeddedVideo({
  * ausserhalb der Karte und wird abgeschnitten (`impulseEmbedBox`); ein
  * Short füllt dabei den ganzen Bildschirm.
  *
- * **Es startet sofort.** Bis sich das Bild bewegt, deckt ein Vorhang mit
- * dem Vorschaubild den Rahmen zu – solange zeigt YouTube sein eigenes
- * Vorschaubild mit dem grossen Startknopf. Dann geht er gleich auf. Am
+ * **Es startet sofort.** Bis sich das Bild bewegt, deckt ein Vorhang den
+ * Rahmen zu – das Bild der Karte oder, meist, der ruhige dunkle Grund;
+ * solange zeigt YouTube sein eigenes Vorschaubild mit dem grossen
+ * Startknopf. Dann geht er gleich auf. Am
  * Telefon legt YouTube beim Anlaufen trotz `controls=0` seinen Knopf zum
  * Anhalten mitten ins Bild und nimmt ihn erst nach ein paar Sekunden weg;
  * den nimmt man in Kauf. Ihn zu verbergen hiesse, das Video so lange
@@ -263,8 +260,8 @@ function EmbeddedVideo({
  * bleibt der eigene Knopf in der Mitte ein paar Sekunden stehen
  * (`COVER_MS`) – genau über dem von YouTube, undurchsichtig genug, und
  * grösser. Dasselbe nach dem Spulen. Und **am Ende** fällt der Vorhang,
- * statt der Vorschläge des Anbieters: Das Vorschaubild steht da, die
- * Angaben der Karte und der Startknopf; ein Tipp spielt es noch einmal.
+ * statt der Vorschläge des Anbieters: Der Vorhang steht da, die Angaben
+ * der Karte und der Startknopf; ein Tipp spielt es noch einmal.
  * Keine Schleife – die fiele bei YouTube nur mit dessen Knöpfen aus.
  *
  * **Der Ton.** Stumm darf ein Video überall von selbst anlaufen, laut

@@ -330,18 +330,6 @@ export function impulseScrubTime(
   return Math.min(duration, Math.max(0, startTime + (deltaX / width) * duration))
 }
 
-/**
- * Das Vorschaubild, das YouTube zu jedem Video bereithält – für den
- * Vorhang, solange das Video verdeckt anläuft, wenn die Redaktion kein
- * eigenes Bild gesetzt hat. `hqdefault` gibt es zu jedem Video; bei einem
- * Short steht das hochkante Bild darin zwischen schwarzen Rändern, die das
- * Zuschneiden auf den Bildschirm (`object-cover`) wegnimmt.
- */
-export function impulseVideoThumbnail(source: ImpulseVideoSource): string | null {
-  if (source.art !== 'youtube') return null
-  return `https://i.ytimg.com/vi/${encodeURIComponent(source.id)}/hqdefault.jpg`
-}
-
 /** Eine Zeit im Video, wie man sie liest: «0:07», «1:05», «12:30». */
 export function impulseVideoClock(seconds: number): string {
   const whole = Math.max(0, Math.floor(seconds))
