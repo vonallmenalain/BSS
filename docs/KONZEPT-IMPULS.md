@@ -1758,3 +1758,22 @@ ein und aus, der Knopf in der Mitte hält an und lässt weiterlaufen (und
 steht danach viereinhalb Sekunden), ein Zug zur Seite spult, ein Wisch
 nach oben bringt die nächste Karte; am Ende fällt der Vorhang mit
 Startknopf und Angaben, und ein Tipp darauf startet von vorn.
+
+### 13.15 Eigene Shorts (`shorts/`)
+
+Neben den Shorts der Kirche (13.11) entstehen eigene kurze Videos zur
+Woche: 9:16, rund 50 Sekunden, mit Stimme, Untertiteln, bei denen das
+gesprochene Wort aufleuchtet, und leiser Musik. Das Projekt liegt in
+`shorts/` – ein eigenes Remotion-Projekt mit eigenem `package.json`, nicht
+Teil des App-Builds (die App-Prüfungen und Netlify fassen es nicht an).
+
+- **Eine Episode ist ein JSON** in `shorts/content/`: Szenen, Sprechtext,
+  Stichwörter. Daraus vertont `npm run tts` mit der Google-Stimme (Chirp 3
+  HD, wie die Lernapp; Schlüssel `GOOGLE_TTS_API_KEY`), und
+  `npm run render` macht das MP4. Ablauf und Einrichtung: `shorts/README.md`.
+- **Die erste Woche** (19.–25. Oktober, Helamans junge Krieger): «Anpacken
+  statt warten» (Montag, Alma 53:20), «Verwundet, nicht gefallen»
+  (Mittwoch, Alma 57:19–27) und «Treu zu allen Zeiten» (Sonntag).
+- **In die App** kämen sie als Video-Karte mit eigener Videodatei – die
+  spielt im eigenen Player, ohne Knöpfe von YouTube. Wo die Dateien liegen
+  (Firebase Storage oder die Netlify-Seite), ist noch offen.

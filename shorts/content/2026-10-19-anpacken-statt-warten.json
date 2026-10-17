@@ -1,0 +1,78 @@
+{
+  "id": "2026-10-19-anpacken-statt-warten",
+  "title": "Anpacken statt warten",
+  "date": "2026-10-19",
+  "series": "Für eine starke Jugend · Oktober",
+  "brand": {
+    "name": "AntiDoom",
+    "label": "Montag, 19.10."
+  },
+  "voice": {
+    "provider": "google",
+    "languageCode": "de-DE",
+    "name": "de-DE-Chirp3-HD-Charon",
+    "speakingRate": 1.0
+  },
+  "pronunciations": [
+    { "phrase": "Helaman", "ipa": "ˈheːlaman" }
+  ],
+  "music": {
+    "src": "music/pad-dawn.mp3",
+    "volume": 0.3,
+    "duckTo": 0.09
+  },
+  "scenes": [
+    {
+      "id": "hook",
+      "type": "kinetic",
+      "sky": 0,
+      "ref": "Alma 53:20",
+      "lines": ["Mutig.", "Stark.", "Regsam."],
+      "narration": "Drei Wörter beschreiben Helamans junge Krieger. [pause short] Mutig. [pause short] Stark. [pause short] Regsam."
+    },
+    {
+      "id": "regsam",
+      "type": "kinetic",
+      "sky": 0.15,
+      "lines": ["Anpacken.", "Nicht warten."],
+      "narration": "Regsam ist ein altes Wort. [pause short] Es heisst: anpacken. [pause short] Nicht warten, bis jemand ruft."
+    },
+    {
+      "id": "aufstehen",
+      "type": "illustration",
+      "motif": "swords",
+      "cue": "Also traten",
+      "sky": 0.3,
+      "ref": "Alma 53:13–18",
+      "narration": "Als ihr Volk in Not war, warteten sie nicht. [pause short] Ihre Väter durften nicht mehr kämpfen. [pause short] Also traten die Söhne vor."
+    },
+    {
+      "id": "treu",
+      "type": "kinetic",
+      "sky": 0.5,
+      "ref": "Alma 53:20",
+      "lines": ["Treu.", "Zu allen Zeiten."],
+      "narration": "Mutig, stark, regsam. [pause short] Aber das war nicht alles. [pause long] Sie waren treu. [pause short] Zu allen Zeiten."
+    },
+    {
+      "id": "heute",
+      "type": "kinetic",
+      "sky": 0.75,
+      "lines": ["Beim Lernen.", "Zu Hause.", "Im Kollegium."],
+      "narration": "Und heute? [pause short] Regsam heisst: anpacken, bevor jemand fragt. [pause short] Beim Lernen. Zu Hause. Im Kollegium."
+    },
+    {
+      "id": "frage",
+      "type": "cta",
+      "sky": 1,
+      "question": "Was packst du heute an?",
+      "challenge": {
+        "label": "Challenge der Woche",
+        "text": "Jeden Tag eine Aufgabe erledigen, ohne dass dich jemand erinnert."
+      },
+      "footer": "Alma 53:20 · Montag, 19. Oktober",
+      "holdAfterSec": 3.5,
+      "narration": "Was packst du heute an? [pause short] Ohne dass dich jemand erinnert."
+    }
+  ]
+}

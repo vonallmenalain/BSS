@@ -5,7 +5,8 @@ import reactRefresh from 'eslint-plugin-react-refresh'
 import tseslint from 'typescript-eslint'
 
 export default tseslint.config(
-  { ignores: ['dist', 'dev-dist', 'node_modules', 'scripts'] },
+  // `shorts/` ist ein eigenes Projekt (Remotion) mit eigenem tsconfig und Node-Skripten.
+  { ignores: ['dist', 'dev-dist', 'node_modules', 'scripts', 'shorts'] },
   {
     extends: [js.configs.recommended, ...tseslint.configs.recommended],
     files: ['**/*.{ts,tsx}'],
