@@ -1,0 +1,193 @@
+{
+  "episodeId": "2026-10-21-verwundet-nicht-gefallen",
+  "provider": "google",
+  "voice": "de-DE-Chirp3-HD-Charon",
+  "generatedAt": "2026-10-17T22:29:31.965Z",
+  "scenes": [
+    {
+      "id": "hook",
+      "file": "episodes/2026-10-21-verwundet-nicht-gefallen/audio/hook-1be4170ecada.wav",
+      "hash": "1be4170ecada",
+      "durationSec": 6.44,
+      "speechStartSec": 0.6,
+      "speechEndSec": 6.17,
+      "phrases": [
+        {
+          "text": "Zweitausendsechzig junge Krieger.",
+          "start": 0.6,
+          "end": 2.34
+        },
+        {
+          "text": "Eine harte Schlacht.",
+          "start": 2.8,
+          "end": 3.8
+        },
+        {
+          "text": "Und keiner kommt ohne Wunden davon.",
+          "start": 4.3,
+          "end": 6.17
+        }
+      ]
+    },
+    {
+      "id": "schlacht",
+      "file": "episodes/2026-10-21-verwundet-nicht-gefallen/audio/schlacht-f0b62000c65e.wav",
+      "hash": "f0b62000c65e",
+      "durationSec": 5.48,
+      "speechStartSec": 0.34,
+      "speechEndSec": 5.26,
+      "phrases": [
+        {
+          "text": "Das feindliche Heer ist viel grösser.",
+          "start": 0.34,
+          "end": 2.45
+        },
+        {
+          "text": "Doch die jungen Krieger tun genau,",
+          "start": 2.82,
+          "end": 4.193
+        },
+        {
+          "text": "was man ihnen sagt.",
+          "start": 4.193,
+          "end": 5.26
+        }
+      ]
+    },
+    {
+      "id": "genau",
+      "file": "episodes/2026-10-21-verwundet-nicht-gefallen/audio/genau-9948c24d0aca.wav",
+      "hash": "9948c24d0aca",
+      "durationSec": 4.96,
+      "speechStartSec": 0.56,
+      "speechEndSec": 4.73,
+      "phrases": [
+        {
+          "text": "Nicht ungefähr.",
+          "start": 0.56,
+          "end": 1.39
+        },
+        {
+          "text": "Genau.",
+          "start": 2.1,
+          "end": 2.32
+        },
+        {
+          "text": "Jeden Befehl,",
+          "start": 3.05,
+          "end": 3.607
+        },
+        {
+          "text": "Wort für Wort.",
+          "start": 3.607,
+          "end": 4.73
+        }
+      ]
+    },
+    {
+      "id": "gezaehlt",
+      "file": "episodes/2026-10-21-verwundet-nicht-gefallen/audio/gezaehlt-e15e9fbb268d.wav",
+      "hash": "e15e9fbb268d",
+      "durationSec": 7.24,
+      "speechStartSec": 0.42,
+      "speechEndSec": 7.05,
+      "phrases": [
+        {
+          "text": "Nach der Schlacht zählt Helaman seine Söhne.",
+          "start": 0.42,
+          "end": 2.45
+        },
+        {
+          "text": "Jeder einzelne ist verwundet.",
+          "start": 2.95,
+          "end": 4.43
+        },
+        {
+          "text": "Aber nicht einer ist gefallen.",
+          "start": 5.72,
+          "end": 7.05
+        }
+      ]
+    },
+    {
+      "id": "warum",
+      "file": "episodes/2026-10-21-verwundet-nicht-gefallen/audio/warum-88ca6e84f88e.wav",
+      "hash": "88ca6e84f88e",
+      "durationSec": 5.76,
+      "speechStartSec": 0.58,
+      "speechEndSec": 5.59,
+      "phrases": [
+        {
+          "text": "Wie war das möglich?",
+          "start": 0.58,
+          "end": 1.43
+        },
+        {
+          "text": "Helaman sagt:",
+          "start": 2.14,
+          "end": 2.83
+        },
+        {
+          "text": "Es war Gottes Macht.",
+          "start": 3.25,
+          "end": 4.44
+        },
+        {
+          "text": "Und ihr Glaube.",
+          "start": 4.81,
+          "end": 5.59
+        }
+      ]
+    },
+    {
+      "id": "heute",
+      "file": "episodes/2026-10-21-verwundet-nicht-gefallen/audio/heute-3640cb1714d6.wav",
+      "hash": "3640cb1714d6",
+      "durationSec": 6.96,
+      "speechStartSec": 0.34,
+      "speechEndSec": 6.67,
+      "phrases": [
+        {
+          "text": "Gott sucht keine perfekten Menschen.",
+          "start": 0.34,
+          "end": 2.09
+        },
+        {
+          "text": "Er sucht treue.",
+          "start": 2.58,
+          "end": 3.45
+        },
+        {
+          "text": "Hinfallen.",
+          "start": 3.93,
+          "end": 4.49
+        },
+        {
+          "text": "Umkehren.",
+          "start": 4.92,
+          "end": 5.5
+        },
+        {
+          "text": "Aufstehen.",
+          "start": 6.11,
+          "end": 6.67
+        }
+      ]
+    },
+    {
+      "id": "frage",
+      "file": "episodes/2026-10-21-verwundet-nicht-gefallen/audio/frage-e509c45fc041.wav",
+      "hash": "e509c45fc041",
+      "durationSec": 2.08,
+      "speechStartSec": 0.31,
+      "speechEndSec": 1.89,
+      "phrases": [
+        {
+          "text": "Wo willst du diese Woche wieder aufstehen?",
+          "start": 0.31,
+          "end": 1.89
+        }
+      ]
+    }
+  ]
+}

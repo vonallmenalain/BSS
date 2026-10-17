@@ -1,0 +1,208 @@
+{
+  "episodeId": "2026-10-19-anpacken-statt-warten",
+  "provider": "google",
+  "voice": "de-DE-Chirp3-HD-Charon",
+  "generatedAt": "2026-10-17T22:29:28.615Z",
+  "scenes": [
+    {
+      "id": "hook",
+      "file": "episodes/2026-10-19-anpacken-statt-warten/audio/hook-2025e0026ec9.wav",
+      "hash": "2025e0026ec9",
+      "durationSec": 6.48,
+      "speechStartSec": 0.38,
+      "speechEndSec": 6.11,
+      "phrases": [
+        {
+          "text": "Drei Wörter beschreiben Helamans junge Krieger.",
+          "start": 0.38,
+          "end": 4.2
+        },
+        {
+          "text": "Mutig.",
+          "start": 4.69,
+          "end": 5.13
+        },
+        {
+          "text": "Stark.",
+          "start": 5.58,
+          "end": 5.66
+        },
+        {
+          "text": "Regsam.",
+          "start": 5.63,
+          "end": 6.11
+        }
+      ]
+    },
+    {
+      "id": "regsam",
+      "file": "episodes/2026-10-19-anpacken-statt-warten/audio/regsam-3df4e5e6cba3.wav",
+      "hash": "3df4e5e6cba3",
+      "durationSec": 6.6,
+      "speechStartSec": 0.6,
+      "speechEndSec": 6.36,
+      "phrases": [
+        {
+          "text": "Regsam ist ein altes Wort.",
+          "start": 0.6,
+          "end": 2.07
+        },
+        {
+          "text": "Es heisst:",
+          "start": 2.56,
+          "end": 3.15
+        },
+        {
+          "text": "anpacken.",
+          "start": 3.54,
+          "end": 4.2
+        },
+        {
+          "text": "Nicht warten,",
+          "start": 4.73,
+          "end": 5.147
+        },
+        {
+          "text": "bis jemand ruft.",
+          "start": 5.147,
+          "end": 6.36
+        }
+      ]
+    },
+    {
+      "id": "aufstehen",
+      "file": "episodes/2026-10-19-anpacken-statt-warten/audio/aufstehen-6208e770f97f.wav",
+      "hash": "6208e770f97f",
+      "durationSec": 6.8,
+      "speechStartSec": 0.42,
+      "speechEndSec": 6.48,
+      "phrases": [
+        {
+          "text": "Als ihr Volk in Not war,",
+          "start": 0.42,
+          "end": 1.705
+        },
+        {
+          "text": "warteten sie nicht.",
+          "start": 1.705,
+          "end": 2.55
+        },
+        {
+          "text": "Ihre Väter durften nicht mehr kämpfen.",
+          "start": 2.95,
+          "end": 4.68
+        },
+        {
+          "text": "Also traten die Söhne vor.",
+          "start": 5.11,
+          "end": 6.48
+        }
+      ]
+    },
+    {
+      "id": "treu",
+      "file": "episodes/2026-10-19-anpacken-statt-warten/audio/treu-b5f3ff914b4e.wav",
+      "hash": "b5f3ff914b4e",
+      "durationSec": 8.28,
+      "speechStartSec": 0.58,
+      "speechEndSec": 7.52,
+      "phrases": [
+        {
+          "text": "Mutig,",
+          "start": 0.58,
+          "end": 1.06
+        },
+        {
+          "text": "stark,",
+          "start": 1.38,
+          "end": 1.986
+        },
+        {
+          "text": "regsam.",
+          "start": 1.986,
+          "end": 2.42
+        },
+        {
+          "text": "Aber das war nicht alles.",
+          "start": 2.96,
+          "end": 3.87
+        },
+        {
+          "text": "Sie waren treu.",
+          "start": 5.29,
+          "end": 6.07
+        },
+        {
+          "text": "Zu allen Zeiten.",
+          "start": 6.68,
+          "end": 7.52
+        }
+      ]
+    },
+    {
+      "id": "heute",
+      "file": "episodes/2026-10-19-anpacken-statt-warten/audio/heute-8d1ad290ea0b.wav",
+      "hash": "8d1ad290ea0b",
+      "durationSec": 7.6,
+      "speechStartSec": 0.51,
+      "speechEndSec": 7.42,
+      "phrases": [
+        {
+          "text": "Und heute?",
+          "start": 0.51,
+          "end": 1.02
+        },
+        {
+          "text": "Regsam heisst:",
+          "start": 1.53,
+          "end": 2.31
+        },
+        {
+          "text": "anpacken,",
+          "start": 2.58,
+          "end": 3.259
+        },
+        {
+          "text": "bevor jemand fragt.",
+          "start": 3.259,
+          "end": 4.02
+        },
+        {
+          "text": "Beim Lernen.",
+          "start": 4.53,
+          "end": 5.13
+        },
+        {
+          "text": "Zu Hause.",
+          "start": 5.6,
+          "end": 6.15
+        },
+        {
+          "text": "Im Kollegium.",
+          "start": 6.63,
+          "end": 7.42
+        }
+      ]
+    },
+    {
+      "id": "frage",
+      "file": "episodes/2026-10-19-anpacken-statt-warten/audio/frage-22dd782510be.wav",
+      "hash": "22dd782510be",
+      "durationSec": 3.84,
+      "speechStartSec": 0.39,
+      "speechEndSec": 3.48,
+      "phrases": [
+        {
+          "text": "Was packst du heute an?",
+          "start": 0.39,
+          "end": 1.64
+        },
+        {
+          "text": "Ohne dass dich jemand erinnert.",
+          "start": 2.18,
+          "end": 3.48
+        }
+      ]
+    }
+  ]
+}
