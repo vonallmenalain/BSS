@@ -1655,22 +1655,26 @@ abfing. Zwei Versuche, die Oberfläche von YouTube ganz zu verbergen
 (abschneiden, verdecken bis zum Start), brachten am Telefon nichts und
 sind wieder zurückgenommen.
 
-Jetzt bedient man in der Mitte YouTube selbst, das ganze Video lang:
+Jetzt bedient man im Bild YouTube selbst, das ganze Video lang:
 
-- **Die Mitte gehört YouTube** – ein waagrechtes Band über die ganze
-  Breite, gut ein Viertel der Höhe, in dem der Startknopf liegt. Ein Tipp
-  neben den Knopf blendet Titel, Kanal und Knöpfe ein und wieder aus,
-  ohne anzuhalten; ein Tipp auf den Knopf hält an und lässt weiterlaufen.
-  So, wie man es von YouTube kennt – es ist dessen eigene Bedienung.
-- **Oben und unten** liegt je eine Wischfläche der App (gut ein Drittel
-  der Höhe). Dort wischt man zur nächsten oder vorigen Karte, und ein
-  Wisch zur Seite spult (13.12). Ein Wisch, der in der Mitte beginnt,
-  gehört YouTube und wechselt die Karte nicht.
+- **Das Bild gehört YouTube** – alles zwischen einem schmalen Rand oben
+  und unten. Ein Tipp neben den Startknopf blendet Titel, Kanal und
+  Knöpfe ein und wieder aus, ohne anzuhalten; ein Tipp auf den Knopf hält
+  an und lässt weiterlaufen. So, wie man es von YouTube kennt – es ist
+  dessen eigene Bedienung. (Zuerst gehörte YouTube nur ein Band in der
+  Mitte; oben und unten im Bild kam der Tipp darum nicht an.)
+- **Am Rand** liegt je eine Wischfläche der App: oben 15 % der Höhe,
+  unten 20 %, dort, wo der Daumen meist ansetzt. Dort wischt man zur
+  nächsten oder vorigen Karte, und ein Wisch zur Seite spult (13.12). Ein
+  Short, der nicht den ganzen Bildschirm füllt, hat diese Ränder ohnehin
+  im unscharfen Grund über und unter dem Bild. Ein Wisch, der im Bild
+  beginnt, gehört YouTube und wechselt die Karte nicht – ein Tipp kann
+  nicht zugleich YouTube und der Wischfläche gehören.
 - **Ton und Leiste** bleiben unten, wie sie waren. Das eigene Startzeichen
   der Karte entfällt – YouTube zeigt seines.
-- Tippt man in die Mitte, nimmt der Rahmen den Fokus. Daran merkt die
+- Tippt man ins Bild, nimmt der Rahmen den Fokus. Daran merkt die
   Karte, dass jemand selbst eingegriffen hat, und startet das Video nicht
-  mehr von sich aus stumm. Ein Tipp in die Mitte ist zugleich eine
+  mehr von sich aus stumm. Ein Tipp ins Bild ist zugleich eine
   Berührung im Video selbst: Lässt der Browser den Ton sonst nicht zu (am
   iPhone), läuft es danach mit Ton.
 

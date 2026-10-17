@@ -35,12 +35,12 @@ import {
  *   ist der Bildschirm. Die Videodatei bringt ihre eigene Leiste mit.
  * - **Wischen geht auch auf dem Video** – wie bei Reels und Shorts. Eine
  *   eingebettete Fremdkarte (YouTube, Vimeo) behielte jede Berührung für
- *   sich, und der Daumen käme nicht zur nächsten Karte. Darum liegt oben
- *   und unten eine Wischfläche (`EmbeddedVideo`): Ein Wisch nach oben
- *   oder unten rollt den Feed, ein Wisch zur Seite spult. Die Mitte
- *   gehört YouTube – ein Tipp neben den Startknopf blendet dessen
- *   Angaben und Knöpfe ein und aus, ein Tipp auf den Knopf hält an. Der
- *   Knopf unten rechts schaltet den Ton.
+ *   sich, und der Daumen käme nicht zur nächsten Karte. Darum liegt am
+ *   oberen und am unteren Rand eine schmale Wischfläche (`EmbeddedVideo`):
+ *   Ein Wisch nach oben oder unten rollt den Feed, ein Wisch zur Seite
+ *   spult. Das Bild dazwischen gehört YouTube – ein Tipp neben den
+ *   Startknopf blendet dessen Angaben und Knöpfe ein und aus, ein Tipp auf
+ *   den Knopf hält an. Der Knopf unten rechts schaltet den Ton.
  *
  * Was sich nicht einbetten lässt – eine Videoseite der Kirche etwa,
  * deren Server das verbietet –, wird zur ruhigen Karte mit einem Knopf,
@@ -198,22 +198,25 @@ function EmbeddedVideo({
 }
 
 /**
- * Die Fremdkarte selbst – die Mitte gehört ihr, oben und unten liegt eine
- * Wischfläche der App.
+ * Die Fremdkarte selbst – das Bild gehört ihr, am oberen und am unteren
+ * Rand liegt eine schmale Wischfläche der App.
  *
  * Ein Rahmen einer fremden Seite behält jede Berührung für sich: Wer
  * darauf wischt, rollt nicht den Feed, sondern höchstens das Video.
  * Getippt soll aber genau dort werden – wie bei YouTube selbst:
  *
- * - **Die Mitte gehört YouTube**, ein waagrechtes Band über die ganze
- *   Breite, in dem der Startknopf liegt. Ein Tipp neben den Knopf blendet
- *   Titel, Kanal und Knöpfe ein und wieder aus; ein Tipp auf den Knopf
- *   hält an und lässt weiterlaufen. Das gilt das ganze Video lang, denn
- *   es ist die eigene Bedienung von YouTube.
- * - **Oben und unten wischt man weiter.** Dort liegt je eine Wischfläche
- *   der App (gut ein Drittel der Höhe): Auf ihr rollt der Feed zur
- *   nächsten oder vorigen Karte wie auf jeder anderen Karte. Ein Wisch,
- *   der in der Mitte beginnt, gehört dagegen YouTube.
+ * - **Das Bild gehört YouTube** – alles zwischen den beiden Rändern. Ein
+ *   Tipp neben den Startknopf blendet Titel, Kanal und Knöpfe ein und
+ *   wieder aus; ein Tipp auf den Knopf hält an und lässt weiterlaufen.
+ *   Das gilt das ganze Video lang, denn es ist die eigene Bedienung von
+ *   YouTube. Ein Tipp kann nicht zugleich der Wischfläche gehören: Was
+ *   auf ihr beginnt, erreicht YouTube nie. Darum sind die Flächen schmal.
+ * - **Am Rand wischt man weiter.** Oben (15 % der Höhe) und unten (20 %,
+ *   dort, wo der Daumen meist ansetzt) liegt je eine Wischfläche der App:
+ *   Auf ihr rollt der Feed zur nächsten oder vorigen Karte wie auf jeder
+ *   anderen Karte. Ein Short, der nicht den ganzen Bildschirm füllt, hat
+ *   seine Ränder ohnehin im unscharfen Grund über und unter dem Bild. Ein
+ *   Wisch, der im Bild beginnt, gehört dagegen YouTube.
  * - **Ein Wisch zur Seite spult** – auf den Wischflächen, nach rechts
  *   vor, nach links zurück; die ganze Breite ist die ganze Länge, wie bei
  *   der Leiste ganz unten. Die Flächen lassen nur das senkrechte Rollen
@@ -469,9 +472,10 @@ function EmbedFrame({ source, title }: { source: ImpulseVideoSource; title: stri
            Zugriff auf die App, nur ihr eigenes Fenster. */
         referrerPolicy="strict-origin-when-cross-origin"
       />
-      {/* Die Wischflächen oben und unten: Auf ihnen rollt der Feed, zur Seite
-          spulen sie. Die Mitte bleibt frei – dort tippt man YouTube an. */}
-      {(['top-0', 'bottom-0'] as const).map((edge) => (
+      {/* Die Wischflächen am oberen und am unteren Rand: Auf ihnen rollt der
+          Feed, zur Seite spulen sie. Das Bild dazwischen bleibt frei – dort
+          tippt man YouTube an. */}
+      {(['top-0 h-[15%]', 'bottom-0 h-[20%]'] as const).map((edge) => (
         <div
           key={edge}
           aria-hidden
@@ -479,7 +483,7 @@ function EmbedFrame({ source, title }: { source: ImpulseVideoSource; title: stri
           onPointerMove={onPointerMove}
           onPointerUp={endScrub}
           onPointerCancel={endScrub}
-          className={cn('absolute inset-x-0 h-[36%] touch-pan-y', edge)}
+          className={cn('absolute inset-x-0 touch-pan-y', edge)}
         />
       ))}
       {scrubTo !== null && (
