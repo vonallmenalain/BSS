@@ -1714,65 +1714,46 @@ der Short an den Anfang und läuft weiter; der Vorhang deckt das Laden zu
 und geht auf, sobald sich das Bild bewegt. Mit der Kennung eines iPhones
 startet das Video stumm; bleibt es stehen, erscheint der Startknopf.
 
-### 13.14 Verdeckt und gebremst anlaufen – kein Knopf von YouTube beim Start
+### 13.14 Sofort starten – den Knopf von YouTube beim Start nimmt man in Kauf
 
 Am Telefon zeigte sich: Beim Anlaufen legt YouTube trotz `controls=0`
 seinen Knopf zum Anhalten mitten ins Bild und nimmt ihn erst nach ein
 paar Sekunden weg. Abschalten lässt er sich nicht, wegtippen auch nicht
-mehr (13.13). Ein erster Versuch, ihn zu verbergen – das Video verdeckt
-anlaufen lassen und dann an den Anfang springen –, brachte den Knopf mit
-dem Sprung gleich wieder hervor. Darum jetzt ohne Sprung:
+mehr (13.13). Zwei Versuche, ihn zu verbergen, sind zurückgenommen: das
+Video verdeckt anlaufen lassen und dann an den Anfang springen – der
+Sprung holte den Knopf wieder hervor; und es verdeckt, gebremst und stumm
+viereinhalb Sekunden anlaufen lassen – kein Knopf mehr, aber viereinhalb
+Sekunden Vorschaubild, bis sich das Bild bewegt, und das war zu lang.
+Entschieden ist: **Das Video startet sofort**, und der Knopf von YouTube
+darf die ersten Sekunden dastehen. Was bleibt:
 
-- **Das Video läuft verdeckt an – gebremst und stumm.** Der Vorhang (das
-  Vorschaubild; ohne eigenes Bild das von YouTube,
-  `impulseVideoThumbnail`) bleibt liegen, und darunter läuft das Video
-  mit einem Viertel seines Tempos (`setPlaybackRate`, `WARM_UP_RATE`) –
-  so lange, bis YouTube seinen Knopf sicher weggenommen hat: viereinhalb
-  Sekunden ab dem Moment, in dem sich das Bild bewegt (`WARM_UP_MS`);
-  lädt es zwischendurch nach, noch einmal dreieinhalb ab dem
-  Weiterlaufen (`WARM_UP_AFTER_BUFFER_MS`). Dann bekommt es sein Tempo und
-  seinen Ton zurück, und der Vorhang geht auf. Das Video steht dann bei
-  etwa anderthalb Sekunden – fast der Anfang –, und nichts von YouTube
-  liegt darüber. Weder springt die Karte zurück noch hält sie an: Beides
-  holte den Knopf wieder hervor. Solange es anläuft, rückt das
-  Vorschaubild ganz leise näher – man sieht, dass sich etwas tut.
 - **Stumm starten, überall.** Stumm darf ein Video in jedem Browser von
-  selbst anlaufen, laut nicht (`mute=1`). Den Ton schaltet die Karte nach
-  dem Anlaufen ein – ausser am iPhone und iPad, wo der Browser das ohne
-  Berührung nie zulässt (`impulseSoundBlocked`): Dort bleibt es stumm, und
-  unten rechts steht «Ton an». Bleibt das Video anderswo stehen, sobald
-  der Ton kommt, läuft es stumm weiter, und «Ton an» erscheint. Solange
-  es verdeckt anläuft, steht kein «Ton an» da.
-- **Wer eingreift, beendet das Anlaufen** – mit dem Knopf in der Mitte,
-  dem Ton oder dem Spulen: Tempo und Ton kommen sofort, der Vorhang geht
+  selbst anlaufen, laut nicht (`mute=1`). Sobald sich das Bild bewegt,
+  schaltet die Karte den Ton ein – ausser am iPhone und iPad, wo der
+  Browser das ohne Berührung nie zulässt (`impulseSoundBlocked`): Dort
+  bleibt es stumm, und unten rechts steht «Ton an». Bleibt das Video
+  anderswo stehen, sobald der Ton kommt, läuft es stumm weiter, und
+  «Ton an» erscheint.
+- **Der Vorhang** (das Vorschaubild; ohne eigenes Bild das von YouTube,
+  `impulseVideoThumbnail`; fällt es aus, der ruhige Grund) liegt nur,
+  solange das Video lädt: Solange zeigt YouTube sein eigenes Vorschaubild
+  mit dem grossen roten Startknopf. Sobald sich das Bild bewegt, geht er
   auf.
 - **Nach dem Weiterlaufen** und nach dem Spulen bleibt der eigene Knopf in
   der Mitte viereinhalb Sekunden stehen (`COVER_MS`) – auch bei
   ausgeblendeten Angaben. Er liegt genau über dem von YouTube, ist grösser
-  und fast undurchsichtig; wenn er verschwindet, ist der darunter schon
-  weg.
+  und fast undurchsichtig.
 - **Am Ende** fällt der Vorhang, statt der Vorschläge von YouTube: Das
   Vorschaubild steht da, die Angaben der Karte und der Startknopf. Ein
-  Tipp spielt das Video noch einmal, von vorn – mit dem eigenen Knopf
-  darüber, wie nach jedem Weiterlaufen. Keine Schleife (13.11).
-- **Kommt das Video nicht in Gang** (der Browser lässt auch stummes
-  Anlaufen nicht zu), steht nach ein paar Sekunden der Startknopf auf dem
-  Vorhang.
+  Tipp spielt das Video noch einmal, von vorn. Keine Schleife (13.11).
+- **Kommt das Video nicht in Gang**, steht nach ein paar Sekunden der
+  Startknopf auf dem Vorhang.
 
-Der Preis: Bis sich das Bild zeigt, vergehen nach dem Laden gut
-viereinhalb Sekunden – mit dem Vorschaubild, nicht mit Schwarz. Was nur
-das Telefon zeigen kann: ob YouTube seinen Knopf auch beim Wechsel des
-Tempos oder beim Einschalten des Tons noch einmal hervorholt.
-
-Im Browser geprüft mit einer Attrappe von YouTube, die Tempo und Zeit
-meldet: Vor der ersten Bewegung geht nur die Bremse hinüber, kein Sprung,
-kein Ton; der Vorhang bleibt viereinhalb Sekunden ab der ersten Bewegung
-(nach einem Nachladen länger), dann folgen Tempo eins und der Ton, und der
-Vorhang geht auf – das Video steht bei rund anderthalb Sekunden. Mit der
-Kennung eines iPhones bleibt es stumm, und «Ton an» erscheint erst nach
-dem Aufgehen. Verweigert die Attrappe die Bremse, verlangt die Karte sie
-höchstens achtmal, und der Vorhang geht trotzdem auf. Tipps blenden ein
-und aus, der Knopf in der Mitte hält an und lässt weiterlaufen (und steht
-danach viereinhalb Sekunden), ein Zug zur Seite spult, ein Wisch nach oben
-bringt die nächste Karte; am Ende fällt der Vorhang mit Startknopf und
-Angaben, und ein Tipp darauf startet von vorn.
+Im Browser geprüft mit einer Attrappe von YouTube: Vor der ersten Bewegung
+geht nichts hinüber als die Anmeldung; mit der ersten Bewegung kommt der
+Ton, und der Vorhang geht eine Viertelsekunde danach auf. Mit der Kennung
+eines iPhones bleibt es stumm, mit «Ton an» unten rechts. Tipps blenden
+ein und aus, der Knopf in der Mitte hält an und lässt weiterlaufen (und
+steht danach viereinhalb Sekunden), ein Zug zur Seite spult, ein Wisch
+nach oben bringt die nächste Karte; am Ende fällt der Vorhang mit
+Startknopf und Angaben, und ein Tipp darauf startet von vorn.

@@ -93,10 +93,10 @@ export function impulseVideoSource(raw: string | null | undefined): ImpulseVideo
  * Die Adresse des eingebetteten Videos – startbereit, zunächst stumm.
  *
  * Stumm darf ein Video in jedem Browser von selbst anlaufen, laut nicht
- * überall. Darum startet es stumm und läuft verdeckt an (siehe
- * `ImpulseVideoPlayer`); den Ton schaltet die Karte dann selbst ein
- * (`unmute`) – ausser dort, wo der Browser das ohne Berührung nie
- * zulässt (`impulseSoundBlocked`): Dort bietet sie ihn als Knopf an.
+ * überall. Darum startet es stumm, und die Karte schaltet den Ton selbst
+ * ein, sobald es läuft (`unmute`, siehe `ImpulseVideoPlayer`) – ausser
+ * dort, wo der Browser das ohne Berührung nie zulässt
+ * (`impulseSoundBlocked`): Dort bietet sie ihn als Knopf an.
  *
  * Bedient wird das Video ganz von der Karte aus, mit ihren eigenen
  * Knöpfen: Über dem Video liegt ihre Fläche, damit ein Tipp die Angaben
@@ -145,8 +145,8 @@ export function impulseEmbedUrl(source: ImpulseVideoSource, origin?: string): st
  * werden? Am iPhone und iPad gilt das immer (in jedem Browser – alle
  * laufen dort auf WebKit); ein iPad meldet sich dabei wie ein Mac, nur
  * mit Berührung. Dort bleibt das Video stumm, bis die Person den Ton
- * selbst einschaltet; anderswo schaltet ihn die Karte nach dem Anlaufen
- * ein.
+ * selbst einschaltet; anderswo schaltet ihn die Karte ein, sobald das
+ * Video läuft.
  */
 export function impulseSoundBlocked(userAgent: string, maxTouchPoints: number): boolean {
   if (/iPhone|iPad|iPod/.test(userAgent)) return true
@@ -229,8 +229,6 @@ export interface ImpulseEmbedReport {
   time?: number
   /** Wie lang es ist, in Sekunden. */
   duration?: number
-  /** Wie schnell es läuft – 1 ist das gewöhnliche Tempo. */
-  rate?: number
 }
 
 const YOUTUBE_ORIGIN = 'https://www.youtube-nocookie.com'
@@ -317,24 +315,6 @@ export function impulseEmbedSeekMessage(
 }
 
 /**
- * Das Tempo des Videos – gebremst (0,25) fürs verdeckte Anlaufen, dann
- * wieder 1. YouTube nennt es `setPlaybackRate`, Vimeo auch.
- */
-export function impulseEmbedRateMessage(source: ImpulseVideoSource, rate: number): string | null {
-  if (source.art === 'youtube') {
-    return JSON.stringify({
-      event: 'command',
-      func: 'setPlaybackRate',
-      args: [rate],
-      id: 1,
-      channel: 'widget',
-    })
-  }
-  if (source.art === 'vimeo') return JSON.stringify({ method: 'setPlaybackRate', value: rate })
-  return null
-}
-
-/**
  * Wohin der Daumen spult: Die ganze Breite des Videos ist seine ganze
  * Länge – wie bei der Leiste darunter. Gezählt wird vom Stand beim
  * Aufsetzen aus, nicht vom Punkt, an dem der Finger liegt: So spult man
@@ -413,15 +393,13 @@ export function impulseEmbedReport(
       info &&
       typeof info === 'object'
     ) {
-      const { playerState, muted, currentTime, duration, playbackRate } = info as {
+      const { playerState, muted, currentTime, duration } = info as {
         playerState?: unknown
         muted?: unknown
         currentTime?: unknown
         duration?: unknown
-        playbackRate?: unknown
       }
       const report: ImpulseEmbedReport = { ...youtubeState(playerState) }
-      if (typeof playbackRate === 'number' && playbackRate > 0) report.rate = playbackRate
       if (typeof muted === 'boolean') report.muted = muted
       const time = seconds(currentTime)
       if (time !== undefined) report.time = time

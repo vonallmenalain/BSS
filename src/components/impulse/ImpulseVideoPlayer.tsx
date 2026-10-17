@@ -13,7 +13,6 @@ import {
   impulseEmbedHello,
   impulseEmbedMessage,
   impulseEmbedOrigin,
-  impulseEmbedRateMessage,
   impulseEmbedReport,
   impulseEmbedSeekMessage,
   impulseEmbedUrl,
@@ -252,19 +251,13 @@ function EmbeddedVideo({
  * ausserhalb der Karte und wird abgeschnitten (`impulseEmbedBox`); ein
  * Short füllt dabei den ganzen Bildschirm.
  *
- * **Kein Knopf von YouTube beim Start.** Am Telefon legt YouTube beim
- * Anlaufen trotz `controls=0` seinen Knopf zum Anhalten mitten ins Bild
- * und nimmt ihn erst nach ein paar Sekunden weg. Darum läuft das Video
- * zuerst verdeckt an – **gebremst und stumm**: Ein Vorhang mit dem
- * Vorschaubild liegt darüber, und darunter läuft das Video mit einem
- * Viertel seines Tempos (`WARM_UP_RATE`), bis der Knopf sicher weg ist
- * (`WARM_UP_MS` ab der ersten Bewegung; nach einem Nachladen zwischendurch
- * noch einmal `WARM_UP_AFTER_BUFFER_MS`). Dann bekommt es sein Tempo und
- * seinen Ton zurück, und der Vorhang geht auf: Das Video steht erst bei
- * etwa einer Sekunde – fast der Anfang –, und YouTube hat nichts mehr
- * darüber. Weder springt die Karte dabei zurück noch hält sie an: Beides
- * holte den Knopf wieder hervor (so der Versuch davor). Wer vorher schon
- * eingreift – anhält, den Ton bedient, spult –, bekommt das Video sofort.
+ * **Es startet sofort.** Bis sich das Bild bewegt, deckt ein Vorhang mit
+ * dem Vorschaubild den Rahmen zu – solange zeigt YouTube sein eigenes
+ * Vorschaubild mit dem grossen Startknopf. Dann geht er gleich auf. Am
+ * Telefon legt YouTube beim Anlaufen trotz `controls=0` seinen Knopf zum
+ * Anhalten mitten ins Bild und nimmt ihn erst nach ein paar Sekunden weg;
+ * den nimmt man in Kauf. Ihn zu verbergen hiesse, das Video so lange
+ * verdeckt anlaufen zu lassen – zu lang (siehe Konzept 13.14).
  *
  * **Nach dem Weiterlaufen** zeigt YouTube seinen Knopf wieder. Darum
  * bleibt der eigene Knopf in der Mitte ein paar Sekunden stehen
@@ -275,27 +268,21 @@ function EmbeddedVideo({
  * Keine Schleife – die fiele bei YouTube nur mit dessen Knöpfen aus.
  *
  * **Der Ton.** Stumm darf ein Video überall von selbst anlaufen, laut
- * nicht. Darum startet es stumm, und die Karte schaltet den Ton nach dem
- * Anlaufen ein – ausser am iPhone und iPad, wo der Browser das ohne
- * Berührung nie zulässt (`impulseSoundBlocked`): Dort bleibt es stumm,
- * und unten rechts steht «Ton an». Bleibt das Video stehen, sobald der
- * Ton kommt, lässt auch dieser Browser ihn nicht zu – dann wieder stumm,
- * aber laufend. Kommt das Video gar nicht erst in Gang, steht der
+ * nicht. Darum startet es stumm, und die Karte schaltet den Ton ein,
+ * sobald sich das Bild bewegt – ausser am iPhone und iPad, wo der Browser
+ * das ohne Berührung nie zulässt (`impulseSoundBlocked`): Dort bleibt es
+ * stumm, und unten rechts steht «Ton an». Bleibt das Video stehen, sobald
+ * der Ton kommt, lässt auch dieser Browser ihn nicht zu – dann wieder
+ * stumm, aber laufend. Kommt das Video gar nicht erst in Gang, steht der
  * Startknopf auf dem Vorhang.
  *
  * Meldet die Fremdkarte gar nichts (etwa weil der Anbieter seine
  * Schnittstelle ändert), geht der Vorhang nach ein paar Sekunden trotzdem
  * auf; der Knopf in der Mitte wechselt zwischen Anhalten und
- * Weiterlaufen, der Ton zwischen an und aus – nur das verdeckte Anlaufen,
- * die Zeit, die Leiste und das Spulen entfallen.
+ * Weiterlaufen, der Ton zwischen an und aus – nur die Zeit, die Leiste
+ * und das Spulen entfallen.
  */
 
-/** So lange läuft das Video verdeckt an, ab der ersten Bewegung – bis YouTube seinen Knopf sicher weggenommen hat. */
-const WARM_UP_MS = 4500
-/** Lädt es zwischendurch nach, zeigt YouTube den Knopf womöglich erneut: dann noch einmal so lange. */
-const WARM_UP_AFTER_BUFFER_MS = 3500
-/** So langsam läuft es dabei – damit beim Aufgehen des Vorhangs fast nichts verpasst ist. */
-const WARM_UP_RATE = 0.25
 /** So lange bleibt der eigene Knopf nach dem Weiterlaufen stehen – über dem von YouTube. */
 const COVER_MS = 4500
 
@@ -360,17 +347,6 @@ function EmbedFrame({
   const scrubbed = useRef(false)
   /* Hat die Person selbst angehalten oder den Ton bedient? */
   const touched = useRef(false)
-  /* Das verdeckte Anlaufen: noch nicht (`idle`), gerade (`warming`), vorbei
-     (`done`). Gezählt ab der ersten Bewegung – und ab der letzten, wenn es
-     zwischendurch nachlud. */
-  const warm = useRef<'idle' | 'warming' | 'done'>('idle')
-  const [warming, setWarming] = useState(false)
-  const warmTimer = useRef<number | undefined>(undefined)
-  const firstRunningAt = useRef(0)
-  const lastRunningAt = useRef(0)
-  /* Wie oft die Bremse schon verlangt wurde – nicht endlos, falls die
-     Fremdkarte sie verweigert. */
-  const rateTries = useRef(0)
   /* Meldungen über den Ton gleich nach dem Einschalten sind noch die alten. */
   const mutedQuietUntil = useRef(0)
   /* Steht der eigene Knopf gerade über dem von YouTube? */
@@ -415,11 +391,10 @@ function EmbedFrame({
     clock.current.time + (playingRef.current ? (performance.now() - clock.current.at) / 1000 : 0)
 
   /*
-   * Der Vorhang geht auf, wenn das Video verdeckt angelaufen ist (siehe
-   * `endWarmUp`) – später, nach einem Halt oder am Ende, sobald sich das
-   * Bild wieder bewegt (`running`), einen Augenblick danach. Nie, solange
-   * das Video bloss lädt: Solange zeigt YouTube sein Vorschaubild mit dem
-   * grossen Startknopf. Am Ende fällt er wieder.
+   * Der Vorhang geht auf, sobald sich das Bild bewegt (`running`), einen
+   * Augenblick danach – nie, solange das Video bloss lädt: Solange zeigt
+   * YouTube sein Vorschaubild mit dem grossen Startknopf. Am Ende fällt
+   * er wieder.
    */
   const curtainTimer = useRef<number | undefined>(undefined)
   const lift = (delay: number) => {
@@ -477,59 +452,16 @@ function EmbedFrame({
     }, 1200)
   }
 
-  /* Das Tempo – die Bremse fürs verdeckte Anlaufen, danach wieder eins. */
-  const sendRate = (rate: number) => {
-    const message = impulseEmbedRateMessage(sourceRef.current, rate)
-    const origin = impulseEmbedOrigin(sourceRef.current)
-    if (message && origin) frameRef.current?.contentWindow?.postMessage(message, origin)
-  }
-  /* Die Bremse verlangen – so früh wie möglich, und noch einmal, wenn die
-     Fremdkarte ein anderes Tempo meldet; aber nicht endlos. */
-  const slowDown = () => {
-    if (warm.current === 'done' || rateTries.current >= 8) return
-    rateTries.current += 1
-    sendRate(WARM_UP_RATE)
-  }
-
-  /* Das Bild bewegt sich zum ersten Mal: Jetzt läuft die Zeit, bis
-     YouTube seinen Knopf weggenommen hat. */
-  const startWarmUp = (now: number) => {
-    if (warm.current !== 'idle') return
-    warm.current = 'warming'
-    setWarming(true)
-    firstRunningAt.current = now
-    armWarmUp(now)
-  }
-  /* Die Zeit (neu) stellen: ab der ersten Bewegung – und ab der letzten,
-     falls das Video zwischendurch nachlud. */
-  const armWarmUp = (now: number) => {
-    if (warm.current !== 'warming') return
-    window.clearTimeout(warmTimer.current)
-    const due = Math.max(
-      firstRunningAt.current + WARM_UP_MS,
-      lastRunningAt.current + WARM_UP_AFTER_BUFFER_MS,
-    )
-    warmTimer.current = window.setTimeout(() => endWarmUp(true), Math.max(0, due - now))
-  }
-
-  /* Vorbei mit dem verdeckten Anlaufen – nach der Zeit (`gently`: mit
-     einem Augenblick für das neue Tempo) oder weil jemand eingreift. Das
-     Tempo und der Ton kommen, der Vorhang geht auf – sobald sich das Bild
-     bewegt. Hat die Person den Ton schon selbst bedient (`touched`),
-     bleibt er, wie sie ihn gestellt hat. */
-  const endWarmUp = (gently: boolean) => {
-    if (warm.current === 'done') return
-    window.clearTimeout(warmTimer.current)
-    warm.current = 'done'
-    setWarming(false)
-    sendRate(1)
-    if (!soundBlocked && !touched.current && mutedRef.current) {
-      sendRef.current('unmute')
-      showMuted(false)
-      mutedQuietUntil.current = performance.now() + 800
-      watchSound()
-    }
-    if (runningRef.current) lift(gently ? 300 : 0)
+  /* Der Ton, sobald sich das Bild zum ersten Mal bewegt – nur, wo der
+     Browser ihn zulässt und die Person ihn nicht schon selbst bedient hat. */
+  const soundGiven = useRef(false)
+  const giveSound = (now: number) => {
+    if (soundGiven.current || soundBlocked || touched.current || !mutedRef.current) return
+    soundGiven.current = true
+    sendRef.current('unmute')
+    showMuted(false)
+    mutedQuietUntil.current = now + 800
+    watchSound()
   }
 
   /* Der eigene Knopf bleibt nach dem Weiterlaufen ein paar Sekunden stehen
@@ -560,24 +492,15 @@ function EmbedFrame({
       if (event.origin !== impulseEmbedOrigin(sourceRef.current)) return
       const report = impulseEmbedReport(sourceRef.current, event.data)
       if (!report) return
-      if (!heard.current) slowDown()
       heard.current = true
       if (report.playing !== undefined) showPlaying(report.playing)
       const now = performance.now()
-      const wasRunning = runningRef.current
       if (report.running !== undefined) runningRef.current = report.running
       if (report.running) {
         endedRef.current = false
         setStalled(false)
-        /* Erst die Bewegung zählt – nicht jede Meldung, dass es noch läuft. */
-        if (!wasRunning) lastRunningAt.current = now
-        if (warm.current === 'idle') startWarmUp(now)
-        else if (warm.current === 'warming') {
-          if (!wasRunning) armWarmUp(now)
-        } else lift(250)
-      }
-      if (report.rate !== undefined && warm.current === 'warming' && report.rate !== WARM_UP_RATE) {
-        slowDown()
+        lift(250)
+        giveSound(now)
       }
       if (report.muted !== undefined && now > mutedQuietUntil.current) {
         showMuted(report.muted)
@@ -611,7 +534,6 @@ function EmbedFrame({
       window.clearInterval(helloTimer.current)
       window.clearTimeout(silenceTimer.current)
       window.clearTimeout(curtainTimer.current)
-      window.clearTimeout(warmTimer.current)
       window.clearTimeout(coverTimer.current)
     },
     [],
@@ -623,8 +545,6 @@ function EmbedFrame({
       if (!origin || !target) return
       for (const message of impulseEmbedHello(sourceRef.current))
         target.postMessage(message, origin)
-      /* Die Bremse so früh wie möglich: Das Video läuft zuerst verdeckt. */
-      slowDown()
     }
     hello()
     let tries = 0
@@ -636,10 +556,7 @@ function EmbedFrame({
     }, 400)
     window.clearTimeout(silenceTimer.current)
     silenceTimer.current = window.setTimeout(() => {
-      if (heard.current) return
-      warm.current = 'done'
-      setWarming(false)
-      lift(0)
+      if (!heard.current) lift(0)
     }, 3000)
     watchStall()
   }
@@ -663,9 +580,6 @@ function EmbedFrame({
       scrubbed.current = false
       return
     }
-    /* Erst das Anlaufen beenden (das schaltet den Ton ein), dann gilt die
-       Person als eingegriffen. */
-    endWarmUp(false)
     touched.current = true
     if (halted) {
       send('play')
@@ -727,7 +641,6 @@ function EmbedFrame({
     if (!current.active) {
       if (Math.abs(dx) < 12 || Math.abs(dx) < Math.abs(dy)) return
       current.active = true
-      endWarmUp(false)
       event.currentTarget.setPointerCapture(event.pointerId)
     }
     current.to = impulseScrubTime(current.from, dx, current.width, durationRef.current)
@@ -768,10 +681,7 @@ function EmbedFrame({
 
   /* Der Ton – und wer ihn einschaltet, will das Video auch laufen sehen. */
   const toggleSound = () => {
-    /* Erst als eingegriffen gelten, dann das Anlaufen beenden – sonst
-       schaltete das den Ton ein, den der Tipp gerade ausschalten will. */
     touched.current = true
-    endWarmUp(false)
     const next = !mutedRef.current
     send(next ? 'mute' : 'unmute')
     if (!next && playingRef.current === false && !pausedRef.current) send('play')
@@ -808,10 +718,8 @@ function EmbedFrame({
         referrerPolicy="strict-origin-when-cross-origin"
       />
 
-      {/* Der Vorhang: deckt den Rahmen zu, bis das Video verdeckt angelaufen
-          ist – sonst stünden Vorschaubild, Startknopf und Pausenknopf des
-          Anbieters da. Solange es anläuft, rückt das Bild ganz leise näher:
-          Es tut sich etwas. */}
+      {/* Der Vorhang: deckt den Rahmen zu, bis sich das Bild bewegt – sonst
+          stünden Vorschaubild und Startknopf des Anbieters da. */}
       <div
         aria-hidden
         className={cn(
@@ -819,14 +727,7 @@ function EmbedFrame({
           started ? 'opacity-0' : 'opacity-100',
         )}
       >
-        <div
-          className={cn(
-            'size-full transition-transform duration-[6000ms] ease-out',
-            warming ? 'scale-[1.06]' : 'scale-100',
-          )}
-        >
-          <Poster poster={poster} />
-        </div>
+        <Poster poster={poster} />
       </div>
 
       {/* Die Fläche über dem ganzen Video: Ein Tipp blendet ein und aus,
@@ -878,7 +779,7 @@ function EmbedFrame({
       )}
 
       {/* Ohne Tipp steht nichts über dem Video – ausser dem Ton, wenn er
-          fehlt: sonst fände ihn niemand. Nicht, solange es verdeckt anläuft. */}
+          fehlt: sonst fände ihn niemand. Nicht, solange es noch lädt. */}
       {started && !visible && muted && (
         <div className="pointer-events-none absolute right-0 bottom-0 pb-safe">
           <button
