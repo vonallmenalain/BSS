@@ -1734,18 +1734,19 @@ darf die ersten Sekunden dastehen. Was bleibt:
   bleibt es stumm, und unten rechts steht «Ton an». Bleibt das Video
   anderswo stehen, sobald der Ton kommt, läuft es stumm weiter, und
   «Ton an» erscheint.
-- **Der Vorhang** (das Vorschaubild; ohne eigenes Bild das von YouTube,
-  `impulseVideoThumbnail`; fällt es aus, der ruhige Grund) liegt nur,
-  solange das Video lädt: Solange zeigt YouTube sein eigenes Vorschaubild
-  mit dem grossen roten Startknopf. Sobald sich das Bild bewegt, geht er
-  auf.
+- **Der Vorhang** – das Bild der Karte oder, wenn sie keines hat, der
+  ruhige dunkle Grund (kein Vorschaubild von YouTube: lieber ruhig als
+  ein Standbild, das gleich wieder weg ist) – liegt nur, solange das
+  Video lädt: Solange zeigt YouTube sein eigenes Vorschaubild mit dem
+  grossen roten Startknopf. Sobald sich das Bild bewegt, geht er auf.
 - **Nach dem Weiterlaufen** und nach dem Spulen bleibt der eigene Knopf in
   der Mitte viereinhalb Sekunden stehen (`COVER_MS`) – auch bei
   ausgeblendeten Angaben. Er liegt genau über dem von YouTube, ist grösser
   und fast undurchsichtig.
-- **Am Ende** fällt der Vorhang, statt der Vorschläge von YouTube: Das
-  Vorschaubild steht da, die Angaben der Karte und der Startknopf. Ein
-  Tipp spielt das Video noch einmal, von vorn. Keine Schleife (13.11).
+- **Am Ende** fällt der Vorhang, statt der Vorschläge von YouTube: Der
+  dunkle Grund (oder das Bild der Karte), die Angaben der Karte und der
+  Startknopf. Ein Tipp spielt das Video noch einmal, von vorn. Keine
+  Schleife (13.11).
 - **Kommt das Video nicht in Gang**, steht nach ein paar Sekunden der
   Startknopf auf dem Vorhang.
 

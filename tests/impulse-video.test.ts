@@ -14,7 +14,6 @@ import {
   impulseSoundBlocked,
   impulseVideoClock,
   impulseVideoSource,
-  impulseVideoThumbnail,
 } from '../src/lib/impulseVideo.ts'
 
 /*
@@ -298,10 +297,4 @@ test('impulseVideoClock: Minuten und Sekunden, wie man sie liest', () => {
   assert.equal(impulseVideoClock(65), '1:05')
   assert.equal(impulseVideoClock(750), '12:30')
   assert.equal(impulseVideoClock(-2), '0:00')
-})
-
-test('impulseVideoThumbnail: das Vorschaubild von YouTube – nur für YouTube', () => {
-  assert.equal(impulseVideoThumbnail(youtube), 'https://i.ytimg.com/vi/AbCdEfGhIjK/hqdefault.jpg')
-  assert.equal(impulseVideoThumbnail(vimeo), null)
-  assert.equal(impulseVideoThumbnail(file), null)
 })
