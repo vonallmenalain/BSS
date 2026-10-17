@@ -1606,7 +1606,8 @@ Schnittstelle des Anbieters (`impulseEmbedMessage`; YouTube braucht dafür
 lädt die App dafür nicht.
 
 - **Ein Tipp** hält das Video an oder lässt es weiterlaufen – wie bei
-  Shorts. Steht es, zeigt die Mitte das Startzeichen.
+  Shorts. Steht es, zeigt die Mitte das Startzeichen. (Seit 13.13 holt
+  der erste Tipp zuerst die Angaben hervor.)
 - **Der Ton** sitzt unten rechts: ein runder Knopf, der den Ton aus- und
   wieder einschaltet.
 - **Mit Ton, wo es geht.** Das Video startet weiterhin mit Ton. Lehnt der
@@ -1644,3 +1645,54 @@ Browser geprüft mit einer Attrappe von YouTube, die jede Berührung schluckt
 wie der echte Rahmen: Ohne Wischfläche blieb der Wisch hängen, mit ihr
 kommt die nächste Karte – und ein Wisch zur Seite spult, ohne dass der
 Feed rollt.
+
+### 13.13 Das Video im Vollbild, die Angaben auf einen Tipp
+
+Ein eingebetteter Short zeigte zuerst die Oberfläche von YouTube: oben
+«YouTube Shorts», unten Kanal und Titel, in der Mitte den grossen
+Startknopf – am iPhone, weil dort ein Video nie von selbst mit Ton
+anläuft und darum stehen blieb. Jetzt steht das Video allein da, im
+Vollbild, und läuft sofort.
+
+- **Sofort laufen.** Wo der Browser lautes Abspielen ohnehin ablehnt (am
+  iPhone und iPad, in jedem Browser – `impulseSoundBlocked`), startet das
+  Video gleich stumm (`mute=1`); die Karte muss dafür nichts mehr
+  nachschicken. Überall sonst startet es weiterhin mit Ton, und lehnt der
+  Browser ab, springt es wie bisher stumm an (13.12).
+- **Ohne die Oberfläche von YouTube.** Die Bedienleiste zeigt YouTube gar
+  nicht erst (`controls=0`, dazu `iv_load_policy=3`, `fs=0`). Titel, Kanal
+  und das Zeichen «Shorts» zeichnet YouTube an den oberen und unteren Rand
+  seines Rahmens. Der Rahmen ragt darum über und unter der Karte um einen
+  Saum von 160 Pixeln hinaus, den die Karte abschneidet
+  (`impulseEmbedBox`, `EMBED_CHROME_BAND`); das Video selbst steht in der
+  Mitte und bleibt ganz. Bis es läuft, deckt ein Vorhang (das
+  Vorschaubild oder Schwarz) den Rahmen zu – sonst blitzten Titel und
+  Startknopf kurz auf. Meldet das Video gar nichts, geht der Vorhang nach
+  drei Sekunden trotzdem auf.
+- **Vollbild.** Ein Short (9:16) ist auf einem schlanken Telefon etwas
+  schmaler als der Bildschirm; er wird so weit vergrössert, dass keine
+  schwarzen Balken bleiben, und an den Seiten fehlt ein schmaler Streifen.
+  Ginge mehr als ein Fünftel verloren (ein Querformat hochkant, ein Short
+  am Rechner), steht das Video ganz da, mit Balken.
+- **Während es läuft, steht nichts darüber** – ausser einem kleinen
+  Lautsprecher unten rechts, solange es stumm läuft. Sonst fände niemand
+  den Ton.
+- **Der erste Tipp zeigt, der zweite hält an.** Der erste Tipp holt von
+  unten auf einem dunklen Schleier hervor, was zur Karte gehört: Titel,
+  Text, Quelle, Amen und Merken – dieselbe Karte, die sonst als zweiter
+  Wisch über dem Video stünde (`info`, aus dem `node` der Feed-Karte) –,
+  dazu die Zeit, den Ton und die Leiste. Nach dreieinhalb Sekunden
+  verschwindet alles wieder. Ein Tipp, solange es zu sehen ist, hält das
+  Video an; dann bleibt alles stehen, mit dem Startzeichen in der Mitte,
+  und der nächste Tipp lässt es weiterlaufen. Ein Tipp auf den Text ist
+  ein Tipp aufs Video; nur Links und Knöpfe darin nehmen ihn selbst an.
+- **Wischen und Spulen** bleiben, wie sie sind (13.12): nach oben und
+  unten zur nächsten Karte, zur Seite spulen. Beim Spulen erscheinen die
+  Angaben von selbst.
+
+`tests/impulse-video.test.ts` hält den Saum, das Füllen und den stummen
+Start fest. Im Browser geprüft mit einer Attrappe von YouTube, die oben
+und unten ihre Oberfläche zeichnet und Ton ohne Berührung ablehnt wie das
+iPhone: Das Video läuft sofort und füllt den Bildschirm, von der
+Oberfläche ist nichts zu sehen, der erste Tipp zeigt die Angaben, der
+zweite hält an.
