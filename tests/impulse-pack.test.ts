@@ -12,6 +12,7 @@ import {
   weekStart,
 } from '../src/lib/impulse.ts'
 import {
+  deckOrders,
   isPackItem,
   PACK_CORRECTIONS,
   PACK_ID_PREFIX,
@@ -20,6 +21,7 @@ import {
   planPackCorrections,
   planPackItems,
 } from '../src/lib/impulsePack.ts'
+import { impulseVideoSource } from '../src/lib/impulseVideo.ts'
 import { IMPULSE_CREST_PALETTE_LABELS, IMPULSE_CREST_SYMBOL_LABELS } from '../src/lib/types.ts'
 
 /*
@@ -156,7 +158,10 @@ test('Themenpaket: die Wochen im Oktober enden mit ihrem Minispiel – jede mit 
     assert.equal(last.kind, 'spiel')
     assert.equal(last.game, game)
     assert.equal(last.status, 'ready')
-    assert.equal(last.order, week.deck.length + 1, `${weekKey}: nach allen Karten`)
+    // Nach allen Karten – auf dem Platz, den es schon in der Datenbank hat:
+    // Nachgereichte Karten verschieben ihn nicht.
+    const places = week.deck.filter((card) => !card.late).length
+    assert.equal(last.order, places + 1, `${weekKey}: nach allen Karten`)
     assert.ok(!`${last.title} ${last.body}`.includes('ß'), `${weekKey}: Schweizer Schreibweise`)
   }
   // Höchstens ein Minispiel je Woche – und nur dort, wo das Paket eines vorsieht.
@@ -202,6 +207,79 @@ test('Themenpaket: der Feed liegt im Bereich genau in der Reihenfolge des Pakets
       week.week,
     )
   }
+})
+
+test('deckOrders: eine nachgereichte Karte schiebt sich dazwischen – keine rückt', () => {
+  const late = { late: true } as const
+  assert.deepEqual(deckOrders([{}, {}, {}]), [1, 2, 3])
+  assert.deepEqual(deckOrders([{}, late, {}, {}, late]), [1, 1.5, 2, 3, 3.5])
+  // Zwei hintereinander teilen sich die Lücke, statt denselben Platz zu nehmen.
+  assert.deepEqual(deckOrders([{}, late, late, {}]), [1, 1.5, 1.75, 2])
+  assert.deepEqual(deckOrders([late, {}]), [0.5, 1])
+})
+
+/* ------------------------------------------------------------------ */
+/* YouTube-Shorts der Kirche                                           */
+/* ------------------------------------------------------------------ */
+
+const SHORTS = ALL.filter((plan) => plan.kind === 'video')
+
+test('Shorts: die Woche zu Helamans jungen Kriegern trägt fünf bis zehn', () => {
+  const warriors = SHORTS.filter((plan) => plan.week === '2026-W43')
+  assert.ok(warriors.length >= 5 && warriors.length <= 10, `${warriors.length} Shorts`)
+  assert.deepEqual(
+    [...new Set(SHORTS.map((plan) => plan.week))],
+    ['2026-W43'],
+    'Shorts nur in der Woche, für die sie ausgesucht sind',
+  )
+})
+
+test('Shorts: jeder ist ein YouTube-Short der Kirche – ein Wisch, ohne Text darüber', () => {
+  const ids = new Set<string>()
+  for (const plan of SHORTS) {
+    const video = impulseVideoSource(plan.videoUrl)
+    assert.ok(video?.art === 'youtube' && video.short, `${plan.id}: kein YouTube-Short`)
+    assert.match(video.id, /^[\w-]{11}$/, plan.id)
+    ids.add(video.id)
+    assert.equal(plan.videoTextPage, false, plan.id)
+    // Die Quelle führt auf den Short selbst und sagt, woher er kommt.
+    assert.equal(plan.source?.url, plan.videoUrl, plan.id)
+    assert.match(plan.source?.label ?? '', /Kirche/, plan.id)
+    assert.ok(plan.body.trim(), `${plan.id}: ohne Satz dazu`)
+  }
+  assert.equal(ids.size, SHORTS.length, 'ein Short doppelt')
+  // Andere Arten tragen kein Video.
+  for (const plan of ALL.filter((entry) => entry.kind !== 'video')) {
+    assert.equal(plan.videoUrl, null, plan.id)
+    assert.equal(plan.videoTextPage, null, plan.id)
+  }
+})
+
+test('Shorts: eine schon eingespielte Woche holt sie nach – und keine Karte rückt', () => {
+  /* So steht es in der Datenbank: das Paket ohne die Shorts, die Karten
+     auf den Plätzen 1 bis 13, das Minispiel auf 14. */
+  const week = PACK_WEEKS.find((entry) => entry.week === '2026-W43')!
+  const stored = packWeekPlans(week).filter((plan) => plan.kind !== 'video')
+  assert.deepEqual(
+    stored.filter((plan) => plan.order !== null && plan.order > 0).map((plan) => plan.order),
+    Array.from({ length: 14 }, (_, index) => index + 1),
+  )
+
+  const plans = planPackItems(stored, '2026-W43')
+  const missing = plans.filter((plan) => plan.week === '2026-W43')
+  assert.deepEqual(
+    missing.map((plan) => plan.id),
+    SHORTS.map((plan) => plan.id),
+  )
+  // Jeder Short liegt zwischen zwei Karten, nie auf dem Platz einer anderen.
+  for (const plan of missing) assert.ok(!Number.isInteger(plan.order), plan.id)
+
+  // Zusammen ergibt das genau den Feed, den ein frisch eingespieltes Paket legt.
+  const feed = (entries: typeof stored) =>
+    deckOrder(
+      entries.filter((plan) => plan.kind !== 'wochenziel' && plan.kind !== 'tageschallenge'),
+    ).map((plan) => plan.id)
+  assert.deepEqual(feed([...stored, ...missing].reverse()), feed(packWeekPlans(week)))
 })
 
 test('Themenpaket: Wochenziel und Tages-Challenge sind Kacheln, keine Feed-Karten', () => {

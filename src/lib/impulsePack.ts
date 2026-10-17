@@ -38,6 +38,11 @@ import type {
  * (`order`, über alle Arten hinweg). Jede Woche trägt ihr eigenes
  * Wappen, das sich mit jeder geschafften Karte aufbaut.
  *
+ * **Shorts der Kirche.** Die Woche zu Helamans jungen Kriegern trägt
+ * dazu YouTube-Shorts vom offiziellen Kanal der Kirche – nachgereicht
+ * (`late`), weil das Paket schon eingespielt war: Sie schieben sich
+ * zwischen die Karten, ohne deren Platz zu verschieben (`deckOrders`).
+ *
  * **Alles aus offiziellem Material der Kirche.** Die Grundlage sind die
  * Lektionen im Heft «Für eine starke Jugend», der Wegweiser «Für eine
  * starke Jugend», die heiligen Schriften und die Evangeliumsthemen. Was
@@ -141,6 +146,17 @@ function scale(
 /** Ein Vers-Puzzle – die Teile durch « / » getrennt. */
 function puzzle(text: string, explanation: string): ImpulsePuzzle {
   return { text, explanation }
+}
+
+/**
+ * Ein YouTube-Short vom offiziellen Kanal der Kirche (@churchofjesuschrist,
+ * auf Englisch) – als Video und als Quelle. Der Link führt auf den Short
+ * selbst; `impulseVideoSource` erkennt ihn und lässt ihn hochkant und in
+ * Schleife laufen.
+ */
+function short(id: string): Pick<PackCard, 'videoUrl' | 'source'> {
+  const url = `https://www.youtube.com/shorts/${id}`
+  return { videoUrl: url, source: source('YouTube-Short der Kirche (Englisch)', url) }
 }
 
 /* ------------------------------------------------------------------ */
@@ -785,6 +801,17 @@ export const PACK_WEEKS: PackWeek[] = [
         source: verse('Alma 53:20'),
       },
       {
+        key: 'short-1',
+        kind: 'video',
+        late: true,
+        emoji: '🪨',
+        title: 'Short: Fest auf dem Fels',
+        body:
+          'Präsident Henry B. Eyring: Wer auf dem Fels des Glaubens an Jesus Christus steht, ' +
+          'bleibt standhaft – auch wenn es stürmt. Treu zu allen Zeiten fängt genau dort an.',
+        ...short('wwTlEhh8d7M'),
+      },
+      {
         key: 'feed-1',
         kind: 'feed',
         emoji: '🗡️',
@@ -833,6 +860,18 @@ export const PACK_WEEKS: PackWeek[] = [
         ),
       },
       {
+        key: 'short-2',
+        kind: 'video',
+        late: true,
+        emoji: '🙏',
+        title: 'Short: Denk jeden Tag daran, was Gott für dich getan hat',
+        body:
+          'Elder Dale G. Renlund lädt dich ein, dich jeden Tag an die Grösse des Vaters im ' +
+          'Himmel und Jesu Christi zu erinnern – und an das, was sie für dich getan haben. Ein ' +
+          'guter Anfang für jedes Gebet.',
+        ...short('47BTy7laRWk'),
+      },
+      {
         key: 'quiz-2',
         kind: 'quiz',
         emoji: '👩‍👦',
@@ -856,6 +895,17 @@ export const PACK_WEEKS: PackWeek[] = [
           'kennt uns und weiss, wie er uns in jedem Augenblick unseres Lebens am besten helfen ' +
           'kann.»',
         source: FSY_OCTOBER('Letzter Sonntag und Botschaft von Elder Soares'),
+      },
+      {
+        key: 'short-3',
+        kind: 'video',
+        late: true,
+        emoji: '🌅',
+        title: 'Short: Gott hat Grosses mit dir vor',
+        body:
+          'Gott kann dich aus jeder Dunkelheit herausheben – und er hat eine Absicht mit dir. ' +
+          'Wie die jungen Krieger: Er hat eine Arbeit für dich.',
+        ...short('Gf-PIDcBENs'),
       },
       {
         key: 'quiz-3',
@@ -891,6 +941,17 @@ export const PACK_WEEKS: PackWeek[] = [
         source: verse('Alma 53:20'),
       },
       {
+        key: 'short-4',
+        kind: 'video',
+        late: true,
+        emoji: '🔦',
+        title: 'Short: Du kannst ein Licht in der Dunkelheit sein',
+        body:
+          'Schwester Susan H. Porter: Dein Glaube an Christus kann anderen den Weg zeigen – ' +
+          'auch dann, wenn du dich allein fühlst. Auch unter Freunden.',
+        ...short('GgqQfxM7YqU'),
+      },
+      {
         key: 'puzzle-1',
         kind: 'puzzle',
         emoji: '🧩',
@@ -920,6 +981,17 @@ export const PACK_WEEKS: PackWeek[] = [
         source: verse('Alma 57:25'),
       },
       {
+        key: 'short-5',
+        kind: 'video',
+        late: true,
+        emoji: '🔄',
+        title: 'Short: Umkehr ist ein Geschenk',
+        body:
+          'Präsident Russell M. Nelson über die Umkehr: Sie bringt dich Jesus Christus näher. ' +
+          'Verwundet, aber nicht gefallen – mit ihr steht man wieder auf.',
+        ...short('U8I2wPvpUgc'),
+      },
+      {
         key: 'quiz-4',
         kind: 'quiz',
         emoji: '🔎',
@@ -931,6 +1003,18 @@ export const PACK_WEEKS: PackWeek[] = [
             'Treue zu allen Zeiten.',
         ),
         source: verse('Alma 53:20'),
+      },
+      {
+        key: 'short-6',
+        kind: 'video',
+        late: true,
+        emoji: '🤲',
+        title: 'Short: Wo hast du Gottes Hand gesehen?',
+        body:
+          'Eine Frage zum Mitnehmen: Wo hast du in letzter Zeit Gottes Hand in deinem Leben ' +
+          'gesehen? Helaman schrieb die Bewahrung seiner jungen Krieger der Macht Gottes zu ' +
+          '(Alma 57:26).',
+        ...short('5GCWFfeL7r8'),
       },
       {
         key: 'frage-1',

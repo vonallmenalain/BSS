@@ -214,6 +214,9 @@ export function ImpulseItemForm({
               className="input w-24"
               type="number"
               min={1}
+              /* Auch Zwischenplätze: Nachgereichte Karten des Themenpakets
+                 stehen auf 2,5 und ähnlich – zwischen ihren Nachbarn. */
+              step="any"
               value={input.order ?? ''}
               onChange={(event) =>
                 setInput((value) => ({
@@ -225,7 +228,8 @@ export function ImpulseItemForm({
             <p className="hint mt-1">
               Die Reihenfolge legt die Redaktion – kein Algorithmus, und über alle Arten hinweg:
               Umfrage, Fakt, Quiz im Wechsel halten wach. Das Wochenthema steht immer vorn, die
-              Teilen-Aufgabe immer hinten. Ohne Zahl kommt die Karte ans Ende.
+              Teilen-Aufgabe immer hinten. Ohne Zahl kommt die Karte ans Ende; mit 2.5 zwischen 2
+              und 3.
             </p>
           </div>
         )}
