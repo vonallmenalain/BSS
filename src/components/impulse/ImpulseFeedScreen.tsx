@@ -512,8 +512,8 @@ function FeedCard({
   /* Der Wisch-Hinweis: Nur Karten mit Vertiefung zeigen den Pfeil – er
      pulst nach links, die Richtung des Fingers, und ist zugleich ein
      Knopf für alle ohne Wischfläche. Auf einer Karte, die nur ihre
-     Fläche zeigt, ist er sogar der einzige Weg hinüber: Dort gehört das
-     Wischen dem Video. */
+     Fläche zeigt, ist er sogar der einzige Weg hinüber: Dort gehört der
+     Wisch quer dem Video, nur der Wisch nach oben dem Feed. */
   const deepeningArrows = hasDeepening && (
     <>
       {pane === 0 && (
@@ -618,7 +618,8 @@ function FeedCard({
    * Karte. Trägt sie eine Vertiefung, liegt die weiterhin seitlich
    * daneben, und ihr Rollcontainer lässt Berührungen durch
    * (`pointer-events-none`): Sonst läge er über dem Video, und dessen
-   * Bedienung – Ton, Pause, Vollbild – wäre nicht mehr zu erreichen.
+   * Bedienung – Ton, Pause, und auf der Wischfläche des eingebetteten
+   * Videos der Wisch zur nächsten Karte – wäre nicht mehr zu erreichen.
    * Darum führt hier der Pfeil hinüber statt der Wisch.
    */
   if (card.media && card.mediaOnly) {
