@@ -196,20 +196,25 @@ test('impulseEmbedHello: die Anmeldung, nach der die Fremdkarte ihren Stand meld
 
 test('impulseEmbedReport: was YouTube über sich meldet', () => {
   const report = (data: unknown) => impulseEmbedReport(youtube, JSON.stringify(data))
-  // Läuft – auch während es nachlädt.
-  assert.deepEqual(report({ event: 'onStateChange', info: 1 }), { playing: true })
-  assert.deepEqual(report({ event: 'onStateChange', info: 3 }), { playing: true })
+  // Läuft – das Bild bewegt sich.
+  assert.deepEqual(report({ event: 'onStateChange', info: 1 }), { playing: true, running: true })
+  // Soll laufen, lädt aber noch: Noch steht das Vorschaubild mit dem Startknopf da.
+  assert.deepEqual(report({ event: 'onStateChange', info: 3 }), { playing: true, running: false })
   // Angehalten, zu Ende, noch nicht gestartet (der Browser hat den Ton abgelehnt), bereit.
   for (const state of [2, 0, -1, 5]) {
-    assert.deepEqual(report({ event: 'onStateChange', info: state }), { playing: false })
+    assert.deepEqual(report({ event: 'onStateChange', info: state }), {
+      playing: false,
+      running: false,
+    })
   }
   assert.deepEqual(
     report({ event: 'infoDelivery', info: { playerState: -1, muted: false, volume: 100 } }),
-    { playing: false, muted: false },
+    { playing: false, running: false, muted: false },
   )
   assert.deepEqual(report({ event: 'infoDelivery', info: { muted: true } }), { muted: true })
   assert.deepEqual(report({ event: 'initialDelivery', info: { playerState: 1 } }), {
     playing: true,
+    running: true,
   })
   // Wo es steht und wie lang es ist – für die Leiste und das Spulen.
   assert.deepEqual(report({ event: 'infoDelivery', info: { currentTime: 3.2 } }), { time: 3.2 })
@@ -229,11 +234,22 @@ test('impulseEmbedReport: was YouTube über sich meldet', () => {
 
 test('impulseEmbedReport: was Vimeo über sich meldet – als Text oder als Objekt', () => {
   assert.deepEqual(impulseEmbedReport(vimeo, JSON.stringify({ event: 'play' })), { playing: true })
-  assert.deepEqual(impulseEmbedReport(vimeo, { event: 'pause' }), { playing: false })
-  assert.deepEqual(impulseEmbedReport(vimeo, { event: 'ended' }), { playing: false })
+  assert.deepEqual(impulseEmbedReport(vimeo, { event: 'pause' }), {
+    playing: false,
+    running: false,
+  })
+  assert.deepEqual(impulseEmbedReport(vimeo, { event: 'ended' }), {
+    playing: false,
+    running: false,
+  })
+  // Rückt die Zeit vor, bewegt sich das Bild.
   assert.deepEqual(
     impulseEmbedReport(vimeo, { event: 'timeupdate', data: { seconds: 12.5, duration: 90 } }),
-    { time: 12.5, duration: 90 },
+    { time: 12.5, duration: 90, running: true },
+  )
+  assert.deepEqual(
+    impulseEmbedReport(vimeo, { event: 'timeupdate', data: { seconds: 0, duration: 90 } }),
+    { time: 0, duration: 90 },
   )
   assert.equal(impulseEmbedReport(vimeo, { event: 'ready' }), null)
   assert.equal(impulseEmbedReport(file, { event: 'play' }), null)
