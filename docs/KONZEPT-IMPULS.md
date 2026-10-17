@@ -1560,10 +1560,9 @@ der Kirche** (deutsch: `@kirchejesuchristideutsch`, englisch:
 - **Erkannt am Link.** Ein Link auf `youtube.com/shorts/…` – auch der
   Teilen-Link der YouTube-App mit `?si=…` – ist ein Short
   (`impulseVideoSource`, `short`). Er läuft wie auf YouTube in Schleife,
-  statt am Ende Vorschläge zu zeigen. Die Schleife dreht die Karte selbst
-  (13.13) – YouTube könnte es nur als Wiedergabeliste und zeigte dafür
-  die Knöpfe «zurück» und «weiter» übers Bild. In der Redaktion genügt
-  es, den Link in eine Video-Karte zu setzen; der Hinweis darunter sagt
+  statt am Ende Vorschläge zu zeigen (`loop` samt `playlist`, weil YouTube
+  nur eine Wiedergabeliste wiederholt). In der Redaktion genügt es, den
+  Link in eine Video-Karte zu setzen; der Hinweis darunter sagt
   «YouTube-Short».
 - **Im Themenpaket.** Die Woche zu Helamans jungen Kriegern (19.–25.
   Oktober) trägt sechs Shorts vom englischen Kanal, verteilt zwischen
@@ -1646,110 +1645,46 @@ wie der echte Rahmen: Ohne Wischfläche blieb der Wisch hängen, mit ihr
 kommt die nächste Karte – und ein Wisch zur Seite spult, ohne dass der
 Feed rollt.
 
-### 13.13 Tippen blendet ein und aus, Wischen wischt
+### 13.13 Die Mitte gehört YouTube
 
-Ein Tipp und ein Wisch können nicht zugleich YouTube und der App gehören:
-Der Browser entscheidet schon beim Aufsetzen des Fingers, wem die Berührung
-gehört – dem Rahmen von YouTube (dann kommt der Tipp an, der Wisch aber
-nicht) oder der App (dann wischt der Daumen, aber YouTube hört keinen
-Tipp). Zuerst gehörte darum die Mitte YouTube und nur ein schmaler Rand
-oben und unten der App. Das hiess: im Bild tippen, am Rand wischen.
+Gleich nach dem Start legt YouTube eigene Knöpfe und Texte über das Video –
+den Startknopf, Zurück und Weiter, den Titel – und nimmt sie erst nach ein
+paar Sekunden wieder weg. Ein Tipp ins Video nähme sie sofort weg; nur kam
+dieser Tipp nicht an, weil die Wischfläche (13.12) jede Berührung
+abfing. Zwei Versuche, die Oberfläche von YouTube ganz zu verbergen
+(abschneiden, verdecken bis zum Start), brachten am Telefon nichts und
+sind wieder zurückgenommen. Ebenso ein dritter (#170, #171): die ganze
+Fläche der App mit eigenen Knöpfen, YouTube ohne Knöpfe (`controls=0`) und
+das Video verdeckt und stumm anlaufen lassen, bis YouTube seinen Knopf
+wegnimmt. Am Telefon zeigte YouTube seinen Pausenknopf beim Start trotzdem,
+und das verdeckte Anlaufen machte den Start spürbar langsamer. Die
+Bedienung von YouTube bleibt darum zugelassen.
 
-Jetzt gehört die ganze Fläche der App, und die Karte bringt alle Knöpfe
-selbst mit (`EmbedFrame` in `ImpulseVideoPlayer`). So hat jede Geste
-überall im Bild genau eine Bedeutung:
+Jetzt bedient man im Bild YouTube selbst, das ganze Video lang:
 
-- **Ein Tipp blendet ein und aus** – oben, in der Mitte, unten, das ganze
-  Video lang, so oft man will. Von unten auf einem dunklen Schleier:
-  Titel, Text und Quelle der Karte samt Amen und Merken (der Knoten der
-  Karte, `info`), die Zeit, der Ton und die Leiste; in der Mitte der
-  Knopf zum Anhalten. Ein Tipp hält nie an, und die Angaben verschwinden
-  nie von selbst.
-- **Nur der Knopf in der Mitte hält an** und lässt weiterlaufen. Steht das
-  Video, bleibt er auch bei ausgeblendeten Angaben stehen – man sieht,
-  warum sich nichts bewegt.
-- **Nach oben und unten wischen** bringt die nächste oder vorige Karte –
-  überall im Bild, wie bei Reels und Shorts.
-- **Zur Seite wischen spult** (13.12) – auch auf dem Knopf in der Mitte.
-- **Der Ton** sitzt bei den Angaben unten rechts. Läuft das Video stumm,
-  steht dort auch ohne Tipp ein kleiner Knopf.
+- **Das Bild gehört YouTube** – alles zwischen einem schmalen Rand oben
+  und unten. Ein Tipp neben den Startknopf blendet Titel, Kanal und
+  Knöpfe ein und wieder aus, ohne anzuhalten; ein Tipp auf den Knopf hält
+  an und lässt weiterlaufen. So, wie man es von YouTube kennt – es ist
+  dessen eigene Bedienung. (Zuerst gehörte YouTube nur ein Band in der
+  Mitte; oben und unten im Bild kam der Tipp darum nicht an.)
+- **Am Rand** liegt je eine Wischfläche der App: oben 15 % der Höhe,
+  unten 20 %, dort, wo der Daumen meist ansetzt. Dort wischt man zur
+  nächsten oder vorigen Karte, und ein Wisch zur Seite spult (13.12). Ein
+  Short, der nicht den ganzen Bildschirm füllt, hat diese Ränder ohnehin
+  im unscharfen Grund über und unter dem Bild. Ein Wisch, der im Bild
+  beginnt, gehört YouTube und wechselt die Karte nicht – ein Tipp kann
+  nicht zugleich YouTube und der Wischfläche gehören.
+- **Ton und Leiste** bleiben unten, wie sie waren. Das eigene Startzeichen
+  der Karte entfällt – YouTube zeigt seines.
+- Tippt man ins Bild, nimmt der Rahmen den Fokus. Daran merkt die
+  Karte, dass jemand selbst eingegriffen hat, und startet das Video nicht
+  mehr von sich aus stumm. Ein Tipp ins Bild ist zugleich eine
+  Berührung im Video selbst: Lässt der Browser den Ton sonst nicht zu (am
+  iPhone), läuft es danach mit Ton.
 
-**YouTube zeigt seine Knöpfe gar nicht erst** (`controls=0`, dazu
-`iv_load_policy=3`, `fs=0`, `disablekb=1`): Erreichen könnte sie der
-Finger ohnehin nicht mehr. Was YouTube trotzdem an den Rand seines
-Rahmens zeichnet – Titel und Kanal, beim Anhalten weitere Videos –, liegt
-ausserhalb der Karte und wird abgeschnitten (`impulseEmbedBox`); ein Short
-füllt dabei den ganzen Bildschirm, an den Seiten fehlt ein schmaler
-Streifen. Bis sich das Bild bewegt (`running`, Zustand 1), deckt ein
-Vorhang mit dem Vorschaubild den Rahmen zu – solange zeigt YouTube noch
-sein eigenes Vorschaubild mit dem grossen Startknopf.
-
-**Am Ende** fällt der Vorhang wieder, statt der Vorschläge von YouTube.
-Ein Short fängt sofort von vorn an (die Karte springt an den Anfang und
-startet ihn, sobald YouTube `ended` meldet); die Schleife von YouTube
-selbst (`loop` mit `playlist`) ist weg, weil sie die Knöpfe «zurück» und
-«weiter» über das Bild legte. Ein gewöhnliches Video wartet mit dem
-Startknopf und den Angaben.
-
-**Mit Ton, wo es geht.** Am iPhone und iPad lässt der Browser ein Video
-nie von selbst mit Ton anlaufen; dort startet es gleich stumm
-(`impulseSoundBlocked`), statt erst stehen zu bleiben. Anderswo startet
-es mit Ton und, wenn der Browser das ablehnt, anderthalb Sekunden nach
-der ersten Meldung stumm. Kommt es auch so nicht in Gang, geht nach ein
-paar Sekunden der Vorhang auf, und in der Mitte steht der Startknopf.
-
-**Was offen bleibt.** Ob YouTube am Telefon trotz `controls=0` beim Start
-kurz ein eigenes Zeichen über das Bild legt, lässt sich nur am Gerät
-prüfen. Wegtippen liesse es sich nicht mehr – ein Tipp gehört jetzt der
-App –, es verschwindet aber von selbst. (Es tut es – siehe 13.14.)
-
-Im Browser geprüft mit einer Attrappe von YouTube, die jede Berührung
-schluckt: Tipps oben, in der Mitte, unten und am Rand blenden ein und
-aus, ohne anzuhalten; «Amen» in den Angaben reagiert; der Knopf in der
-Mitte hält an und lässt weiterlaufen, auch bei ausgeblendeten Angaben;
-ein Zug zur Seite mitten im Bild spult, ohne dass der Feed rollt; ein
-Wisch nach oben mitten im Bild bringt die nächste Karte; am Ende springt
-der Short an den Anfang und läuft weiter; der Vorhang deckt das Laden zu
-und geht auf, sobald sich das Bild bewegt. Mit der Kennung eines iPhones
-startet das Video stumm; bleibt es stehen, erscheint der Startknopf.
-
-### 13.14 Verdeckt anlaufen – kein Knopf von YouTube beim Start
-
-Am Telefon zeigte sich: Beim Anlaufen legt YouTube trotz `controls=0`
-meistens seinen Knopf zum Anhalten mitten ins Bild und nimmt ihn erst nach
-ein paar Sekunden weg. Abschalten lässt er sich nicht, wegtippen auch
-nicht mehr. Also sieht man ihn gar nicht erst:
-
-- **Das Video läuft verdeckt an.** Der Vorhang (das Vorschaubild; ohne
-  eigenes Bild das von YouTube, `impulseVideoThumbnail`) bleibt liegen,
-  während das Video darunter stumm läuft – so lange, bis YouTube seinen
-  Knopf sicher weggenommen hat (gut drei Sekunden ab dem Moment, in dem
-  sich das Bild bewegt, `WARM_UP_MS`). Dann springt es an den Anfang
-  zurück, der Ton kommt dazu, und der Vorhang geht auf: Das Video beginnt
-  bei der ersten Sekunde, ohne Knopf. Der Preis: Bis das Bild kommt,
-  dauert es ein paar Sekunden länger.
-- **Stumm, damit man nichts doppelt hört.** Den Ton nimmt die Karte schon
-  mit der Anmeldung bei YouTube weg und gibt ihn nach dem Anlaufen zurück;
-  als «stumm» zeigt sie das Video in der Zeit nicht. Bleibt das Video
-  stehen, sobald der Ton zurückkommt (der Browser lässt ihn nicht zu),
-  läuft es stumm weiter, und unten rechts steht «Ton an».
-- **Wer eingreift, beendet das Anlaufen** – mit dem Knopf in der Mitte,
-  dem Ton oder dem Spulen: Dann geht der Vorhang sofort auf.
-- **Der Short beginnt knapp vor dem Ende von vorn** (eine halbe Sekunde,
-  `impulseLoopDue`), solange er noch läuft. Erst ein Video, das steht und
-  wieder anläuft, bringt den Knopf von YouTube zurück; ein Sprung im
-  laufenden Video – so die Annahme – nicht. Geht ein Short doch einmal zu
-  Ende, läuft er verdeckt von vorn an wie beim Start.
-- **Nach dem Weiterlaufen** bleibt der eigene Knopf in der Mitte gut drei
-  Sekunden stehen (`COVER_MS`) – auch bei ausgeblendeten Angaben und nach
-  dem Spulen. Er liegt genau über dem von YouTube und ist grösser; wenn er
-  verschwindet, ist der darunter schon weg.
-
-Im Browser geprüft mit einer Attrappe von YouTube: Gleich bei der Anmeldung
-geht «stumm» hinüber; der Vorhang bleibt, bis das Bild gut drei Sekunden
-läuft, dann folgen der Sprung an den Anfang und der Ton, und der Vorhang
-geht auf; kein «Ton an» in der Zeit dazwischen. Nach dem Weiterlaufen steht
-der eigene Knopf gut drei Sekunden und verschwindet dann. Eine halbe
-Sekunde vor dem Ende springt der Short an den Anfang, ohne dass der Vorhang
-fällt. Ob der Knopf von YouTube so wirklich verborgen bleibt, zeigt erst das
-Telefon.
+Im Browser geprüft mit einer Attrappe von YouTube, die sich so verhält: Ein
+Tipp neben den Knopf blendet ein und aus, ohne anzuhalten, auch Sekunden
+nach dem Start; ein Tipp auf den Knopf hält an und lässt weiterlaufen; ein
+Zug zur Seite auf der unteren Fläche spult, ein Wisch nach oben bringt die
+nächste Karte.

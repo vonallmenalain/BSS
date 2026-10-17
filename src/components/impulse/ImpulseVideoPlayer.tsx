@@ -1,28 +1,16 @@
-import {
-  useEffect,
-  useRef,
-  useState,
-  type KeyboardEvent as ReactKeyboardEvent,
-  type PointerEvent as ReactPointerEvent,
-  type ReactNode,
-} from 'react'
-import { ExternalLink, Pause, Play, Volume2, VolumeX } from 'lucide-react'
+import { useEffect, useRef, useState, type PointerEvent as ReactPointerEvent } from 'react'
+import { ExternalLink, Play, Volume2, VolumeX } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import {
-  impulseEmbedBox,
   impulseEmbedHello,
   impulseEmbedMessage,
   impulseEmbedOrigin,
   impulseEmbedReport,
   impulseEmbedSeekMessage,
   impulseEmbedUrl,
-  impulseLoopDue,
   impulseScrubTime,
-  impulseSoundBlocked,
   impulseVideoClock,
   impulseVideoHost,
-  impulseVideoThumbnail,
-  type ImpulseEmbedBox,
   type ImpulseEmbedCommand,
   type ImpulseVideoSource,
 } from '@/lib/impulseVideo'
@@ -45,13 +33,14 @@ import {
  *   der Knopf unten rechts.
  * - **Vollbild** ist der Normalfall, nicht ein Knopf: Die Karte selbst
  *   ist der Bildschirm. Die Videodatei bringt ihre eigene Leiste mit.
- * - **Tippen blendet ein und aus, Wischen wischt** – wie bei Reels und
- *   Shorts. Eine eingebettete Fremdkarte (YouTube, Vimeo) behielte jede
- *   Berührung für sich, und der Daumen käme nicht zur nächsten Karte.
- *   Darum gehört die ganze Fläche der App, und sie bringt ihre eigenen
- *   Knöpfe mit (`EmbeddedVideo`): Ein Tipp irgendwo blendet Titel, Text,
- *   Zeit und Ton ein und wieder aus, der Knopf in der Mitte hält an. Ein
- *   Wisch nach oben oder unten rollt den Feed, ein Wisch zur Seite spult.
+ * - **Wischen geht auch auf dem Video** – wie bei Reels und Shorts. Eine
+ *   eingebettete Fremdkarte (YouTube, Vimeo) behielte jede Berührung für
+ *   sich, und der Daumen käme nicht zur nächsten Karte. Darum liegt am
+ *   oberen und am unteren Rand eine schmale Wischfläche (`EmbeddedVideo`):
+ *   Ein Wisch nach oben oder unten rollt den Feed, ein Wisch zur Seite
+ *   spult. Das Bild dazwischen gehört YouTube – ein Tipp neben den
+ *   Startknopf blendet dessen Angaben und Knöpfe ein und aus, ein Tipp auf
+ *   den Knopf hält an. Der Knopf unten rechts schaltet den Ton.
  *
  * Was sich nicht einbetten lässt – eine Videoseite der Kirche etwa,
  * deren Server das verbietet –, wird zur ruhigen Karte mit einem Knopf,
@@ -63,7 +52,6 @@ export function ImpulseVideoPlayer({
   poster,
   title,
   active,
-  info,
 }: {
   source: ImpulseVideoSource
   /** Das Vorschaubild – steht, solange das Video nicht läuft. */
@@ -71,12 +59,6 @@ export function ImpulseVideoPlayer({
   title: string
   /** Ist die Karte im Bild? Nur dann läuft etwas. */
   active: boolean
-  /**
-   * Was über das Video gehört – Titel, Text, Quelle, Amen und Merken.
-   * Beim eingebetteten Video blendet es ein Tipp ein und wieder aus;
-   * vorher steht das Video allein da.
-   */
-  info?: ReactNode
 }) {
   const videoRef = useRef<HTMLVideoElement>(null)
 
@@ -133,9 +115,7 @@ export function ImpulseVideoPlayer({
   }
 
   if (source.art !== 'datei') {
-    return (
-      <EmbeddedVideo source={source} poster={poster} title={title} active={active} info={info} />
-    )
+    return <EmbeddedVideo source={source} poster={poster} title={title} active={active} />
   }
 
   return (
@@ -165,6 +145,17 @@ function Poster({ poster }: { poster?: string | null }) {
   )
 }
 
+/** Der runde Startknopf in der Mitte – nur ein Zeichen, der Tipp gehört der Fläche. */
+function PlaySign() {
+  return (
+    <span className="pointer-events-none absolute inset-0 grid place-items-center">
+      <span className="grid size-16 place-items-center rounded-full bg-white/15 text-white backdrop-blur-sm">
+        <Play className="size-7 fill-current" aria-hidden />
+      </span>
+    </span>
+  )
+}
+
 /**
  * Die eingebettete Fremdkarte (YouTube, Vimeo).
  *
@@ -172,22 +163,19 @@ function Poster({ poster }: { poster?: string | null }) {
  * verschwindet mit ihr – das ist die eine verlässliche Art, ein fremdes
  * Video zum Schweigen zu bringen. Die kurze Verzögerung ist Absicht:
  * Wer mit dem Daumen durch die Woche fliegt, soll nicht fünf Videos
- * anstossen, die er gar nicht sieht. Bis dahin steht das Vorschaubild
- * (oder ein ruhiger Grund) – ohne Startknopf: Das Video startet ja von
- * selbst.
+ * anstossen, die er gar nicht sieht. Solange nichts läuft, steht das
+ * Vorschaubild – sonst blitzt beim Einbetten kurz Schwarz auf.
  */
 function EmbeddedVideo({
   source,
   poster,
   title,
   active,
-  info,
 }: {
   source: ImpulseVideoSource
   poster?: string | null
   title: string
   active: boolean
-  info?: ReactNode
 }) {
   const [embedded, setEmbedded] = useState(false)
   useEffect(() => {
@@ -198,10 +186,11 @@ function EmbeddedVideo({
   return (
     <div className="absolute inset-0 bg-black">
       {embedded ? (
-        <EmbedFrame source={source} poster={poster} title={title} info={info} />
+        <EmbedFrame source={source} title={title} />
       ) : (
         <div className="absolute inset-0">
           <Poster poster={poster} />
+          <PlaySign />
         </div>
       )}
     </div>
@@ -209,118 +198,53 @@ function EmbeddedVideo({
 }
 
 /**
- * Die Fremdkarte selbst – bedient mit den Knöpfen der App, nicht mit
- * denen des Anbieters.
+ * Die Fremdkarte selbst – das Bild gehört ihr, am oberen und am unteren
+ * Rand liegt eine schmale Wischfläche der App.
  *
  * Ein Rahmen einer fremden Seite behält jede Berührung für sich: Wer
- * darauf wischt, rollt nicht den Feed, sondern höchstens das Video. Und
- * der Browser entscheidet schon beim Aufsetzen des Fingers, wem die
- * Berührung gehört – dem Rahmen oder der App. Tippen bei YouTube und
- * Wischen in der App geht darum nicht zugleich. Also gehört die ganze
- * Fläche der App (`touch-pan-y`), und die Karte bringt alles selbst mit,
- * was es braucht – YouTube zeigt seine Knöpfe gar nicht erst
- * (`controls=0`, siehe `impulseEmbedUrl`). Was zu tun ist, sagt sie der
- * Fremdkarte per Nachricht (`impulseEmbedMessage`):
+ * darauf wischt, rollt nicht den Feed, sondern höchstens das Video.
+ * Getippt soll aber genau dort werden – wie bei YouTube selbst:
  *
- * - **Ein Tipp blendet ein und aus** – überall im Bild, das ganze Video
- *   lang, so oft man will. Von unten auf einem dunklen Schleier: Titel,
- *   Text und Quelle der Karte samt Amen und Merken (`info`), die Zeit, der
- *   Ton und die Leiste; in der Mitte der Knopf zum Anhalten. Ein Tipp hält
- *   nie an und blendet nie von selbst wieder aus.
- * - **Nur der Knopf in der Mitte hält an** und lässt weiterlaufen. Steht
- *   das Video, bleibt er auch bei ausgeblendeten Angaben stehen – man
- *   sieht, warum sich nichts bewegt.
- * - **Nach oben und unten wischen** rollt den Feed zur nächsten oder
- *   vorigen Karte – überall im Bild, wie bei Reels und Shorts.
- * - **Zur Seite wischen spult** – nach rechts vor, nach links zurück; die
- *   ganze Breite ist die ganze Länge, wie bei der Leiste. Die Fläche lässt
- *   nur das senkrechte Rollen dem Browser, das seitliche bekommt sie
- *   selbst. Am Rechner spulen die Pfeiltasten links und rechts um fünf
- *   Sekunden.
- * - **Der Ton** sitzt bei den Angaben unten rechts. Läuft das Video
- *   stumm, bleibt dort auch ohne Tipp ein kleiner Knopf stehen – sonst
- *   fände niemand den Ton.
- *
- * **Nur das Video.** Was YouTube trotz allem an den Rand seines Rahmens
- * zeichnet – Titel, Kanal, beim Anhalten weitere Videos –, liegt
- * ausserhalb der Karte und wird abgeschnitten (`impulseEmbedBox`); ein
- * Short füllt dabei den ganzen Bildschirm.
- *
- * **Kein Knopf von YouTube beim Start.** Am Telefon legt YouTube beim
- * Anlaufen trotz `controls=0` seinen Knopf zum Anhalten mitten ins Bild
- * und nimmt ihn erst nach ein paar Sekunden weg – meistens, nicht immer.
- * Darum läuft das Video zuerst verdeckt an: Ein Vorhang mit dem
- * Vorschaubild liegt darüber, und das Video läuft darunter stumm, bis der
- * Knopf sicher weg ist (`WARM_UP_MS`). Dann springt es an den Anfang
- * zurück, der Ton kommt, und der Vorhang geht auf – man sieht das Video
- * von der ersten Sekunde an, ohne Knopf. Ein Sprung im laufenden Video
- * holt den Knopf – so die Annahme – nicht zurück; erst wieder ein Halt und
- * ein Weiterlaufen.
- * Deshalb beginnt ein Short knapp vor dem Ende von vorn (`impulseLoopDue`),
- * solange er noch läuft, statt erst zu Ende zu gehen. Und nach dem
- * Weiterlaufen bleibt der eigene Knopf in der Mitte ein paar Sekunden
- * stehen (`COVER_MS`) – genau über dem von YouTube, der dann darunter
- * verschwindet. Geht ein Video doch einmal zu Ende, fällt der Vorhang
- * wieder, statt der Vorschläge des Anbieters: Ein Short läuft verdeckt von
- * vorn an, ein gewöhnliches Video wartet mit dem Startknopf.
- *
- * **Mit Ton, wo es geht.** Wo der Browser lautes Abspielen nie erlaubt
- * (am iPhone, `impulseSoundBlocked`), startet das Video gleich stumm.
- * Lehnt er es sonst ab, meldet die Fremdkarte, dass sie steht; dann
- * startet die Karte das Video stumm – lieber ein leises Video als ein
- * stehendes Bild. Hat die Person schon selbst angehalten oder den Ton
- * bedient, startet die Karte nichts mehr von sich aus. Kommt das Video
- * auch so nicht in Gang, steht der Startknopf in der Mitte.
+ * - **Das Bild gehört YouTube** – alles zwischen den beiden Rändern. Ein
+ *   Tipp neben den Startknopf blendet Titel, Kanal und Knöpfe ein und
+ *   wieder aus; ein Tipp auf den Knopf hält an und lässt weiterlaufen.
+ *   Das gilt das ganze Video lang, denn es ist die eigene Bedienung von
+ *   YouTube. Ein Tipp kann nicht zugleich der Wischfläche gehören: Was
+ *   auf ihr beginnt, erreicht YouTube nie. Darum sind die Flächen schmal.
+ * - **Am Rand wischt man weiter.** Oben (15 % der Höhe) und unten (20 %,
+ *   dort, wo der Daumen meist ansetzt) liegt je eine Wischfläche der App:
+ *   Auf ihr rollt der Feed zur nächsten oder vorigen Karte wie auf jeder
+ *   anderen Karte. Ein Short, der nicht den ganzen Bildschirm füllt, hat
+ *   seine Ränder ohnehin im unscharfen Grund über und unter dem Bild. Ein
+ *   Wisch, der im Bild beginnt, gehört dagegen YouTube.
+ * - **Ein Wisch zur Seite spult** – auf den Wischflächen, nach rechts
+ *   vor, nach links zurück; die ganze Breite ist die ganze Länge, wie bei
+ *   der Leiste ganz unten. Die Flächen lassen nur das senkrechte Rollen
+ *   dem Browser (`touch-pan-y`), das seitliche bekommen sie selbst. Die
+ *   Karte sagt es der Fremdkarte per Nachricht (`impulseEmbedMessage`).
+ * - **Der Ton** sitzt unten rechts.
+ * - **Mit Ton, wo es geht.** Lehnt der Browser das laute Abspielen ab
+ *   (am iPhone ohne vorherige Berührung im Video immer), meldet die
+ *   Fremdkarte, dass sie steht. Dann startet die Karte das Video stumm –
+ *   lieber ein leises Video als ein stehendes Bild – und der Knopf
+ *   unten rechts heisst «Ton an». Hat die Person schon selbst
+ *   eingegriffen, startet die Karte nichts mehr von sich aus.
  *
  * Meldet die Fremdkarte gar nichts (etwa weil der Anbieter seine
- * Schnittstelle ändert), geht der Vorhang nach ein paar Sekunden trotzdem
- * auf; der Knopf in der Mitte wechselt zwischen Anhalten und
- * Weiterlaufen, der Ton zwischen an und aus – nur das verdeckte Anlaufen,
- * der stumme Neustart, die Zeit, die Leiste, das Spulen und die Schleife
- * entfallen.
+ * Schnittstelle ändert), bleibt die Bedienung in der Mitte, wie sie ist;
+ * der Ton wechselt zwischen an und aus – nur der stumme Neustart, die
+ * Leiste und das Spulen entfallen.
  */
-
-/** So lange läuft das Video verdeckt an – bis YouTube seinen Knopf sicher weggenommen hat. */
-const WARM_UP_MS = 3200
-/** So lange bleibt der eigene Knopf nach dem Weiterlaufen stehen – über dem von YouTube. */
-const COVER_MS = 3200
-
-function EmbedFrame({
-  source,
-  poster,
-  title,
-  info,
-}: {
-  source: ImpulseVideoSource
-  poster?: string | null
-  title: string
-  info?: ReactNode
-}) {
+function EmbedFrame({ source, title }: { source: ImpulseVideoSource; title: string }) {
   const frameRef = useRef<HTMLIFrameElement>(null)
-  const boxRef = useRef<HTMLDivElement>(null)
-  /* Lässt der Browser keinen Ton zu, startet das Video gleich stumm. */
-  const [quietStart] = useState(() =>
-    impulseSoundBlocked(navigator.userAgent, navigator.maxTouchPoints ?? 0),
-  )
   /* Läuft es? `null`, solange die Fremdkarte nichts gemeldet hat. */
   const [playing, setPlaying] = useState<boolean | null>(null)
-  const [muted, setMuted] = useState(quietStart)
-  /* Bewegt sich das Bild? Bis dahin deckt der Vorhang den Rahmen zu. */
-  const [started, setStarted] = useState(false)
-  /* Steht es, weil man angehalten hat (oder ein Video zu Ende ist) –
-     oder weil es nicht in Gang kommt? Dann steht der Startknopf da. */
-  const [paused, setPaused] = useState(false)
-  const [stalled, setStalled] = useState(false)
-  /* Stehen die Angaben über dem Video? Allein der Tipp entscheidet. */
-  const [shown, setShown] = useState(false)
+  const [muted, setMuted] = useState(false)
   /* Dasselbe für die Handgriffe und Zeitgeber, die den neuesten Stand
      brauchen, ohne neu aufgesetzt zu werden. */
   const playingRef = useRef<boolean | null>(null)
-  const mutedRef = useRef(quietStart)
-  const startedRef = useRef(false)
-  const pausedRef = useRef(false)
-  const runningRef = useRef(false)
-  /* Wo das Video steht und wie lang es ist – die Leiste. */
+  const mutedRef = useRef(false)
+  /* Wo das Video steht und wie lang es ist – die Leiste ganz unten. */
   const [time, setTime] = useState(0)
   const [duration, setDuration] = useState(0)
   const durationRef = useRef(0)
@@ -340,48 +264,29 @@ function EmbedFrame({
     sentAt: number
   } | null>(null)
   const [scrubTo, setScrubTo] = useState<number | null>(null)
-  /* Nach dem Spulen folgt ein Klick – der blendet nichts ein oder aus. */
-  const scrubbed = useRef(false)
-  /* Hat die Person selbst angehalten oder den Ton bedient? */
   const touched = useRef(false)
-  /* Das verdeckte Anlaufen: noch nicht (`idle`), gerade (`warming`), vorbei
-     (`done`). `warmMuted`: Die Karte hat dafür den Ton weggenommen und gibt
-     ihn danach zurück. */
-  const warm = useRef<'idle' | 'warming' | 'done'>('idle')
-  const warmTimer = useRef<number | undefined>(undefined)
-  const warmMuted = useRef(false)
-  /* Meldungen über den Ton gleich nach dem Zurückgeben sind noch die alten. */
-  const mutedQuietUntil = useRef(0)
-  /* Steht der eigene Knopf gerade über dem von YouTube? */
-  const [cover, setCover] = useState(false)
-  const coverTimer = useRef<number | undefined>(undefined)
-  /* Nach dem Sprung an den Anfang zählt das Ende eine Weile nicht. */
-  const loopQuietUntil = useRef(0)
   const sourceRef = useRef(source)
   useEffect(() => {
     sourceRef.current = source
   })
 
-  /* Der Rahmen, so gelegt, dass von der Fremdkarte nur das Video bleibt. */
-  const [box, setBox] = useState<ImpulseEmbedBox | null>(null)
-  const aspect = source.art === 'youtube' && source.short ? 9 / 16 : 16 / 9
+  /* Ein Tipp in die Mitte gibt dem Rahmen den Fokus: Dann hat die Person
+     selbst eingegriffen, und die Karte startet nichts mehr stumm. */
   useEffect(() => {
-    const element = boxRef.current
-    if (!element) return
-    const measure = () => setBox(impulseEmbedBox(element.clientWidth, element.clientHeight, aspect))
-    measure()
-    const observer = new ResizeObserver(measure)
-    observer.observe(element)
-    return () => observer.disconnect()
-  }, [aspect])
+    const onBlur = () => {
+      window.setTimeout(() => {
+        if (frameRef.current && document.activeElement === frameRef.current) {
+          touched.current = true
+        }
+      }, 0)
+    }
+    window.addEventListener('blur', onBlur)
+    return () => window.removeEventListener('blur', onBlur)
+  }, [])
 
   const showPlaying = (value: boolean) => {
     playingRef.current = value
     setPlaying(value)
-  }
-  const showPaused = (value: boolean) => {
-    pausedRef.current = value
-    setPaused(value)
   }
   const showMuted = (value: boolean) => {
     mutedRef.current = value
@@ -395,44 +300,6 @@ function EmbedFrame({
   const currentTime = () =>
     clock.current.time + (playingRef.current ? (performance.now() - clock.current.at) / 1000 : 0)
 
-  /*
-   * Der Vorhang geht erst auf, wenn sich das Bild bewegt (`running`) –
-   * nicht schon, wenn das Video bloss lädt: Solange zeigt YouTube sein
-   * Vorschaubild mit dem grossen Startknopf. Einen Augenblick später,
-   * weil YouTube beides erst dann ausblendet – gezählt ab der ersten
-   * Meldung, nicht ab jeder: Die Fremdkarte meldet sich laufend. Am Ende
-   * fällt er wieder.
-   */
-  const curtainTimer = useRef<number | undefined>(undefined)
-  const lift = (delay: number) => {
-    if (startedRef.current || curtainTimer.current !== undefined) return
-    curtainTimer.current = window.setTimeout(() => {
-      curtainTimer.current = undefined
-      startedRef.current = true
-      setStarted(true)
-    }, delay)
-  }
-  const lower = () => {
-    window.clearTimeout(curtainTimer.current)
-    curtainTimer.current = undefined
-    startedRef.current = false
-    setStarted(false)
-  }
-
-  /* Steht das Video ein paar Sekunden nach dem Laden noch immer, ohne
-     dass jemand angehalten hat, kommt es nicht in Gang: Dann geht der
-     Vorhang auf, und in der Mitte steht der Startknopf. */
-  const stallTimer = useRef<number | undefined>(undefined)
-  const watchStall = () => {
-    window.clearTimeout(stallTimer.current)
-    stallTimer.current = window.setTimeout(() => {
-      if (heard.current && !runningRef.current && !pausedRef.current) {
-        setStalled(true)
-        endWarmUp(false)
-      }
-    }, 3500)
-  }
-
   const send = (command: ImpulseEmbedCommand) => {
     const message = impulseEmbedMessage(sourceRef.current, command)
     const origin = impulseEmbedOrigin(sourceRef.current)
@@ -443,112 +310,16 @@ function EmbedFrame({
     sendRef.current = send
   })
 
-  const seek = (seconds: number, done: boolean) => {
-    const message = impulseEmbedSeekMessage(sourceRef.current, seconds, done)
-    const origin = impulseEmbedOrigin(sourceRef.current)
-    if (message && origin) frameRef.current?.contentWindow?.postMessage(message, origin)
-    if (done) showTime(seconds)
-  }
-  const seekRef = useRef(seek)
-  useEffect(() => {
-    seekRef.current = seek
-  })
-
   /* Steht das Video kurz nach seiner ersten Meldung noch, hat der
      Browser den Ton abgelehnt: dann stumm, aber laufend. Gezählt ab der
      ersten Meldung, nicht ab dem Einbetten – auf langsamem Netz lädt die
-     Fremdkarte länger, als die Geduld reichte. Den Ton gibt die Karte
-     dann auch nach dem verdeckten Anlaufen nicht zurück. */
+     Fremdkarte länger, als die Geduld reichte. */
   const quietTimer = useRef<number | undefined>(undefined)
   const startQuietly = () => {
     if (touched.current || playingRef.current !== false) return
-    warmMuted.current = false
     sendRef.current('mute')
     sendRef.current('play')
     showMuted(true)
-  }
-
-  /* Bleibt das Video stehen, sobald der Ton zurückkommt, lässt der
-     Browser ihn nicht zu: dann wieder stumm, aber laufend. */
-  const soundTimer = useRef<number | undefined>(undefined)
-  const watchSound = () => {
-    window.clearTimeout(soundTimer.current)
-    soundTimer.current = window.setTimeout(() => {
-      if (touched.current || pausedRef.current || playingRef.current !== false) return
-      sendRef.current('mute')
-      sendRef.current('play')
-      showMuted(true)
-    }, 1200)
-  }
-
-  /* Wo das Video anfängt – bei einem Link mit Zeitangabe nicht bei null. */
-  const startPoint = () => (sourceRef.current.art === 'youtube' ? sourceRef.current.start : 0)
-
-  /* Verdeckt anlaufen heisst: stumm. Sonst hörte man den Anfang zweimal. */
-  const muteForWarmUp = () => {
-    if (mutedRef.current || warm.current === 'done') return
-    warmMuted.current = true
-    sendRef.current('mute')
-  }
-
-  /* Das Bild bewegt sich: Jetzt läuft die Zeit, bis YouTube seinen Knopf
-     weggenommen hat. Lief es dabei stumm, geht es danach an den Anfang
-     zurück – sonst verpasste man die ersten Sekunden. */
-  const startWarmUp = () => {
-    if (warm.current !== 'idle') return
-    warm.current = 'warming'
-    window.clearTimeout(warmTimer.current)
-    warmTimer.current = window.setTimeout(
-      () => endWarmUp(mutedRef.current || warmMuted.current),
-      WARM_UP_MS,
-    )
-  }
-
-  /* Vorbei mit dem verdeckten Anlaufen – nach der Zeit (`rewind`: zurück
-     an den Anfang) oder weil jemand eingreift. Der Ton kommt zurück, der
-     Vorhang geht auf. */
-  const endWarmUp = (rewind: boolean) => {
-    if (warm.current === 'done') return
-    window.clearTimeout(warmTimer.current)
-    warm.current = 'done'
-    if (rewind) seekRef.current(startPoint(), true)
-    if (warmMuted.current) {
-      warmMuted.current = false
-      if (!mutedRef.current) {
-        sendRef.current('unmute')
-        mutedQuietUntil.current = performance.now() + 800
-        watchSound()
-      }
-    }
-    lift(rewind ? 400 : 0)
-  }
-
-  /* Der eigene Knopf bleibt nach dem Weiterlaufen ein paar Sekunden stehen
-     – so lange zeigt YouTube darunter seinen. */
-  const coverFor = () => {
-    window.clearTimeout(coverTimer.current)
-    setCover(true)
-    coverTimer.current = window.setTimeout(() => setCover(false), COVER_MS)
-  }
-
-  /* Zu Ende: Der Vorhang fällt, statt der Vorschläge des Anbieters. Ein
-     Short läuft verdeckt von vorn an, ein gewöhnliches Video wartet mit dem
-     Startknopf – und den Angaben, damit man sieht, was es war. Einmal je
-     Ende: Die Fremdkarte meldet es mehrfach, bis sie wieder läuft. */
-  const endedRef = useRef(false)
-  const finish = () => {
-    if (endedRef.current) return
-    endedRef.current = true
-    lower()
-    if (sourceRef.current.art === 'youtube' && sourceRef.current.short) {
-      warm.current = 'idle'
-      muteForWarmUp()
-      seekRef.current(0, true)
-      sendRef.current('play')
-      return
-    }
-    showPaused(true)
-    setShown(true)
   }
 
   /* Die Meldungen der Fremdkarte – nur ihre eigenen, von ihrem Ursprung. */
@@ -558,63 +329,30 @@ function EmbedFrame({
       if (event.origin !== impulseEmbedOrigin(sourceRef.current)) return
       const report = impulseEmbedReport(sourceRef.current, event.data)
       if (!report) return
-      if (!heard.current) {
-        quietTimer.current = window.setTimeout(() => startQuietly(), 1500)
-        muteForWarmUp()
-      }
+      if (!heard.current) quietTimer.current = window.setTimeout(() => startQuietly(), 1500)
       heard.current = true
       if (report.playing !== undefined) showPlaying(report.playing)
-      if (report.running !== undefined) runningRef.current = report.running
-      if (report.running) {
-        endedRef.current = false
-        setStalled(false)
-        if (warm.current === 'idle') startWarmUp()
-        else if (warm.current === 'done') lift(250)
-      }
-      /* Den Ton, den die Karte fürs verdeckte Anlaufen wegnimmt, zeigt sie
-         nicht als weg – er kommt ja gleich zurück. */
-      if (
-        report.muted !== undefined &&
-        !warmMuted.current &&
-        performance.now() > mutedQuietUntil.current
-      ) {
-        showMuted(report.muted)
-      }
+      if (report.muted !== undefined) showMuted(report.muted)
       if (report.duration !== undefined) {
         durationRef.current = report.duration
         setDuration(report.duration)
       }
       /* Während des Spulens gilt der Daumen, nicht die Meldung. */
       if (report.time !== undefined && !scrub.current?.active) showTime(report.time)
-      if (report.ended) finish()
     }
     window.addEventListener('message', onMessage)
     return () => {
       window.removeEventListener('message', onMessage)
       window.clearTimeout(quietTimer.current)
-      window.clearTimeout(stallTimer.current)
-      window.clearTimeout(soundTimer.current)
     }
     // Einmal aufgesetzt: Was es braucht, liest es aus Refs.
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
 
   /* Anmelden, sobald die Fremdkarte geladen hat – und nachfassen, bis sie
-     antwortet: Ihr Skript hört nicht unbedingt schon beim Laden zu. Meldet
-     sie sich gar nicht, geht der Vorhang nach drei Sekunden trotzdem auf –
-     dann weiss die Karte nicht, ob sich das Bild bewegt. */
+     antwortet: Ihr Skript hört nicht unbedingt schon beim Laden zu. */
   const helloTimer = useRef<number | undefined>(undefined)
-  const silenceTimer = useRef<number | undefined>(undefined)
-  useEffect(
-    () => () => {
-      window.clearInterval(helloTimer.current)
-      window.clearTimeout(silenceTimer.current)
-      window.clearTimeout(curtainTimer.current)
-      window.clearTimeout(warmTimer.current)
-      window.clearTimeout(coverTimer.current)
-    },
-    [],
-  )
+  useEffect(() => () => window.clearInterval(helloTimer.current), [])
   const onLoad = () => {
     const hello = () => {
       const origin = impulseEmbedOrigin(sourceRef.current)
@@ -622,8 +360,6 @@ function EmbedFrame({
       if (!origin || !target) return
       for (const message of impulseEmbedHello(sourceRef.current))
         target.postMessage(message, origin)
-      /* Den Ton so früh wie möglich weg: Das Video läuft zuerst verdeckt. */
-      muteForWarmUp()
     }
     hello()
     let tries = 0
@@ -633,46 +369,6 @@ function EmbedFrame({
       if (heard.current || tries > 10) window.clearInterval(helloTimer.current)
       else hello()
     }, 400)
-    window.clearTimeout(silenceTimer.current)
-    silenceTimer.current = window.setTimeout(() => {
-      if (!heard.current) endWarmUp(false)
-    }, 3000)
-    watchStall()
-  }
-
-  /* Ein Tipp aufs Bild: einblenden oder ausblenden – sonst nichts. */
-  const toggleInfo = () => {
-    if (scrubbed.current) {
-      scrubbed.current = false
-      return
-    }
-    setShown((value) => !value)
-  }
-
-  /* Der Knopf in der Mitte: anhalten oder weiter. Ohne Meldungen zählt
-     der eigene Stand; mit Meldungen sagt die Fremdkarte, was daraus
-     geworden ist – ein abgelehntes Abspielen soll nicht als laufend
-     dastehen. */
-  const halted = paused || stalled || (started && playing === false)
-  const togglePlay = () => {
-    if (scrubbed.current) {
-      scrubbed.current = false
-      return
-    }
-    touched.current = true
-    endWarmUp(false)
-    if (halted) {
-      send('play')
-      showPaused(false)
-      setStalled(false)
-      if (!heard.current) showPlaying(true)
-      else watchStall()
-      coverFor()
-    } else {
-      send('pause')
-      showPaused(true)
-      showPlaying(false)
-    }
   }
 
   /* Zwischen zwei Meldungen rückt die Leiste von selbst weiter. */
@@ -681,39 +377,30 @@ function EmbedFrame({
     const timer = window.setInterval(() => {
       if (scrub.current?.active) return
       const { time: base, at } = clock.current
-      const now = Math.min(duration, base + (performance.now() - at) / 1000)
-      setTime(now)
-      /* Ein Short beginnt knapp vor dem Ende von vorn, solange er noch
-         läuft – ist er erst zu Ende, zeigt YouTube beim Weiterlaufen
-         wieder seinen Knopf. */
-      const current = sourceRef.current
-      if (
-        current.art === 'youtube' &&
-        current.short &&
-        warm.current === 'done' &&
-        performance.now() > loopQuietUntil.current &&
-        impulseLoopDue(now, duration)
-      ) {
-        loopQuietUntil.current = performance.now() + 1500
-        seekRef.current(0, true)
-      }
+      setTime(Math.min(duration, base + (performance.now() - at) / 1000))
     }, 250)
     return () => window.clearInterval(timer)
   }, [playing, duration])
 
   /* ---------------- Spulen ---------------- */
 
+  const seek = (seconds: number, done: boolean) => {
+    const message = impulseEmbedSeekMessage(sourceRef.current, seconds, done)
+    const origin = impulseEmbedOrigin(sourceRef.current)
+    if (message && origin) frameRef.current?.contentWindow?.postMessage(message, origin)
+    if (done) showTime(seconds)
+  }
+
   /*
-   * Ein Daumen auf dem Video: Geht er zur Seite, spult er; geht er nach
-   * oben oder unten, rollt der Browser den Feed und meldet das Ende
+   * Ein Daumen auf einer Wischfläche: Geht er zur Seite, spult er; geht er
+   * nach oben oder unten, rollt der Browser den Feed und meldet das Ende
    * dieses Daumens (`pointercancel`). Erst ab ein paar Pixeln zur Seite
-   * wird gespult – ein Tipp, der ein wenig verrutscht, bleibt ein Tipp.
+   * wird gespult.
    * Unterwegs zeigt YouTube die Stelle alle paar Augenblicke an, beim
    * Loslassen lädt es von dort weiter.
    */
 
-  const onPointerDown = (event: ReactPointerEvent<HTMLElement>) => {
-    scrubbed.current = false
+  const onPointerDown = (event: ReactPointerEvent<HTMLDivElement>) => {
     if (!(durationRef.current > 0)) return
     if (event.pointerType === 'mouse' && event.button !== 0) return
     scrub.current = {
@@ -721,14 +408,14 @@ function EmbedFrame({
       x: event.clientX,
       y: event.clientY,
       from: currentTime(),
-      width: boxRef.current?.clientWidth ?? event.currentTarget.clientWidth,
+      width: event.currentTarget.clientWidth,
       to: 0,
       active: false,
       sentAt: 0,
     }
   }
 
-  const onPointerMove = (event: ReactPointerEvent<HTMLElement>) => {
+  const onPointerMove = (event: ReactPointerEvent<HTMLDivElement>) => {
     const current = scrub.current
     if (!current || current.pointer !== event.pointerId) return
     const dx = event.clientX - current.x
@@ -736,7 +423,7 @@ function EmbedFrame({
     if (!current.active) {
       if (Math.abs(dx) < 12 || Math.abs(dx) < Math.abs(dy)) return
       current.active = true
-      endWarmUp(false)
+      touched.current = true
       event.currentTarget.setPointerCapture(event.pointerId)
     }
     current.to = impulseScrubTime(current.from, dx, current.width, durationRef.current)
@@ -748,100 +435,58 @@ function EmbedFrame({
     }
   }
 
-  const endScrub = (event: ReactPointerEvent<HTMLElement>) => {
+  const endScrub = (event: ReactPointerEvent<HTMLDivElement>) => {
     const current = scrub.current
     if (!current || current.pointer !== event.pointerId) return
     scrub.current = null
     if (!current.active) return
-    scrubbed.current = true
     seek(current.to, true)
     setScrubTo(null)
-    coverFor()
-  }
-
-  const scrubHandlers = {
-    onPointerDown,
-    onPointerMove,
-    onPointerUp: endScrub,
-    onPointerCancel: endScrub,
-  }
-
-  /* Am Rechner: die Pfeiltasten links und rechts, fünf Sekunden je Druck. */
-  const onKeyDown = (event: ReactKeyboardEvent<HTMLButtonElement>) => {
-    if (event.key !== 'ArrowLeft' && event.key !== 'ArrowRight') return
-    if (!(durationRef.current > 0)) return
-    event.preventDefault()
-    const step = event.key === 'ArrowRight' ? 5 : -5
-    seek(Math.min(durationRef.current, Math.max(0, currentTime() + step)), true)
   }
 
   /* Der Ton – und wer ihn einschaltet, will das Video auch laufen sehen. */
   const toggleSound = () => {
     touched.current = true
-    endWarmUp(false)
     const next = !mutedRef.current
     send(next ? 'mute' : 'unmute')
-    if (!next && playingRef.current === false && !pausedRef.current) send('play')
+    if (!next && playingRef.current === false) send('play')
     showMuted(next)
   }
 
-  const embedUrl = impulseEmbedUrl(source, window.location.origin, { muted: quietStart })
+  const embedUrl = impulseEmbedUrl(source, window.location.origin)
   if (!embedUrl) return null
 
-  const scrubbing = scrubTo !== null
-  const visible = shown || scrubbing
-  const progress = duration > 0 ? (Math.min(scrubTo ?? time, duration) / duration) * 100 : 0
-  const soundLabel = muted ? 'Ton einschalten' : 'Ton ausschalten'
-
   return (
-    <div ref={boxRef} className="absolute inset-0 overflow-hidden bg-black">
+    <>
       <iframe
         ref={frameRef}
         src={embedUrl}
         title={title}
         onLoad={onLoad}
-        /* Bedient wird über die Fläche der App – in den Rahmen führt kein Weg. */
-        tabIndex={-1}
-        className="pointer-events-none absolute border-0"
-        style={
-          box
-            ? { left: box.left, top: box.top, width: box.width, height: box.height }
-            : { inset: 0, width: '100%', height: '100%' }
-        }
+        /* In der Mitte bedient man YouTube selbst – mit dem Finger wie
+           mit der Tastatur. */
+        className="size-full"
         allow="autoplay; encrypted-media; picture-in-picture; fullscreen"
         allowFullScreen
         /* Die Fremdkarte bekommt so wenig wie möglich mit: kein
            Zugriff auf die App, nur ihr eigenes Fenster. */
         referrerPolicy="strict-origin-when-cross-origin"
       />
-
-      {/* Der Vorhang: deckt den Rahmen zu, bis das Video verdeckt angelaufen
-          ist – sonst stünden Vorschaubild, Startknopf und Pausenknopf des
-          Anbieters da. Ohne eigenes Bild das Vorschaubild von YouTube. */}
-      <div
-        aria-hidden
-        className={cn(
-          'pointer-events-none absolute inset-0 transition-opacity duration-300',
-          started ? 'opacity-0' : 'opacity-100',
-        )}
-      >
-        <Poster poster={poster ?? impulseVideoThumbnail(source)} />
-      </div>
-
-      {/* Die Fläche über dem ganzen Video: Ein Tipp blendet ein und aus,
-          nach oben und unten rollt der Feed, zur Seite spult sie. */}
-      <button
-        type="button"
-        onClick={toggleInfo}
-        {...scrubHandlers}
-        onKeyDown={onKeyDown}
-        aria-label={shown ? 'Angaben zum Video ausblenden' : 'Angaben zum Video zeigen'}
-        aria-expanded={shown}
-        className="absolute inset-0 cursor-pointer touch-pan-y focus-visible:-outline-offset-4"
-      />
-
-      {/* Wohin der Daumen spult. */}
-      {scrubbing && (
+      {/* Die Wischflächen am oberen und am unteren Rand: Auf ihnen rollt der
+          Feed, zur Seite spulen sie. Das Bild dazwischen bleibt frei – dort
+          tippt man YouTube an. */}
+      {(['top-0 h-[15%]', 'bottom-0 h-[20%]'] as const).map((edge) => (
+        <div
+          key={edge}
+          aria-hidden
+          onPointerDown={onPointerDown}
+          onPointerMove={onPointerMove}
+          onPointerUp={endScrub}
+          onPointerCancel={endScrub}
+          className={cn('absolute inset-x-0 touch-pan-y', edge)}
+        />
+      ))}
+      {scrubTo !== null && (
         <span className="pointer-events-none absolute inset-0 grid place-items-center">
           <span className="tabular rounded-full bg-slate-950/60 px-4 py-2 text-lg font-semibold text-white backdrop-blur-sm">
             {impulseVideoClock(scrubTo)}
@@ -849,102 +494,43 @@ function EmbedFrame({
           </span>
         </span>
       )}
-
-      {/* Der Knopf in der Mitte: anhalten und weiter. Er steht mit den
-          Angaben da, immer, wenn das Video steht, und ein paar Sekunden
-          nach dem Weiterlaufen (`cover`). Wer auf ihm wischt,
-          wischt wie auf dem Video; beim Spulen tritt er zurück, bleibt aber
-          da – sonst verlöre der Daumen, der auf ihm aufsetzte, seinen Halt. */}
-      {(shown || halted || cover) && (
-        <span className="pointer-events-none absolute inset-0 grid place-items-center">
-          <button
-            type="button"
-            onClick={togglePlay}
-            {...scrubHandlers}
-            aria-label={halted ? 'Video abspielen' : 'Video anhalten'}
-            className={cn(
-              'pointer-events-auto grid size-16 touch-pan-y place-items-center rounded-full bg-slate-950/45 text-white backdrop-blur-sm transition active:scale-95',
-              scrubbing && 'opacity-0',
-            )}
-          >
-            {halted ? (
-              <Play className="size-7 translate-x-0.5 fill-current" aria-hidden />
-            ) : (
-              <Pause className="size-7 fill-current" aria-hidden />
-            )}
-          </button>
-        </span>
-      )}
-
-      {/* Ohne Tipp steht nichts über dem Video – ausser dem Ton, wenn er
-          fehlt: sonst fände ihn niemand. */}
-      {!visible && muted && (
-        <div className="pointer-events-none absolute right-0 bottom-0 pb-safe">
-          <button
-            type="button"
-            onClick={toggleSound}
-            aria-label={soundLabel}
-            className="pointer-events-auto m-3 mb-8 grid size-9 place-items-center rounded-full bg-slate-950/45 text-white backdrop-blur-sm transition active:scale-95"
-          >
-            <VolumeX className="size-4" aria-hidden />
-          </button>
-        </div>
-      )}
-
-      {/* Die Angaben: von unten auf einem dunklen Schleier – Titel, Text,
-          Quelle, Amen und Merken, dann Zeit, Ton und die Leiste. Der
-          Schleier selbst lässt Berührungen durch (ein Tipp darauf ist ein
-          Tipp aufs Video, ein Wisch ein Wisch), nur Links und Knöpfe nehmen
-          sie an. Hell auf dunkel, auch im hellen Modus (`dark`). */}
-      <div
-        className={cn(
-          'dark pointer-events-none absolute inset-x-0 bottom-0 bg-gradient-to-t from-black/85 via-black/50 to-transparent pt-28 pb-safe text-white transition-[opacity,visibility] duration-200',
-          visible ? 'visible opacity-100' : 'invisible opacity-0',
-        )}
-      >
-        {info && (
-          <div className="mx-auto w-full max-w-xl px-4 [&_a]:pointer-events-auto [&_button]:pointer-events-auto [&_h2]:text-xl">
-            {info}
-          </div>
-        )}
-        <div className="mx-auto flex w-full max-w-xl items-center gap-3 px-4 pt-3 pb-2">
-          {duration > 0 && (
-            <span className="tabular text-xs font-medium text-white/85">
-              {impulseVideoClock(scrubTo ?? time)} / {impulseVideoClock(duration)}
-            </span>
-          )}
-          <button
-            type="button"
-            onClick={toggleSound}
-            aria-label={soundLabel}
-            className={cn(
-              'pointer-events-auto ms-auto flex h-10 items-center gap-1.5 rounded-full bg-white/15 text-white backdrop-blur-sm transition active:scale-95',
-              muted ? 'px-3.5 text-sm font-medium' : 'w-10 justify-center',
-            )}
-          >
-            {muted ? (
-              <>
-                <VolumeX className="size-4" aria-hidden />
-                Ton an
-              </>
-            ) : (
-              <Volume2 className="size-4" aria-hidden />
-            )}
-          </button>
-        </div>
-        {duration > 0 && (
+      {/* Die Leiste ganz unten: wie weit das Video ist – beim Spulen kräftiger. */}
+      {duration > 0 && (
+        <div className="pointer-events-none absolute inset-x-0 bottom-0 pb-safe" aria-hidden>
           <div
-            aria-hidden
             className={cn(
               'bg-white/25 transition-[height] duration-150',
-              scrubbing ? 'h-1.5' : 'h-1',
+              scrubTo !== null ? 'h-1.5' : 'h-[3px]',
             )}
           >
-            <div className="h-full bg-white" style={{ width: `${progress}%` }} />
+            <div
+              className="h-full bg-white"
+              style={{ width: `${(Math.min(scrubTo ?? time, duration) / duration) * 100}%` }}
+            />
           </div>
-        )}
+        </div>
+      )}
+      <div className="pointer-events-none absolute right-0 bottom-0 pb-safe">
+        <button
+          type="button"
+          onClick={toggleSound}
+          aria-label={muted ? 'Ton einschalten' : 'Ton ausschalten'}
+          className={cn(
+            'pointer-events-auto m-3 mb-8 flex h-10 items-center gap-1.5 rounded-full bg-slate-950/55 text-white backdrop-blur-sm transition active:scale-95',
+            muted ? 'px-3.5 text-sm font-medium' : 'w-10 justify-center',
+          )}
+        >
+          {muted ? (
+            <>
+              <VolumeX className="size-4" aria-hidden />
+              Ton an
+            </>
+          ) : (
+            <Volume2 className="size-4" aria-hidden />
+          )}
+        </button>
       </div>
-    </div>
+    </>
   )
 }
 
