@@ -409,8 +409,9 @@ Die **Video-Karte** ist die konsequente Fortsetzung: eine Kartenart mit
 einem Link statt einer Datei – YouTube, Vimeo oder die direkte Adresse
 einer Videodatei (der Download-Link einer Videoseite der Kirche). Das
 Video füllt den Bildschirm, startet mit Ton, sobald die Karte im Bild
-ist, und hält an, sobald man weiterwischt; Untertitel bleiben aus, und
-den Ton bedient die Leiste des Videos selbst. Was sich
+ist, und hält an, sobald man weiterwischt; Untertitel bleiben aus. Den
+Ton bedient bei der Videodatei ihre eigene Leiste, beim eingebetteten
+Video ein Knopf der Karte (siehe 13.12). Was sich
 nicht einbetten lässt, wird zur Karte mit einem Knopf, der das Video
 draussen öffnet – ein ehrlicher Weg hinaus statt eines schwarzen
 Rechtecks.
@@ -424,7 +425,7 @@ Haken **«Text über dem Video – zweiter Wisch»**: Dann fährt er beim
 zweiten Wisch darüber, wie bei jeder Bildkarte, und mit ihm Titel,
 Quelle sowie Amen und Merken. Die Vertiefung bleibt in beiden Fällen
 erreichbar; auf der einstufigen Karte führt der Pfeil «Vertiefen»
-hinüber, weil dort das Wischen dem Video gehört. Gewertet wird wie
+hinüber, weil dort der Wisch quer dem Video gehört. Gewertet wird wie
 überall die Teilnahme.
 
 ### 5.6 Die Mitmach-Ecke
@@ -1587,3 +1588,43 @@ der Kirche** (deutsch: `@kirchejesuchristideutsch`, englisch:
 `tests/impulse-video.test.ts` hält die Erkennung und die Schleife fest,
 `tests/impulse-pack.test.ts`, dass jeder Short des Pakets ein Short der
 Kirche ist und dass das Nachholen keine Karte verschiebt.
+
+### 13.12 Wischen auf dem Video
+
+Ein eingebettetes Video (YouTube, Vimeo) ist ein Rahmen einer fremden
+Seite, und der behält jede Berührung für sich. Wer auf einem Short nach
+oben wischte, kam darum nicht zur nächsten Karte – nur wer ganz unten am
+Rand ansetzte. Bei Reels und Shorts wischt man dagegen mitten im Bild.
+
+**Die Wischfläche.** Über dem eingebetteten Video liegt jetzt eine
+durchsichtige Fläche der App (`EmbedFrame` in `ImpulseVideoPlayer`). Auf
+ihr rollt der Feed wie auf jeder anderen Karte, nach oben wie nach unten.
+Die Knöpfe des Anbieters liegen darunter; die Karte bringt die nötigen
+selbst mit und sagt sie dem Video per Nachricht, in der Sprache der
+Schnittstelle des Anbieters (`impulseEmbedMessage`; YouTube braucht dafür
+`enablejsapi` und den eigenen Ursprung, `origin`). Skripte der Anbieter
+lädt die App dafür nicht.
+
+- **Ein Tipp** hält das Video an oder lässt es weiterlaufen – wie bei
+  Shorts. Steht es, zeigt die Mitte das Startzeichen.
+- **Der Ton** sitzt unten rechts: ein runder Knopf, der den Ton aus- und
+  wieder einschaltet.
+- **Mit Ton, wo es geht.** Das Video startet weiterhin mit Ton. Lehnt der
+  Browser das ab (am iPhone ohne Berührung im Video immer), meldet das
+  Video, dass es steht. Dann startet die Karte es nach gut zwei Sekunden
+  stumm, und der Knopf unten rechts heisst **«Ton an»**. Hat die Person
+  schon selbst angetippt, startet die Karte nichts mehr von sich aus.
+- **Was das Video meldet**, liest `impulseEmbedReport` (läuft es, ist es
+  stumm). Meldet es nichts, wechselt der Tipp trotzdem zwischen Anhalten
+  und Weiterlaufen und der Knopf zwischen Ton an und aus; nur der stumme
+  Neustart unterbleibt.
+- **Spulen** geht im Feed nicht mehr – die Leiste des Anbieters liegt
+  unter der Wischfläche. Für kurze Videos und Shorts braucht es das nicht.
+- Die **Videodatei** (`…mp4`) bleibt, wie sie war: Sie gehört zur Seite
+  selbst, auf ihr rollt der Feed ohnehin, und ihre Leiste bleibt
+  erreichbar.
+
+`tests/impulse-video.test.ts` hält die Nachrichten an YouTube und Vimeo
+fest und wie ihre Meldungen gelesen werden. Im Browser geprüft mit einer
+Attrappe von YouTube, die jede Berührung schluckt wie der echte Rahmen:
+Ohne Wischfläche blieb der Wisch hängen, mit ihr kommt die nächste Karte.

@@ -94,8 +94,15 @@ export function impulseVideoSource(raw: string | null | undefined): ImpulseVideo
  * Ein Video, das man erst lauthörbar machen muss, ist ein halbes Video:
  * Es läuft von Anfang an mit Ton. Wehrt sich der Browser dagegen (er
  * darf – ohne vorherige Berührung lässt er kein lautes Video anlaufen),
- * zeigt die Fremdkarte ihren eigenen Startknopf; den Ton bedient danach
- * die Leiste des Anbieters, die ohnehin in der Einbettung steckt.
+ * startet die Karte es stumm und bietet den Ton als Knopf an (siehe
+ * `ImpulseVideoPlayer`).
+ *
+ * Gesteuert wird die Fremdkarte von der Karte aus, über Nachrichten
+ * (`impulseEmbedMessage`): Über dem Video liegt eine Wischfläche, damit
+ * der Daumen auch auf dem Video zur nächsten Karte wischt – die Knöpfe
+ * des Anbieters erreicht er darum nicht mehr. Dafür schaltet YouTube
+ * seine Schnittstelle ein (`enablejsapi`) und antwortet nur der eigenen
+ * Seite (`origin`).
  *
  * Untertitel bleiben aus (`cc_load_policy=0`, `texttrack=false`): Sie
  * legen sich sonst über den Text der Karte.
@@ -104,7 +111,7 @@ export function impulseVideoSource(raw: string | null | undefined): ImpulseVideo
  * wiederholt ein eingebettetes Video nur als Wiedergabeliste, darum
  * steht das Video selbst als einzige Nummer darin (`playlist`).
  */
-export function impulseEmbedUrl(source: ImpulseVideoSource): string | null {
+export function impulseEmbedUrl(source: ImpulseVideoSource, origin?: string): string | null {
   if (source.art === 'youtube') {
     const params = new URLSearchParams({
       autoplay: '1',
@@ -113,7 +120,9 @@ export function impulseEmbedUrl(source: ImpulseVideoSource): string | null {
       rel: '0',
       modestbranding: '1',
       cc_load_policy: '0',
+      enablejsapi: '1',
     })
+    if (origin) params.set('origin', origin)
     if (source.start > 0) params.set('start', String(source.start))
     if (source.short) {
       params.set('loop', '1')
@@ -123,6 +132,129 @@ export function impulseEmbedUrl(source: ImpulseVideoSource): string | null {
   }
   if (source.art === 'vimeo') {
     return `https://player.vimeo.com/video/${encodeURIComponent(source.id)}?autoplay=1&muted=0&texttrack=false&playsinline=1&title=0&byline=0&portrait=0`
+  }
+  return null
+}
+
+/* ------------------------------------------------------------------ */
+/* Die Fremdkarte fernsteuern                                          */
+/* ------------------------------------------------------------------ */
+
+/** Was die Karte dem eingebetteten Video sagen kann. */
+export type ImpulseEmbedCommand = 'play' | 'pause' | 'mute' | 'unmute'
+
+/** Was das eingebettete Video über sich meldet – nur, was die Nachricht hergibt. */
+export interface ImpulseEmbedReport {
+  playing?: boolean
+  muted?: boolean
+}
+
+const YOUTUBE_ORIGIN = 'https://www.youtube-nocookie.com'
+const VIMEO_ORIGIN = 'https://player.vimeo.com'
+
+const YOUTUBE_COMMANDS: Record<ImpulseEmbedCommand, string> = {
+  play: 'playVideo',
+  pause: 'pauseVideo',
+  mute: 'mute',
+  unmute: 'unMute',
+}
+
+/** Wohin die Nachrichten gehen – und woher die Antworten kommen müssen. */
+export function impulseEmbedOrigin(source: ImpulseVideoSource): string | null {
+  if (source.art === 'youtube') return YOUTUBE_ORIGIN
+  if (source.art === 'vimeo') return VIMEO_ORIGIN
+  return null
+}
+
+/**
+ * Die Nachricht an die Fremdkarte – dieselbe, die die Schnittstellen der
+ * Anbieter selbst verschicken (YouTube: `command`, Vimeo: `method`). So
+ * braucht die App deren Skripte nicht zu laden.
+ */
+export function impulseEmbedMessage(
+  source: ImpulseVideoSource,
+  command: ImpulseEmbedCommand,
+): string | null {
+  if (source.art === 'youtube') {
+    return JSON.stringify({
+      event: 'command',
+      func: YOUTUBE_COMMANDS[command],
+      args: [],
+      id: 1,
+      channel: 'widget',
+    })
+  }
+  if (source.art === 'vimeo') {
+    if (command === 'play' || command === 'pause') return JSON.stringify({ method: command })
+    return JSON.stringify({ method: 'setMuted', value: command === 'mute' })
+  }
+  return null
+}
+
+/**
+ * Die Anmeldung, nachdem die Fremdkarte geladen hat: Ab jetzt meldet sie,
+ * ob sie läuft und ob sie stumm ist. YouTube braucht dafür ein
+ * «listening», Vimeo je Ereignis ein `addEventListener`.
+ */
+export function impulseEmbedHello(source: ImpulseVideoSource): string[] {
+  if (source.art === 'youtube') {
+    return [JSON.stringify({ event: 'listening', id: 1, channel: 'widget' })]
+  }
+  if (source.art === 'vimeo') {
+    return ['play', 'pause', 'ended'].map((value) =>
+      JSON.stringify({ method: 'addEventListener', value }),
+    )
+  }
+  return []
+}
+
+/** Läuft das YouTube-Video? Spielt (1) oder lädt gerade weiter (3). */
+function youtubePlaying(state: unknown): boolean | undefined {
+  return typeof state === 'number' ? state === 1 || state === 3 : undefined
+}
+
+/**
+ * Was eine Nachricht der Fremdkarte über ihren Stand sagt – oder `null`,
+ * wenn sie nichts dazu sagt (oder gar nicht von ihr stammt).
+ */
+export function impulseEmbedReport(
+  source: ImpulseVideoSource,
+  data: unknown,
+): ImpulseEmbedReport | null {
+  let message: unknown = data
+  if (typeof data === 'string') {
+    try {
+      message = JSON.parse(data)
+    } catch {
+      return null
+    }
+  }
+  if (!message || typeof message !== 'object') return null
+  const { event, info } = message as { event?: unknown; info?: unknown }
+
+  if (source.art === 'youtube') {
+    if (event === 'onStateChange') {
+      const playing = youtubePlaying(info)
+      return playing === undefined ? null : { playing }
+    }
+    if (
+      (event === 'infoDelivery' || event === 'initialDelivery') &&
+      info &&
+      typeof info === 'object'
+    ) {
+      const { playerState, muted } = info as { playerState?: unknown; muted?: unknown }
+      const report: ImpulseEmbedReport = {}
+      const playing = youtubePlaying(playerState)
+      if (playing !== undefined) report.playing = playing
+      if (typeof muted === 'boolean') report.muted = muted
+      return report.playing === undefined && report.muted === undefined ? null : report
+    }
+    return null
+  }
+  if (source.art === 'vimeo') {
+    if (event === 'play' || event === 'playing') return { playing: true }
+    if (event === 'pause' || event === 'ended') return { playing: false }
+    return null
   }
   return null
 }
