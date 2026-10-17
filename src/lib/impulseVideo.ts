@@ -222,14 +222,7 @@ export type ImpulseEmbedCommand = 'play' | 'pause' | 'mute' | 'unmute'
 
 /** Was das eingebettete Video über sich meldet – nur, was die Nachricht hergibt. */
 export interface ImpulseEmbedReport {
-  /** Soll es laufen – es läuft oder lädt gerade nach. */
   playing?: boolean
-  /**
-   * Läuft es wirklich – bewegt sich das Bild? Beim Start lädt ein Video
-   * erst (`playing`, aber nicht `running`), und solange zeigt YouTube
-   * noch sein Vorschaubild mit dem grossen Startknopf.
-   */
-  running?: boolean
   muted?: boolean
   /** Wo das Video steht, in Sekunden. */
   time?: number
@@ -352,11 +345,6 @@ function youtubePlaying(state: unknown): boolean | undefined {
   return typeof state === 'number' ? state === 1 || state === 3 : undefined
 }
 
-/** Spielt das YouTube-Video wirklich (1) – nicht bloss geladen oder am Laden? */
-function youtubeRunning(state: unknown): boolean | undefined {
-  return typeof state === 'number' ? state === 1 : undefined
-}
-
 /**
  * Was eine Nachricht der Fremdkarte über ihren Stand sagt – oder `null`,
  * wenn sie nichts dazu sagt (oder gar nicht von ihr stammt).
@@ -379,7 +367,7 @@ export function impulseEmbedReport(
   if (source.art === 'youtube') {
     if (event === 'onStateChange') {
       const playing = youtubePlaying(info)
-      return playing === undefined ? null : { playing, running: youtubeRunning(info) }
+      return playing === undefined ? null : { playing }
     }
     if (
       (event === 'infoDelivery' || event === 'initialDelivery') &&
@@ -394,10 +382,7 @@ export function impulseEmbedReport(
       }
       const report: ImpulseEmbedReport = {}
       const playing = youtubePlaying(playerState)
-      if (playing !== undefined) {
-        report.playing = playing
-        report.running = youtubeRunning(playerState)
-      }
+      if (playing !== undefined) report.playing = playing
       if (typeof muted === 'boolean') report.muted = muted
       const time = seconds(currentTime)
       if (time !== undefined) report.time = time
@@ -408,16 +393,13 @@ export function impulseEmbedReport(
     return null
   }
   if (source.art === 'vimeo') {
-    if (event === 'play') return { playing: true }
-    if (event === 'playing') return { playing: true, running: true }
-    if (event === 'pause' || event === 'ended') return { playing: false, running: false }
+    if (event === 'play' || event === 'playing') return { playing: true }
+    if (event === 'pause' || event === 'ended') return { playing: false }
     if (event === 'timeupdate' || event === 'playProgress') {
       const { data } = message as { data?: { seconds?: unknown; duration?: unknown } }
       const report: ImpulseEmbedReport = {}
       const time = seconds(data?.seconds)
       if (time !== undefined) report.time = time
-      // Die Zeit rückt vor: Das Bild bewegt sich.
-      if (time) report.running = true
       const length = seconds(data?.duration)
       if (length) report.duration = length
       return Object.keys(report).length > 0 ? report : null

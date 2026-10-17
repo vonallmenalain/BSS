@@ -228,21 +228,16 @@ function EmbeddedVideo({
  * Bedienleiste zeigt YouTube gar nicht erst (`controls=0`), und Titel
  * und Kanal stehen am Rand seines Rahmens – den legt die Karte so, dass
  * dieser Rand ausserhalb liegt und abgeschnitten wird (`impulseEmbedBox`).
- * Ein Short füllt dabei den ganzen Bildschirm. Bis sich das Bild bewegt,
- * deckt ein Vorhang den Rahmen zu – nicht nur bis das Video «startet»:
- * Solange es lädt, zeigt YouTube noch sein Vorschaubild mit dem grossen
- * Startknopf.
+ * Ein Short füllt dabei den ganzen Bildschirm. Bis das Video läuft, deckt
+ * ein Vorhang den Rahmen zu.
  *
- * **Der erste Tipp zeigt, der zweite hält an.** Ein Tipp beim Start
- * blendet nichts ein, er stösst das Video nur an. Während das Video läuft,
+ * **Der erste Tipp zeigt, der zweite hält an.** Während das Video läuft,
  * steht nichts darüber. Ein Tipp holt alles hervor, was dazugehört – von
  * unten auf einem dunklen Schleier: Titel, Text und Quelle der Karte samt
  * Amen und Merken (`info`), die Zeit, die Leiste und den Ton. Nach ein paar
  * Sekunden verschwindet es wieder. Ein Tipp, solange es zu sehen ist, hält
  * das Video an; dann bleibt alles stehen, mit dem Startzeichen in der
- * Mitte, und der nächste Tipp lässt es weiterlaufen. Das Startzeichen
- * steht nur da, wenn man angehalten hat oder das Video hängen bleibt –
- * nie bloss, weil es gerade lädt.
+ * Mitte, und der nächste Tipp lässt es weiterlaufen.
  *
  * Ein Rahmen einer fremden Seite behält jede Berührung für sich: Wer
  * darauf wischt, rollt nicht den Feed, sondern höchstens das Video. Die
@@ -290,16 +285,8 @@ function EmbedFrame({
   /* Läuft es? `null`, solange die Fremdkarte nichts gemeldet hat. */
   const [playing, setPlaying] = useState<boolean | null>(null)
   const [muted, setMuted] = useState(quietStart)
-  /* Bewegt sich das Bild schon? Bis dahin deckt der Vorhang den Rahmen zu. */
+  /* Läuft es schon einmal? Bis dahin deckt der Vorhang den Rahmen zu. */
   const [started, setStarted] = useState(false)
-  const startedRef = useRef(false)
-  /* Steht es, weil man es angehalten hat – oder weil es hängen bleibt?
-     Nur dann zeigt die Mitte das Startzeichen, nie bloss beim Laden. */
-  const [userPaused, setUserPaused] = useState(false)
-  const userPausedRef = useRef(false)
-  const [stalled, setStalled] = useState(false)
-  const stalledRef = useRef(false)
-  const runningRef = useRef(false)
   /* Stehen Titel, Zeit und Ton über dem Video? */
   const [shown, setShown] = useState(false)
   /* Dasselbe für die Handgriffe und Zeitgeber, die den neuesten Stand
@@ -350,14 +337,7 @@ function EmbedFrame({
   const showPlaying = (value: boolean) => {
     playingRef.current = value
     setPlaying(value)
-  }
-  const showUserPaused = (value: boolean) => {
-    userPausedRef.current = value
-    setUserPaused(value)
-  }
-  const showStalled = (value: boolean) => {
-    stalledRef.current = value
-    setStalled(value)
+    if (value) setStarted(true)
   }
   const showMuted = (value: boolean) => {
     mutedRef.current = value
@@ -382,43 +362,9 @@ function EmbedFrame({
   const showForAWhile = () => {
     keepShown()
     hideTimer.current = window.setTimeout(() => {
-      if (userPausedRef.current || stalledRef.current || scrub.current?.active) return
+      if (playingRef.current === false || scrub.current?.active) return
       setShown(false)
     }, 3500)
-  }
-
-  /*
-   * Der Vorhang geht erst auf, wenn sich das Bild bewegt (`running`) –
-   * nicht schon, wenn das Video bloss lädt: Solange zeigt YouTube sein
-   * Vorschaubild mit dem grossen Startknopf. Einen Augenblick später,
-   * weil YouTube beides erst dann ausblendet.
-   */
-  const curtainTimer = useRef<number | undefined>(undefined)
-  const lift = (delay: number) => {
-    if (startedRef.current) return
-    window.clearTimeout(curtainTimer.current)
-    curtainTimer.current = window.setTimeout(() => {
-      startedRef.current = true
-      setStarted(true)
-    }, delay)
-  }
-
-  /* Steht das Video, ohne dass jemand angehalten hat, und bewegt es sich
-     nach ein paar Sekunden noch immer nicht, hängt es: Dann zeigt die
-     Mitte das Startzeichen, und ein Tipp stösst es an. Wer schneller
-     tippt, stösst es ebenso an – nur ohne Zeichen. */
-  const stallTimer = useRef<number | undefined>(undefined)
-  const watchStall = () => {
-    if (stallTimer.current !== undefined) return
-    stallTimer.current = window.setTimeout(() => {
-      stallTimer.current = undefined
-      if (heard.current && !runningRef.current && !userPausedRef.current) showStalled(true)
-    }, 3500)
-  }
-  const clearStall = () => {
-    window.clearTimeout(stallTimer.current)
-    stallTimer.current = undefined
-    showStalled(false)
   }
 
   const send = (command: ImpulseEmbedCommand) => {
@@ -453,13 +399,6 @@ function EmbedFrame({
       if (!heard.current) quietTimer.current = window.setTimeout(() => startQuietly(), 1500)
       heard.current = true
       if (report.playing !== undefined) showPlaying(report.playing)
-      if (report.running !== undefined) runningRef.current = report.running
-      if (report.running) {
-        clearStall()
-        lift(250)
-      } else if (report.playing === false && !userPausedRef.current) {
-        watchStall()
-      }
       if (report.muted !== undefined) showMuted(report.muted)
       if (report.duration !== undefined) {
         durationRef.current = report.duration
@@ -472,7 +411,6 @@ function EmbedFrame({
     return () => {
       window.removeEventListener('message', onMessage)
       window.clearTimeout(quietTimer.current)
-      window.clearTimeout(stallTimer.current)
     }
     // Einmal aufgesetzt: Was es braucht, liest es aus Refs.
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -480,14 +418,12 @@ function EmbedFrame({
 
   /* Anmelden, sobald die Fremdkarte geladen hat – und nachfassen, bis sie
      antwortet: Ihr Skript hört nicht unbedingt schon beim Laden zu. Meldet
-     sie sich gar nicht, geht der Vorhang nach drei Sekunden trotzdem auf –
-     dann weiss die Karte nicht, ob sich das Bild bewegt. */
+     sie sich gar nicht, geht der Vorhang trotzdem auf. */
   const helloTimer = useRef<number | undefined>(undefined)
-  const silenceTimer = useRef<number | undefined>(undefined)
+  const curtainTimer = useRef<number | undefined>(undefined)
   useEffect(
     () => () => {
       window.clearInterval(helloTimer.current)
-      window.clearTimeout(silenceTimer.current)
       window.clearTimeout(curtainTimer.current)
     },
     [],
@@ -508,44 +444,30 @@ function EmbedFrame({
       if (heard.current || tries > 10) window.clearInterval(helloTimer.current)
       else hello()
     }, 400)
-    window.clearTimeout(silenceTimer.current)
-    silenceTimer.current = window.setTimeout(() => {
-      if (!heard.current) lift(0)
-    }, 3000)
-    watchStall()
+    window.clearTimeout(curtainTimer.current)
+    curtainTimer.current = window.setTimeout(() => setStarted(true), 3000)
   }
 
-  /* Ein Tipp. Beim Start blendet er nichts ein, er stösst das Video nur
-     an – der Vorhang bleibt, bis sich das Bild bewegt. Danach zeigt der
-     erste Tipp, was dazugehört; steht das schon da (oder steht das
-     Video), hält er an oder lässt weiterlaufen. */
+  /* Ein Tipp: Zuerst zeigt er, was dazugehört; steht das schon da (oder
+     steht das Video), hält er an oder lässt weiterlaufen. Ohne Meldungen
+     zählt der eigene Stand; mit Meldungen sagt die Fremdkarte, was daraus
+     geworden ist – ein abgelehntes Abspielen soll nicht als laufend
+     dastehen. */
   const toggle = () => {
     if (scrubbed.current) {
       scrubbed.current = false
       return
     }
-    if (!startedRef.current) {
-      send('play')
-      return
-    }
-    const halted = userPausedRef.current || stalledRef.current
-    if (!halted && !shown) {
+    if (!shown && playingRef.current !== false) {
       showForAWhile()
       return
     }
     touched.current = true
-    if (halted) {
-      send('play')
-      showUserPaused(false)
-      showStalled(false)
-      if (!heard.current) showPlaying(true)
-      showForAWhile()
-    } else {
-      send('pause')
-      showUserPaused(true)
-      showPlaying(false)
-      keepShown()
-    }
+    const next = !(playingRef.current ?? true)
+    send(next ? 'play' : 'pause')
+    if (!heard.current || !next) showPlaying(next)
+    if (next) showForAWhile()
+    else keepShown()
   }
 
   /* Zwischen zwei Meldungen rückt die Leiste von selbst weiter. */
@@ -622,7 +544,7 @@ function EmbedFrame({
     scrubbed.current = true
     seek(current.to, true)
     setScrubTo(null)
-    if (userPausedRef.current) keepShown()
+    if (playingRef.current === false) keepShown()
     else showForAWhile()
   }
 
@@ -699,7 +621,7 @@ function EmbedFrame({
         onPointerCancel={endScrub}
         onKeyDown={onKeyDown}
         aria-label={
-          !started || userPaused || stalled
+          playing === false
             ? 'Video abspielen'
             : shown
               ? 'Video anhalten'
@@ -707,7 +629,7 @@ function EmbedFrame({
         }
         className="absolute inset-0 cursor-pointer touch-pan-y focus-visible:-outline-offset-4"
       >
-        {(userPaused || stalled) && scrubTo === null && <PlaySign />}
+        {playing === false && started && scrubTo === null && <PlaySign />}
         {scrubTo !== null && (
           <span className="pointer-events-none absolute inset-0 grid place-items-center">
             <span className="tabular rounded-full bg-slate-950/60 px-4 py-2 text-lg font-semibold text-white backdrop-blur-sm">
