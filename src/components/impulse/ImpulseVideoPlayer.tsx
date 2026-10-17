@@ -1,4 +1,10 @@
-import { useEffect, useRef, useState } from 'react'
+import {
+  useEffect,
+  useRef,
+  useState,
+  type KeyboardEvent as ReactKeyboardEvent,
+  type PointerEvent as ReactPointerEvent,
+} from 'react'
 import { ExternalLink, Play, Volume2, VolumeX } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import {
@@ -6,7 +12,10 @@ import {
   impulseEmbedMessage,
   impulseEmbedOrigin,
   impulseEmbedReport,
+  impulseEmbedSeekMessage,
   impulseEmbedUrl,
+  impulseScrubTime,
+  impulseVideoClock,
   impulseVideoHost,
   type ImpulseEmbedCommand,
   type ImpulseVideoSource,
@@ -33,9 +42,10 @@ import {
  * - **Wischen geht auch auf dem Video** – wie bei Reels und Shorts. Eine
  *   eingebettete Fremdkarte (YouTube, Vimeo) behielte jede Berührung für
  *   sich, und der Daumen käme nicht zur nächsten Karte. Darum liegt über
- *   ihr eine Wischfläche (`EmbeddedVideo`): Ein Wisch rollt den Feed, ein
- *   Tipp hält das Video an oder lässt es weiterlaufen, und der Knopf
- *   unten rechts schaltet den Ton.
+ *   ihr eine Wischfläche (`EmbeddedVideo`): Ein Wisch nach oben oder
+ *   unten rollt den Feed, ein Wisch zur Seite spult, ein Tipp hält das
+ *   Video an oder lässt es weiterlaufen, und der Knopf unten rechts
+ *   schaltet den Ton.
  *
  * Was sich nicht einbetten lässt – eine Videoseite der Kirche etwa,
  * deren Server das verbietet –, wird zur ruhigen Karte mit einem Knopf,
@@ -205,6 +215,12 @@ function EmbeddedVideo({
  *
  * - **Ein Tipp** hält das Video an oder lässt es weiterlaufen. Steht es,
  *   zeigt die Mitte das Startzeichen.
+ * - **Ein Wisch zur Seite spult** – nach rechts vor, nach links zurück;
+ *   die ganze Breite ist die ganze Länge, wie bei der Leiste ganz unten.
+ *   Nach oben und unten bleibt der Wisch dem Feed: Die Fläche lässt nur
+ *   das senkrechte Rollen dem Browser (`touch-pan-y`), das seitliche
+ *   bekommt sie selbst. Am Rechner spulen die Pfeiltasten links und
+ *   rechts um fünf Sekunden.
  * - **Der Ton** sitzt unten rechts.
  * - **Mit Ton, wo es geht.** Lehnt der Browser das laute Abspielen ab
  *   (am iPhone ohne vorherige Berührung im Video immer), meldet die
@@ -227,7 +243,28 @@ function EmbedFrame({ source, title }: { source: ImpulseVideoSource; title: stri
      brauchen, ohne neu aufgesetzt zu werden. */
   const playingRef = useRef<boolean | null>(null)
   const mutedRef = useRef(false)
+  /* Wo das Video steht und wie lang es ist – die Leiste ganz unten. */
+  const [time, setTime] = useState(0)
+  const [duration, setDuration] = useState(0)
+  const durationRef = useRef(0)
+  /* Der letzte gemeldete Stand: Dazwischen rückt die Leiste von selbst
+     weiter, die Fremdkarte meldet nicht jeden Augenblick. */
+  const clock = useRef({ time: 0, at: 0 })
   const heard = useRef(false)
+  /* Der Daumen beim Spulen – siehe «Spulen» weiter unten. */
+  const scrub = useRef<{
+    pointer: number
+    x: number
+    y: number
+    from: number
+    width: number
+    to: number
+    active: boolean
+    sentAt: number
+  } | null>(null)
+  const [scrubTo, setScrubTo] = useState<number | null>(null)
+  /* Nach dem Spulen mit der Maus folgt ein Klick – der hält nicht an. */
+  const scrubbed = useRef(false)
   const touched = useRef(false)
   const sourceRef = useRef(source)
   useEffect(() => {
@@ -242,6 +279,13 @@ function EmbedFrame({ source, title }: { source: ImpulseVideoSource; title: stri
     mutedRef.current = value
     setMuted(value)
   }
+  const showTime = (value: number) => {
+    clock.current = { time: value, at: performance.now() }
+    setTime(value)
+  }
+  /* Wo das Video jetzt steht: die letzte Meldung, weitergezählt, solange es läuft. */
+  const currentTime = () =>
+    clock.current.time + (playingRef.current ? (performance.now() - clock.current.at) / 1000 : 0)
 
   const send = (command: ImpulseEmbedCommand) => {
     const message = impulseEmbedMessage(sourceRef.current, command)
@@ -276,6 +320,12 @@ function EmbedFrame({ source, title }: { source: ImpulseVideoSource; title: stri
       heard.current = true
       if (report.playing !== undefined) showPlaying(report.playing)
       if (report.muted !== undefined) showMuted(report.muted)
+      if (report.duration !== undefined) {
+        durationRef.current = report.duration
+        setDuration(report.duration)
+      }
+      /* Während des Spulens gilt der Daumen, nicht die Meldung. */
+      if (report.time !== undefined && !scrub.current?.active) showTime(report.time)
     }
     window.addEventListener('message', onMessage)
     return () => {
@@ -312,10 +362,99 @@ function EmbedFrame({ source, title }: { source: ImpulseVideoSource; title: stri
      Stand; mit Meldungen sagt die Fremdkarte, was daraus geworden ist –
      ein abgelehntes Abspielen soll nicht als laufend dastehen. */
   const toggle = () => {
+    if (scrubbed.current) {
+      scrubbed.current = false
+      return
+    }
     touched.current = true
     const next = !(playingRef.current ?? true)
     send(next ? 'play' : 'pause')
     if (!heard.current || !next) showPlaying(next)
+  }
+
+  /* Zwischen zwei Meldungen rückt die Leiste von selbst weiter. */
+  useEffect(() => {
+    if (!playing || !(duration > 0)) return
+    const timer = window.setInterval(() => {
+      if (scrub.current?.active) return
+      const { time: base, at } = clock.current
+      setTime(Math.min(duration, base + (performance.now() - at) / 1000))
+    }, 250)
+    return () => window.clearInterval(timer)
+  }, [playing, duration])
+
+  /* ---------------- Spulen ---------------- */
+
+  const seek = (seconds: number, done: boolean) => {
+    const message = impulseEmbedSeekMessage(sourceRef.current, seconds, done)
+    const origin = impulseEmbedOrigin(sourceRef.current)
+    if (message && origin) frameRef.current?.contentWindow?.postMessage(message, origin)
+    if (done) showTime(seconds)
+  }
+
+  /*
+   * Ein Daumen auf der Fläche: Geht er zur Seite, spult er; geht er nach
+   * oben oder unten, rollt der Browser den Feed und meldet das Ende
+   * dieses Daumens (`pointercancel`). Erst ab ein paar Pixeln zur Seite
+   * wird gespult – ein Tipp, der ein wenig verrutscht, bleibt ein Tipp.
+   * Unterwegs zeigt YouTube die Stelle alle paar Augenblicke an, beim
+   * Loslassen lädt es von dort weiter.
+   */
+
+  const onPointerDown = (event: ReactPointerEvent<HTMLButtonElement>) => {
+    scrubbed.current = false
+    if (!(durationRef.current > 0)) return
+    if (event.pointerType === 'mouse' && event.button !== 0) return
+    scrub.current = {
+      pointer: event.pointerId,
+      x: event.clientX,
+      y: event.clientY,
+      from: currentTime(),
+      width: event.currentTarget.clientWidth,
+      to: 0,
+      active: false,
+      sentAt: 0,
+    }
+  }
+
+  const onPointerMove = (event: ReactPointerEvent<HTMLButtonElement>) => {
+    const current = scrub.current
+    if (!current || current.pointer !== event.pointerId) return
+    const dx = event.clientX - current.x
+    const dy = event.clientY - current.y
+    if (!current.active) {
+      if (Math.abs(dx) < 12 || Math.abs(dx) < Math.abs(dy)) return
+      current.active = true
+      touched.current = true
+      event.currentTarget.setPointerCapture(event.pointerId)
+    }
+    current.to = impulseScrubTime(current.from, dx, current.width, durationRef.current)
+    setScrubTo(current.to)
+    const now = performance.now()
+    if (now - current.sentAt > 200) {
+      current.sentAt = now
+      seek(current.to, false)
+    }
+  }
+
+  const endScrub = (event: ReactPointerEvent<HTMLButtonElement>) => {
+    const current = scrub.current
+    if (!current || current.pointer !== event.pointerId) return
+    scrub.current = null
+    if (!current.active) return
+    scrubbed.current = true
+    seek(current.to, true)
+    setScrubTo(null)
+  }
+
+  /* Am Rechner: die Pfeiltasten links und rechts, fünf Sekunden je Druck. */
+  const onKeyDown = (event: ReactKeyboardEvent<HTMLButtonElement>) => {
+    if (event.key !== 'ArrowLeft' && event.key !== 'ArrowRight') return
+    if (!(durationRef.current > 0)) return
+    event.preventDefault()
+    touched.current = true
+    const step = event.key === 'ArrowRight' ? 5 : -5
+    seek(Math.min(durationRef.current, Math.max(0, currentTime() + step)), true)
   }
 
   /* Der Ton – und wer ihn einschaltet, will das Video auch laufen sehen. */
@@ -346,15 +485,45 @@ function EmbedFrame({ source, title }: { source: ImpulseVideoSource; title: stri
            Zugriff auf die App, nur ihr eigenes Fenster. */
         referrerPolicy="strict-origin-when-cross-origin"
       />
-      {/* Die Wischfläche: Auf ihr rollt der Feed, ein Tipp hält an. */}
+      {/* Die Wischfläche: Auf ihr rollt der Feed nach oben und unten, zur
+          Seite spult sie, ein Tipp hält an. */}
       <button
         type="button"
         onClick={toggle}
+        onPointerDown={onPointerDown}
+        onPointerMove={onPointerMove}
+        onPointerUp={endScrub}
+        onPointerCancel={endScrub}
+        onKeyDown={onKeyDown}
         aria-label={playing === false ? 'Video abspielen' : 'Video anhalten'}
-        className="absolute inset-0 cursor-pointer focus-visible:-outline-offset-4"
+        className="absolute inset-0 cursor-pointer touch-pan-y focus-visible:-outline-offset-4"
       >
-        {playing === false && <PlaySign />}
+        {playing === false && scrubTo === null && <PlaySign />}
+        {scrubTo !== null && (
+          <span className="pointer-events-none absolute inset-0 grid place-items-center">
+            <span className="tabular rounded-full bg-slate-950/60 px-4 py-2 text-lg font-semibold text-white backdrop-blur-sm">
+              {impulseVideoClock(scrubTo)}
+              <span className="font-normal opacity-70"> / {impulseVideoClock(duration)}</span>
+            </span>
+          </span>
+        )}
       </button>
+      {/* Die Leiste ganz unten: wie weit das Video ist – beim Spulen kräftiger. */}
+      {duration > 0 && (
+        <div className="pointer-events-none absolute inset-x-0 bottom-0 pb-safe" aria-hidden>
+          <div
+            className={cn(
+              'bg-white/25 transition-[height] duration-150',
+              scrubTo !== null ? 'h-1.5' : 'h-[3px]',
+            )}
+          >
+            <div
+              className="h-full bg-white"
+              style={{ width: `${(Math.min(scrubTo ?? time, duration) / duration) * 100}%` }}
+            />
+          </div>
+        </div>
+      )}
       <div className="pointer-events-none absolute right-0 bottom-0 pb-safe">
         <button
           type="button"

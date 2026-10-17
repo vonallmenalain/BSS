@@ -147,6 +147,10 @@ export type ImpulseEmbedCommand = 'play' | 'pause' | 'mute' | 'unmute'
 export interface ImpulseEmbedReport {
   playing?: boolean
   muted?: boolean
+  /** Wo das Video steht, in Sekunden. */
+  time?: number
+  /** Wie lang es ist, in Sekunden. */
+  duration?: number
 }
 
 const YOUTUBE_ORIGIN = 'https://www.youtube-nocookie.com'
@@ -201,11 +205,62 @@ export function impulseEmbedHello(source: ImpulseVideoSource): string[] {
     return [JSON.stringify({ event: 'listening', id: 1, channel: 'widget' })]
   }
   if (source.art === 'vimeo') {
-    return ['play', 'pause', 'ended'].map((value) =>
+    return ['play', 'pause', 'ended', 'timeupdate'].map((value) =>
       JSON.stringify({ method: 'addEventListener', value }),
     )
   }
   return []
+}
+
+/**
+ * An eine Stelle springen – beim Spulen mit dem Daumen. Unterwegs
+ * (`done: false`) zeigt YouTube nur das Bild an der Stelle, ohne schon
+ * nachzuladen; erst beim Loslassen lädt es von dort weiter.
+ */
+export function impulseEmbedSeekMessage(
+  source: ImpulseVideoSource,
+  seconds: number,
+  done: boolean,
+): string | null {
+  const at = Math.max(0, seconds)
+  if (source.art === 'youtube') {
+    return JSON.stringify({
+      event: 'command',
+      func: 'seekTo',
+      args: [at, done],
+      id: 1,
+      channel: 'widget',
+    })
+  }
+  if (source.art === 'vimeo') return JSON.stringify({ method: 'setCurrentTime', value: at })
+  return null
+}
+
+/**
+ * Wohin der Daumen spult: Die ganze Breite des Videos ist seine ganze
+ * Länge – wie bei der Leiste darunter. Gezählt wird vom Stand beim
+ * Aufsetzen aus, nicht vom Punkt, an dem der Finger liegt: So spult man
+ * von überall auf dem Video, ohne dass es beim Aufsetzen springt.
+ */
+export function impulseScrubTime(
+  startTime: number,
+  deltaX: number,
+  width: number,
+  duration: number,
+): number {
+  if (!(width > 0) || !(duration > 0)) return Math.max(0, startTime)
+  return Math.min(duration, Math.max(0, startTime + (deltaX / width) * duration))
+}
+
+/** Eine Zeit im Video, wie man sie liest: «0:07», «1:05», «12:30». */
+export function impulseVideoClock(seconds: number): string {
+  const whole = Math.max(0, Math.floor(seconds))
+  return `${Math.floor(whole / 60)}:${String(whole % 60).padStart(2, '0')}`
+}
+
+/** Eine Zeit in Sekunden – oder `undefined`, wenn die Meldung keine brauchbare trägt. */
+function seconds(value: unknown): number | undefined {
+  return typeof value === 'number' && Number.isFinite(value) && value >= 0 ? value : undefined
 }
 
 /** Läuft das YouTube-Video? Spielt (1) oder lädt gerade weiter (3). */
@@ -242,18 +297,36 @@ export function impulseEmbedReport(
       info &&
       typeof info === 'object'
     ) {
-      const { playerState, muted } = info as { playerState?: unknown; muted?: unknown }
+      const { playerState, muted, currentTime, duration } = info as {
+        playerState?: unknown
+        muted?: unknown
+        currentTime?: unknown
+        duration?: unknown
+      }
       const report: ImpulseEmbedReport = {}
       const playing = youtubePlaying(playerState)
       if (playing !== undefined) report.playing = playing
       if (typeof muted === 'boolean') report.muted = muted
-      return report.playing === undefined && report.muted === undefined ? null : report
+      const time = seconds(currentTime)
+      if (time !== undefined) report.time = time
+      const length = seconds(duration)
+      if (length) report.duration = length
+      return Object.keys(report).length > 0 ? report : null
     }
     return null
   }
   if (source.art === 'vimeo') {
     if (event === 'play' || event === 'playing') return { playing: true }
     if (event === 'pause' || event === 'ended') return { playing: false }
+    if (event === 'timeupdate' || event === 'playProgress') {
+      const { data } = message as { data?: { seconds?: unknown; duration?: unknown } }
+      const report: ImpulseEmbedReport = {}
+      const time = seconds(data?.seconds)
+      if (time !== undefined) report.time = time
+      const length = seconds(data?.duration)
+      if (length) report.duration = length
+      return Object.keys(report).length > 0 ? report : null
+    }
     return null
   }
   return null

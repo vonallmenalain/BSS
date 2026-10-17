@@ -6,7 +6,10 @@ import {
   impulseEmbedMessage,
   impulseEmbedOrigin,
   impulseEmbedReport,
+  impulseEmbedSeekMessage,
   impulseEmbedUrl,
+  impulseScrubTime,
+  impulseVideoClock,
   impulseVideoSource,
 } from '../src/lib/impulseVideo.ts'
 
@@ -121,7 +124,7 @@ test('impulseEmbedHello: die Anmeldung, nach der die Fremdkarte ihren Stand meld
   )
   assert.deepEqual(
     impulseEmbedHello(vimeo).map((message) => JSON.parse(message).value),
-    ['play', 'pause', 'ended'],
+    ['play', 'pause', 'ended', 'timeupdate'],
   )
 })
 
@@ -142,8 +145,17 @@ test('impulseEmbedReport: was YouTube über sich meldet', () => {
   assert.deepEqual(report({ event: 'initialDelivery', info: { playerState: 1 } }), {
     playing: true,
   })
+  // Wo es steht und wie lang es ist – für die Leiste und das Spulen.
+  assert.deepEqual(report({ event: 'infoDelivery', info: { currentTime: 3.2 } }), { time: 3.2 })
+  assert.deepEqual(report({ event: 'infoDelivery', info: { currentTime: 0, duration: 58.4 } }), {
+    time: 0,
+    duration: 58.4,
+  })
+  // Eine Länge von null ist noch keine – das Video hat sie noch nicht gemeldet.
+  assert.equal(report({ event: 'infoDelivery', info: { duration: 0 } }), null)
+  assert.equal(report({ event: 'infoDelivery', info: { currentTime: -1 } }), null)
   // Was nichts über den Stand sagt, ist keine Meldung.
-  assert.equal(report({ event: 'infoDelivery', info: { currentTime: 3.2 } }), null)
+  assert.equal(report({ event: 'infoDelivery', info: { videoLoadedFraction: 0.4 } }), null)
   assert.equal(report({ event: 'onReady', info: null }), null)
   assert.equal(impulseEmbedReport(youtube, 'kein JSON'), null)
   assert.equal(impulseEmbedReport(youtube, null), null)
@@ -153,6 +165,53 @@ test('impulseEmbedReport: was Vimeo über sich meldet – als Text oder als Obje
   assert.deepEqual(impulseEmbedReport(vimeo, JSON.stringify({ event: 'play' })), { playing: true })
   assert.deepEqual(impulseEmbedReport(vimeo, { event: 'pause' }), { playing: false })
   assert.deepEqual(impulseEmbedReport(vimeo, { event: 'ended' }), { playing: false })
+  assert.deepEqual(
+    impulseEmbedReport(vimeo, { event: 'timeupdate', data: { seconds: 12.5, duration: 90 } }),
+    { time: 12.5, duration: 90 },
+  )
   assert.equal(impulseEmbedReport(vimeo, { event: 'ready' }), null)
   assert.equal(impulseEmbedReport(file, { event: 'play' }), null)
+})
+
+/* ------------------------------------------------------------------ */
+/* Spulen                                                              */
+/* ------------------------------------------------------------------ */
+
+test('impulseEmbedSeekMessage: unterwegs nur das Bild, beim Loslassen weiterladen', () => {
+  assert.deepEqual(JSON.parse(impulseEmbedSeekMessage(youtube, 42.5, false)!), {
+    event: 'command',
+    func: 'seekTo',
+    args: [42.5, false],
+    id: 1,
+    channel: 'widget',
+  })
+  assert.deepEqual(JSON.parse(impulseEmbedSeekMessage(youtube, 42.5, true)!).args, [42.5, true])
+  // Vor den Anfang spult niemand.
+  assert.deepEqual(JSON.parse(impulseEmbedSeekMessage(youtube, -3, true)!).args, [0, true])
+  assert.deepEqual(JSON.parse(impulseEmbedSeekMessage(vimeo, 10, true)!), {
+    method: 'setCurrentTime',
+    value: 10,
+  })
+  assert.equal(impulseEmbedSeekMessage(file, 10, true), null)
+})
+
+test('impulseScrubTime: die ganze Breite ist die ganze Länge – vom Stand beim Aufsetzen aus', () => {
+  // Ein Short von 60 Sekunden auf einem Telefon von 390 Pixeln Breite.
+  assert.equal(impulseScrubTime(20, 0, 390, 60), 20)
+  assert.equal(impulseScrubTime(20, 195, 390, 60), 50)
+  assert.equal(impulseScrubTime(20, -65, 390, 60), 10)
+  // Nicht über den Anfang und nicht über das Ende hinaus.
+  assert.equal(impulseScrubTime(20, -390, 390, 60), 0)
+  assert.equal(impulseScrubTime(20, 390, 390, 60), 60)
+  // Ohne Länge (noch keine Meldung) oder ohne Breite bleibt es, wo es ist.
+  assert.equal(impulseScrubTime(20, 100, 390, 0), 20)
+  assert.equal(impulseScrubTime(20, 100, 0, 60), 20)
+})
+
+test('impulseVideoClock: Minuten und Sekunden, wie man sie liest', () => {
+  assert.equal(impulseVideoClock(0), '0:00')
+  assert.equal(impulseVideoClock(7.9), '0:07')
+  assert.equal(impulseVideoClock(65), '1:05')
+  assert.equal(impulseVideoClock(750), '12:30')
+  assert.equal(impulseVideoClock(-2), '0:00')
 })

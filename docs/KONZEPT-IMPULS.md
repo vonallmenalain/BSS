@@ -1611,20 +1611,36 @@ lädt die App dafür nicht.
   wieder einschaltet.
 - **Mit Ton, wo es geht.** Das Video startet weiterhin mit Ton. Lehnt der
   Browser das ab (am iPhone ohne Berührung im Video immer), meldet das
-  Video, dass es steht. Dann startet die Karte es nach gut zwei Sekunden
-  stumm, und der Knopf unten rechts heisst **«Ton an»**. Hat die Person
+  Video, dass es steht. Dann startet die Karte es anderthalb Sekunden
+  nach dieser ersten Meldung stumm, und der Knopf unten rechts heisst
+  **«Ton an»**. Hat die Person
   schon selbst angetippt, startet die Karte nichts mehr von sich aus.
-- **Was das Video meldet**, liest `impulseEmbedReport` (läuft es, ist es
-  stumm). Meldet es nichts, wechselt der Tipp trotzdem zwischen Anhalten
-  und Weiterlaufen und der Knopf zwischen Ton an und aus; nur der stumme
-  Neustart unterbleibt.
-- **Spulen** geht im Feed nicht mehr – die Leiste des Anbieters liegt
-  unter der Wischfläche. Für kurze Videos und Shorts braucht es das nicht.
+- **Spulen mit einem Wisch zur Seite.** Nach oben und unten gehört der
+  Wisch dem Feed, zur Seite dem Video: nach rechts vor, nach links zurück.
+  Die ganze Breite ist die ganze Länge, gezählt vom Stand beim Aufsetzen
+  (`impulseScrubTime`) – man spult also von überall auf dem Video, ohne
+  dass es beim Aufsetzen springt. Erst ab ein paar Pixeln zur Seite wird
+  gespult; ein Tipp, der verrutscht, bleibt ein Tipp. Die Fläche überlässt
+  dem Browser nur das senkrechte Rollen (`touch-action: pan-y`), das
+  seitliche bekommt sie selbst – so trennt schon der Browser die beiden
+  Richtungen. Unterwegs steht die Zeit gross in der Mitte («0:39 / 1:00»),
+  und das Video zeigt alle paar Augenblicke die Stelle (`seekTo` ohne
+  Nachladen); beim Loslassen lädt es von dort weiter. Am Rechner spulen
+  die Pfeiltasten links und rechts um fünf Sekunden.
+- **Die Leiste ganz unten** zeigt, wie weit das Video ist – dünn beim
+  Schauen, kräftiger beim Spulen. Zwischen zwei Meldungen des Videos rückt
+  sie von selbst weiter.
+- **Was das Video meldet**, liest `impulseEmbedReport`: läuft es, ist es
+  stumm, wo steht es, wie lang ist es. Meldet es nichts, wechselt der Tipp
+  trotzdem zwischen Anhalten und Weiterlaufen und der Knopf zwischen Ton an
+  und aus; nur der stumme Neustart, die Leiste und das Spulen entfallen.
 - Die **Videodatei** (`…mp4`) bleibt, wie sie war: Sie gehört zur Seite
   selbst, auf ihr rollt der Feed ohnehin, und ihre Leiste bleibt
   erreichbar.
 
 `tests/impulse-video.test.ts` hält die Nachrichten an YouTube und Vimeo
-fest und wie ihre Meldungen gelesen werden. Im Browser geprüft mit einer
-Attrappe von YouTube, die jede Berührung schluckt wie der echte Rahmen:
-Ohne Wischfläche blieb der Wisch hängen, mit ihr kommt die nächste Karte.
+fest, wie ihre Meldungen gelesen werden und wie weit ein Wisch spult. Im
+Browser geprüft mit einer Attrappe von YouTube, die jede Berührung schluckt
+wie der echte Rahmen: Ohne Wischfläche blieb der Wisch hängen, mit ihr
+kommt die nächste Karte – und ein Wisch zur Seite spult, ohne dass der
+Feed rollt.
