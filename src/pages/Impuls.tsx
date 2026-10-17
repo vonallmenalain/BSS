@@ -558,13 +558,12 @@ function ImpulsPage() {
     const source = impulseVideoSource(item.videoUrl)
     if (item.kind === 'video' && source) {
       return {
-        media: ({ active, info }) => (
+        media: ({ active }) => (
           <ImpulseVideoPlayer
             source={source}
             poster={item.image?.url ?? null}
             title={item.title}
             active={active}
-            info={info}
           />
         ),
         mediaOnly: !item.videoTextPage,
