@@ -1,4 +1,5 @@
 import { scriptureLink } from './scriptures.ts'
+import { SITE_URL } from './sharePreview.ts'
 import type {
   ImpulseCrest,
   ImpulseGameId,
@@ -159,6 +160,16 @@ function short(id: string): Pick<PackCard, 'videoUrl' | 'source'> {
   return { videoUrl: url, source: source('YouTube-Short der Kirche (Englisch)', url) }
 }
 
+/**
+ * Ein eigener Short der App – gemacht mit `shorts/` (Stimme, Untertitel,
+ * Musik) und als Videodatei unter `public/shorts/` ausgeliefert. Eine
+ * Datei spielt im eigenen Player der App: ohne fremden Rahmen und ohne
+ * fremde Knöpfe. Die Quelle ist die Schriftstelle, um die es geht.
+ */
+function ownShort(file: string, verseLabel: string): Pick<PackCard, 'videoUrl' | 'source'> {
+  return { videoUrl: `${SITE_URL}/shorts/${file}.mp4`, source: verse(verseLabel) }
+}
+
 /* ------------------------------------------------------------------ */
 /* Die Wochen                                                          */
 /* ------------------------------------------------------------------ */
@@ -176,7 +187,10 @@ export interface PackCard {
   quiz?: ImpulseQuiz
   poll?: ImpulsePoll
   puzzle?: ImpulsePuzzle
-  /** Das Video der Video-Karte – im Paket ein YouTube-Short der Kirche (`short`). */
+  /**
+   * Das Video der Video-Karte – im Paket ein YouTube-Short der Kirche
+   * (`short`) oder ein eigener Short der App (`ownShort`).
+   */
   videoUrl?: string
   /**
    * Nachgereicht: Die Karte kam ins Paket, als es schon eingespielt war.
@@ -832,6 +846,18 @@ export const PACK_WEEKS: PackWeek[] = [
         source: verse('Alma 53:16–17'),
       },
       {
+        key: 'eigen-short-1',
+        kind: 'video',
+        late: true,
+        emoji: '⚡',
+        title: 'Short: Anpacken statt warten',
+        body:
+          'Mutig, stark, regsam – und treu zu allen Zeiten (Alma 53:20). Regsam heisst: ' +
+          'anpacken, bevor dich jemand ruft. Die Challenge der Woche: jeden Tag eine Aufgabe, ' +
+          'ohne dass dich jemand erinnert.',
+        ...ownShort('2026-10-19-anpacken-statt-warten', 'Alma 53:20'),
+      },
+      {
         key: 'quiz-1',
         kind: 'quiz',
         emoji: '🔢',
@@ -920,6 +946,18 @@ export const PACK_WEEKS: PackWeek[] = [
             'dranbleiben, umkehren, wieder aufstehen.',
         ),
         source: verse('Alma 57:25'),
+      },
+      {
+        key: 'eigen-short-2',
+        kind: 'video',
+        late: true,
+        emoji: '🛡️',
+        title: 'Short: Verwundet, nicht gefallen',
+        body:
+          'Nach der Schlacht waren alle 2060 verwundet – aber nicht einer war gefallen ' +
+          '(Alma 57:25). Sie hatten jedes Wort genau befolgt, und Helaman schrieb es der Macht ' +
+          'Gottes und ihrem Glauben zu. Hinfallen, umkehren, aufstehen.',
+        ...ownShort('2026-10-21-verwundet-nicht-gefallen', 'Alma 57:25'),
       },
       {
         key: 'dilemma-1',
@@ -1026,6 +1064,18 @@ export const PACK_WEEKS: PackWeek[] = [
           'Ein Gedanke, ein Erlebnis oder ein Vers genügt – was dir diesen Monat wichtig ' +
           'geworden ist.',
         source: FSY_OCTOBER('Letzter Sonntag'),
+      },
+      {
+        key: 'eigen-short-3',
+        kind: 'video',
+        late: true,
+        emoji: '✊',
+        title: 'Short: Treu zu allen Zeiten',
+        body:
+          'Zweitausend junge Männer, keiner hatte je gekämpft – und keiner fiel. Treu sein ' +
+          'heisst: das Richtige tun, auch wenn keiner zuschaut. Mit deinem Körper, mit deinem ' +
+          'Handy, mit deinen Worten.',
+        ...ownShort('2026-10-25-treu-zu-allen-zeiten', 'Alma 53:20'),
       },
       {
         key: 'teilen',

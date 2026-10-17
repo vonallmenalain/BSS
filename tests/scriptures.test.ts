@@ -78,9 +78,10 @@ test('scriptureLink: jede Schriftstelle des Themenpakets bekommt ihren Link', ()
     const source = plan.source
     if (!source) continue
     // Jede Quelle des Pakets trägt einen Link – auch die ausserhalb der Schriften.
-    // Ein Short vom Kanal der Kirche verweist auf sich selbst.
+    // Ein Short vom Kanal der Kirche verweist auf sich selbst, ein eigener
+    // Short der App auf seine Schriftstelle.
     const home =
-      plan.kind === 'video'
+      plan.kind === 'video' && plan.videoUrl?.startsWith('https://www.youtube.com/')
         ? 'https://www.youtube.com/shorts/'
         : 'https://www.churchofjesuschrist.org/'
     assert.ok(source.url.startsWith(home), `${plan.id}: «${source.label}» ohne Link`)

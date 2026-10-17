@@ -1,4 +1,6 @@
 import assert from 'node:assert/strict'
+import fs from 'node:fs'
+import path from 'node:path'
 import { test } from 'node:test'
 
 import { format } from 'date-fns'
@@ -22,6 +24,7 @@ import {
   planPackItems,
 } from '../src/lib/impulsePack.ts'
 import { impulseVideoSource } from '../src/lib/impulseVideo.ts'
+import { SITE_URL } from '../src/lib/sharePreview.ts'
 import { IMPULSE_CREST_PALETTE_LABELS, IMPULSE_CREST_SYMBOL_LABELS } from '../src/lib/types.ts'
 
 /*
@@ -234,9 +237,13 @@ test('Shorts: die Woche zu Helamans jungen Kriegern trägt fünf bis zehn', () =
   )
 })
 
+/** Die eigenen Shorts der App: Videodateien unter `public/shorts/`. */
+const OWN_SHORTS = SHORTS.filter((plan) => impulseVideoSource(plan.videoUrl)?.art === 'datei')
+const CHURCH_SHORTS = SHORTS.filter((plan) => !OWN_SHORTS.includes(plan))
+
 test('Shorts: jeder ist ein YouTube-Short der Kirche – ein Wisch, ohne Text darüber', () => {
   const ids = new Set<string>()
-  for (const plan of SHORTS) {
+  for (const plan of CHURCH_SHORTS) {
     const video = impulseVideoSource(plan.videoUrl)
     assert.ok(video?.art === 'youtube' && video.short, `${plan.id}: kein YouTube-Short`)
     assert.match(video.id, /^[\w-]{11}$/, plan.id)
@@ -247,11 +254,29 @@ test('Shorts: jeder ist ein YouTube-Short der Kirche – ein Wisch, ohne Text da
     assert.match(plan.source?.label ?? '', /Kirche/, plan.id)
     assert.ok(plan.body.trim(), `${plan.id}: ohne Satz dazu`)
   }
-  assert.equal(ids.size, SHORTS.length, 'ein Short doppelt')
+  assert.equal(ids.size, CHURCH_SHORTS.length, 'ein Short doppelt')
   // Andere Arten tragen kein Video.
   for (const plan of ALL.filter((entry) => entry.kind !== 'video')) {
     assert.equal(plan.videoUrl, null, plan.id)
     assert.equal(plan.videoTextPage, null, plan.id)
+  }
+})
+
+test('Eigene Shorts: drei Videodateien der App – liegen bereit und spielen ohne Text darüber', () => {
+  assert.deepEqual(
+    OWN_SHORTS.map((plan) => plan.id),
+    ['fsy26-w43-eigen-short-1', 'fsy26-w43-eigen-short-2', 'fsy26-w43-eigen-short-3'],
+  )
+  for (const plan of OWN_SHORTS) {
+    const url = new URL(plan.videoUrl!)
+    // Von der eigenen Seite, aus public/shorts – die Datei muss im Repo liegen.
+    assert.equal(url.origin, SITE_URL, plan.id)
+    assert.match(url.pathname, /^\/shorts\/[\w-]+\.mp4$/, plan.id)
+    assert.ok(fs.existsSync(path.join('public', url.pathname)), `${plan.id}: ${url.pathname} fehlt`)
+    assert.equal(plan.videoTextPage, false, plan.id)
+    // Die Quelle ist die Schriftstelle, um die es geht.
+    assert.ok(plan.source?.url, plan.id)
+    assert.ok(plan.body.trim(), `${plan.id}: ohne Satz dazu`)
   }
 })
 

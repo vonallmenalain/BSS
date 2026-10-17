@@ -1774,6 +1774,23 @@ Teil des App-Builds (die App-Prüfungen und Netlify fassen es nicht an).
 - **Die erste Woche** (19.–25. Oktober, Helamans junge Krieger): «Anpacken
   statt warten» (Montag, Alma 53:20), «Verwundet, nicht gefallen»
   (Mittwoch, Alma 57:19–27) und «Treu zu allen Zeiten» (Sonntag).
-- **In die App** kämen sie als Video-Karte mit eigener Videodatei – die
-  spielt im eigenen Player, ohne Knöpfe von YouTube. Wo die Dateien liegen
-  (Firebase Storage oder die Netlify-Seite), ist noch offen.
+- **In der App** sind sie Video-Karten der Woche, nachgereicht wie die
+  Shorts der Kirche (`late`, `ownShort`): «Anpacken statt warten» nach der
+  Karte zu den vergrabenen Schwertern (Platz 2,5), «Verwundet, nicht
+  gefallen» nach «Fakt oder Mythos» (7,5), «Treu zu allen Zeiten» nach der
+  Frage der Woche (12,5). Im Kasten «Themenpaket» der Redaktion holt
+  «Nachholen» sie in eine schon eingespielte Woche, ohne dass eine Karte
+  rückt.
+- **Die Dateien** liegen unter `public/shorts/` und kommen von der eigenen
+  Seite (`https://bss.alae.app/shorts/…mp4`) – für das Netz verkleinert
+  (H.264, CRF 27, `faststart`, 4–8 MB je Video). Der Service Worker legt
+  sie nicht in den Vorrat (nur `js`, `css`, Bilder, Schriften). Live sind
+  sie erst, wenn der Deploy veröffentlicht ist.
+- **Der eigene Player** (`FileVideo` in `ImpulseVideoPlayer`): Eine
+  Videodatei spielt ohne fremden Rahmen und ohne Knöpfe des Browsers – sie
+  startet sofort, und über dem Bild steht nichts, bis man tippt. Die
+  Bedienung ist dieselbe wie bei YouTube (13.13, `VideoControls`,
+  `useScrub`): Ein Tipp blendet ein und aus, nur der Knopf in der Mitte
+  hält an, nach oben und unten wischt man weiter, zur Seite spult man. Das
+  Video steht ganz im Bild (`object-contain`), weil die Shorts Schrift bis
+  nahe an den Rand tragen, und läuft in Schleife.
