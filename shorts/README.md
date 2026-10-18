@@ -36,7 +36,9 @@ Claude-Sitzung (Cloud) sieht das so aus:
 - **Zur nächsten Karte überleiten.** Die letzte Szene ist ein `teaser`: Sie zeigt die Karte, die im
   Feed direkt danach kommt (Umfrage, Quiz, Dilemma, Aufgabe), und lädt mit einer Wisch-Geste ein.
   Darum steht das Video im Paket direkt vor dieser Karte. Was die Karte fragt, verrät das Video nicht.
-- **50 bis 65 Sekunden.** Kurze Szenen, eine Aussage pro Szene, Pausen mit `[pause short]`.
+- **Vor jedem interaktiven Element ein Video.** Ein Einführungsvideo darf kurz sein (15–30 Sekunden):
+  Neugier wecken, das Thema setzen, zur Karte überleiten. Längere Geschichten 50 bis 65 Sekunden.
+- Kurze Szenen, eine Aussage pro Szene, Pausen mit `[pause short]`.
 
 Vollautomatisch kann das eine **geplante Aufgabe** sein (z.B. jeden Donnerstag): Claude legt die Shorts
 der nächsten Woche an, rendert sie und schickt sie zur Freigabe – du schaust nur noch und sagst ja.
@@ -59,6 +61,17 @@ abgleichen. Die Folgen der Woche 19.–25.10. sagen alles in eigenen Worten, mit
 **Aussprache:** Namen wie Helaman, Antipus, Antiparah oder Moroni spricht Google selbst aus. Eigene
 Aussprachen (`pronunciations`, IPA) lehnt Chirp 3 HD derzeit ab – das Skript vertont dann ohne sie.
 Beim Anschauen kurz darauf achten.
+
+**Was die Stimme bekommt** (`speakable` in `src/schema.ts`, die Untertitel zeigen den Text unverändert):
+
+- Ein Gedankenstrich ist eine Pause wie ein Komma – nie «Minus». Nur zwischen zwei Zahlen bleibt er
+  stehen (eine Rechnung wie 10 - 4).
+- Eine Zahl vor einem Satzpunkt ist eine Grundzahl: «Alma 53.» wird «Alma dreiundfünfzig.», nicht
+  «dreiundfünfzigste». Vor einem Monat bleibt die Ordnungszahl («19. Oktober»).
+- Kapitel und Vers werden ausgesprochen: «Alma 53:20» → «Alma dreiundfünfzig, Vers zwanzig».
+- Mit `npm run tts -- content/<episode>.json --dry-run` sieht man genau den Text, der an Google geht.
+
+Oben rechts steht keine Folgenangabe: `brand.label` leer lassen.
 
 ## Schnellstart
 
@@ -118,6 +131,16 @@ Szenen der Looks:
 | `map` | Kartentisch: die Lockvogel-Taktik in Etappen | `stage` (`intro`, `plan`, `bait`, `chase`, `halt`, `battle`, `count`), `cues` (die Takte der Etappe) |
 | `relay` | Stadion: Glaube als Staffelstab | `stage` (`sword`, `run`, `mother`, `handoff`, `you`), `cues`, `line`, `chips` |
 | `teaser` | Vorschau auf die nächste Karte im Feed | `label`, `question`, `options` oder `scale`, `hint` |
+| `lineup` | Detektiv: Gegenüberstellung, das Licht wandert zu dem, der genannt wird | `title`, `suspects` (`name`, `figure`: `captain`/`dream`/`enemies`/`mothers`, `at`) |
+| `buzzer` | Quizshow: Aussage, zwei Buzzer, Countdown – ohne Auflösung | `statement`, `at`, `buttons` |
+| `blocks` | Videospiel: Wortblöcke fallen durcheinander (Vers-Puzzle) | `words` (richtige Reihenfolge), `mode` (`fall`/`stack`) |
+| `ledger` | Kartentisch: handgeschriebene Liste | `title`, `lines` (`label`, `value`, `at`, `mark`) |
+| `treasure` | Kartentisch: Schatzkarte zu einer Schriftstelle | `target`, `cues` |
+| `journal` | Notizbuch: Einträge mit kleinen Zeichnungen | `title`, `entries` (`text`, `at`, `icon`) |
+| `jumper` | Videospiel: die Figur springt über Ausreden und sammelt Aufgaben | `hurdles`, `pickups` (`emoji`, `label`, `at`) |
+
+`illustration` mit `motif: "swords"` kennt dazu `phase`: `bury` (Schwerter versinken), `rise` (die Söhne
+stehen auf).
 
 `at`, `cues` und `line` sind Phrasen aus der `narration`: Etwas passiert genau dann, wenn die Stimme
 es sagt. Die Validierung prüft, dass jede Phrase wörtlich vorkommt.
@@ -133,6 +156,9 @@ Gemeinsam: `narration`, `sky` (0 = Nacht … 1 = goldener Morgen; wird weich int
 | `chat` | Handy mit weichen Lichtern | `music/lofi.mp3` |
 | `map` | Pergament auf dunklem Holztisch | `music/chase.mp3` |
 | `track` | Stadion in der Abenddämmerung | `music/anthem.mp3` |
+| `noir` | Detektivbüro, Licht durch die Jalousie | `music/lofi.mp3` |
+| `show` | Quizshow-Studio mit Scheinwerfern | `music/anthem.mp3` |
+| `journal` | Notizbuch auf dem Schreibtisch | `music/lofi.mp3` |
 
 Der Look färbt auch Untertitel, Quellenangabe und die `kinetic`-Zeilen (mit eigenem Auftritt und Ton).
 

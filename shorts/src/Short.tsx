@@ -3,7 +3,7 @@ import { fade } from "@remotion/transitions/fade";
 import React, { useMemo } from "react";
 import { AbsoluteFill, Audio, type CalculateMetadataFunction, Sequence, interpolate, staticFile, useCurrentFrame } from "remotion";
 import { Grain, Particles } from "./components/Atmosphere";
-import { ArcadeBg, ChatBg, MapBg, TrackBg } from "./components/Backgrounds";
+import { ArcadeBg, ChatBg, JournalBg, MapBg, NoirBg, ShowBg, TrackBg } from "./components/Backgrounds";
 import { BrandBar, RefLabel } from "./components/BrandBar";
 import { Captions } from "./components/Captions";
 import { Sky } from "./components/Sky";
@@ -11,6 +11,7 @@ import { fontsReady } from "./lib/fonts";
 import { FPS, type Timeline, type TimelineScene, TRANSITION_FRAMES, buildTimeline, findCue } from "./lib/timing";
 import { LookProvider } from "./looks";
 import { ChatScene } from "./scenes/chat";
+import { BlocksScene, BuzzerScene, JournalScene, JumperScene, LedgerScene, LineupScene, TreasureScene } from "./scenes/extra";
 import { HeroScene } from "./scenes/game";
 import { MapScene } from "./scenes/map";
 import { RelayScene } from "./scenes/relay";
@@ -78,6 +79,13 @@ const hiddenWords = (ts: TimelineScene): Set<number> => {
       }
       return out;
     }
+    case "buzzer": {
+      // Die Aussage steht gross auf der Leinwand
+      const c = findCue(ts.words, s.statement);
+      const out = new Set<number>();
+      if (c) for (let k = c.first; k <= c.last; k++) out.add(ts.words[k].index);
+      return out;
+    }
     case "relay": {
       const c = s.line ? findCue(ts.words, s.line) : null;
       const out = new Set<number>();
@@ -113,6 +121,20 @@ const SceneBody: React.FC<{ ts: TimelineScene }> = ({ ts }) => {
       return <RelayScene ts={ts} />;
     case "teaser":
       return <TeaserScene ts={ts} />;
+    case "lineup":
+      return <LineupScene ts={ts} />;
+    case "buzzer":
+      return <BuzzerScene ts={ts} />;
+    case "blocks":
+      return <BlocksScene ts={ts} />;
+    case "ledger":
+      return <LedgerScene ts={ts} />;
+    case "treasure":
+      return <TreasureScene ts={ts} />;
+    case "journal":
+      return <JournalScene ts={ts} />;
+    case "jumper":
+      return <JumperScene ts={ts} />;
   }
 };
 
@@ -127,6 +149,12 @@ const Backdrop: React.FC<{ look: Episode["look"]; s: number }> = ({ look, s }) =
       return <MapBg />;
     case "track":
       return <TrackBg />;
+    case "noir":
+      return <NoirBg />;
+    case "show":
+      return <ShowBg />;
+    case "journal":
+      return <JournalBg />;
     default:
       return (
         <>

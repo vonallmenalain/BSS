@@ -1,0 +1,73 @@
+{
+  "id": "2026-10-22-vers-puzzle",
+  "title": "Vers-Puzzle",
+  "date": "2026-10-22",
+  "series": "Für eine starke Jugend · Oktober",
+  "brand": {
+    "name": "AntiDoom"
+  },
+  "look": "arcade",
+  "voice": {
+    "provider": "google",
+    "languageCode": "de-DE",
+    "name": "de-DE-Chirp3-HD-Sadachbia",
+    "speakingRate": 1.04
+  },
+  "music": {
+    "src": "music/arcade.mp3",
+    "volume": 0.3,
+    "duckTo": 0.08
+  },
+  "scenes": [
+    {
+      "id": "chaos",
+      "type": "blocks",
+      "mode": "fall",
+      "ref": "Alma 53:20",
+      "holdAfterSec": 0.6,
+      "words": [
+        "zu",
+        "allen",
+        "Zeiten",
+        "und",
+        "in",
+        "allem,",
+        "was",
+        "ihnen",
+        "anvertraut",
+        "war,",
+        "treu"
+      ],
+      "narration": "Elf Wörter. [pause short] Ein Vers. [pause short] Total durcheinander."
+    },
+    {
+      "id": "frage",
+      "type": "blocks",
+      "mode": "stack",
+      "ref": "Alma 53:20",
+      "words": [
+        "zu",
+        "allen",
+        "Zeiten",
+        "und",
+        "in",
+        "allem,",
+        "was",
+        "ihnen",
+        "anvertraut",
+        "war,",
+        "treu"
+      ],
+      "narration": "Kannst du Alma 53:20 wieder zusammensetzen? [pause short] Ein Tipp: [pause short] Es geht um Treue."
+    },
+    {
+      "id": "weiter",
+      "type": "teaser",
+      "label": "Vers-Puzzle",
+      "question": "Was zeichnete die jungen Krieger aus? Bring die Wörter von Alma 53:20 in die richtige Reihenfolge.",
+      "hint": "Wisch weiter und puzzle",
+      "holdAfterSec": 2.5,
+      "narration": "Auf der nächsten Karte – los!"
+    }
+  ]
+}

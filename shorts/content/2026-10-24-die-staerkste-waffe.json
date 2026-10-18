@@ -3,7 +3,7 @@
   "title": "Die stärkste Waffe",
   "date": "2026-10-24",
   "series": "Für eine starke Jugend · Oktober",
-  "brand": { "name": "AntiDoom", "label": "Folge 4/4" },
+  "brand": { "name": "AntiDoom" },
   "look": "track",
   "voice": { "provider": "google", "languageCode": "de-DE", "name": "de-DE-Chirp3-HD-Sulafat", "speakingRate": 1.0 },
   "music": { "src": "music/anthem.mp3", "volume": 0.3, "duckTo": 0.08 },

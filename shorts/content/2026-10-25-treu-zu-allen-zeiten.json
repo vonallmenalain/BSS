@@ -4,8 +4,7 @@
   "date": "2026-10-25",
   "series": "Für eine starke Jugend · Oktober",
   "brand": {
-    "name": "AntiDoom",
-    "label": "Sonntag, 25.10."
+    "name": "AntiDoom"
   },
   "voice": {
     "provider": "google",

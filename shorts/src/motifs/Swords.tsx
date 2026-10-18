@@ -24,8 +24,13 @@ const SWORDS = [
  * Szene "Bund": Die Väter begraben ihre Schwerter (Alma 24), dann steigen die Söhne
  * hinter dem Hügel auf. Zeitsteuerung über Cues in der Narration.
  */
-export const SwordsMotif: React.FC<{ t: number; words: Word[]; cue?: string }> = ({ t, words, cue = "Also traten" }) => {
-  const sonsAt = cueTime(words, cue, 2.6);
+export const SwordsMotif: React.FC<{ t: number; words: Word[]; cue?: string; phase?: "both" | "bury" | "rise" }> = ({
+  t,
+  words,
+  cue = "Also traten",
+  phase = "both",
+}) => {
+  const sonsAt = phase === "bury" ? Infinity : cueTime(words, cue, 2.6);
   const frameOf = (sec: number) => Math.round(sec * FPS);
   const tf = frameOf(t);
 
@@ -47,7 +52,7 @@ export const SwordsMotif: React.FC<{ t: number; words: Word[]; cue?: string }> =
         {Array.from({ length: 11 }, (_, i) => {
           const x = 115 + i * 85;
           const delay = (Math.abs(i - 5) * 0.07 + 0.05) * FPS;
-          const s = spring({ frame: tf - frameOf(sonsAt) - delay, fps: FPS, config: { damping: 16, stiffness: 90 } });
+          const s = Number.isFinite(sonsAt) ? spring({ frame: tf - frameOf(sonsAt) - delay, fps: FPS, config: { damping: 16, stiffness: 90 } }) : 0;
           const rise = interpolate(s, [0, 1], [420, 0]);
           const sc = 0.95 + 0.2 * Math.cos(((i - 5) / 5) * Math.PI * 0.5);
           return <Warrior key={i} x={x} y={moundY(x) + 26 + rise} scale={sc} rim={s} />;
@@ -59,12 +64,12 @@ export const SwordsMotif: React.FC<{ t: number; words: Word[]; cue?: string }> =
         {SWORDS.map((sw, i) => {
           const start = 0.15 + i * 0.22;
           // Bis auf Griff und Parierstange versenkt – die Söhne stehen danach klar davor
-          const sink = interpolate(t, [start, start + 1.3], [0, 335], {
+          const sink = phase === "rise" ? 335 : interpolate(t, [start, start + 1.3], [0, 335], {
             extrapolateLeft: "clamp",
             extrapolateRight: "clamp",
             easing: Easing.inOut(Easing.cubic),
           });
-          const fade = interpolate(t, [sonsAt - 0.2, sonsAt + 0.8], [1, 0.55], { extrapolateLeft: "clamp", extrapolateRight: "clamp" });
+          const fade = Number.isFinite(sonsAt) ? interpolate(t, [sonsAt - 0.2, sonsAt + 0.8], [1, 0.55], { extrapolateLeft: "clamp", extrapolateRight: "clamp" }) : 1;
           const baseY = moundY(sw.x) - 372 + 10;
           return (
             <g key={i} opacity={fade}>

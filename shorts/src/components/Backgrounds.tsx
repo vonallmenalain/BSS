@@ -249,3 +249,95 @@ export const TrackBg: React.FC = () => {
     </AbsoluteFill>
   );
 };
+
+/* ---------------- Detektiv: Licht durch die Jalousie ---------------- */
+
+export const NoirBg: React.FC = () => {
+  const frame = useCurrentFrame();
+  const t = frame / FPS;
+  const dust = useMemo(
+    () => Array.from({ length: 50 }, (_, i) => ({ x: random(`nx${i}`) * WIDTH, y: random(`ny${i}`) * HEIGHT, r: 1 + random(`nr${i}`) * 2.4, v: 6 + random(`nv${i}`) * 14, p: random(`np${i}`) * 6.28 })),
+    [],
+  );
+  const slide = Math.sin(t * 0.25) * 30;
+  return (
+    <AbsoluteFill style={{ background: "radial-gradient(ellipse 90% 70% at 60% 30%, #2A2420 0%, #141114 55%, #08070A 100%)" }}>
+      <AbsoluteFill style={{ transform: `rotate(-24deg) translateX(${slide}px) scale(1.6)` }}>
+        {Array.from({ length: 9 }, (_, i) => (
+          <div key={i} style={{ position: "absolute", left: 0, right: 0, top: 380 + i * 92, height: 46, background: "linear-gradient(90deg, rgba(255,214,150,0) 10%, rgba(255,214,150,0.05) 45%, rgba(255,214,150,0.015) 80%)" }} />
+        ))}
+      </AbsoluteFill>
+      <svg width={WIDTH} height={HEIGHT} style={{ position: "absolute", inset: 0 }}>
+        {dust.map((d, i) => (
+          <circle key={i} cx={d.x + Math.sin(t * 0.5 + d.p) * 20} cy={(((d.y - d.v * t) % HEIGHT) + HEIGHT) % HEIGHT} r={d.r} fill="#FFE2B0" opacity={0.18 + 0.15 * Math.sin(t + d.p)} />
+        ))}
+      </svg>
+      <Vignette strength={0.8} />
+    </AbsoluteFill>
+  );
+};
+
+/* ---------------- Quizshow: Studio mit Scheinwerfern ---------------- */
+
+export const ShowBg: React.FC = () => {
+  const frame = useCurrentFrame();
+  const t = frame / FPS;
+  const beams = [
+    { x: 160, c: "57,213,255", p: 0 },
+    { x: 400, c: "255,228,92", p: 1.7 },
+    { x: 680, c: "255,92,190", p: 3.1 },
+    { x: 920, c: "57,213,255", p: 4.4 },
+  ];
+  return (
+    <AbsoluteFill style={{ background: "linear-gradient(to bottom, #0B0630 0%, #1B0B4A 45%, #2A0E5A 70%, #0A0420 100%)" }}>
+      <svg width={WIDTH} height={HEIGHT} style={{ position: "absolute", inset: 0 }}>
+        <defs>
+          {beams.map((b, i) => (
+            <linearGradient key={i} id={`beam${i}`} x1="0" y1="0" x2="0" y2="1">
+              <stop offset="0%" stopColor={`rgb(${b.c})`} stopOpacity="0.2" />
+              <stop offset="100%" stopColor={`rgb(${b.c})`} stopOpacity="0" />
+            </linearGradient>
+          ))}
+          <radialGradient id="stageGlow">
+            <stop offset="0%" stopColor="#FFE45C" stopOpacity="0.35" />
+            <stop offset="100%" stopColor="#FFE45C" stopOpacity="0" />
+          </radialGradient>
+        </defs>
+        {beams.map((b, i) => {
+          const a = Math.sin(t * 0.6 + b.p) * 18;
+          return <path key={i} d={`M ${b.x - 18} 0 L ${b.x + 18} 0 L ${b.x + 260} 1900 L ${b.x - 260} 1900 Z`} fill={`url(#beam${i})`} transform={`rotate(${a} ${b.x} 0)`} style={{ mixBlendMode: "screen" }} />;
+        })}
+        {/* Bühne mit Leuchtkante */}
+        <ellipse cx={540} cy={1640} rx={720} ry={170} fill="url(#stageGlow)" />
+        <path d="M -40 1560 Q 540 1480 1120 1560 L 1120 1920 L -40 1920 Z" fill="#12082E" />
+        <path d="M -40 1560 Q 540 1480 1120 1560" stroke="#FFE45C" strokeWidth={6} fill="none" opacity={0.8} />
+        {/* Lauflichter oben */}
+        {Array.from({ length: 22 }, (_, i) => {
+          const on = (Math.floor(t * 6) + i) % 3 === 0;
+          return <circle key={i} cx={30 + i * 49} cy={232} r={9} fill={on ? "#FFE45C" : "#5B4A20"} opacity={on ? 1 : 0.6} style={on ? { filter: "drop-shadow(0 0 8px #FFE45C)" } : undefined} />;
+        })}
+      </svg>
+      <Vignette strength={0.55} />
+    </AbsoluteFill>
+  );
+};
+
+/* ---------------- Schreibtisch mit Schneidematte ---------------- */
+
+export const JournalBg: React.FC = () => {
+  const frame = useCurrentFrame();
+  const flicker = 0.95 + 0.05 * Math.sin(frame / 9);
+  return (
+    <AbsoluteFill style={{ background: "linear-gradient(160deg, #123036 0%, #0D2328 55%, #081619 100%)" }}>
+      <AbsoluteFill
+        style={{
+          backgroundImage:
+            "linear-gradient(rgba(255,255,255,0.05) 2px, transparent 2px), linear-gradient(90deg, rgba(255,255,255,0.05) 2px, transparent 2px), linear-gradient(rgba(255,255,255,0.025) 1px, transparent 1px), linear-gradient(90deg, rgba(255,255,255,0.025) 1px, transparent 1px)",
+          backgroundSize: "180px 180px, 180px 180px, 36px 36px, 36px 36px",
+        }}
+      />
+      <AbsoluteFill style={{ background: `radial-gradient(ellipse 70% 50% at 25% 15%, rgba(255,214,140,${0.22 * flicker}) 0%, rgba(255,214,140,0) 70%)` }} />
+      <Vignette strength={0.6} />
+    </AbsoluteFill>
+  );
+};

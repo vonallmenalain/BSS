@@ -119,12 +119,17 @@ test('Themenpaket: feste, eindeutige IDs mit Vorsilbe', () => {
 
 test('Themenpaket: der Feed wechselt den Takt – und endet mit der Teilen-Aufgabe', () => {
   for (const week of PACK_WEEKS) {
-    const kinds = week.deck.map((card) => card.kind)
+    const active = week.deck.filter((card) => !card.retired)
+    // Nach der Teilen-Aufgabe darf nur noch das Video stehen, das ins Minispiel einführt.
+    const deck = week.game && active.at(-1)?.kind === 'video' ? active.slice(0, -1) : active
+    const kinds = deck.map((card) => card.kind)
     assert.equal(kinds.at(-1), 'teilen', `${week.week}: Teilen-Aufgabe nicht zuletzt`)
     assert.equal(kinds.filter((kind) => kind === 'teilen').length, 1, week.week)
-    for (const kind of ['umfrage', 'quiz', 'puzzle', 'frage', 'feed'] as const) {
+    for (const kind of ['umfrage', 'quiz', 'puzzle', 'frage'] as const) {
       assert.ok(kinds.includes(kind), `${week.week}: keine Karte der Art ${kind}`)
     }
+    // Und eine Geschichte – als Textkarte oder als Video.
+    assert.ok(kinds.includes('feed') || kinds.includes('video'), `${week.week}: keine Geschichte`)
     // Eine Skala und ein «Was würdest du tun?» gehören zu jeder Woche.
     assert.ok(
       week.deck.some((card) => card.poll?.form === 'scale'),
@@ -136,8 +141,10 @@ test('Themenpaket: der Feed wechselt den Takt – und endet mit der Teilen-Aufga
       ),
       `${week.week}: kein «Was würdest du tun?»`,
     )
-    // Nie zwei gleiche Arten direkt hintereinander.
+    // Nie zwei gleiche Arten direkt hintereinander – ausser Videos: Auf einen Short der
+    // Kirche darf das eigene Video folgen, das die nächste Karte einführt.
     for (let index = 1; index < kinds.length; index += 1) {
+      if (kinds[index] === 'video') continue
       assert.notEqual(
         kinds[index],
         kinds[index - 1],
@@ -229,9 +236,7 @@ test('deckOrders: eine nachgereichte Karte schiebt sich dazwischen – keine rü
 
 const SHORTS = ALL.filter((plan) => plan.kind === 'video')
 
-test('Shorts: die Woche zu Helamans jungen Kriegern trägt fünf bis zehn', () => {
-  const warriors = SHORTS.filter((plan) => plan.week === '2026-W43')
-  assert.ok(warriors.length >= 5 && warriors.length <= 10, `${warriors.length} Shorts`)
+test('Shorts: die Woche zu Helamans jungen Kriegern trägt sie – und nur sie', () => {
   assert.deepEqual(
     [...new Set(SHORTS.map((plan) => plan.week))],
     ['2026-W43'],
@@ -264,10 +269,26 @@ test('Shorts: jeder ist ein YouTube-Short der Kirche – ein Wisch, ohne Text da
   }
 })
 
-test('Eigene Shorts: vier Videodateien der App – liegen bereit und spielen ohne Text darüber', () => {
+test('Shorts der Kirche: fünf bis zehn in der Woche der jungen Krieger', () => {
+  assert.ok(CHURCH_SHORTS.length >= 5 && CHURCH_SHORTS.length <= 10, `${CHURCH_SHORTS.length}`)
+})
+
+test('Eigene Shorts: Videodateien der App – liegen bereit und spielen ohne Text darüber', () => {
   assert.deepEqual(
-    OWN_SHORTS.map((plan) => plan.id),
-    ['fsy26-w43-eigen-held', 'fsy26-w43-eigen-brief', 'fsy26-w43-eigen-lockvogel', 'fsy26-w43-eigen-staffel'],
+    OWN_SHORTS.map((plan) => plan.id.replace('fsy26-w43-', '')),
+    [
+      'eigen-held',
+      'eigen-schwerter',
+      'eigen-brief',
+      'eigen-fall',
+      'eigen-show',
+      'eigen-lockvogel',
+      'eigen-puzzle',
+      'eigen-liste',
+      'eigen-monat',
+      'eigen-staffel',
+      'eigen-spiel',
+    ],
   )
   const files = new Set<string>()
   for (const plan of OWN_SHORTS) {
@@ -278,35 +299,49 @@ test('Eigene Shorts: vier Videodateien der App – liegen bereit und spielen ohn
     assert.ok(fs.existsSync(path.join('public', url.pathname)), `${plan.id}: ${url.pathname} fehlt`)
     files.add(url.pathname)
     assert.equal(plan.videoTextPage, false, plan.id)
-    // Die Quelle ist die Schriftstelle, um die es geht.
+    // Die Quelle ist die Schriftstelle oder das Heft, um das es geht.
     assert.ok(plan.source?.url, plan.id)
     assert.ok(plan.body.trim(), `${plan.id}: ohne Satz dazu`)
   }
+  assert.equal(files.size, OWN_SHORTS.length, 'eine Datei doppelt')
   // Keine Videodatei liegt ungenutzt im Repo – jede kostet Platz in jedem Deploy.
   const stored = fs.readdirSync(path.join('public', 'shorts')).map((name) => `/shorts/${name}`)
   assert.deepEqual(stored.sort(), [...files].sort())
 })
 
-test('Eigene Shorts: jeder leitet zur Karte direkt danach über – Umfrage, Dilemma oder Aufgabe', () => {
+test('Woche der jungen Krieger: vor jedem interaktiven Element ein eigenes Video, das es einführt', () => {
   const week = PACK_WEEKS.find((entry) => entry.week === '2026-W43')!
-  const next = (key: string) => week.deck[week.deck.findIndex((card) => card.key === key) + 1]?.key
-  assert.equal(next('eigen-held'), 'umfrage-1')
-  assert.equal(next('eigen-brief'), 'skala-1')
-  assert.equal(next('eigen-lockvogel'), 'dilemma-1')
-  assert.equal(next('eigen-staffel'), 'teilen')
-  // Und keiner steht direkt hinter einem anderen Video.
-  for (const plan of OWN_SHORTS) {
-    const key = plan.id.replace('fsy26-w43-', '')
-    const before = week.deck[week.deck.findIndex((card) => card.key === key) - 1]
-    assert.notEqual(before?.kind, 'video', plan.id)
+  const feed = deckOrder(
+    packWeekPlans(week).filter(
+      (plan) => plan.kind !== 'wochenziel' && plan.kind !== 'tageschallenge',
+    ),
+  )
+  const own = new Set(OWN_SHORTS.map((plan) => plan.id))
+  const interactive = feed.filter((plan) => !['impuls', 'video', 'feed'].includes(plan.kind))
+  assert.ok(interactive.length >= 10, `${interactive.length} interaktive Elemente`)
+  for (const plan of interactive) {
+    const before = feed[feed.indexOf(plan) - 1]
+    assert.ok(before && own.has(before.id), `${plan.id}: davor ${before?.id ?? 'nichts'}`)
   }
+  // Und jedes eigene Video steht direkt vor einem interaktiven Element.
+  for (const id of own) {
+    const next = feed[feed.findIndex((plan) => plan.id === id) + 1]
+    assert.ok(next && interactive.includes(next), `${id}: danach ${next?.id ?? 'nichts'}`)
+  }
+  // Keine Textkarte mehr ohne Interaktion – nur das Wochenthema, das das Wappen trägt.
+  assert.deepEqual(
+    feed.filter((plan) => plan.kind === 'feed').map((plan) => plan.id),
+    [],
+  )
 })
 
 test('Shorts: eine schon eingespielte Woche holt sie nach – und keine Karte rückt', () => {
   /* So steht es in der Datenbank: das Paket ohne die Shorts, die Karten
      auf den Plätzen 1 bis 13, das Minispiel auf 14. */
   const week = PACK_WEEKS.find((entry) => entry.week === '2026-W43')!
-  const stored = packWeekPlans(week).filter((plan) => plan.kind !== 'video')
+  // Damals noch mit den Textkarten, die inzwischen ersetzt sind
+  const original = { ...week, deck: week.deck.map((card) => ({ ...card, retired: undefined })) }
+  const stored = packWeekPlans(original).filter((plan) => plan.kind !== 'video')
   assert.deepEqual(
     stored.filter((plan) => plan.order !== null && plan.order > 0).map((plan) => plan.order),
     Array.from({ length: 14 }, (_, index) => index + 1),
@@ -321,12 +356,22 @@ test('Shorts: eine schon eingespielte Woche holt sie nach – und keine Karte r�
   // Jeder Short liegt zwischen zwei Karten, nie auf dem Platz einer anderen.
   for (const plan of missing) assert.ok(!Number.isInteger(plan.order), plan.id)
 
-  // Zusammen ergibt das genau den Feed, den ein frisch eingespieltes Paket legt.
+  // Zusammen – und mit den ersetzten Karten zurückgestellt – ergibt das genau
+  // den Feed, den ein frisch eingespieltes Paket legt.
+  const retired = new Set(planPackRetirements(stored).map((entry) => entry.id))
+  assert.deepEqual([...retired].sort(), [
+    'fsy26-w43-feed-1',
+    'fsy26-w43-feed-2',
+    'fsy26-w43-feed-3',
+  ])
   const feed = (entries: typeof stored) =>
     deckOrder(
       entries.filter((plan) => plan.kind !== 'wochenziel' && plan.kind !== 'tageschallenge'),
     ).map((plan) => plan.id)
-  assert.deepEqual(feed([...stored, ...missing].reverse()), feed(packWeekPlans(week)))
+  assert.deepEqual(
+    feed([...stored.filter((plan) => !retired.has(plan.id)), ...missing].reverse()),
+    feed(packWeekPlans(week)),
+  )
 })
 
 test('Themenpaket: Wochenziel und Tages-Challenge sind Kacheln, keine Feed-Karten', () => {
@@ -463,6 +508,12 @@ test('Ersetzte Karten: das Paket führt sie nicht mehr – und stellt nur zurüc
     assert.ok(retirement.reason.trim(), retirement.id)
   }
   assert.equal(new Set(PACK_RETIRED.map((entry) => entry.id)).size, PACK_RETIRED.length, 'doppelt')
+  // Dazu gehören die Textkarten, an deren Stelle ein Video getreten ist.
+  for (const key of ['feed-1', 'feed-2', 'feed-3'])
+    assert.match(
+      PACK_RETIRED.find((entry) => entry.id === `fsy26-w43-${key}`)?.reason ?? '',
+      /Video/,
+    )
 
   const [first, second] = PACK_RETIRED
   const items = [

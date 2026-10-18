@@ -1,0 +1,87 @@
+{
+  "id": "2026-10-20-wer-wars",
+  "title": "Wer war's?",
+  "date": "2026-10-20",
+  "series": "Für eine starke Jugend · Oktober",
+  "brand": {
+    "name": "AntiDoom"
+  },
+  "look": "noir",
+  "voice": {
+    "provider": "google",
+    "languageCode": "de-DE",
+    "name": "de-DE-Chirp3-HD-Algenib",
+    "speakingRate": 1.0
+  },
+  "music": {
+    "src": "music/lofi.mp3",
+    "volume": 0.3,
+    "duckTo": 0.08
+  },
+  "scenes": [
+    {
+      "id": "fall",
+      "type": "kinetic",
+      "ref": "Alma 56:47",
+      "lines": [
+        "Noch nie gekämpft.",
+        "Keine Angst."
+      ],
+      "narration": "Ein Fall für Detektive. [pause short] Zweitausend junge Männer. [pause short] Noch nie gekämpft. [pause short] Und trotzdem: [pause short] keine Angst."
+    },
+    {
+      "id": "satz",
+      "type": "kinetic",
+      "ref": "Alma 56:47",
+      "lines": [
+        "Wenn ihr nicht zweifelt,",
+        "wird Gott euch befreien."
+      ],
+      "narration": "Jemand hat ihnen beigebracht: [pause short] Wenn ihr nicht zweifelt, [pause short] wird Gott euch befreien."
+    },
+    {
+      "id": "verdaechtige",
+      "type": "lineup",
+      "title": "Fall Alma 56",
+      "holdAfterSec": 1.4,
+      "suspects": [
+        {
+          "name": "Hauptmann Moroni",
+          "figure": "captain",
+          "at": "Hauptmann Moroni"
+        },
+        {
+          "name": "Ein Traum",
+          "figure": "dream",
+          "at": "Ein Traum"
+        },
+        {
+          "name": "Ihre Feinde",
+          "figure": "enemies",
+          "at": "Ihre Feinde"
+        },
+        {
+          "name": "Ihre Mütter",
+          "figure": "mothers",
+          "at": "Ihre Mütter"
+        }
+      ],
+      "narration": "Aber wer war's? [pause short] Hauptmann Moroni? [pause short] Ein Traum? [pause short] Ihre Feinde? [pause short] Ihre Mütter?"
+    },
+    {
+      "id": "weiter",
+      "type": "teaser",
+      "label": "Quiz",
+      "question": "Von wem hatten die jungen Krieger gelernt, dass Gott sie bewahren würde?",
+      "options": [
+        "Von ihren Müttern",
+        "Von Hauptmann Moroni",
+        "Aus einem Traum",
+        "Von ihren Feinden"
+      ],
+      "hint": "Wisch weiter und lös den Fall",
+      "holdAfterSec": 2.5,
+      "narration": "Du entscheidest. [pause short] Lös den Fall auf der nächsten Karte."
+    }
+  ]
+}

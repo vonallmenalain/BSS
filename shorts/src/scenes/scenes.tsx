@@ -104,7 +104,7 @@ export const IllustrationScene: React.FC<P> = ({ ts }) => {
       </AbsoluteFill>
     );
   }
-  if (s.motif === "swords") return <SwordsMotif t={t} words={ts.words} cue={s.cue} />;
+  if (s.motif === "swords") return <SwordsMotif t={t} words={ts.words} cue={s.cue} phase={s.phase} />;
   if (s.motif === "horizon") return <HorizonMotif t={t} words={ts.words} duration={durSec} cue={s.cue} />;
   return null;
 };

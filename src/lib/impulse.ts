@@ -255,13 +255,35 @@ export function nextImpulseOrder(
  * Quiz, Geschichte, Puzzle – der Wechsel hält wach, ein Block aus zehn
  * gleichen Karten nicht. Ohne Platz kommt eine Karte ans Ende, und bei
  * gleichem Platz entscheidet die gewohnte Ordnung der Arten.
+ *
+ * Eine Ausnahme: Ein **Video, dessen Platz zwischen Teilen-Aufgabe und
+ * Minispiel liegt**, führt ins Spiel ein und steht deshalb genau dort –
+ * nach der Teilen-Aufgabe, direkt vor dem Spiel. Eine neue Karte der
+ * Redaktion bekommt einen Platz hinter allen anderen, auch hinter dem
+ * Spiel (`nextImpulseOrder`), und bleibt darum wie gewohnt vor der
+ * Teilen-Aufgabe.
  */
 export function deckOrder<T extends Pick<ImpulseItem, 'kind' | 'order'>>(items: T[]): T[] {
-  const band = (kind: ImpulseKind) =>
-    kind === 'impuls' ? 0 : kind === 'teilen' ? 2 : kind === 'spiel' ? 3 : 1
+  const placeOf = (kind: ImpulseKind) => items.find((item) => item.kind === kind)?.order ?? null
+  const share = placeOf('teilen')
+  const game = placeOf('spiel')
+  const band = (item: T) => {
+    if (item.kind === 'impuls') return 0
+    if (item.kind === 'teilen') return 2
+    if (item.kind === 'spiel') return 4
+    const place = item.order
+    const gameIntro =
+      item.kind === 'video' &&
+      share !== null &&
+      game !== null &&
+      typeof place === 'number' &&
+      place > share &&
+      place < game
+    return gameIntro ? 3 : 1
+  }
   return [...items].sort(
     (a, b) =>
-      band(a.kind) - band(b.kind) ||
+      band(a) - band(b) ||
       (a.order ?? Number.MAX_SAFE_INTEGER) - (b.order ?? Number.MAX_SAFE_INTEGER) ||
       impulseKindRank(a.kind) - impulseKindRank(b.kind),
   )

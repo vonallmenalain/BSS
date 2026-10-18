@@ -19,7 +19,7 @@ import { execFileSync, spawn } from "node:child_process";
 import { createHash } from "node:crypto";
 import fs from "node:fs";
 import path from "node:path";
-import { type Episode, type Manifest, episodeSchema, splitPhrases, stripMarkup } from "../src/schema";
+import { type Episode, type Manifest, episodeSchema, speakable, splitPhrases, stripMarkup } from "../src/schema";
 import { loadDotEnv } from "./lib/env";
 import { alignPhrases, analyzeSpeech, parseWav, writeWav } from "./lib/wav";
 
@@ -234,7 +234,10 @@ const main = async () => {
   const stats = { cached: 0, synthesized: 0 };
 
   await pool(ep.scenes, provider === "piper" ? 1 : args.concurrency, async (scene) => {
-    const markup = scene.narration.trim();
+    // Die Stimme bekommt die sprechbare Fassung (Striche als Pausen, Zahlen als Grundzahlen);
+    // Phrasen und Untertitel kommen aus der narration selbst.
+    const narration = scene.narration.trim();
+    const markup = speakable(narration);
     const bytes = Buffer.byteLength(markup, "utf8");
     if (provider === "google" && bytes > GOOGLE_MAX_BYTES) {
       throw new FatalError(`Szene "${scene.id}": ${bytes} Bytes – Google erlaubt max. 5000 pro Request. Szene aufteilen.`);
@@ -248,7 +251,7 @@ const main = async () => {
     const req: SynthRequest = { markup, voice, languageCode: ep.voice.languageCode, rate, pronunciations: ep.pronunciations };
 
     if (args.dryRun) {
-      console.log(`  [dry] ${scene.id}: ${bytes} B → ${fileRel}`);
+      console.log(`  [dry] ${scene.id}: ${bytes} B → ${fileRel}\n        «${markup}»`);
       return;
     }
 
@@ -263,7 +266,7 @@ const main = async () => {
     }
 
     const analysis = analyzeSpeech(parseWav(fs.readFileSync(fileAbs)));
-    const { phrases, strong } = phrasesWithStrength(markup);
+    const { phrases, strong } = phrasesWithStrength(narration);
     const aligned = alignPhrases(phrases, strong, analysis);
     results.set(scene.id, {
       id: scene.id,
