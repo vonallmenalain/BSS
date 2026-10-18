@@ -1,6 +1,7 @@
 import React, { useMemo } from "react";
 import { interpolate, spring, useCurrentFrame } from "remotion";
 import { FPS, type Word } from "../lib/timing";
+import { useLook } from "../looks";
 import { theme } from "../theme";
 import { buildChunks } from "./Captions";
 
@@ -18,6 +19,7 @@ export const StageText: React.FC<{
   fontSize?: number;
 }> = ({ words, include, audioOffsetFrames, exitAt, y = 700, fontSize = 84 }) => {
   const frame = useCurrentFrame();
+  const look = useLook();
   const t = (frame - audioOffsetFrames) / FPS;
   const hidden = useMemo(() => new Set(words.filter((w) => !include.has(w.index)).map((w) => w.index)), [words, include]);
   const chunks = useMemo(() => buildChunks(words, hidden).map((c) => c), [words, hidden]);
@@ -75,7 +77,7 @@ export const StageText: React.FC<{
             <span
               key={w.index}
               style={{
-                color: active ? theme.gold : spoken ? theme.ivory : "rgba(255,246,230,0.28)",
+                color: active ? look.accent : spoken ? look.text : "rgba(255,246,230,0.28)",
                 textShadow: "0 6px 30px rgba(0,0,0,0.55)",
               }}
             >

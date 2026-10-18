@@ -101,7 +101,15 @@ export const estimateScene = (narration: string, rate: number): ManifestScene =>
 export const wordsFromPhrases = (phrases: ManifestScene["phrases"]): Word[] => {
   const words: Word[] = [];
   for (const p of phrases) {
-    const parts = p.text.split(/\s+/).filter(Boolean);
+    // Ein allein stehender Gedankenstrich gehört zum Wort davor – sonst steht er im Untertitel auf einer eigenen Zeile
+    const parts = p.text
+      .split(/\s+/)
+      .filter(Boolean)
+      .reduce<string[]>((acc, w) => {
+        if (/^[–—-]$/.test(w) && acc.length) acc[acc.length - 1] += ` ${w}`;
+        else acc.push(w);
+        return acc;
+      }, []);
     const weights = parts.map((w) => w.replace(/[^\p{L}\p{N}]/gu, "").length + 2);
     const total = weights.reduce((a, b) => a + b, 0) || 1;
     let t = p.start;

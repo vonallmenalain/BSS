@@ -1,0 +1,133 @@
+{
+  "id": "2026-10-22-mission-lockvogel",
+  "title": "Mission Lockvogel",
+  "date": "2026-10-22",
+  "series": "Für eine starke Jugend · Oktober",
+  "brand": {
+    "name": "AntiDoom",
+    "label": "Folge 3/4"
+  },
+  "look": "map",
+  "voice": {
+    "provider": "google",
+    "languageCode": "de-DE",
+    "name": "de-DE-Chirp3-HD-Fenrir",
+    "speakingRate": 1.12
+  },
+  "music": {
+    "src": "music/chase.mp3",
+    "volume": 0.3,
+    "duckTo": 0.08
+  },
+  "scenes": [
+    {
+      "id": "auftrag",
+      "type": "map",
+      "stage": "intro",
+      "ref": "Alma 56:30–34",
+      "cues": [
+        "Ihr Auftrag"
+      ],
+      "narration": "Zweitausend Teenager. [pause short] Ihr Auftrag: [pause short] den Lockvogel spielen. [pause short] Für die stärkste Armee weit und breit."
+    },
+    {
+      "id": "plan",
+      "type": "map",
+      "stage": "plan",
+      "ref": "Alma 56:30–32",
+      "cues": [
+        "Sie marschieren",
+        "Proviant"
+      ],
+      "narration": "Der Plan: [pause short] Sie marschieren an der Stadt Antiparah vorbei – [pause short] als würden sie Proviant in eine andere Stadt bringen."
+    },
+    {
+      "id": "koeder",
+      "type": "map",
+      "stage": "bait",
+      "ref": "Alma 56:33–37",
+      "cues": [
+        "Die Lamaniten beissen an",
+        "Antipus mit seinem Heer"
+      ],
+      "narration": "Die Lamaniten beissen an und stürmen hinterher. [pause short] Und hinter ihnen: [pause short] Antipus mit seinem Heer."
+    },
+    {
+      "id": "jagd",
+      "type": "map",
+      "stage": "chase",
+      "ref": "Alma 56:36–42",
+      "cues": [
+        "Tag eins",
+        "Nacht",
+        "Tag zwei",
+        "Am dritten Morgen"
+      ],
+      "holdAfterSec": 0.4,
+      "narration": "Ab nach Norden. [pause short] Tag eins. [pause short] Nacht. [pause short] Tag zwei. [pause short] Am dritten Morgen bleiben die Lamaniten plötzlich stehen."
+    },
+    {
+      "id": "falle",
+      "type": "map",
+      "stage": "halt",
+      "ref": "Alma 56:43–44",
+      "cues": [
+        "Ist das eine Falle",
+        "Sollen wir"
+      ],
+      "narration": "Ist das eine Falle? [pause short] Helaman fragt seine Jungs: [pause short] Sollen wir umkehren und kämpfen?"
+    },
+    {
+      "id": "antwort",
+      "type": "kinetic",
+      "ref": "Alma 56:46",
+      "lines": [
+        "Unser Gott ist mit uns.",
+        "Er lässt uns nicht fallen.",
+        "Los!"
+      ],
+      "narration": "Ihre Antwort: [pause short] Unser Gott ist mit uns. [pause short] Er lässt uns nicht fallen. [pause short] Los – bevor Antipus überwältigt wird!"
+    },
+    {
+      "id": "schlacht",
+      "type": "map",
+      "stage": "battle",
+      "ref": "Alma 56:49–54",
+      "cues": [
+        "Sie drehen um",
+        "fast besiegt",
+        "von hinten",
+        "umzingelt"
+      ],
+      "holdAfterSec": 1.2,
+      "narration": "Sie drehen um. [pause short] Das Heer von Antipus ist schon fast besiegt – [pause short] da greifen die jungen Krieger von hinten an. [pause short] Die Lamaniten sind umzingelt und ergeben sich."
+    },
+    {
+      "id": "gezaehlt",
+      "type": "map",
+      "stage": "count",
+      "ref": "Alma 56:55–56",
+      "cues": [
+        "zählt Helaman",
+        "Kein einziger ist gefallen"
+      ],
+      "holdAfterSec": 0.5,
+      "narration": "Dann zählt Helaman seine Jungs. [pause] Kein einziger ist gefallen. [pause short] Sie kämpften wie mit der Kraft Gottes."
+    },
+    {
+      "id": "weiter",
+      "type": "teaser",
+      "label": "Was würdest du tun?",
+      "question": "Morgen teilst du das Abendmahl aus – deine Freunde wollen bis 2 Uhr raus.",
+      "options": [
+        "Früh nach Hause – der Sonntag geht vor",
+        "Mitgehen, aber um Mitternacht heim",
+        "Die Freunde zu etwas anderem einladen",
+        "Ehrlich sagen, warum ich nicht kann"
+      ],
+      "hint": "Wisch weiter und entscheide",
+      "holdAfterSec": 2.5,
+      "narration": "Umdrehen statt weiterrennen – [pause short] das braucht Mut. [pause short] Was würdest du tun? [pause short] Die nächste Karte fragt dich."
+    }
+  ]
+}

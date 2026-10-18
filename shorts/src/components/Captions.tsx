@@ -1,6 +1,7 @@
 import React, { useMemo } from "react";
 import { interpolate, spring, useCurrentFrame } from "remotion";
 import { FPS, type Word } from "../lib/timing";
+import { useLook } from "../looks";
 import { theme } from "../theme";
 
 type Chunk = { words: Word[]; start: number; end: number };
@@ -37,6 +38,7 @@ export const Captions: React.FC<{
   audioOffsetFrames: number;
 }> = ({ words, hidden, audioOffsetFrames }) => {
   const frame = useCurrentFrame();
+  const look = useLook();
   const chunks = useMemo(() => buildChunks(words, hidden), [words, hidden]);
   const t = (frame - audioOffsetFrames) / FPS;
 
@@ -83,7 +85,7 @@ export const Captions: React.FC<{
             <span
               key={w.index}
               style={{
-                color: active ? theme.gold : spoken ? theme.ivory : "rgba(255,246,230,0.5)",
+                color: active ? look.accent : spoken ? look.text : "rgba(255,246,230,0.5)",
                 textShadow: "0 4px 22px rgba(0,0,0,0.65), 0 1px 3px rgba(0,0,0,0.5)",
               }}
             >

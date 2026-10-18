@@ -1,0 +1,92 @@
+{
+  "id": "2026-10-19-waehle-deinen-helden",
+  "title": "Wähle deinen Helden",
+  "date": "2026-10-19",
+  "series": "Für eine starke Jugend · Oktober",
+  "brand": { "name": "AntiDoom", "label": "Folge 1/4" },
+  "look": "arcade",
+  "voice": { "provider": "google", "languageCode": "de-DE", "name": "de-DE-Chirp3-HD-Puck", "speakingRate": 1.05 },
+  "music": { "src": "music/arcade.mp3", "volume": 0.3, "duckTo": 0.08 },
+  "scenes": [
+    {
+      "id": "hook",
+      "type": "hero",
+      "title": "???",
+      "subtitle": "LVL 1",
+      "ref": "Alma 56:47",
+      "chips": [
+        { "text": "KAMPFERFAHRUNG 0", "at": "Null Kampferfahrung", "tone": "zero" },
+        { "text": "SCHLACHTEN 0", "at": "Noch nie gekämpft", "tone": "zero" },
+        { "text": "ANGST 0", "at": "keine Angst", "tone": "zero" }
+      ],
+      "narration": "Null Kampferfahrung. [pause short] Noch nie gekämpft. [pause short] Und trotzdem: [pause short] keine Angst."
+    },
+    {
+      "id": "wer",
+      "type": "hero",
+      "select": true,
+      "title": "JUNGER KRIEGER",
+      "subtitle": "SOHN DES VOLKES AMMON",
+      "ref": "Alma 53:16–17",
+      "chips": [{ "text": "EIGENER BUND", "at": "ihren eigenen Bund", "tone": "plus" }],
+      "narration": "Das sind Helamans junge Krieger. [pause short] Ihre Eltern hatten Gott versprochen, nie mehr zu kämpfen. [pause short] Also traten die Söhne an – und schlossen ihren eigenen Bund."
+    },
+    {
+      "id": "werte",
+      "type": "hero",
+      "title": "JUNGER KRIEGER",
+      "subtitle": "WERTE · ALMA 53:20",
+      "ref": "Alma 53:20",
+      "stats": [
+        { "label": "MUT", "value": 100, "at": "Mut" },
+        { "label": "STÄRKE", "value": 100, "at": "Stärke" },
+        { "label": "REGSAM", "value": 100, "at": "Regsamkeit" }
+      ],
+      "narration": "Ihre Werte stehen in Alma 53. [pause short] Mut. [pause short] Stärke. [pause short] Und Regsamkeit – [pause short] also anpacken, statt zu warten."
+    },
+    {
+      "id": "spezial",
+      "type": "hero",
+      "title": "JUNGER KRIEGER",
+      "subtitle": "SPEZIALFÄHIGKEIT",
+      "ref": "Alma 53:20",
+      "stats": [
+        { "label": "MUT", "value": 100 },
+        { "label": "STÄRKE", "value": 100 },
+        { "label": "REGSAM", "value": 100 }
+      ],
+      "unlock": { "badge": "LEGENDÄR", "text": "Treu zu allen Zeiten", "at": "treu zu allen Zeiten" },
+      "holdAfterSec": 0.8,
+      "narration": "Aber das war nicht alles. [pause short] Ihre Spezialfähigkeit: [pause short] treu zu allen Zeiten – [pause short] in allem, was ihnen anvertraut war."
+    },
+    {
+      "id": "bonus",
+      "type": "hero",
+      "title": "JUNGER KRIEGER",
+      "subtitle": "BONUS · ALMA 53:21",
+      "ref": "Alma 53:21",
+      "chips": [
+        { "text": "WAHRHEIT", "at": "Wahrheit" },
+        { "text": "ERNSTHAFTIGKEIT", "at": "Ernsthaftigkeit" },
+        { "text": "GEBOTE HALTEN", "at": "Gebote zu halten" }
+      ],
+      "narration": "Bonus: [pause short] Männer der Wahrheit und Ernsthaftigkeit. [pause short] Man hatte ihnen beigebracht, Gottes Gebote zu halten."
+    },
+    {
+      "id": "training",
+      "type": "kinetic",
+      "lines": ["Trainierbar.", "Jeden Tag."],
+      "narration": "Und das Beste: [pause short] Diese Werte sind trainierbar. [pause short] Jeden Tag ein bisschen."
+    },
+    {
+      "id": "weiter",
+      "type": "teaser",
+      "label": "Umfrage",
+      "question": "Welche Eigenschaft der jungen Krieger hättest du gern mehr?",
+      "options": ["Mut", "Stärke", "Regsamkeit – anpacken statt warten", "Treue zu allen Zeiten"],
+      "hint": "Wisch weiter und stimm ab",
+      "holdAfterSec": 2.5,
+      "narration": "Welchen Wert willst du diese Woche leveln? [pause short] Stimm gleich ab – eine Karte weiter."
+    }
+  ]
+}

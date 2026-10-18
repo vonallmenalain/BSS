@@ -1,0 +1,188 @@
+{
+  "id": "2026-10-20-nachricht-von-helaman",
+  "title": "Nachricht von Helaman",
+  "date": "2026-10-20",
+  "series": "Für eine starke Jugend · Oktober",
+  "brand": {
+    "name": "AntiDoom",
+    "label": "Folge 2/4"
+  },
+  "look": "chat",
+  "voice": {
+    "provider": "google",
+    "languageCode": "de-DE",
+    "name": "de-DE-Chirp3-HD-Achird",
+    "speakingRate": 1.0
+  },
+  "music": {
+    "src": "music/lofi.mp3",
+    "volume": 0.32,
+    "duckTo": 0.09
+  },
+  "scenes": [
+    {
+      "id": "lock",
+      "type": "chat",
+      "mode": "lock",
+      "contact": "Helaman",
+      "ref": "Alma 56:1–2",
+      "lock": {
+        "time": "06:12",
+        "date": "2. Tag · 1. Monat · 30. Jahr der Richter",
+        "title": "Helaman",
+        "preview": "Mein geliebter Bruder Moroni, ich habe dir etwas über unseren Krieg zu erzählen …"
+      },
+      "narration": "Eine Nachricht von der Front. [pause short] Abgeschickt vor über zweitausend Jahren."
+    },
+    {
+      "id": "warten",
+      "type": "chat",
+      "contact": "Helaman",
+      "contactSub": "Brief an Moroni · Alma 58",
+      "ref": "Alma 58:4–7",
+      "messages": [
+        {
+          "text": "Wir warten auf Hilfe.",
+          "at": "Wir warten auf Hilfe"
+        },
+        {
+          "text": "Monatelang.",
+          "at": "Monatelang"
+        },
+        {
+          "text": "Wir sind fast verhungert.",
+          "at": "Wir sind fast verhungert"
+        },
+        {
+          "text": "Und der Feind wird jeden Tag stärker.",
+          "at": "Und der Feind wird jeden Tag stärker"
+        }
+      ],
+      "narration": "Helaman schreibt: [pause short] Wir warten auf Hilfe. [pause short] Monatelang. [pause short] Wir sind fast verhungert. [pause short] Und der Feind wird jeden Tag stärker."
+    },
+    {
+      "id": "beten",
+      "type": "chat",
+      "contact": "Helaman",
+      "contactSub": "Brief an Moroni · Alma 58",
+      "ref": "Alma 58:9–10",
+      "messages": [
+        {
+          "text": "Wir sind fast verhungert."
+        },
+        {
+          "text": "Und der Feind wird jeden Tag stärker."
+        },
+        {
+          "text": "Darum beten wir.",
+          "at": "Darum beten wir"
+        },
+        {
+          "text": "Wir schütten Gott unser Herz aus.",
+          "at": "Wir schütten Gott unser Herz aus"
+        },
+        {
+          "kind": "sticker",
+          "text": "🙏",
+          "at": "unser Herz aus"
+        }
+      ],
+      "narration": "Was bleibt ihnen noch? [pause short] Darum beten wir. [pause short] Wir schütten Gott unser Herz aus."
+    },
+    {
+      "id": "frieden",
+      "type": "chat",
+      "contact": "Helaman",
+      "contactSub": "Brief an Moroni · Alma 58",
+      "ref": "Alma 58:11",
+      "messages": [
+        {
+          "text": "Wir schütten Gott unser Herz aus."
+        },
+        {
+          "kind": "divider",
+          "text": "Noch bevor sich etwas ändert",
+          "at": "Noch bevor sich etwas ändert"
+        },
+        {
+          "text": "Gott spricht Frieden in unsere Seelen.",
+          "at": "Gott spricht Frieden in unsere Seelen"
+        },
+        {
+          "text": "Er gibt uns grossen Glauben.",
+          "at": "Er gibt uns grossen Glauben"
+        },
+        {
+          "text": "Und Hoffnung.",
+          "at": "Und Hoffnung"
+        }
+      ],
+      "narration": "Und dann? [pause short] Noch bevor sich etwas ändert: [pause short] Gott spricht Frieden in unsere Seelen. [pause short] Er gibt uns grossen Glauben. [pause short] Und Hoffnung."
+    },
+    {
+      "id": "manti",
+      "type": "chat",
+      "contact": "Helaman",
+      "contactSub": "Brief an Moroni · Alma 58",
+      "ref": "Alma 58:12–28",
+      "messages": [
+        {
+          "text": "Und Hoffnung."
+        },
+        {
+          "kind": "plan",
+          "text": "Der Plan für Manti",
+          "at": "einen schlauen Plan"
+        },
+        {
+          "text": "Manti ist unser. Ohne Blutvergiessen.",
+          "at": "Manti ist unser"
+        }
+      ],
+      "holdAfterSec": 0.6,
+      "narration": "Mit neuem Mut schmieden sie einen schlauen Plan. [pause short] Und es klappt: [pause short] Manti ist unser. [pause short] Ohne Blutvergiessen."
+    },
+    {
+      "id": "jungs",
+      "type": "chat",
+      "contact": "Helaman",
+      "contactSub": "Brief an Moroni · Alma 58",
+      "ref": "Alma 58:40",
+      "messages": [
+        {
+          "text": "Manti ist unser. Ohne Blutvergiessen."
+        },
+        {
+          "text": "Sie denken Tag für Tag an den Herrn.",
+          "at": "Sie denken Tag für Tag an den Herrn"
+        }
+      ],
+      "holdAfterSec": 0.5,
+      "narration": "Und über seine jungen Krieger schreibt er: [pause short] Sie denken Tag für Tag an den Herrn."
+    },
+    {
+      "id": "lehre",
+      "type": "kinetic",
+      "lines": [
+        "Nicht sofort ihre Lage.",
+        "Aber sie selbst."
+      ],
+      "narration": "Das Gebet hat nicht sofort ihre Lage verändert. [pause short] Aber sie selbst."
+    },
+    {
+      "id": "weiter",
+      "type": "teaser",
+      "label": "Umfrage",
+      "question": "An wie vielen Tagen hast du letzte Woche richtig gebetet – nicht nur kurz vor dem Essen?",
+      "scale": {
+        "min": 0,
+        "max": 7,
+        "minLabel": "an keinem",
+        "maxLabel": "an jedem"
+      },
+      "hint": "Wisch weiter und trag dich ein",
+      "holdAfterSec": 2.5,
+      "narration": "Und du? [pause short] Wie oft hast du letzte Woche richtig gebetet? [pause short] Ganz ehrlich – gleich auf der nächsten Karte."
+    }
+  ]
+}

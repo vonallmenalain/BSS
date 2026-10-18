@@ -3,11 +3,18 @@ import { fade } from "@remotion/transitions/fade";
 import React, { useMemo } from "react";
 import { AbsoluteFill, Audio, type CalculateMetadataFunction, Sequence, interpolate, staticFile, useCurrentFrame } from "remotion";
 import { Grain, Particles } from "./components/Atmosphere";
+import { ArcadeBg, ChatBg, MapBg, TrackBg } from "./components/Backgrounds";
 import { BrandBar, RefLabel } from "./components/BrandBar";
 import { Captions } from "./components/Captions";
 import { Sky } from "./components/Sky";
 import { fontsReady } from "./lib/fonts";
 import { FPS, type Timeline, type TimelineScene, TRANSITION_FRAMES, buildTimeline, findCue } from "./lib/timing";
+import { LookProvider } from "./looks";
+import { ChatScene } from "./scenes/chat";
+import { HeroScene } from "./scenes/game";
+import { MapScene } from "./scenes/map";
+import { RelayScene } from "./scenes/relay";
+import { TeaserScene } from "./scenes/teaser";
 import {
   BigNumberScene,
   CtaScene,
@@ -62,6 +69,21 @@ const hiddenWords = (ts: TimelineScene): Set<number> => {
       const c = s.titleAt ? findCue(ts.words, s.titleAt) : null;
       return new Set(c ? ts.words.slice(c.first).map((w) => w.index) : []);
     }
+    case "chat": {
+      // Was in einer Blase steht, wird nicht noch einmal untertitelt
+      const out = new Set<number>();
+      for (const m of s.messages) {
+        const c = m.text ? findCue(ts.words, m.text) : null;
+        if (c) for (let k = c.first; k <= c.last; k++) out.add(ts.words[k].index);
+      }
+      return out;
+    }
+    case "relay": {
+      const c = s.line ? findCue(ts.words, s.line) : null;
+      const out = new Set<number>();
+      if (c) for (let k = c.first; k <= c.last; k++) out.add(ts.words[k].index);
+      return out;
+    }
     default:
       return new Set();
   }
@@ -81,6 +103,37 @@ const SceneBody: React.FC<{ ts: TimelineScene }> = ({ ts }) => {
       return <KineticScene ts={ts} />;
     case "cta":
       return <CtaScene ts={ts} />;
+    case "hero":
+      return <HeroScene ts={ts} />;
+    case "chat":
+      return <ChatScene ts={ts} />;
+    case "map":
+      return <MapScene ts={ts} />;
+    case "relay":
+      return <RelayScene ts={ts} />;
+    case "teaser":
+      return <TeaserScene ts={ts} />;
+  }
+};
+
+/** Der durchgehende Hintergrund des Looks. */
+const Backdrop: React.FC<{ look: Episode["look"]; s: number }> = ({ look, s }) => {
+  switch (look) {
+    case "arcade":
+      return <ArcadeBg />;
+    case "chat":
+      return <ChatBg />;
+    case "map":
+      return <MapBg />;
+    case "track":
+      return <TrackBg />;
+    default:
+      return (
+        <>
+          <Sky s={s} />
+          <Particles s={s} />
+        </>
+      );
   }
 };
 
@@ -134,9 +187,9 @@ export const Short: React.FC<ShortProps> = ({ episode: raw, timeline }) => {
   const s = skyFor(frame, timeline);
 
   return (
+    <LookProvider look={episode.look}>
     <AbsoluteFill style={{ backgroundColor: "#05071A" }}>
-      <Sky s={s} />
-      <Particles s={s} />
+      <Backdrop look={episode.look} s={s} />
       <TransitionSeries>
         {timeline.scenes.flatMap((ts, i) => {
           const items = [
@@ -162,5 +215,6 @@ export const Short: React.FC<ShortProps> = ({ episode: raw, timeline }) => {
         <Audio src={staticFile(episode.music.src)} volume={(f) => musicVolume(f, episode, timeline)} loop />
       ) : null}
     </AbsoluteFill>
+    </LookProvider>
   );
 };
