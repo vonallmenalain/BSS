@@ -1127,6 +1127,25 @@ export async function applyPackCorrections(
 }
 
 /**
+ * Karten, die das Themenpaket ersetzt hat, zurückstellen – ein Klick in der Redaktion.
+ *
+ * Welche anstehen, rechnet `planPackRetirements` (lib/impulsePack) aus dem
+ * abonnierten Bestand. Zurückstellen heisst: zum Entwurf machen, nicht
+ * löschen – Antworten und Fortschritt bleiben, und im Formular ist die Karte
+ * mit einem Klick wieder bereit.
+ */
+export async function retirePackItems(ids: string[]): Promise<SaveOutcome> {
+  const batch = writeBatch(db)
+  for (const id of ids) {
+    batch.update(doc(db, COLLECTIONS.impulseItems, id), {
+      status: 'draft',
+      updatedAt: serverTimestamp(),
+    })
+  }
+  return commit(batch.commit())
+}
+
+/**
  * Eine Quizfrage beantworten – ein Versuch, auf den eigenen Namen.
  *
  * Richtig oder falsch wird bei der Auswahl gleich hier bestimmt; die

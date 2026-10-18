@@ -3,7 +3,7 @@
  * Akkordfolge h-moll – G – D – A (vi–IV–I–V in D-Dur), langsam ansteigende Helligkeit
  * passend zum "Sonnenaufgang" im Template.
  *
- *   npm run music -- --sec 75 --out public/music/pad-dawn.wav
+ *   npm run pad -- --sec 75 --out public/music/pad-dawn.wav
  *
  * Für echte Produktionen besser: Musik mit klarer Lizenz (z.B. YouTube Audio Library,
  * eigene Komposition). Diese Datei ist bewusst schlicht.

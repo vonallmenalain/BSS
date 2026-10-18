@@ -1,6 +1,7 @@
 import { useMemo, useState } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
 import {
+  Archive,
   Check,
   ChevronDown,
   ChevronLeft,
@@ -47,7 +48,13 @@ import {
   upcomingWeekKeys,
 } from '@/lib/impulse'
 import { IMPULSE_KIND_THEME, IMPULSE_SECTIONS } from '@/lib/impulseSections'
-import { isPackItem, PACK_WEEKS, planPackCorrections, planPackItems } from '@/lib/impulsePack'
+import {
+  isPackItem,
+  PACK_WEEKS,
+  planPackCorrections,
+  planPackItems,
+  planPackRetirements,
+} from '@/lib/impulsePack'
 import { tallyPollChoices } from '@/lib/impulsePoll'
 import { joinNames } from '@/lib/notifications'
 import {
@@ -56,6 +63,7 @@ import {
   createPackItems,
   deleteImpulseSubmission,
   restartImpulseContent,
+  retirePackItems,
   emptyImpulseItem,
   markImpulseSubmissionAccepted,
   submissionToInput,
@@ -323,6 +331,34 @@ export function ImpulsRedaktion() {
       toast.error('Die Korrektur konnte nicht übernommen werden.')
     } finally {
       setCorrecting(false)
+    }
+  }
+
+  /*
+   * Ersetzte Karten (`PACK_RETIRED`): Führt das Paket eine schon eingespielte
+   * Karte nicht mehr und steht sie noch auf «bereit», lässt sie sich hier
+   * zurückstellen – sie wird zum Entwurf, nichts wird gelöscht.
+   */
+  const [retiring, setRetiring] = useState(false)
+  const [retired, setRetired] = useState(false)
+  const retirePlans = useMemo(() => planPackRetirements(itemsState.data), [itemsState.data])
+  const runRetire = async () => {
+    if (retiring || retirePlans.length === 0) return
+    setRetiring(true)
+    try {
+      const outcome = await retirePackItems(retirePlans.map((plan) => plan.id))
+      setRetired(true)
+      toast.saved(
+        `Zurückgestellt – ${
+          retirePlans.length === 1 ? 'eine Karte ist' : `${retirePlans.length} Karten sind`
+        } jetzt Entwurf.`,
+        outcome,
+      )
+    } catch (error) {
+      console.error(error)
+      toast.error('Die Karten konnten nicht zurückgestellt werden.')
+    } finally {
+      setRetiring(false)
     }
   }
 
@@ -598,6 +634,52 @@ export function ImpulsRedaktion() {
             >
               <PenLine className="size-4" aria-hidden />
               {correcting ? 'Wird übernommen …' : 'Übernehmen'}
+            </button>
+          </section>
+        )}
+
+        {retirePlans.length > 0 && !retired && (
+          <section className="card p-4 sm:p-5">
+            <h2 className="flex items-center gap-2 text-sm font-semibold">
+              <Archive className="size-4 text-slate-400" aria-hidden />
+              Ersetzte Karten zurückstellen
+            </h2>
+            <p className="hint mt-1">
+              {retirePlans.length === 1
+                ? 'Eine Karte steht noch im Feed, die'
+                : `${retirePlans.length} Karten stehen noch im Feed, die`}{' '}
+              das Themenpaket inzwischen ersetzt hat. Zurückstellen macht sie zum Entwurf – nichts
+              wird gelöscht, und im Formular sind sie mit einem Klick wieder bereit.
+            </p>
+            <ul className="mt-3 space-y-2 text-sm">
+              {retirePlans.map((plan) => {
+                const item = itemsState.data.find((entry) => entry.id === plan.id)
+                return (
+                  <li
+                    key={plan.id}
+                    className="rounded-xl border border-slate-200 px-3 py-2.5 dark:border-slate-800"
+                  >
+                    <span className="hint mt-0 block">
+                      {item
+                        ? `${IMPULSE_KIND_LABELS[item.kind]}${item.week ? ` · ${formatWeekRange(item.week)}` : ''}`
+                        : plan.id}
+                    </span>
+                    <span className="mt-1 block font-medium">{item?.title ?? plan.id}</span>
+                    <span className="mt-0.5 block text-slate-500 dark:text-slate-400">
+                      {plan.reason}
+                    </span>
+                  </li>
+                )
+              })}
+            </ul>
+            <button
+              type="button"
+              className="btn-secondary mt-3"
+              onClick={() => void runRetire()}
+              disabled={retiring}
+            >
+              <Archive className="size-4" aria-hidden />
+              {retiring ? 'Wird zurückgestellt …' : 'Zurückstellen'}
             </button>
           </section>
         )}

@@ -1,0 +1,75 @@
+{
+  "id": "2026-10-24-die-staerkste-waffe",
+  "title": "Die stärkste Waffe",
+  "date": "2026-10-24",
+  "series": "Für eine starke Jugend · Oktober",
+  "brand": { "name": "AntiDoom", "label": "Folge 4/4" },
+  "look": "track",
+  "voice": { "provider": "google", "languageCode": "de-DE", "name": "de-DE-Chirp3-HD-Sulafat", "speakingRate": 1.0 },
+  "music": { "src": "music/anthem.mp3", "volume": 0.3, "duckTo": 0.08 },
+  "scenes": [
+    {
+      "id": "waffe",
+      "type": "relay",
+      "stage": "sword",
+      "ref": "Alma 56:47",
+      "cues": ["kein Schwert", "Es war ein Satz"],
+      "narration": "Die stärkste Waffe der jungen Krieger? [pause short] Es war kein Schwert. [pause short] Es war ein Satz."
+    },
+    {
+      "id": "eltern",
+      "type": "relay",
+      "stage": "run",
+      "ref": "Alma 53:11–15",
+      "cues": ["versprochen", "gehalten"],
+      "chips": ["Bund mit Gott", "Gehalten"],
+      "narration": "Ihre Eltern hatten Gott versprochen, nie wieder zu kämpfen. [pause short] Und sie haben es gehalten – auch als es richtig schwer wurde."
+    },
+    {
+      "id": "muetter",
+      "type": "relay",
+      "stage": "mother",
+      "ref": "Alma 56:47",
+      "cues": ["Wenn ihr nicht zweifelt"],
+      "line": "Wenn ihr nicht zweifelt, wird Gott euch befreien.",
+      "holdAfterSec": 0.8,
+      "narration": "Und die Mütter gaben ihren Söhnen diesen Satz mit: [pause short] Wenn ihr nicht zweifelt, wird Gott euch befreien."
+    },
+    {
+      "id": "soehne",
+      "type": "relay",
+      "stage": "handoff",
+      "ref": "Alma 53:16–17",
+      "cues": ["nahmen ihn mit", "eigenen Bund"],
+      "chips": ["Eigener Bund"],
+      "holdAfterSec": 0.6,
+      "narration": "Die Söhne nahmen ihn mit – [pause short] und schlossen ihren eigenen Bund mit Gott."
+    },
+    {
+      "id": "schlacht",
+      "type": "kinetic",
+      "ref": "Alma 56:48 · 57:21",
+      "lines": ["Sie zweifelten nicht,", "dass ihre Mütter es wussten."],
+      "narration": "Mitten in der Schlacht erinnert sich Helaman an ihre Worte: [pause short] Sie zweifelten nicht, dass ihre Mütter es wussten."
+    },
+    {
+      "id": "du",
+      "type": "relay",
+      "stage": "you",
+      "cues": ["Jemand hat ihn dir weitergegeben"],
+      "line": "Jetzt bist du dran.",
+      "holdAfterSec": 0.6,
+      "narration": "Glaube wird weitergegeben – wie ein Staffelstab. [pause short] Jemand hat ihn dir weitergegeben. [pause short] Jetzt bist du dran."
+    },
+    {
+      "id": "weiter",
+      "type": "teaser",
+      "label": "Teilen",
+      "question": "Frag deinen Vater, Grossvater oder einen Leiter: Was heisst für ihn, «zu allen Zeiten treu» zu sein?",
+      "options": ["Danach hier abhaken ✓"],
+      "hint": "Wisch weiter zur Aufgabe",
+      "holdAfterSec": 3,
+      "narration": "Die jungen Krieger lernten zu Hause. [pause short] Frag diese Woche jemanden, von dem du lernst: [pause short] Was heisst für dich, zu allen Zeiten treu zu sein? [pause short] Die Aufgabe kommt gleich."
+    }
+  ]
+}

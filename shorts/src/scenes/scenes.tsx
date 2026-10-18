@@ -1,6 +1,8 @@
 import React, { useMemo } from "react";
 import { AbsoluteFill, Easing, Img, interpolate, spring, staticFile, useCurrentFrame } from "remotion";
 import { DotField } from "../components/DotField";
+import { useLook } from "../looks";
+import { Sfx, type SfxName } from "../lib/sfx";
 import { StageText } from "../components/StageText";
 import { FPS, HEIGHT, type TimelineScene, WIDTH, cueTime, findCue } from "../lib/timing";
 import { HorizonMotif } from "../motifs/Horizon";
@@ -297,6 +299,7 @@ export const DotFieldScene: React.FC<P> = ({ ts }) => {
 export const KineticScene: React.FC<P> = ({ ts }) => {
   const s = ts.scene as SceneOf<"kinetic">;
   const frame = useCurrentFrame();
+  const look = useLook();
   const t = useVoiceT(ts);
   const { cues, lead } = useMemo(() => {
     const c = s.lines.map((l) => findCue(ts.words, l));
@@ -305,31 +308,52 @@ export const KineticScene: React.FC<P> = ({ ts }) => {
   }, [s.lines, ts.words]);
   const firstLineAt = cues[0] ? ts.words[cues[0].first].start : ts.speechEndSec;
   const current = cues.reduce((acc, c, i) => (c && t >= ts.words[c.first].start ? i : acc), -1);
+  /* Jeder Look hat seinen eigenen Auftritt: Pixel-Ton, Trommel, Plopp, Wusch */
+  const sfx: Partial<Record<string, SfxName>> = { arcade: "blip", map: "drum", chat: "pop", track: "whoosh" };
+  const lineSfx = sfx[look.id];
+  // Jede Zeile so gross, dass sie auf eine Zeile passt (Anton in Versalien ≈ 0.47 × Schriftgrösse pro Zeichen)
+  const sizeOf = (line: string) => Math.round(Math.max(72, Math.min(look.id === "dawn" ? 136 : 150, 940 / (0.47 * line.length))));
 
   return (
     <AbsoluteFill>
       <StageText words={ts.words} include={lead} audioOffsetFrames={ts.audioOffsetFrames} exitAt={firstLineAt} y={700} fontSize={80} />
-      <div style={{ position: "absolute", top: 430, width: "100%", display: "flex", flexDirection: "column", alignItems: "center", gap: 18 }}>
+      <div style={{ position: "absolute", top: 430, left: 60, right: 60, display: "flex", flexDirection: "column", alignItems: "center", gap: 18 }}>
         {s.lines.map((line, i) => {
           const c = cues[i];
           const at = c ? ts.words[c.first].start : firstLineAt + i * 0.8;
-          const sp = spring({ frame: frame - ts.audioOffsetFrames - Math.round((at - 0.06) * FPS), fps: FPS, config: { damping: 14, stiffness: 210, mass: 0.7 } });
+          const startFrame = ts.audioOffsetFrames + Math.round((at - 0.06) * FPS);
+          const sp = spring({ frame: frame - startFrame, fps: FPS, config: { damping: 14, stiffness: 210, mass: 0.7 } });
+          const isCur = i === current;
+          let transform = `scale(${interpolate(sp, [0, 1], [1.35, 1])}) rotate(${interpolate(sp, [0, 1], [-3, 0])}deg)`;
+          let shadow = look.glow;
+          if (look.id === "arcade") {
+            // RGB-Versatz beim Auftritt, wie ein Glitch auf dem Bildschirm
+            const dx = (1 - sp) * 16 + (isCur ? 2.5 * Math.sin(frame / 2) : 0);
+            shadow = `${dx}px 0 0 #FF4FD8, ${-dx}px 0 0 #5CF3FF, ${look.glow}`;
+            transform = `scale(${interpolate(sp, [0, 1], [1.12, 1])}) skewX(${(1 - sp) * -12}deg)`;
+          } else if (look.id === "map") {
+            // Wie ein Stempel aufs Pergament
+            transform = `scale(${interpolate(sp, [0, 1], [1.7, 1])}) rotate(${(i % 2 ? 1.5 : -1.5) * sp}deg)`;
+          }
           return (
-            <div
-              key={i}
-              style={{
-                fontFamily: theme.font.display,
-                fontSize: 136,
-                lineHeight: 1.02,
-                textTransform: "uppercase",
-                color: i === current ? theme.gold : theme.ivory,
-                opacity: sp * (i === current ? 1 : 0.7),
-                transform: `scale(${interpolate(sp, [0, 1], [1.35, 1])}) rotate(${interpolate(sp, [0, 1], [-3, 0])}deg)`,
-                textShadow: "0 10px 40px rgba(0,0,0,0.5)",
-              }}
-            >
-              {line}
-            </div>
+            <React.Fragment key={i}>
+              {lineSfx ? <Sfx frame={startFrame} name={lineSfx} volume={look.id === "map" ? 0.45 : 0.35} /> : null}
+              <div
+                style={{
+                  fontFamily: look.display,
+                  fontSize: sizeOf(line),
+                  lineHeight: 1.02,
+                  textAlign: "center",
+                  textTransform: "uppercase",
+                  color: isCur ? look.accent : look.text,
+                  opacity: sp * (isCur ? 1 : 0.7),
+                  transform,
+                  textShadow: shadow,
+                }}
+              >
+                {line}
+              </div>
+            </React.Fragment>
           );
         })}
       </div>

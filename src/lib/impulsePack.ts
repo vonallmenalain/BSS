@@ -802,6 +802,18 @@ export const PACK_WEEKS: PackWeek[] = [
     },
     deck: [
       {
+        key: 'eigen-held',
+        kind: 'video',
+        late: true,
+        emoji: '🎮',
+        title: 'Short: Wähle deinen Helden',
+        body:
+          'Null Kampferfahrung – und trotzdem keine Angst. Mut, Stärke, Regsamkeit und dazu die ' +
+          'Spezialfähigkeit: treu zu allen Zeiten (Alma 53:20–21). Gleich danach: Welchen Wert ' +
+          'willst du leveln?',
+        ...ownShort('2026-10-19-waehle-deinen-helden', 'Alma 53:20'),
+      },
+      {
         key: 'umfrage-1',
         kind: 'umfrage',
         emoji: '💪',
@@ -846,18 +858,6 @@ export const PACK_WEEKS: PackWeek[] = [
         source: verse('Alma 53:16–17'),
       },
       {
-        key: 'eigen-short-1',
-        kind: 'video',
-        late: true,
-        emoji: '⚡',
-        title: 'Short: Anpacken statt warten',
-        body:
-          'Mutig, stark, regsam – und treu zu allen Zeiten (Alma 53:20). Regsam heisst: ' +
-          'anpacken, bevor dich jemand ruft. Die Challenge der Woche: jeden Tag eine Aufgabe, ' +
-          'ohne dass dich jemand erinnert.',
-        ...ownShort('2026-10-19-anpacken-statt-warten', 'Alma 53:20'),
-      },
-      {
         key: 'quiz-1',
         kind: 'quiz',
         emoji: '🔢',
@@ -869,6 +869,18 @@ export const PACK_WEEKS: PackWeek[] = [
             '(Alma 57:6).',
         ),
         source: verse('Alma 53:22'),
+      },
+      {
+        key: 'eigen-brief',
+        kind: 'video',
+        late: true,
+        emoji: '📱',
+        title: 'Short: Nachricht von Helaman',
+        body:
+          'Helamans Brief an Moroni als Chat: monatelang warten, fast verhungert – dann beten sie. ' +
+          'Gott spricht Frieden in ihre Seelen und schenkt Glauben und Hoffnung, noch bevor sich ' +
+          'etwas ändert (Alma 58:7–12).',
+        ...ownShort('2026-10-20-nachricht-von-helaman', 'Alma 58:10–12'),
       },
       {
         key: 'skala-1',
@@ -948,16 +960,16 @@ export const PACK_WEEKS: PackWeek[] = [
         source: verse('Alma 57:25'),
       },
       {
-        key: 'eigen-short-2',
+        key: 'eigen-lockvogel',
         kind: 'video',
         late: true,
-        emoji: '🛡️',
-        title: 'Short: Verwundet, nicht gefallen',
+        emoji: '🗺️',
+        title: 'Short: Mission Lockvogel',
         body:
-          'Nach der Schlacht waren alle 2060 verwundet – aber nicht einer war gefallen ' +
-          '(Alma 57:25). Sie hatten jedes Wort genau befolgt, und Helaman schrieb es der Macht ' +
-          'Gottes und ihrem Glauben zu. Hinfallen, umkehren, aufstehen.',
-        ...ownShort('2026-10-21-verwundet-nicht-gefallen', 'Alma 57:25'),
+          'Zweitausend junge Männer locken die stärkste Armee aus der Stadt. Drei Tage Verfolgung, ' +
+          'dann die Frage: umdrehen und kämpfen? Ihre Antwort: Gott ist mit uns. Danach fehlte ' +
+          'kein einziger (Alma 56:30–56).',
+        ...ownShort('2026-10-22-mission-lockvogel', 'Alma 56:46'),
       },
       {
         key: 'dilemma-1',
@@ -1066,16 +1078,16 @@ export const PACK_WEEKS: PackWeek[] = [
         source: FSY_OCTOBER('Letzter Sonntag'),
       },
       {
-        key: 'eigen-short-3',
+        key: 'eigen-staffel',
         kind: 'video',
         late: true,
-        emoji: '✊',
-        title: 'Short: Treu zu allen Zeiten',
+        emoji: '🤝',
+        title: 'Short: Die stärkste Waffe',
         body:
-          'Zweitausend junge Männer, keiner hatte je gekämpft – und keiner fiel. Treu sein ' +
-          'heisst: das Richtige tun, auch wenn keiner zuschaut. Mit deinem Körper, mit deinem ' +
-          'Handy, mit deinen Worten.',
-        ...ownShort('2026-10-25-treu-zu-allen-zeiten', 'Alma 53:20'),
+          'Kein Schwert, sondern ein Satz ihrer Mütter: Wenn ihr nicht zweifelt, wird Gott euch ' +
+          'befreien (Alma 56:47–48). Glaube wird weitergegeben wie ein Staffelstab – jetzt bist ' +
+          'du dran.',
+        ...ownShort('2026-10-24-die-staerkste-waffe', 'Alma 56:47'),
       },
       {
         key: 'teilen',
@@ -2102,6 +2114,45 @@ export const PACK_CORRECTIONS: readonly PackCorrection[] = [
     to: 'Frag jemanden in deinem Umfeld: «Wann hat dir das Wort der Weisheit schon geholfen?»',
   },
 ]
+
+/* ------------------------------------------------------------------ */
+/* Ersetzte Karten                                                     */
+/* ------------------------------------------------------------------ */
+
+/** Eine Karte, die das Paket nicht mehr führt. */
+export interface PackRetirement {
+  /** Die feste ID – «fsy26-w43-eigen-short-1». */
+  id: string
+  /** Wodurch ersetzt – steht als Hinweis in der Redaktion. */
+  reason: string
+}
+
+/**
+ * Karten, die das Paket nicht mehr führt.
+ *
+ * Wer sie schon eingespielt hat, hat sie noch in der Datenbank – das Paket
+ * löscht nichts. Steht eine davon noch auf «bereit», bietet die Redaktion
+ * an, sie zurückzustellen (`planPackRetirements`): Sie wird zum Entwurf und
+ * verschwindet aus dem Feed. Antworten und Fortschritt bleiben, und im
+ * Formular ist sie mit einem Klick wieder bereit.
+ */
+export const PACK_RETIRED: readonly PackRetirement[] = [
+  /* Die ersten drei eigenen Shorts sahen einander zu ähnlich: Sie machen
+     vier neuen in verschiedenen Stilen Platz, je vor der Karte, zu der
+     sie überleiten. */
+  ...['eigen-short-1', 'eigen-short-2', 'eigen-short-3'].map((key) => ({
+    id: `fsy26-w43-${key}`,
+    reason: 'Ersetzt durch vier neue eigene Shorts in verschiedenen Stilen.',
+  })),
+]
+
+/** Welche ersetzten Karten noch im Feed stehen. */
+export function planPackRetirements(
+  items: readonly Pick<ImpulseItem, 'id' | 'status'>[],
+): PackRetirement[] {
+  const byId = new Map(items.map((item) => [item.id, item]))
+  return PACK_RETIRED.filter((retirement) => byId.get(retirement.id)?.status === 'ready')
+}
 
 /** Welche Korrekturen anstehen: Inhalte, die noch genau den alten Text tragen. */
 export function planPackCorrections(

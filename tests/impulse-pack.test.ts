@@ -17,10 +17,12 @@ import {
   deckOrders,
   isPackItem,
   PACK_CORRECTIONS,
+  PACK_RETIRED,
   PACK_ID_PREFIX,
   PACK_WEEKS,
   packWeekPlans,
   planPackCorrections,
+  planPackRetirements,
   planPackItems,
 } from '../src/lib/impulsePack.ts'
 import { impulseVideoSource } from '../src/lib/impulseVideo.ts'
@@ -262,21 +264,41 @@ test('Shorts: jeder ist ein YouTube-Short der Kirche – ein Wisch, ohne Text da
   }
 })
 
-test('Eigene Shorts: drei Videodateien der App – liegen bereit und spielen ohne Text darüber', () => {
+test('Eigene Shorts: vier Videodateien der App – liegen bereit und spielen ohne Text darüber', () => {
   assert.deepEqual(
     OWN_SHORTS.map((plan) => plan.id),
-    ['fsy26-w43-eigen-short-1', 'fsy26-w43-eigen-short-2', 'fsy26-w43-eigen-short-3'],
+    ['fsy26-w43-eigen-held', 'fsy26-w43-eigen-brief', 'fsy26-w43-eigen-lockvogel', 'fsy26-w43-eigen-staffel'],
   )
+  const files = new Set<string>()
   for (const plan of OWN_SHORTS) {
     const url = new URL(plan.videoUrl!)
     // Von der eigenen Seite, aus public/shorts – die Datei muss im Repo liegen.
     assert.equal(url.origin, SITE_URL, plan.id)
     assert.match(url.pathname, /^\/shorts\/[\w-]+\.mp4$/, plan.id)
     assert.ok(fs.existsSync(path.join('public', url.pathname)), `${plan.id}: ${url.pathname} fehlt`)
+    files.add(url.pathname)
     assert.equal(plan.videoTextPage, false, plan.id)
     // Die Quelle ist die Schriftstelle, um die es geht.
     assert.ok(plan.source?.url, plan.id)
     assert.ok(plan.body.trim(), `${plan.id}: ohne Satz dazu`)
+  }
+  // Keine Videodatei liegt ungenutzt im Repo – jede kostet Platz in jedem Deploy.
+  const stored = fs.readdirSync(path.join('public', 'shorts')).map((name) => `/shorts/${name}`)
+  assert.deepEqual(stored.sort(), [...files].sort())
+})
+
+test('Eigene Shorts: jeder leitet zur Karte direkt danach über – Umfrage, Dilemma oder Aufgabe', () => {
+  const week = PACK_WEEKS.find((entry) => entry.week === '2026-W43')!
+  const next = (key: string) => week.deck[week.deck.findIndex((card) => card.key === key) + 1]?.key
+  assert.equal(next('eigen-held'), 'umfrage-1')
+  assert.equal(next('eigen-brief'), 'skala-1')
+  assert.equal(next('eigen-lockvogel'), 'dilemma-1')
+  assert.equal(next('eigen-staffel'), 'teilen')
+  // Und keiner steht direkt hinter einem anderen Video.
+  for (const plan of OWN_SHORTS) {
+    const key = plan.id.replace('fsy26-w43-', '')
+    const before = week.deck[week.deck.findIndex((card) => card.key === key) - 1]
+    assert.notEqual(before?.kind, 'video', plan.id)
   }
 })
 
@@ -431,6 +453,26 @@ test('Korrekturen: nur wo noch der alte Text steht – Bearbeitetes bleibt', () 
   assert.deepEqual(planPackCorrections([item(correction.to)]), [])
   assert.deepEqual(planPackCorrections([item('Eigener Text der Redaktion')]), [])
   assert.deepEqual(planPackCorrections([]), [])
+})
+
+test('Ersetzte Karten: das Paket führt sie nicht mehr – und stellt nur zurück, was noch bereit ist', () => {
+  const ids = new Set(PACK_WEEKS.flatMap(packWeekPlans).map((entry) => entry.id))
+  assert.ok(PACK_RETIRED.length > 0)
+  for (const retirement of PACK_RETIRED) {
+    assert.ok(!ids.has(retirement.id), `${retirement.id} steht noch im Paket`)
+    assert.ok(retirement.reason.trim(), retirement.id)
+  }
+  assert.equal(new Set(PACK_RETIRED.map((entry) => entry.id)).size, PACK_RETIRED.length, 'doppelt')
+
+  const [first, second] = PACK_RETIRED
+  const items = [
+    { id: first.id, status: 'ready' as const },
+    { id: second.id, status: 'draft' as const },
+    { id: 'fsy26-w43-umfrage-1', status: 'ready' as const },
+  ]
+  // Nur die eine, die noch im Feed steht – Entwürfe und Karten des Pakets bleiben unberührt.
+  assert.deepEqual(planPackRetirements(items), [first])
+  assert.deepEqual(planPackRetirements([]), [])
 })
 
 test('Teilen in der Woche zum Wort der Weisheit: gefragt ist jemand aus dem Umfeld', () => {

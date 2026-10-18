@@ -25,8 +25,18 @@ Claude-Sitzung (Cloud) sieht das so aus:
    die Pausen und schreibt das Timing (Untertitel, Musik-Ducking).
 3. **Rendern:** `npm run render -- <episode-id>` → `out/<episode-id>.mp4` (1080×1920). Claude schickt
    das MP4 zum Anschauen; Änderungen am Text kosten nur die geänderte Szene neu.
-4. **Freigeben:** Gefällt es, kommt es in die App (z.B. als Video-Karte mit eigener Videodatei – die
-   spielt ohne YouTube-Knöpfe).
+4. **Freigeben:** Gefällt es, kommt es in die App als Video-Karte mit eigener Videodatei
+   (`public/shorts/` der App, `ownShort` im Themenpaket) – die spielt ohne YouTube-Knöpfe.
+
+**Damit es packt:**
+
+- **Jede Folge einen anderen Look** (`look`, siehe unten) – mit eigener Musik und eigener Stimme.
+- **Die ersten zwei Sekunden entscheiden.** Gleich ein starkes Bild und ein Satz, der neugierig
+  macht: «Null Kampferfahrung.», «Eine Nachricht von der Front.», «Zweitausend Teenager. Ihr Auftrag: …».
+- **Zur nächsten Karte überleiten.** Die letzte Szene ist ein `teaser`: Sie zeigt die Karte, die im
+  Feed direkt danach kommt (Umfrage, Quiz, Dilemma, Aufgabe), und lädt mit einer Wisch-Geste ein.
+  Darum steht das Video im Paket direkt vor dieser Karte. Was die Karte fragt, verrät das Video nicht.
+- **50 bis 65 Sekunden.** Kurze Szenen, eine Aussage pro Szene, Pausen mit `[pause short]`.
 
 Vollautomatisch kann das eine **geplante Aufgabe** sein (z.B. jeden Donnerstag): Claude legt die Shorts
 der nächsten Woche an, rendert sie und schickt sie zur Freigabe – du schaust nur noch und sagst ja.
@@ -41,18 +51,23 @@ der nächsten Woche an, rendert sie und schickt sie zur Freigabe – du schaust 
   `REMOTION_BROWSER_EXECUTABLE=/opt/pw-browsers/chromium_headless_shell-1194/chrome-linux/headless_shell`
   (sonst will Remotion ihn herunterladen, und das blockt das Netz der Umgebung).
 
-**Schrifttexte prüfen:** Die Cloud-Umgebung erreicht die Website der Kirche nicht. Wörtliche Zitate
-(`quote`-Szenen) darum vor dem Veröffentlichen mit der deutschen Ausgabe abgleichen. Die Episoden vom
-19. und 21.10. kommen ohne wörtliche Zitate aus (nur Stellenangaben).
+**Schrifttexte prüfen:** Die Cloud-Umgebung erreicht die Website der Kirche nicht. Versnummern und
+Abläufe lassen sich mit dem englischen Text prüfen (npm-Paket `@bencrowder/scriptures-json`, als Daten
+gelesen); wörtliche deutsche Zitate (`quote`-Szenen) vor dem Veröffentlichen mit der deutschen Ausgabe
+abgleichen. Die Folgen der Woche 19.–25.10. sagen alles in eigenen Worten, mit Stellenangabe.
+
+**Aussprache:** Namen wie Helaman, Antipus, Antiparah oder Moroni spricht Google selbst aus. Eigene
+Aussprachen (`pronunciations`, IPA) lehnt Chirp 3 HD derzeit ab – das Skript vertont dann ohne sie.
+Beim Anschauen kurz darauf achten.
 
 ## Schnellstart
 
 ```bash
 npm install
 cp .env.example .env              # GOOGLE_TTS_API_KEY eintragen
-npm run tts -- content/2026-10-25-treu-zu-allen-zeiten.json
+npm run tts -- content/2026-10-22-mission-lockvogel.json
 npm run studio                    # Vorschau im Browser, live editierbar
-npm run render -- 2026-10-25-treu-zu-allen-zeiten
+npm run render -- 2026-10-22-mission-lockvogel
 ```
 
 Ohne Google-Key läuft alles trotzdem: Remotion schätzt das Timing, oder du vertonst offline mit Piper
@@ -94,7 +109,32 @@ nicht wörtlich vorkommen, fallen beim TTS-Lauf auf – nicht erst nach dem Rend
 | `kinetic` | Zeilen knallen nacheinander ins Bild | `lines` (je wörtlich in `narration`) |
 | `cta` | Frage der Woche + Challenge-Karte | `question`, `challenge`, `footer`, `holdAfterSec` |
 
+Szenen der Looks:
+
+| `type` | Wofür | Wichtige Felder |
+|---|---|---|
+| `hero` | Videospiel: Charakterkarte mit Pixel-Figur | `title`, `subtitle`, `select`, `chips` (`text`, `at`, `tone`), `stats` (`label`, `value`, `at`), `unlock` (`badge`, `text`, `at`) |
+| `chat` | Handy: Sperrbildschirm oder Chatverlauf | `mode` (`lock`/`thread`), `contact`, `lock`, `messages` (`kind`: `text`/`sticker`/`plan`/`divider`, `text`, `at`) – ohne `at` steht eine Nachricht schon im Verlauf |
+| `map` | Kartentisch: die Lockvogel-Taktik in Etappen | `stage` (`intro`, `plan`, `bait`, `chase`, `halt`, `battle`, `count`), `cues` (die Takte der Etappe) |
+| `relay` | Stadion: Glaube als Staffelstab | `stage` (`sword`, `run`, `mother`, `handoff`, `you`), `cues`, `line`, `chips` |
+| `teaser` | Vorschau auf die nächste Karte im Feed | `label`, `question`, `options` oder `scale`, `hint` |
+
+`at`, `cues` und `line` sind Phrasen aus der `narration`: Etwas passiert genau dann, wenn die Stimme
+es sagt. Die Validierung prüft, dass jede Phrase wörtlich vorkommt.
+
 Gemeinsam: `narration`, `sky` (0 = Nacht … 1 = goldener Morgen; wird weich interpoliert), `ref`, `captions`, `holdAfterSec`.
+
+### Looks
+
+| `look` | Stil | Musik (Vorschlag) |
+|---|---|---|
+| `dawn` | Sonnenaufgang über Hügeln (Standard) | `music/pad-dawn.mp3` |
+| `arcade` | Videospiel: Neon-Raster, Pixel-Schrift | `music/arcade.mp3` |
+| `chat` | Handy mit weichen Lichtern | `music/lofi.mp3` |
+| `map` | Pergament auf dunklem Holztisch | `music/chase.mp3` |
+| `track` | Stadion in der Abenddämmerung | `music/anthem.mp3` |
+
+Der Look färbt auch Untertitel, Quellenangabe und die `kinetic`-Zeilen (mit eigenem Auftritt und Ton).
 
 ## Wie das Timing funktioniert
 
@@ -130,8 +170,11 @@ Gemeinsam: `narration`, `sky` (0 = Nacht … 1 = goldener Morgen; wird weich int
 ## Rechte
 
 - Schriften: Anton, Inter, Cormorant Garamond – SIL Open Font License.
-- Musik `public/music/pad-dawn.mp3`: mit `npm run music` selbst synthetisiert (schreibt WAV; fürs Repo mit
-  `ffmpeg -i pad-dawn.wav -b:a 192k pad-dawn.mp3` verkleinert), frei verwendbar. Für die echte Produktion
-  besser Musik mit klarer Lizenz einsetzen.
+- Musik in `public/music/`: selbst synthetisiert, frei verwendbar. `npm run pad` macht den Sonnenaufgangs-Pad,
+  `npm run music -- --style arcade|lofi|chase|anthem --sec 75 --out x.wav` die übrigen (fürs Repo mit
+  `ffmpeg -i x.wav -b:a 128k x.mp3` verkleinert). Für die echte Produktion besser Musik mit klarer Lizenz.
+- Soundeffekte in `public/sfx/`: mit `npm run sfx` selbst synthetisiert, frei verwendbar.
+- Schriften zusätzlich: Press Start 2P (Pixel) und Caveat (Handschrift) – SIL Open Font License.
+- Emoji in Chat-Stickern kommen aus der Emoji-Schrift des Systems (im Cloud-Container: Noto Color Emoji).
 - Schrifttexte: Zitate aus der deutschen Ausgabe des Buches Mormon. Kirchliche Bilder/Videos aus der Mediathek nur gemäss
   deren Nutzungsbedingungen verwenden; kein Logo/keine Wortmarke der Kirche.

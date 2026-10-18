@@ -1762,7 +1762,7 @@ Startknopf und Angaben, und ein Tipp darauf startet von vorn.
 ### 13.15 Eigene Shorts (`shorts/`)
 
 Neben den Shorts der Kirche (13.11) entstehen eigene kurze Videos zur
-Woche: 9:16, rund 50 Sekunden, mit Stimme, Untertiteln, bei denen das
+Woche: 9:16, 50 bis 70 Sekunden, mit Stimme, Untertiteln, bei denen das
 gesprochene Wort aufleuchtet, und leiser Musik. Das Projekt liegt in
 `shorts/` – ein eigenes Remotion-Projekt mit eigenem `package.json`, nicht
 Teil des App-Builds (die App-Prüfungen und Netlify fassen es nicht an).
@@ -1771,19 +1771,39 @@ Teil des App-Builds (die App-Prüfungen und Netlify fassen es nicht an).
   Stichwörter. Daraus vertont `npm run tts` mit der Google-Stimme (Chirp 3
   HD, wie die Lernapp; Schlüssel `GOOGLE_TTS_API_KEY`), und
   `npm run render` macht das MP4. Ablauf und Einrichtung: `shorts/README.md`.
-- **Die erste Woche** (19.–25. Oktober, Helamans junge Krieger): «Anpacken
-  statt warten» (Montag, Alma 53:20), «Verwundet, nicht gefallen»
-  (Mittwoch, Alma 57:19–27) und «Treu zu allen Zeiten» (Sonntag).
+- **Jede Folge hat ihren eigenen Look** (`look` im JSON, `shorts/src/looks.tsx`):
+  Videospiel, Handy-Chat, Kartentisch, Stadion – mit eigener Musik, eigener
+  Stimme und Soundeffekten. So sehen die Shorts einer Woche nicht gleich aus.
+  Neue Szenentypen dazu: Charakterkarte, Chat, Karte in Etappen, Staffellauf.
+- **Jede Folge leitet zur nächsten Karte über.** Die letzte Szene
+  (`teaser`) zeigt die Karte, die im Feed direkt danach kommt – Umfrage,
+  Dilemma oder Aufgabe – und lädt mit einer Wisch-Geste dorthin ein. Der
+  Einstieg weckt in den ersten zwei Sekunden Neugier: eine Figur mit
+  «Kampferfahrung 0», eine Nachricht von der Front, ein Auftrag als Lockvogel,
+  ein Schwert, das keins ist.
+- **Die Woche** 19.–25. Oktober (Helamans junge Krieger), vier Folgen in der
+  Reihenfolge des Feeds:
+  - «Wähle deinen Helden» (Videospiel, Alma 53:16–21, 56:47) vor der Umfrage
+    «Welche Eigenschaft hättest du gern mehr?» – Platz 0,5.
+  - «Nachricht von Helaman» (Chat, Alma 58:4–40: warten, beten, Frieden, Manti)
+    vor der Skala «An wie vielen Tagen hast du gebetet?» – 3,5.
+  - «Mission Lockvogel» (Kartentisch, Alma 56:30–56) vor «Was würdest du
+    tun?» – 7,5.
+  - «Die stärkste Waffe» (Stadion, Alma 53:11–17, 56:47–48, 57:21) vor der
+    Teilen-Aufgabe – 12,5.
 - **In der App** sind sie Video-Karten der Woche, nachgereicht wie die
-  Shorts der Kirche (`late`, `ownShort`): «Anpacken statt warten» nach der
-  Karte zu den vergrabenen Schwertern (Platz 2,5), «Verwundet, nicht
-  gefallen» nach «Fakt oder Mythos» (7,5), «Treu zu allen Zeiten» nach der
-  Frage der Woche (12,5). Im Kasten «Themenpaket» der Redaktion holt
-  «Nachholen» sie in eine schon eingespielte Woche, ohne dass eine Karte
-  rückt.
+  Shorts der Kirche (`late`, `ownShort`). Im Kasten «Themenpaket» der
+  Redaktion holt «Nachholen» sie in eine schon eingespielte Woche, ohne dass
+  eine Karte rückt.
+- **Die ersten drei eigenen Shorts** («Anpacken statt warten», «Verwundet,
+  nicht gefallen», «Treu zu allen Zeiten») sahen einander zu ähnlich und
+  sind ersetzt. Das Paket führt sie nicht mehr (`PACK_RETIRED`); wer sie
+  schon eingespielt hat, bekommt in der Redaktion den Kasten «Ersetzte
+  Karten zurückstellen» – ein Klick macht sie zum Entwurf, nichts wird
+  gelöscht. Ihre Episoden bleiben in `shorts/content/` als Vorlage.
 - **Die Dateien** liegen unter `public/shorts/` und kommen von der eigenen
   Seite (`https://bss.alae.app/shorts/…mp4`) – für das Netz verkleinert
-  (H.264, CRF 27, `faststart`, 4–8 MB je Video). Der Service Worker legt
+  (H.264, CRF 27, `faststart`, rund 5–10 MB je Video). Der Service Worker legt
   sie nicht in den Vorrat (nur `js`, `css`, Bilder, Schriften). Live sind
   sie erst, wenn der Deploy veröffentlicht ist.
 - **Der eigene Player** (`FileVideo` in `ImpulseVideoPlayer`): Eine

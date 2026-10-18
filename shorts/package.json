@@ -10,19 +10,23 @@
   "scripts": {
     "studio": "remotion studio src/index.ts",
     "tts": "tsx scripts/tts.ts",
-    "music": "tsx scripts/make-pad.ts",
+    "music": "tsx scripts/make-music.ts",
     "render": "tsx scripts/render.ts",
     "still": "tsx scripts/render.ts --still",
-    "typecheck": "tsc --noEmit"
+    "typecheck": "tsc --noEmit",
+    "pad": "tsx scripts/make-pad.ts",
+    "sfx": "tsx scripts/make-sfx.ts"
   },
   "dependencies": {
     "@fontsource/anton": "^5.1.0",
+    "@fontsource/caveat": "^5.3.0",
     "@fontsource/cormorant-garamond": "^5.1.0",
     "@fontsource/inter": "^5.1.0",
+    "@fontsource/press-start-2p": "^5.3.0",
+    "@remotion/bundler": "4.0.536",
     "@remotion/cli": "4.0.536",
     "@remotion/fonts": "4.0.536",
     "@remotion/renderer": "4.0.536",
-    "@remotion/bundler": "4.0.536",
     "@remotion/transitions": "4.0.536",
     "react": "^19.0.0",
     "react-dom": "^19.0.0",

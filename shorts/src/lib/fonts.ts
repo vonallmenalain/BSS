@@ -13,6 +13,9 @@ const fonts: Array<{ family: string; file: string; weight: string; style?: "norm
   { family: "Inter", file: "inter-latin-800-normal.woff2", weight: "800" },
   { family: "Cormorant Garamond", file: "cormorant-garamond-latin-500-italic.woff2", weight: "500", style: "italic" },
   { family: "Cormorant Garamond", file: "cormorant-garamond-latin-600-italic.woff2", weight: "600", style: "italic" },
+  /* Pixel-Schrift für den Game-Look, Handschrift für Notizen auf der Karte */
+  { family: "Press Start 2P", file: "press-start-2p-latin-400-normal.woff2", weight: "400" },
+  { family: "Caveat", file: "caveat-latin-700-normal.woff2", weight: "700" },
 ];
 
 export const fontsReady = Promise.all(

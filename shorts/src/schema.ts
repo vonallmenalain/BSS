@@ -67,6 +67,67 @@ export const sceneSchema = z.discriminatedUnion("type", [
     challenge: z.object({ label: z.string(), text: z.string() }).optional(),
     footer: z.string().optional(),
   }),
+  /*
+   * Ab hier die Szenen der Looks (siehe src/looks.tsx). Alle Zeitpunkte sind Phrasen aus der
+   * narration (`at`, `cues`): Etwas passiert genau dann, wenn die Stimme es sagt.
+   */
+  base.extend({
+    /** Game-Look: Charakterkarte mit Pixel-Figur, Chips, Wertebalken und freischaltbarer Fähigkeit */
+    type: z.literal("hero"),
+    title: z.string().min(1),
+    subtitle: z.string().optional(),
+    /** Pfeile links und rechts wie bei der Charakterwahl */
+    select: z.boolean().default(false),
+    /** Ohne `at` stehen Chips und Werte schon zu Beginn da */
+    chips: z.array(z.object({ text: z.string().min(1), at: z.string().min(1).optional(), tone: z.enum(["zero", "plus"]).default("plus") })).max(6).default([]),
+    stats: z.array(z.object({ label: z.string().min(1), value: z.number().min(0).max(100), at: z.string().min(1).optional() })).max(4).default([]),
+    unlock: z.object({ badge: z.string().min(1), text: z.string().min(1), at: z.string().min(1) }).optional(),
+  }),
+  base.extend({
+    /** Handy: Sperrbildschirm mit Benachrichtigung oder Chatverlauf */
+    type: z.literal("chat"),
+    mode: z.enum(["lock", "thread"]).default("thread"),
+    contact: z.string().min(1),
+    contactSub: z.string().optional(),
+    lock: z.object({ time: z.string(), date: z.string(), title: z.string(), preview: z.string() }).optional(),
+    messages: z
+      .array(
+        z.object({
+          kind: z.enum(["text", "sticker", "plan", "divider"]).default("text"),
+          text: z.string().default(""),
+          /** Phrase, bei der die Nachricht ankommt. Ohne `at` steht sie schon im Verlauf. */
+          at: z.string().optional(),
+          meta: z.string().optional(),
+        }),
+      )
+      .max(12)
+      .default([]),
+  }),
+  base.extend({
+    /** Kartentisch: die Lockvogel-Taktik aus Alma 56 in Etappen; `cues` sind die Takte der Etappe */
+    type: z.literal("map"),
+    stage: z.enum(["intro", "plan", "bait", "chase", "halt", "battle", "count"]),
+    cues: z.array(z.string().min(1)).max(8).default([]),
+    hud: z.string().optional(),
+  }),
+  base.extend({
+    /** Stadion: Glaube als Staffelstab – von den Eltern zu den Söhnen zu dir */
+    type: z.literal("relay"),
+    stage: z.enum(["sword", "run", "mother", "handoff", "you"]),
+    cues: z.array(z.string().min(1)).max(6).default([]),
+    /** Grosse Zeile im Bild; muss wörtlich in der narration stehen und erscheint, wenn sie gesprochen wird */
+    line: z.string().optional(),
+    chips: z.array(z.string().min(1)).max(4).default([]),
+  }),
+  base.extend({
+    /** Vorschau auf die nächste Karte im Feed – damit das Video zur Umfrage oder Aufgabe überleitet */
+    type: z.literal("teaser"),
+    label: z.string().min(1),
+    question: z.string().min(1),
+    options: z.array(z.string().min(1)).max(4).default([]),
+    scale: z.object({ min: z.number(), max: z.number(), minLabel: z.string(), maxLabel: z.string() }).optional(),
+    hint: z.string().default("Wisch weiter"),
+  }),
 ]);
 
 export const episodeSchema = z
@@ -76,6 +137,8 @@ export const episodeSchema = z
     date: z.string().regex(/^\d{4}-\d{2}-\d{2}$/),
     series: z.string().optional(),
     brand: z.object({ name: z.string(), label: z.string().optional() }),
+    /** Visueller Stil der ganzen Episode (src/looks.tsx) */
+    look: z.enum(["dawn", "arcade", "chat", "map", "track"]).default("dawn"),
     voice: z.object({
       provider: z.enum(["google", "piper"]).default("google"),
       languageCode: z.string().default("de-DE"),
@@ -111,6 +174,14 @@ export const episodeSchema = z
       }
       if (s.type === "kinetic") s.lines.forEach((l, j) => mustContain.push([`lines.${j}`, l]));
       if (s.type === "illustration" && s.cue) mustContain.push(["cue", s.cue]);
+      if (s.type === "hero") {
+        s.chips.forEach((c, j) => c.at && mustContain.push([`chips.${j}.at`, c.at]));
+        s.stats.forEach((c, j) => c.at && mustContain.push([`stats.${j}.at`, c.at]));
+        if (s.unlock) mustContain.push(["unlock.at", s.unlock.at]);
+      }
+      if (s.type === "chat") s.messages.forEach((m, j) => m.at && mustContain.push([`messages.${j}.at`, m.at]));
+      if (s.type === "map" || s.type === "relay") s.cues.forEach((c, j) => mustContain.push([`cues.${j}`, c]));
+      if (s.type === "relay" && s.line) mustContain.push(["line", s.line]);
       for (const [field, text] of mustContain) {
         if (!spoken.includes(normalize(text))) {
           ctx.addIssue({
