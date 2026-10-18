@@ -39,10 +39,13 @@ import type {
  * (`order`, über alle Arten hinweg). Jede Woche trägt ihr eigenes
  * Wappen, das sich mit jeder geschafften Karte aufbaut.
  *
- * **Shorts der Kirche.** Die Woche zu Helamans jungen Kriegern trägt
- * dazu YouTube-Shorts vom offiziellen Kanal der Kirche – nachgereicht
+ * **Eigene Shorts.** Die Woche zu Helamans jungen Kriegern trägt dazu
+ * eigene kurze Videos – vor jedem interaktiven Element eines, nachgereicht
  * (`late`), weil das Paket schon eingespielt war: Sie schieben sich
  * zwischen die Karten, ohne deren Platz zu verschieben (`deckOrders`).
+ * Die YouTube-Shorts der Kirche, die zuerst dort standen, hat die Redaktion
+ * gelöscht; sie stehen als ersetzt im Deck (`retired`), damit kein Platz
+ * rückt und «Einspielen» sie nicht wieder anbietet.
  *
  * **Alles aus offiziellem Material der Kirche.** Die Grundlage sind die
  * Lektionen im Heft «Für eine starke Jugend», der Wegweiser «Für eine
@@ -841,6 +844,7 @@ export const PACK_WEEKS: PackWeek[] = [
       },
       {
         key: 'short-1',
+        retired: 'Von der Redaktion gelöscht – die Woche kommt mit den eigenen Shorts aus.',
         kind: 'video',
         late: true,
         emoji: '🪨',
@@ -925,6 +929,7 @@ export const PACK_WEEKS: PackWeek[] = [
       },
       {
         key: 'short-2',
+        retired: 'Von der Redaktion gelöscht – die Woche kommt mit den eigenen Shorts aus.',
         kind: 'video',
         late: true,
         emoji: '🙏',
@@ -974,6 +979,7 @@ export const PACK_WEEKS: PackWeek[] = [
       },
       {
         key: 'short-3',
+        retired: 'Von der Redaktion gelöscht – die Woche kommt mit den eigenen Shorts aus.',
         kind: 'video',
         late: true,
         emoji: '🌅',
@@ -1045,6 +1051,7 @@ export const PACK_WEEKS: PackWeek[] = [
       },
       {
         key: 'short-4',
+        retired: 'Von der Redaktion gelöscht – die Woche kommt mit den eigenen Shorts aus.',
         kind: 'video',
         late: true,
         emoji: '🔦',
@@ -1097,6 +1104,7 @@ export const PACK_WEEKS: PackWeek[] = [
       },
       {
         key: 'short-5',
+        retired: 'Von der Redaktion gelöscht – die Woche kommt mit den eigenen Shorts aus.',
         kind: 'video',
         late: true,
         emoji: '🔄',
@@ -1133,6 +1141,7 @@ export const PACK_WEEKS: PackWeek[] = [
       },
       {
         key: 'short-6',
+        retired: 'Von der Redaktion gelöscht – die Woche kommt mit den eigenen Shorts aus.',
         kind: 'video',
         late: true,
         emoji: '🤲',

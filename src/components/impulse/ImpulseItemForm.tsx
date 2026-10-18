@@ -5,6 +5,7 @@ import { useAuth } from '@/contexts/AuthContext'
 import { useToast } from '@/contexts/ToastContext'
 import { cn } from '@/lib/utils'
 import { allowsMultiple, formatWeekRange, readyProblems } from '@/lib/impulse'
+import { isPackItem } from '@/lib/impulsePack'
 import { ImpulseItemFields } from '@/components/impulse/ImpulseItemFields'
 import {
   deleteImpulseItem,
@@ -270,20 +271,29 @@ export function ImpulseItemForm({
         onConfirm={() => void remove()}
         title="Inhalt entfernen?"
         message={
-          scoreIds.length > 0 ? (
-            <>
-              «{input.title || 'Ohne Titel'}» wird gelöscht – mitsamt der Rangliste (
-              {scoreIds.length === 1 ? 'ein Eintrag' : `${scoreIds.length} Einträge`}).
-            </>
-          ) : attachedCount > 0 ? (
-            <>
-              «{input.title || 'Ohne Titel'}» wird gelöscht – mitsamt{' '}
-              {attachedCount === 1 ? 'der einen Antwort' : `den ${attachedCount} Antworten`}, die
-              dazu abgegeben wurden.
-            </>
-          ) : (
-            <>«{input.title || 'Ohne Titel'}» wird gelöscht.</>
-          )
+          <>
+            {scoreIds.length > 0 ? (
+              <>
+                «{input.title || 'Ohne Titel'}» wird gelöscht – mitsamt der Rangliste (
+                {scoreIds.length === 1 ? 'ein Eintrag' : `${scoreIds.length} Einträge`}).
+              </>
+            ) : attachedCount > 0 ? (
+              <>
+                «{input.title || 'Ohne Titel'}» wird gelöscht – mitsamt{' '}
+                {attachedCount === 1 ? 'der einen Antwort' : `den ${attachedCount} Antworten`},
+                die dazu abgegeben wurden.
+              </>
+            ) : (
+              <>«{input.title || 'Ohne Titel'}» wird gelöscht.</>
+            )}
+            {/* Eine gelöschte Karte fehlt dem Themenpaket – «Einspielen» holt sie wieder. */}
+            {itemId && isPackItem(itemId) && (
+              <span className="mt-2 block">
+                Die Karte stammt aus dem Themenpaket: «Einspielen» bietet sie danach wieder an.
+                Soll sie nur aus dem Feed verschwinden, stell sie auf «Entwurf».
+              </span>
+            )}
+          </>
         }
         confirmLabel="Entfernen"
         danger
