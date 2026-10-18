@@ -59,7 +59,7 @@ const PALETTE: Record<string, string> = {
   G: "#F6C86A",
 };
 
-const Sprite: React.FC<{ x: number; y: number; px: number; t: number; gold: number }> = ({ x, y, px, t, gold }) => {
+export const Sprite: React.FC<{ x: number; y: number; px: number; t: number; gold: number }> = ({ x, y, px, t, gold }) => {
   const frame = useCurrentFrame();
   const cells = useMemo(
     () =>

@@ -1,0 +1,63 @@
+{
+  "id": "2026-10-21-fakt-oder-mythos",
+  "title": "Fakt oder Mythos?",
+  "date": "2026-10-21",
+  "series": "Für eine starke Jugend · Oktober",
+  "brand": {
+    "name": "AntiDoom"
+  },
+  "look": "show",
+  "voice": {
+    "provider": "google",
+    "languageCode": "de-DE",
+    "name": "de-DE-Chirp3-HD-Zephyr",
+    "speakingRate": 1.03
+  },
+  "music": {
+    "src": "music/anthem.mp3",
+    "volume": 0.3,
+    "duckTo": 0.08
+  },
+  "scenes": [
+    {
+      "id": "motto",
+      "type": "kinetic",
+      "ref": "Für eine starke Jugend · Oktober 2026",
+      "lines": [
+        "Ich bin ein geliebter",
+        "Sohn Gottes",
+        "und er hat eine Arbeit",
+        "für mich."
+      ],
+      "narration": "Ein Satz für jeden Sonntag im Kollegium: [pause short] Ich bin ein geliebter Sohn Gottes [pause short] und er hat eine Arbeit für mich."
+    },
+    {
+      "id": "soares",
+      "type": "quote",
+      "ref": "Elder Ulisses Soares · Oktober 2026",
+      "quote": "Gott kennt uns und weiss, wie er uns in jedem Augenblick unseres Lebens am besten helfen kann.",
+      "narration": "Elder Ulisses Soares sagt dazu: [pause short] Gott kennt uns und weiss, wie er uns in jedem Augenblick unseres Lebens am besten helfen kann."
+    },
+    {
+      "id": "test",
+      "type": "buzzer",
+      "at": "Zum Beispiel",
+      "statement": "Die jungen Krieger überstanden ihre Schlachten ohne einen Kratzer.",
+      "holdAfterSec": 3.2,
+      "narration": "Heisst das: Wer Gott vertraut, bleibt von allem verschont? [pause short] Zum Beispiel: [pause short] Die jungen Krieger überstanden ihre Schlachten ohne einen Kratzer."
+    },
+    {
+      "id": "weiter",
+      "type": "teaser",
+      "label": "Fakt oder Mythos?",
+      "question": "«Die jungen Krieger überstanden ihre Schlachten ohne einen Kratzer.»",
+      "options": [
+        "Fakt",
+        "Mythos"
+      ],
+      "hint": "Wisch weiter und drück",
+      "holdAfterSec": 2.2,
+      "narration": "Fakt oder Mythos? [pause short] Drück gleich auf der nächsten Karte."
+    }
+  ]
+}

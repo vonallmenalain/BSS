@@ -3,7 +3,7 @@
   "title": "Wähle deinen Helden",
   "date": "2026-10-19",
   "series": "Für eine starke Jugend · Oktober",
-  "brand": { "name": "AntiDoom", "label": "Folge 1/4" },
+  "brand": { "name": "AntiDoom" },
   "look": "arcade",
   "voice": { "provider": "google", "languageCode": "de-DE", "name": "de-DE-Chirp3-HD-Puck", "speakingRate": 1.05 },
   "music": { "src": "music/arcade.mp3", "volume": 0.3, "duckTo": 0.08 },

@@ -1,0 +1,64 @@
+{
+  "id": "2026-10-24-dein-monat",
+  "title": "Dein Monat",
+  "date": "2026-10-24",
+  "series": "Für eine starke Jugend · Oktober",
+  "brand": {
+    "name": "AntiDoom"
+  },
+  "look": "journal",
+  "voice": {
+    "provider": "google",
+    "languageCode": "de-DE",
+    "name": "de-DE-Chirp3-HD-Aoede",
+    "speakingRate": 1.0
+  },
+  "music": {
+    "src": "music/lofi.mp3",
+    "volume": 0.3,
+    "duckTo": 0.08
+  },
+  "scenes": [
+    {
+      "id": "monat",
+      "type": "journal",
+      "title": "Oktober: Dein Körper ist heilig",
+      "holdAfterSec": 0.8,
+      "entries": [
+        {
+          "text": "Das Wort der Weisheit",
+          "at": "Das Wort der Weisheit",
+          "icon": "runner"
+        },
+        {
+          "text": "Das Gesetz der Keuschheit",
+          "at": "Das Gesetz der Keuschheit",
+          "icon": "shield"
+        },
+        {
+          "text": "Bündnisse halten",
+          "at": "Bündnisse halten",
+          "icon": "sword"
+        }
+      ],
+      "narration": "Ein Monat, ein Thema: [pause short] Dein Körper ist heilig. [pause short] Das Wort der Weisheit. [pause short] Das Gesetz der Keuschheit. [pause short] Und Bündnisse halten, wie die jungen Krieger."
+    },
+    {
+      "id": "erretter",
+      "type": "kinetic",
+      "lines": [
+        "Der Erretter."
+      ],
+      "narration": "Und bei allem hilft dir einer: [pause short] der Erretter."
+    },
+    {
+      "id": "weiter",
+      "type": "teaser",
+      "label": "Frage",
+      "question": "Was hast du diesen Monat gelernt: Wie hilft dir der Erretter, deinen Körper heiligzuhalten?",
+      "hint": "Wisch weiter und schreib's auf",
+      "holdAfterSec": 2.5,
+      "narration": "Was hast du diesen Monat gelernt? [pause short] Ein Gedanke genügt. [pause short] Schreib ihn auf der nächsten Karte auf."
+    }
+  ]
+}

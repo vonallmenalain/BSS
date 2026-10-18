@@ -193,6 +193,27 @@ test('Minispiel: steht im Feed ganz zuletzt – auch hinter der Teilen-Aufgabe',
   )
 })
 
+test('Minispiel: ein Video mit Platz zwischen Teilen-Aufgabe und Spiel führt ins Spiel ein', () => {
+  const cards = [
+    { id: 'spiel', kind: 'spiel' as const, order: 14 },
+    { id: 'trailer', kind: 'video' as const, order: 13.5 },
+    { id: 'teilen', kind: 'teilen' as const, order: 13 },
+    { id: 'neu', kind: 'video' as const, order: 15 },
+    { id: 'quiz', kind: 'quiz' as const, order: 12 },
+    { id: 'impuls', kind: 'impuls' as const, order: 0 },
+  ]
+  assert.deepEqual(
+    deckOrder(cards).map((card) => card.id),
+    // Ein Video, das die Redaktion neu anhängt (Platz hinter dem Spiel), bleibt vor der Teilen-Aufgabe.
+    ['impuls', 'quiz', 'neu', 'teilen', 'trailer', 'spiel'],
+  )
+  // Ohne Spiel gibt es nichts einzuführen – das Video steht bei den Karten.
+  assert.deepEqual(
+    deckOrder(cards.filter((card) => card.kind !== 'spiel')).map((card) => card.id),
+    ['impuls', 'quiz', 'trailer', 'neu', 'teilen'],
+  )
+})
+
 test('Minispiel: bereit erst mit einem Spiel, das die App kennt', () => {
   assert.deepEqual(readyProblems({ kind: 'spiel', title: 'Gut für dich?', game: 'sortieren' }), [])
   assert.deepEqual(readyProblems({ kind: 'spiel', title: 'Gut für dich?', game: null }), [

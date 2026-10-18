@@ -1,0 +1,70 @@
+{
+  "id": "2026-10-19-vergrabene-schwerter",
+  "title": "Vergrabene Schwerter",
+  "date": "2026-10-19",
+  "series": "Für eine starke Jugend · Oktober",
+  "brand": {
+    "name": "AntiDoom"
+  },
+  "look": "dawn",
+  "voice": {
+    "provider": "google",
+    "languageCode": "de-DE",
+    "name": "de-DE-Chirp3-HD-Charon",
+    "speakingRate": 1.02
+  },
+  "music": {
+    "src": "music/pad-dawn.mp3",
+    "volume": 0.3,
+    "duckTo": 0.08
+  },
+  "scenes": [
+    {
+      "id": "begraben",
+      "type": "illustration",
+      "motif": "swords",
+      "phase": "bury",
+      "sky": 0.15,
+      "ref": "Alma 24:17",
+      "narration": "Ein ganzes Volk vergräbt seine Schwerter. [pause short] Tief in der Erde. [pause short] Mit Absicht."
+    },
+    {
+      "id": "bund",
+      "type": "kinetic",
+      "sky": 0.35,
+      "ref": "Alma 24:18",
+      "lines": [
+        "Lieber selbst sterben,",
+        "als noch einmal töten."
+      ],
+      "narration": "Das war ihr Bund mit Gott: [pause short] lieber selbst sterben, [pause short] als noch einmal töten."
+    },
+    {
+      "id": "soehne",
+      "type": "illustration",
+      "motif": "swords",
+      "phase": "rise",
+      "cue": "treten ihre Söhne an",
+      "sky": 0.6,
+      "ref": "Alma 53:13–18",
+      "holdAfterSec": 0.6,
+      "narration": "Jahre später ist das Land in Gefahr. [pause short] Die Väter halten ihren Bund. [pause short] Also treten ihre Söhne an."
+    },
+    {
+      "id": "weiter",
+      "type": "teaser",
+      "sky": 0.85,
+      "label": "Quiz",
+      "question": "Wie viele junge Männer zogen anfangs mit Helaman los?",
+      "options": [
+        "200",
+        "2000",
+        "20 000",
+        "60"
+      ],
+      "hint": "Wisch weiter und rate",
+      "holdAfterSec": 2.5,
+      "narration": "Wie viele waren es, was meinst du? [pause short] Rate auf der nächsten Karte."
+    }
+  ]
+}

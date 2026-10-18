@@ -1,0 +1,84 @@
+{
+  "id": "2026-10-23-alle-verwundet",
+  "title": "Alle verwundet, keiner gefallen",
+  "date": "2026-10-23",
+  "series": "Für eine starke Jugend · Oktober",
+  "brand": {
+    "name": "AntiDoom"
+  },
+  "look": "map",
+  "voice": {
+    "provider": "google",
+    "languageCode": "de-DE",
+    "name": "de-DE-Chirp3-HD-Iapetus",
+    "speakingRate": 1.03
+  },
+  "music": {
+    "src": "music/chase.mp3",
+    "volume": 0.3,
+    "duckTo": 0.08
+  },
+  "scenes": [
+    {
+      "id": "liste",
+      "type": "ledger",
+      "title": "Kumeni – nach der Schlacht",
+      "ref": "Alma 57:19–25",
+      "holdAfterSec": 0.8,
+      "lines": [
+        {
+          "label": "Im Kampf",
+          "value": "2060",
+          "at": "Zweitausendsechzig im Kampf"
+        },
+        {
+          "label": "Ohnmächtig",
+          "value": "200",
+          "at": "Zweihundert ohnmächtig"
+        },
+        {
+          "label": "Verwundet",
+          "value": "alle",
+          "at": "Alle verwundet"
+        },
+        {
+          "label": "Gefallen",
+          "value": "0",
+          "at": "keiner",
+          "mark": "circle"
+        }
+      ],
+      "narration": "Nach der Schlacht bei Kumeni macht Helaman eine Liste. [pause short] Zweitausendsechzig im Kampf. [pause short] Zweihundert ohnmächtig. [pause short] Alle verwundet. [pause short] Gefallen: [pause short] keiner."
+    },
+    {
+      "id": "warum",
+      "type": "kinetic",
+      "ref": "Alma 57:21, 26",
+      "lines": [
+        "Genau befolgt.",
+        "Gottes Macht."
+      ],
+      "narration": "Sie hatten jeden Befehl genau befolgt. [pause short] Und Helaman sagt: [pause short] Das war Gottes Macht, wegen ihres grossen Glaubens."
+    },
+    {
+      "id": "schatz",
+      "type": "treasure",
+      "target": "Alma 53:20",
+      "cues": [
+        "Was hat sie so gemacht",
+        "Alma 53:20"
+      ],
+      "holdAfterSec": 0.8,
+      "narration": "Was hat sie so gemacht? [pause short] Die Antwort ist versteckt: [pause short] in Alma 53:20."
+    },
+    {
+      "id": "weiter",
+      "type": "teaser",
+      "label": "Suchfrage",
+      "question": "Schlag Alma 53:20 auf: Welche drei Eigenschaften machten die jungen Krieger «überaus tapfer»?",
+      "hint": "Wisch weiter und such",
+      "holdAfterSec": 2.5,
+      "narration": "Drei Eigenschaften. [pause short] Schlag nach und finde sie auf der nächsten Karte."
+    }
+  ]
+}

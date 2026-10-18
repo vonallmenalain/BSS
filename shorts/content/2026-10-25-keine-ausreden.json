@@ -1,0 +1,81 @@
+{
+  "id": "2026-10-25-keine-ausreden",
+  "title": "Keine Ausreden!",
+  "date": "2026-10-25",
+  "series": "Für eine starke Jugend · Oktober",
+  "brand": {
+    "name": "AntiDoom"
+  },
+  "look": "arcade",
+  "voice": {
+    "provider": "google",
+    "languageCode": "de-DE",
+    "name": "de-DE-Chirp3-HD-Puck",
+    "speakingRate": 1.05
+  },
+  "music": {
+    "src": "music/arcade.mp3",
+    "volume": 0.3,
+    "duckTo": 0.08
+  },
+  "scenes": [
+    {
+      "id": "lauf",
+      "type": "jumper",
+      "holdAfterSec": 0.5,
+      "hurdles": [
+        {
+          "emoji": "⏰",
+          "label": "Später",
+          "at": "Später"
+        },
+        {
+          "emoji": "🛋️",
+          "label": "Keine Lust",
+          "at": "Keine Lust"
+        },
+        {
+          "emoji": "📱",
+          "label": "Nur noch kurz",
+          "at": "Nur noch kurz"
+        }
+      ],
+      "pickups": [
+        {
+          "emoji": "🙏",
+          "label": "Beten",
+          "at": "Beten"
+        },
+        {
+          "emoji": "📖",
+          "label": "Schriften",
+          "at": "Schriften"
+        },
+        {
+          "emoji": "🧹",
+          "label": "Ämtli",
+          "at": "Ämtli"
+        }
+      ],
+      "narration": "Zum Schluss der Woche: [pause short] Keine Ausreden! [pause short] Spring über Später, Keine Lust und Nur noch kurz. [pause short] Und sammle Beten, Schriften und Ämtli ein."
+    },
+    {
+      "id": "regeln",
+      "type": "kinetic",
+      "lines": [
+        "Drei Treffer.",
+        "Wer schafft am meisten?"
+      ],
+      "narration": "Drei Treffer, dann ist Schluss. [pause short] Wer schafft am meisten?"
+    },
+    {
+      "id": "weiter",
+      "type": "teaser",
+      "label": "Minispiel",
+      "question": "Keine Ausreden! Tippen lässt dich springen, länger drücken springt höher.",
+      "hint": "Wisch weiter und spiel",
+      "holdAfterSec": 2.5,
+      "narration": "Gleich geht's los. [pause short] Wisch weiter und spiel mit."
+    }
+  ]
+}

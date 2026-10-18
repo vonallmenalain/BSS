@@ -41,6 +41,8 @@ export const sceneSchema = z.discriminatedUnion("type", [
      * Oktober-Episode («Also traten» bzw. «Helaman fragt») und nimmt sonst eine feste Zeit.
      */
     cue: z.string().optional(),
+    /** Nur `swords`: «bury» = Schwerter versinken, ohne Söhne; «rise» = Schwerter liegen schon, die Söhne steigen am `cue` auf. */
+    phase: z.enum(["both", "bury", "rise"]).default("both"),
   }),
   base.extend({
     type: z.literal("quote"),
@@ -120,6 +122,62 @@ export const sceneSchema = z.discriminatedUnion("type", [
     chips: z.array(z.string().min(1)).max(4).default([]),
   }),
   base.extend({
+    /** Detektiv: Gegenüberstellung – ein Lichtkegel wandert zu der Figur, die gerade genannt wird */
+    type: z.literal("lineup"),
+    title: z.string().optional(),
+    suspects: z
+      .array(z.object({ name: z.string().min(1), figure: z.enum(["captain", "dream", "enemies", "mothers"]), at: z.string().min(1) }))
+      .min(2)
+      .max(4),
+  }),
+  base.extend({
+    /** Quizshow: Aussage auf der Leinwand, zwei Buzzer, Countdown – ohne Auflösung */
+    type: z.literal("buzzer"),
+    statement: z.string().min(1),
+    /** Phrase, bei der die Aussage erscheint */
+    at: z.string().optional(),
+    buttons: z.tuple([z.string(), z.string()]).default(["Fakt", "Mythos"]),
+  }),
+  base.extend({
+    /** Game-Look: Wortblöcke fallen durcheinander in einen Schacht (wie beim Vers-Puzzle) */
+    type: z.literal("blocks"),
+    /** In richtiger Reihenfolge – die Szene mischt sie selbst */
+    words: z.array(z.string().min(1)).min(3).max(14),
+    /** «fall»: Blöcke fallen nacheinander; «stack»: liegen schon da und zittern */
+    mode: z.enum(["fall", "stack"]).default("fall"),
+  }),
+  base.extend({
+    /** Kartentisch: handgeschriebene Liste, Zeile für Zeile */
+    type: z.literal("ledger"),
+    title: z.string().min(1),
+    lines: z
+      .array(z.object({ label: z.string().min(1), value: z.string().min(1), at: z.string().min(1), mark: z.enum(["check", "cross", "circle", "none"]).default("none") }))
+      .min(1)
+      .max(6),
+  }),
+  base.extend({
+    /** Kartentisch: Schatzkarte – der Weg führt zu einer Schriftstelle */
+    type: z.literal("treasure"),
+    target: z.string().min(1),
+    /** [Weg beginnt, X erscheint] */
+    cues: z.array(z.string().min(1)).max(2).default([]),
+  }),
+  base.extend({
+    /** Notizbuch: Einträge erscheinen handgeschrieben, mit kleinen Zeichnungen */
+    type: z.literal("journal"),
+    title: z.string().min(1),
+    entries: z
+      .array(z.object({ text: z.string().min(1), at: z.string().min(1), icon: z.enum(["runner", "shield", "sword", "heart", "star"]) }))
+      .min(1)
+      .max(4),
+  }),
+  base.extend({
+    /** Game-Look: die Pixel-Figur rennt, springt über Ausreden und sammelt Aufgaben ein */
+    type: z.literal("jumper"),
+    hurdles: z.array(z.object({ emoji: z.string(), label: z.string(), at: z.string().min(1) })).max(5).default([]),
+    pickups: z.array(z.object({ emoji: z.string(), label: z.string(), at: z.string().min(1) })).max(5).default([]),
+  }),
+  base.extend({
     /** Vorschau auf die nächste Karte im Feed – damit das Video zur Umfrage oder Aufgabe überleitet */
     type: z.literal("teaser"),
     label: z.string().min(1),
@@ -138,7 +196,7 @@ export const episodeSchema = z
     series: z.string().optional(),
     brand: z.object({ name: z.string(), label: z.string().optional() }),
     /** Visueller Stil der ganzen Episode (src/looks.tsx) */
-    look: z.enum(["dawn", "arcade", "chat", "map", "track"]).default("dawn"),
+    look: z.enum(["dawn", "arcade", "chat", "map", "track", "noir", "show", "journal"]).default("dawn"),
     voice: z.object({
       provider: z.enum(["google", "piper"]).default("google"),
       languageCode: z.string().default("de-DE"),
@@ -182,6 +240,12 @@ export const episodeSchema = z
       if (s.type === "chat") s.messages.forEach((m, j) => m.at && mustContain.push([`messages.${j}.at`, m.at]));
       if (s.type === "map" || s.type === "relay") s.cues.forEach((c, j) => mustContain.push([`cues.${j}`, c]));
       if (s.type === "relay" && s.line) mustContain.push(["line", s.line]);
+      if (s.type === "lineup") s.suspects.forEach((x, j) => mustContain.push([`suspects.${j}.at`, x.at]));
+      if (s.type === "buzzer" && s.at) mustContain.push(["at", s.at]);
+      if (s.type === "ledger") s.lines.forEach((x, j) => mustContain.push([`lines.${j}.at`, x.at]));
+      if (s.type === "treasure") s.cues.forEach((c, j) => mustContain.push([`cues.${j}`, c]));
+      if (s.type === "journal") s.entries.forEach((x, j) => mustContain.push([`entries.${j}.at`, x.at]));
+      if (s.type === "jumper") [...s.hurdles, ...s.pickups].forEach((x, j) => mustContain.push([`jumper.${j}.at`, x.at]));
       for (const [field, text] of mustContain) {
         if (!spoken.includes(normalize(text))) {
           ctx.addIssue({
@@ -242,12 +306,54 @@ export const normalize = (s: string) =>
     .trim();
 
 /**
- * Zerlegt Narration in Phrasen an Satzzeichen und Pausen-Tags.
+ * Zerlegt Narration in Phrasen an Satzzeichen, Gedankenstrichen und Pausen-Tags.
  * Diese Phrasen sind die Einheiten, die scripts/tts.ts an echte Sprechpausen im Audio anlegt.
+ * Ein Gedankenstrich ist eine Pause wie ein Komma (siehe `speakable`).
  */
 export const splitPhrases = (narration: string): string[] =>
   narration
     .split(/\[pause(?: short| long)?\]/g)
-    .flatMap((chunk) => chunk.match(/[^.!?;:,]+[.!?;:,]?/g) ?? [])
-    .map((p) => p.replace(/\s+/g, " ").trim())
-    .filter((p) => p.replace(/[.!?;:,]/g, "").trim().length > 0);
+    // Kapitel:Vers (53:20) und Zahlen wie 20 000 bleiben eine Einheit – sonst stünde «20.» allein im Untertitel
+    .map((chunk) => chunk.replace(/\s+[-–—](?=\s|$)/g, " –").replace(/(\d):(\d)/g, "$1\u0000$2"))
+    .flatMap((chunk) => chunk.match(/[^.!?;:,–—]+[.!?;:,–—]?/g) ?? [])
+    .map((p) => p.replace(/\u0000/g, ":").replace(/\s+/g, " ").trim())
+    .filter((p) => p.replace(/[.!?;:,–—]/g, "").trim().length > 0);
+
+/* ---------- Was die Stimme bekommt ---------- */
+
+const ONES = ["null", "eins", "zwei", "drei", "vier", "fünf", "sechs", "sieben", "acht", "neun", "zehn", "elf", "zwölf", "dreizehn", "vierzehn", "fünfzehn", "sechzehn", "siebzehn", "achtzehn", "neunzehn"];
+const TENS = ["", "", "zwanzig", "dreissig", "vierzig", "fünfzig", "sechzig", "siebzig", "achtzig", "neunzig"];
+const MONTHS = /^(Januar|Februar|März|April|Mai|Juni|Juli|August|September|Oktober|November|Dezember)\b/;
+
+/** Grundzahl in Worten (0 … 9999): 53 → «dreiundfünfzig». */
+export const cardinal = (n: number): string => {
+  const pre = (k: number) => (k === 1 ? "ein" : ONES[k]);
+  if (n < 20) return ONES[n];
+  if (n < 100) return (n % 10 ? `${pre(n % 10)}und` : "") + TENS[Math.floor(n / 10)];
+  if (n < 1000) return `${pre(Math.floor(n / 100))}hundert${n % 100 ? cardinal(n % 100) : ""}`;
+  if (n < 10000) return `${pre(Math.floor(n / 1000))}tausend${n % 1000 ? cardinal(n % 1000) : ""}`;
+  return String(n);
+};
+
+/**
+ * Der Text, den die Stimme spricht – die Untertitel zeigen weiter die narration.
+ *
+ * - **Gedankenstriche sind Pausen**, kein «Minus»: «besiegt – da greifen» wird «besiegt, da greifen».
+ *   Nur zwischen zwei Zahlen bleibt der Strich (eine Rechnung wie 10 - 4).
+ * - **Zahl vor einem Satzpunkt ist eine Grundzahl**: «Alma 53.» würde sonst «dreiundfünfzigste»
+ *   gelesen; daraus wird «Alma dreiundfünfzig.». Vor einem Monat bleibt die Ordnungszahl («19. Oktober»).
+ * - **Kapitel:Vers** wird ausgesprochen: «53:20» → «dreiundfünfzig, Vers zwanzig».
+ */
+export const speakable = (text: string): string =>
+  text
+    .replace(/(\d+):(\d+)/g, (_, a: string, b: string) => `${cardinal(Number(a))}, Vers ${cardinal(Number(b))}`)
+    .replace(/(\S)\s+[-–—]\s+(?=\S)/g, (m: string, before: string, offset: number, all: string) => {
+      const after = all.slice(offset + m.length);
+      return /\d/.test(before) && /^\d/.test(after) ? m : `${before.replace(/[,;]$/, "")}, `;
+    })
+    .replace(/\s+[-–—]\s*$/g, "")
+    .replace(/\b(\d{1,4})\.(?=\s|$)/g, (m: string, n: string, offset: number, all: string) => {
+      const next = all.slice(offset + m.length).trimStart();
+      return MONTHS.test(next) ? m : `${cardinal(Number(n))}.`;
+    })
+    .replace(/,\s*,/g, ",");

@@ -1162,7 +1162,9 @@ den Karten sein.
 
 **Die Karte.** Eine eigene Kartenart, `spiel` («Minispiel»), höchstens eine
 je Woche und im Feed immer ganz zuletzt – hinter der Teilen-Aufgabe, auch
-in der gemischten Reihenfolge (`deckOrder`). Auf der Karte stehen das
+in der gemischten Reihenfolge (`deckOrder`). Dazwischen darf nur ein Video
+stehen, das ins Spiel einführt (Platz zwischen Teilen-Aufgabe und Spiel,
+13.15). Auf der Karte stehen das
 Spiel, «Spielen», der eigene Rekord samt Platz und die Rangliste. Gespielt
 wird im Vollbild darüber (`ImpulseGameStage`): Der Feed gehört dem
 senkrechten Wisch, das Spiel dem waagrechten – auf derselben Fläche gäbe
@@ -1762,7 +1764,7 @@ Startknopf und Angaben, und ein Tipp darauf startet von vorn.
 ### 13.15 Eigene Shorts (`shorts/`)
 
 Neben den Shorts der Kirche (13.11) entstehen eigene kurze Videos zur
-Woche: 9:16, 50 bis 70 Sekunden, mit Stimme, Untertiteln, bei denen das
+Woche: 9:16, 15 bis 70 Sekunden, mit Stimme, Untertiteln, bei denen das
 gesprochene Wort aufleuchtet, und leiser Musik. Das Projekt liegt in
 `shorts/` – ein eigenes Remotion-Projekt mit eigenem `package.json`, nicht
 Teil des App-Builds (die App-Prüfungen und Netlify fassen es nicht an).
@@ -1772,35 +1774,60 @@ Teil des App-Builds (die App-Prüfungen und Netlify fassen es nicht an).
   HD, wie die Lernapp; Schlüssel `GOOGLE_TTS_API_KEY`), und
   `npm run render` macht das MP4. Ablauf und Einrichtung: `shorts/README.md`.
 - **Jede Folge hat ihren eigenen Look** (`look` im JSON, `shorts/src/looks.tsx`):
-  Videospiel, Handy-Chat, Kartentisch, Stadion – mit eigener Musik, eigener
-  Stimme und Soundeffekten. So sehen die Shorts einer Woche nicht gleich aus.
-  Neue Szenentypen dazu: Charakterkarte, Chat, Karte in Etappen, Staffellauf.
+  Videospiel, Handy-Chat, Kartentisch, Stadion, Detektiv, Quizshow,
+  Notizbuch, Sonnenaufgang – mit eigener Musik, eigener Stimme und
+  Soundeffekten. So sehen die Shorts einer Woche nicht gleich aus.
 - **Jede Folge leitet zur nächsten Karte über.** Die letzte Szene
   (`teaser`) zeigt die Karte, die im Feed direkt danach kommt – Umfrage,
   Dilemma oder Aufgabe – und lädt mit einer Wisch-Geste dorthin ein. Der
   Einstieg weckt in den ersten zwei Sekunden Neugier: eine Figur mit
   «Kampferfahrung 0», eine Nachricht von der Front, ein Auftrag als Lockvogel,
   ein Schwert, das keins ist.
-- **Die Woche** 19.–25. Oktober (Helamans junge Krieger), vier Folgen in der
-  Reihenfolge des Feeds:
-  - «Wähle deinen Helden» (Videospiel, Alma 53:16–21, 56:47) vor der Umfrage
-    «Welche Eigenschaft hättest du gern mehr?» – Platz 0,5.
-  - «Nachricht von Helaman» (Chat, Alma 58:4–40: warten, beten, Frieden, Manti)
-    vor der Skala «An wie vielen Tagen hast du gebetet?» – 3,5.
-  - «Mission Lockvogel» (Kartentisch, Alma 56:30–56) vor «Was würdest du
+- **Vor jedem interaktiven Element ein eigenes Video, keine Textkarte ohne
+  Interaktion.** In der Woche 19.–25. Oktober (Helamans junge Krieger) führt
+  vor jeder Umfrage, jedem Quiz, dem Puzzle, der Frage, der Teilen-Aufgabe
+  und dem Minispiel ein kurzes Video ein (15–70 Sekunden). Die drei
+  Textkarten der Woche sind durch Videos ersetzt (`retired`, siehe unten);
+  nur das Wochenthema bleibt Text, weil es das Wappen und die Lektion trägt.
+  Die Folgen in der Reihenfolge des Feeds:
+  - «Wähle deinen Helden» (Videospiel, Alma 53:16–21) → Umfrage zu den
+    Eigenschaften – Platz 0,5.
+  - «Vergrabene Schwerter» (Sonnenaufgang, Alma 24:17–18, 53:13–18) → Quiz
+    «Wie viele zogen los?» – 2,5, anstelle der Textkarte.
+  - «Nachricht von Helaman» (Chat, Alma 58) → Skala zum Beten – 3,5.
+  - «Wer war’s?» (Detektiv, Alma 56:47) → Quiz zu den Müttern – 4,75.
+  - «Fakt oder Mythos?» (Quizshow: das Kollegiumsmotto, Elder Soares) →
+    «Fakt oder Mythos?» – 6,75, anstelle der Textkarte.
+  - «Mission Lockvogel» (Kartentisch, Alma 56:30–56) → «Was würdest du
     tun?» – 7,5.
-  - «Die stärkste Waffe» (Stadion, Alma 53:11–17, 56:47–48, 57:21) vor der
+  - «Vers-Puzzle» (Videospiel) → Vers-Puzzle Alma 53:20 – 8,75.
+  - «Alle verwundet, keiner gefallen» (Kartentisch, Alma 57:19–26) →
+    Suchfrage Alma 53:20 – 10,75, anstelle der Textkarte.
+  - «Dein Monat» (Notizbuch) → Frage zum Monat – 11,75.
+  - «Die stärkste Waffe» (Stadion, Alma 53:11–17, 56:47–48, 57:21) →
     Teilen-Aufgabe – 12,5.
+  - «Keine Ausreden!» (Videospiel, Trailer zum Minispiel) → Minispiel –
+    13,5. Ein Video mit einem Platz zwischen Teilen-Aufgabe und Minispiel
+    steht im Feed genau dort (`deckOrder`); neue Karten der Redaktion
+    bekommen einen Platz hinter dem Spiel und bleiben vor der Teilen-Aufgabe.
+- **Die Stimme**: Gedankenstriche sind Pausen, kein «Minus», und eine Zahl
+  vor einem Satzpunkt ist eine Grundzahl («Alma 53.» = «dreiundfünfzig»).
+  Das Skript wandelt das vor der Vertonung um (`speakable`); die Untertitel
+  zeigen den Text, wie er geschrieben ist. Oben rechts steht keine
+  Folgenangabe.
 - **In der App** sind sie Video-Karten der Woche, nachgereicht wie die
   Shorts der Kirche (`late`, `ownShort`). Im Kasten «Themenpaket» der
   Redaktion holt «Nachholen» sie in eine schon eingespielte Woche, ohne dass
   eine Karte rückt.
-- **Die ersten drei eigenen Shorts** («Anpacken statt warten», «Verwundet,
-  nicht gefallen», «Treu zu allen Zeiten») sahen einander zu ähnlich und
-  sind ersetzt. Das Paket führt sie nicht mehr (`PACK_RETIRED`); wer sie
-  schon eingespielt hat, bekommt in der Redaktion den Kasten «Ersetzte
-  Karten zurückstellen» – ein Klick macht sie zum Entwurf, nichts wird
-  gelöscht. Ihre Episoden bleiben in `shorts/content/` als Vorlage.
+- **Ersetzte Karten.** Die ersten drei eigenen Shorts («Anpacken statt
+  warten», «Verwundet, nicht gefallen», «Treu zu allen Zeiten») sahen
+  einander zu ähnlich; die drei Textkarten der Woche sind durch Videos
+  ersetzt. Eine ersetzte Karte des Decks bleibt mit `retired` im Paket
+  stehen – sonst rückten die Plätze aller Karten dahinter –, wird aber nicht
+  mehr eingespielt. Wer sie schon hat, bekommt in der Redaktion den Kasten
+  «Ersetzte Karten zurückstellen» (`PACK_RETIRED`): Ein Klick macht sie zum
+  Entwurf, nichts wird gelöscht. Die alten Episoden bleiben in
+  `shorts/content/` als Vorlage.
 - **Die Dateien** liegen unter `public/shorts/` und kommen von der eigenen
   Seite (`https://bss.alae.app/shorts/…mp4`) – für das Netz verkleinert
   (H.264, CRF 27, `faststart`, rund 5–10 MB je Video). Der Service Worker legt

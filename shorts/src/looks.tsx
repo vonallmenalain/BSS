@@ -6,7 +6,7 @@
 import React, { createContext, useContext } from "react";
 import { theme } from "./theme";
 
-export type LookId = "dawn" | "arcade" | "chat" | "map" | "track";
+export type LookId = "dawn" | "arcade" | "chat" | "map" | "track" | "noir" | "show" | "journal";
 
 export type Look = {
   id: LookId;
@@ -68,6 +68,39 @@ export const LOOKS: Record<LookId, Look> = {
     display: theme.font.display,
     label: "Caveat",
     glow: "0 10px 40px rgba(0,0,0,0.6)",
+  },
+  /** Detektiv: dunkles Büro, Licht durch Jalousien */
+  noir: {
+    id: "noir",
+    accent: "#FFD27A",
+    accent2: "#E2483D",
+    text: "#F4EFE6",
+    dim: "rgba(244,239,230,0.6)",
+    display: theme.font.display,
+    label: theme.font.body,
+    glow: "0 10px 40px rgba(0,0,0,0.7)",
+  },
+  /** Quizshow: Studio, Scheinwerfer, Buzzer */
+  show: {
+    id: "show",
+    accent: "#FFE45C",
+    accent2: "#39D5FF",
+    text: "#FFFFFF",
+    dim: "rgba(255,255,255,0.62)",
+    display: theme.font.display,
+    label: theme.font.body,
+    glow: "0 0 24px rgba(255,228,92,0.45), 0 10px 40px rgba(0,0,0,0.55)",
+  },
+  /** Notizbuch auf dem Schreibtisch */
+  journal: {
+    id: "journal",
+    accent: "#FFC94A",
+    accent2: "#7CC6FE",
+    text: "#FFFFFF",
+    dim: "rgba(255,255,255,0.62)",
+    display: theme.font.display,
+    label: "Caveat",
+    glow: "0 10px 40px rgba(0,0,0,0.5)",
   },
   /** Stadion in der Abenddämmerung */
   track: {

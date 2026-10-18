@@ -164,10 +164,17 @@ function short(id: string): Pick<PackCard, 'videoUrl' | 'source'> {
  * Ein eigener Short der App – gemacht mit `shorts/` (Stimme, Untertitel,
  * Musik) und als Videodatei unter `public/shorts/` ausgeliefert. Eine
  * Datei spielt im eigenen Player der App: ohne fremden Rahmen und ohne
- * fremde Knöpfe. Die Quelle ist die Schriftstelle, um die es geht.
+ * fremde Knöpfe. Die Quelle ist die Schriftstelle, um die es geht – oder
+ * das Heft, aus dem der Gedanke stammt.
  */
-function ownShort(file: string, verseLabel: string): Pick<PackCard, 'videoUrl' | 'source'> {
-  return { videoUrl: `${SITE_URL}/shorts/${file}.mp4`, source: verse(verseLabel) }
+function ownShort(
+  file: string,
+  from: string | ImpulseSource,
+): Pick<PackCard, 'videoUrl' | 'source'> {
+  return {
+    videoUrl: `${SITE_URL}/shorts/${file}.mp4`,
+    source: typeof from === 'string' ? verse(from) : from,
+  }
 }
 
 /* ------------------------------------------------------------------ */
@@ -198,6 +205,12 @@ export interface PackCard {
    * verschieben (siehe `deckOrders`).
    */
   late?: true
+  /**
+   * Ersetzt – mit Grund. Die Karte bleibt im Deck, damit die Plätze der
+   * Karten danach stimmen (`deckOrders`), wird aber nicht mehr eingespielt.
+   * Wer sie schon hat, stellt sie in der Redaktion zurück (`PACK_RETIRED`).
+   */
+  retired?: string
 }
 
 export interface PackTheme extends Omit<PackCard, 'key' | 'kind'> {
@@ -839,6 +852,7 @@ export const PACK_WEEKS: PackWeek[] = [
       },
       {
         key: 'feed-1',
+        retired: 'Ersetzt durch das Video «Vergrabene Schwerter».',
         kind: 'feed',
         emoji: '🗡️',
         title: 'Wusstest du? Ihre Väter hatten die Schwerter vergraben.',
@@ -856,6 +870,18 @@ export const PACK_WEEKS: PackWeek[] = [
           'Alma 53:13–17\n' +
           'Mosia 18:8–10',
         source: verse('Alma 53:16–17'),
+      },
+      {
+        key: 'eigen-schwerter',
+        kind: 'video',
+        late: true,
+        emoji: '🗡️',
+        title: 'Short: Vergrabene Schwerter',
+        body:
+          'Ein ganzes Volk vergräbt seine Schwerter: lieber selbst sterben, als noch einmal töten ' +
+          '(Alma 24:17–18). Jahre später halten die Väter ihren Bund – und ihre Söhne treten an ' +
+          '(Alma 53:13–18). Wie viele? Gleich raten.',
+        ...ownShort('2026-10-19-vergrabene-schwerter', 'Alma 24:17–18'),
       },
       {
         key: 'quiz-1',
@@ -910,6 +936,17 @@ export const PACK_WEEKS: PackWeek[] = [
         ...short('47BTy7laRWk'),
       },
       {
+        key: 'eigen-fall',
+        kind: 'video',
+        late: true,
+        emoji: '🕵️',
+        title: 'Short: Wer war’s?',
+        body:
+          'Zweitausend junge Männer, noch nie im Kampf – und trotzdem ohne Angst. Jemand hatte ' +
+          'ihnen beigebracht: Wenn ihr nicht zweifelt, wird Gott euch befreien (Alma 56:47). Aber wer?',
+        ...ownShort('2026-10-20-wer-wars', 'Alma 56:47'),
+      },
+      {
         key: 'quiz-2',
         kind: 'quiz',
         emoji: '👩‍👦',
@@ -925,6 +962,7 @@ export const PACK_WEEKS: PackWeek[] = [
       },
       {
         key: 'feed-2',
+        retired: 'Ersetzt durch das Video «Fakt oder Mythos?».',
         kind: 'feed',
         emoji: '👑',
         title: '«Ich bin ein geliebter Sohn Gottes und er hat eine Arbeit für mich.»',
@@ -944,6 +982,21 @@ export const PACK_WEEKS: PackWeek[] = [
           'Gott kann dich aus jeder Dunkelheit herausheben – und er hat eine Absicht mit dir. ' +
           'Wie die jungen Krieger: Er hat eine Arbeit für dich.',
         ...short('Gf-PIDcBENs'),
+      },
+      {
+        key: 'eigen-show',
+        kind: 'video',
+        late: true,
+        emoji: '🎤',
+        title: 'Short: Fakt oder Mythos?',
+        body:
+          '«Ich bin ein geliebter Sohn Gottes und er hat eine Arbeit für mich.» Gott kennt dich und ' +
+          'weiss, wie er dir am besten helfen kann. Heisst das: Wer ihm vertraut, kommt ohne einen ' +
+          'Kratzer davon?',
+        ...ownShort(
+          '2026-10-21-fakt-oder-mythos',
+          FSY_OCTOBER('Letzter Sonntag und Botschaft von Elder Soares'),
+        ),
       },
       {
         key: 'quiz-3',
@@ -1002,6 +1055,17 @@ export const PACK_WEEKS: PackWeek[] = [
         ...short('GgqQfxM7YqU'),
       },
       {
+        key: 'eigen-puzzle',
+        kind: 'video',
+        late: true,
+        emoji: '🧱',
+        title: 'Short: Vers-Puzzle',
+        body:
+          'Elf Wörter, ein Vers, alles durcheinander. Kannst du Alma 53:20 wieder zusammensetzen? ' +
+          'Ein Tipp: Es geht um Treue.',
+        ...ownShort('2026-10-22-vers-puzzle', 'Alma 53:20'),
+      },
+      {
         key: 'puzzle-1',
         kind: 'puzzle',
         emoji: '🧩',
@@ -1016,6 +1080,7 @@ export const PACK_WEEKS: PackWeek[] = [
       },
       {
         key: 'feed-3',
+        retired: 'Ersetzt durch das Video «Alle verwundet, keiner gefallen».',
         kind: 'feed',
         emoji: '🩹',
         title: 'Alle verwundet – keiner gefallen.',
@@ -1042,6 +1107,18 @@ export const PACK_WEEKS: PackWeek[] = [
         ...short('U8I2wPvpUgc'),
       },
       {
+        key: 'eigen-liste',
+        kind: 'video',
+        late: true,
+        emoji: '📜',
+        title: 'Short: Alle verwundet, keiner gefallen',
+        body:
+          'Nach der Schlacht bei Kumeni: zweihundert ohnmächtig, alle verwundet, keiner gefallen ' +
+          '(Alma 57:25). Helaman schreibt es der Macht Gottes und ihrem Glauben zu (Alma 57:26). ' +
+          'Was machte sie so? Die Antwort steht in Alma 53:20.',
+        ...ownShort('2026-10-23-alle-verwundet', 'Alma 57:25–26'),
+      },
+      {
         key: 'quiz-4',
         kind: 'quiz',
         emoji: '🔎',
@@ -1065,6 +1142,17 @@ export const PACK_WEEKS: PackWeek[] = [
           'gesehen? Helaman schrieb die Bewahrung seiner jungen Krieger der Macht Gottes zu ' +
           '(Alma 57:26).',
         ...short('5GCWFfeL7r8'),
+      },
+      {
+        key: 'eigen-monat',
+        kind: 'video',
+        late: true,
+        emoji: '📓',
+        title: 'Short: Dein Monat',
+        body:
+          'Ein Monat, ein Thema: Dein Körper ist heilig. Das Wort der Weisheit, das Gesetz der ' +
+          'Keuschheit, Bündnisse halten – und bei allem hilft dir der Erretter.',
+        ...ownShort('2026-10-24-dein-monat', FSY_OCTOBER('Letzter Sonntag')),
       },
       {
         key: 'frage-1',
@@ -1097,6 +1185,17 @@ export const PACK_WEEKS: PackWeek[] = [
           'Frag deinen Vater, Grossvater oder einen Leiter: Was heisst für ihn, «zu allen Zeiten treu» zu sein?',
         body: 'Gute Gespräche beginnen mit guten Fragen. Danach hier abhaken.',
         source: verse('Alma 53:20'),
+      },
+      {
+        key: 'eigen-spiel',
+        kind: 'video',
+        late: true,
+        emoji: '🕹️',
+        title: 'Short: Keine Ausreden!',
+        body:
+          'Das Minispiel der Woche: Spring über «Später», «Keine Lust» und «Nur noch kurz» und sammle ' +
+          'Beten, Schriften und Ämtli ein. Drei Treffer, dann ist Schluss.',
+        ...ownShort('2026-10-25-keine-ausreden', 'Alma 53:20'),
       },
     ],
     /* «Mutig, stark und regsam» (Alma 53:20) – regsam heisst anpacken statt
@@ -2057,7 +2156,9 @@ export function packWeekPlans(week: PackWeek): PackPlan[] {
     plan(week.week, 'impuls', 'impuls', week.theme, 0),
     plan(week.week, 'wochenziel', 'wochenziel', week.goal, null),
     plan(week.week, 'tageschallenge', 'tageschallenge', week.challenge, null),
-    ...week.deck.map((card, index) => plan(week.week, card.key, card.kind, card, orders[index])),
+    ...week.deck.flatMap((card, index) =>
+      card.retired ? [] : [plan(week.week, card.key, card.kind, card, orders[index])],
+    ),
     ...(week.game ? [plan(week.week, 'spiel', 'spiel', week.game, gameOrder)] : []),
   ]
 }
@@ -2144,6 +2245,15 @@ export const PACK_RETIRED: readonly PackRetirement[] = [
     id: `fsy26-w43-${key}`,
     reason: 'Ersetzt durch vier neue eigene Shorts in verschiedenen Stilen.',
   })),
+  /* Karten, die im Deck als ersetzt stehen (`retired`) – etwa Textkarten,
+     an deren Stelle ein Video getreten ist. */
+  ...PACK_WEEKS.flatMap((week) =>
+    week.deck.flatMap((card) =>
+      card.retired
+        ? [{ id: `${PACK_ID_PREFIX}${weekTag(week.week)}-${card.key}`, reason: card.retired }]
+        : [],
+    ),
+  ),
 ]
 
 /** Welche ersetzten Karten noch im Feed stehen. */
