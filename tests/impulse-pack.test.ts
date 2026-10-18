@@ -269,8 +269,16 @@ test('Shorts: jeder ist ein YouTube-Short der Kirche – ein Wisch, ohne Text da
   }
 })
 
-test('Shorts der Kirche: fünf bis zehn in der Woche der jungen Krieger', () => {
-  assert.ok(CHURCH_SHORTS.length >= 5 && CHURCH_SHORTS.length <= 10, `${CHURCH_SHORTS.length}`)
+test('Shorts der Kirche: von der Redaktion gelöscht – das Paket bietet sie nicht wieder an', () => {
+  assert.deepEqual(CHURCH_SHORTS, [])
+  // Im Deck stehen sie als ersetzt, damit kein Platz rückt (`deckOrders`).
+  const week = PACK_WEEKS.find((entry) => entry.week === '2026-W43')!
+  const church = week.deck.filter((card) => card.key.startsWith('short-'))
+  assert.equal(church.length, 6)
+  for (const card of church) assert.ok(card.retired && card.late, card.key)
+  // Und «Einspielen» schlägt sie nicht vor, auch wenn sie in der Datenbank fehlen.
+  const plans = planPackItems([], '2026-W43').map((plan) => plan.id)
+  for (const card of church) assert.ok(!plans.includes(`fsy26-w43-${card.key}`), card.key)
 })
 
 test('Eigene Shorts: Videodateien der App – liegen bereit und spielen ohne Text darüber', () => {

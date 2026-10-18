@@ -1588,6 +1588,12 @@ der Kirche** (deutsch: `@kirchejesuchristideutsch`, englisch:
   Platz. Das Feld «Platz im Feed» nimmt solche Zwischenplätze an.
 - **Gezählt** wird wie bei jeder Video-Karte: angeschaut, also einen
   Moment im Bild.
+- **Wieder entfernt.** Die Redaktion hat die sechs Shorts am 18. Oktober
+  gelöscht; die Woche trägt jetzt eigene Videos (13.15). Weil «Einspielen»
+  alles anbietet, was aus dem Paket in der Datenbank fehlt, stehen sie im
+  Deck als ersetzt (`retired`) – so bietet das Paket sie nicht wieder an,
+  und kein Platz rückt. Der Löschdialog sagt es bei jeder Karte des Pakets:
+  Wer sie nur aus dem Feed haben will, stellt sie auf «Entwurf».
 
 `tests/impulse-video.test.ts` hält die Erkennung und die Schleife fest,
 `tests/impulse-pack.test.ts`, dass jeder Short des Pakets ein Short der
