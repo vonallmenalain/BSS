@@ -128,20 +128,26 @@ export function RunIntro() {
   )
 }
 
-/** «Ketten sprengen» – Notlügen und der Schlüssel. */
+/** «Ketten sprengen» – ehrlich antworten statt Notlügen. */
 export function ChainIntro() {
   return (
     <Intro
       boxes={
         <>
-          <Box tone="violet" emoji="🏃 🙈 🐕" title="Notlügen" hint="wegtippen: +3, +2, +1" />
-          <Box tone="amber" emoji="🗝️" title="Schlüssel" hint="sprengt alles auf einmal" />
+          <Box
+            tone="green"
+            emoji="🙂 ✅"
+            title="Ehrlich antworten"
+            hint="Schnur +3, Strick +2, Kette +1"
+          />
+          <Box tone="violet" emoji="🏃 🙈 🐕" title="Notlügen" hint="kosten ein Leben" />
         </>
       }
     >
-      Jede Notlüge beginnt als dünne Schnur und wird zur Kette. Tippe sie weg, solange sie dünn ist
-      – je früher, desto mehr Punkte. Schnappt eine zu, kostet das eines von drei Leben; der
-      Schlüssel bringt eines zurück. Daneben tippen lähmt kurz. Am Rechner: Tasten 1 bis 9.
+      Mama, die Lehrerin, der Trainer fragen etwas. Lies genau und tippe die ehrliche Antwort, bevor
+      die Schnur um dich zur Kette wird – je schneller, desto mehr Punkte. Eine Notlüge oder zu
+      langes Zögern kostet eines von drei Leben; fünf ehrliche am Stück bringen den Schlüssel, der
+      eine Kette sprengt. Eine Runde dauert eine Minute. Am Rechner: Tasten 1 bis 3.
     </Intro>
   )
 }

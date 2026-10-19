@@ -52,16 +52,19 @@ import {
   type RunTask,
 } from '../src/lib/impulseGameRun.ts'
 import {
-  CHAIN_KEY,
-  CHAIN_LIES,
+  CHAIN_KEY_BONUS,
   CHAIN_LIVES,
-  CHAIN_MISS_LOCK,
-  CHAIN_SLOTS,
+  CHAIN_PACE,
+  CHAIN_ROUND_S,
+  CHAIN_SITUATIONS,
+  CHAIN_STREAK_FOR_KEY,
+  CHAIN_THREE_FROM,
   ChainRound,
-  chainPace,
+  chainLife,
   chainPoints,
   type ChainEvent,
-  type ChainLock,
+  type ChainQuestion,
+  type ChainSituation,
 } from '../src/lib/impulseGameChain.ts'
 
 /*
@@ -1254,12 +1257,25 @@ test('Laufen: eine Runde dauert 20 bis 60 Sekunden – vom Anfänger bis zur Spi
 /* «Ketten sprengen»                                                   */
 /* ------------------------------------------------------------------ */
 
-test('Ketten: genug Notlügen, kurz genug für einen Platz', () => {
-  assert.ok(CHAIN_LIES.length >= 6)
-  itemsAreClean([...CHAIN_LIES, CHAIN_KEY], 20)
+test('Ketten: genug Situationen – jede mit einer ehrlichen Antwort und zwei Notlügen, kurz genug', () => {
+  assert.ok(CHAIN_SITUATIONS.length >= 14)
+  const questions = CHAIN_SITUATIONS.map((entry) => `${entry.who}: ${entry.question}`)
+  assert.equal(new Set(questions).size, questions.length, 'doppelte Frage')
+  for (const entry of CHAIN_SITUATIONS) {
+    assert.ok(entry.emoji.trim() && entry.who.trim(), entry.question)
+    for (const text of [entry.who, entry.question, entry.honest, ...entry.lies]) {
+      assert.ok(text.trim(), entry.question)
+      assert.ok(!text.includes('ß'), text)
+    }
+    assert.ok(entry.question.length <= 48, `zu lang: ${entry.question}`)
+    for (const answer of [entry.honest, ...entry.lies])
+      assert.ok(answer.length <= 36, `zu lang: ${answer}`)
+    assert.ok(entry.lies.length >= 2, entry.question)
+    assert.equal(new Set([entry.honest, ...entry.lies]).size, entry.lies.length + 1, entry.question)
+  }
 })
 
-test('Ketten: je früher gesprengt, desto mehr Punkte', () => {
+test('Ketten: je früher ehrlich geantwortet, desto mehr Punkte', () => {
   assert.equal(chainPoints(0, 3), 3)
   assert.equal(chainPoints(0.99, 3), 3)
   assert.equal(chainPoints(1, 3), 2)
@@ -1268,15 +1284,17 @@ test('Ketten: je früher gesprengt, desto mehr Punkte', () => {
   assert.equal(chainPoints(2.99, 3), 1)
 })
 
-test('Ketten: Tempo wird nur schneller', () => {
-  let previous = chainPace(0)
-  assert.ok(previous.life >= 2, 'am Anfang bleibt Zeit')
-  for (let t = 1; t <= 70; t += 1) {
-    const pace = chainPace(t)
-    assert.ok(pace.life <= previous.life + 1e-9, `life bei ${t}s`)
-    assert.ok(pace.gap <= previous.gap + 1e-9, `gap bei ${t}s`)
-    previous = pace
+test('Ketten: sieben Sekunden für die ersten Fragen, dann knapper – aber nie unter drei', () => {
+  assert.ok(chainLife(0) >= 6.5, 'am Anfang bleibt Zeit zum Lesen')
+  assert.ok(chainLife(5) >= 5, 'auch noch nach ein paar Fragen')
+  let previous = chainLife(0)
+  for (let index = 1; index <= 80; index += 1) {
+    const life = chainLife(index)
+    assert.ok(life <= previous + 1e-9, `Frage ${index}`)
+    assert.ok(life >= CHAIN_PACE.lifeMin - 1e-9, `Frage ${index}: ${life.toFixed(2)} s`)
+    previous = life
   }
+  assert.ok(CHAIN_PACE.lifeMin >= 3)
 })
 
 function chainUntil(round: ChainRound, done: (round: ChainRound) => boolean): void {
@@ -1284,128 +1302,205 @@ function chainUntil(round: ChainRound, done: (round: ChainRound) => boolean): vo
   assert.ok(done(round), 'nie eingetreten')
 }
 
-const emptySlot = (round: ChainRound) =>
-  Array.from({ length: CHAIN_SLOTS }, (_, slot) => slot).find((slot) => !round.at(slot))
+const honestOption = (question: ChainQuestion) =>
+  question.options.findIndex((entry) => entry.honest)
+const lieOption = (question: ChainQuestion) => question.options.findIndex((entry) => !entry.honest)
 
-test('Ketten: ein Tipp sprengt, ein Tipp ins Leere lähmt kurz', () => {
-  const round = new ChainRound(seededRandom(2))
-  chainUntil(round, (r) => r.locks.some((lock) => !lock.key))
-  const lock = round.locks.find((entry) => !entry.key)!
-  const [event] = round.tap(lock.slot)
-  assert.ok(event.kind === 'break' && event.points === 3)
-  assert.equal(round.points, 3)
-  // Ins Leere: gelähmt – solange nimmt das Feld keinen Tipp an.
-  assert.equal(round.tap(emptySlot(round)!)[0].kind, 'miss')
-  assert.ok(Math.abs(round.lockedUntil - round.time - CHAIN_MISS_LOCK) < 1e-9)
-  assert.equal(round.tap(emptySlot(round)!).length, 0)
-  chainUntil(round, (r) => r.time >= r.lockedUntil)
-  assert.equal(round.tap(emptySlot(round)!)[0].kind, 'miss')
+/** Die nächste Frage abwarten und ehrlich (oder mit der Notlüge) antworten. */
+function chainAnswer(round: ChainRound, honest: boolean): ChainEvent[] {
+  chainUntil(round, (r) => r.question !== null)
+  const question = round.question!
+  return [...round.pick(honest ? honestOption(question) : lieOption(question))]
+}
+
+test('Ketten: zwei Antworten, ab der zehnten Frage drei – die ehrliche immer dabei, an wechselnder Stelle', () => {
+  const round = new ChainRound(seededRandom(3))
+  const places = new Set<number>()
+  while (round.asked < 24) {
+    chainUntil(round, (r) => r.question !== null)
+    const question = round.question!
+    assert.equal(question.options.length, question.index >= CHAIN_THREE_FROM ? 3 : 2)
+    assert.equal(question.options.filter((entry) => entry.honest).length, 1)
+    assert.equal(question.options[honestOption(question)].text, question.situation.honest)
+    for (const entry of question.options)
+      if (!entry.honest) assert.ok(question.situation.lies.includes(entry.text), entry.text)
+    places.add(honestOption(question))
+    round.pick(honestOption(question))
+  }
+  assert.equal(places.size, 3, 'die ehrliche steht immer am selben Ort')
+  assert.equal(round.lives, CHAIN_LIVES)
 })
 
-test('Ketten: wird eine Notlüge zur Kette, kostet sie ein Leben – drei, und es ist vorbei', () => {
-  const round = new ChainRound(seededRandom(8))
+test('Ketten: keine Situation zweimal, bevor alle dran waren – und nie zweimal am Stück', () => {
+  const round = new ChainRound(seededRandom(5))
+  const seen: ChainSituation[] = []
+  const count = CHAIN_SITUATIONS.length
+  while (seen.length < count * 3) {
+    chainUntil(round, (r) => r.question !== null)
+    seen.push(round.question!.situation)
+    round.pick(honestOption(round.question!))
+  }
+  for (let pass = 0; pass < 3; pass += 1)
+    assert.equal(
+      new Set(seen.slice(pass * count, (pass + 1) * count)).size,
+      count,
+      `Durchgang ${pass + 1}`,
+    )
+  for (let index = 1; index < seen.length; index += 1)
+    assert.notEqual(seen[index], seen[index - 1], `zweimal am Stück bei ${index}`)
+})
+
+test('Ketten: wer ehrlich und zügig antwortet, verliert nichts und punktet bis zum Schluss', () => {
+  const round = new ChainRound(seededRandom(7))
   const events: ChainEvent[] = []
-  while (!round.over && round.time < 60) events.push(...round.step(1 / 120))
-  assert.equal(events.filter((event) => event.kind === 'snap').length, CHAIN_LIVES)
-  assert.equal(events.at(-1)?.kind, 'over')
-  assert.equal(round.points, 0)
-  assert.equal(round.locks.length, 0)
-})
-
-test('Ketten: der Schlüssel sprengt alles auf dem Feld und bringt ein Leben zurück', () => {
-  const round = new ChainRound(seededRandom(13))
-  // Eine zuschnappen lassen, damit ein Leben fehlt …
-  chainUntil(round, (r) => r.lives < CHAIN_LIVES)
-  // … dann Notlügen erst spät sprengen, damit welche liegen, wenn der Schlüssel kommt.
-  let key: ChainLock | undefined
-  for (let index = 0; index < 120 * 60 && !key; index += 1) {
-    round.step(1 / 120)
-    for (const lock of round.locks)
-      if (!lock.key && round.time - lock.spawn > lock.life * 0.8) round.tap(lock.slot)
-    key = round.locks.find((lock) => lock.key)
+  while (!round.over) {
+    events.push(...round.step(1 / 120))
+    const question = round.question
+    if (question && round.time - question.spawn >= 1.5)
+      events.push(...round.pick(honestOption(question)))
   }
-  assert.ok(key, 'kein Schlüssel')
-  chainUntil(round, (r) => r.locks.filter((lock) => !lock.key).length >= 1)
-  const lies = round.locks.filter((lock) => !lock.key)
-  const lives = round.lives
-  const before = round.points
-  const [event] = round.tap(key.slot)
-  assert.ok(event.kind === 'key')
-  assert.equal(event.broken.length, lies.length)
+  assert.equal(round.lives, CHAIN_LIVES)
+  assert.deepEqual(events.at(-1), { kind: 'over', reason: 'time' })
+  assert.ok(Math.abs(round.time - CHAIN_ROUND_S) < 1e-9)
+  assert.ok(round.honest >= 15, `nur ${round.honest} Fragen`)
+  assert.equal(events.filter((event) => event.kind === 'lie' || event.kind === 'timeout').length, 0)
+  // Die Schlüssel: bei vollen Leben gibt es Punkte statt eines Lebens.
+  const keys = events.filter((event) => event.kind === 'key')
+  assert.equal(keys.length, Math.floor(round.honest / CHAIN_STREAK_FOR_KEY))
+  assert.ok(keys.every((event) => event.kind === 'key' && !event.healed))
+  const answers = events.filter((event) => event.kind === 'honest')
   assert.equal(
-    round.points - before,
-    event.broken.reduce((sum, entry) => sum + entry.points, 0),
+    round.points,
+    answers.reduce((sum, event) => sum + (event.kind === 'honest' ? event.points : 0), 0) +
+      keys.length * CHAIN_KEY_BONUS,
   )
-  assert.equal(round.locks.length, 0)
-  assert.equal(round.lives, Math.min(CHAIN_LIVES, lives + 1))
-  assert.equal(event.healed, lives < CHAIN_LIVES)
 })
 
-test('Ketten: eine neue Notlüge nie auf einem besetzten oder eben benutzten Platz', () => {
-  const round = new ChainRound(seededRandom(17))
-  const known = new Set<number>()
-  const order: ChainLock[] = []
-  while (round.time < 40 && !round.over) {
-    const occupied = new Set(round.locks.map((lock) => lock.slot))
-    round.step(1 / 120)
-    for (const lock of round.locks) {
-      if (known.has(lock.id)) continue
-      known.add(lock.id)
-      assert.ok(!occupied.has(lock.slot), 'auf einem besetzten Platz')
-      const recent = order.slice(-2).map((entry) => entry.slot)
-      const others = CHAIN_SLOTS - new Set([...occupied, ...recent]).size
-      if (others > 0) assert.ok(!recent.includes(lock.slot), 'zweimal dieselbe Stelle')
-      order.push(lock)
-      occupied.add(lock.slot)
-    }
-    // Sprengen, was älter als eine halbe Lebenszeit ist – das Feld bleibt halb voll.
-    for (const lock of round.locks)
-      if (round.time - lock.spawn > lock.life * 0.5) round.tap(lock.slot)
+test('Ketten: wer immer die Notlüge nimmt, ist nach drei Fragen raus – ohne einen Punkt', () => {
+  const round = new ChainRound(seededRandom(9))
+  const events: ChainEvent[] = []
+  while (!round.over) {
+    events.push(...round.step(1 / 120))
+    const question = round.question
+    if (question && round.time - question.spawn >= 0.8)
+      events.push(...round.pick(lieOption(question)))
   }
-  assert.ok(order.length > 40, `nur ${order.length}`)
+  assert.equal(events.filter((event) => event.kind === 'lie').length, CHAIN_LIVES)
+  assert.deepEqual(events.at(-1), { kind: 'over', reason: 'lives' })
+  assert.equal(round.points, 0)
+  assert.equal(round.asked, CHAIN_LIVES)
+  assert.ok(round.time < 10, `${round.time.toFixed(1)} s`)
+})
+
+test('Ketten: zu langes Zögern kostet ein Leben – danach steht die ehrliche Antwort kurz da', () => {
+  const round = new ChainRound(seededRandom(11))
+  chainUntil(round, (r) => r.question !== null)
+  const question = round.question!
+  const events: ChainEvent[] = []
+  while (round.question === question) events.push(...round.step(1 / 120))
+  assert.deepEqual(
+    events.map((event) => event.kind),
+    ['timeout'],
+  )
+  assert.ok(Math.abs(round.time - question.spawn - question.life) < 0.01)
+  assert.equal(round.lives, CHAIN_LIVES - 1)
+  assert.equal(round.verdict?.question, question)
+  assert.equal(round.verdict?.picked, null)
+  // Solange das Ergebnis steht, zählt kein Tipp, und es kommt keine neue Frage.
+  assert.equal(round.pick(0).length, 0)
+  const judged = round.time
+  chainUntil(round, (r) => r.question !== null)
+  assert.ok(round.time - judged >= CHAIN_PACE.afterWrong - 1e-6)
+  // Wer nie antwortet, ist nach drei Fragen raus.
+  const rest: ChainEvent[] = []
+  while (!round.over) rest.push(...round.step(1 / 120))
+  assert.equal(rest.filter((event) => event.kind === 'timeout').length, CHAIN_LIVES - 1)
+  assert.deepEqual(rest.at(-1), { kind: 'over', reason: 'lives' })
+})
+
+test('Ketten: fünf ehrliche am Stück bringen den Schlüssel – er sprengt eine Kette und gibt ein Leben zurück', () => {
+  const round = new ChainRound(seededRandom(13))
+  chainAnswer(round, false)
+  assert.equal(round.lives, CHAIN_LIVES - 1)
+  assert.equal(round.streak, 0)
+  for (let count = 1; count < CHAIN_STREAK_FOR_KEY; count += 1) {
+    assert.ok(!chainAnswer(round, true).some((event) => event.kind === 'key'))
+    assert.equal(round.streak, count)
+  }
+  const events = chainAnswer(round, true)
+  assert.deepEqual(
+    events.map((event) => event.kind),
+    ['honest', 'key'],
+  )
+  assert.deepEqual(events[1], { kind: 'key', healed: true, bonus: 0 })
+  assert.equal(round.lives, CHAIN_LIVES)
+  // Mit allen Leben gibt der nächste Schlüssel Punkte.
+  for (let count = 1; count < CHAIN_STREAK_FOR_KEY; count += 1) chainAnswer(round, true)
+  const before = round.points
+  const next = chainAnswer(round, true)
+  assert.deepEqual(next[1], { kind: 'key', healed: false, bonus: CHAIN_KEY_BONUS })
+  const answer = next[0]
+  assert.ok(answer.kind === 'honest')
+  assert.equal(round.points - before, answer.points + CHAIN_KEY_BONUS)
+  // Eine Notlüge setzt die Reihe zurück.
+  chainAnswer(round, false)
+  assert.equal(round.streak, 0)
 })
 
 /**
- * Ein nachgebildeter Spieler auf dem Feld: erkennt eine Notlüge eine
- * Reaktionszeit nach dem Auftauchen, braucht von Tipp zu Tipp einen
- * Moment für den Weg dorthin und sprengt die dringendste zuerst. Den
- * Schlüssel nimmt er, wenn er sich lohnt. Ab und zu tippt er daneben.
+ * Ein nachgebildeter Spieler, der liest: die Frage und alle Antworten,
+ * beim ersten Mal Wort für Wort, später erkennt er die Situation
+ * schneller (`familiar`). Dann tippt er – ab und zu greift er daneben
+ * und erwischt die Notlüge.
  */
 function playChain(
-  player: { reaction: number; spread: number; move: number; moveSpread: number; error: number },
+  player: { reaction: number; perChar: number; familiar: number; spread: number; error: number },
   seed: number,
 ) {
   const round = new ChainRound(seededRandom(seed))
   const noise = seededRandom(seed * 7919 + 13)
   const gauss = gaussian(noise)
-  const seen = new Map<number, number>()
-  let nextTap = 0
-  while (!round.over && round.time < 300) {
+  const seen = new Set<ChainSituation>()
+  let current: ChainQuestion | null = null
+  let answerAt = Infinity
+  while (!round.over) {
     round.step(1 / 120)
-    for (const lock of round.locks)
-      if (!seen.has(lock.id))
-        seen.set(lock.id, lock.spawn + Math.max(0.15, player.reaction + player.spread * gauss()))
-    if (round.time < nextTap || round.time < round.lockedUntil) continue
-    const visible = round.locks.filter((lock) => seen.get(lock.id)! <= round.time)
-    if (visible.length === 0) continue
-    const lies = visible.filter((lock) => !lock.key)
-    const key = visible.find((lock) => lock.key)
-    const target =
-      key && (lies.length >= 2 || round.lives < CHAIN_LIVES || lies.length === 0)
-        ? key
-        : [...lies].sort((a, b) => a.spawn + a.life - (b.spawn + b.life))[0]
-    round.tap(noise() < player.error ? (emptySlot(round) ?? target.slot) : target.slot)
-    nextTap = round.time + Math.max(0.08, player.move + player.moveSpread * gauss())
+    const question = round.question
+    if (!question) continue
+    if (question !== current) {
+      current = question
+      const chars =
+        question.situation.question.length +
+        question.options.reduce((sum, entry) => sum + entry.text.length, 0)
+      const factor = seen.has(question.situation) ? player.familiar : 1
+      seen.add(question.situation)
+      answerAt =
+        question.spawn +
+        Math.max(0.4, player.reaction + player.perChar * chars * factor + player.spread * gauss())
+    }
+    if (round.time >= answerAt)
+      round.pick(noise() < player.error ? lieOption(question) : honestOption(question))
   }
-  return { seconds: round.time, points: round.points }
+  return { seconds: round.time, points: round.points, asked: round.asked }
 }
 
-test('Ketten: eine Runde dauert 20 bis 60 Sekunden – vom Anfänger bis zur Spitze', () => {
+test('Ketten: höchstens eine Minute – genug Zeit zum Lesen, und die Rangliste trennt die Spieler', () => {
   const play = (player: Parameters<typeof playChain>[0]) =>
     Array.from({ length: 200 }, (_, index) => playChain(player, 500 + index))
-  assertRoundLengths('Ketten', {
-    beginner: play({ reaction: 0.5, spread: 0.12, move: 0.42, moveSpread: 0.1, error: 0.05 }),
-    average: play({ reaction: 0.4, spread: 0.1, move: 0.32, moveSpread: 0.08, error: 0.03 }),
-    top: play({ reaction: 0.3, spread: 0.06, move: 0.22, moveSpread: 0.05, error: 0.01 }),
-  })
+  const beginner = play({ reaction: 0.9, perChar: 0.04, familiar: 0.6, spread: 0.45, error: 0.06 })
+  const average = play({ reaction: 0.7, perChar: 0.03, familiar: 0.45, spread: 0.35, error: 0.03 })
+  const top = play({ reaction: 0.45, perChar: 0.02, familiar: 0.3, spread: 0.2, error: 0.01 })
+  const seconds = (list: { seconds: number }[]) => median(list.map((round) => round.seconds))
+  const points = (list: { points: number }[]) => median(list.map((round) => round.points))
+  for (const round of [...beginner, ...average, ...top])
+    assert.ok(round.seconds <= CHAIN_ROUND_S + 1e-9, `${round.seconds} s`)
+  // Auch wer langsam liest, spielt eine ganze Weile – die erste Runde ist kein Sturz ins Leere.
+  assert.ok(seconds(beginner) >= 30, `Anfänger nach ${seconds(beginner).toFixed(0)} s schon fertig`)
+  assert.ok(seconds(average) >= 45, `Durchschnitt nach ${seconds(average).toFixed(0)} s`)
+  // Wer besser spielt, steht höher.
+  assert.ok(points(top) > points(average), 'Spitze vor Durchschnitt')
+  assert.ok(points(average) > points(beginner), 'Durchschnitt vor Anfänger')
+  assert.ok(Math.max(...top.map((round) => round.points)) < GAME_SCORE_MAX / 10)
+  // Anfänger sehen in einer Runde fast alle Situationen einmal.
+  assert.ok(median(beginner.map((round) => round.asked)) >= 10)
 })

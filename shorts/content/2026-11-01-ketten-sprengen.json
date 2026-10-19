@@ -1,0 +1,97 @@
+{
+  "id": "2026-11-01-ketten-sprengen",
+  "title": "Ketten sprengen",
+  "date": "2026-11-01",
+  "series": "Für eine starke Jugend · November",
+  "brand": {
+    "name": "AntiDoom"
+  },
+  "look": "arcade",
+  "voice": {
+    "provider": "google",
+    "languageCode": "de-DE",
+    "name": "de-DE-Chirp3-HD-Sadachbia",
+    "speakingRate": 1.05
+  },
+  "music": {
+    "src": "music/arcade.mp3",
+    "volume": 0.3,
+    "duckTo": 0.08
+  },
+  "scenes": [
+    {
+      "id": "schnur",
+      "type": "chains",
+      "center": "🙂",
+      "label": "DU",
+      "from": 1,
+      "ref": "2 Nephi 26:22",
+      "narration": "Eine Notlüge ist wie eine dünne Schnur. [pause short] Du spürst sie kaum."
+    },
+    {
+      "id": "kette",
+      "type": "chains",
+      "center": "🙂",
+      "label": "DU",
+      "from": 1,
+      "cues": [
+        "mit jeder weiteren",
+        "zur Kette"
+      ],
+      "ref": "2 Nephi 26:22",
+      "narration": "Doch mit jeder weiteren wird sie dicker – [pause short] bis sie zur Kette wird."
+    },
+    {
+      "id": "spiel",
+      "type": "chains",
+      "center": "🙂",
+      "label": "DU",
+      "from": 1,
+      "question": {
+        "who": "Mama",
+        "text": "Hast du dein Zimmer aufgeräumt?",
+        "at": "Hast du dein Zimmer aufgeräumt"
+      },
+      "answers": [
+        {
+          "text": "Schon erledigt!",
+          "honest": false,
+          "at": "Schon erledigt"
+        },
+        {
+          "text": "Noch nicht, mach ich jetzt.",
+          "honest": true,
+          "at": "Noch nicht, mach ich jetzt"
+        }
+      ],
+      "pickAt": "Tipp auf die ehrliche Antwort",
+      "breakAt": "die Schnur reisst",
+      "narration": "Im Spiel «Ketten sprengen» kommen Fragen. [pause short] Mama: Hast du dein Zimmer aufgeräumt? [pause short] Schon erledigt? [pause short] Oder: Noch nicht, mach ich jetzt. [pause short] Tipp auf die ehrliche Antwort – [pause short] und die Schnur reisst."
+    },
+    {
+      "id": "regeln",
+      "type": "chains",
+      "center": "🙂",
+      "label": "DU",
+      "from": 1,
+      "cues": [
+        "zur Kette"
+      ],
+      "breakAt": "sprengt der Schlüssel",
+      "breakWith": "key",
+      "narration": "Zögerst du zu lange oder wählst die Notlüge, wird sie zur Kette. [pause short] Fünf ehrliche Antworten am Stück? [pause short] Dann sprengt der Schlüssel eine Kette."
+    },
+    {
+      "id": "schluss",
+      "type": "kinetic",
+      "ref": "Johannes 8:32",
+      "holdAfterSec": 1.5,
+      "lines": [
+        "Die Wahrheit befreit.",
+        "Eine Minute.",
+        "Wie viele schaffst du?"
+      ],
+      "narration": "Die Wahrheit befreit. [pause short] Eine Minute. [pause short] Wie viele schaffst du?"
+    }
+  ]
+}

@@ -39,10 +39,12 @@ import type {
  * (`order`, über alle Arten hinweg). Jede Woche trägt ihr eigenes
  * Wappen, das sich mit jeder geschafften Karte aufbaut.
  *
- * **Eigene Shorts.** Die Woche zu Helamans jungen Kriegern trägt dazu
- * eigene kurze Videos – vor jedem interaktiven Element eines, nachgereicht
- * (`late`), weil das Paket schon eingespielt war: Sie schieben sich
- * zwischen die Karten, ohne deren Platz zu verschieben (`deckOrders`).
+ * **Eigene Shorts.** Die Wochen zu Helamans jungen Kriegern und zu «Die
+ * Wahrheit befreit dich» tragen dazu eigene kurze Videos – vor jedem
+ * interaktiven Element eines; Textkarten ohne Interaktion sind durch Videos
+ * ersetzt. Die Videos sind nachgereicht (`late`), weil das Paket schon
+ * eingespielt sein kann: Sie schieben sich zwischen die Karten, ohne deren
+ * Platz zu verschieben (`deckOrders`).
  * Die YouTube-Shorts der Kirche, die zuerst dort standen, hat die Redaktion
  * gelöscht; sie stehen als ersetzt im Deck (`retired`), damit kein Platz
  * rückt und «Einspielen» sie nicht wieder anbietet.
@@ -235,6 +237,16 @@ export interface PackWeek {
   /** Das Minispiel der Woche – nach allen Karten, ganz zuletzt. Nicht jede Woche hat eines. */
   game?: Omit<PackCard, 'key' | 'kind'> & { game: ImpulseGameId }
 }
+
+/**
+ * Der Text zum Minispiel «Ketten sprengen». Das Spiel wurde umgebaut (ehrlich
+ * antworten statt Felder wegtippen); `PACK_CORRECTIONS` bietet den neuen Text
+ * auch einer schon eingespielten Woche an.
+ */
+const CHAIN_GAME_BODY =
+  'Mama, die Lehrerin, der Trainer fragen – und die Notlüge liegt auf der Zunge: «Schon ' +
+  'erledigt», «Hatte kein Netz». Tippe die ehrliche Antwort, bevor die Schnur zur Kette wird; ' +
+  'fünf ehrliche am Stück sprengen eine Kette. Eine Minute – wie viele schaffst du?'
 
 export const PACK_WEEKS: PackWeek[] = [
   /* ================================================================ */
@@ -1262,6 +1274,17 @@ export const PACK_WEEKS: PackWeek[] = [
     },
     deck: [
       {
+        key: 'eigen-chat',
+        kind: 'video',
+        late: true,
+        emoji: '💬',
+        title: 'Short: Gruppenchat 1820',
+        body:
+          'Drei Kirchen, und jede sagt: «Wir haben recht.» Mittendrin der 14-jährige Joseph ' +
+          'Smith – bis ein einziger Vers ihn dazu bringt, Gott selbst zu fragen (Jakobus 1:5).',
+        ...ownShort('2026-10-26-gruppenchat-1820', 'Joseph Smith – Lebensgeschichte 1:11–17'),
+      },
+      {
         key: 'umfrage-1',
         kind: 'umfrage',
         emoji: '🔎',
@@ -1280,6 +1303,7 @@ export const PACK_WEEKS: PackWeek[] = [
       },
       {
         key: 'feed-1',
+        retired: 'Ersetzt durch das Video «Was ist Wahrheit?».',
         kind: 'feed',
         emoji: '🕊️',
         title: '«Die Wahrheit wird euch befreien.»',
@@ -1288,6 +1312,17 @@ export const PACK_WEEKS: PackWeek[] = [
           'mehr als ein Fakt im Kopf – sie verändert, wie frei du lebst: ohne Lügen, die du dir ' +
           'merken musst, ohne Angst, erwischt zu werden.',
         source: verse('Johannes 8:32'),
+      },
+      {
+        key: 'eigen-wahrheit',
+        kind: 'video',
+        late: true,
+        emoji: '⛓️',
+        title: 'Short: Was ist Wahrheit?',
+        body:
+          'Pilatus fragt – und wartet die Antwort nicht ab. Jesus hatte sie längst gegeben: Die ' +
+          'Wahrheit wird euch befreien (Johannes 8:32–36).',
+        ...ownShort('2026-10-26-was-ist-wahrheit', 'Johannes 8:32'),
       },
       {
         key: 'quiz-1',
@@ -1308,6 +1343,18 @@ export const PACK_WEEKS: PackWeek[] = [
         source: verse('Lehre und Bündnisse 93:24'),
       },
       {
+        key: 'eigen-abinadi',
+        kind: 'video',
+        late: true,
+        emoji: '🔥',
+        title: 'Short: Ich nehme nichts zurück',
+        body:
+          'Abinadi nimmt kein Wort zurück, weil es wahr ist – und bezahlt mit seinem Leben. Doch ' +
+          'ein Priester hört zu: Alma. Was daraus wird, reicht bis zu Helamans jungen Kriegern ' +
+          '(Mosia 17–18).',
+        ...ownShort('2026-10-27-ich-nehme-nichts-zurueck', 'Mosia 17:9–10'),
+      },
+      {
         key: 'skala-1',
         kind: 'umfrage',
         emoji: '⚖️',
@@ -1326,6 +1373,7 @@ export const PACK_WEEKS: PackWeek[] = [
       },
       {
         key: 'feed-2',
+        retired: 'Ersetzt durch das Video «Mission Mars».',
         kind: 'feed',
         emoji: '🚀',
         title: 'Vom Klassenzimmer bis zum Mars-Rover',
@@ -1346,6 +1394,18 @@ export const PACK_WEEKS: PackWeek[] = [
         source: FSY_OCTOBER('«Entdecke, was in dir steckt»'),
       },
       {
+        key: 'eigen-mars',
+        kind: 'video',
+        late: true,
+        emoji: '🚀',
+        title: 'Short: Mission Mars',
+        body:
+          'Schwester Michelle Amos hat 30 Jahre bei der NASA gearbeitet – unter anderem daran, den ' +
+          'Mars-Rover Perseverance auf seinen Flug vorzubereiten. Ihr Rat an dich und vier ' +
+          'Fragen, die zeigen, was in dir steckt.',
+        ...ownShort('2026-10-27-mission-mars', FSY_OCTOBER('«Entdecke, was in dir steckt»')),
+      },
+      {
         key: 'quiz-2',
         kind: 'quiz',
         emoji: '🧐',
@@ -1359,6 +1419,20 @@ export const PACK_WEEKS: PackWeek[] = [
         source: source(
           'Wegweiser «Für eine starke Jugend»: Die Wahrheit befreit dich',
           GUIDE_TRUTH,
+        ),
+      },
+      {
+        key: 'eigen-item',
+        kind: 'video',
+        late: true,
+        emoji: '🎮',
+        title: 'Short: Verfluchtes Item',
+        body:
+          'Bossfight Matheprüfung – und plötzlich liegt ein Spickzettel da. Legendär, aber ' +
+          'verflucht. Ehrlichkeit dagegen bringt Frieden und Selbstachtung.',
+        ...ownShort(
+          '2026-10-28-verfluchtes-item',
+          source('Wegweiser «Für eine starke Jugend»: Die Wahrheit befreit dich', GUIDE_TRUTH),
         ),
       },
       {
@@ -1383,6 +1457,17 @@ export const PACK_WEEKS: PackWeek[] = [
         ),
       },
       {
+        key: 'eigen-korihor',
+        kind: 'video',
+        late: true,
+        emoji: '🕵️',
+        title: 'Short: Der Fall Korihor',
+        body:
+          'Er hatte Erfolg, und viele folgten ihm. Am Ende gesteht Korihor, dass er die Lüge ' +
+          'gelehrt hat, bis er sie selbst glaubte (Alma 30:52–53). Lügen wachsen.',
+        ...ownShort('2026-10-29-der-fall-korihor', 'Alma 30:52–53'),
+      },
+      {
         key: 'puzzle-1',
         kind: 'puzzle',
         emoji: '🧩',
@@ -1396,6 +1481,7 @@ export const PACK_WEEKS: PackWeek[] = [
       },
       {
         key: 'feed-3',
+        retired: 'Ersetzt durch das Video «Für eine Zeit wie diese».',
         kind: 'feed',
         emoji: '🍽️',
         title: 'Fastsonntag: Warum eigentlich fasten?',
@@ -1411,6 +1497,17 @@ export const PACK_WEEKS: PackWeek[] = [
           'Zum Weiterlesen:\n' +
           'Jesaja 58:6–11',
         source: source('Evangeliumsthemen: Fasten und Fastopfer', TOPIC_FASTING),
+      },
+      {
+        key: 'eigen-ester',
+        kind: 'video',
+        late: true,
+        emoji: '👑',
+        title: 'Short: Für eine Zeit wie diese',
+        body:
+          'Königin Ester fastet drei Tage und tritt ungerufen vor den König, um ihr Volk zu ' +
+          'retten (Ester 4–5). Und so fasten wir heute am Fastsonntag.',
+        ...ownShort('2026-10-30-fuer-eine-zeit-wie-diese', 'Ester 4:14–16'),
       },
       {
         key: 'quiz-3',
@@ -1431,6 +1528,17 @@ export const PACK_WEEKS: PackWeek[] = [
         source: source('Evangeliumsthemen: Fasten und Fastopfer', TOPIC_FASTING),
       },
       {
+        key: 'eigen-traum',
+        kind: 'video',
+        late: true,
+        emoji: '🌫️',
+        title: 'Short: Nebel der Finsternis',
+        body:
+          'Lehis Traum als Spielfeld: vier Gruppen, ein Baum, eine eiserne Stange – und Nebel. ' +
+          'Nur wer sich ständig festhält, kommt an und bleibt (1 Nephi 8).',
+        ...ownShort('2026-10-31-nebel-der-finsternis', '1 Nephi 8:30'),
+      },
+      {
         key: 'frage-1',
         kind: 'frage',
         emoji: '💬',
@@ -1440,12 +1548,35 @@ export const PACK_WEEKS: PackWeek[] = [
         source: source('Für eine starke Jugend, Oktober 2026 – Fastsonntag im November', FSY_ISSUE),
       },
       {
+        key: 'eigen-petrus',
+        kind: 'video',
+        late: true,
+        emoji: '🐓',
+        title: 'Short: Drei Lügen in einer Nacht',
+        body:
+          'Am Feuer leugnet Petrus dreimal, Jesus zu kennen – dann kräht der Hahn (Lukas ' +
+          '22:54–62). Wochen später sagt er vor dem Hohen Rat: Wir können nicht schweigen ' +
+          '(Apostelgeschichte 4:20).',
+        ...ownShort('2026-11-01-drei-luegen', 'Lukas 22:61–62'),
+      },
+      {
         key: 'teilen',
         kind: 'teilen',
         emoji: '🗣️',
         title:
           'Erzähl jemandem, wann Ehrlichkeit dich etwas gekostet hat – und sich trotzdem gelohnt hat',
         body: 'Oder frag jemanden aus deiner Familie nach so einem Erlebnis. Danach hier abhaken.',
+      },
+      {
+        key: 'eigen-spiel',
+        kind: 'video',
+        late: true,
+        emoji: '🕹️',
+        title: 'Short: Ketten sprengen',
+        body:
+          'Das Minispiel der Woche: Eine Notlüge ist erst eine dünne Schnur – dann eine Kette ' +
+          '(2 Nephi 26:22). Wähl die ehrliche Antwort, bevor sie zuschnappt.',
+        ...ownShort('2026-11-01-ketten-sprengen', '2 Nephi 26:22'),
       },
     ],
     /* Kleine Lügen wachsen: erst eine dünne Schnur, dann starke Stricke
@@ -1455,10 +1586,7 @@ export const PACK_WEEKS: PackWeek[] = [
       game: 'befreien',
       emoji: '🔓',
       title: 'Ketten sprengen',
-      body:
-        '«Bin gleich da», «Hab’s nicht gesehen» – Notlügen fangen als dünne Schnur an und ' +
-        'werden zur Kette. Tippe sie weg, solange sie dünn sind: je früher, desto mehr Punkte. ' +
-        'Der Schlüssel der Wahrheit sprengt alles.',
+      body: CHAIN_GAME_BODY,
     },
   },
 
@@ -2222,6 +2350,17 @@ export const PACK_CORRECTIONS: readonly PackCorrection[] = [
     field: 'title',
     from: 'Frag deine Eltern oder Grosseltern: Wann hat ihnen das Wort der Weisheit schon geholfen?',
     to: 'Frag jemanden in deinem Umfeld: «Wann hat dir das Wort der Weisheit schon geholfen?»',
+  },
+  /* «Ketten sprengen» ist umgebaut: Statt Notlügen wegzutippen, wählt man in
+     Alltagssituationen die ehrliche Antwort. */
+  {
+    id: 'fsy26-w44-spiel',
+    field: 'body',
+    from:
+      '«Bin gleich da», «Hab’s nicht gesehen» – Notlügen fangen als dünne Schnur an und ' +
+      'werden zur Kette. Tippe sie weg, solange sie dünn sind: je früher, desto mehr Punkte. ' +
+      'Der Schlüssel der Wahrheit sprengt alles.',
+    to: CHAIN_GAME_BODY,
   },
 ]
 

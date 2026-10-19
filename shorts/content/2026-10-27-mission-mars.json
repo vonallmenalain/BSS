@@ -1,0 +1,148 @@
+{
+  "id": "2026-10-27-mission-mars",
+  "title": "Mission Mars",
+  "date": "2026-10-27",
+  "series": "Für eine starke Jugend · November",
+  "brand": {
+    "name": "AntiDoom"
+  },
+  "look": "space",
+  "voice": {
+    "provider": "google",
+    "languageCode": "de-DE",
+    "name": "de-DE-Chirp3-HD-Kore",
+    "speakingRate": 1.05
+  },
+  "music": {
+    "src": "music/space.mp3",
+    "volume": 0.3,
+    "duckTo": 0.08
+  },
+  "scenes": [
+    {
+      "id": "start",
+      "type": "mission",
+      "stage": "launch",
+      "cues": [
+        "Drei",
+        "Zwei",
+        "Eins",
+        "Start"
+      ],
+      "hud": "MARS 2020",
+      "narration": "Drei. [pause short] Zwei. [pause short] Eins. [pause short] Start! [pause] Juli 2020: [pause] Eine Rakete schickt einen Rover zum Mars."
+    },
+    {
+      "id": "reise",
+      "type": "mission",
+      "stage": "cruise",
+      "cues": [
+        "Fast sieben Monate",
+        "470 Millionen Kilometer",
+        "sieben Minuten",
+        "niemand auf der Erde"
+      ],
+      "hud": "UNTERWEGS",
+      "narration": "Fast sieben Monate unterwegs. [pause short] Rund 470 Millionen Kilometer. [pause short] Dann: sieben Minuten bis zur Landung. [pause short] Und niemand auf der Erde kann mehr eingreifen."
+    },
+    {
+      "id": "landung",
+      "type": "mission",
+      "stage": "land",
+      "cues": [
+        "Februar 2021",
+        "landet auf dem Mars"
+      ],
+      "hud": "LANDUNG",
+      "narration": "Februar 2021. [pause short] Der Rover Perseverance landet auf dem Mars."
+    },
+    {
+      "id": "amos",
+      "type": "mission",
+      "stage": "badge",
+      "title": "Michelle Amos",
+      "ref": "Für eine starke Jugend, Oktober 2026",
+      "lines": [
+        {
+          "text": "Mars-Rover: Startvorbereitung",
+          "at": "auf seinen Flug vorbereitet"
+        },
+        {
+          "text": "30 Jahre NASA",
+          "at": "Dreissig Jahre"
+        }
+      ],
+      "narration": "Mit dabei, als der Rover auf seinen Flug vorbereitet wurde: [pause short] Schwester Michelle Amos. [pause short] Dreissig Jahre hat sie bei der NASA gearbeitet."
+    },
+    {
+      "id": "rat",
+      "type": "mission",
+      "stage": "checklist",
+      "title": "Ihr Rat an dich",
+      "ref": "Für eine starke Jugend, Oktober 2026",
+      "lines": [
+        {
+          "text": "So viel lernen wie möglich",
+          "at": "Lern so viel wie möglich"
+        },
+        {
+          "text": "In der Schule dein Bestes geben",
+          "at": "Gib in der Schule dein Bestes"
+        },
+        {
+          "text": "Chancen packen",
+          "at": "pack die Chancen"
+        }
+      ],
+      "narration": "Ihr Rat an dich: [pause short] Lern so viel wie möglich. [pause short] Gib in der Schule dein Bestes. [pause short] Und pack die Chancen, die sich dir bieten."
+    },
+    {
+      "id": "fragen",
+      "type": "mission",
+      "stage": "checklist",
+      "title": "Was passt zu dir?",
+      "ref": "Für eine starke Jugend, Oktober 2026",
+      "lines": [
+        {
+          "text": "Wofür bekommst du Komplimente?",
+          "at": "Wofür machen dir andere Komplimente"
+        },
+        {
+          "text": "Wobei fragen dich andere um Hilfe?",
+          "at": "Wobei bitten sie dich um Hilfe"
+        },
+        {
+          "text": "Was machst du gern in der Freizeit?",
+          "at": "Was machst du gern in deiner Freizeit"
+        },
+        {
+          "text": "Welche Probleme löst du gern?",
+          "at": "Welche Probleme löst du gern"
+        }
+      ],
+      "narration": "Und vier Fragen, die dir zeigen, was zu dir passt: [pause short] Wofür machen dir andere Komplimente? [pause short] Wobei bitten sie dich um Hilfe? [pause short] Was machst du gern in deiner Freizeit? [pause short] Welche Probleme löst du gern?"
+    },
+    {
+      "id": "wissen",
+      "type": "kinetic",
+      "ref": "Lehre und Bündnisse 130:18",
+      "lines": [
+        "Was du lernst,",
+        "nimmst du mit.",
+        "Sogar in die Auferstehung."
+      ],
+      "narration": "Und das Beste: [pause short] Was du lernst, nimmst du mit. [pause short] Sogar in die Auferstehung."
+    },
+    {
+      "id": "frage",
+      "type": "kinetic",
+      "holdAfterSec": 1.2,
+      "lines": [
+        "Glaube und Lernen:",
+        "Gegner?",
+        "Oder ein Team?"
+      ],
+      "narration": "Glaube und Lernen: [pause short] Gegner? [pause short] Oder ein Team?"
+    }
+  ]
+}

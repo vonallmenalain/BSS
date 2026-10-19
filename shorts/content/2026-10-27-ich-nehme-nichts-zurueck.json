@@ -1,0 +1,221 @@
+{
+  "id": "2026-10-27-ich-nehme-nichts-zurueck",
+  "title": "Ich nehme nichts zurück",
+  "date": "2026-10-27",
+  "series": "Für eine starke Jugend · November",
+  "brand": {
+    "name": "AntiDoom"
+  },
+  "look": "dawn",
+  "voice": {
+    "provider": "google",
+    "languageCode": "de-DE",
+    "name": "de-DE-Chirp3-HD-Achird",
+    "speakingRate": 1.03
+  },
+  "music": {
+    "src": "music/pad-dawn.mp3",
+    "volume": 0.3,
+    "duckTo": 0.08
+  },
+  "scenes": [
+    {
+      "id": "hook",
+      "type": "kinetic",
+      "sky": 0.04,
+      "ref": "Mosia 17:9",
+      "lines": [
+        "Ein Prophet.",
+        "Ein König.",
+        "Und ein Satz:",
+        "Ich nehme nichts zurück."
+      ],
+      "narration": "Ein Prophet. [pause short] Ein König. [pause short] Und ein Satz: Ich nehme nichts zurück."
+    },
+    {
+      "id": "warnung",
+      "type": "kinetic",
+      "sky": 0.05,
+      "ref": "Mosia 11:20–28; 12:1",
+      "lines": [
+        "Kehrt um!",
+        "Der König will ihn töten.",
+        "Abinadi entkommt.",
+        "Zwei Jahre später kommt er zurück",
+        "verkleidet."
+      ],
+      "narration": "Abinadi warnt König Noah und sein Volk: Kehrt um! [pause short] Der König will ihn töten. [pause short] Abinadi entkommt. [pause short] Zwei Jahre später kommt er zurück – [pause short] verkleidet."
+    },
+    {
+      "id": "leuchten",
+      "type": "kinetic",
+      "sky": 0.08,
+      "ref": "Mosia 13:2–5",
+      "lines": [
+        "Sein Gesicht leuchtet",
+        "wie das von Mose.",
+        "Keiner wagt es, ihn anzufassen."
+      ],
+      "narration": "Vor dem König wollen sie ihn packen. [pause short] Doch sein Gesicht leuchtet wie das von Mose. [pause short] Keiner wagt es, ihn anzufassen."
+    },
+    {
+      "id": "angebot",
+      "type": "kinetic",
+      "sky": 0.1,
+      "ref": "Mosia 17:8–9",
+      "lines": [
+        "Nimm alles zurück,",
+        "und du bleibst am Leben.",
+        "Abinadi sagt:",
+        "Ich nehme meine Worte nicht zurück.",
+        "Denn sie sind wahr."
+      ],
+      "narration": "Dann das Angebot: [pause short] Nimm alles zurück, und du bleibst am Leben. [pause short] Abinadi sagt: [pause short] Ich nehme meine Worte nicht zurück. [pause short] Denn sie sind wahr."
+    },
+    {
+      "id": "preis",
+      "type": "kinetic",
+      "sky": 0.1,
+      "ref": "Mosia 17:20",
+      "lines": [
+        "Er bezahlt mit seinem Leben.",
+        "Alles umsonst?",
+        "Nein."
+      ],
+      "narration": "Er bezahlt mit seinem Leben. [pause short] Alles umsonst? [pause short] Nein."
+    },
+    {
+      "id": "alma",
+      "type": "dominoes",
+      "sky": 0.22,
+      "ref": "Mosia 17:2–4",
+      "narration": "Einer der Priester glaubt ihm: [pause short] Alma. [pause short] Er flieht und schreibt alles auf, was Abinadi gesagt hat.",
+      "pieces": [
+        {
+          "label": "Abinadi",
+          "sub": "Prophet",
+          "at": "Einer der Priester"
+        },
+        {
+          "label": "Alma",
+          "sub": "ein Priester",
+          "at": "Alma"
+        },
+        {
+          "label": "200+",
+          "sub": "Wasser Mormon"
+        },
+        {
+          "label": "450",
+          "sub": "Gläubige"
+        },
+        {
+          "label": "Alma",
+          "sub": "sein Sohn"
+        },
+        {
+          "label": "Helaman",
+          "sub": "sein Enkel"
+        },
+        {
+          "label": "2000",
+          "sub": "junge Krieger"
+        }
+      ],
+      "fallen": 0
+    },
+    {
+      "id": "mormon",
+      "type": "dominoes",
+      "sky": 0.5,
+      "ref": "Mosia 18:16, 35",
+      "narration": "Dann lehrt er heimlich an den Wassern Mormon. [pause short] Über 200 Menschen lassen sich taufen. [pause short] Bald sind es rund 450.",
+      "pieces": [
+        {
+          "label": "Abinadi",
+          "sub": "Prophet"
+        },
+        {
+          "label": "Alma",
+          "sub": "ein Priester"
+        },
+        {
+          "label": "200+",
+          "sub": "Wasser Mormon",
+          "at": "Über 200 Menschen"
+        },
+        {
+          "label": "450",
+          "sub": "Gläubige",
+          "at": "rund 450"
+        },
+        {
+          "label": "Alma",
+          "sub": "sein Sohn"
+        },
+        {
+          "label": "Helaman",
+          "sub": "sein Enkel"
+        },
+        {
+          "label": "2000",
+          "sub": "junge Krieger"
+        }
+      ],
+      "fallen": 2
+    },
+    {
+      "id": "enkel",
+      "type": "dominoes",
+      "sky": 0.85,
+      "ref": "Mosia 29:42; Alma 53:19–22",
+      "narration": "Sein Sohn Alma führt später die Kirche. [pause short] Und dessen Sohn Helaman? [pause short] Zieht mit den 2000 jungen Kriegern los.",
+      "pieces": [
+        {
+          "label": "Abinadi",
+          "sub": "Prophet"
+        },
+        {
+          "label": "Alma",
+          "sub": "ein Priester"
+        },
+        {
+          "label": "200+",
+          "sub": "Wasser Mormon"
+        },
+        {
+          "label": "450",
+          "sub": "Gläubige"
+        },
+        {
+          "label": "Alma",
+          "sub": "sein Sohn",
+          "at": "Sein Sohn Alma"
+        },
+        {
+          "label": "Helaman",
+          "sub": "sein Enkel",
+          "at": "dessen Sohn Helaman"
+        },
+        {
+          "label": "2000",
+          "sub": "junge Krieger",
+          "at": "2000 jungen Kriegern"
+        }
+      ],
+      "fallen": 4
+    },
+    {
+      "id": "du",
+      "type": "kinetic",
+      "sky": 1.0,
+      "holdAfterSec": 1.2,
+      "lines": [
+        "Abinadi hat das alles nicht mehr erlebt.",
+        "Ehrlich sein kann etwas kosten.",
+        "Wie viel ist es dir wert?"
+      ],
+      "narration": "Abinadi hat das alles nicht mehr erlebt. [pause short] Ehrlich sein kann etwas kosten. [pause short] Wie viel ist es dir wert?"
+    }
+  ]
+}

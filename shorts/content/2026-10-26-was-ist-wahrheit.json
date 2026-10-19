@@ -1,0 +1,106 @@
+{
+  "id": "2026-10-26-was-ist-wahrheit",
+  "title": "Was ist Wahrheit?",
+  "date": "2026-10-26",
+  "series": "Für eine starke Jugend · November",
+  "brand": {
+    "name": "AntiDoom"
+  },
+  "look": "stone",
+  "voice": {
+    "provider": "google",
+    "languageCode": "de-DE",
+    "name": "de-DE-Chirp3-HD-Charon",
+    "speakingRate": 1.02
+  },
+  "music": {
+    "src": "music/temple.mp3",
+    "volume": 0.3,
+    "duckTo": 0.08
+  },
+  "scenes": [
+    {
+      "id": "hook",
+      "type": "kinetic",
+      "ref": "Johannes 18:38",
+      "lines": [
+        "Was ist Wahrheit?",
+        "Das fragt Pilatus Jesus.",
+        "Dann geht er hinaus,",
+        "ohne auf die Antwort zu warten."
+      ],
+      "narration": "Was ist Wahrheit? [pause short] Das fragt Pilatus Jesus. [pause short] Und dann geht er hinaus – [pause short] ohne auf die Antwort zu warten."
+    },
+    {
+      "id": "frei",
+      "type": "chains",
+      "center": "DU",
+      "from": 3,
+      "breakAt": "wird euch befreien",
+      "ref": "Johannes 8:32",
+      "narration": "Schon früher hatte Jesus etwas Erstaunliches versprochen: [pause short] Ihr werdet die Wahrheit erkennen. [pause short] Und die Wahrheit wird euch befreien."
+    },
+    {
+      "id": "sklaven",
+      "type": "ledger",
+      "title": "«Nie Sklaven gewesen!»",
+      "ref": "Johannes 8:33",
+      "lines": [
+        {
+          "label": "Ägypten",
+          "value": "Sklaverei",
+          "at": "Ägypten",
+          "mark": "cross"
+        },
+        {
+          "label": "Babylon",
+          "value": "Exil",
+          "at": "Babylon",
+          "mark": "cross"
+        },
+        {
+          "label": "Rom",
+          "value": "regiert gerade",
+          "at": "regiert Rom",
+          "mark": "cross"
+        }
+      ],
+      "narration": "Seine Zuhörer protestieren: Wir waren nie jemandes Sklaven! [pause short] Echt jetzt? [pause short] Ägypten: Sklaverei. [pause short] Babylon: Gefangenschaft. [pause short] Und gerade jetzt regiert Rom."
+    },
+    {
+      "id": "knecht",
+      "type": "chains",
+      "center": "DU",
+      "from": 0,
+      "cues": [
+        "Jede Lüge",
+        "jede Ausrede",
+        "ein Glied mehr"
+      ],
+      "ref": "Johannes 8:34",
+      "narration": "Doch Jesus meint etwas anderes: [pause short] Wer sündigt, ist ein Sklave der Sünde. [pause short] Jede Lüge, [pause short] jede Ausrede – [pause short] ein Glied mehr in der Kette."
+    },
+    {
+      "id": "sohn",
+      "type": "chains",
+      "center": "DU",
+      "from": 3,
+      "breakAt": "wirklich frei",
+      "ref": "Johannes 8:36",
+      "narration": "Und dann sein Versprechen: [pause short] Wenn euch der Sohn befreit, [pause short] seid ihr wirklich frei."
+    },
+    {
+      "id": "antwort",
+      "type": "kinetic",
+      "ref": "Lehre und Bündnisse 93:24",
+      "holdAfterSec": 1.2,
+      "lines": [
+        "Pilatus hat nicht gewartet.",
+        "Du kannst die Antwort haben.",
+        "Der Herr hat Wahrheit erklärt –",
+        "in einem einzigen Satz."
+      ],
+      "narration": "Pilatus hat nicht gewartet. [pause short] Du kannst die Antwort haben. [pause short] Der Herr hat Wahrheit erklärt – in einem einzigen Satz."
+    }
+  ]
+}

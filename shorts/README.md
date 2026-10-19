@@ -32,10 +32,14 @@ Claude-Sitzung (Cloud) sieht das so aus:
 
 - **Jede Folge einen anderen Look** (`look`, siehe unten) – mit eigener Musik und eigener Stimme.
 - **Die ersten zwei Sekunden entscheiden.** Gleich ein starkes Bild und ein Satz, der neugierig
-  macht: «Null Kampferfahrung.», «Eine Nachricht von der Front.», «Zweitausend Teenager. Ihr Auftrag: …».
-- **Zur nächsten Karte überleiten.** Die letzte Szene ist ein `teaser`: Sie zeigt die Karte, die im
-  Feed direkt danach kommt (Umfrage, Quiz, Dilemma, Aufgabe), und lädt mit einer Wisch-Geste ein.
-  Darum steht das Video im Paket direkt vor dieser Karte. Was die Karte fragt, verrät das Video nicht.
+  macht: «Null Kampferfahrung.», «Ein Gruppenchat. Drei Kirchen.», «Drei. Zwei. Eins. Start!».
+- **Am besten kommen an:** Geschichten aus den Schriften – kurz, cool, informativ (die Taktik als
+  Kartentisch, eine Akte, ein Spielfeld) – und Videos im Stil eines Spiels (Werte, Items, Level).
+- **Zum Thema hinführen, nicht auf die Karte zeigen.** Das Video steht im Paket direkt vor dem
+  interaktiven Element und darf dessen Thema aufnehmen, etwa mit einer Frage am Schluss. Aber kein
+  «Karte», kein «stimm ab», kein «das findest du gleich» – das merken die Jugendlichen selbst. Was
+  ein Quiz fragt, verrät das Video nicht. (Die `teaser`-Szene stammt aus der ersten Woche und wird
+  nicht mehr gebraucht.)
 - **Vor jedem interaktiven Element ein Video.** Ein Einführungsvideo darf kurz sein (15–30 Sekunden):
   Neugier wecken, das Thema setzen, zur Karte überleiten. Längere Geschichten 50 bis 65 Sekunden.
 - Kurze Szenen, eine Aussage pro Szene, Pausen mit `[pause short]`.
@@ -69,6 +73,8 @@ Beim Anschauen kurz darauf achten.
 - Eine Zahl vor einem Satzpunkt ist eine Grundzahl: «Alma 53.» wird «Alma dreiundfünfzig.», nicht
   «dreiundfünfzigste». Vor einem Monat bleibt die Ordnungszahl («19. Oktober»).
 - Kapitel und Vers werden ausgesprochen: «Alma 53:20» → «Alma dreiundfünfzig, Vers zwanzig».
+- Jahreszahlen nach «Jahr», «Frühling», «Sommer», «Herbst», «Winter» liest sie, wie man sie sagt:
+  «Frühling 1820» → «achtzehnhundertzwanzig».
 - Mit `npm run tts -- content/<episode>.json --dry-run` sieht man genau den Text, der an Google geht.
 
 Oben rechts steht keine Folgenangabe: `brand.label` leer lassen.
@@ -130,7 +136,15 @@ Szenen der Looks:
 | `chat` | Handy: Sperrbildschirm oder Chatverlauf | `mode` (`lock`/`thread`), `contact`, `lock`, `messages` (`kind`: `text`/`sticker`/`plan`/`divider`, `text`, `at`) – ohne `at` steht eine Nachricht schon im Verlauf |
 | `map` | Kartentisch: die Lockvogel-Taktik in Etappen | `stage` (`intro`, `plan`, `bait`, `chase`, `halt`, `battle`, `count`), `cues` (die Takte der Etappe) |
 | `relay` | Stadion: Glaube als Staffelstab | `stage` (`sword`, `run`, `mother`, `handoff`, `you`), `cues`, `line`, `chips` |
-| `teaser` | Vorschau auf die nächste Karte im Feed | `label`, `question`, `options` oder `scale`, `hint` |
+| `teaser` | Vorschau auf die nächste Karte im Feed (nur erste Woche) | `label`, `question`, `options` oder `scale`, `hint` |
+| `chains` | Schnur, Strick, Kette um eine Figur – und wie sie zerspringen; auch als Spielvorschau | `center`, `label`, `from` (0–3), `cues`, `breakAt`, `breakWith` (`light`/`key`), `question`, `answers`, `pickAt` |
+| `dominoes` | Dominosteine: eine Tat stösst die nächste an | `pieces` (`label`, `sub`, `at`), `fallen` |
+| `mission` | Weltraum: Start, Flug, Landung, Ausweis, Checkliste | `stage` (`launch`, `cruise`, `land`, `badge`, `checklist`), `cues`, `title`, `lines`, `hud` |
+| `item` | Videospiel: ein Item fällt, zeigt Werte, ist verflucht oder ein Segen | `stage` (`drop`, `card`, `choice`), `name`, `rarity`, `icon`, `dropAt`, `stats`, `curseAt`, `choices` |
+| `dossier` | Detektiv: Akte mit getippten Zeilen und Stempel – oder ein handgeschriebener Zettel | `mode` (`file`/`note`), `title`, `subtitle`, `entries`, `stamp` |
+| `palace` | Palast: Gesetz, Erlass, drei Tage Fasten, das goldene Zepter | `stage` (`law`, `decree`, `days`, `scepter`), `cues` |
+| `dream` | Lehis Traum als Spielfeld: Baum, Weg, Stange, Nebel, Gebäude | `stage` (`intro`, `mist`, `rod`, `hold`, `building`), `cues`, `hud` |
+| `fire` | Hof bei Nacht: Feuer, Sprechblasen, eine Schnur, die zur Kette wird | `stage` (`intro`, `accuse`, `rooster`, `dawn`), `bubbles`, `bind`, `bindAt`, `breakAt`, `cues` |
 | `lineup` | Detektiv: Gegenüberstellung, das Licht wandert zu dem, der genannt wird | `title`, `suspects` (`name`, `figure`: `captain`/`dream`/`enemies`/`mothers`, `at`) |
 | `buzzer` | Quizshow: Aussage, zwei Buzzer, Countdown – ohne Auflösung | `statement`, `at`, `buttons` |
 | `blocks` | Videospiel: Wortblöcke fallen durcheinander (Vers-Puzzle) | `words` (richtige Reihenfolge), `mode` (`fall`/`stack`) |
@@ -159,6 +173,11 @@ Gemeinsam: `narration`, `sky` (0 = Nacht … 1 = goldener Morgen; wird weich int
 | `noir` | Detektivbüro, Licht durch die Jalousie | `music/lofi.mp3` |
 | `show` | Quizshow-Studio mit Scheinwerfern | `music/anthem.mp3` |
 | `journal` | Notizbuch auf dem Schreibtisch | `music/lofi.mp3` |
+| `stone` | Jerusalem bei Nacht: Steinmauer im Fackellicht | `music/temple.mp3` |
+| `ember` | Hof bei Nacht: Feuer, Funken, Glut | `music/chase.mp3` |
+| `space` | Weltraum: Sterne, Mars, Missionskontrolle | `music/space.mp3` |
+| `palace` | Persischer Palast: Gold, Purpur, Säulen | `music/temple.mp3` |
+| `dream` | Lehis Traum: Nebel, Licht des Baumes | `music/mystery.mp3` |
 
 Der Look färbt auch Untertitel, Quellenangabe und die `kinetic`-Zeilen (mit eigenem Auftritt und Ton).
 
@@ -169,6 +188,9 @@ Der Look färbt auch Untertitel, Quellenangabe und die `kinetic`-Zeilen (mit eig
 - `scripts/tts.ts` misst im Audio Sprechbeginn, -ende und Pausen (10-ms-Energiefenster, Schwelle relativ zum Peak)
   und rastet die Textphrasen (Satzzeichen, Pausen-Tags) auf echte Pausen ein. Wörter werden innerhalb der Phrase
   nach Länge verteilt. Ergebnis: Wort-Highlighting meist auf ±100 ms genau, ohne Whisper.
+  Wo eine Grenze ungefähr liegt, rechnet das Skript auf zwei Wegen – über die ganze Sprechzeit oder nur über die
+  gesprochene Zeit ohne Pausen – und nimmt den, dessen Phrasen besser zur Textlänge passen. Ziffern zählen dabei
+  länger als Buchstaben («2020»). So sitzen auch kurze Rufe mit langen Pausen («Drei. Zwei. Eins. Start!»).
 - Musik wird während der Sprache automatisch abgesenkt (Ducking mit Rampen), Ein-/Ausblendung am Anfang/Ende.
 
 ## Robustheit / Edge Cases
@@ -197,10 +219,11 @@ Der Look färbt auch Untertitel, Quellenangabe und die `kinetic`-Zeilen (mit eig
 
 - Schriften: Anton, Inter, Cormorant Garamond – SIL Open Font License.
 - Musik in `public/music/`: selbst synthetisiert, frei verwendbar. `npm run pad` macht den Sonnenaufgangs-Pad,
-  `npm run music -- --style arcade|lofi|chase|anthem --sec 75 --out x.wav` die übrigen (fürs Repo mit
+  `npm run music -- --style arcade|lofi|chase|anthem|temple|space|mystery --sec 75 --out x.wav` die übrigen (fürs Repo mit
   `ffmpeg -i x.wav -b:a 128k x.mp3` verkleinert). Für die echte Produktion besser Musik mit klarer Lizenz.
 - Soundeffekte in `public/sfx/`: mit `npm run sfx` selbst synthetisiert, frei verwendbar.
-- Schriften zusätzlich: Press Start 2P (Pixel) und Caveat (Handschrift) – SIL Open Font License.
+- Schriften zusätzlich: Press Start 2P (Pixel), Caveat (Handschrift), Courier Prime (Schreibmaschine), Space Mono
+  (HUD) und Cinzel (römische Kapitalen) – SIL Open Font License.
 - Emoji in Chat-Stickern kommen aus der Emoji-Schrift des Systems (im Cloud-Container: Noto Color Emoji).
 - Schrifttexte: Zitate aus der deutschen Ausgabe des Buches Mormon. Kirchliche Bilder/Videos aus der Mediathek nur gemäss
   deren Nutzungsbedingungen verwenden; kein Logo/keine Wortmarke der Kirche.

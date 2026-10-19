@@ -85,8 +85,8 @@ export const IMPULSE_GAMES: Record<ImpulseGameId, GameDefinition> = {
         point: (x, y) => {
           if (active()) engine.tapAt(x, y)
         },
-        slot: (slot) => {
-          if (active()) engine.tapSlot(slot, true)
+        option: (option) => {
+          if (active()) engine.tapOption(option, true)
         },
       })
       return { engine, detach }

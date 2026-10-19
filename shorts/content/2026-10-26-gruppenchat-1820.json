@@ -1,0 +1,155 @@
+{
+  "id": "2026-10-26-gruppenchat-1820",
+  "title": "Gruppenchat 1820",
+  "date": "2026-10-26",
+  "series": "Für eine starke Jugend · November",
+  "brand": {
+    "name": "AntiDoom"
+  },
+  "look": "chat",
+  "voice": {
+    "provider": "google",
+    "languageCode": "de-DE",
+    "name": "de-DE-Chirp3-HD-Orus",
+    "speakingRate": 1.05
+  },
+  "music": {
+    "src": "music/lofi.mp3",
+    "volume": 0.3,
+    "duckTo": 0.08
+  },
+  "scenes": [
+    {
+      "id": "hook",
+      "type": "chat",
+      "mode": "lock",
+      "contact": "Wer hat recht?",
+      "lock": {
+        "time": "06:12",
+        "date": "Frühling 1820",
+        "title": "Wer hat recht? (3 neue)",
+        "preview": "Presbyterianer: Falsch, wir haben recht!",
+        "app": "Gruppe"
+      },
+      "ref": "Joseph Smith – Lebensgeschichte 1:5",
+      "narration": "Ein Gruppenchat. [pause short] Drei Kirchen. [pause short] Und jede sagt: Wir haben recht."
+    },
+    {
+      "id": "streit",
+      "type": "chat",
+      "contact": "Wer hat recht?",
+      "contactSub": "Methodisten, Presbyterianer, Baptisten, Joseph",
+      "ref": "Joseph Smith – Lebensgeschichte 1:5–9",
+      "messages": [
+        {
+          "from": "Methodisten",
+          "text": "Kommt zu uns!",
+          "at": "Kommt zu uns"
+        },
+        {
+          "from": "Presbyterianer",
+          "text": "Falsch, wir haben recht!",
+          "at": "Falsch, wir haben recht"
+        },
+        {
+          "from": "Baptisten",
+          "text": "Ihr irrt euch beide!",
+          "at": "Ihr irrt euch beide"
+        }
+      ],
+      "narration": "Die Methodisten: Kommt zu uns! [pause short] Die Presbyterianer: Falsch, wir haben recht! [pause short] Die Baptisten: Ihr irrt euch beide!"
+    },
+    {
+      "id": "joseph",
+      "type": "chat",
+      "contact": "Wer hat recht?",
+      "contactSub": "Methodisten, Presbyterianer, Baptisten, Joseph",
+      "ref": "Joseph Smith – Lebensgeschichte 1:7–10",
+      "messages": [
+        {
+          "from": "Methodisten",
+          "text": "Kommt zu uns!"
+        },
+        {
+          "from": "Presbyterianer",
+          "text": "Falsch, wir haben recht!"
+        },
+        {
+          "from": "Baptisten",
+          "text": "Ihr irrt euch beide!"
+        },
+        {
+          "side": "out",
+          "text": "Wer hat recht? Oder liegen alle falsch?",
+          "at": "Wer hat recht"
+        }
+      ],
+      "narration": "Mittendrin: Joseph Smith, 14 Jahre alt. [pause short] Seine Mutter und drei Geschwister sind schon Presbyterianer. [pause short] Ihm gefallen eher die Methodisten. [pause short] Er fragt sich: Wer hat recht? Oder liegen alle falsch?"
+    },
+    {
+      "id": "vers",
+      "type": "kinetic",
+      "ref": "Jakobus 1:5",
+      "lines": [
+        "Wem Weisheit fehlt,",
+        "der soll Gott bitten.",
+        "Und sie wird ihm gegeben."
+      ],
+      "narration": "Dann liest er in der Bibel einen einzigen Vers. [pause short] Wem Weisheit fehlt, der soll Gott bitten. [pause short] Und sie wird ihm gegeben."
+    },
+    {
+      "id": "wald",
+      "type": "chat",
+      "contact": "Wer hat recht?",
+      "contactSub": "Methodisten, Presbyterianer, Baptisten, Joseph",
+      "ref": "Joseph Smith – Lebensgeschichte 1:13–14",
+      "messages": [
+        {
+          "from": "Methodisten",
+          "text": "Kommt zu uns!"
+        },
+        {
+          "from": "Presbyterianer",
+          "text": "Falsch, wir haben recht!"
+        },
+        {
+          "from": "Baptisten",
+          "text": "Ihr irrt euch beide!"
+        },
+        {
+          "side": "out",
+          "text": "Wer hat recht? Oder liegen alle falsch?"
+        },
+        {
+          "kind": "divider",
+          "text": "Joseph hat die Gruppe verlassen",
+          "at": "Also verlässt Joseph den Streit"
+        }
+      ],
+      "narration": "Also verlässt Joseph den Streit. [pause short] An einem klaren Morgen im Frühling 1820 geht er in den Wald. [pause short] Zum ersten Mal in seinem Leben betet er laut."
+    },
+    {
+      "id": "licht",
+      "type": "kinetic",
+      "ref": "Joseph Smith – Lebensgeschichte 1:16–17",
+      "lines": [
+        "Eine Säule aus Licht.",
+        "Er sieht Gott, den Vater,",
+        "und seinen Sohn, Jesus Christus."
+      ],
+      "narration": "Eine Säule aus Licht. [pause short] Er sieht Gott, den Vater, und seinen Sohn, Jesus Christus."
+    },
+    {
+      "id": "du",
+      "type": "kinetic",
+      "holdAfterSec": 1.2,
+      "lines": [
+        "Fragen sind nichts Schlechtes.",
+        "Sie können zu Antworten von Gott führen.",
+        "Die Frage ist nur:",
+        "Wo suchst du zuerst?"
+      ],
+      "narration": "Fragen sind nichts Schlechtes. [pause short] Sie können zu Antworten von Gott führen. [pause short] Die Frage ist nur: Wo suchst du zuerst?"
+    }
+  ]
+}

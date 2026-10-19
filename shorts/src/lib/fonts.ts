@@ -16,6 +16,13 @@ const fonts: Array<{ family: string; file: string; weight: string; style?: "norm
   /* Pixel-Schrift für den Game-Look, Handschrift für Notizen auf der Karte */
   { family: "Press Start 2P", file: "press-start-2p-latin-400-normal.woff2", weight: "400" },
   { family: "Caveat", file: "caveat-latin-700-normal.woff2", weight: "700" },
+  /* Schreibmaschine für Akten, Monospace fürs Raumfahrt-HUD, römische Kapitalen für Palast und Stein */
+  { family: "Courier Prime", file: "courier-prime-latin-400-normal.woff2", weight: "400" },
+  { family: "Courier Prime", file: "courier-prime-latin-700-normal.woff2", weight: "700" },
+  { family: "Space Mono", file: "space-mono-latin-400-normal.woff2", weight: "400" },
+  { family: "Space Mono", file: "space-mono-latin-700-normal.woff2", weight: "700" },
+  { family: "Cinzel", file: "cinzel-latin-400-normal.woff2", weight: "400" },
+  { family: "Cinzel", file: "cinzel-latin-700-normal.woff2", weight: "700" },
 ];
 
 export const fontsReady = Promise.all(

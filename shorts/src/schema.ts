@@ -91,7 +91,7 @@ export const sceneSchema = z.discriminatedUnion("type", [
     mode: z.enum(["lock", "thread"]).default("thread"),
     contact: z.string().min(1),
     contactSub: z.string().optional(),
-    lock: z.object({ time: z.string(), date: z.string(), title: z.string(), preview: z.string() }).optional(),
+    lock: z.object({ time: z.string(), date: z.string(), title: z.string(), preview: z.string(), app: z.string().default("Brief") }).optional(),
     messages: z
       .array(
         z.object({
@@ -100,6 +100,10 @@ export const sceneSchema = z.discriminatedUnion("type", [
           /** Phrase, bei der die Nachricht ankommt. Ohne `at` steht sie schon im Verlauf. */
           at: z.string().optional(),
           meta: z.string().optional(),
+          /** Gruppenchat: Name über der Blase */
+          from: z.string().optional(),
+          /** «out»: eigene Nachricht rechts */
+          side: z.enum(["in", "out"]).default("in"),
         }),
       )
       .max(12)
@@ -178,6 +182,93 @@ export const sceneSchema = z.discriminatedUnion("type", [
     pickups: z.array(z.object({ emoji: z.string(), label: z.string(), at: z.string().min(1) })).max(5).default([]),
   }),
   base.extend({
+    /** Ketten: Schnur, Strick, Kette um eine Figur – und wie sie zerspringen. Auch als Spielvorschau mit Frage und Antworten */
+    type: z.literal("chains"),
+    /** In der Mitte: ein Emoji oder ein kurzes Wort */
+    center: z.string().default("🙂"),
+    label: z.string().optional(),
+    /** Stufe zu Beginn: 0 nichts, 1 dünne Schnur, 2 Strick, 3 Kette */
+    from: z.number().int().min(0).max(3).default(0),
+    /** Jede Phrase legt eine Stufe drauf; die letzte schliesst die Kette ganz */
+    cues: z.array(z.string().min(1)).max(3).default([]),
+    /** Phrase, bei der alles zerspringt */
+    breakAt: z.string().optional(),
+    /** Womit: Licht oder der Schlüssel aus dem Spiel */
+    breakWith: z.enum(["light", "key"]).default("light"),
+    /** Spielvorschau: wer fragt was */
+    question: z.object({ who: z.string().min(1), text: z.string().min(1), at: z.string().min(1) }).optional(),
+    answers: z.array(z.object({ text: z.string().min(1), honest: z.boolean().default(false), at: z.string().min(1) })).max(3).default([]),
+    /** Phrase, bei der die ehrliche Antwort angetippt wird */
+    pickAt: z.string().optional(),
+  }),
+  base.extend({
+    /** Dominosteine: eine Tat stösst die nächste an. Steine ohne `at` stehen (oder liegen schon, bis `fallen`) */
+    type: z.literal("dominoes"),
+    pieces: z.array(z.object({ label: z.string().min(1), sub: z.string().optional(), at: z.string().min(1).optional() })).min(2).max(9),
+    /** So viele Steine liegen zu Beginn schon */
+    fallen: z.number().int().min(0).default(0),
+  }),
+  base.extend({
+    /** Weltraum: Start, Flug, Landung, Ausweis, Checkliste */
+    type: z.literal("mission"),
+    stage: z.enum(["launch", "cruise", "land", "badge", "checklist"]),
+    /** Die Takte der Etappe (Countdown, Distanz, Aufsetzen …) */
+    cues: z.array(z.string().min(1)).max(6).default([]),
+    title: z.string().optional(),
+    lines: z.array(z.object({ text: z.string().min(1), at: z.string().min(1) })).max(5).default([]),
+    hud: z.string().optional(),
+  }),
+  base.extend({
+    /** Game-Look: ein Item fällt, zeigt seine Werte, entpuppt sich als verflucht – oder als Segen */
+    type: z.literal("item"),
+    stage: z.enum(["drop", "card", "choice"]),
+    name: z.string().min(1),
+    rarity: z.string().optional(),
+    icon: z.enum(["scroll", "heart"]).default("scroll"),
+    /** Phrase, bei der das Item herunterfällt (Etappe drop) */
+    dropAt: z.string().optional(),
+    stats: z.array(z.object({ label: z.string().min(1), tone: z.enum(["plus", "minus"]), value: z.string().optional(), at: z.string().min(1).optional() })).max(5).default([]),
+    /** Phrase, bei der das Item als verflucht auffliegt */
+    curseAt: z.string().optional(),
+    choices: z.tuple([z.string(), z.string()]).optional(),
+  }),
+  base.extend({
+    /** Detektiv: Akte mit getippten Zeilen und Stempel – oder ein handgeschriebener Zettel */
+    type: z.literal("dossier"),
+    mode: z.enum(["file", "note"]).default("file"),
+    title: z.string().min(1),
+    subtitle: z.string().optional(),
+    entries: z.array(z.object({ text: z.string().min(1), at: z.string().min(1) })).max(5).default([]),
+    stamp: z.object({ text: z.string().min(1), at: z.string().min(1) }).optional(),
+  }),
+  base.extend({
+    /** Palast: Gesetz, Erlass, drei Tage Fasten, das goldene Zepter */
+    type: z.literal("palace"),
+    stage: z.enum(["law", "decree", "days", "scepter"]),
+    cues: z.array(z.string().min(1)).max(4).default([]),
+  }),
+  base.extend({
+    /** Lehis Traum (1 Nephi 8): Baum, Weg, eiserne Stange, Nebel, Gebäude – Gruppe für Gruppe */
+    type: z.literal("dream"),
+    stage: z.enum(["intro", "mist", "rod", "hold", "building"]),
+    cues: z.array(z.string().min(1)).max(4).default([]),
+    hud: z.string().optional(),
+  }),
+  base.extend({
+    /** Hof bei Nacht: Feuer, Sprechblasen, eine Schnur, die mit jeder Lüge zur Kette wird */
+    type: z.literal("fire"),
+    stage: z.enum(["intro", "accuse", "rooster", "dawn"]),
+    bubbles: z.array(z.object({ text: z.string().min(1), at: z.string().min(1), side: z.enum(["left", "right"]), who: z.string().optional() })).max(3).default([]),
+    /** Stufe der Schnur zu Beginn (0–3) … */
+    bind: z.number().int().min(0).max(3).default(0),
+    /** … und die Phrase, bei der sie eine Stufe dicker wird */
+    bindAt: z.string().optional(),
+    /** Phrase, bei der die Kette zerspringt */
+    breakAt: z.string().optional(),
+    /** Die Takte der Etappe (Hahn, Blick, Hinausgehen) */
+    cues: z.array(z.string().min(1)).max(3).default([]),
+  }),
+  base.extend({
     /** Vorschau auf die nächste Karte im Feed – damit das Video zur Umfrage oder Aufgabe überleitet */
     type: z.literal("teaser"),
     label: z.string().min(1),
@@ -196,7 +287,7 @@ export const episodeSchema = z
     series: z.string().optional(),
     brand: z.object({ name: z.string(), label: z.string().optional() }),
     /** Visueller Stil der ganzen Episode (src/looks.tsx) */
-    look: z.enum(["dawn", "arcade", "chat", "map", "track", "noir", "show", "journal"]).default("dawn"),
+    look: z.enum(["dawn", "arcade", "chat", "map", "track", "noir", "show", "journal", "stone", "ember", "space", "palace", "dream"]).default("dawn"),
     voice: z.object({
       provider: z.enum(["google", "piper"]).default("google"),
       languageCode: z.string().default("de-DE"),
@@ -246,6 +337,30 @@ export const episodeSchema = z
       if (s.type === "treasure") s.cues.forEach((c, j) => mustContain.push([`cues.${j}`, c]));
       if (s.type === "journal") s.entries.forEach((x, j) => mustContain.push([`entries.${j}.at`, x.at]));
       if (s.type === "jumper") [...s.hurdles, ...s.pickups].forEach((x, j) => mustContain.push([`jumper.${j}.at`, x.at]));
+      if (s.type === "chains") {
+        s.cues.forEach((c, j) => mustContain.push([`cues.${j}`, c]));
+        if (s.breakAt) mustContain.push(["breakAt", s.breakAt]);
+        if (s.question) mustContain.push(["question.at", s.question.at]);
+        s.answers.forEach((a, j) => mustContain.push([`answers.${j}.at`, a.at]));
+        if (s.pickAt) mustContain.push(["pickAt", s.pickAt]);
+      }
+      if (s.type === "dominoes") s.pieces.forEach((x, j) => x.at && mustContain.push([`pieces.${j}.at`, x.at]));
+      if (s.type === "mission" || s.type === "palace" || s.type === "dream" || s.type === "fire") s.cues.forEach((c, j) => mustContain.push([`cues.${j}`, c]));
+      if (s.type === "mission") s.lines.forEach((x, j) => mustContain.push([`lines.${j}.at`, x.at]));
+      if (s.type === "item") {
+        if (s.dropAt) mustContain.push(["dropAt", s.dropAt]);
+        if (s.curseAt) mustContain.push(["curseAt", s.curseAt]);
+        s.stats.forEach((x, j) => x.at && mustContain.push([`stats.${j}.at`, x.at]));
+      }
+      if (s.type === "dossier") {
+        s.entries.forEach((x, j) => mustContain.push([`entries.${j}.at`, x.at]));
+        if (s.stamp) mustContain.push(["stamp.at", s.stamp.at]);
+      }
+      if (s.type === "fire") {
+        s.bubbles.forEach((x, j) => mustContain.push([`bubbles.${j}.at`, x.at]));
+        if (s.bindAt) mustContain.push(["bindAt", s.bindAt]);
+        if (s.breakAt) mustContain.push(["breakAt", s.breakAt]);
+      }
       for (const [field, text] of mustContain) {
         if (!spoken.includes(normalize(text))) {
           ctx.addIssue({
@@ -323,6 +438,8 @@ export const splitPhrases = (narration: string): string[] =>
 
 const ONES = ["null", "eins", "zwei", "drei", "vier", "fünf", "sechs", "sieben", "acht", "neun", "zehn", "elf", "zwölf", "dreizehn", "vierzehn", "fünfzehn", "sechzehn", "siebzehn", "achtzehn", "neunzehn"];
 const TENS = ["", "", "zwanzig", "dreissig", "vierzig", "fünfzig", "sechzig", "siebzig", "achtzig", "neunzig"];
+/** Jahreszahl nach «Jahr», «Frühling» …: 1820 → «achtzehnhundertzwanzig», nicht «eintausendachthundertzwanzig». */
+const YEAR_BEFORE = /\b(Jahr|Frühling|Frühjahr|Sommer|Herbst|Winter)\s+(1[1-9]\d\d)\b/g;
 const MONTHS = /^(Januar|Februar|März|April|Mai|Juni|Juli|August|September|Oktober|November|Dezember)\b/;
 
 /** Grundzahl in Worten (0 … 9999): 53 → «dreiundfünfzig». */
@@ -335,6 +452,9 @@ export const cardinal = (n: number): string => {
   return String(n);
 };
 
+/** Jahreszahl 1100–1999 so, wie man sie sagt: 1820 → «achtzehnhundertzwanzig». */
+export const year = (n: number): string => `${cardinal(Math.floor(n / 100))}hundert${n % 100 ? cardinal(n % 100) : ""}`;
+
 /**
  * Der Text, den die Stimme spricht – die Untertitel zeigen weiter die narration.
  *
@@ -343,9 +463,12 @@ export const cardinal = (n: number): string => {
  * - **Zahl vor einem Satzpunkt ist eine Grundzahl**: «Alma 53.» würde sonst «dreiundfünfzigste»
  *   gelesen; daraus wird «Alma dreiundfünfzig.». Vor einem Monat bleibt die Ordnungszahl («19. Oktober»).
  * - **Kapitel:Vers** wird ausgesprochen: «53:20» → «dreiundfünfzig, Vers zwanzig».
+ * - **Jahreszahlen** nach «Jahr», «Frühling», «Sommer» … wie gesprochen: «Frühling 1820» →
+ *   «Frühling achtzehnhundertzwanzig» (sonst läse die Stimme am Satzende «eintausendachthundertzwanzig»).
  */
 export const speakable = (text: string): string =>
   text
+    .replace(YEAR_BEFORE, (_, word: string, n: string) => `${word} ${year(Number(n))}`)
     .replace(/(\d+):(\d+)/g, (_, a: string, b: string) => `${cardinal(Number(a))}, Vers ${cardinal(Number(b))}`)
     .replace(/(\S)\s+[-–—]\s+(?=\S)/g, (m: string, before: string, offset: number, all: string) => {
       const after = all.slice(offset + m.length);

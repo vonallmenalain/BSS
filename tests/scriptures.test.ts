@@ -98,7 +98,9 @@ test('scriptureLink: die reinen Schriftstellen-Zeilen der Vertiefungen werden ve
      («Alma 53:14–22») – die Anzeige verlinkt solche Zeilen von selbst.
      Jede Zeile, die mit einem Buchnamen und einer Zahl endet, muss
      deshalb erkannt werden. */
-  const lines = PACK_WEEKS.flatMap(packWeekPlans)
+  // Auch die ersetzten Karten: Wer sie schon eingespielt hat, sieht sie noch.
+  const retired = PACK_WEEKS.flatMap((week) => week.deck.filter((card) => card.retired))
+  const lines = [...PACK_WEEKS.flatMap(packWeekPlans), ...retired]
     .flatMap((plan) => (plan.deepening ?? '').split('\n'))
     .map((line) => line.trim())
     .filter((line) => /^[1-3]?\s?[A-ZÄÖÜ][\wäöüÄÖÜ –-]+ \d+(:\d+(–\d+)?)?$/.test(line))
