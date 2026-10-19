@@ -458,8 +458,9 @@ const Land: React.FC<P> = ({ ts, s, t, frame }) => {
   const cable = interpolate(d, [0, 0.35], [40, 230], clamp);
   const craneY = interpolate(d, [0, 1], [craneY0, ground - 120 - 230 - 30]) - 260 * after * after;
   const craneX = 540 - 340 * after * after;
-  const roverY = Math.min(ground, craneY + 30 + cable + 120);
   const touched = t >= touchAt;
+  // Nach dem Aufsetzen bleibt der Rover stehen; nur der Kran fliegt weg
+  const roverY = touched ? ground : Math.min(ground, craneY + 30 + cable + 120);
   const alt = Math.max(0, (ground - roverY) / 22);
   const date = spring({ frame: frame - voiceFrame(ts, dateAt), fps: FPS, config: { damping: 14, stiffness: 160 } });
   const td = spring({ frame: frame - voiceFrame(ts, touchAt), fps: FPS, config: { damping: 10, stiffness: 170 } });
