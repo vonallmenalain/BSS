@@ -17,8 +17,9 @@
  *
  * Warum so und nicht schneller: Das Spiel lebt davon, dass man liest.
  * Die ersten Fragen lassen sieben Sekunden, danach wird es langsam
- * knapper, aber nie unter drei (`chainLife`) – wer die Antworten nur
- * überfliegt, tippt bald die Notlüge. Wildes Tippen lohnt sich nicht:
+ * knapper, aber nie unter drei (`chainLife`); bei drei Antworten gibt es
+ * eine Sekunde mehr. Wer die Antworten nur überfliegt, tippt bald die
+ * Notlüge. Wildes Tippen lohnt sich nicht:
  * Jede falsche Antwort kostet ein Leben. Und weil die Uhr nach einer
  * Minute abläuft, trennt die Rangliste trotzdem: Wer schneller ehrlich
  * antwortet, schafft mehr Fragen und mehr Punkte je Frage.
@@ -177,19 +178,25 @@ export const CHAIN_PACE = {
   /** Zeit je Frage: am Anfang so viel … */
   lifeStart: 7,
   /** … und nie weniger als so viel – lesen muss man immer können. */
-  lifeMin: 3,
+  lifeMin: 3.2,
   /** Wie schnell sie von der einen zur anderen sinkt (in Fragen). */
-  lifeDecay: 8,
+  lifeDecay: 12,
+  /** Bei drei Antworten gibt es mehr zu lesen – so viel Zeit dazu. */
+  thirdOption: 1,
   /** So lange steht das Ergebnis einer ehrlichen Antwort, bevor die nächste Frage kommt … */
   afterHonest: 0.65,
   /** … und so lange nach einer Notlüge oder zu langem Zögern: Die ehrliche Antwort leuchtet. */
   afterWrong: 1.6,
 } as const
 
-/** Sekunden für die Frage Nummer `index` (von 0 gezählt): 7 am Anfang, nie unter 3. */
-export function chainLife(index: number): number {
+/**
+ * Sekunden für die Frage Nummer `index` (von 0 gezählt): sieben am
+ * Anfang, langsam weniger, nie unter drei – bei drei Antworten eine mehr.
+ */
+export function chainLife(index: number, options = 2): number {
   const p = CHAIN_PACE
-  return p.lifeMin + (p.lifeStart - p.lifeMin) * Math.exp(-Math.max(0, index) / p.lifeDecay)
+  const base = p.lifeMin + (p.lifeStart - p.lifeMin) * Math.exp(-Math.max(0, index) / p.lifeDecay)
+  return base + (options > 2 ? p.thirdOption : 0)
 }
 
 /** Schnur, Strick, Kette – je früher ehrlich geantwortet, desto mehr Punkte. */
@@ -368,7 +375,7 @@ export class ChainRound {
       situation,
       options,
       spawn: this.time,
-      life: chainLife(index),
+      life: chainLife(index, options.length),
     }
     this.nextId += 1
     this.asked += 1

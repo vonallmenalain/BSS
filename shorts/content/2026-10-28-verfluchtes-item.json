@@ -25,7 +25,8 @@
       "stage": "drop",
       "name": "???",
       "dropAt": "droppt ein Item",
-      "narration": "Bossfight: Matheprüfung. [pause short] Dein Kopf: leer. [pause short] Und plötzlich droppt ein Item."
+      "narration": "Bossfight: Matheprüfung. [pause short] Dein Kopf: leer. [pause short] Und plötzlich droppt ein Item.",
+      "holdAfterSec": 0.5
     },
     {
       "id": "spick",

@@ -244,7 +244,7 @@ const Drop: React.FC<{ ts: TimelineScene; s: ItemScene }> = ({ ts, s }) => {
   const boss = artSize(BOSS, bossPx);
   const bob = Math.floor((frame / FPS) * 3) % 2 === 0 ? 0 : -bossPx * 0.6;
   const bossX = 540 - boss.w / 2;
-  const bossY = 400;
+  const bossY = 375;
 
   // Das Item fällt von oben, prallt auf und leuchtet
   // Es fällt schon bei «droppt» und liegt, wenn «Item» gesagt wird
@@ -253,7 +253,7 @@ const Drop: React.FC<{ ts: TimelineScene; s: ItemScene }> = ({ ts, s }) => {
   const bounce = t > landT ? Math.abs(Math.sin((t - landT) * 9)) * 60 * Math.exp(-(t - landT) * 4.5) : 0;
   const itemPx = 10;
   const item = artSize(SCROLL, itemPx);
-  const itemCY = interpolate(fall, [0, 1], [-200, 900]) - bounce;
+  const itemCY = interpolate(fall, [0, 1], [-200, 950]) - bounce;
   const glow = interpolate(t, [landT, landT + 0.5], [0, 1], clamp);
   const shown = t > dropAt - 0.3;
 
@@ -292,7 +292,7 @@ const Drop: React.FC<{ ts: TimelineScene; s: ItemScene }> = ({ ts, s }) => {
             <Rays cx={540} cy={itemCY} color={GOLD} amount={glow} frame={frame} r0={90} r1={250} />
             <circle cx={540} cy={itemCY} r={110} fill={GOLD} opacity={0.18 * glow + 0.06 * Math.sin(frame / 4) * glow} />
             <PixelArt rows={SCROLL} pal={SCROLL_PAL} x={540 - item.w / 2} y={itemCY - item.h / 2} px={itemPx} />
-            <Burst cx={540} cy={900} dt={t - landT} colors={[GOLD, look.accent, "#FFFFFF"]} seed="drop" />
+            <Burst cx={540} cy={950} dt={t - landT} colors={[GOLD, look.accent, "#FFFFFF"]} seed="drop" />
           </>
         ) : null}
         {glow > 0 ? (

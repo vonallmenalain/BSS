@@ -191,6 +191,9 @@ export class ChainGame extends CanvasGame {
   private bubbleY = 0
   private avatarY = 0
   private avatarR = 0
+  /** Wo die Figur steht, wenn Frage und Knöpfe Platz lassen – sie springt nicht von Frage zu Frage. */
+  private homeY = 0
+  private homeR = 0
   private buttonsBottom = 0
   private questionSize = 20
   private answerSize = 17
@@ -235,7 +238,11 @@ export class ChainGame extends CanvasGame {
 
   /** Eine Taste: der Knopf direkt (0, 1, 2). */
   tapOption(option: number, fromKeyboard = false): void {
-    if (fromKeyboard) this.showKeys = true
+    if (fromKeyboard && !this.showKeys) {
+      this.showKeys = true
+      // Platz für die Ziffern in den Knöpfen.
+      if (this.current) this.current = this.prepare(this.current.question)
+    }
     this.choose(option)
   }
 
@@ -299,7 +306,7 @@ export class ChainGame extends CanvasGame {
 
   protected get toastY(): number {
     // Unter der Figur, über den Knöpfen – oben steht die Frage.
-    return this.avatarY + this.avatarR * 1.55
+    return this.avatarY + this.avatarR * 1.45
   }
 
   protected newRound(): void {
@@ -360,10 +367,15 @@ export class ChainGame extends CanvasGame {
     this.answerSize = clamp(Math.round(this.width * 0.045), 16, 20)
     this.bubbleY = this.hudBottom + 22
     this.buttonsBottom = this.height - this.options.bottomInset - 18
+    // Die Figur steht zwischen einer zweizeiligen Frage und drei Knöpfen.
+    const nominalBubble = 16 + 20 + 6 + 2 * Math.round(this.questionSize * 1.22) + 16
+    const nominalButtons = 3 * 58 + 2 * 10
+    this.placeAvatar(this.bubbleY + nominalBubble + 16, this.buttonsBottom - nominalButtons - 16)
+    this.homeY = this.avatarY
+    this.homeR = this.avatarR
     this.buildBackground()
     this.buildFaces()
     if (this.current) this.current = this.prepare(this.current.question)
-    else this.placeAvatar(this.bubbleY + 120, this.buttonsBottom - 140)
   }
 
   /** Frage umbrechen, Knöpfe von unten her stapeln, die Figur in die Lücke dazwischen. */
@@ -389,15 +401,23 @@ export class ChainGame extends CanvasGame {
       y += heights[index] + gap
       return box
     })
-    this.placeAvatar(this.bubbleY + bubbleH + 14, buttons[0].y - 14)
+    // Lange Frage oder lange Antworten auf kleinem Bildschirm: Die Figur rückt in die Lücke.
+    const top = this.bubbleY + bubbleH + 16
+    const bottom = buttons[0].y - 16
+    if (this.homeY - this.homeR * 1.75 < top || this.homeY + this.homeR * 1.75 > bottom) {
+      this.placeAvatar(top, bottom)
+    } else {
+      this.avatarY = this.homeY
+      this.avatarR = this.homeR
+    }
     return { question, lines, bubbleH, buttons }
   }
 
+  /** Die Figur mittig in die Lücke – Platz für die Schnur rundum. */
   private placeAvatar(top: number, bottom: number) {
-    const space = Math.max(60, bottom - top)
-    // Platz für Ring und Schnur rundum – und für den Hinweis darunter.
-    this.avatarR = clamp(Math.min(space / 3.6, this.width * 0.13), 24, 60)
-    this.avatarY = top + space / 2 - this.avatarR * 0.15
+    const space = Math.max(70, bottom - top)
+    this.avatarR = clamp(Math.min(space / 3.5, this.width * 0.17), 22, 80)
+    this.avatarY = top + space / 2
   }
 
   private buildBackground() {
@@ -416,8 +436,9 @@ export class ChainGame extends CanvasGame {
   private buildFaces() {
     this.faces.clear()
     this.askers.clear()
+    // Gross vorgezeichnet und beim Stempeln verkleinert – die Figur wechselt die Grösse je nach Platz.
     for (const face of Object.keys(FACES) as Face[]) {
-      const sprite = this.emojiSprite(FACES[face], this.avatarR * 1.2)
+      const sprite = this.emojiSprite(FACES[face], 112)
       if (sprite) this.faces.set(face, sprite)
     }
   }
@@ -666,14 +687,12 @@ export class ChainGame extends CanvasGame {
       if (k > 0.8 && !this.options.reducedMotion) x += Math.sin(this.clock * 60) * 2 * ((k - 0.8) / 0.2)
       const stage = chainStage(age, question.life)
       const ringR = r * (1.62 - 0.36 * k)
-      const thick = 2.5 + 8 * k
-      g.strokeStyle = c.cord[stage]
-      g.lineWidth = thick
-      if (stage === 2) g.setLineDash([thick * 1.5, thick * 0.7])
-      g.beginPath()
-      g.arc(x, cy, ringR, 0, Math.PI * 2)
-      g.stroke()
-      g.setLineDash([])
+      if (stage === 2) {
+        // Die Kette: Glieder, abwechselnd von vorn und von der Seite.
+        this.drawLinks(x, cy, ringR, ringR, 0, Math.round(ringR / 7), c.cord[2], 2.5 + 2 * k, 1)
+      } else {
+        this.drawCord(x, cy, ringR, 2.5 + 7 * k, c.cord[stage])
+      }
       // Was eine ehrliche Antwort jetzt wert ist: +3, +2, +1.
       const points = chainPoints(age, question.life)
       const bx = x + ringR * 0.72
@@ -716,40 +735,88 @@ export class ChainGame extends CanvasGame {
     g.fill()
     g.restore()
     const sprite = this.faces.get(this.face)
-    if (sprite) g.drawImage(sprite.canvas, x - sprite.size / 2, cy - sprite.size / 2, sprite.size, sprite.size)
+    if (sprite) {
+      const size = (r * 1.25 * sprite.size) / 112
+      g.drawImage(sprite.canvas, x - size / 2, cy - size / 2, size, size)
+    }
 
     // Die Ketten der Fehler – quer um die Figur, bis der Schlüssel eine sprengt.
     for (let ring = 0; ring < this.chains; ring += 1) this.drawChainLoop(x, cy, ring, 1)
     for (const shatter of this.shatters) this.drawChainLoop(cx, cy, shatter.ring, 1 - shatter.t, shatter.t)
   }
 
-  /** Eine Kette aus Gliedern schräg über die Figur – `spread` lässt sie auseinanderfliegen. */
+  /** Eine Kette schräg über die Figur – `spread` lässt sie auseinanderfliegen. */
   private drawChainLoop(cx: number, cy: number, ring: number, alpha: number, spread = 0) {
-    const g = this.g
     const r = this.avatarR
-    const tilt = [-0.5, 0.45, 0][ring % 3]
-    const rx = r * 1.12
-    const ry = r * 0.42
-    const links = 14
+    const tilt = [-0.45, 0.4, 0.05][ring % 3]
+    const y = cy + [-0.12, 0.14, 0.38][ring % 3] * r
+    this.drawLinks(cx, y, r * 1.18, r * 0.36, tilt, 16, this.colors.chain, Math.max(2.5, r * 0.07), alpha, spread)
+  }
+
+  /** Eine geschlossene Kette aus `count` Gliedern auf einer Ellipse um (cx, cy), um `tilt` gedreht. */
+  private drawLinks(
+    cx: number,
+    cy: number,
+    rx: number,
+    ry: number,
+    tilt: number,
+    count: number,
+    color: string,
+    width: number,
+    alpha: number,
+    spread = 0,
+  ) {
+    const g = this.g
+    const n = Math.max(8, count)
+    // Die Länge eines Glieds: etwas mehr als der Abstand, damit sie ineinandergreifen.
+    const length = ((Math.PI * (rx + ry)) / n) * 0.72
+    const cos = Math.cos(tilt)
+    const sin = Math.sin(tilt)
     g.globalAlpha = clamp(alpha, 0, 1)
-    g.strokeStyle = this.colors.chain
-    g.lineWidth = Math.max(2.5, r * 0.07)
-    for (let index = 0; index < links; index += 1) {
-      const a = (index / links) * Math.PI * 2
+    g.strokeStyle = color
+    g.lineWidth = width
+    for (let index = 0; index < n; index += 1) {
+      const a = (index / n) * Math.PI * 2
       const px = Math.cos(a) * rx
       const py = Math.sin(a) * ry
-      const lx = cx + px * Math.cos(tilt) - py * Math.sin(tilt)
-      const ly = cy + px * Math.sin(tilt) + py * Math.cos(tilt) + ring * r * 0.18 - r * 0.18
-      const out = spread * r * 1.4
+      const tangent = Math.atan2(Math.cos(a) * ry, -Math.sin(a) * rx) + tilt
+      const out = spread * this.avatarR * 1.3
       g.save()
-      g.translate(lx + Math.cos(a) * out, ly + Math.sin(a) * out + spread * spread * r)
-      g.rotate(a + tilt + (index % 2 ? Math.PI / 2 : 0) * 0.6)
+      g.translate(
+        cx + px * cos - py * sin + Math.cos(a + tilt) * out,
+        cy + px * sin + py * cos + Math.sin(a + tilt) * out + spread * spread * this.avatarR,
+      )
+      g.rotate(tangent + spread * (index % 2 ? 2 : -2))
       g.beginPath()
-      g.ellipse(0, 0, r * 0.13, r * 0.075, 0, 0, Math.PI * 2)
+      // Von vorn ein offenes Oval, von der Seite ein schmaler Steg.
+      g.ellipse(0, 0, length * 0.62, index % 2 ? width * 0.55 : length * 0.34, 0, 0, Math.PI * 2)
       g.stroke()
       g.restore()
     }
     g.globalAlpha = 1
+  }
+
+  /** Schnur oder Strick: ein Kreis mit schrägen Windungen – je dicker, desto deutlicher. */
+  private drawCord(cx: number, cy: number, radius: number, thick: number, color: string) {
+    const g = this.g
+    g.strokeStyle = color
+    g.lineWidth = thick
+    g.beginPath()
+    g.arc(cx, cy, radius, 0, Math.PI * 2)
+    g.stroke()
+    // Die Windungen – dunkle Striche quer über den Faden.
+    const turns = Math.max(18, Math.round(radius / 3.2))
+    g.strokeStyle = this.options.dark ? 'rgba(0, 0, 0, 0.35)' : 'rgba(60, 30, 0, 0.28)'
+    g.lineWidth = Math.max(1, thick * 0.22)
+    g.beginPath()
+    for (let index = 0; index < turns; index += 1) {
+      const a = (index / turns) * Math.PI * 2
+      const inner = radius - thick * 0.48
+      const outer = radius + thick * 0.48
+      g.moveTo(cx + Math.cos(a) * inner, cy + Math.sin(a) * inner)
+      g.lineTo(cx + Math.cos(a + 0.09) * outer, cy + Math.sin(a + 0.09) * outer)
+    }
+    g.stroke()
   }
 }
 

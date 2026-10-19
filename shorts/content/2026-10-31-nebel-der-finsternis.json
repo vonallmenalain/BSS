@@ -89,7 +89,8 @@
         "direkt ins Gebäude"
       ],
       "ref": "1 Nephi 8:31–33",
-      "narration": "Und Gruppe vier? [pause short] Läuft direkt ins Gebäude."
+      "narration": "Und Gruppe vier? [pause short] Läuft direkt ins Gebäude.",
+      "holdAfterSec": 1.0
     },
     {
       "id": "stange",

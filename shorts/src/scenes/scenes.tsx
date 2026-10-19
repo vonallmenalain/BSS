@@ -309,7 +309,17 @@ export const KineticScene: React.FC<P> = ({ ts }) => {
   const firstLineAt = cues[0] ? ts.words[cues[0].first].start : ts.speechEndSec;
   const current = cues.reduce((acc, c, i) => (c && t >= ts.words[c.first].start ? i : acc), -1);
   /* Jeder Look hat seinen eigenen Auftritt: Pixel-Ton, Trommel, Plopp, Wusch */
-  const sfx: Partial<Record<string, SfxName>> = { arcade: "blip", map: "drum", chat: "pop", track: "whoosh" };
+  const sfx: Partial<Record<string, SfxName>> = {
+    arcade: "blip",
+    map: "drum",
+    chat: "pop",
+    track: "whoosh",
+    stone: "drum",
+    ember: "whoosh",
+    space: "blip",
+    palace: "chime",
+    dream: "whoosh",
+  };
   const lineSfx = sfx[look.id];
   // Jede Zeile so gross, dass sie auf eine Zeile passt (Anton in Versalien ≈ 0.47 × Schriftgrösse pro Zeichen)
   const sizeOf = (line: string) => Math.round(Math.max(72, Math.min(look.id === "dawn" ? 136 : 150, 940 / (0.47 * line.length))));

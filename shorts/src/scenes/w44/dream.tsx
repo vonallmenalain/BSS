@@ -188,34 +188,50 @@ const Building: React.FC<{ o: number; mock: number; frame: number }> = ({ o, moc
           );
         })}
         <rect x={DOOR[0] - 18} y={y + h - 44} width={36} height={44} fill="#FFE7A8" />
+        {/* Sie lehnen sich hinaus und zeigen mit dem Finger (8:27) */}
+        {mock > 0
+          ? [1, 3, 5].map((r, i) => {
+              const wy = y + 30 + r * ((h - 70) / rows) + 14;
+              const lean = mock * (10 + 4 * Math.sin(frame / 5 + i));
+              return (
+                <g key={r} transform={`translate(${x - lean} ${wy})`} opacity={Math.min(1, mock * 1.5)}>
+                  <rect x={-2} y={2} width={16} height={26} rx={5} fill="#1A1433" stroke="#C49BFF" strokeWidth={2} />
+                  <circle cx={6} cy={-6} r={9} fill="#1A1433" stroke="#C49BFF" strokeWidth={2} />
+                  <line x1={2} y1={8} x2={2 - 34 * mock} y2={2 + 3 * Math.sin(frame / 4 + i)} stroke="#1A1433" strokeWidth={6} strokeLinecap="round" />
+                  <line x1={2} y1={8} x2={2 - 34 * mock} y2={2 + 3 * Math.sin(frame / 4 + i)} stroke="#C49BFF" strokeWidth={2} strokeLinecap="round" opacity={0.6} />
+                </g>
+              );
+            })
+          : null}
       </g>
     </g>
   );
 };
 
-/** Nebel der Finsternis: dunkle Schwaden über der Mitte des Weges, mit ein paar helleren Rändern. */
+/** Nebel der Finsternis: ein dunkles Band über der Mitte des Weges, darin wabernde Schwaden. */
 const Mist: React.FC<{ k: number; t: number }> = ({ k, t }) => {
   const puffs = useMemo(
     () =>
-      Array.from({ length: 30 }, (_, i) => ({
-        x: 90 + random(`mx${i}`) * 760,
-        y: 640 + random(`my${i}`) * 400,
-        r: 90 + random(`mr${i}`) * 110,
+      Array.from({ length: 46 }, (_, i) => ({
+        x: 40 + random(`mx${i}`) * 860,
+        y: 610 + random(`my${i}`) * 460,
+        r: 130 + random(`mr${i}`) * 110,
         v: 6 + random(`mv${i}`) * 10,
         p: random(`mp${i}`) * 6.28,
-        light: i % 5 === 0,
+        light: i % 4 === 0,
       })),
     [],
   );
   if (k <= 0.001) return null;
   return (
     <g>
+      <rect x={PX} y={560} width={PW} height={560} fill="url(#mistVeil)" opacity={k} />
       {puffs.map((m, i) => {
-        // Von links herein, dann leises Wabern
-        const enter = (1 - Math.min(1, k * 1.4)) * (i % 2 ? -340 : 340);
-        const x = m.x + Math.sin(t * 0.5 + m.p) * m.v * 3 + enter;
-        const y = m.y + Math.cos(t * 0.4 + m.p) * m.v;
-        return <circle key={i} cx={x} cy={y} r={m.r} fill={m.light ? "url(#mistLight)" : "url(#mistDark)"} opacity={k * (m.light ? 0.5 : 0.9)} />;
+        // Von der Seite herein, dann leises Wabern
+        const enter = (1 - Math.min(1, k * 1.25)) * (i % 2 ? -420 : 420);
+        const x = m.x + Math.sin(t * 0.45 + m.p) * m.v * 3 + enter;
+        const y = m.y + Math.cos(t * 0.35 + m.p) * m.v * 1.5;
+        return <circle key={i} cx={x} cy={y} r={m.r} fill={m.light ? "url(#mistLight)" : "url(#mistDark)"} opacity={k} />;
       })}
     </g>
   );
@@ -280,6 +296,7 @@ export const DreamScene: React.FC<{ ts: TimelineScene }> = ({ ts }) => {
   const badgeAt = stage === "mist" ? b[2] + 0.7 : stage === "rod" ? b[3] + 0.9 : stage === "hold" ? b[3] + 0.5 : stage === "building" ? b[0] + 0.45 : 99;
   const badge = g >= 0 ? interpolate(t, [badgeAt, badgeAt + 0.22], [0, 1], { ...clamp, easing: Easing.out(Easing.back(1.6)) }) : 0;
   const hookAt = hook ? beat(ts, "Nur eine", 3.4) : 99;
+  const groupsAt = hook ? beat(ts, "Vier Gruppen", 1.7) : -1;
 
   /* --- Figuren der laufenden Gruppe --- */
   const figures = useMemo(() => Array.from({ length: N }, (_, i) => ({ lag: i * 0.045, side: (random(`side${i}`) - 0.5) * 10, dir: random(`dir${i}`) > 0.5 ? 1 : -1, w: random(`w${i}`), exit: i })), []);
@@ -396,14 +413,20 @@ export const DreamScene: React.FC<{ ts: TimelineScene }> = ({ ts }) => {
             <stop offset="100%" stopColor="#FFE9A3" stopOpacity="0" />
           </radialGradient>
           <radialGradient id="mistDark">
-            <stop offset="0%" stopColor="#050818" stopOpacity="0.95" />
-            <stop offset="60%" stopColor="#0A1030" stopOpacity="0.7" />
-            <stop offset="100%" stopColor="#0A1030" stopOpacity="0" />
+            <stop offset="0%" stopColor="#0B0F24" stopOpacity="0.7" />
+            <stop offset="55%" stopColor="#141A36" stopOpacity="0.36" />
+            <stop offset="100%" stopColor="#141A36" stopOpacity="0" />
           </radialGradient>
           <radialGradient id="mistLight">
-            <stop offset="0%" stopColor="#7F8FB8" stopOpacity="0.5" />
-            <stop offset="100%" stopColor="#7F8FB8" stopOpacity="0" />
+            <stop offset="0%" stopColor="#7A88B2" stopOpacity="0.42" />
+            <stop offset="100%" stopColor="#6E7BA3" stopOpacity="0" />
           </radialGradient>
+          <linearGradient id="mistVeil" x1="0" y1="0" x2="0" y2="1">
+            <stop offset="0%" stopColor="#070A1C" stopOpacity="0" />
+            <stop offset="28%" stopColor="#070A1C" stopOpacity="0.8" />
+            <stop offset="75%" stopColor="#070A1C" stopOpacity="0.8" />
+            <stop offset="100%" stopColor="#070A1C" stopOpacity="0" />
+          </linearGradient>
           <linearGradient id="rodMetal" x1="0" y1="0" x2="1" y2="0">
             <stop offset="0%" stopColor="#E3E8F2" />
             <stop offset="100%" stopColor="#8B94A8" />
@@ -435,9 +458,14 @@ export const DreamScene: React.FC<{ ts: TimelineScene }> = ({ ts }) => {
             <path d={toD(PATH.pts)} stroke="#6E5F42" strokeWidth={26} strokeLinecap="round" fill="none" pathLength={1} strokeDasharray={1} strokeDashoffset={1 - pathDraw} />
             <path d={toD(PATH.pts)} stroke="#E9D9B0" strokeWidth={16} strokeLinecap="round" fill="none" pathLength={1} strokeDasharray={1} strokeDashoffset={1 - pathDraw} />
             {/* Start */}
-            <g opacity={stage === "intro" ? (hook ? 1 : 1) : 0.8}>
+            <g opacity={stage === "intro" ? 0 : 0.8}>
               <circle cx={430} cy={1072} r={34} fill="none" stroke={look.accent2} strokeWidth={3} strokeDasharray="6 8" opacity={0.6} />
             </g>
+            {/* Gruppe eins verschwindet im Nebel – sie zeichnet sich darunter */}
+            {stage === "mist" ? pawns.map((pw, i) => <Pawn key={i} x={pw.x} y={pw.y} color={pw.color} o={pw.o} glow={pw.glow} />) : null}
+            {/* Nebel der Finsternis */}
+            <Mist k={mist} t={t} />
+            {/* Das Gebäude schwebt darüber – in der Luft, hoch über der Erde */}
             <Building o={buildingO} mock={mock} frame={frame} />
             {/* Spott: Finger zeigen über den Fluss */}
             {mock > 0
@@ -453,8 +481,6 @@ export const DreamScene: React.FC<{ ts: TimelineScene }> = ({ ts }) => {
                   );
                 })
               : null}
-            {/* Nebel der Finsternis */}
-            <Mist k={mist} t={t} />
           </g>
 
           {/* Die eiserne Stange – auch im Nebel zu sehen */}
@@ -474,24 +500,33 @@ export const DreamScene: React.FC<{ ts: TimelineScene }> = ({ ts }) => {
 
             {/* Vier Gruppen am Start (Einstieg) */}
             {stage === "intro"
-              ? GROUPS.map((gr, k) =>
-                  Array.from({ length: 4 }, (_, i) => {
-                    const cx = 190 + k * 120 + (i % 2) * 22 - 11;
-                    const cy = 1062 + Math.floor(i / 2) * 26 - 6;
-                    const hi = hook && k === 2 ? 0 : 0;
-                    const ap = interpolate(frame, [8 + k * 5, 18 + k * 5], [0, 1], clamp);
-                    return <Pawn key={`${k}-${i}`} x={cx} y={cy + (1 - ap) * 30} color={gr.color} o={ap} glow={hi} s={0.85} />;
-                  }),
-                )
+              ? GROUPS.map((gr, k) => {
+                  const ap = hook ? interpolate(t, [groupsAt + k * 0.18, groupsAt + k * 0.18 + 0.25], [0, 1], { ...clamp, easing: Easing.out(Easing.back(2)) }) : 1;
+                  return (
+                    <g key={k}>
+                      {Array.from({ length: 4 }, (_, i) => {
+                        const cx = 190 + k * 120 + (i % 2) * 26 - 13;
+                        const cy = 1048 + Math.floor(i / 2) * 30 - 6;
+                        return <Pawn key={i} x={cx} y={cy + (1 - ap) * 30} color={gr.color} o={Math.min(1, ap)} s={1.05} />;
+                      })}
+                      <text x={190 + k * 120} y={1118} textAnchor="middle" fontFamily="Anton" fontSize={30} fill={gr.color} opacity={Math.min(1, ap)}>
+                        {k + 1}
+                      </text>
+                    </g>
+                  );
+                })
               : null}
             {stage === "intro" && hook ? (
-              <text x={430} y={1010} textAnchor="middle" fontFamily="Anton" fontSize={70} fill={look.accent} opacity={interpolate(t, [hookAt, hookAt + 0.3], [0, 1], clamp) * (0.75 + 0.25 * Math.sin(frame / 5))}>
-                ?
-              </text>
+              <g opacity={interpolate(t, [hookAt, hookAt + 0.3], [0, 1], clamp)}>
+                <path d="M 370 990 C 360 860, 520 760, 470 610" stroke={look.accent} strokeWidth={5} strokeDasharray="4 14" strokeLinecap="round" fill="none" opacity={0.7} />
+                <text x={370} y={980} textAnchor="middle" fontFamily="Anton" fontSize={110} fill={look.accent} opacity={0.8 + 0.2 * Math.sin(frame / 5)} stroke="#0B1030" strokeWidth={6} paintOrder="stroke">
+                  ?
+                </text>
+              </g>
             ) : null}
 
             {/* Die laufende Gruppe */}
-            {pawns.map((pw, i) => (
+            {(stage === "mist" ? [] : pawns).map((pw, i) => (
               <Pawn key={i} x={pw.x} y={pw.y} color={pw.color} o={pw.o} glow={pw.glow} />
             ))}
             {/* Fragezeichen über den Verirrten */}
@@ -509,12 +544,22 @@ export const DreamScene: React.FC<{ ts: TimelineScene }> = ({ ts }) => {
           </g>
 
           {/* Beschriftungen des Feldes */}
-          <MapLabel x={TREE[0] + 150} y={TREE[1] - 120} text="Baum" o={stage === "intro" ? interpolate(t, [b[0], b[0] + 0.4], [0, 1], clamp) * (hook ? 0 : 1) : 0.55} />
+          <MapLabel x={TREE[0] + 140} y={TREE[1] + 40} text="Baum" anchor="start" o={stage === "intro" ? interpolate(t, [b[0], b[0] + 0.4], [0, 1], clamp) * (hook ? 0 : 1) : 0.55} />
           <MapLabel x={250} y={880} text="schmaler Weg" o={pathLabelO * (hook ? 0 : 1)} />
           <MapLabel x={585} y={790} text="eiserne Stange" o={(stage === "intro" ? rodDraw : 0.55) * (hook ? 0 : 1)} anchor="start" />
-          <MapLabel x={760} y={1150} text="Fluss" o={riverO * 0.55 * (hook ? 0 : 1)} />
-          <MapLabel x={BUILDING.x + BUILDING.w / 2} y={BUILDING.y - 62} text="grosses Gebäude" o={buildingO * 0.8} />
+          <MapLabel x={745} y={1062} text="Fluss" anchor="start" o={riverO * 0.55 * (hook ? 0 : 1)} />
+          <MapLabel x={BUILDING.x + BUILDING.w + 12} y={BUILDING.y + BUILDING.h + 46} text="grosses Gebäude" o={buildingO * 0.8} anchor="end" />
           {forbidden > 0 ? <MapLabel x={180} y={780} text="verbotene Pfade" o={forbidden * 0.8} color="#FF9C9C" /> : null}
+          {/* Was da aufzieht */}
+          {stage === "mist" ? (
+            <g opacity={interpolate(t, [b[1], b[1] + 0.8, b[2] + 0.4, b[2] + 1.2], [0, 0.95, 0.95, 0.4], clamp)} transform="rotate(-4 205 740)">
+              {["NEBEL DER", "FINSTERNIS"].map((line, i) => (
+                <text key={i} x={205} y={725 + i * 50} textAnchor="middle" fontFamily="Anton" fontSize={46} letterSpacing="0.08em" fill="#B4BEDD" stroke="#070A1C" strokeWidth={6} paintOrder="stroke">
+                  {line}
+                </text>
+              ))}
+            </g>
+          ) : null}
 
           {/* Rahmen wie ein Spielfeld */}
           <rect x={PX} y={PY} width={PW} height={PH} rx={36} fill="none" stroke={look.accent2} strokeWidth={3} opacity={0.55} />
@@ -592,7 +637,7 @@ export const DreamScene: React.FC<{ ts: TimelineScene }> = ({ ts }) => {
           <>
             <Sfx frame={1} name="whoosh" volume={0.35} />
             {[0, 1, 2, 3].map((k) => (
-              <Sfx key={k} frame={10 + k * 5} name="pop" volume={0.22} />
+              <Sfx key={k} frame={f(groupsAt + k * 0.18)} name="pop" volume={0.25} />
             ))}
             <Sfx frame={f(hookAt)} name="question" volume={0.4} />
           </>
@@ -656,9 +701,9 @@ const EXITS: P[] = [
 ];
 /** Spott aus dem Gebäude: [x, y, Drehung] */
 const HAHA: Array<[number, number, number]> = [
-  [790, 470, -8],
-  [770, 620, 6],
-  [795, 760, -4],
+  [712, 432, -8],
+  [700, 572, 6],
+  [718, 694, -4],
 ];
 
 const MapLabel: React.FC<{ x: number; y: number; text: string; o: number; anchor?: "middle" | "start" | "end"; color?: string }> = ({ x, y, text, o, anchor = "middle", color = "#DCE6FF" }) =>

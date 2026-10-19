@@ -43,7 +43,7 @@
     {
       "id": "sklaven",
       "type": "ledger",
-      "title": "«Wir waren nie jemandes Sklaven!»",
+      "title": "«Nie Sklaven gewesen!»",
       "ref": "Johannes 8:33",
       "lines": [
         {
@@ -54,7 +54,7 @@
         },
         {
           "label": "Babylon",
-          "value": "Gefangenschaft",
+          "value": "Exil",
           "at": "Babylon",
           "mark": "cross"
         },

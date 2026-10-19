@@ -21,10 +21,13 @@ const SIL = "#150A2B";
 const GROUND = 1180;
 /** Hand des Königs, um die sich das Zepter dreht */
 const HAND: [number, number] = [624, 728];
-const SCEPTER_LEN = 250;
-/** Zepter in Ruhe (leicht schräg nach oben) und ausgestreckt (zu Ester hin) – Grad im Uhrzeigersinn ab «oben» */
+const SCEPTER_LEN = 210;
+/** Zepter in Ruhe (leicht schräg nach oben) und ausgestreckt (über Ester hin) – Grad im Uhrzeigersinn ab «oben» */
 const REST = 14;
-const OUT = 204;
+const OUT = 79;
+/** Wo Ester am dritten Tag steht – rechts vom Thron, damit König und Zepter sichtbar bleiben */
+const ESTHER_X = 800;
+const ESTHER_SCALE = 0.8;
 
 const rad = (d: number) => (d * Math.PI) / 180;
 const tip = (deg: number, len = SCEPTER_LEN): [number, number] => [HAND[0] + Math.sin(rad(deg)) * len, HAND[1] - Math.cos(rad(deg)) * len];
@@ -198,7 +201,16 @@ const Guard: React.FC<{ x: number; side: -1 | 1; cross: number; opacity?: number
 };
 
 /** Ester von hinten. `rise` 0 = kniend im Gebet, 1 = stehend; `royal` = Krone und Gold am Gewand */
-const Esther: React.FC<{ x: number; y: number; rise: number; royal: boolean; scale?: number; lit?: number }> = ({ x, y, rise, royal, scale = 1, lit = 0 }) => {
+const Esther: React.FC<{ x: number; y: number; rise: number; royal: boolean; scale?: number; lit?: number; reach?: number; reachTo?: [number, number] }> = ({
+  x,
+  y,
+  rise,
+  royal,
+  scale = 1,
+  lit = 0,
+  reach = 0,
+  reachTo = [0, -600],
+}) => {
   const r = Math.max(0, Math.min(1, rise));
   const gownH = 130 + 180 * r;
   const gownW = 300 - 90 * r;
@@ -206,8 +218,14 @@ const Esther: React.FC<{ x: number; y: number; rise: number; royal: boolean; sca
   const torsoH = 96 + 24 * r;
   const waistY = -gownH;
   const shoulderY = waistY - torsoH;
-  const headY = shoulderY - 36 + 26 * (1 - r);
+  const headY = shoulderY - 36 + 12 * (1 - r);
   const fill = royal ? "#2C1052" : "#1A0C30";
+  const veil = royal ? "#5A2A86" : "#46286E";
+  // Arm (links im Bild): hängt – oder streckt sich zum Zepter
+  const sh: [number, number] = [-54, shoulderY + 20];
+  const hang: [number, number] = [-74, waistY + 30];
+  const hand: [number, number] = [hang[0] + (reachTo[0] - hang[0]) * reach, hang[1] + (reachTo[1] - hang[1]) * reach];
+  const elbow: [number, number] = [(sh[0] + hand[0]) / 2 - 34 - 20 * reach, (sh[1] + hand[1]) / 2 + 8];
   return (
     <g transform={`translate(${x} ${y}) scale(${scale})`}>
       {lit > 0 ? <ellipse cx={0} cy={-150} rx={240} ry={300} fill="url(#palGlow)" opacity={0.45 * lit} /> : null}
@@ -218,9 +236,19 @@ const Esther: React.FC<{ x: number; y: number; rise: number; royal: boolean; sca
       {/* Oberkörper */}
       <path d={`M ${-waistW / 2} ${waistY} L ${-62} ${shoulderY + 12} Q 0 ${shoulderY - 6} 62 ${shoulderY + 12} L ${waistW / 2} ${waistY} Z`} fill={fill} />
       {royal ? <path d={`M ${-waistW / 2} ${waistY} L ${waistW / 2} ${waistY}`} stroke={GOLD} strokeWidth={6} opacity={0.8} /> : null}
+      {/* Falten im Gewand */}
+      <path d={`M -20 ${waistY + 20} Q -40 ${waistY + gownH * 0.6} -60 -6 M 22 ${waistY + 20} Q 44 ${waistY + gownH * 0.6} 66 -6`} stroke="#000" strokeOpacity={0.35} strokeWidth={5} fill="none" />
       {/* Kopf und Schleier, der über den Rücken fällt */}
       <circle cx={0} cy={headY} r={34} fill={fill} />
-      <path d={`M -36 ${headY - 6} Q -58 ${shoulderY + 60} -44 ${waistY + gownH * 0.5} L 44 ${waistY + gownH * 0.5} Q 58 ${shoulderY + 60} 36 ${headY - 6} Q 0 ${headY - 44} -36 ${headY - 6} Z`} fill={royal ? "#5A2A86" : "#3A2058"} opacity={0.9} />
+      <path d={`M -36 ${headY - 6} Q -58 ${shoulderY + 60} -44 ${waistY + gownH * 0.5} L 44 ${waistY + gownH * 0.5} Q 58 ${shoulderY + 60} 36 ${headY - 6} Q 0 ${headY - 44} -36 ${headY - 6} Z`} fill={veil} opacity={0.95} />
+      <path d={`M -36 ${headY - 6} Q -58 ${shoulderY + 60} -44 ${waistY + gownH * 0.5} M 36 ${headY - 6} Q 58 ${shoulderY + 60} 44 ${waistY + gownH * 0.5}`} stroke={GOLD} strokeWidth={3} fill="none" opacity={0.35 + 0.4 * lit} />
+      {reach > 0 ? (
+        <g>
+          <path d={`M ${sh[0]} ${sh[1]} Q ${elbow[0]} ${elbow[1]} ${hand[0]} ${hand[1]}`} stroke={fill} strokeWidth={24} strokeLinecap="round" fill="none" />
+          <path d={`M ${sh[0]} ${sh[1]} Q ${elbow[0]} ${elbow[1]} ${hand[0]} ${hand[1]}`} stroke={GOLD} strokeWidth={3} strokeLinecap="round" fill="none" opacity={0.45} transform="translate(-10 0)" />
+          <circle cx={hand[0]} cy={hand[1]} r={13} fill={fill} />
+        </g>
+      ) : null}
       {royal ? (
         <path d={`M -28 ${headY - 26} L -24 ${headY - 52} L -12 ${headY - 38} L 0 ${headY - 58} L 12 ${headY - 38} L 24 ${headY - 52} L 28 ${headY - 26} Z`} fill="url(#palGold)" stroke="#FFF0B8" strokeWidth={2} />
       ) : null}
@@ -254,7 +282,7 @@ const People: React.FC<{ spots: PersonSpot[]; show: number; gold: number; red: n
 );
 
 /** Volk am Boden der Bühne, links und rechts (Mitte frei für Ester) oder über die ganze Breite */
-const useCrowd = (key: string, gapCenter: boolean): PersonSpot[] =>
+const useCrowd = (key: string, gap: [number, number] | null): PersonSpot[] =>
   useMemo(() => {
     const out: PersonSpot[] = [];
     const rows = [
@@ -265,14 +293,14 @@ const useCrowd = (key: string, gapCenter: boolean): PersonSpot[] =>
     rows.forEach((row, r) => {
       for (let i = 0; i < row.n; i++) {
         const x = 70 + ((i + (r % 2) * 0.5) / (row.n - 0.5)) * 940 + (random(`${key}x${r}-${i}`) - 0.5) * 22;
-        if (gapCenter && x > 400 && x < 680) continue;
+        if (gap && x > gap[0] && x < gap[1]) continue;
         // Von der Mitte nach aussen einblenden
         const d = Math.abs(x - 540) / 540 * 0.75 + random(`${key}d${r}-${i}`) * 0.12;
         out.push({ x, y: row.y + (random(`${key}y${r}-${i}`) - 0.5) * 12, s: row.s, d });
       }
     });
     return out;
-  }, [key, gapCenter]);
+  }, [key, gap]);
 
 /** Mondsichel – leuchtet, wenn ihr Tag gefastet ist */
 const Moon: React.FC<{ x: number; y: number; lit: number; label: string; font: string }> = ({ x, y, lit, label, font }) => (
@@ -343,10 +371,12 @@ const Law: React.FC<{ ts: TimelineScene; s: PalaceSceneT }> = ({ ts, s }) => {
     <AbsoluteFill>
       <svg width={1080} height={1920} style={{ position: "absolute", inset: 0 }}>
         <Defs />
-        <Throne scepterDeg={REST - 8 * flare} glint={glint} flare={flare} seen={0} />
-        {red > 0 ? <ellipse cx={540} cy={820} rx={520} ry={420} fill="url(#palRed)" opacity={red * pulse} /> : null}
-        <Guard x={interpolate(walk, [0, 1], [-140, 300])} side={-1} cross={cross} />
-        <Guard x={interpolate(walk, [0, 1], [1220, 780])} side={1} cross={cross} />
+        <g transform={`translate(540 760) scale(${1 + 0.05 * interpolate(frame, [0, 240], [0, 1], clamp)}) translate(-540 -760)`}>
+          <Throne scepterDeg={REST - 8 * flare} glint={glint} flare={flare} seen={0} />
+          {red > 0 ? <ellipse cx={540} cy={820} rx={520} ry={420} fill="url(#palRed)" opacity={red * pulse} /> : null}
+          <Guard x={interpolate(walk, [0, 1], [-140, 300])} side={-1} cross={cross} />
+          <Guard x={interpolate(walk, [0, 1], [1220, 780])} side={1} cross={cross} />
+        </g>
       </svg>
       <Sfx frame={voiceFrame(ts, die - 0.3)} name="whoosh" volume={0.35} />
       <Sfx frame={voiceFrame(ts, crossAt + 0.12)} name="clash" volume={0.5} />
@@ -361,7 +391,7 @@ const Decree: React.FC<{ ts: TimelineScene; s: PalaceSceneT }> = ({ ts, s }) => 
   const look = useLook();
   const t = useT(ts);
   const [haman, volk, tag] = beats(ts, s.cues, 3);
-  const crowd = useCrowd("dec", false);
+  const crowd = useCrowd("dec", null);
   const unroll = interpolate(frame, [4, 30], [0, 1], { ...clamp, easing: Easing.inOut(Easing.cubic) });
   const top = 320;
   const bottom = top + 560 * unroll;
@@ -396,13 +426,13 @@ const Decree: React.FC<{ ts: TimelineScene; s: PalaceSceneT }> = ({ ts, s }) => 
               ERLASS
             </text>
             <path d={`M 330 ${top + 120} L 750 ${top + 120}`} stroke="#5A3A1C" strokeWidth={2} opacity={0.5} />
-            {Array.from({ length: 8 }, (_, i) => (
-              <Cuneiform key={i} x={290} y={top + 175 + i * 46} w={i === 7 ? 260 : 480} seed={`cu${i}`} reveal={interpolate(frame, [10 + i * 4, 34 + i * 4], [0, 1], clamp)} />
+            {Array.from({ length: 7 }, (_, i) => (
+              <Cuneiform key={i} x={290} y={top + 175 + i * 46} w={i === 6 ? 300 : 480} seed={`cu${i}`} reveal={interpolate(frame, [10 + i * 4, 34 + i * 4], [0, 1], clamp)} />
             ))}
           </g>
           {/* Siegel */}
           {sealOn ? (
-            <g transform={`translate(704 ${top + 486}) scale(${interpolate(seal, [0, 1], [2.4, 1])}) rotate(${interpolate(seal, [0, 1], [-30, -8])})`} opacity={Math.min(1, seal * 2)}>
+            <g transform={`translate(712 ${top + 492}) scale(${interpolate(seal, [0, 1], [2.4, 1])}) rotate(${interpolate(seal, [0, 1], [-30, -8])})`} opacity={Math.min(1, seal * 2)}>
               <circle r={62} fill="#9E1B26" />
               <circle r={62} fill="none" stroke="#6E0F18" strokeWidth={6} />
               {Array.from({ length: 10 }, (_, k) => (
@@ -415,9 +445,12 @@ const Decree: React.FC<{ ts: TimelineScene; s: PalaceSceneT }> = ({ ts, s }) => 
             </g>
           ) : null}
           {sealOn ? (
-            <text x={604} y={top + 500} textAnchor="end" fontFamily={look.label} fontWeight={700} fontSize={40} letterSpacing={4} fill="#9E1B26" opacity={interpolate(t, [haman + 0.15, haman + 0.5], [0, 1], clamp)}>
-              HAMAN
-            </text>
+            <g opacity={interpolate(t, [haman + 0.15, haman + 0.5], [0, 1], clamp)}>
+              <text x={292} y={top + 520} fontFamily={look.label} fontWeight={700} fontSize={42} letterSpacing={5} fill="#9E1B26">
+                HAMAN
+              </text>
+              <path d={`M 290 ${top + 532} Q 400 ${top + 524} 520 ${top + 536}`} stroke="#9E1B26" strokeWidth={3} fill="none" />
+            </g>
           ) : null}
           {/* Datum */}
           {dateOn ? (
@@ -473,14 +506,21 @@ const Days: React.FC<{ ts: TimelineScene; s: PalaceSceneT }> = ({ ts, s }) => {
   );
 };
 
+const SAVED_GAP: [number, number] = [ESTHER_X - 120, ESTHER_X + 130];
+
 /** Am dritten Tag: Ester tritt ein, der König sieht sie, das Zepter – und das Volk ist gerettet */
 const ScepterStage: React.FC<{ ts: TimelineScene; s: PalaceSceneT }> = ({ ts, s }) => {
   const frame = useCurrentFrame();
   const t = useT(ts);
   const [enter, seen, reach, saved] = beats(ts, s.cues, 4);
-  const crowd = useCrowd("sav", true);
+  const crowd = useCrowd("sav", SAVED_GAP);
   const walk = interpolate(t, [enter, enter + 1.8], [0, 1], { ...clamp, easing: Easing.out(Easing.cubic) });
   const sway = walk < 1 ? Math.sin(t * 7) * 2.2 * (1 - walk) : 0;
+  const ex = interpolate(walk, [0, 1], [880, ESTHER_X]);
+  const ey = 1180 + 440 * (1 - walk);
+  const sc = ESTHER_SCALE + 0.1 * (1 - walk);
+  const [kx, ky] = tip(OUT);
+  const touch = interpolate(t, [reach + 1.0, reach + 1.6], [0, 1], { ...clamp, easing: Easing.inOut(Easing.cubic) });
   const spot = interpolate(t, [seen, seen + 0.5], [0, 1], clamp);
   const ext = spring({ frame: frame - voiceFrame(ts, reach + 0.15), fps: FPS, config: { damping: 13, stiffness: 70, mass: 1.1 } });
   const deg = REST + (OUT - REST) * ext;
@@ -495,12 +535,12 @@ const ScepterStage: React.FC<{ ts: TimelineScene; s: PalaceSceneT }> = ({ ts, s 
       <svg width={1080} height={1920} style={{ position: "absolute", inset: 0 }}>
         <Defs />
         <Throne scepterDeg={deg} glint={interpolate(t, [reach + 0.15, reach + 0.9], [0, 1.1], clamp)} flare={flare} seen={spot} />
-        <Guard x={190} side={-1} cross={0} opacity={guardsOut} />
-        <Guard x={890} side={1} cross={0} opacity={guardsOut} />
-        {spot > 0 ? <path d={`M 470 300 L 610 300 L ${720} 1180 L ${360} 1180 Z`} fill="url(#palBeam)" opacity={spot} /> : null}
+        <Guard x={160} side={-1} cross={0} opacity={guardsOut} />
+        <Guard x={985} side={1} cross={0} opacity={guardsOut} />
+        {spot > 0 ? <path d={`M ${ESTHER_X - 40} 280 L ${ESTHER_X + 40} 280 L ${ESTHER_X + 150} 1180 L ${ESTHER_X - 150} 1180 Z`} fill="url(#palBeam)" opacity={spot} /> : null}
         <People spots={crowd} show={savedShow} gold={savedShow} red={0} />
-        <g transform={`rotate(${sway} 540 1180)`}>
-          <Esther x={540} y={1180 + 460 * (1 - walk)} rise={1} royal scale={1 + 0.1 * (1 - walk)} lit={spot} />
+        <g transform={`rotate(${sway} ${ex} 1180)`}>
+          <Esther x={ex} y={ey} rise={1} royal scale={sc} lit={spot} reach={touch} reachTo={[(kx - ex) / sc + 4, (ky + 20 - ey) / sc]} />
         </g>
         {burstT > 0 && burstT < 1.4
           ? Array.from({ length: 14 }, (_, i) => {

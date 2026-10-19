@@ -189,7 +189,7 @@ export const sceneSchema = z.discriminatedUnion("type", [
     label: z.string().optional(),
     /** Stufe zu Beginn: 0 nichts, 1 dünne Schnur, 2 Strick, 3 Kette */
     from: z.number().int().min(0).max(3).default(0),
-    /** Jede Phrase legt eine Stufe drauf */
+    /** Jede Phrase legt eine Stufe drauf; die letzte schliesst die Kette ganz */
     cues: z.array(z.string().min(1)).max(3).default([]),
     /** Phrase, bei der alles zerspringt */
     breakAt: z.string().optional(),

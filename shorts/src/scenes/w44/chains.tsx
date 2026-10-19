@@ -31,7 +31,10 @@ const lerp = (x: number, input: number[], output: number[], opts: Parameters<typ
 
 /** Zwei verdrehte Flachsfäden – kaum zu spüren. */
 const Cord: React.FC<{ r: number; cx: number; cy: number }> = ({ r, cx, cy }) => {
-  const strand = (phase: number) => {
+  // Die Fäden wandern langsam – die Schnur lebt, kaum merklich
+  const drift = useCurrentFrame() / 9;
+  const strand = (phase0: number) => {
+    const phase = phase0 + drift;
     const pts: string[] = [];
     for (let i = 0; i <= 240; i++) {
       const a = (i / 240) * Math.PI * 2;
@@ -221,8 +224,8 @@ export const ChainsScene: React.FC<{ ts: TimelineScene }> = ({ ts }) => {
   const R = game ? 104 : 150;
   const ringBase = (lv: Level) => R + (lv === 1 ? 30 : lv === 2 ? 26 : 34);
   // Zuziehen: der neue Ring kommt von aussen und zieht sich zusammen
-  const tight = spring({ frame: frame - voiceFrame(ts, stepAt), fps: FPS, config: { damping: 11, stiffness: 140, mass: 0.8 } });
   const stepped = Number.isFinite(stepAt);
+  const tight = stepped ? spring({ frame: frame - voiceFrame(ts, stepAt), fps: FPS, config: { damping: 11, stiffness: 140, mass: 0.8 } }) : 1;
   // In der Spielvorschau zieht sich die Schnur langsam zu, solange gewartet wird
   const qAt = s.question ? beat(ts, s.question.at, 0.3) : 0;
   const squeeze = game && !broken ? lerp(t, [qAt, Math.min(pickAt, breakAt)], [0, 1], clamp) : 0;
@@ -231,6 +234,8 @@ export const ChainsScene: React.FC<{ ts: TimelineScene }> = ({ ts }) => {
   const entry = spring({ frame, fps: FPS, config: { damping: 16, stiffness: 130 } });
 
   const isEmoji = EMOJI.test(s.center);
+  // Das Standardgesicht leidet mit: je enger, desto gequälter – und frei wieder froh
+  const face = s.center === "🙂" ? (broken ? "😄" : level === 3 ? "😣" : level === 2 ? "😕" : "🙂") : s.center;
   const freed = broken ? Easing.out(Easing.cubic)(lerp(t, [breakAt, breakAt + 0.5], [0, 1], clamp)) : 0;
   const discFill = freed > 0 ? `url(#discFree)` : arcade ? "#140A2E" : "rgba(14,10,8,0.86)";
 
@@ -241,7 +246,8 @@ export const ChainsScene: React.FC<{ ts: TimelineScene }> = ({ ts }) => {
   const picked = t >= pickAt;
   const tapP = lerp(t, [pickAt - 0.55, pickAt], [0, 1], { ...clamp, easing: Easing.inOut(Easing.cubic) });
   const press = lerp(t, [pickAt, pickAt + 0.08, pickAt + 0.22], [1, 0.93, 1], clamp);
-  const points = Math.max(1, 3 - Math.floor(squeeze * 2.2));
+  // In der Vorschau wird rechtzeitig geantwortet: Die Schnur ist noch dünn, das gibt drei Punkte
+  const points = 3;
 
   const labelFont = look.label;
   const pillSize = arcade ? 22 : labelFont === "Cinzel" ? 34 : 30;
@@ -351,8 +357,8 @@ export const ChainsScene: React.FC<{ ts: TimelineScene }> = ({ ts }) => {
         {/* +3, wenn die Schnur in der Spielvorschau reisst */}
         {game && broken ? (
           <text
-            x={cx + 150}
-            y={cy - R - interpolate(breakP, [0, 1], [10, 120])}
+            x={cx + R + 120}
+            y={cy + 20 - interpolate(breakP, [0, 1], [0, 110])}
             textAnchor="middle"
             fontFamily={arcade ? '"Press Start 2P"' : look.display}
             fontSize={arcade ? 54 : 90}
@@ -394,7 +400,7 @@ export const ChainsScene: React.FC<{ ts: TimelineScene }> = ({ ts }) => {
           textShadow: isEmoji || freed > 0.5 ? undefined : look.glow,
         }}
       >
-        {isEmoji && broken && game ? "😄" : s.center}
+        {face}
       </div>
       {s.label ? (
         <div
@@ -441,7 +447,7 @@ export const ChainsScene: React.FC<{ ts: TimelineScene }> = ({ ts }) => {
 
       {/* Serie bis zum Schlüssel */}
       {keyMode && streak > 0 && breakP < 1 ? (
-        <div style={{ position: "absolute", top: cy - ringBase(3) - 150, width: "100%", display: "flex", justifyContent: "center", gap: 16, opacity: 1 - breakP }}>
+        <div style={{ position: "absolute", top: cy + ringBase(3) + 160, width: "100%", display: "flex", justifyContent: "center", gap: 16, opacity: 1 - breakP }}>
           {Array.from({ length: 5 }, (_, i) => {
             const on = streak >= i + 1;
             return (
