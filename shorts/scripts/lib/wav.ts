@@ -105,24 +105,73 @@ export const analyzeSpeech = (pcm: Pcm, minGapSec = 0.12): SpeechAnalysis => {
  * Legt Textphrasen auf das Audio: erwartete Grenzen proportional zur Textlänge,
  * dann auf die nächstgelegene echte Sprechpause einrasten (monoton, jede Pause nur einmal).
  * Ergebnis ist ohne Whisper meist auf ±100 ms genau – genug für Wort-Highlighting.
+ *
+ * Die erwarteten Grenzen kommen auf zwei Wegen zustande: über die ganze Sprechzeit oder nur über
+ * die gesprochene Zeit ohne Pausen (besser nach kurzen Rufen mit langen Pausen wie «Drei. Zwei.
+ * Eins. Start!»). Genommen wird der Weg, dessen Phrasen in der Länge besser zum Text passen.
  */
 export const alignPhrases = (
   phrases: string[],
   strongBoundary: boolean[],
   a: SpeechAnalysis,
 ): Array<{ text: string; start: number; end: number }> => {
-  const w = phrases.map((p) => p.replace(/[^\p{L}\p{N}]/gu, "").length + 3);
+  // Gewicht nach gesprochener Länge: Ziffern dauern länger als Buchstaben («2020» = «zweitausendzwanzig»)
+  const w = phrases.map((p) => p.replace(/\d/g, "ddd").replace(/[^\p{L}\p{N}]/gu, "").length + 3);
   const total = w.reduce((x, y) => x + y, 0) || 1;
   const span = a.speechEndSec - a.speechStartSec;
-  const avg = span / Math.max(1, phrases.length);
 
+  // Gesprochene Abschnitte zwischen den Pausen
+  const voiced: Array<[number, number]> = [];
+  let from = a.speechStartSec;
+  for (const g of a.gaps) {
+    if (g.start > from) voiced.push([from, g.start]);
+    from = Math.max(from, g.end);
+  }
+  if (a.speechEndSec > from) voiced.push([from, a.speechEndSec]);
+  const voicedTotal = voiced.reduce((x, [s0, s1]) => x + (s1 - s0), 0) || span;
+  const voicedIn = (t0: number, t1: number) =>
+    voiced.reduce((x, [s0, s1]) => x + Math.max(0, Math.min(t1, s1) - Math.max(t0, s0)), 0);
+  const atVoiced = (f: number) => {
+    let left = f * voicedTotal;
+    for (const [s0, s1] of voiced) {
+      if (left <= s1 - s0) return s0 + left;
+      left -= s1 - s0;
+    }
+    return a.speechEndSec;
+  };
+
+  const candidates = [
+    snapToGaps(w, total, strongBoundary, a, (f) => a.speechStartSec + f * span),
+    ...(voiced.length ? [snapToGaps(w, total, strongBoundary, a, atVoiced)] : []),
+  ].map((bounds) => {
+    const out = phrases.map((text, i) => {
+      const start = i === 0 ? a.speechStartSec : bounds[i - 1].start;
+      const end = i === phrases.length - 1 ? a.speechEndSec : bounds[i].end;
+      return { text, start, end: Math.max(end, start + 0.08) };
+    });
+    // Wie gut die gesprochene Länge jeder Phrase zu ihrem Textanteil passt
+    const cost = out.reduce((x, p, i) => x + (voicedIn(p.start, p.end) / voicedTotal - w[i] / total) ** 2, 0);
+    return { out, cost };
+  });
+  return candidates.reduce((best, c) => (c.cost < best.cost ? c : best)).out;
+};
+
+/** Grenzen an die nächste Pause rasten; `expectedAt` legt fest, wo eine Grenze nach Textanteil läge. */
+const snapToGaps = (
+  w: number[],
+  total: number,
+  strongBoundary: boolean[],
+  a: SpeechAnalysis,
+  expectedAt: (fraction: number) => number,
+): Array<{ end: number; start: number }> => {
+  const avg = (a.speechEndSec - a.speechStartSec) / Math.max(1, w.length);
   const bounds: Array<{ end: number; start: number }> = [];
   let cum = 0;
   let gapIdx = 0;
   let lastT = a.speechStartSec;
-  for (let k = 0; k < phrases.length - 1; k++) {
+  for (let k = 0; k < w.length - 1; k++) {
     cum += w[k];
-    const expected = a.speechStartSec + (cum / total) * span;
+    const expected = expectedAt(cum / total);
     const tol = strongBoundary[k] ? Math.max(0.6, avg * 0.6) : Math.max(0.25, avg * 0.3);
     let best = -1;
     let bestDist = Infinity;
@@ -146,10 +195,5 @@ export const alignPhrases = (
       lastT = t;
     }
   }
-
-  return phrases.map((text, i) => {
-    const start = i === 0 ? a.speechStartSec : bounds[i - 1].start;
-    const end = i === phrases.length - 1 ? a.speechEndSec : bounds[i].end;
-    return { text, start, end: Math.max(end, start + 0.08) };
-  });
+  return bounds;
 };

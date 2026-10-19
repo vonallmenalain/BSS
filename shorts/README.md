@@ -188,6 +188,9 @@ Der Look färbt auch Untertitel, Quellenangabe und die `kinetic`-Zeilen (mit eig
 - `scripts/tts.ts` misst im Audio Sprechbeginn, -ende und Pausen (10-ms-Energiefenster, Schwelle relativ zum Peak)
   und rastet die Textphrasen (Satzzeichen, Pausen-Tags) auf echte Pausen ein. Wörter werden innerhalb der Phrase
   nach Länge verteilt. Ergebnis: Wort-Highlighting meist auf ±100 ms genau, ohne Whisper.
+  Wo eine Grenze ungefähr liegt, rechnet das Skript auf zwei Wegen – über die ganze Sprechzeit oder nur über die
+  gesprochene Zeit ohne Pausen – und nimmt den, dessen Phrasen besser zur Textlänge passen. Ziffern zählen dabei
+  länger als Buchstaben («2020»). So sitzen auch kurze Rufe mit langen Pausen («Drei. Zwei. Eins. Start!»).
 - Musik wird während der Sprache automatisch abgesenkt (Ducking mit Rampen), Ein-/Ausblendung am Anfang/Ende.
 
 ## Robustheit / Edge Cases

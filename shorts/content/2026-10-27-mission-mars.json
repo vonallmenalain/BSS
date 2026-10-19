@@ -30,7 +30,7 @@
         "Start"
       ],
       "hud": "MARS 2020",
-      "narration": "Drei. [pause short] Zwei. [pause short] Eins. [pause short] Start! [pause short] Juli 2020: Eine Rakete schickt einen Rover zum Mars."
+      "narration": "Drei. [pause short] Zwei. [pause short] Eins. [pause short] Start! [pause] Juli 2020: [pause] Eine Rakete schickt einen Rover zum Mars."
     },
     {
       "id": "reise",

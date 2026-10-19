@@ -106,7 +106,7 @@ const DARK: Palette = {
   buttonText: '#f8fafc',
   honest: '#22c55e',
   honestSoft: 'rgba(22, 101, 52, 0.92)',
-  wrong: '#f87171',
+  wrong: '#dc2626',
   wrongSoft: 'rgba(127, 29, 29, 0.92)',
   avatar: '#fffbeb',
   cord: ['#e7cf9c', '#c27c3a', '#94a3b8'],
@@ -128,6 +128,8 @@ const DARK: Palette = {
 const FACES = { calm: '🙂', worried: '😬', glad: '😄', sad: '😣', free: '😌' } as const
 type Face = keyof typeof FACES
 
+/** Innenabstand der Knöpfe links und rechts – dort stehen Ziffer und Haken. */
+const BUTTON_PAD = 38
 /** Wie lange der Hinweis am Anfang mindestens steht. */
 const HINT_S = 5
 /** So viele Sekunden vor Schluss wird die Uhr oben orange. */
@@ -238,11 +240,7 @@ export class ChainGame extends CanvasGame {
 
   /** Eine Taste: der Knopf direkt (0, 1, 2). */
   tapOption(option: number, fromKeyboard = false): void {
-    if (fromKeyboard && !this.showKeys) {
-      this.showKeys = true
-      // Platz für die Ziffern in den Knöpfen.
-      if (this.current) this.current = this.prepare(this.current.question)
-    }
+    if (fromKeyboard) this.showKeys = true
     this.choose(option)
   }
 
@@ -306,7 +304,9 @@ export class ChainGame extends CanvasGame {
 
   protected get toastY(): number {
     // Unter der Figur, über den Knöpfen – oben steht die Frage.
-    return this.avatarY + this.avatarR * 1.45
+    const below = this.avatarY + this.avatarR * 1.45
+    const buttons = this.current?.buttons[0]?.y
+    return buttons === undefined ? below : Math.min(below, buttons - 32 - 16)
   }
 
   protected newRound(): void {
@@ -382,7 +382,6 @@ export class ChainGame extends CanvasGame {
   private prepare(question: ChainQuestion): QuestionLayout {
     const g = this.g
     const padX = 18
-    const keyW = this.showKeys ? 26 : 0
     g.font = `800 ${this.questionSize}px ${UI_FONT}`
     const lines = wrapLines(g, question.situation.question, this.colW - padX * 2)
     const qLine = Math.round(this.questionSize * 1.22)
@@ -391,8 +390,9 @@ export class ChainGame extends CanvasGame {
     g.font = `800 ${this.answerSize}px ${UI_FONT}`
     const aLine = Math.round(this.answerSize * 1.25)
     const gap = 10
+    // Links Platz für die Ziffer, rechts für Haken oder Kreuz – der Text bleibt mittig.
     const wrapped = question.options.map((option) =>
-      wrapLines(g, option.text, this.colW - padX * 2 - keyW),
+      wrapLines(g, option.text, this.colW - BUTTON_PAD * 2),
     )
     const heights = wrapped.map((entry) => Math.max(58, entry.length * aLine + 26))
     let y = this.buttonsBottom - heights.reduce((sum, h) => sum + h, 0) - gap * (heights.length - 1)
@@ -630,7 +630,6 @@ export class ChainGame extends CanvasGame {
       roundRect(g, box.x, y, box.w, box.h, 18)
       g.stroke()
 
-      const keyW = this.showKeys ? 26 : 0
       if (this.showKeys) {
         g.fillStyle = verdict ? text : c.who
         g.font = `900 13px ${UI_FONT}`
@@ -644,7 +643,7 @@ export class ChainGame extends CanvasGame {
       g.font = `800 ${this.answerSize}px ${UI_FONT}`
       g.textAlign = 'center'
       g.textBaseline = 'middle'
-      const cx = box.x + box.w / 2 + keyW / 2
+      const cx = box.x + box.w / 2
       const top = y + box.h / 2 - ((box.lines.length - 1) * aLine) / 2
       box.lines.forEach((line, row) => g.fillText(line, cx, top + row * aLine + 0.5))
       if (mark) {

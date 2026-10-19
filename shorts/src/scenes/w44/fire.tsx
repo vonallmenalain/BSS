@@ -16,18 +16,30 @@ import { theme } from "../../theme";
 
 type FireSceneT = Extract<Scene, { type: "fire" }>;
 type Bubble = FireSceneT["bubbles"][number];
+type Pt = [number, number];
 const clamp = { extrapolateLeft: "clamp", extrapolateRight: "clamp" } as const;
 const ease = Easing.inOut(Easing.cubic);
 
 /** Wo Petrus am Feuer sitzt */
 const PETER_X = 800;
-const PETER_K = 1.25;
+const PETER_K = 1.2;
 /** Wo die Ankläger stehen */
-const ACCUSER_X = 225;
-const ACCUSER_K = 1.12;
+const ACCUSER_X = 230;
+const ACCUSER_K = 1.0;
 /** Petrus im Morgenlicht */
-const STAND_X = 640;
-const STAND_K = 1.12;
+const STAND_X = 650;
+const STAND_K = 0.98;
+/** Sprechblasen: links für die Ankläger, rechts für Petrus */
+const BUBBLE_W = 480;
+const BUBBLE_TOP = { left: 405, right: 445 } as const;
+
+/** Zwei Farben mischen (#rrggbb) */
+const mix = (a: string, b: string, k: number) => {
+  const pa = [1, 3, 5].map((i) => parseInt(a.slice(i, i + 2), 16));
+  const pb = [1, 3, 5].map((i) => parseInt(b.slice(i, i + 2), 16));
+  const c = pa.map((v, i) => Math.round(v + (pb[i] - v) * Math.max(0, Math.min(1, k))));
+  return `rgb(${c[0]},${c[1]},${c[2]})`;
+};
 
 /* ------------------------------------------------------------------ */
 /* Feuer                                                               */
@@ -46,6 +58,13 @@ const FLAMES = [
   { dx: 0, h: 300, w: 150, p: 5.2 },
 ];
 
+const FIRE_LAYERS: Array<{ color: string; k: number; o: number }> = [
+  { color: "#E8461E", k: 1, o: 0.9 },
+  { color: "#FF8A2A", k: 0.78, o: 0.95 },
+  { color: "#FFC85A", k: 0.55, o: 0.95 },
+  { color: "#FFF3C8", k: 0.3, o: 0.9 },
+];
+
 /** Feuerstelle: Steinring, Scheite, Flammen in Schichten, Funken. `heat` 0 = Glut, 1 = volles Feuer */
 const Fire: React.FC<{ t: number; heat: number }> = ({ t, heat }) => {
   const base = GROUND_Y - 40;
@@ -54,12 +73,6 @@ const Fire: React.FC<{ t: number; heat: number }> = ({ t, heat }) => {
     () => Array.from({ length: 18 }, (_, i) => ({ dx: (random(`fs${i}`) - 0.5) * 160, v: 140 + random(`fv${i}`) * 180, p: random(`fp${i}`), r: 2 + random(`fr${i}`) * 3 })),
     [],
   );
-  const layers: Array<{ color: string; k: number; o: number }> = [
-    { color: "#E8461E", k: 1, o: 0.9 },
-    { color: "#FF8A2A", k: 0.78, o: 0.95 },
-    { color: "#FFC85A", k: 0.55, o: 0.95 },
-    { color: "#FFF3C8", k: 0.3, o: 0.9 },
-  ];
   return (
     <g>
       <defs>
@@ -71,13 +84,11 @@ const Fire: React.FC<{ t: number; heat: number }> = ({ t, heat }) => {
       </defs>
       <circle cx={FIRE_X} cy={base - 110} r={360} fill="url(#fireHalo)" opacity={Math.min(1, heat) * f} />
       {/* Scheite */}
-      <g opacity={0.95}>
-        <rect x={FIRE_X - 120} y={base - 12} width={240} height={26} rx={13} fill="#3A2214" transform={`rotate(-12 ${FIRE_X} ${base})`} />
-        <rect x={FIRE_X - 120} y={base - 12} width={240} height={26} rx={13} fill="#2C190F" transform={`rotate(14 ${FIRE_X} ${base})`} />
-        <ellipse cx={FIRE_X} cy={base + 4} rx={110} ry={16} fill="#FF7A2A" opacity={0.35 + 0.35 * heat} />
-      </g>
+      <rect x={FIRE_X - 120} y={base - 12} width={240} height={26} rx={13} fill="#3A2214" transform={`rotate(-12 ${FIRE_X} ${base})`} />
+      <rect x={FIRE_X - 120} y={base - 12} width={240} height={26} rx={13} fill="#2C190F" transform={`rotate(14 ${FIRE_X} ${base})`} />
+      <ellipse cx={FIRE_X} cy={base + 4} rx={110} ry={16} fill="#FF7A2A" opacity={0.35 + 0.35 * heat} />
       {/* Flammen */}
-      {layers.map((l, li) => (
+      {FIRE_LAYERS.map((l, li) => (
         <g key={li} opacity={l.o}>
           {FLAMES.map((fl, i) => {
             const n = 0.82 + 0.12 * Math.sin(t * 9 + fl.p * 3 + li) + 0.08 * Math.sin(t * 15.3 + fl.p * 5);
@@ -110,114 +121,139 @@ const Fire: React.FC<{ t: number; heat: number }> = ({ t, heat }) => {
 /* Schnur, Strick, Kette                                               */
 /* ------------------------------------------------------------------ */
 
-/** Halber Ring um den Oberkörper: hinten (oben im Bild) oder vorne */
+/** Ein Kettenglied von vorne (Ring) oder von der Seite (Steg) */
+const ChainLink: React.FC<{ x: number; y: number; ang: number; face: boolean; s: number; metal: string }> = ({ x, y, ang, face, s, metal }) =>
+  face ? (
+    <g transform={`translate(${x} ${y}) rotate(${ang}) scale(${s})`}>
+      <ellipse cx={0} cy={0} rx={20} ry={12} fill="none" stroke="#15181D" strokeWidth={12} />
+      <ellipse cx={0} cy={0} rx={20} ry={12} fill="none" stroke={metal} strokeWidth={7} />
+      <path d="M -14 -6 Q 0 -12 14 -6" stroke="#F2F5F8" strokeWidth={2} fill="none" opacity={0.7} />
+    </g>
+  ) : (
+    <g transform={`translate(${x} ${y}) rotate(${ang}) scale(${s})`}>
+      <rect x={-19} y={-5.5} width={38} height={11} rx={5.5} fill="#15181D" />
+      <rect x={-17} y={-3} width={34} height={6} rx={3} fill={metal} />
+    </g>
+  );
+
+/** Halber Ring um den Oberkörper: hinten (oben im Bild) oder vorne. `level` 1 Schnur, 2 Strick, 3 Kette */
 const Bond: React.FC<{ cx: number; cy: number; rx: number; ry: number; level: number; half: "back" | "front"; flash?: number }> = ({ cx, cy, rx, ry, level, half, flash = 0 }) => {
   if (level <= 0) return null;
   const a0 = half === "back" ? Math.PI : 0;
   const a1 = half === "back" ? Math.PI * 2 : Math.PI;
-  const pt = (a: number) => [cx + Math.cos(a) * rx, cy + Math.sin(a) * ry] as const;
-  const arc = (() => {
-    const [sx, sy] = pt(a0);
-    const [ex, ey] = pt(a1);
-    return `M ${sx} ${sy} A ${rx} ${ry} 0 0 ${half === "back" ? 1 : 1} ${ex} ${ey}`;
-  })();
-  const dim = half === "back" ? 0.55 : 1;
+  const pt = (a: number): Pt => [cx + Math.cos(a) * rx, cy + Math.sin(a) * ry];
+  const [sx, sy] = pt(a0);
+  const [ex, ey] = pt(a1);
+  const arc = `M ${sx} ${sy} A ${rx} ${ry} 0 0 1 ${ex} ${ey}`;
+  const dim = half === "back" ? 0.5 : 1;
   if (level === 1) {
     return (
       <g opacity={dim}>
-        <path d={arc} stroke="#D9BF86" strokeWidth={5} fill="none" strokeLinecap="round" />
-        <path d={arc} stroke="#8C6A35" strokeWidth={5} fill="none" strokeDasharray="3 9" strokeLinecap="round" />
+        <path d={arc} stroke="#3A2A14" strokeWidth={8} fill="none" strokeLinecap="round" />
+        <path d={arc} stroke="#E2C88E" strokeWidth={5} fill="none" strokeLinecap="round" />
+        <path d={arc} stroke="#8C6A35" strokeWidth={5} fill="none" strokeDasharray="3 8" strokeLinecap="round" />
       </g>
     );
   }
   if (level === 2) {
     return (
       <g opacity={dim}>
-        <path d={arc} stroke="#3A2210" strokeWidth={19} fill="none" strokeLinecap="round" />
-        <path d={arc} stroke="#9A5E2A" strokeWidth={14} fill="none" strokeLinecap="round" />
-        <path d={arc} stroke="#D29A5A" strokeWidth={14} fill="none" strokeDasharray="5 11" strokeLinecap="butt" />
+        <path d={arc} stroke="#2A1608" strokeWidth={22} fill="none" strokeLinecap="round" />
+        <path d={arc} stroke="#A0632C" strokeWidth={16} fill="none" strokeLinecap="round" />
+        <path d={arc} stroke="#DCA866" strokeWidth={16} fill="none" strokeDasharray="5 10" />
       </g>
     );
   }
   /* Kette: Glieder entlang der Ellipse, abwechselnd von vorne und von der Seite */
-  const n = 9;
+  const n = 10;
+  const metal = flash > 0 ? mix("#B9C0CA", "#FF7A4A", flash) : "#B9C0CA";
   return (
     <g opacity={dim}>
       {Array.from({ length: n + 1 }, (_, i) => {
         const a = a0 + ((a1 - a0) * i) / n;
         const [x, y] = pt(a);
-        const tx = -Math.sin(a) * rx;
-        const ty = Math.cos(a) * ry;
-        const ang = (Math.atan2(ty, tx) * 180) / Math.PI;
-        return i % 2 === 0 ? (
-          <ellipse key={i} cx={x} cy={y} rx={20} ry={12} transform={`rotate(${ang} ${x} ${y})`} fill="none" stroke="#2A2E35" strokeWidth={11} />
-        ) : (
-          <rect key={i} x={x - 18} y={y - 4} width={36} height={8} rx={4} transform={`rotate(${ang} ${x} ${y})`} fill="#2A2E35" />
-        );
-      })}
-      {Array.from({ length: n + 1 }, (_, i) => {
-        const a = a0 + ((a1 - a0) * i) / n;
-        const [x, y] = pt(a);
-        const tx = -Math.sin(a) * rx;
-        const ty = Math.cos(a) * ry;
-        const ang = (Math.atan2(ty, tx) * 180) / Math.PI;
-        return i % 2 === 0 ? (
-          <ellipse key={i} cx={x} cy={y} rx={20} ry={12} transform={`rotate(${ang} ${x} ${y})`} fill="none" stroke={flash > 0 ? mix("#B7BEC8", "#FF7A4A", flash) : "#B7BEC8"} strokeWidth={6} />
-        ) : (
-          <rect key={i} x={x - 16} y={y - 2.5} width={32} height={5} rx={2.5} transform={`rotate(${ang} ${x} ${y})`} fill={flash > 0 ? mix("#9AA3AE", "#FF7A4A", flash) : "#9AA3AE"} />
-        );
+        const ang = (Math.atan2(Math.cos(a) * ry, -Math.sin(a) * rx) * 180) / Math.PI;
+        return <ChainLink key={i} x={x} y={y} ang={ang} face={i % 2 === 0} s={1.15} metal={metal} />;
       })}
     </g>
   );
 };
 
-/** Zwei Farben mischen (#rrggbb) */
-const mix = (a: string, b: string, k: number) => {
-  const pa = [1, 3, 5].map((i) => parseInt(a.slice(i, i + 2), 16));
-  const pb = [1, 3, 5].map((i) => parseInt(b.slice(i, i + 2), 16));
-  const c = pa.map((v, i) => Math.round(v + (pb[i] - v) * Math.max(0, Math.min(1, k))));
-  return `rgb(${c[0]},${c[1]},${c[2]})`;
-};
-
 /* ------------------------------------------------------------------ */
-/* Figuren                                                             */
+/* Figuren: dunkle Silhouetten mit Streiflicht vom Feuer                */
 /* ------------------------------------------------------------------ */
 
-/** Petrus sitzt am Feuer (Blick nach links), Ursprung am Boden unter dem Sitz */
+type FigureProps = { fill: string; arm: string };
+
+/** Petrus sitzend, Blick nach links (zum Feuer). Ursprung: Boden unter dem Sitz */
+const SeatedShape: React.FC<FigureProps> = ({ fill, arm }) => (
+  <g>
+    <path
+      d="M 52 -72 C 66 -150, 50 -245, 14 -290 C -6 -306, -42 -300, -56 -282 C -70 -250, -66 -170, -54 -118 L -64 -104 C -100 -112, -140 -116, -158 -100 C -168 -90, -162 -60, -156 -24 L -160 -6 L -112 -6 C -116 -40, -116 -70, -104 -82 C -60 -84, -10 -86, 52 -72 Z"
+      fill={fill}
+    />
+    <ellipse cx={-150} cy={-4} rx={28} ry={8} fill={fill} />
+    {/* Arm zum Feuer, Hände wärmen sich */}
+    <path d="M -26 -268 C -54 -246, -74 -222, -86 -200 L -146 -214" stroke={arm} strokeWidth={30} strokeLinecap="round" strokeLinejoin="round" fill="none" />
+    {/* Kopf leicht gesenkt, Kopftuch, Bart */}
+    <circle cx={-36} cy={-322} r={33} fill={fill} />
+    <path d="M -70 -326 C -68 -370, -18 -380, 6 -352 C 16 -334, 14 -300, 24 -274 L -4 -280 C -4 -300, -10 -316, -30 -326 C -46 -330, -60 -326, -70 -318 Z" fill={fill} />
+    <path d="M -64 -310 C -72 -290, -58 -280, -42 -284 L -38 -304 Z" fill={fill} />
+  </g>
+);
+
 const SeatedPeter: React.FC<{ x: number; light: number; bond: number; bondScale: number; flash: number; shake: number }> = ({ x, light, bond, bondScale, flash, shake }) => {
-  const K = PETER_K;
-  const ring = { cx: -18, cy: -190, rx: 66 * bondScale, ry: 19 * bondScale };
+  const ring = { cx: -18, cy: -196, rx: 68 * bondScale, ry: 19 * bondScale };
+  const rim = mix("#3A1A0C", "#FF9A4A", light);
   return (
-    <g transform={`translate(${x + shake} ${GROUND_Y}) scale(${K})`}>
-      <defs>
-        <linearGradient id="peterRim" x1={-170} y1={0} x2={40} y2={0} gradientUnits="userSpaceOnUse">
-          <stop offset="0%" stopColor={mix("#4A2412", "#C2602A", light)} />
-          <stop offset="45%" stopColor={mix("#21130C", "#5A2A14", light)} />
-          <stop offset="100%" stopColor="#0E0907" />
-        </linearGradient>
-      </defs>
-      <ellipse cx={-40} cy={2} rx={150} ry={12} fill="#000" opacity={0.35} />
+    <g transform={`translate(${x + shake} ${GROUND_Y}) scale(${PETER_K})`}>
+      <ellipse cx={-50} cy={2} rx={150} ry={12} fill="#000" opacity={0.4} />
       {/* Sitzstein */}
-      <rect x={-60} y={-82} width={130} height={82} rx={10} fill="#2A1E18" stroke="#140E0B" strokeWidth={3} />
+      <path d="M -52 0 C -60 -40, -50 -76, -10 -80 C 30 -84, 66 -70, 70 -36 C 72 -14, 64 0, 60 0 Z" fill="#241913" stroke="#120C09" strokeWidth={3} />
+      <path d="M -40 -50 C -30 -70, 10 -76, 40 -62" stroke={rim} strokeWidth={4} fill="none" opacity={0.5} />
       <Bond {...ring} level={bond} half="back" flash={flash} />
-      {/* Gewand mit Beinen */}
-      <path
-        d="M 40 -82 L 18 -292 Q -18 -312 -58 -282 L -54 -205 L -46 -118 L -128 -128 L -140 -96 L -128 -8 L -156 0 L -96 0 L -94 -78 L -20 -80 Z"
-        fill="url(#peterRim)"
-      />
-      {/* Arme zum Feuer */}
-      <path d="M -36 -268 Q -82 -230 -100 -206 L -148 -214" stroke="url(#peterRim)" strokeWidth={28} strokeLinecap="round" strokeLinejoin="round" fill="none" />
-      <circle cx={-152} cy={-214} r={14} fill={mix("#3A1C0E", "#E08A4A", light)} />
-      {/* Kopf, Kopftuch, Bart */}
-      <circle cx={-36} cy={-330} r={36} fill={mix("#20120A", "#7A3A1C", light * 0.8)} />
-      <path d="M -74 -336 Q -70 -384 -26 -378 Q 14 -372 12 -330 L 20 -270 L -6 -280 L -8 -330 Z" fill="#160D09" />
-      <path d="M -70 -322 Q -76 -292 -52 -286 L -40 -302 Z" fill="#160D09" />
+      {/* Streiflicht links (zum Feuer), darüber die dunkle Gestalt */}
+      <g transform="translate(-6 -1)">
+        <SeatedShape fill={rim} arm={rim} />
+      </g>
+      <SeatedShape fill="#120B08" arm="#160E0A" />
+      <circle cx={-150} cy={-214} r={11} fill={mix("#3A1C0E", "#F2A060", light)} />
       <Bond {...ring} level={bond} half="front" flash={flash} />
     </g>
   );
 };
 
-/** Stehende Figur im Gewand, Ursprung zwischen den Füssen. `dir` 1 = Blick nach rechts */
+/** Stehende Gestalt, Blick nach rechts. Ursprung zwischen den Füssen */
+const StandingShape: React.FC<FigureProps & { head: "scarf" | "cloth" | "beard"; point: number; open: number; bow: number }> = ({ fill, arm, head, point, open, bow }) => {
+  const shoulder: Pt = [26, -350];
+  const hang: { e: Pt; h: Pt } = { e: [42, -282], h: [46, -214] };
+  const aim: { e: Pt; h: Pt } = { e: [104, -372], h: [184, -402] };
+  const lift: { e: Pt; h: Pt } = { e: [92, -420], h: [150, -478] };
+  const lerp = (a: Pt, b: Pt, k: number): Pt => [a[0] + (b[0] - a[0]) * k, a[1] + (b[1] - a[1]) * k];
+  const target = point > 0 ? aim : lift;
+  const m = Math.max(point, open);
+  const e = lerp(hang.e, target.e, m);
+  const h = lerp(hang.h, target.h, m);
+  const be: Pt = open > 0 ? lerp([-28, -282], [-92, -420], open) : [-28, -282];
+  const bh: Pt = open > 0 ? lerp([-24, -214], [-150, -478], open) : [-24, -214];
+  const hx = 8 + bow * 16;
+  const hy = -404 + bow * 20;
+  return (
+    <g>
+      <path d={`M -20 -350 L ${be[0]} ${be[1]} L ${bh[0]} ${bh[1]}`} stroke={arm} strokeWidth={24} strokeLinecap="round" strokeLinejoin="round" fill="none" />
+      <path d="M -66 0 C -62 -90, -56 -170, -50 -236 C -48 -290, -58 -330, -42 -358 C -24 -382, 26 -384, 44 -362 C 58 -336, 54 -296, 50 -246 C 54 -170, 62 -90, 72 0 Z" fill={fill} />
+      <circle cx={hx} cy={hy} r={31} fill={fill} />
+      {head === "scarf" ? (
+        <path d={`M ${hx - 38} ${hy + 12} C ${hx - 46} ${hy - 48}, ${hx + 42} ${hy - 50}, ${hx + 34} ${hy + 4} C ${hx + 32} ${hy + 18}, ${hx + 26} ${hy + 30}, ${hx + 44} ${hy + 58} L ${hx - 62} ${hy + 60} C ${hx - 50} ${hy + 38}, ${hx - 40} ${hy + 26}, ${hx - 38} ${hy + 12} Z`} fill={fill} />
+      ) : (
+        <path d={`M ${hx - 34} ${hy + 6} C ${hx - 38} ${hy - 40}, ${hx + 32} ${hy - 46}, ${hx + 34} ${hy - 4} L ${hx + 26} ${hy - 12} C ${hx + 12} ${hy - 22}, ${hx - 18} ${hy - 20}, ${hx - 24} ${hy + 4} L ${hx - 40} ${hy + 54} L ${hx - 52} ${hy + 44} Z`} fill={fill} />
+      )}
+      {head === "beard" ? <path d={`M ${hx + 10} ${hy + 12} C ${hx + 30} ${hy + 18}, ${hx + 34} ${hy + 44}, ${hx + 18} ${hy + 54} C ${hx + 4} ${hy + 48}, ${hx} ${hy + 28}, ${hx + 10} ${hy + 12} Z`} fill={fill} /> : null}
+      <path d={`M ${shoulder[0]} ${shoulder[1]} L ${e[0]} ${e[1]} L ${h[0]} ${h[1]}`} stroke={arm} strokeWidth={24} strokeLinecap="round" strokeLinejoin="round" fill="none" />
+    </g>
+  );
+};
+
 const Standing: React.FC<{
   x: number;
   k: number;
@@ -226,43 +262,22 @@ const Standing: React.FC<{
   point?: number;
   open?: number;
   bow?: number;
-  robe: [string, string];
-  id: string;
-}> = ({ x, k, dir = 1, head = "cloth", point = 0, open = 0, bow = 0, robe, id }) => {
-  // Arm: hängend → zeigend (vorne) bzw. geöffnet (beide)
-  const shoulder: [number, number] = [44, -360];
-  const hang: [number, number] = [70, -190];
-  const aim: [number, number] = [210, -410];
-  const lift: [number, number] = [190, -470];
-  const target = point > 0 ? aim : lift;
-  const m = Math.max(point, open);
-  const hand: [number, number] = [hang[0] + (target[0] - hang[0]) * m, hang[1] + (target[1] - hang[1]) * m];
-  const elbow: [number, number] = [(shoulder[0] + hand[0]) / 2 + 14 * (1 - m), (shoulder[1] + hand[1]) / 2 + 24 * (1 - m)];
-  const backHand: [number, number] = open > 0 ? [-hand[0], hand[1]] : [-68, -190];
-  const backElbow: [number, number] = open > 0 ? [-elbow[0], elbow[1]] : [-56, -270];
-  const headY = -430 + bow * 18;
-  const headX = 8 + bow * 14;
+  fill?: string;
+  /** Streiflicht: Farbe und Seite (in Blickrichtung +1 vorne, −1 hinten, 0 beidseitig) */
+  rim: string;
+  rimSide?: 1 | -1 | 0;
+}> = ({ x, k, dir = 1, head = "cloth", point = 0, open = 0, bow = 0, fill = "#130C09", rim, rimSide = 1 }) => {
+  const shape = { head, point, open, bow };
+  const sides = rimSide === 0 ? [-1, 1] : [rimSide];
   return (
     <g transform={`translate(${x} ${GROUND_Y}) scale(${dir * k} ${k})`}>
-      <defs>
-        <linearGradient id={`robe-${id}`} x1={-90} y1={0} x2={90} y2={0} gradientUnits="userSpaceOnUse">
-          <stop offset="0%" stopColor={robe[0]} />
-          <stop offset="100%" stopColor={robe[1]} />
-        </linearGradient>
-      </defs>
-      <ellipse cx={0} cy={2} rx={100} ry={11} fill="#000" opacity={0.35} />
-      <path d={`M -44 -350 L ${backElbow[0]} ${backElbow[1]} L ${backHand[0]} ${backHand[1]}`} stroke={robe[0]} strokeWidth={26} strokeLinecap="round" strokeLinejoin="round" fill="none" />
-      <path d="M -88 0 L -62 -240 L -76 -360 Q -40 -392 0 -392 Q 40 -392 76 -360 L 62 -240 L 88 0 Z" fill={`url(#robe-${id})`} />
-      <circle cx={headX} cy={headY} r={36} fill="#24150E" />
-      {head === "scarf" ? (
-        <path d={`M ${headX - 44} ${headY + 10} Q ${headX - 46} ${headY - 52} ${headX + 2} ${headY - 50} Q ${headX + 46} ${headY - 46} ${headX + 34} ${headY + 4} L ${headX + 22} ${headY + 70} L ${headX - 50} ${headY + 72} Z`} fill={robe[0]} opacity={0.95} />
-      ) : (
-        <path d={`M ${headX - 40} ${headY + 4} Q ${headX - 40} ${headY - 48} ${headX} ${headY - 46} Q ${headX + 36} ${headY - 44} ${headX + 34} ${headY - 8} L ${headX - 30} ${headY - 14} L ${headX - 46} ${headY + 64} L ${headX - 50} ${headY + 18} Z`} fill="#140C08" />
-      )}
-      {head !== "scarf" ? <rect x={headX - 40} y={headY - 22} width={74} height={9} rx={4} fill="#5A3A22" /> : null}
-      {head === "beard" ? <path d={`M ${headX + 10} ${headY + 18} Q ${headX + 34} ${headY + 56} ${headX + 8} ${headY + 62} Q ${headX - 10} ${headY + 40} ${headX + 10} ${headY + 18} Z`} fill="#140C08" /> : null}
-      <path d={`M ${shoulder[0]} ${shoulder[1]} L ${elbow[0]} ${elbow[1]} L ${hand[0]} ${hand[1]}`} stroke={robe[1]} strokeWidth={26} strokeLinecap="round" strokeLinejoin="round" fill="none" />
-      <circle cx={hand[0]} cy={hand[1]} r={13} fill="#3A2214" />
+      <ellipse cx={0} cy={2} rx={95} ry={11} fill="#000" opacity={0.35} />
+      {sides.map((sd) => (
+        <g key={sd} transform={`translate(${sd * 5} -1)`}>
+          <StandingShape fill={rim} arm={rim} {...shape} />
+        </g>
+      ))}
+      <StandingShape fill={fill} arm={fill} {...shape} />
     </g>
   );
 };
@@ -271,14 +286,22 @@ const Standing: React.FC<{
 /* Sprechblasen und Zähler                                             */
 /* ------------------------------------------------------------------ */
 
-const SpeechBubble: React.FC<{ b: Bubble; pop: number; targetX: number; top: number; tone: "lie" | "truth" | "plain"; dim: number }> = ({ b, pop, targetX, top, tone, dim }) => {
+const SpeechBubble: React.FC<{ b: Bubble; pop: number; targetX: number; left: number; top: number; width: number; tone: "lie" | "truth" | "plain"; dim: number }> = ({
+  b,
+  pop,
+  targetX,
+  left,
+  top,
+  width,
+  tone,
+  dim,
+}) => {
   const look = useLook();
   if (pop <= 0.001) return null;
-  const left = b.side === "left" ? 56 : 1080 - 56 - 590;
-  const width = 590;
   const border = tone === "lie" ? "#E2483D" : tone === "truth" ? look.accent2 : "#1A120C";
-  const tailX = Math.max(60, Math.min(width - 90, targetX - left - 20));
-  const size = b.text.length > 40 ? 46 : 56;
+  const tailX = Math.max(40, Math.min(width - 90, targetX - left - 28));
+  const size = b.text.length > 40 ? 46 : b.text.length > 24 ? 50 : 54;
+  const towardsRight = targetX - left - 28 > width / 2;
   return (
     <div
       style={{
@@ -288,22 +311,40 @@ const SpeechBubble: React.FC<{ b: Bubble; pop: number; targetX: number; top: num
         width,
         opacity: Math.min(1, pop * 1.4) * dim,
         transform: `scale(${interpolate(pop, [0, 1], [0.5, 1])}) rotate(${(1 - pop) * (b.side === "left" ? -6 : 6)}deg)`,
-        transformOrigin: `${tailX + 20}px 110%`,
+        transformOrigin: `${tailX + 28}px 120%`,
       }}
     >
       {b.who ? (
-        <div style={{ display: "inline-block", marginLeft: 18, marginBottom: -6, padding: "8px 18px", borderRadius: 12, background: "#1A120C", border: `3px solid ${border}`, fontFamily: theme.font.body, fontWeight: 800, fontSize: 26, letterSpacing: "0.14em", textTransform: "uppercase", color: tone === "truth" ? look.accent2 : look.accent, position: "relative", zIndex: 2 }}>
+        <div
+          style={{
+            display: "inline-block",
+            marginLeft: 22,
+            marginBottom: -8,
+            padding: "8px 18px",
+            borderRadius: 12,
+            background: "#1A120C",
+            border: `3px solid ${border}`,
+            fontFamily: theme.font.body,
+            fontWeight: 800,
+            fontSize: 24,
+            letterSpacing: "0.14em",
+            textTransform: "uppercase",
+            color: tone === "truth" ? look.accent2 : look.accent,
+            position: "relative",
+            zIndex: 2,
+          }}
+        >
           {b.who}
         </div>
       ) : null}
       <div
         style={{
           position: "relative",
-          padding: "26px 34px 28px",
-          borderRadius: 40,
+          padding: "24px 30px 26px",
+          borderRadius: 38,
           background: "#FFF4E2",
           border: `6px solid ${border}`,
-          boxShadow: tone === "truth" ? `0 0 50px ${look.accent2}, 0 18px 40px rgba(0,0,0,0.5)` : "0 18px 40px rgba(0,0,0,0.55)",
+          boxShadow: tone === "truth" ? `0 0 60px ${look.accent2}, 0 18px 40px rgba(0,0,0,0.5)` : "0 18px 40px rgba(0,0,0,0.55)",
           fontFamily: theme.font.body,
           fontWeight: 800,
           fontSize: size,
@@ -312,8 +353,8 @@ const SpeechBubble: React.FC<{ b: Bubble; pop: number; targetX: number; top: num
         }}
       >
         {b.text}
-        <svg width={70} height={70} style={{ position: "absolute", left: tailX, bottom: -62, overflow: "visible" }}>
-          <path d={b.side === "left" ? "M 4 -4 L 56 -4 L 14 60 Z" : "M 4 -4 L 56 -4 L 48 60 Z"} fill="#FFF4E2" stroke={border} strokeWidth={6} strokeLinejoin="round" />
+        <svg width={70} height={70} style={{ position: "absolute", left: tailX, bottom: -60, overflow: "visible" }}>
+          <path d={towardsRight ? "M 4 -4 L 56 -4 L 48 60 Z" : "M 4 -4 L 56 -4 L 12 60 Z"} fill="#FFF4E2" stroke={border} strokeWidth={6} strokeLinejoin="round" />
           <rect x={0} y={-14} width={62} height={10} fill="#FFF4E2" />
         </svg>
       </div>
@@ -321,12 +362,12 @@ const SpeechBubble: React.FC<{ b: Bubble; pop: number; targetX: number; top: num
   );
 };
 
-/** Ein Kettenglied als Zählstein */
-const Link: React.FC<{ x: number; y: number; s: number; on: number; pop: number }> = ({ x, y, s, on, pop }) => (
-  <g transform={`translate(${x} ${y}) scale(${s * (1 + 0.35 * pop * (1 - pop) * 4)})`}>
-    {on > 0 ? <ellipse cx={0} cy={0} rx={52} ry={34} fill="#FF5A2A" opacity={0.25 * on} /> : null}
-    <ellipse cx={0} cy={0} rx={34} ry={20} fill="none" stroke="#1A0E0A" strokeWidth={15} />
-    <ellipse cx={0} cy={0} rx={34} ry={20} fill="none" stroke={on > 0 ? mix("#8C929C", "#FF7A4A", on) : "rgba(255,241,224,0.35)"} strokeWidth={8} strokeDasharray={on > 0 ? undefined : "10 8"} />
+/** Zählstein: ein Kettenglied, leer (gestrichelt) oder glühend */
+const CounterLink: React.FC<{ x: number; y: number; on: number; pop: number }> = ({ x, y, on, pop }) => (
+  <g transform={`translate(${x} ${y}) scale(${0.95 + 0.6 * pop * (1 - pop) * 4})`}>
+    {on > 0 ? <ellipse cx={0} cy={0} rx={54} ry={36} fill="#FF5A2A" opacity={0.28 * on} /> : null}
+    <ellipse cx={0} cy={0} rx={34} ry={20} fill="none" stroke="#1A0E0A" strokeWidth={15} opacity={on > 0 ? 1 : 0.4} />
+    <ellipse cx={0} cy={0} rx={34} ry={20} fill="none" stroke={on > 0 ? mix("#8C929C", "#FF7A4A", on) : "rgba(255,241,224,0.4)"} strokeWidth={8} strokeDasharray={on > 0 ? undefined : "10 8"} />
   </g>
 );
 
@@ -337,12 +378,11 @@ const LieCounter: React.FC<{ count: number; popAt: number; t: number }> = ({ cou
     <>
       <svg width={1080} height={1920} style={{ position: "absolute", inset: 0 }}>
         {[0, 1, 2].map((i) => {
-          const filled = i < count;
           const justNow = i === count - 1 && Number.isFinite(popAt);
-          return <Link key={i} x={430 + i * 110} y={292} s={0.9} on={filled ? (justNow ? pop : 1) : 0} pop={justNow ? pop : 0} />;
+          return <CounterLink key={i} x={430 + i * 110} y={286} on={i < count ? (justNow ? pop : 1) : 0} pop={justNow ? pop : 0} />;
         })}
       </svg>
-      <div style={{ position: "absolute", top: 330, width: "100%", textAlign: "center", fontFamily: theme.font.body, fontWeight: 800, fontSize: 24, letterSpacing: "0.3em", color: look.dim }}>
+      <div style={{ position: "absolute", top: 322, width: "100%", textAlign: "center", fontFamily: theme.font.body, fontWeight: 800, fontSize: 24, letterSpacing: "0.3em", color: count > 0 ? look.accent : look.dim }}>
         LÜGEN {count}/3
       </div>
     </>
@@ -353,11 +393,7 @@ const LieCounter: React.FC<{ count: number; popAt: number; t: number }> = ({ cou
 /* Szene                                                               */
 /* ------------------------------------------------------------------ */
 
-const ACCUSER_LOOKS: Array<{ head: "scarf" | "cloth" | "beard"; robe: [string, string] }> = [
-  { head: "scarf", robe: ["#1C120D", "#7A4A2A"] },
-  { head: "cloth", robe: ["#16110F", "#6A4630"] },
-  { head: "beard", robe: ["#140E0C", "#7E5232"] },
-];
+const ACCUSERS: Array<"scarf" | "cloth" | "beard"> = ["scarf", "cloth", "beard"];
 
 export const FireScene: React.FC<{ ts: TimelineScene }> = ({ ts }) => {
   const s = ts.scene as FireSceneT;
@@ -367,11 +403,13 @@ export const FireScene: React.FC<{ ts: TimelineScene }> = ({ ts }) => {
   const end = Math.max(1, ts.speechEndSec);
   const cue = (i: number, frac: number) => beat(ts, s.cues[i], ts.speechStartSec + frac * (end - ts.speechStartSec));
 
+  if (s.stage === "dawn") return <Dawn ts={ts} s={s} frame={frame} t={t} />;
+
   /* Schnur: Stufe zu Beginn, eine Stufe dicker bei bindAt */
   const bindAt = s.bindAt ? beat(ts, s.bindAt, end * 0.85) : Infinity;
   const bound = s.bind + (t >= bindAt ? 1 : 0);
   const tighten = Number.isFinite(bindAt) ? spring({ frame: frame - voiceFrame(ts, bindAt), fps: FPS, config: { damping: 9, stiffness: 160 } }) : 1;
-  const bondScale = t >= bindAt ? interpolate(tighten, [0, 1], [1.45, 1]) : 1;
+  const bondScale = t >= bindAt ? interpolate(tighten, [0, 1], [1.5, 1]) : 1;
   const flash = t >= bindAt ? interpolate(t, [bindAt, bindAt + 0.9], [1, 0], clamp) : 0;
 
   /* Sprechblasen */
@@ -382,71 +420,72 @@ export const FireScene: React.FC<{ ts: TimelineScene }> = ({ ts }) => {
 
   /* Feuer */
   let heat = 1;
+  const fireAt = s.stage === "intro" ? cue(1, 0.45) : 0;
   if (s.stage === "intro") {
-    const fireAt = cue(1, 0.45);
     heat = t < fireAt ? 0.16 : 0.16 + 0.84 * spring({ frame: frame - voiceFrame(ts, fireAt), fps: FPS, config: { damping: 6, stiffness: 90 } });
   }
-  const weinAt = s.stage === "rooster" ? cue(2, 0.85) : Infinity;
-  if (s.stage === "rooster") heat = interpolate(t, [weinAt - 0.4, weinAt + 0.8], [1, 0.32], clamp);
-  const light = interpolate(heat, [0.16, 1], [0.2, 1], clamp) * flicker(tScene);
+  const weinAt = s.stage === "rooster" ? cue(2, 0.85) : 1e9;
+  if (s.stage === "rooster") heat = interpolate(t, [weinAt - 0.4, weinAt + 0.8], [1, 0.3], clamp);
+  const light = interpolate(heat, [0.16, 1], [0.15, 1], clamp) * flicker(tScene);
 
-  /* Petrus steht auf und geht (Hahn) */
-  const leaveStart = Number.isFinite(weinAt) ? weinAt - 1.1 : 1e9;
-  const leave = interpolate(t, [leaveStart, leaveStart + 1.9], [0, 1], { ...clamp, easing: Easing.in(Easing.quad) });
-  const standUp = interpolate(t, [leaveStart - 0.2, leaveStart + 0.15], [0, 1], clamp);
+  /* Petrus steht auf und geht hinaus (Hahn) */
+  const leaveStart = weinAt - 1.1;
+  const leave = interpolate(t, [leaveStart, leaveStart + 2.0], [0, 1], { ...clamp, easing: Easing.in(Easing.quad) });
+  const standUp = interpolate(t, [leaveStart - 0.25, leaveStart + 0.1], [0, 1], clamp);
 
-  const accuserIdx = (() => {
-    const who = left?.b.who ?? "";
-    if (/magd/i.test(who)) return 0;
-    if (/anderer/i.test(who)) return 1;
-    return 2;
-  })();
-  const accuserIn = left ? interpolate(t, [Math.max(0.15, left.at - 1.3), Math.max(0.15, left.at - 1.3) + 0.6], [0, 1], { ...clamp, easing: Easing.out(Easing.cubic) }) : 0;
+  const accuser = left ? ACCUSERS[/magd/i.test(left.b.who ?? "") ? 0 : /anderer/i.test(left.b.who ?? "") ? 1 : 2] : "cloth";
+  const enterAt = left ? Math.max(0.15, left.at - 1.3) : 0;
+  const accuserIn = left ? interpolate(t, [enterAt, enterAt + 0.6], [0, 1], { ...clamp, easing: Easing.out(Easing.cubic) }) : 0;
   const pointing = left ? interpolate(t, [left.at - 0.15, left.at + 0.25], [0, 1], { ...clamp, easing: ease }) : 0;
 
-  /* Petrus flucht: kurz vor seiner dritten Lüge zittert er */
-  const curseAt = s.stage === "accuse" && s.bind === 2 && right ? right.at - 1.4 : Infinity;
-  const shake = t > curseAt && t < curseAt + 1.6 ? Math.sin(frame * 2.3) * 5 : 0;
+  /* Petrus flucht und schwört: Er zittert vor der dritten Lüge */
+  const curseAt = s.stage === "accuse" && s.bind === 2 && right ? right.at - 1.5 : 1e9;
+  const shake = t > curseAt && t < curseAt + 1.7 ? Math.sin(frame * 2.3) * 5 : 0;
 
-  const peterBubbleTop = 640;
-  const leftBubbleTop = 440;
+  /* Petrus wird hervorgehoben, wenn die Stimme ihn am Feuer nennt */
+  const atFire = findCue(ts.words, "Petrus sitzt im Hof") ? beat(ts, "Petrus sitzt im Hof", 0) : -1;
+  const spot = atFire >= 0 ? interpolate(t, [atFire, atFire + 0.4, atFire + 1.6, atFire + 2.2], [0, 1, 1, 0], clamp) : 0;
 
   return (
     <AbsoluteFill>
-      {s.stage === "dawn" ? <Dawn t={t} ts={ts} s={s} frame={frame} bound={bound} /> : null}
-
-      {s.stage !== "dawn" ? (
-        <svg width={1080} height={1920} style={{ position: "absolute", inset: 0 }}>
-          {s.stage === "intro" ? <Night t={t} at={cue(0, 0.12)} /> : null}
-          {s.stage === "accuse" && findCue(ts.words, "verhaftet") ? <Procession t={t} /> : null}
-          {s.stage === "rooster" ? <Gallery t={t} at={cue(1, 0.55)} /> : null}
-          <Fire t={tScene} heat={heat} />
-          {s.stage === "rooster" && standUp > 0 ? (
-            <g opacity={(1 - leave) * standUp}>
-              <Standing x={PETER_X + leave * 420} k={1.05} dir={1} head="beard" bow={1} robe={["#1A100B", "#4A2A18"]} id="leave" />
-            </g>
-          ) : null}
-          <g opacity={1 - standUp}>
-            <SeatedPeter x={PETER_X} light={light} bond={bound} bondScale={bondScale} flash={flash} shake={shake} />
+      <svg width={1080} height={1920} style={{ position: "absolute", inset: 0 }}>
+        <defs>
+          <radialGradient id="peterSpot">
+            <stop offset="0%" stopColor="#FFC27A" stopOpacity="0.4" />
+            <stop offset="100%" stopColor="#FFC27A" stopOpacity="0" />
+          </radialGradient>
+        </defs>
+        {s.stage === "intro" ? <Night t={t} at={cue(0, 0.12)} /> : null}
+        {s.stage === "accuse" && findCue(ts.words, "verhaftet") ? <Procession t={t} /> : null}
+        {s.stage === "rooster" ? <Gallery t={t} at={cue(1, 0.55)} /> : null}
+        {spot > 0 ? <ellipse cx={PETER_X - 40} cy={GROUND_Y - 220} rx={260} ry={300} fill="url(#peterSpot)" opacity={spot} /> : null}
+        <Fire t={tScene} heat={heat} />
+        {s.stage === "rooster" && standUp > 0 ? (
+          <g opacity={(1 - leave) * standUp}>
+            <Standing x={PETER_X + leave * 440} k={1.0} dir={1} head="beard" bow={1} rim={mix("#3A1A0C", "#E07A3A", heat)} rimSide={-1} />
           </g>
-          {left ? (
-            <g opacity={accuserIn} transform={`translate(${(1 - accuserIn) * -160} 0)`}>
-              <Standing x={ACCUSER_X} k={ACCUSER_K} dir={1} head={ACCUSER_LOOKS[accuserIdx].head} point={pointing} robe={ACCUSER_LOOKS[accuserIdx].robe} id={`acc${accuserIdx}`} />
-            </g>
-          ) : null}
-          {s.stage === "rooster" ? <Rooster t={t} at={cue(0, 0.2)} /> : null}
-          {s.stage === "intro" ? <BigLinks t={t} at={cue(2, 0.8)} /> : null}
-        </svg>
-      ) : null}
+        ) : null}
+        <g opacity={1 - standUp}>
+          <SeatedPeter x={PETER_X} light={light} bond={bound} bondScale={bondScale} flash={flash} shake={shake} />
+        </g>
+        {left ? (
+          <g opacity={accuserIn} transform={`translate(${(1 - accuserIn) * -160} 0)`}>
+            <Standing x={ACCUSER_X} k={ACCUSER_K} dir={1} head={accuser} point={pointing} rim={mix("#3A1A0C", "#FF9A4A", light)} rimSide={1} />
+          </g>
+        ) : null}
+        {s.stage === "intro" ? <BigLinks t={t} at={cue(2, 0.8)} /> : null}
+      </svg>
 
       {/* Zähler der Lügen */}
       {s.stage === "accuse" || s.stage === "rooster" ? <LieCounter count={bound} popAt={bindAt} t={t} /> : null}
 
       {/* Rotes Aufblitzen, wenn die Schnur dicker wird */}
-      {flash > 0 ? <AbsoluteFill style={{ background: `radial-gradient(circle at ${PETER_X - 20}px ${GROUND_Y - 240}px, rgba(226,72,61,${0.35 * flash}) 0%, rgba(226,72,61,0) 45%)` }} /> : null}
+      {flash > 0 ? <AbsoluteFill style={{ background: `radial-gradient(circle at ${PETER_X - 20}px ${GROUND_Y - 240}px, rgba(226,72,61,${0.4 * flash}) 0%, rgba(226,72,61,0) 45%)` }} /> : null}
 
-      {left ? <SpeechBubble b={left.b} pop={popOf(left.at)} targetX={ACCUSER_X + 10} top={leftBubbleTop} tone="plain" dim={right && t > right.at ? 0.72 : 1} /> : null}
-      {right && s.stage !== "dawn" ? <SpeechBubble b={right.b} pop={popOf(right.at)} targetX={PETER_X - 45} top={peterBubbleTop} tone="lie" dim={1} /> : null}
+      {s.stage === "rooster" ? <Rooster t={t} at={cue(0, 0.2)} /> : null}
+
+      {left ? <SpeechBubble b={left.b} pop={popOf(left.at)} targetX={ACCUSER_X + 14} left={40} top={BUBBLE_TOP.left} width={BUBBLE_W} tone="plain" dim={right && t > right.at ? 0.75 : 1} /> : null}
+      {right ? <SpeechBubble b={right.b} pop={popOf(right.at)} targetX={PETER_X - 44} left={1080 - 40 - BUBBLE_W} top={BUBBLE_TOP.right} width={BUBBLE_W} tone="lie" dim={1} /> : null}
 
       {/* Töne */}
       {bubbles.map(({ at }, i) => (
@@ -455,7 +494,8 @@ export const FireScene: React.FC<{ ts: TimelineScene }> = ({ ts }) => {
       {Number.isFinite(bindAt) ? <Sfx frame={voiceFrame(ts, bindAt)} name={bound >= 3 ? "clash" : "swipe"} volume={bound >= 3 ? 0.5 : 0.4} /> : null}
       {s.stage === "intro" ? (
         <>
-          <Sfx frame={voiceFrame(ts, cue(1, 0.45))} name="whoosh" volume={0.45} />
+          <Sfx frame={voiceFrame(ts, cue(0, 0.12))} name="chime" volume={0.2} />
+          <Sfx frame={voiceFrame(ts, fireAt)} name="whoosh" volume={0.45} />
           {[0, 1, 2].map((i) => (
             <Sfx key={i} frame={voiceFrame(ts, cue(2, 0.8) + i * 0.16)} name="clash" volume={0.32} />
           ))}
@@ -482,9 +522,18 @@ const Night: React.FC<{ t: number; at: number }> = ({ t, at }) => {
   const cy = 250 - 40 * k;
   return (
     <g opacity={k}>
-      <circle cx={cx} cy={cy} r={140} fill="#F4E9C8" opacity={0.08} />
-      <circle cx={cx} cy={cy} r={58} fill="#F6EED6" />
-      <circle cx={cx + 26} cy={cy - 12} r={52} fill="#0B0A18" />
+      <defs>
+        <radialGradient id="moonHalo">
+          <stop offset="0%" stopColor="#F4E9C8" stopOpacity="0.35" />
+          <stop offset="100%" stopColor="#F4E9C8" stopOpacity="0" />
+        </radialGradient>
+        <mask id="moonCut">
+          <rect x={cx - 80} y={cy - 80} width={160} height={160} fill="white" />
+          <circle cx={cx + 26} cy={cy - 12} r={52} fill="black" />
+        </mask>
+      </defs>
+      <circle cx={cx} cy={cy} r={150} fill="url(#moonHalo)" />
+      <circle cx={cx} cy={cy} r={58} fill="#F6EED6" mask="url(#moonCut)" />
     </g>
   );
 };
@@ -516,8 +565,8 @@ const Procession: React.FC<{ t: number }> = ({ t }) => {
               {torch ? <circle cx={22} cy={-122} r={46} fill="url(#torchGlow)" /> : null}
               {torch ? <line x1={14} y1={-60} x2={22} y2={-118} stroke="#3A2214" strokeWidth={5} /> : null}
               {torch ? <circle cx={22} cy={-122} r={8} fill="#FFE2A0" /> : null}
-              <path d="M -20 0 L -14 -70 Q 0 -80 14 -70 L 20 0 Z" fill={i === 1 ? "#4A3A30" : "#0C0806"} />
-              <circle cx={0} cy={-86} r={13} fill={i === 1 ? "#5A463A" : "#0C0806"} />
+              <path d="M -20 0 L -14 -70 Q 0 -80 14 -70 L 20 0 Z" fill={i === 1 ? "#6A5646" : "#0C0806"} />
+              <circle cx={0} cy={-86} r={13} fill={i === 1 ? "#7A6452" : "#0C0806"} />
             </g>
           );
         })}
@@ -534,7 +583,7 @@ const Gallery: React.FC<{ t: number; at: number }> = ({ t, at }) => {
   const turn = interpolate(t, [at - 0.2, at + 0.45], [0, 1], { ...clamp, easing: ease });
   const face = Math.cos(turn * Math.PI); // 1 → −1: dreht sich von links nach rechts
   const beam = interpolate(t, [at + 0.2, at + 1.0], [0, 1], clamp);
-  const halo = 0.35 + 0.65 * turn;
+  const halo = 0.25 + 0.75 * turn;
   return (
     <g opacity={show}>
       <defs>
@@ -550,10 +599,10 @@ const Gallery: React.FC<{ t: number; at: number }> = ({ t, at }) => {
           <path d={galleryPath()} />
         </clipPath>
       </defs>
-      <path d={`M ${cx + 10} ${rail - 120} L ${cx + 60} ${rail - 140} L ${PETER_X - 10} ${GROUND_Y - 330} L ${PETER_X - 120} ${GROUND_Y - 300} Z`} fill="url(#beamGrad)" opacity={beam * 0.8} />
+      <path d={`M ${cx + 10} ${rail - 120} L ${cx + 60} ${rail - 140} L ${PETER_X - 10} ${GROUND_Y - 340} L ${PETER_X - 130} ${GROUND_Y - 300} Z`} fill="url(#beamGrad)" opacity={beam * 0.85} />
       <g clipPath="url(#galleryClip2)">
         <circle cx={cx} cy={rail - 110} r={150} fill="url(#jesusHalo)" opacity={halo} />
-        <g transform={`translate(${cx} ${rail}) scale(${face} 1)`}>
+        <g transform={`translate(${cx} ${rail}) scale(${face} 1)`} opacity={0.6 + 0.4 * turn}>
           <path d="M -58 10 L -50 -86 Q -30 -106 0 -106 Q 30 -106 50 -86 L 58 10 Z" fill="#E9DFC9" />
           <circle cx={-4} cy={-136} r={27} fill="#D8C9AE" />
           <path d="M -32 -132 Q -30 -170 0 -168 Q 26 -166 26 -140 L 14 -100 L -36 -104 Z" fill="#C9B595" />
@@ -568,97 +617,147 @@ const Gallery: React.FC<{ t: number; at: number }> = ({ t, at }) => {
 /** Der Hahn auf der Mauer – mit grossem KIKERIKI */
 const Rooster: React.FC<{ t: number; at: number }> = ({ t, at }) => {
   const look = useLook();
-  const p = spring({ frame: Math.round((t - at + 0.1) * FPS), fps: FPS, config: { damping: 9, stiffness: 170 } });
   if (t < at - 0.15) return null;
-  const crow = interpolate(t, [at, at + 0.25, at + 1.6, at + 2.4], [0, 1, 1, 0.0], clamp);
+  const p = spring({ frame: Math.round((t - at + 0.15) * FPS), fps: FPS, config: { damping: 9, stiffness: 170 } });
+  const crow = interpolate(t, [at, at + 0.2, at + 1.7, at + 2.3], [0, 1, 1, 0], clamp);
   const x = 900;
-  const y = WALL_TOP;
+  const y = WALL_TOP + 4;
   const beak = interpolate(t, [at, at + 0.15, at + 1.4, at + 1.6], [0, 1, 1, 0], clamp);
+  const shake = crow > 0.5 ? Math.sin(t * 60) * 3 : 0;
   return (
-    <g>
-      <g transform={`translate(${x} ${y}) scale(${interpolate(p, [0, 1], [0.4, 1.25])})`} opacity={Math.min(1, p * 1.5)}>
-        {/* Schwanzfedern */}
-        <path d="M 30 -60 Q 90 -150 70 -40 Q 96 -110 60 -20 Z" fill="#0A0605" />
-        <path d="M 40 -50 Q 110 -110 64 -10 Z" fill="#0A0605" />
-        {/* Körper */}
-        <path d="M -50 -40 Q -60 -90 -20 -96 Q 30 -80 60 -30 Q 50 0 0 0 Q -40 0 -50 -40 Z" fill="#0A0605" />
-        {/* Hals, Kopf, Kamm, Kehllappen, Schnabel */}
-        <path d="M -40 -70 Q -52 -120 -30 -140 Q -10 -126 -18 -86 Z" fill="#0A0605" />
-        <circle cx={-34} cy={-142} r={16} fill="#0A0605" />
-        <path d="M -48 -156 Q -44 -176 -36 -160 Q -32 -180 -24 -160 Q -18 -176 -16 -152 Z" fill="#B5302A" />
-        <path d="M -42 -132 Q -46 -118 -38 -116 Q -34 -124 -36 -132 Z" fill="#B5302A" />
-        <path d={`M -48 -146 L -66 ${-140 - beak * 6} L -50 -140 Z`} fill="#E0A030" />
-        <path d={`M -48 -140 L -64 ${-134 + beak * 8} L -50 -136 Z`} fill="#E0A030" />
-        {/* Beine */}
-        <path d="M -8 -2 L -12 22 M 14 -2 L 16 22" stroke="#0A0605" strokeWidth={6} />
-      </g>
-      {/* Schallwellen und Schriftzug */}
-      <g opacity={crow}>
-        {[0, 1, 2].map((i) => {
-          const r = 60 + ((t - at) * 260 + i * 70) % 220;
-          return <path key={i} d={`M ${x - 80} ${y - 150 - r * 0.5} A ${r} ${r} 0 0 0 ${x - 80} ${y - 150 + r * 0.5}`} stroke={look.accent2} strokeWidth={6} fill="none" opacity={Math.max(0, 1 - r / 280)} transform={`translate(${-r * 0.4} 0)`} />;
-        })}
-        <text x={x - 130} y={y - 210} textAnchor="end" fontFamily={theme.font.display} fontSize={interpolate(crow, [0, 1], [60, 118])} fill={look.accent2} transform={`rotate(-9 ${x - 130} ${y - 210})`} style={{ filter: `drop-shadow(0 0 22px ${look.accent})`, letterSpacing: 4 }}>
-          KIKERIKI!
-        </text>
-      </g>
-    </g>
+    <>
+      <svg width={1080} height={1920} style={{ position: "absolute", inset: 0 }}>
+        <g transform={`translate(${x} ${y}) scale(${interpolate(p, [0, 1], [0.5, 1.5])})`} opacity={Math.min(1, p * 1.5)}>
+          {/* Schwanzfedern */}
+          <path d="M 30 -60 Q 90 -150 70 -40 Q 96 -110 60 -20 Z" fill="#0A0605" />
+          <path d="M 40 -50 Q 110 -110 64 -10 Z" fill="#0A0605" />
+          {/* Körper */}
+          <path d="M -50 -40 Q -60 -90 -20 -96 Q 30 -80 60 -30 Q 50 0 0 0 Q -40 0 -50 -40 Z" fill="#0A0605" />
+          {/* Hals, Kopf, Kamm, Kehllappen, Schnabel */}
+          <path d="M -40 -70 Q -52 -120 -30 -140 Q -10 -126 -18 -86 Z" fill="#0A0605" />
+          <circle cx={-34} cy={-142} r={16} fill="#0A0605" />
+          <path d="M -48 -156 Q -44 -176 -36 -160 Q -32 -180 -24 -160 Q -18 -176 -16 -152 Z" fill="#C8382E" />
+          <path d="M -42 -132 Q -46 -118 -38 -116 Q -34 -124 -36 -132 Z" fill="#C8382E" />
+          <path d={`M -48 -146 L -66 ${-140 - beak * 7} L -50 -140 Z`} fill="#E0A030" />
+          <path d={`M -48 -140 L -64 ${-134 + beak * 9} L -50 -136 Z`} fill="#E0A030" />
+          {/* Beine */}
+          <path d="M -8 -2 L -12 4 M 14 -2 L 16 4" stroke="#0A0605" strokeWidth={6} />
+        </g>
+        {/* Schallwellen */}
+        <g opacity={crow}>
+          {[0, 1, 2].map((i) => {
+            const r = 40 + (((t - at) * 300 + i * 80) % 240);
+            const cx = x - 100;
+            const cy = y - 205;
+            return <path key={i} d={`M ${cx - r * 0.35} ${cy - r * 0.6} A ${r} ${r} 0 0 0 ${cx - r * 0.35} ${cy + r * 0.6}`} stroke={look.accent2} strokeWidth={7} strokeLinecap="round" fill="none" opacity={Math.max(0, 1 - r / 280)} />;
+          })}
+        </g>
+      </svg>
+      {/* Schriftzug */}
+      <div
+        style={{
+          position: "absolute",
+          left: 0,
+          right: 0,
+          top: 470,
+          textAlign: "center",
+          fontFamily: theme.font.display,
+          fontSize: 170,
+          lineHeight: 1,
+          color: look.accent2,
+          opacity: crow,
+          transform: `translateX(${shake}px) rotate(-8deg) scale(${interpolate(crow, [0, 1], [0.6, 1])})`,
+          textShadow: `0 0 30px ${look.accent}, 0 8px 0 #3A1A0C, 0 14px 40px rgba(0,0,0,0.7)`,
+          letterSpacing: 6,
+        }}
+      >
+        KIKERIKI!
+      </div>
+    </>
   );
 };
 
-/** «Drei Lügen»: drei leere Kettenglieder springen ins Bild */
-const BigLinks: React.FC<{ t: number; at: number }> = ({ t, at }) => (
-  <g>
-    {[0, 1, 2].map((i) => {
-      const a = at + i * 0.16;
-      const p = spring({ frame: Math.round((t - a) * FPS), fps: FPS, config: { damping: 10, stiffness: 200 } });
-      if (t < a) return null;
-      const x = 540 + (i - 1) * 190;
-      return (
-        <g key={i} transform={`translate(${x} 640) scale(${interpolate(p, [0, 1], [1.8, 2.2])}) rotate(${i === 1 ? 0 : i === 0 ? -8 : 8})`} opacity={Math.min(1, p * 1.3)}>
-          <ellipse cx={0} cy={0} rx={60} ry={42} fill="#E2483D" opacity={0.18} />
-          <ellipse cx={0} cy={0} rx={38} ry={23} fill="none" stroke="#120A08" strokeWidth={16} />
-          <ellipse cx={0} cy={0} rx={38} ry={23} fill="none" stroke="#A9B0BA" strokeWidth={9} />
-          <ellipse cx={-4} cy={-6} rx={30} ry={14} fill="none" stroke="#E7ECF2" strokeWidth={2.5} opacity={0.7} />
+/** «Drei Lügen»: drei Glieder einer Kette springen ins Bild */
+const BigLinks: React.FC<{ t: number; at: number }> = ({ t, at }) => {
+  const pops = [0, 1, 2].map((i) => {
+    const a = at + i * 0.16;
+    return t < a ? 0 : spring({ frame: Math.round((t - a) * FPS), fps: FPS, config: { damping: 10, stiffness: 200 } });
+  });
+  const ring = (x: number, p: number, key: string) =>
+    p > 0 ? (
+      <g key={key} transform={`translate(${x} 640) scale(${interpolate(p, [0, 1], [1.7, 1])})`} opacity={Math.min(1, p * 1.3)}>
+        <ellipse cx={0} cy={0} rx={128} ry={86} fill="#E2483D" opacity={0.16} />
+        <ellipse cx={0} cy={0} rx={92} ry={56} fill="none" stroke="#120A08" strokeWidth={34} />
+        <ellipse cx={0} cy={0} rx={92} ry={56} fill="none" stroke="#A9B0BA" strokeWidth={22} />
+        <path d="M -70 -30 Q 0 -60 70 -30" stroke="#EEF2F6" strokeWidth={5} fill="none" opacity={0.6} />
+      </g>
+    ) : null;
+  const p1 = pops[1];
+  return (
+    <g>
+      {ring(370, pops[0], "a")}
+      {ring(710, pops[2], "c")}
+      {p1 > 0 ? (
+        <g transform={`translate(540 640) scale(${interpolate(p1, [0, 1], [1.7, 1])})`} opacity={Math.min(1, p1 * 1.3)}>
+          <rect x={-115} y={-20} width={230} height={40} rx={20} fill="#120A08" />
+          <rect x={-108} y={-11} width={216} height={22} rx={11} fill="#A9B0BA" />
+          <path d="M -96 -4 L 96 -4" stroke="#EEF2F6" strokeWidth={4} opacity={0.6} />
         </g>
-      );
-    })}
-  </g>
-);
+      ) : null}
+      {/* Vorderkanten der äusseren Ringe über dem mittleren Glied, damit die Kette ineinandergreift */}
+      {pops[0] > 0 && p1 > 0 ? (
+        <g transform={`translate(370 640) scale(${interpolate(pops[0], [0, 1], [1.7, 1])})`}>
+          <path d="M 92 0 A 92 56 0 0 1 60 42" stroke="#120A08" strokeWidth={34} fill="none" />
+          <path d="M 92 0 A 92 56 0 0 1 60 42" stroke="#A9B0BA" strokeWidth={22} fill="none" />
+        </g>
+      ) : null}
+      {pops[2] > 0 && p1 > 0 ? (
+        <g transform={`translate(710 640) scale(${interpolate(pops[2], [0, 1], [1.7, 1])})`}>
+          <path d="M -92 0 A 92 56 0 0 0 -60 42" stroke="#120A08" strokeWidth={34} fill="none" />
+          <path d="M -92 0 A 92 56 0 0 0 -60 42" stroke="#A9B0BA" strokeWidth={22} fill="none" />
+        </g>
+      ) : null}
+    </g>
+  );
+};
 
 /* ------------------------------------------------------------------ */
 /* Morgen: vor dem Hohen Rat – die Kette springt                        */
 /* ------------------------------------------------------------------ */
 
-const Dawn: React.FC<{ t: number; ts: TimelineScene; s: FireSceneT; frame: number; bound: number }> = ({ t, ts, s, frame, bound }) => {
+const Dawn: React.FC<{ ts: TimelineScene; s: FireSceneT; frame: number; t: number }> = ({ ts, s, frame, t }) => {
+  const look = useLook();
   const end = Math.max(1, ts.speechEndSec);
-  const breakAt = s.breakAt ? beat(ts, s.breakAt, end * 0.7) : Infinity;
+  const breakAt = s.breakAt ? beat(ts, s.breakAt, end * 0.7) : 1e9;
   const broken = t >= breakAt;
-  const burst = broken ? interpolate(t, [breakAt, breakAt + 1.1], [0, 1], clamp) : 0;
+  const burst = broken ? interpolate(t, [breakAt, breakAt + 1.2], [0, 1], clamp) : 0;
   const open = broken ? interpolate(t, [breakAt + 0.05, breakAt + 0.6], [0, 1], { ...clamp, easing: Easing.out(Easing.back(1.4)) }) : 0;
   const morning = interpolate(t, [-0.4, 0.6], [0.7, 1], clamp);
-  const councilAt = beat(ts, "Sie verbieten ihm", end * 0.35) - 0.6;
+  const councilAt = beat(ts, "Sie verbieten ihm", end * 0.35) - 0.5;
   const council = interpolate(t, [councilAt, councilAt + 0.6], [0, 1], clamp);
   const bubble = s.bubbles[0];
-  const bubbleAt = bubble ? beat(ts, bubble.at, breakAt) : Infinity;
-  const pop = Number.isFinite(bubbleAt) ? spring({ frame: frame - voiceFrame(ts, bubbleAt - 0.05), fps: FPS, config: { damping: 11, stiffness: 190, mass: 0.7 } }) : 0;
+  const bubbleAt = bubble ? beat(ts, bubble.at, breakAt) : 1e9;
+  const pop = bubble ? spring({ frame: frame - voiceFrame(ts, bubbleAt - 0.05), fps: FPS, config: { damping: 11, stiffness: 190, mass: 0.7 } }) : 0;
   const shards = useMemo(
-    () => Array.from({ length: 14 }, (_, i) => ({ a: (i / 14) * Math.PI * 2 + random(`sh${i}`) * 0.3, v: 380 + random(`sv${i}`) * 420, rot: (random(`sr${i}`) - 0.5) * 720 })),
+    () => Array.from({ length: 16 }, (_, i) => ({ a: (i / 16) * Math.PI * 2 + random(`sh${i}`) * 0.3, v: 380 + random(`sv${i}`) * 420, rot: (random(`sr${i}`) - 0.5) * 720, face: i % 2 === 0 })),
     [],
   );
   const ringY = GROUND_Y - 300 * STAND_K;
+  const ring = { cx: STAND_X, cy: ringY, rx: 80, ry: 22 };
+  const glow = broken ? 1 : 0.35;
   return (
-    <>
+    <AbsoluteFill>
       <svg width={1080} height={1920} style={{ position: "absolute", inset: 0 }}>
         <defs>
           <linearGradient id="dawnSky" x1="0" y1="0" x2="0" y2="1">
-            <stop offset="0%" stopColor="#5E8FD0" />
-            <stop offset="65%" stopColor="#F2C892" />
+            <stop offset="0%" stopColor="#14254A" />
+            <stop offset="55%" stopColor="#4E6FA8" />
+            <stop offset="85%" stopColor="#E9B98A" />
             <stop offset="100%" stopColor="#FFD9A0" />
           </linearGradient>
           <linearGradient id="dawnWash" x1="0" y1="0" x2="1" y2="1">
-            <stop offset="0%" stopColor="#FFE7B8" stopOpacity="0.32" />
-            <stop offset="60%" stopColor="#9FC2F0" stopOpacity="0.1" />
+            <stop offset="0%" stopColor="#FFE7B8" stopOpacity="0.28" />
+            <stop offset="60%" stopColor="#9FC2F0" stopOpacity="0.08" />
             <stop offset="100%" stopColor="#0B0706" stopOpacity="0" />
           </linearGradient>
           <radialGradient id="truthBurst">
@@ -666,52 +765,63 @@ const Dawn: React.FC<{ t: number; ts: TimelineScene; s: FireSceneT; frame: numbe
             <stop offset="35%" stopColor="#FFE7A0" stopOpacity="0.55" />
             <stop offset="100%" stopColor="#FFD36B" stopOpacity="0" />
           </radialGradient>
+          <radialGradient id="peterGlow">
+            <stop offset="0%" stopColor="#FFE7A8" stopOpacity="0.5" />
+            <stop offset="100%" stopColor="#FFE7A8" stopOpacity="0" />
+          </radialGradient>
         </defs>
         {/* Morgenhimmel und Licht in der Galerie */}
         <rect x={0} y={0} width={1080} height={WALL_TOP + 30} fill="url(#dawnSky)" opacity={morning} />
-        <path d={galleryPath()} fill="#FFE2B0" opacity={0.55 * morning} />
+        <path d={galleryPath()} fill="#FFE2B0" opacity={0.5 * morning} />
         <rect x={0} y={0} width={1080} height={1920} fill="url(#dawnWash)" opacity={morning} />
         {/* Lichtstrahlen von links oben */}
         {[0, 1, 2].map((i) => (
-          <path key={i} d={`M ${-100 + i * 160} 0 L ${40 + i * 160} 0 L ${520 + i * 200} 1200 L ${300 + i * 200} 1200 Z`} fill="#FFF0C8" opacity={(0.07 + 0.03 * Math.sin(t * 1.2 + i)) * morning} />
+          <path key={i} d={`M ${-100 + i * 160} ${WALL_TOP} L ${40 + i * 160} ${WALL_TOP} L ${520 + i * 200} 1200 L ${300 + i * 200} 1200 Z`} fill="#FFF0C8" opacity={(0.06 + 0.03 * Math.sin(t * 1.2 + i)) * morning} />
         ))}
         {/* Hoher Rat */}
         <g opacity={council}>
-          {[110, 235].map((x, i) => (
-            <Standing key={i} x={x} k={0.82} dir={1} head={i === 0 ? "beard" : "cloth"} point={i === 1 ? interpolate(t, [councilAt + 0.5, councilAt + 1.0], [0, 1], clamp) : 0} robe={["#2A2230", "#5A4A5E"]} id={`rat${i}`} />
-          ))}
-          {[ -10, 350].map((x, i) => (
-            <Standing key={`b${i}`} x={x} k={0.74} dir={1} head="cloth" robe={["#221B28", "#463A4C"]} id={`ratb${i}`} />
+          {[80, 205, 330].map((x, i) => (
+            <Standing
+              key={i}
+              x={x}
+              k={0.76}
+              dir={1}
+              head={i === 1 ? "beard" : "cloth"}
+              point={i === 1 ? interpolate(t, [councilAt + 0.5, councilAt + 1.0], [0, 1], clamp) : 0}
+              fill="#1C1620"
+              rim="#E8C08A"
+              rimSide={-1}
+            />
           ))}
         </g>
-        {/* Lichtausbruch */}
+        {/* Petrus steht – nach dem Satz leuchtet er */}
+        <ellipse cx={STAND_X} cy={GROUND_Y - 250} rx={260} ry={340} fill="url(#peterGlow)" opacity={glow} />
         {broken ? <circle cx={STAND_X} cy={ringY} r={interpolate(burst, [0, 1], [60, 900])} fill="url(#truthBurst)" opacity={1 - burst * 0.75} /> : null}
-        {/* Petrus steht */}
-        <Standing x={STAND_X} k={STAND_K} dir={-1} head="beard" open={open} robe={["#3A2A1E", "#7A5A3A"]} id="stand" />
+        <Bond {...ring} level={broken ? 0 : 3} half="back" />
+        <Standing x={STAND_X} k={STAND_K} dir={-1} head="beard" open={open} fill="#21160F" rim={look.accent2} rimSide={0} />
         {!broken ? (
-          <>
-            <Bond cx={STAND_X} cy={ringY} rx={92} ry={24} level={bound} half="front" />
-          </>
+          <Bond {...ring} level={3} half="front" />
         ) : (
           shards.map((sh, i) => {
             const d = burst * sh.v;
             const x = STAND_X + Math.cos(sh.a) * d;
-            const y = ringY + Math.sin(sh.a) * d * 0.7 + 400 * burst * burst;
+            const y = ringY + Math.sin(sh.a) * d * 0.7 + 420 * burst * burst;
             return (
-              <g key={i} transform={`translate(${x} ${y}) rotate(${sh.rot * burst})`} opacity={1 - burst}>
-                <ellipse cx={0} cy={0} rx={20} ry={12} fill="none" stroke="#B7BEC8" strokeWidth={6} />
+              <g key={i} opacity={1 - burst}>
+                <ChainLink x={x} y={y} ang={sh.rot * burst} face={sh.face} s={1.3} metal="#C9D0DA" />
               </g>
             );
           })
         )}
       </svg>
-      {bubble ? <SpeechBubble b={bubble} pop={pop} targetX={STAND_X + 10} top={400} tone="truth" dim={1} /> : null}
-      {Number.isFinite(breakAt) ? (
+      {bubble ? <SpeechBubble b={bubble} pop={pop} targetX={STAND_X + 6} left={1080 - 40 - 600} top={360} width={600} tone="truth" dim={1} /> : null}
+      {s.breakAt ? (
         <>
           <Sfx frame={voiceFrame(ts, breakAt)} name="unlock" volume={0.5} />
           <Sfx frame={voiceFrame(ts, breakAt) + 3} name="levelup" volume={0.35} />
         </>
       ) : null}
-    </>
+      {bubble ? <Sfx frame={voiceFrame(ts, bubbleAt - 0.05)} name="pop" volume={0.35} /> : null}
+    </AbsoluteFill>
   );
 };
