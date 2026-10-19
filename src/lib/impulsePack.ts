@@ -238,6 +238,16 @@ export interface PackWeek {
   game?: Omit<PackCard, 'key' | 'kind'> & { game: ImpulseGameId }
 }
 
+/**
+ * Der Text zum Minispiel «Ketten sprengen». Das Spiel wurde umgebaut (ehrlich
+ * antworten statt Felder wegtippen); `PACK_CORRECTIONS` bietet den neuen Text
+ * auch einer schon eingespielten Woche an.
+ */
+const CHAIN_GAME_BODY =
+  'Mama, die Lehrerin, der Trainer fragen – und die Notlüge liegt auf der Zunge: «Schon ' +
+  'erledigt», «Hatte kein Netz». Tippe die ehrliche Antwort, bevor die Schnur zur Kette wird; ' +
+  'fünf ehrliche am Stück sprengen eine Kette. Eine Minute – wie viele schaffst du?'
+
 export const PACK_WEEKS: PackWeek[] = [
   /* ================================================================ */
   /* 5.–11. Oktober: Wort der Weisheit                                 */
@@ -1576,10 +1586,7 @@ export const PACK_WEEKS: PackWeek[] = [
       game: 'befreien',
       emoji: '🔓',
       title: 'Ketten sprengen',
-      body:
-        '«Bin gleich da», «Hab’s nicht gesehen» – Notlügen fangen als dünne Schnur an und ' +
-        'werden zur Kette. Tippe sie weg, solange sie dünn sind: je früher, desto mehr Punkte. ' +
-        'Der Schlüssel der Wahrheit sprengt alles.',
+      body: CHAIN_GAME_BODY,
     },
   },
 
@@ -2343,6 +2350,17 @@ export const PACK_CORRECTIONS: readonly PackCorrection[] = [
     field: 'title',
     from: 'Frag deine Eltern oder Grosseltern: Wann hat ihnen das Wort der Weisheit schon geholfen?',
     to: 'Frag jemanden in deinem Umfeld: «Wann hat dir das Wort der Weisheit schon geholfen?»',
+  },
+  /* «Ketten sprengen» ist umgebaut: Statt Notlügen wegzutippen, wählt man in
+     Alltagssituationen die ehrliche Antwort. */
+  {
+    id: 'fsy26-w44-spiel',
+    field: 'body',
+    from:
+      '«Bin gleich da», «Hab’s nicht gesehen» – Notlügen fangen als dünne Schnur an und ' +
+      'werden zur Kette. Tippe sie weg, solange sie dünn sind: je früher, desto mehr Punkte. ' +
+      'Der Schlüssel der Wahrheit sprengt alles.',
+    to: CHAIN_GAME_BODY,
   },
 ]
 

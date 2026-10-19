@@ -88,9 +88,10 @@
       "holdAfterSec": 1.5,
       "lines": [
         "Die Wahrheit befreit.",
-        "Wie lange bleibst du frei?"
+        "Eine Minute.",
+        "Wie viele schaffst du?"
       ],
-      "narration": "Die Wahrheit befreit. [pause short] Wie lange bleibst du frei?"
+      "narration": "Die Wahrheit befreit. [pause short] Eine Minute. [pause short] Wie viele schaffst du?"
     }
   ]
 }

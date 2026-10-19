@@ -233,7 +233,10 @@ export class ChainGame extends CanvasGame {
     const pad = 4
     const index = layout.buttons.findIndex(
       (box) =>
-        x >= box.x - pad && x <= box.x + box.w + pad && y >= box.y - pad && y <= box.y + box.h + pad,
+        x >= box.x - pad &&
+        x <= box.x + box.w + pad &&
+        y >= box.y - pad &&
+        y <= box.y + box.h + pad,
     )
     if (index >= 0) this.choose(index)
   }
@@ -270,13 +273,25 @@ export class ChainGame extends CanvasGame {
         case 'key': {
           this.freed = 1
           this.face = 'free'
-          this.float('Die Wahrheit befreit!', this.width / 2, this.avatarY - this.avatarR * 1.9, '#d97706', 18)
+          this.float(
+            'Die Wahrheit befreit!',
+            this.width / 2,
+            this.avatarY - this.avatarR * 1.9,
+            '#d97706',
+            18,
+          )
           if (event.healed) {
             this.shatters.push({ t: 0, ring: this.chains - 1 })
             this.chains = Math.max(0, this.chains - 1)
             this.heal(this.round.lives, this.width / 2, this.avatarY - this.avatarR * 1.4)
           } else {
-            this.float(`+${event.bonus}`, this.width / 2, this.avatarY + this.avatarR * 1.8, '#d97706', 22)
+            this.float(
+              `+${event.bonus}`,
+              this.width / 2,
+              this.avatarY + this.avatarR * 1.8,
+              '#d97706',
+              22,
+            )
             this.bump()
           }
           this.burst(this.width / 2, this.avatarY, '#fbbf24', 16)
@@ -331,7 +346,8 @@ export class ChainGame extends CanvasGame {
           this.wrong('Zu lange gezögert')
           break
         case 'over':
-          if (event.reason === 'time') this.float('Zeit um!', this.width / 2, this.avatarY, this.colors.hud.note, 26)
+          if (event.reason === 'time')
+            this.float('Zeit um!', this.width / 2, this.avatarY, this.colors.hud.note, 26)
           this.finish()
           break
       }
@@ -493,7 +509,12 @@ export class ChainGame extends CanvasGame {
     if (this.phase === 'play' && this.round.asked <= 1) {
       const fade = clamp((HINT_S + 0.5 - round.time) / 0.5, 0, 1)
       const top = layout ? layout.buttons[0].y : this.buttonsBottom
-      this.drawHint('Tippe die ehrliche Antwort – bevor die Schnur zur Kette wird', top - 14, this.colors.muted, fade)
+      this.drawHint(
+        'Tippe die ehrliche Antwort – bevor die Schnur zur Kette wird',
+        top - 14,
+        this.colors.muted,
+        fade,
+      )
     }
   }
 
@@ -683,7 +704,8 @@ export class ChainGame extends CanvasGame {
     if (question && this.phase === 'play') {
       const age = round.time - question.spawn
       const k = clamp(age / question.life, 0, 1)
-      if (k > 0.8 && !this.options.reducedMotion) x += Math.sin(this.clock * 60) * 2 * ((k - 0.8) / 0.2)
+      if (k > 0.8 && !this.options.reducedMotion)
+        x += Math.sin(this.clock * 60) * 2 * ((k - 0.8) / 0.2)
       const stage = chainStage(age, question.life)
       const ringR = r * (1.62 - 0.36 * k)
       if (stage === 2) {
@@ -741,7 +763,8 @@ export class ChainGame extends CanvasGame {
 
     // Die Ketten der Fehler – quer um die Figur, bis der Schlüssel eine sprengt.
     for (let ring = 0; ring < this.chains; ring += 1) this.drawChainLoop(x, cy, ring, 1)
-    for (const shatter of this.shatters) this.drawChainLoop(cx, cy, shatter.ring, 1 - shatter.t, shatter.t)
+    for (const shatter of this.shatters)
+      this.drawChainLoop(cx, cy, shatter.ring, 1 - shatter.t, shatter.t)
   }
 
   /** Eine Kette schräg über die Figur – `spread` lässt sie auseinanderfliegen. */
@@ -749,7 +772,18 @@ export class ChainGame extends CanvasGame {
     const r = this.avatarR
     const tilt = [-0.45, 0.4, 0.05][ring % 3]
     const y = cy + [-0.12, 0.14, 0.38][ring % 3] * r
-    this.drawLinks(cx, y, r * 1.18, r * 0.36, tilt, 16, this.colors.chain, Math.max(2.5, r * 0.07), alpha, spread)
+    this.drawLinks(
+      cx,
+      y,
+      r * 1.18,
+      r * 0.36,
+      tilt,
+      16,
+      this.colors.chain,
+      Math.max(2.5, r * 0.07),
+      alpha,
+      spread,
+    )
   }
 
   /** Eine geschlossene Kette aus `count` Gliedern auf einer Ellipse um (cx, cy), um `tilt` gedreht. */

@@ -1302,7 +1302,8 @@ function chainUntil(round: ChainRound, done: (round: ChainRound) => boolean): vo
   assert.ok(done(round), 'nie eingetreten')
 }
 
-const honestOption = (question: ChainQuestion) => question.options.findIndex((entry) => entry.honest)
+const honestOption = (question: ChainQuestion) =>
+  question.options.findIndex((entry) => entry.honest)
 const lieOption = (question: ChainQuestion) => question.options.findIndex((entry) => !entry.honest)
 
 /** Die nächste Frage abwarten und ehrlich (oder mit der Notlüge) antworten. */
@@ -1340,7 +1341,11 @@ test('Ketten: keine Situation zweimal, bevor alle dran waren – und nie zweimal
     round.pick(honestOption(round.question!))
   }
   for (let pass = 0; pass < 3; pass += 1)
-    assert.equal(new Set(seen.slice(pass * count, (pass + 1) * count)).size, count, `Durchgang ${pass + 1}`)
+    assert.equal(
+      new Set(seen.slice(pass * count, (pass + 1) * count)).size,
+      count,
+      `Durchgang ${pass + 1}`,
+    )
   for (let index = 1; index < seen.length; index += 1)
     assert.notEqual(seen[index], seen[index - 1], `zweimal am Stück bei ${index}`)
 })

@@ -121,7 +121,7 @@ export const CHAIN_SITUATIONS: readonly ChainSituation[] = [
     emoji: '🧾',
     who: 'Kassierin',
     question: 'Stimmt das Rückgeld?',
-    honest: 'Nein – Sie gaben mir zu viel',
+    honest: 'Nein – Sie haben mir zu viel gegeben',
     lies: ['Ja, stimmt so', 'Passt schon'],
   },
   {
@@ -364,7 +364,10 @@ export class ChainRound {
     const situation = this.bag.pop()!
     this.lastSituation = situation
     const index = this.asked
-    const lies = shuffle([...situation.lies], this.random).slice(0, index >= CHAIN_THREE_FROM ? 2 : 1)
+    const lies = shuffle([...situation.lies], this.random).slice(
+      0,
+      index >= CHAIN_THREE_FROM ? 2 : 1,
+    )
     const options = shuffle(
       [{ text: situation.honest, honest: true }, ...lies.map((text) => ({ text, honest: false }))],
       this.random,

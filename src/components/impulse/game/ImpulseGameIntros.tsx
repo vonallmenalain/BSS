@@ -134,15 +134,20 @@ export function ChainIntro() {
     <Intro
       boxes={
         <>
-          <Box tone="green" emoji="🙂 ✅" title="Ehrlich antworten" hint="Schnur +3, Strick +2, Kette +1" />
+          <Box
+            tone="green"
+            emoji="🙂 ✅"
+            title="Ehrlich antworten"
+            hint="Schnur +3, Strick +2, Kette +1"
+          />
           <Box tone="violet" emoji="🏃 🙈 🐕" title="Notlügen" hint="kosten ein Leben" />
         </>
       }
     >
-      Mama, die Lehrerin, der Trainer fragen etwas. Lies genau und tippe die ehrliche Antwort,
-      bevor die Schnur um dich zur Kette wird – je schneller, desto mehr Punkte. Eine Notlüge oder
-      zu langes Zögern kostet eines von drei Leben; fünf ehrliche am Stück bringen den Schlüssel,
-      der eine Kette sprengt. Eine Runde dauert eine Minute. Am Rechner: Tasten 1 bis 3.
+      Mama, die Lehrerin, der Trainer fragen etwas. Lies genau und tippe die ehrliche Antwort, bevor
+      die Schnur um dich zur Kette wird – je schneller, desto mehr Punkte. Eine Notlüge oder zu
+      langes Zögern kostet eines von drei Leben; fünf ehrliche am Stück bringen den Schlüssel, der
+      eine Kette sprengt. Eine Runde dauert eine Minute. Am Rechner: Tasten 1 bis 3.
     </Intro>
   )
 }
