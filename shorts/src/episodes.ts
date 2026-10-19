@@ -16,6 +16,16 @@ import versPuzzle from "../content/2026-10-22-vers-puzzle.json";
 import alleVerwundet from "../content/2026-10-23-alle-verwundet.json";
 import deinMonat from "../content/2026-10-24-dein-monat.json";
 import keineAusreden from "../content/2026-10-25-keine-ausreden.json";
+import gruppenchat1820 from "../content/2026-10-26-gruppenchat-1820.json";
+import wasIstWahrheit from "../content/2026-10-26-was-ist-wahrheit.json";
+import ichNehmeNichtsZurueck from "../content/2026-10-27-ich-nehme-nichts-zurueck.json";
+import missionMars from "../content/2026-10-27-mission-mars.json";
+import verfluchtesItem from "../content/2026-10-28-verfluchtes-item.json";
+import derFallKorihor from "../content/2026-10-29-der-fall-korihor.json";
+import fuerEineZeitWieDiese from "../content/2026-10-30-fuer-eine-zeit-wie-diese.json";
+import nebelDerFinsternis from "../content/2026-10-31-nebel-der-finsternis.json";
+import dreiLuegen from "../content/2026-11-01-drei-luegen.json";
+import kettenSprengen from "../content/2026-11-01-ketten-sprengen.json";
 
 export const episodes: Array<{ id: string } & Record<string, unknown>> = [
   anpackenStattWarten,
@@ -32,4 +42,14 @@ export const episodes: Array<{ id: string } & Record<string, unknown>> = [
   alleVerwundet,
   deinMonat,
   keineAusreden,
+  gruppenchat1820,
+  wasIstWahrheit,
+  ichNehmeNichtsZurueck,
+  missionMars,
+  verfluchtesItem,
+  derFallKorihor,
+  fuerEineZeitWieDiese,
+  nebelDerFinsternis,
+  dreiLuegen,
+  kettenSprengen,
 ];

@@ -10,11 +10,48 @@ import { theme } from "../theme";
  * Handy-Look: Helamans Brief an Moroni (Alma 56–58) als Chat. Nachrichten kommen genau dann,
  * wenn die Stimme sie liest; vorher tippt «Helaman …». Das Handy steht in jeder Szene an
  * derselben Stelle, darum wirkt die Überblendung wie ein durchgehender Bildschirm.
+ *
+ * Gruppenchat: Nachrichten mit `from` tragen den Namen (jede Person ihre Farbe) und ein kleines
+ * Profilbild; `side: "out"` ist die eigene Nachricht rechts – sie wird vorher im Eingabefeld getippt.
  */
 
 type ChatSceneT = Extract<Scene, { type: "chat" }>;
 type Msg = ChatSceneT["messages"][number];
 const clamp = { extrapolateLeft: "clamp", extrapolateRight: "clamp" } as const;
+
+/* Namensfarben im Gruppenchat – dunkel genug für die helle Blase */
+const SENDER_COLORS = ["#C2185B", "#1565C0", "#B26A00", "#2E7D32", "#6A1B9A", "#00838F"];
+
+/** Absender in der Reihenfolge ihres ersten Auftritts → stabile Farbe je Name. */
+const senderColors = (messages: Msg[]) => {
+  const out = new Map<string, string>();
+  for (const m of messages) if (m.from && !out.has(m.from)) out.set(m.from, SENDER_COLORS[out.size % SENDER_COLORS.length]);
+  return out;
+};
+
+/** Gruppenbild: drei überlappende Köpfe in den Farben der Absender. */
+const GroupAvatar: React.FC<{ size: number; colors: string[] }> = ({ size, colors }) => {
+  const c = colors.length ? colors : SENDER_COLORS.slice(0, 3);
+  const r = size * 0.27;
+  const spots = [
+    [size * 0.3, size * 0.4],
+    [size * 0.7, size * 0.4],
+    [size * 0.5, size * 0.66],
+  ];
+  return (
+    <svg width={size} height={size} viewBox={`0 0 ${size} ${size}`} style={{ flexShrink: 0 }}>
+      <circle cx={size / 2} cy={size / 2} r={size / 2} fill="#E9E4D8" />
+      {spots.map(([x, y], i) => (
+        <g key={i}>
+          <circle cx={x} cy={y} r={r + 3} fill="#E9E4D8" />
+          <circle cx={x} cy={y} r={r} fill={c[i % c.length]} />
+          <circle cx={x} cy={y - r * 0.22} r={r * 0.36} fill="rgba(255,255,255,0.85)" />
+          <path d={`M ${x - r * 0.62} ${y + r * 0.62} Q ${x} ${y + r * 0.05} ${x + r * 0.62} ${y + r * 0.62}`} fill="rgba(255,255,255,0.85)" />
+        </g>
+      ))}
+    </svg>
+  );
+};
 
 const PX = 150;
 const PY = 250;
@@ -22,6 +59,9 @@ const PW = 780;
 const PH = 950;
 const BEZEL = 16;
 const TYPING_SEC = 0.85;
+/** Eigene Nachricht: so lange wird sie im Eingabefeld getippt */
+const DRAFT_SEC = 1.7;
+const typingSec = (m: Msg) => (m.side === "out" ? DRAFT_SEC : TYPING_SEC);
 
 const StatusBar: React.FC<{ time: string; light?: boolean }> = ({ time, light = true }) => {
   const c = light ? "#FFFFFF" : "#10131F";
@@ -66,7 +106,8 @@ const Phone: React.FC<{ children: React.ReactNode; wallpaper: string }> = ({ chi
 
 const LockScreen: React.FC<{ s: ChatSceneT; frame: number }> = ({ s, frame }) => {
   const look = useLook();
-  const lock = s.lock ?? { time: "06:12", date: "", title: s.contact, preview: "" };
+  const lock = s.lock ?? { time: "06:12", date: "", title: s.contact, preview: "", app: "Brief" };
+  const group = s.messages.some((m) => m.from) || lock.app === "Gruppe";
   const notifAt = 8;
   const n = spring({ frame: frame - notifAt, fps: FPS, config: { damping: 13, stiffness: 150 } });
   const shake = frame > notifAt && frame < notifAt + 14 ? Math.sin((frame - notifAt) * 2.2) * 6 * (1 - (frame - notifAt) / 14) : 0;
@@ -95,10 +136,14 @@ const LockScreen: React.FC<{ s: ChatSceneT; frame: number }> = ({ s, frame }) =>
         }}
       >
         <div style={{ display: "flex", alignItems: "center", gap: 18 }}>
-          <div style={{ width: 58, height: 58, borderRadius: 16, background: `linear-gradient(135deg, ${look.accent}, #E39B3A)`, display: "flex", alignItems: "center", justifyContent: "center", fontFamily: theme.font.body, fontWeight: 800, fontSize: 32, color: "#3A2208" }}>
-            {s.contact.slice(0, 1)}
-          </div>
-          <div style={{ flex: 1, fontFamily: theme.font.body, fontWeight: 700, fontSize: 26, letterSpacing: "0.08em", textTransform: "uppercase", color: "rgba(16,19,31,0.55)" }}>Brief</div>
+          {group ? (
+            <GroupAvatar size={58} colors={[]} />
+          ) : (
+            <div style={{ width: 58, height: 58, borderRadius: 16, background: `linear-gradient(135deg, ${look.accent}, #E39B3A)`, display: "flex", alignItems: "center", justifyContent: "center", fontFamily: theme.font.body, fontWeight: 800, fontSize: 32, color: "#3A2208" }}>
+              {s.contact.slice(0, 1)}
+            </div>
+          )}
+          <div style={{ flex: 1, fontFamily: theme.font.body, fontWeight: 700, fontSize: 26, letterSpacing: "0.08em", textTransform: "uppercase", color: "rgba(16,19,31,0.55)" }}>{lock.app}</div>
           <div style={{ fontFamily: theme.font.body, fontWeight: 600, fontSize: 26, color: "rgba(16,19,31,0.5)" }}>jetzt</div>
         </div>
         <div style={{ marginTop: 16, fontFamily: theme.font.body, fontWeight: 800, fontSize: 38, color: "#10131F" }}>{lock.title}</div>
@@ -114,7 +159,16 @@ const LockScreen: React.FC<{ s: ChatSceneT; frame: number }> = ({ s, frame }) =>
 
 /* ---------------- Chatverlauf ---------------- */
 
-const Bubble: React.FC<{ m: Msg; age: number; frame: number }> = ({ m, age, frame }) => {
+const Bubble: React.FC<{ m: Msg; age: number; frame: number; color?: string; group?: boolean }> = ({ m, age, frame, color, group }) => {
+  if (m.kind === "divider" && group) {
+    // Im Gruppenchat ist die Systemzeile die Pointe («… hat die Gruppe verlassen»)
+    const pop = spring({ frame: age, fps: FPS, config: { damping: 9, stiffness: 160 } });
+    return (
+      <div style={{ alignSelf: "center", marginTop: 10, padding: "14px 30px", borderRadius: 999, background: "rgba(255,211,110,0.18)", border: "2px solid rgba(255,211,110,0.55)", fontFamily: theme.font.body, fontWeight: 800, fontSize: 30, color: "#FFE3A3", transform: `scale(${interpolate(pop, [0, 1], [1.25, 1])})` }}>
+        {m.text}
+      </div>
+    );
+  }
   if (m.kind === "divider") {
     return (
       <div style={{ alignSelf: "center", padding: "10px 24px", borderRadius: 999, background: "rgba(255,255,255,0.14)", fontFamily: theme.font.body, fontWeight: 700, fontSize: 25, color: "rgba(255,255,255,0.85)" }}>
@@ -130,23 +184,40 @@ const Bubble: React.FC<{ m: Msg; age: number; frame: number }> = ({ m, age, fram
       </div>
     );
   }
-  return (
+  const out = m.side === "out";
+  const bubble = (
     <div
       style={{
-        alignSelf: "flex-start",
-        maxWidth: 600,
-        padding: m.kind === "plan" ? "14px 14px 20px" : "22px 28px 18px",
-        borderRadius: "34px 34px 34px 10px",
-        background: "#F4F1EA",
+        alignSelf: out ? "flex-end" : "flex-start",
+        maxWidth: m.from ? 560 : 600,
+        padding: m.kind === "plan" ? "14px 14px 20px" : m.from ? "16px 28px 18px" : "22px 28px 18px",
+        borderRadius: out ? "34px 34px 10px 34px" : "34px 34px 34px 10px",
+        background: out ? "#D6F5C9" : "#F4F1EA",
         color: "#10131F",
         boxShadow: "0 6px 18px rgba(0,0,0,0.25)",
       }}
     >
+      {m.from ? (
+        <div style={{ marginBottom: 4, fontFamily: theme.font.body, fontWeight: 800, fontSize: 27, color: color ?? SENDER_COLORS[0] }}>{m.from}</div>
+      ) : null}
       {m.kind === "plan" ? <PlanSketch age={age} /> : null}
       <div style={{ fontFamily: theme.font.body, fontWeight: 600, fontSize: 38, lineHeight: 1.24, padding: m.kind === "plan" ? "14px 14px 0" : 0 }}>{m.text}</div>
       {m.meta ? (
         <div style={{ marginTop: 6, textAlign: "right", fontFamily: theme.font.body, fontWeight: 600, fontSize: 22, color: "#6B7280" }}>{m.meta}</div>
       ) : null}
+      {out ? (
+        <div style={{ marginTop: 4, textAlign: "right", fontFamily: theme.font.body, fontWeight: 700, fontSize: 22, color: "#3B82F6" }}>✓✓</div>
+      ) : null}
+    </div>
+  );
+  if (!m.from || out) return bubble;
+  // Gruppenchat: kleines Profilbild neben der Blase
+  return (
+    <div style={{ alignSelf: "flex-start", display: "flex", alignItems: "flex-end", gap: 14 }}>
+      <div style={{ width: 58, height: 58, borderRadius: 29, background: color, display: "flex", alignItems: "center", justifyContent: "center", fontFamily: theme.font.body, fontWeight: 800, fontSize: 28, color: "#FFFFFF", flexShrink: 0 }}>
+        {m.from.slice(0, 1)}
+      </div>
+      {bubble}
     </div>
   );
 };
@@ -214,20 +285,29 @@ const Thread: React.FC<{ ts: TimelineScene; s: ChatSceneT; frame: number }> = ({
   const t = (frame - ts.audioOffsetFrames) / FPS;
   const timed = s.messages.map((m) => ({ m, at: m.at ? beat(ts, m.at, -1) : -Infinity }));
   const visible = timed.filter((x) => t >= x.at);
-  const next = timed.find((x) => Number.isFinite(x.at) && t < x.at && t >= x.at - TYPING_SEC && x.m.kind !== "divider");
+  const upcoming = timed.find((x) => Number.isFinite(x.at) && t < x.at && t >= x.at - typingSec(x.m) && x.m.kind !== "divider");
+  // Eigene Nachrichten werden im Eingabefeld getippt, nicht als «schreibt …» angezeigt
+  const next = upcoming && upcoming.m.side !== "out" ? upcoming : undefined;
+  const drafting = upcoming && upcoming.m.side === "out" ? upcoming : undefined;
+  const colors = senderColors(s.messages);
+  const group = colors.size > 0;
   return (
     <Phone wallpaper={`linear-gradient(180deg, #0F1626 0%, #131C33 100%)`}>
       <StatusBar time={s.lock?.time ?? "06:13"} />
       {/* Kopf */}
       <div style={{ position: "absolute", top: 70, left: 0, right: 0, height: 120, display: "flex", alignItems: "center", gap: 20, padding: "0 30px", borderBottom: "2px solid rgba(255,255,255,0.08)", background: "rgba(255,255,255,0.04)" }}>
         <span style={{ fontFamily: theme.font.body, fontWeight: 500, fontSize: 64, color: look.accent, marginTop: -8 }}>‹</span>
-        <div style={{ width: 78, height: 78, borderRadius: 39, background: `linear-gradient(135deg, ${look.accent}, #E39B3A)`, display: "flex", alignItems: "center", justifyContent: "center", fontFamily: theme.font.body, fontWeight: 800, fontSize: 40, color: "#3A2208" }}>
-          {s.contact.slice(0, 1)}
-        </div>
-        <div style={{ flex: 1 }}>
+        {group ? (
+          <GroupAvatar size={78} colors={[...colors.values()]} />
+        ) : (
+          <div style={{ width: 78, height: 78, borderRadius: 39, background: `linear-gradient(135deg, ${look.accent}, #E39B3A)`, display: "flex", alignItems: "center", justifyContent: "center", fontFamily: theme.font.body, fontWeight: 800, fontSize: 40, color: "#3A2208" }}>
+            {s.contact.slice(0, 1)}
+          </div>
+        )}
+        <div style={{ flex: 1, minWidth: 0 }}>
           <div style={{ fontFamily: theme.font.body, fontWeight: 800, fontSize: 38, color: "#FFFFFF" }}>{s.contact}</div>
-          <div style={{ fontFamily: theme.font.body, fontWeight: 600, fontSize: 24, color: next ? look.accent2 : "rgba(255,255,255,0.55)" }}>
-            {next ? "schreibt …" : (s.contactSub ?? "")}
+          <div style={{ fontFamily: theme.font.body, fontWeight: 600, fontSize: 24, color: next ? look.accent2 : "rgba(255,255,255,0.55)", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>
+            {next ? (next.m.from ? `${next.m.from} schreibt …` : "schreibt …") : (s.contactSub ?? "")}
           </div>
         </div>
       </div>
@@ -238,26 +318,46 @@ const Thread: React.FC<{ ts: TimelineScene; s: ChatSceneT; frame: number }> = ({
           const sp = Number.isFinite(at) ? spring({ frame: age, fps: FPS, config: { damping: 15, stiffness: 190, mass: 0.7 } }) : 1;
           return (
             <div key={i} style={{ maxHeight: interpolate(sp, [0, 1], [0, 520]), overflow: sp < 1 ? "hidden" : "visible", display: "flex", flexDirection: "column", flexShrink: 0 }}>
-              <div style={{ display: "flex", flexDirection: "column", opacity: sp, transform: `scale(${interpolate(sp, [0, 1], [0.7, 1])}) translateY(${interpolate(sp, [0, 1], [30, 0])}px)`, transformOrigin: "0% 100%" }}>
-                <Bubble m={m} age={age} frame={frame} />
+              <div style={{ display: "flex", flexDirection: "column", opacity: sp, transform: `scale(${interpolate(sp, [0, 1], [0.7, 1])}) translateY(${interpolate(sp, [0, 1], [30, 0])}px)`, transformOrigin: m.side === "out" ? "100% 100%" : "0% 100%" }}>
+                <Bubble m={m} age={age} frame={frame} color={m.from ? colors.get(m.from) : undefined} group={group} />
               </div>
             </div>
           );
         })}
-        {next ? <Typing frame={frame} /> : null}
+        {next ? (
+          next.m.from ? (
+            <div style={{ alignSelf: "flex-start", display: "flex", alignItems: "flex-end", gap: 14 }}>
+              <div style={{ width: 58, height: 58, borderRadius: 29, background: colors.get(next.m.from), display: "flex", alignItems: "center", justifyContent: "center", fontFamily: theme.font.body, fontWeight: 800, fontSize: 28, color: "#FFFFFF" }}>
+                {next.m.from.slice(0, 1)}
+              </div>
+              <Typing frame={frame} />
+            </div>
+          ) : (
+            <Typing frame={frame} />
+          )
+        ) : null}
       </div>
       {timed.map(({ m, at }, i) =>
         Number.isFinite(at) ? (
           <React.Fragment key={i}>
             <Sfx frame={voiceFrame(ts, at)} name={m.kind === "sticker" ? "chime" : "pop"} volume={m.kind === "sticker" ? 0.3 : 0.45} />
-            {m.kind !== "divider" ? <Sfx frame={voiceFrame(ts, at - TYPING_SEC)} name="type" volume={0.18} /> : null}
+            {m.kind !== "divider" ? <Sfx frame={voiceFrame(ts, at - typingSec(m))} name="type" volume={0.18} /> : null}
           </React.Fragment>
         ) : null,
       )}
       {/* Eingabezeile */}
       <div style={{ position: "absolute", bottom: 26, left: 24, right: 24, height: 76, display: "flex", alignItems: "center", gap: 16 }}>
-        <div style={{ flex: 1, height: 76, borderRadius: 38, background: "rgba(255,255,255,0.08)", display: "flex", alignItems: "center", padding: "0 30px", fontFamily: theme.font.body, fontWeight: 500, fontSize: 30, color: "rgba(255,255,255,0.4)" }}>
-          Nachricht
+        <div style={{ flex: 1, height: 76, borderRadius: 38, background: drafting ? "rgba(255,255,255,0.16)" : "rgba(255,255,255,0.08)", display: "flex", alignItems: "center", padding: "0 30px", fontFamily: theme.font.body, fontWeight: drafting ? 600 : 500, fontSize: 30, color: drafting ? "#FFFFFF" : "rgba(255,255,255,0.4)", whiteSpace: "nowrap", overflow: "hidden" }}>
+          {drafting ? (
+            <span style={{ display: "inline-flex", justifyContent: "flex-end", overflow: "hidden", maxWidth: "100%" }}>
+              <span style={{ whiteSpace: "nowrap" }}>
+                {drafting.m.text.slice(0, Math.ceil(drafting.m.text.length * interpolate(t, [drafting.at - DRAFT_SEC, drafting.at - 0.15], [0, 1], clamp)))}
+              </span>
+              <span style={{ opacity: Math.floor(frame / 8) % 2 ? 1 : 0, color: look.accent2 }}>|</span>
+            </span>
+          ) : (
+            "Nachricht"
+          )}
         </div>
         <div style={{ width: 76, height: 76, borderRadius: 38, background: look.accent2, display: "flex", alignItems: "center", justifyContent: "center" }}>
           <svg width={36} height={36} viewBox="0 0 24 24">

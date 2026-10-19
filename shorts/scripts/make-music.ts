@@ -4,7 +4,9 @@
  *
  *   npm run music -- --style arcade --sec 70 --out public/music/arcade.wav
  *
- * Stile: arcade (Chiptune), lofi (Handy, ruhig), chase (Trommeln, Spannung), anthem (Stadion).
+ * Stile: arcade (Chiptune), lofi (Handy, ruhig), chase (Trommeln, Spannung), anthem (Stadion),
+ * temple (Altertum: Bordun, Rahmentrommel, gezupfte Saiten), space (Weltraum: Flächen, Glocken-Arpeggio),
+ * mystery (Krimi und Traum: Moll, Pizzicato-Bass, Vibraphon).
  * Fürs Repo danach verkleinern: ffmpeg -i x.wav -b:a 160k x.mp3
  * (Der ursprüngliche Sonnenaufgangs-Pad kommt aus scripts/make-pad.ts.)
  */
@@ -97,6 +99,46 @@ const pad = (at: number, len: number, m: number, pan: number, gain: number, brig
     const f = midi(m);
     return (saw(f * 1.003, t, bright) + saw(f * 0.997, t + 0.01, bright)) * adsr(t, len, 0.4, 0.3, 0.8, 0.5);
   });
+
+/** Gezupfte Saite (Karplus-Strong) – Oud oder Harfe */
+const pluck = (at: number, len: number, m: number, pan: number, gain: number, damp = 0.996, soft = 4) => {
+  const period = Math.max(2, Math.round(SR / midi(m)));
+  const buf = new Float32Array(period);
+  for (let k = 0; k < period; k++) buf[k] = rnd();
+  // Weicher Anschlag: das Rauschen vorher glätten, sonst knackt jeder Ton
+  for (let pass = 0; pass < soft; pass++) {
+    let prev = buf[period - 1];
+    for (let k = 0; k < period; k++) {
+      const cur = buf[k];
+      buf[k] = 0.25 * prev + 0.5 * cur + 0.25 * buf[(k + 1) % period];
+      prev = cur;
+    }
+  }
+  let mean = 0;
+  for (let k = 0; k < period; k++) mean += buf[k] / period;
+  for (let k = 0; k < period; k++) buf[k] = (buf[k] - mean) * 1.8;
+  let idx = 0;
+  note(at, len, pan, gain, () => {
+    const next = (idx + 1) % period;
+    const v = buf[idx];
+    buf[idx] = damp * 0.5 * (buf[idx] + buf[next]);
+    idx = next;
+    return v;
+  });
+};
+/** Glocke: zwei unharmonische Teiltöne, lang ausklingend */
+const bell = (at: number, m: number, pan: number, gain: number, decay = 2.4) =>
+  note(at, decay * 2, pan, gain, (t) => {
+    const f = midi(m);
+    return (Math.sin(2 * Math.PI * f * t) + 0.4 * Math.sin(2 * Math.PI * f * 2.76 * t) * Math.exp(-t / 0.4)) * Math.exp(-t / decay) * Math.min(1, t / 0.004);
+  });
+/** Rahmentrommel: tiefes «Dum» oder helles «Tek» */
+const frame = (at: number, low: boolean, gain: number) =>
+  note(at, low ? 0.6 : 0.2, low ? 0 : 0.15, gain, (t) =>
+    low
+      ? Math.sin(2 * Math.PI * (70 + 40 * Math.exp(-t / 0.04)) * t) * Math.exp(-t / 0.18) + rnd() * Math.exp(-t / 0.01) * 0.15
+      : (rnd() * 0.35 + Math.sin(2 * Math.PI * 420 * t) * 0.6) * Math.exp(-t / 0.03) * Math.min(1, t / 0.002),
+  );
 
 const beat = (bpm: number) => 60 / bpm;
 
@@ -213,6 +255,70 @@ const styles: Record<string, () => void> = {
       }
     }
   },
+  /** Altertum: Bordun auf D, Hijaz-Skala (D Es Fis G A B C), Rahmentrommel, gezupfte Saiten */
+  temple: () => {
+    const b = beat(92);
+    const scale = [62, 63, 66, 67, 69, 70, 72, 74];
+    const phrases = [[0, 1, 2, 1, 0], [3, 4, 5, 4, 3, 2], [4, 3, 2, 1, 2, 0], [7, 6, 5, 4, 2, 1, 0]];
+    const bars = Math.ceil(SEC / (4 * b));
+    for (let bar = 0; bar < bars; bar++) {
+      const t0 = bar * 4 * b;
+      pad(t0, 4 * b + 0.4, 38, -0.2, 0.05, 4);
+      pad(t0, 4 * b + 0.4, 45, 0.2, 0.035, 4);
+      if (bar > 0) {
+        // Dum – tek tek – dum – tek
+        frame(t0, true, 0.55);
+        frame(t0 + b, false, 0.16);
+        frame(t0 + 1.5 * b, false, 0.12);
+        frame(t0 + 2 * b, true, 0.45);
+        frame(t0 + 3 * b, false, 0.16);
+        frame(t0 + 3.5 * b, false, 0.1);
+      }
+      if (bar % 2 === 1) {
+        const ph = phrases[Math.floor(bar / 2) % phrases.length];
+        ph.forEach((k, j) => pluck(t0 + j * (4 * b) / ph.length, 1.6, scale[k], -0.25 + 0.1 * j, 0.22));
+      } else {
+        for (let k = 0; k < 4; k++) pluck(t0 + k * b, 1.2, [50, 57, 50, 57][k], 0.3, 0.12);
+      }
+    }
+  },
+  /** Weltraum: weite Flächen in Lydisch, Glocken-Arpeggio, leiser Puls */
+  space: () => {
+    const b = beat(84);
+    const chords = [[48, 55, 62, 66], [50, 57, 64, 69], [45, 52, 59, 66], [47, 54, 62, 66]];
+    const bars = Math.ceil(SEC / (4 * b));
+    for (let bar = 0; bar < bars; bar++) {
+      const c = chords[bar % 4];
+      const t0 = bar * 4 * b;
+      c.forEach((m, k) => pad(t0, 4 * b + 1.2, m + 12, (k - 1.5) * 0.3, 0.03, 3));
+      note(t0, 4 * b, 0, 0.2, (t) => Math.sin(2 * Math.PI * midi(c[0] - 12) * t) * adsr(t, 4 * b, 0.6, 0.5, 0.7, 0.8));
+      for (let s = 0; s < 8; s++) bell(t0 + s * (b / 2), c[(s * 3) % 4] + 24 + (s % 4 === 3 ? 12 : 0), Math.sin(s * 1.3) * 0.6, 0.05, 1.6);
+      if (bar > 1) {
+        kick(t0, 0.35);
+        kick(t0 + 2 * b, 0.28);
+        for (let k = 0; k < 4; k++) hat(t0 + k * b + b / 2, 0.035, -0.3);
+      }
+    }
+  },
+  /** Krimi und Traum: Moll-Septakkorde, Pizzicato-Bass, Vibraphon, Besen */
+  mystery: () => {
+    const b = beat(86);
+    const chords = [[45, 52, 55, 60], [41, 48, 52, 57], [43, 50, 53, 58], [40, 47, 50, 56]];
+    const bars = Math.ceil(SEC / (4 * b));
+    for (let bar = 0; bar < bars; bar++) {
+      const c = chords[bar % 4];
+      const t0 = bar * 4 * b;
+      c.forEach((m, k) => pad(t0, 4 * b + 0.4, m + 12, (k - 1.5) * 0.25, 0.022, 3));
+      // Gehender Pizzicato-Bass
+      [0, 7, 12, 10].forEach((d, k) => pluck(t0 + k * b, b * 0.9, c[0] - 12 + d, 0, 0.3, 0.99, 10));
+      // Vibraphon: wenige Töne, viel Luft
+      if (bar % 2 === 1) [3, 2, 1].forEach((k, j) => bell(t0 + (j * 1.5 + 0.5) * b, c[k] + 24, 0.3 - 0.3 * j, 0.06, 1.2));
+      if (bar > 0) {
+        for (let k = 0; k < 4; k++) hat(t0 + k * b + (k % 2 ? 0.04 : 0), 0.05, 0.25);
+        snare(t0 + 3 * b, 0.05, 160);
+      }
+    }
+  },
 };
 
 if (!styles[STYLE]) {
@@ -226,7 +332,7 @@ const lp = (x: Float32Array, a: number) => {
   let y = 0;
   for (let i = 0; i < x.length; i++) x[i] = y += a * (x[i] - y);
 };
-const cutoff = STYLE === "lofi" ? 0.18 : STYLE === "arcade" ? 0.32 : 0.4;
+const cutoff = STYLE === "lofi" || STYLE === "mystery" ? 0.18 : STYLE === "arcade" ? 0.32 : STYLE === "space" ? 0.25 : 0.4;
 lp(L, cutoff);
 lp(R, cutoff);
 let peak = 0;

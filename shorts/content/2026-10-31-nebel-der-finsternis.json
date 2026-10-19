@@ -1,0 +1,117 @@
+{
+  "id": "2026-10-31-nebel-der-finsternis",
+  "title": "Nebel der Finsternis",
+  "date": "2026-10-31",
+  "series": "Für eine starke Jugend · November",
+  "brand": {
+    "name": "AntiDoom"
+  },
+  "look": "dream",
+  "voice": {
+    "provider": "google",
+    "languageCode": "de-DE",
+    "name": "de-DE-Chirp3-HD-Iapetus",
+    "speakingRate": 1.06
+  },
+  "music": {
+    "src": "music/mystery.mp3",
+    "volume": 0.3,
+    "duckTo": 0.08
+  },
+  "scenes": [
+    {
+      "id": "hook",
+      "type": "dream",
+      "stage": "intro",
+      "hud": "Lehis Traum",
+      "ref": "1 Nephi 8",
+      "narration": "Ein Traum. [pause short] Vier Gruppen von Menschen. [pause short] Nur eine kommt an – und bleibt."
+    },
+    {
+      "id": "ziel",
+      "type": "dream",
+      "stage": "intro",
+      "cues": [
+        "einen Baum",
+        "Ein schmaler Weg",
+        "eiserne Stange"
+      ],
+      "ref": "1 Nephi 8:10–20",
+      "narration": "Lehi sieht einen Baum. [pause short] Seine Frucht macht glücklicher als alles andere. [pause short] Ein schmaler Weg führt hin – [pause short] und daneben eine eiserne Stange."
+    },
+    {
+      "id": "eins",
+      "type": "dream",
+      "stage": "mist",
+      "hud": "Gruppe 1",
+      "cues": [
+        "betritt den Weg",
+        "Nebel der Finsternis",
+        "verlieren den Weg"
+      ],
+      "ref": "1 Nephi 8:21–23",
+      "narration": "Gruppe eins betritt den Weg. [pause short] Dann zieht ein Nebel der Finsternis auf. [pause short] Sie verlieren den Weg."
+    },
+    {
+      "id": "zwei",
+      "type": "dream",
+      "stage": "rod",
+      "hud": "Gruppe 2",
+      "cues": [
+        "hält sich an der Stange fest",
+        "erreicht den Baum",
+        "zeigen Leute mit dem Finger",
+        "Sie schämen sich"
+      ],
+      "ref": "1 Nephi 8:24–28",
+      "narration": "Gruppe zwei hält sich an der Stange fest [pause short] und erreicht den Baum. [pause short] Doch aus einem grossen Gebäude zeigen Leute mit dem Finger auf sie und spotten. [pause short] Sie schämen sich – und gehen."
+    },
+    {
+      "id": "drei",
+      "type": "dream",
+      "stage": "hold",
+      "hud": "Gruppe 3",
+      "cues": [
+        "hält sich fest",
+        "Ständig",
+        "erreicht den Baum",
+        "hört nicht auf das Gespött"
+      ],
+      "ref": "1 Nephi 8:30, 33",
+      "narration": "Gruppe drei hält sich fest. [pause short] Ständig. [pause short] Sie erreicht den Baum [pause short] und hört nicht auf das Gespött."
+    },
+    {
+      "id": "vier",
+      "type": "dream",
+      "stage": "building",
+      "hud": "Gruppe 4",
+      "cues": [
+        "direkt ins Gebäude"
+      ],
+      "ref": "1 Nephi 8:31–33",
+      "narration": "Und Gruppe vier? [pause short] Läuft direkt ins Gebäude."
+    },
+    {
+      "id": "stange",
+      "type": "kinetic",
+      "ref": "1 Nephi 11:25",
+      "lines": [
+        "Die eiserne Stange",
+        "ist das Wort Gottes.",
+        "Wahrheit, an der du dich festhalten kannst,",
+        "auch wenn du nichts mehr siehst."
+      ],
+      "narration": "Die eiserne Stange ist das Wort Gottes. [pause short] Wahrheit, an der du dich festhalten kannst – [pause short] auch wenn du nichts mehr siehst."
+    },
+    {
+      "id": "du",
+      "type": "kinetic",
+      "holdAfterSec": 1.5,
+      "lines": [
+        "Welche Wahrheit",
+        "ist deine eiserne Stange?"
+      ],
+      "narration": "Welche Wahrheit ist deine eiserne Stange?"
+    }
+  ]
+}

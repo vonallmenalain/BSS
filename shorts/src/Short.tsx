@@ -5,6 +5,11 @@ import { AbsoluteFill, Audio, type CalculateMetadataFunction, Sequence, interpol
 import { Grain, Particles } from "./components/Atmosphere";
 import { ArcadeBg, ChatBg, JournalBg, MapBg, NoirBg, ShowBg, TrackBg } from "./components/Backgrounds";
 import { BrandBar, RefLabel } from "./components/BrandBar";
+import { DreamBg } from "./components/backgrounds/DreamBg";
+import { EmberBg } from "./components/backgrounds/EmberBg";
+import { PalaceBg } from "./components/backgrounds/PalaceBg";
+import { SpaceBg } from "./components/backgrounds/SpaceBg";
+import { StoneBg } from "./components/backgrounds/StoneBg";
 import { Captions } from "./components/Captions";
 import { Sky } from "./components/Sky";
 import { fontsReady } from "./lib/fonts";
@@ -16,6 +21,14 @@ import { HeroScene } from "./scenes/game";
 import { MapScene } from "./scenes/map";
 import { RelayScene } from "./scenes/relay";
 import { TeaserScene } from "./scenes/teaser";
+import { ChainsScene } from "./scenes/w44/chains";
+import { DominoesScene } from "./scenes/w44/dominoes";
+import { DossierScene } from "./scenes/w44/dossier";
+import { DreamScene } from "./scenes/w44/dream";
+import { FireScene } from "./scenes/w44/fire";
+import { ItemScene } from "./scenes/w44/item";
+import { MissionScene } from "./scenes/w44/mission";
+import { PalaceScene } from "./scenes/w44/palace";
 import {
   BigNumberScene,
   CtaScene,
@@ -52,6 +65,16 @@ export const calculateShortMetadata: CalculateMetadataFunction<ShortProps> = asy
   if (timeline.estimated) console.warn(`[${episode.id}] Teile ohne passende Vertonung – Timing geschätzt. npm run tts ausführen.`);
   await fontsReady;
   return { durationInFrames: timeline.totalFrames, fps: FPS, props: { ...props, episode, timeline } };
+};
+
+/** Die Wörter, die einen der Texte wörtlich sprechen. */
+const wordsOf = (ts: TimelineScene, texts: Array<string | undefined>): Set<number> => {
+  const out = new Set<number>();
+  for (const text of texts) {
+    const c = text ? findCue(ts.words, text) : null;
+    if (c) for (let k = c.first; k <= c.last; k++) out.add(ts.words[k].index);
+  }
+  return out;
 };
 
 /** Welche Wörter NICHT unten untertitelt werden, weil sie gross im Bild stehen. */
@@ -92,6 +115,14 @@ const hiddenWords = (ts: TimelineScene): Set<number> => {
       if (c) for (let k = c.first; k <= c.last; k++) out.add(ts.words[k].index);
       return out;
     }
+    case "chains":
+      // Frage und Antworten stehen gross im Bild
+      return wordsOf(ts, [s.question?.text, ...s.answers.map((a) => a.text)]);
+    case "dossier":
+      // Der handgeschriebene Zettel liest sich selbst; die Akte wird untertitelt
+      return s.mode === "note" ? wordsOf(ts, s.entries.map((e) => e.text)) : new Set();
+    case "fire":
+      return wordsOf(ts, s.bubbles.map((b) => b.text));
     default:
       return new Set();
   }
@@ -135,6 +166,22 @@ const SceneBody: React.FC<{ ts: TimelineScene }> = ({ ts }) => {
       return <JournalScene ts={ts} />;
     case "jumper":
       return <JumperScene ts={ts} />;
+    case "chains":
+      return <ChainsScene ts={ts} />;
+    case "dominoes":
+      return <DominoesScene ts={ts} />;
+    case "mission":
+      return <MissionScene ts={ts} />;
+    case "item":
+      return <ItemScene ts={ts} />;
+    case "dossier":
+      return <DossierScene ts={ts} />;
+    case "palace":
+      return <PalaceScene ts={ts} />;
+    case "dream":
+      return <DreamScene ts={ts} />;
+    case "fire":
+      return <FireScene ts={ts} />;
   }
 };
 
@@ -155,6 +202,16 @@ const Backdrop: React.FC<{ look: Episode["look"]; s: number }> = ({ look, s }) =
       return <ShowBg />;
     case "journal":
       return <JournalBg />;
+    case "stone":
+      return <StoneBg />;
+    case "ember":
+      return <EmberBg />;
+    case "space":
+      return <SpaceBg />;
+    case "palace":
+      return <PalaceBg />;
+    case "dream":
+      return <DreamBg />;
     default:
       return (
         <>

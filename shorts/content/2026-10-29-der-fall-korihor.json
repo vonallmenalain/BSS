@@ -1,0 +1,141 @@
+{
+  "id": "2026-10-29-der-fall-korihor",
+  "title": "Der Fall Korihor",
+  "date": "2026-10-29",
+  "series": "Für eine starke Jugend · November",
+  "brand": {
+    "name": "AntiDoom"
+  },
+  "look": "noir",
+  "voice": {
+    "provider": "google",
+    "languageCode": "de-DE",
+    "name": "de-DE-Chirp3-HD-Algenib",
+    "speakingRate": 1.02
+  },
+  "music": {
+    "src": "music/mystery.mp3",
+    "volume": 0.3,
+    "duckTo": 0.08
+  },
+  "scenes": [
+    {
+      "id": "hook",
+      "type": "dossier",
+      "title": "Fall Korihor",
+      "subtitle": "Zarahemla · Alma 30",
+      "ref": "Alma 30:18, 53",
+      "entries": [
+        {
+          "text": "Erfolg: gross",
+          "at": "Er hatte Erfolg"
+        },
+        {
+          "text": "Anhänger: viele",
+          "at": "Viele folgten ihm"
+        }
+      ],
+      "stamp": {
+        "text": "Lüge",
+        "at": "war eine Lüge"
+      },
+      "narration": "Er hatte Erfolg. [pause short] Viele folgten ihm. [pause short] Und was er lehrte, war eine Lüge."
+    },
+    {
+      "id": "thesen",
+      "type": "dossier",
+      "title": "Seine Thesen",
+      "subtitle": "Alma 30:12–18",
+      "ref": "Alma 30:12–18",
+      "entries": [
+        {
+          "text": "«Es gibt keinen Christus.»",
+          "at": "Es gibt keinen Christus"
+        },
+        {
+          "text": "«Niemand kann wissen, was kommt.»",
+          "at": "Niemand kann wissen, was kommt"
+        },
+        {
+          "text": "«Mit dem Tod ist alles vorbei.»",
+          "at": "mit dem Tod ist alles vorbei"
+        }
+      ],
+      "narration": "Seine Thesen: [pause short] Es gibt keinen Christus. [pause short] Niemand kann wissen, was kommt. [pause short] Und mit dem Tod ist alles vorbei."
+    },
+    {
+      "id": "verhoer",
+      "type": "dossier",
+      "title": "Verhör",
+      "subtitle": "Alma 30:43–44",
+      "ref": "Alma 30:43–44",
+      "entries": [
+        {
+          "text": "Korihor: «Zeig mir ein Zeichen!»",
+          "at": "verlangt er ein Zeichen"
+        },
+        {
+          "text": "Alma: «Du hast Zeichen genug.»",
+          "at": "Du hast Zeichen genug"
+        },
+        {
+          "text": "Die Erde. Die Planeten. Ein Schöpfer.",
+          "at": "die Planeten"
+        }
+      ],
+      "narration": "Vor Alma verlangt er ein Zeichen. [pause short] Alma: Du hast Zeichen genug. [pause short] Die Erde, alles auf ihr, sogar die Planeten in ihrer Bahn – [pause short] alles zeugt von einem Schöpfer."
+    },
+    {
+      "id": "stumm",
+      "type": "dossier",
+      "title": "Das Zeichen",
+      "subtitle": "Alma 30:45–50",
+      "ref": "Alma 30:45–50",
+      "entries": [
+        {
+          "text": "Korihor besteht auf einem Zeichen.",
+          "at": "Korihor besteht auf einem Zeichen"
+        }
+      ],
+      "stamp": {
+        "text": "Stumm",
+        "at": "nicht mehr sprechen"
+      },
+      "narration": "Korihor besteht auf einem Zeichen. [pause short] Und er bekommt eines: [pause short] Er kann nicht mehr sprechen."
+    },
+    {
+      "id": "gestaendnis",
+      "type": "dossier",
+      "mode": "note",
+      "title": "Er schreibt",
+      "ref": "Alma 30:52–53",
+      "entries": [
+        {
+          "text": "Ich wusste immer, dass es einen Gott gibt.",
+          "at": "Ich wusste immer"
+        },
+        {
+          "text": "Der Teufel hat mich getäuscht.",
+          "at": "Der Teufel hat mich getäuscht"
+        },
+        {
+          "text": "Ich habe die Lüge gelehrt, bis ich sie selbst geglaubt habe.",
+          "at": "Ich habe die Lüge gelehrt"
+        }
+      ],
+      "narration": "Dann schreibt er: [pause short] Ich wusste immer, dass es einen Gott gibt. [pause short] Der Teufel hat mich getäuscht. [pause short] Ich habe die Lüge gelehrt, bis ich sie selbst geglaubt habe."
+    },
+    {
+      "id": "punch",
+      "type": "kinetic",
+      "holdAfterSec": 1.2,
+      "lines": [
+        "Lügen wachsen,",
+        "bis du sie selbst glaubst.",
+        "Niemand kann wissen, was kommt?",
+        "Der Herr sagt etwas anderes."
+      ],
+      "narration": "Lügen wachsen, [pause short] bis du sie selbst glaubst. [pause short] Korihor sagte: Niemand kann wissen, was kommt. [pause short] Der Herr sagt etwas anderes."
+    }
+  ]
+}

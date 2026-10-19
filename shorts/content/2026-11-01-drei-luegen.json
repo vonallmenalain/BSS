@@ -1,0 +1,157 @@
+{
+  "id": "2026-11-01-drei-luegen",
+  "title": "Drei Lügen in einer Nacht",
+  "date": "2026-11-01",
+  "series": "Für eine starke Jugend · November",
+  "brand": {
+    "name": "AntiDoom"
+  },
+  "look": "ember",
+  "voice": {
+    "provider": "google",
+    "languageCode": "de-DE",
+    "name": "de-DE-Chirp3-HD-Fenrir",
+    "speakingRate": 1.08
+  },
+  "music": {
+    "src": "music/chase.mp3",
+    "volume": 0.3,
+    "duckTo": 0.08
+  },
+  "scenes": [
+    {
+      "id": "hook",
+      "type": "fire",
+      "stage": "intro",
+      "cues": [
+        "Eine Nacht",
+        "Ein Feuer",
+        "Drei Lügen"
+      ],
+      "ref": "Lukas 22:54–62",
+      "narration": "Eine Nacht. [pause short] Ein Feuer. [pause short] Drei Lügen."
+    },
+    {
+      "id": "eins",
+      "type": "fire",
+      "stage": "accuse",
+      "bind": 0,
+      "bindAt": "Ich kenne ihn nicht",
+      "ref": "Lukas 22:54–57",
+      "bubbles": [
+        {
+          "side": "left",
+          "who": "Eine Magd",
+          "text": "Der war auch bei ihm!",
+          "at": "Der war auch bei ihm"
+        },
+        {
+          "side": "right",
+          "who": "Petrus",
+          "text": "Ich kenne ihn nicht.",
+          "at": "Ich kenne ihn nicht"
+        }
+      ],
+      "narration": "Jesus ist verhaftet. [pause short] Petrus sitzt im Hof am Feuer. [pause short] Eine Magd sagt: Der war auch bei ihm! [pause short] Petrus: Ich kenne ihn nicht."
+    },
+    {
+      "id": "zwei",
+      "type": "fire",
+      "stage": "accuse",
+      "bind": 1,
+      "bindAt": "Nein, ich nicht",
+      "ref": "Lukas 22:58",
+      "bubbles": [
+        {
+          "side": "left",
+          "who": "Ein anderer",
+          "text": "Du gehörst auch zu denen!",
+          "at": "Du gehörst auch zu denen"
+        },
+        {
+          "side": "right",
+          "who": "Petrus",
+          "text": "Nein, ich nicht.",
+          "at": "Nein, ich nicht"
+        }
+      ],
+      "narration": "Kurz darauf ein anderer: Du gehörst auch zu denen! [pause short] Petrus: Nein, ich nicht."
+    },
+    {
+      "id": "drei",
+      "type": "fire",
+      "stage": "accuse",
+      "bind": 2,
+      "bindAt": "Ich kenne den Menschen nicht",
+      "ref": "Lukas 22:59; Matthäus 26:74",
+      "bubbles": [
+        {
+          "side": "left",
+          "who": "Noch einer",
+          "text": "Der ist doch aus Galiläa!",
+          "at": "Der ist doch aus Galiläa"
+        },
+        {
+          "side": "right",
+          "who": "Petrus",
+          "text": "Ich kenne den Menschen nicht!",
+          "at": "Ich kenne den Menschen nicht"
+        }
+      ],
+      "narration": "Eine Stunde später: Klar war der dabei. [pause short] Der ist doch aus Galiläa! [pause short] Petrus flucht und schwört: Ich kenne den Menschen nicht!"
+    },
+    {
+      "id": "hahn",
+      "type": "fire",
+      "stage": "rooster",
+      "bind": 3,
+      "cues": [
+        "kräht der Hahn",
+        "sieht Petrus an",
+        "weint bitterlich"
+      ],
+      "ref": "Lukas 22:60–62",
+      "narration": "In diesem Moment kräht der Hahn. [pause short] Jesus dreht sich um und sieht Petrus an. [pause short] Petrus geht hinaus und weint bitterlich."
+    },
+    {
+      "id": "rat",
+      "type": "fire",
+      "stage": "dawn",
+      "bind": 3,
+      "breakAt": "Wir können nicht schweigen",
+      "ref": "Apostelgeschichte 4:18–20",
+      "bubbles": [
+        {
+          "side": "right",
+          "who": "Petrus",
+          "text": "Wir können nicht schweigen über das, was wir gesehen und gehört haben.",
+          "at": "Wir können nicht schweigen"
+        }
+      ],
+      "narration": "Wochen später steht derselbe Petrus vor dem Hohen Rat. [pause short] Sie verbieten ihm, von Jesus zu reden. [pause short] Er sagt: Wir können nicht schweigen über das, was wir gesehen und gehört haben."
+    },
+    {
+      "id": "preis",
+      "type": "kinetic",
+      "ref": "Apostelgeschichte 4:3, 21",
+      "lines": [
+        "Dafür kommt er ins Gefängnis",
+        "und wird bedroht.",
+        "Aber er ist frei."
+      ],
+      "narration": "Dafür kommt er ins Gefängnis und wird bedroht. [pause short] Aber er ist frei."
+    },
+    {
+      "id": "du",
+      "type": "kinetic",
+      "holdAfterSec": 1.5,
+      "lines": [
+        "Wann hat dich Ehrlichkeit",
+        "etwas gekostet,",
+        "und es hat sich trotzdem gelohnt?",
+        "Erzähl jemandem davon."
+      ],
+      "narration": "Wann hat dich Ehrlichkeit etwas gekostet – [pause short] und es hat sich trotzdem gelohnt? [pause short] Erzähl jemandem davon."
+    }
+  ]
+}

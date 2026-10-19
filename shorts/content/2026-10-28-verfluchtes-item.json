@@ -1,0 +1,118 @@
+{
+  "id": "2026-10-28-verfluchtes-item",
+  "title": "Verfluchtes Item",
+  "date": "2026-10-28",
+  "series": "Für eine starke Jugend · November",
+  "brand": {
+    "name": "AntiDoom"
+  },
+  "look": "arcade",
+  "voice": {
+    "provider": "google",
+    "languageCode": "de-DE",
+    "name": "de-DE-Chirp3-HD-Puck",
+    "speakingRate": 1.05
+  },
+  "music": {
+    "src": "music/arcade.mp3",
+    "volume": 0.3,
+    "duckTo": 0.08
+  },
+  "scenes": [
+    {
+      "id": "boss",
+      "type": "item",
+      "stage": "drop",
+      "name": "???",
+      "dropAt": "droppt ein Item",
+      "narration": "Bossfight: Matheprüfung. [pause short] Dein Kopf: leer. [pause short] Und plötzlich droppt ein Item."
+    },
+    {
+      "id": "spick",
+      "type": "item",
+      "stage": "card",
+      "name": "Spickzettel",
+      "rarity": "Legendär",
+      "stats": [
+        {
+          "label": "Note",
+          "tone": "plus",
+          "value": "+1",
+          "at": "eine Note besser"
+        }
+      ],
+      "narration": "Der Spickzettel von deinem Kollegen. [pause short] Seltenheit: legendär. [pause short] Effekt: eine Note besser."
+    },
+    {
+      "id": "fluch",
+      "type": "item",
+      "stage": "card",
+      "name": "Spickzettel",
+      "rarity": "Legendär",
+      "curseAt": "verfluchtes Item",
+      "stats": [
+        {
+          "label": "Note",
+          "tone": "plus",
+          "value": "+1"
+        },
+        {
+          "label": "Selbstachtung",
+          "tone": "minus",
+          "at": "Selbstachtung"
+        },
+        {
+          "label": "Frieden",
+          "tone": "minus",
+          "at": "Frieden"
+        },
+        {
+          "label": "Vertrauen",
+          "tone": "minus",
+          "at": "Vertrauen"
+        }
+      ],
+      "narration": "Aber Achtung: [pause short] verfluchtes Item! [pause short] Selbstachtung sinkt. [pause short] Frieden sinkt. [pause short] Vertrauen sinkt."
+    },
+    {
+      "id": "segen",
+      "type": "item",
+      "stage": "card",
+      "name": "Ehrlichkeit",
+      "rarity": "Segen",
+      "icon": "heart",
+      "ref": "Wegweiser «Für eine starke Jugend»",
+      "stats": [
+        {
+          "label": "Frieden",
+          "tone": "plus",
+          "at": "Frieden"
+        },
+        {
+          "label": "Selbstachtung",
+          "tone": "plus",
+          "at": "Selbstachtung"
+        },
+        {
+          "label": "Vertrauen",
+          "tone": "plus",
+          "at": "vertrauen"
+        }
+      ],
+      "narration": "Und das Gegenstück? [pause short] Ehrlichkeit. [pause short] Laut dem Wegweiser «Für eine starke Jugend» bringt sie Frieden und Selbstachtung – [pause short] und andere können dir vertrauen."
+    },
+    {
+      "id": "wahl",
+      "type": "item",
+      "stage": "choice",
+      "name": "Spickzettel",
+      "rarity": "Legendär",
+      "choices": [
+        "Aufheben",
+        "Liegen lassen"
+      ],
+      "holdAfterSec": 1.5,
+      "narration": "Spickzettel aufheben? [pause short] Oder liegen lassen? [pause short] Was würdest du tun?"
+    }
+  ]
+}

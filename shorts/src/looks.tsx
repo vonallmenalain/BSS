@@ -6,7 +6,7 @@
 import React, { createContext, useContext } from "react";
 import { theme } from "./theme";
 
-export type LookId = "dawn" | "arcade" | "chat" | "map" | "track" | "noir" | "show" | "journal";
+export type LookId = "dawn" | "arcade" | "chat" | "map" | "track" | "noir" | "show" | "journal" | "stone" | "ember" | "space" | "palace" | "dream";
 
 export type Look = {
   id: LookId;
@@ -101,6 +101,61 @@ export const LOOKS: Record<LookId, Look> = {
     display: theme.font.display,
     label: "Caveat",
     glow: "0 10px 40px rgba(0,0,0,0.5)",
+  },
+  /** Jerusalem bei Nacht: Steinmauer im Fackellicht */
+  stone: {
+    id: "stone",
+    accent: "#F4B860",
+    accent2: "#D0643F",
+    text: "#FFF4E2",
+    dim: "rgba(255,244,226,0.62)",
+    display: theme.font.display,
+    label: "Cinzel",
+    glow: "0 0 30px rgba(244,184,96,0.35), 0 10px 40px rgba(0,0,0,0.7)",
+  },
+  /** Hof bei Nacht: Feuer, Funken, Glut */
+  ember: {
+    id: "ember",
+    accent: "#FFA048",
+    accent2: "#FFD36B",
+    text: "#FFF1E0",
+    dim: "rgba(255,241,224,0.6)",
+    display: theme.font.display,
+    label: theme.font.body,
+    glow: "0 0 28px rgba(255,140,50,0.45), 0 10px 40px rgba(0,0,0,0.7)",
+  },
+  /** Weltraum: Sterne, Mars, Missionskontrolle */
+  space: {
+    id: "space",
+    accent: "#FF8A4C",
+    accent2: "#6EE7F9",
+    text: "#FFFFFF",
+    dim: "rgba(255,255,255,0.62)",
+    display: theme.font.display,
+    label: "Space Mono",
+    glow: "0 0 24px rgba(110,231,249,0.35), 0 10px 40px rgba(0,0,0,0.6)",
+  },
+  /** Persischer Palast: Gold, Purpur, Säulen */
+  palace: {
+    id: "palace",
+    accent: "#F5C451",
+    accent2: "#C08CFF",
+    text: "#FFF7E6",
+    dim: "rgba(255,247,230,0.62)",
+    display: theme.font.display,
+    label: "Cinzel",
+    glow: "0 0 26px rgba(245,196,81,0.4), 0 10px 40px rgba(0,0,0,0.6)",
+  },
+  /** Lehis Traum: Nebel, Licht des Baumes */
+  dream: {
+    id: "dream",
+    accent: "#FFE9A3",
+    accent2: "#9FD3FF",
+    text: "#F6F8FF",
+    dim: "rgba(246,248,255,0.62)",
+    display: theme.font.display,
+    label: theme.font.body,
+    glow: "0 0 30px rgba(255,233,163,0.4), 0 10px 40px rgba(0,0,0,0.6)",
   },
   /** Stadion in der Abenddämmerung */
   track: {

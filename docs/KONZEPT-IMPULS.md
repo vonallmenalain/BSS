@@ -1781,14 +1781,21 @@ Teil des App-Builds (die App-Prüfungen und Netlify fassen es nicht an).
   `npm run render` macht das MP4. Ablauf und Einrichtung: `shorts/README.md`.
 - **Jede Folge hat ihren eigenen Look** (`look` im JSON, `shorts/src/looks.tsx`):
   Videospiel, Handy-Chat, Kartentisch, Stadion, Detektiv, Quizshow,
-  Notizbuch, Sonnenaufgang – mit eigener Musik, eigener Stimme und
-  Soundeffekten. So sehen die Shorts einer Woche nicht gleich aus.
-- **Jede Folge leitet zur nächsten Karte über.** Die letzte Szene
-  (`teaser`) zeigt die Karte, die im Feed direkt danach kommt – Umfrage,
-  Dilemma oder Aufgabe – und lädt mit einer Wisch-Geste dorthin ein. Der
-  Einstieg weckt in den ersten zwei Sekunden Neugier: eine Figur mit
-  «Kampferfahrung 0», eine Nachricht von der Front, ein Auftrag als Lockvogel,
-  ein Schwert, das keins ist.
+  Notizbuch, Sonnenaufgang, Jerusalem bei Nacht, Feuer im Hof, Weltraum,
+  Palast und Traum – mit eigener Musik, eigener Stimme und Soundeffekten.
+  So sehen die Shorts einer Woche nicht gleich aus.
+- **Am besten kommen an:** Geschichten aus den Schriften, kurz, cool und
+  informativ erzählt (die Taktik als Kartentisch wie «Mission Lockvogel»),
+  und Videos im Stil eines Spiels (Werte und Fähigkeiten wie «Wähle deinen
+  Helden»). Der Einstieg weckt in den ersten zwei Sekunden Neugier: eine
+  Figur mit «Kampferfahrung 0», ein Gruppenchat, der explodiert, ein
+  Countdown, ein Satz, den einer nicht zurücknimmt.
+- **Das Video darf zum Thema der nächsten Karte hinführen, zeigt aber nicht
+  auf sie.** Die Woche 19.–25. Oktober endete jede Folge noch mit einer
+  Vorschau (`teaser`) und «Wisch weiter». Seit der Woche zur Wahrheit steht
+  in den Videos weder das Wort «Karte» noch «stimm ab» oder «das findest du
+  gleich»: Das merken die Jugendlichen selbst. Eine Frage am Schluss, die das
+  Thema der Umfrage aufnimmt, ist gut – sie muss aber nicht sein.
 - **Vor jedem interaktiven Element ein eigenes Video, keine Textkarte ohne
   Interaktion.** In der Woche 19.–25. Oktober (Helamans junge Krieger) führt
   vor jeder Umfrage, jedem Quiz, dem Puzzle, der Frage, der Teilen-Aufgabe
@@ -1816,8 +1823,35 @@ Teil des App-Builds (die App-Prüfungen und Netlify fassen es nicht an).
     13,5. Ein Video mit einem Platz zwischen Teilen-Aufgabe und Minispiel
     steht im Feed genau dort (`deckOrder`); neue Karten der Redaktion
     bekommen einen Platz hinter dem Spiel und bleiben vor der Teilen-Aufgabe.
+- **In der Woche 26. Oktober – 1. November** («Die Wahrheit befreit dich»,
+  Fastsonntag) genauso: zehn Videos, vor jedem interaktiven Element eines,
+  die drei Textkarten ersetzt. Das Minispiel «Ketten sprengen» ist dafür
+  umgebaut (13.7). Die Folgen in der Reihenfolge des Feeds:
+  - «Gruppenchat 1820» (Chat, Joseph Smith – Lebensgeschichte 1:5–17) →
+    Umfrage «Wo suchst du zuerst?» – Platz 0,5.
+  - «Was ist Wahrheit?» (Jerusalem bei Nacht, Johannes 8:32–36, 18:38) →
+    Quiz zu Lehre und Bündnisse 93:24 – 2,5, anstelle der Textkarte.
+  - «Ich nehme nichts zurück» (Sonnenaufgang mit Dominosteinen, Mosia
+    11–18: von Abinadi über Alma bis zu Helamans 2000) → Skala zur
+    Ehrlichkeit – 3,5.
+  - «Mission Mars» (Weltraum, Schwester Michelle Amos aus dem Heft) →
+    «Fakt oder Mythos?» zu Glaube und Lernen – 5,5, anstelle der Textkarte.
+  - «Verfluchtes Item» (Videospiel: Spickzettel gegen Ehrlichkeit) → «Was
+    würdest du tun?» zur Prüfung – 6,5.
+  - «Der Fall Korihor» (Detektiv, Alma 30) → Vers-Puzzle Lehre und
+    Bündnisse 93:24 – 7,5.
+  - «Für eine Zeit wie diese» (Palast, Ester 3–5, dazu der Fastsonntag) →
+    Quiz zum Fastopfer – 9,5, anstelle der Textkarte.
+  - «Nebel der Finsternis» (Traum als Spielfeld, 1 Nephi 8 und 11:25) →
+    Frage nach der Wahrheit, die Halt gibt – 10,5.
+  - «Drei Lügen in einer Nacht» (Feuer im Hof, Lukas 22:54–62,
+    Apostelgeschichte 4:18–20) → Teilen-Aufgabe – 11,5.
+  - «Ketten sprengen» (Videospiel, 2 Nephi 26:22, Trailer zum Minispiel) →
+    Minispiel – 12,5.
 - **Die Stimme**: Gedankenstriche sind Pausen, kein «Minus», und eine Zahl
   vor einem Satzpunkt ist eine Grundzahl («Alma 53.» = «dreiundfünfzig»).
+  Jahreszahlen nach «Frühling», «Jahr» … liest sie, wie man sie sagt
+  («Frühling 1820» = «achtzehnhundertzwanzig»).
   Das Skript wandelt das vor der Vertonung um (`speakable`); die Untertitel
   zeigen den Text, wie er geschrieben ist. Oben rechts steht keine
   Folgenangabe.
@@ -1827,8 +1861,8 @@ Teil des App-Builds (die App-Prüfungen und Netlify fassen es nicht an).
   eine Karte rückt.
 - **Ersetzte Karten.** Die ersten drei eigenen Shorts («Anpacken statt
   warten», «Verwundet, nicht gefallen», «Treu zu allen Zeiten») sahen
-  einander zu ähnlich; die drei Textkarten der Woche sind durch Videos
-  ersetzt. Eine ersetzte Karte des Decks bleibt mit `retired` im Paket
+  einander zu ähnlich; die drei Textkarten der Wochen 43 und 44 sind durch
+  Videos ersetzt. Eine ersetzte Karte des Decks bleibt mit `retired` im Paket
   stehen – sonst rückten die Plätze aller Karten dahinter –, wird aber nicht
   mehr eingespielt. Wer sie schon hat, bekommt in der Redaktion den Kasten
   «Ersetzte Karten zurückstellen» (`PACK_RETIRED`): Ein Klick macht sie zum

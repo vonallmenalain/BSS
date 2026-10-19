@@ -1,0 +1,120 @@
+{
+  "id": "2026-10-30-fuer-eine-zeit-wie-diese",
+  "title": "Für eine Zeit wie diese",
+  "date": "2026-10-30",
+  "series": "Für eine starke Jugend · November",
+  "brand": {
+    "name": "AntiDoom"
+  },
+  "look": "palace",
+  "voice": {
+    "provider": "google",
+    "languageCode": "de-DE",
+    "name": "de-DE-Chirp3-HD-Leda",
+    "speakingRate": 1.03
+  },
+  "music": {
+    "src": "music/temple.mp3",
+    "volume": 0.3,
+    "duckTo": 0.08
+  },
+  "scenes": [
+    {
+      "id": "gesetz",
+      "type": "palace",
+      "stage": "law",
+      "cues": [
+        "stirbt",
+        "goldenes Zepter"
+      ],
+      "ref": "Ester 4:11",
+      "narration": "Wer ungerufen vor den König tritt, stirbt. [pause short] Ausser, der König streckt ihm sein goldenes Zepter entgegen."
+    },
+    {
+      "id": "plan",
+      "type": "palace",
+      "stage": "decree",
+      "cues": [
+        "Haman",
+        "ihr ganzes Volk",
+        "An einem einzigen Tag"
+      ],
+      "ref": "Ester 3:6, 13",
+      "narration": "Königin Ester erfährt: [pause short] Ein Mann namens Haman will ihr ganzes Volk vernichten. [pause short] An einem einzigen Tag."
+    },
+    {
+      "id": "mordechai",
+      "type": "kinetic",
+      "ref": "Ester 4:14",
+      "lines": [
+        "Wer weiss,",
+        "ob du nicht genau für eine Zeit wie diese",
+        "Königin geworden bist?"
+      ],
+      "narration": "Ihr Cousin Mordechai sagt: [pause short] Wer weiss, ob du nicht genau für eine Zeit wie diese Königin geworden bist?"
+    },
+    {
+      "id": "fasten",
+      "type": "palace",
+      "stage": "days",
+      "cues": [
+        "drei Tage lang",
+        "Dann gehe ich zum König",
+        "wenn ich umkomme"
+      ],
+      "ref": "Ester 4:16",
+      "narration": "Ester antwortet: [pause short] Fastet für mich, drei Tage lang. [pause short] Dann gehe ich zum König. [pause short] Und wenn ich umkomme, dann komme ich um."
+    },
+    {
+      "id": "zepter",
+      "type": "palace",
+      "stage": "scepter",
+      "cues": [
+        "Am dritten Tag",
+        "Der König sieht sie",
+        "streckt ihr das Zepter entgegen",
+        "Ihr Mut rettet ihr Volk"
+      ],
+      "ref": "Ester 5:1–2; 8–9",
+      "narration": "Am dritten Tag tritt sie vor den Thron. [pause short] Der König sieht sie – [pause short] und streckt ihr das Zepter entgegen. [pause short] Ihr Mut rettet ihr Volk."
+    },
+    {
+      "id": "heute",
+      "type": "ledger",
+      "title": "Fastsonntag",
+      "ref": "Evangeliumsthemen: Fasten und Fastopfer",
+      "lines": [
+        {
+          "label": "Zwei Mahlzeiten",
+          "value": "verzichten",
+          "at": "auf zwei Mahlzeiten",
+          "mark": "check"
+        },
+        {
+          "label": "Ein Anliegen",
+          "value": "beten",
+          "at": "mit einem Anliegen",
+          "mark": "check"
+        },
+        {
+          "label": "Fastopfer",
+          "value": "geben",
+          "at": "als Fastopfer",
+          "mark": "check"
+        }
+      ],
+      "narration": "Fasten gibt bis heute Kraft. [pause short] Am Fastsonntag verzichtest du – wenn du gesund bist – auf zwei Mahlzeiten, [pause short] betest mit einem Anliegen [pause short] und gibst das gesparte Geld als Fastopfer."
+    },
+    {
+      "id": "frage",
+      "type": "kinetic",
+      "holdAfterSec": 1.2,
+      "lines": [
+        "Wofür würdest du fasten?",
+        "Und das Fastopfer –",
+        "wohin geht das eigentlich?"
+      ],
+      "narration": "Wofür würdest du fasten? [pause short] Und das Fastopfer – [pause short] wohin geht das eigentlich?"
+    }
+  ]
+}
