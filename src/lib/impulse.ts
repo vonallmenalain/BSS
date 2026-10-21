@@ -891,6 +891,12 @@ export function impulseWeekMilestones(input: {
  * Die Namen kommen aus dem Fortschrittsdokument bzw. der Antwort selbst
  * (beide schreiben den Vornamen mit); fremde Profile braucht es dafür
  * nicht. Sortiert nach Vornamen, damit die Reihe stabil bleibt.
+ *
+ * Der Name hängt nicht daran, wodurch jemand dabei ist: Umfrage-Stimmen
+ * und anonyme Beiträge tragen bewusst keinen Vornamen. Wer nur über eine
+ * solche Antwort in die Woche kommt, heisst darum so wie in seinem
+ * Fortschrittsdokument – das hat jedes Konto, sobald es den Bereich
+ * einmal geöffnet hat.
  */
 export function weekParticipants(
   progressDocs: ImpulseProgress[],
@@ -899,19 +905,24 @@ export function weekParticipants(
   weekOfItem: (itemId: string) => string | null,
   week: string,
 ): { uid: string; firstName: string }[] {
-  const byUid = new Map<string, string>()
+  const nameByUid = new Map<string, string>()
   for (const progress of progressDocs) {
-    if (weekStateParticipated(progress.weeks?.[week])) {
-      byUid.set(progress.uid, progress.firstName || '–')
-    }
+    if (progress.firstName) nameByUid.set(progress.uid, progress.firstName)
   }
   for (const answer of answers) {
-    if (weekOfItem(answer.itemId) === week && !byUid.has(answer.uid)) {
-      byUid.set(answer.uid, answer.firstName || '–')
+    if (answer.firstName && !nameByUid.has(answer.uid)) {
+      nameByUid.set(answer.uid, answer.firstName)
     }
   }
-  return [...byUid.entries()]
-    .map(([uid, firstName]) => ({ uid, firstName }))
+  const uids = new Set<string>()
+  for (const progress of progressDocs) {
+    if (weekStateParticipated(progress.weeks?.[week])) uids.add(progress.uid)
+  }
+  for (const answer of answers) {
+    if (weekOfItem(answer.itemId) === week) uids.add(answer.uid)
+  }
+  return [...uids]
+    .map((uid) => ({ uid, firstName: nameByUid.get(uid) ?? '–' }))
     .sort((a, b) => a.firstName.localeCompare(b.firstName, 'de'))
 }
 
