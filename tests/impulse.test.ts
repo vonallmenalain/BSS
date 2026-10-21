@@ -485,6 +485,23 @@ test('weekParticipants: wer nur anonym abgestimmt hat, heisst wie im Fortschritt
   ])
 })
 
+test('weekParticipants: wer nur Karten angeschaut hat, ist auch dabei', () => {
+  // Noa hat nur Karten angeschaut, Ben nur eine Vertiefung – kein Haken,
+  // keine Antwort. Lia hat Karten nur in der Vorwoche angeschaut.
+  const progress: ImpulseProgress[] = [
+    { id: 'n', uid: 'n', firstName: 'Noa', weeks: { '2026-W33': { cards: ['karte-33'] } } },
+    { id: 'b', uid: 'b', firstName: 'Ben', weeks: { '2026-W33': { deepened: ['karte-33'] } } },
+    { id: 'l', uid: 'l', firstName: 'Lia', weeks: { '2026-W32': { cards: ['karte-32'] } } },
+  ]
+  const participants = weekParticipants(progress, [], () => null, '2026-W33')
+  assert.deepEqual(
+    participants.map((person) => person.firstName),
+    ['Ben', 'Noa'],
+  )
+  // Die Wochenserie zählt das Anschauen allein weiterhin nicht.
+  assert.equal(participatedWeeks(progress[0], [], () => null).size, 0)
+})
+
 /*
  * Das Kartenmischen der Zufalls-Reihenfolge: gleicher Schlüssel, gleiche
  * Ordnung – der Stapel liegt die ganze Woche über gleich, und der Sprung

@@ -892,6 +892,10 @@ export function impulseWeekMilestones(input: {
  * (beide schreiben den Vornamen mit); fremde Profile braucht es dafür
  * nicht. Sortiert nach Vornamen, damit die Reihe stabil bleibt.
  *
+ * Dabei ist hier auch, wer nur Karten im Feed angeschaut hat: Ihr Wappen
+ * füllt sich damit schon, also gehört es in den Raum. Für die Wochenserie
+ * (`participatedWeeks`) zählt das Anschauen allein weiterhin nicht.
+ *
  * Der Name hängt nicht daran, wodurch jemand dabei ist: Umfrage-Stimmen
  * und anonyme Beiträge tragen bewusst keinen Vornamen. Wer nur über eine
  * solche Antwort in die Woche kommt, heisst darum so wie in seinem
@@ -916,7 +920,14 @@ export function weekParticipants(
   }
   const uids = new Set<string>()
   for (const progress of progressDocs) {
-    if (weekStateParticipated(progress.weeks?.[week])) uids.add(progress.uid)
+    const state = progress.weeks?.[week]
+    if (
+      weekStateParticipated(state) ||
+      (state?.cards?.length ?? 0) > 0 ||
+      (state?.deepened?.length ?? 0) > 0
+    ) {
+      uids.add(progress.uid)
+    }
   }
   for (const answer of answers) {
     if (weekOfItem(answer.itemId) === week) uids.add(answer.uid)
