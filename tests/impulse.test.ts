@@ -462,6 +462,29 @@ test('weekParticipants: Vornamen aus Fortschritt und Antworten, ohne Doppelte', 
   )
 })
 
+test('weekParticipants: wer nur anonym abgestimmt hat, heisst wie im Fortschritt', () => {
+  // Mira hat Karten angeschaut (kein Haken der Woche) und in der Umfrage
+  // abgestimmt – die Stimme trägt keinen Vornamen, ihr Fortschritt schon.
+  const progress: ImpulseProgress[] = [
+    { id: 'm', uid: 'm', firstName: 'Mira', weeks: { '2026-W33': { cards: ['karte-33'] } } },
+  ]
+  const answers = [
+    { id: 'u_m', itemId: 'umfrage-33', uid: 'm', firstName: '', correct: null },
+    { id: 'u_e', itemId: 'umfrage-33', uid: 'e', firstName: '', correct: null },
+    { id: 'q_e', itemId: 'quiz-32', uid: 'e', firstName: 'Elias', correct: true },
+  ]
+  const participants = weekParticipants(
+    progress,
+    answers,
+    (itemId) => (itemId.endsWith('-33') ? '2026-W33' : '2026-W32'),
+    '2026-W33',
+  )
+  assert.deepEqual(participants, [
+    { uid: 'e', firstName: 'Elias' },
+    { uid: 'm', firstName: 'Mira' },
+  ])
+})
+
 /*
  * Das Kartenmischen der Zufalls-Reihenfolge: gleicher Schlüssel, gleiche
  * Ordnung – der Stapel liegt die ganze Woche über gleich, und der Sprung
