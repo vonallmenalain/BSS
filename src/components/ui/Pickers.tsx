@@ -1,5 +1,5 @@
 import { useMemo, useState } from 'react'
-import { Search, UserPlus, X } from 'lucide-react'
+import { Pencil, Search, UserPlus, X } from 'lucide-react'
 import { useData } from '@/contexts/DataContext'
 import { cn, matchesSearch } from '@/lib/utils'
 import { Avatar, UserAvatar } from '@/components/ui/Avatar'
@@ -434,6 +434,12 @@ export function MemberPicker({
  * Getippter Text allein wählt nie jemanden aus; das geschieht ausschliesslich
  * über die Trefferliste. Steht ein Name da, der zu keinem Mitglied (mehr)
  * gehört – etwa aus einem früheren Programm –, bleibt er lesbar stehen.
+ *
+ * Mit `freeText` lässt sich ein solcher Name auch von Hand erfassen – genau
+ * wie bei den Ansprachen: Unter den Treffern steht dann «… ohne Mitglied
+ * eintragen», und erst dieser Knopf (oder die Eingabetaste) übernimmt den
+ * getippten Text. Ein so erfasster Name lässt sich über den Stift
+ * nachbessern, statt ihn löschen und neu tippen zu müssen.
  */
 export function MemberCombobox({
   memberId,
@@ -442,6 +448,7 @@ export function MemberCombobox({
   label,
   placeholder = 'Name eingeben …',
   className,
+  freeText = false,
 }: {
   memberId: string | null | undefined
   /** Der gespeicherte Name – gilt, solange kein Mitglied dahintersteht */
@@ -451,13 +458,27 @@ export function MemberCombobox({
   label: string
   placeholder?: string
   className?: string
+  /**
+   * Auch Namen zulassen, die nicht in der Mitgliederliste stehen – ein Gast,
+   * jemand aus einer anderen Gemeinde, ein Mitglied, dessen Datensatz noch
+   * nicht übertragen ist.
+   */
+  freeText?: boolean
 }) {
   const { members, membersById } = useData()
   const [search, setSearch] = useState('')
   const [open, setOpen] = useState(false)
+  /**
+   * Ein von Hand erfasster Name wird gerade nachgebessert.
+   *
+   * Der bisherige Name bleibt dabei gespeichert, bis der neue übernommen
+   * ist – wer das Feld ohne Übernehmen verlässt, behält den alten.
+   */
+  const [editing, setEditing] = useState(false)
 
   const selected = memberId ? (membersById.get(memberId) ?? null) : null
   const chosen = selected ? `${selected.firstName} ${selected.lastName}` : name.trim()
+  const term = search.trim()
 
   const results = useMemo(() => {
     if (!search.trim()) return []
@@ -466,16 +487,56 @@ export function MemberCombobox({
       .slice(0, 8)
   }, [members, search])
 
-  if (chosen) {
+  /** Den getippten Text übernehmen – ausdrücklich ohne Mitglied. */
+  const takeAsIs = () => {
+    if (!freeText || !term) return
+    onChange({ memberId: null, name: term })
+    setSearch('')
+    setOpen(false)
+    setEditing(false)
+  }
+
+  /** Nachbessern abbrechen – der bisherige Name bleibt, wie er war. */
+  const keepAsWas = () => {
+    setSearch('')
+    setEditing(false)
+  }
+
+  if (chosen && !editing) {
+    // Von Hand erfasst und nicht bloss ein Name aus früheren Fassungen: Nur
+    // dann ist er auch hier nachzubessern.
+    const manual = !selected && freeText
     return (
       <div
         className={cn(
-          'flex items-center gap-2 rounded-lg border border-slate-300 px-2 py-1.5 dark:border-slate-700',
+          '@container flex items-center gap-2 rounded-lg border border-slate-300 px-2 py-1.5 dark:border-slate-700',
           className,
         )}
+        title={manual ? `${chosen} – keinem Mitglied zugeordnet` : undefined}
       >
         <Avatar name={chosen} id={selected?.id} size="sm" />
         <span className="min-w-0 flex-1 truncate text-sm">{chosen}</span>
+        {manual && (
+          <>
+            {/* Der Name geht vor: Am Telefon ist die Spalte zu schmal für
+                beides, und dann sagt es der Stift daneben. */}
+            <span className="hidden shrink-0 text-xs text-slate-400 @[22rem]:inline">
+              ohne Mitglied
+            </span>
+            <button
+              type="button"
+              className="btn-ghost p-1"
+              onClick={() => {
+                setSearch(chosen)
+                setEditing(true)
+              }}
+              aria-label={`${label}: Namen bearbeiten`}
+              title="Namen bearbeiten"
+            >
+              <Pencil className="size-3.5" aria-hidden />
+            </button>
+          </>
+        )}
         <button
           type="button"
           className="btn-ghost p-1"
@@ -490,6 +551,9 @@ export function MemberCombobox({
       </div>
     )
   }
+
+  const noMatch = term.length > 1 && results.length === 0
+  const offerAsIs = freeText && term.length > 0
 
   return (
     <div className={cn('relative', className)}>
@@ -507,44 +571,106 @@ export function MemberCombobox({
           setSearch(event.target.value)
           setOpen(true)
         }}
+        onKeyDown={(event) => {
+          if (event.key === 'Escape' && editing) {
+            keepAsWas()
+            return
+          }
+          if (event.key !== 'Enter' || !offerAsIs) return
+          // Das Feld steht auch in Formularen – ohne dies löste die
+          // Eingabetaste dort das Absenden aus, statt den Namen zu übernehmen.
+          event.preventDefault()
+          takeAsIs()
+        }}
         onFocus={() => setOpen(true)}
-        // Klick auf einen Treffer muss vor dem Schliessen ankommen.
-        onBlur={() => window.setTimeout(() => setOpen(false), 150)}
+        // Klick auf einen Treffer muss vor dem Schliessen ankommen. Wer beim
+        // Nachbessern hinausgeht, ohne zu übernehmen, behält den alten Namen.
+        onBlur={() =>
+          window.setTimeout(() => {
+            setOpen(false)
+            if (editing) keepAsWas()
+          }, 150)
+        }
+        /* Beim Nachbessern steht der Cursor gleich im Namen – der Stift wurde
+           ja gedrückt, um zu tippen. */
+        autoFocus={editing}
       />
 
-      {open && results.length > 0 && (
-        <ul className="absolute z-20 mt-1 max-h-64 w-full overflow-y-auto rounded-lg border border-slate-200 bg-white py-1 shadow-lg dark:border-slate-700 dark:bg-slate-800">
-          {results.map((member) => (
-            <li key={member.id}>
+      {open && (results.length > 0 || noMatch || offerAsIs) && (
+        <div className="absolute z-20 mt-1 w-full overflow-hidden rounded-lg border border-slate-200 bg-white shadow-lg dark:border-slate-700 dark:bg-slate-800">
+          {results.length > 0 && (
+            <ul className="max-h-64 overflow-y-auto py-1">
+              {results.map((member) => (
+                <li key={member.id}>
+                  <button
+                    type="button"
+                    onMouseDown={(event) => event.preventDefault()}
+                    onClick={() => {
+                      onChange({
+                        memberId: member.id,
+                        name: `${member.firstName} ${member.lastName}`,
+                      })
+                      setSearch('')
+                      setOpen(false)
+                      setEditing(false)
+                    }}
+                    className="flex w-full items-center gap-2 px-3 py-2 text-left text-sm transition hover:bg-slate-100 dark:hover:bg-slate-700"
+                  >
+                    <Avatar
+                      name={`${member.firstName} ${member.lastName}`}
+                      id={member.id}
+                      size="sm"
+                    />
+                    <span className="min-w-0 flex-1 truncate">
+                      {member.lastName}, {member.firstName}
+                    </span>
+                    {member.status !== 'active' && (
+                      <span className="text-xs text-slate-400">inaktiv</span>
+                    )}
+                  </button>
+                </li>
+              ))}
+            </ul>
+          )}
+
+          {noMatch && (
+            <p className="px-3 py-2 text-sm text-slate-500">
+              Keine Übereinstimmung im Mitgliederverzeichnis.
+            </p>
+          )}
+
+          {/* Der getippte Text allein ordnet nichts zu – erst dieser Knopf
+              übernimmt ihn, und zwar ausdrücklich ohne Mitglied. Er steht
+              auch neben Treffern: «Peter Meier» kann ein Gast sein, auch wenn
+              es in der Gemeinde einen Peter Meierhans gibt. */}
+          {offerAsIs && (
+            <div
+              className={cn(
+                'p-1.5',
+                (results.length > 0 || noMatch) &&
+                  'border-t border-slate-200 dark:border-slate-700',
+              )}
+            >
               <button
                 type="button"
                 onMouseDown={(event) => event.preventDefault()}
-                onClick={() => {
-                  onChange({
-                    memberId: member.id,
-                    name: `${member.firstName} ${member.lastName}`,
-                  })
-                  setSearch('')
-                  setOpen(false)
-                }}
-                className="flex w-full items-center gap-2 px-3 py-2 text-left text-sm transition hover:bg-slate-100 dark:hover:bg-slate-700"
+                onClick={takeAsIs}
+                className="btn-secondary btn-sm w-full"
               >
-                <Avatar name={`${member.firstName} ${member.lastName}`} id={member.id} size="sm" />
-                <span className="min-w-0 flex-1 truncate">
-                  {member.lastName}, {member.firstName}
-                </span>
-                {member.status !== 'active' && (
-                  <span className="text-xs text-slate-400">inaktiv</span>
+                {editing ? (
+                  <>
+                    <Pencil className="size-3.5 shrink-0" aria-hidden />
+                    <span className="min-w-0 truncate">«{term}» übernehmen</span>
+                  </>
+                ) : (
+                  <>
+                    <UserPlus className="size-3.5 shrink-0" aria-hidden />
+                    <span className="min-w-0 truncate">«{term}» ohne Mitglied eintragen</span>
+                  </>
                 )}
               </button>
-            </li>
-          ))}
-        </ul>
-      )}
-
-      {open && search.trim().length > 1 && results.length === 0 && (
-        <div className="absolute z-20 mt-1 w-full rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm text-slate-500 shadow-lg dark:border-slate-700 dark:bg-slate-800">
-          Keine Übereinstimmung im Mitgliederverzeichnis.
+            </div>
+          )}
         </div>
       )}
     </div>

@@ -4,14 +4,14 @@ import { useAuth } from '@/contexts/AuthContext'
 import { useToast } from '@/contexts/ToastContext'
 import { Modal, ConfirmDialog } from '@/components/ui/Modal'
 import { AgendaItemEditor } from '@/components/agenda/AgendaItemEditor'
-import { DeferMenu } from '@/components/agenda/DeferMenu'
+import { DeferMenu, DeferredBadge, UndoDeferButton } from '@/components/agenda/DeferMenu'
 import { StandingButton } from '@/components/agenda/Standing'
 import { ItemMeta } from '@/components/agenda/ItemMeta'
 import { useStandingRound } from '@/hooks/useStanding'
 import { deleteAgendaItem, setItemStatus } from '@/services/agenda'
 import { hasOpenCallingRows } from '@/lib/callingChanges'
 import { isDutyItem } from '@/lib/monthlyDuties'
-import { isStanding } from '@/lib/standing'
+import { isDeferredView, isStanding } from '@/lib/standing'
 import { ITEM_KIND_LABELS, toItemKind, type AgendaItem, type CallingChanges } from '@/lib/types'
 
 /**
@@ -46,7 +46,9 @@ export function AgendaItemDialog({
   const [confirmDelete, setConfirmDelete] = useState(false)
 
   const kind = item ? toItemKind(item) : 'traktandum'
-  const isDone = item?.status === 'done'
+  // Aus der Sitzung verschoben, in der das Fenster aufging (siehe `itemsOfMeeting`).
+  const deferred = item ? isDeferredView(item) : false
+  const isDone = item?.status === 'done' && !deferred
 
   /*
    * Der Stand der Runde, während darin gearbeitet wird.
@@ -123,13 +125,19 @@ export function AgendaItemDialog({
                 Woher der Eintrag kommt und wer zuletzt daran war, ist gerade
                 für den eine Auskunft, der bloss nachliest. */}
             <div className="flex flex-wrap items-center gap-2 border-t border-slate-200 pt-3 dark:border-slate-800">
+              {deferred && <DeferredBadge item={item} />}
               {!readOnly && (
                 <>
                   {/* Eine Berufungsrunde wird zeilenweise erledigt; als Ganzes
                       ist sie erst fertig, wenn keine Zeile mehr offen ist
                       (siehe `hasOpenCallingRows`) – bis dahin steht hier kein
                       Knopf. */}
-                  {!openRows && (
+                  {/* Aus der Sitzung verschoben, in der das Fenster geöffnet
+                      wurde: Er steht schon in der nächsten, und hier lässt er
+                      sich nur zurückholen. */}
+                  {deferred && <UndoDeferButton item={item} className="btn-sm" />}
+
+                  {!openRows && !deferred && (
                     <button
                       type="button"
                       className={isDone ? 'btn-secondary btn-sm' : 'btn-success btn-sm'}
@@ -140,18 +148,16 @@ export function AgendaItemDialog({
                     </button>
                   )}
 
-                  {!item.doneInMeeting && (
-                    <DeferMenu
-                      itemId={item.id}
-                      nextMeeting={nextMeeting ?? null}
-                      className="btn-sm"
-                    />
+                  {!item.doneInMeeting && !deferred && (
+                    <DeferMenu item={item} nextMeeting={nextMeeting ?? null} className="btn-sm" />
                   )}
 
                   {/* Beide Richtungen – zur ständigen Pendenz und zurück.
                       Nicht an der Monatspendenz: Die kehrt bereits auf ihre
                       eigene Weise wieder (siehe `lib/monthlyDuties`). */}
-                  {!isDutyItem(item) && <StandingButton item={item} className="btn-sm" />}
+                  {!isDutyItem(item) && !deferred && (
+                    <StandingButton item={item} className="btn-sm" />
+                  )}
                 </>
               )}
 

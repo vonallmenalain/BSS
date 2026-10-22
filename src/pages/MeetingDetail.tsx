@@ -62,7 +62,7 @@ import {
   suggestNextMeetingDate,
   updateMeeting,
 } from '@/services/meetings'
-import { dayKey } from '@/lib/standing'
+import { dayKey, isDeferredView } from '@/lib/standing'
 import {
   MEETING_SECTION_ORDER,
   MEETING_SECTION_PLURAL,
@@ -188,7 +188,15 @@ export function MeetingDetail() {
    * Die übrigen Pendenzen behalten dabei ihre Plätze (siehe
    * `reorderWithinPendenzen`).
    */
-  const saveOrder = async (section: MeetingSection, ordered: AgendaItem[]) => {
+  const saveOrder = async (section: MeetingSection, rows: AgendaItem[]) => {
+    /*
+     * Ein verschobener Punkt steht hier bloss noch zur Auskunft; sein Platz
+     * ist der von damals. Schriebe das Umsortieren ihn mit, rückte es ihn in
+     * der nächsten Sitzung (oder in der Pendenzenliste) an eine Stelle, die
+     * dort niemand gewählt hat.
+     */
+    const own = (list: AgendaItem[]) => list.filter((item) => !isDeferredView(item))
+    const ordered = own(rows)
     try {
       // Die ständigen Pendenzen stehen in der Pendenzenliste wie alle anderen
       // – wer sie hier zieht, ordnet dieselbe Liste.
@@ -197,7 +205,7 @@ export function MeetingDetail() {
         return
       }
       const all = MEETING_SECTION_ORDER.flatMap((each) =>
-        each === section ? ordered : groups[each],
+        each === section ? ordered : own(groups[each]),
       )
       await reorderItems(all.map((item) => item.id))
     } catch (error) {
@@ -225,8 +233,11 @@ export function MeetingDetail() {
   }
 
   const isClosed = meeting.status === 'closed'
-  const doneCount = items.filter((item) => item.status === 'done').length
-  const openCount = items.length - doneCount
+  // Verschoben ist weder erledigt noch offen: Der Punkt steht schon in der
+  // nächsten Sitzung, und das Abschliessen dieser rührt ihn nicht mehr an.
+  const deferredCount = items.filter(isDeferredView).length
+  const doneCount = items.filter((item) => item.status === 'done' && !isDeferredView(item)).length
+  const openCount = items.length - doneCount - deferredCount
 
   const handleCarryOver = async () => {
     if (!actor) return
@@ -480,6 +491,7 @@ export function MeetingDetail() {
           />
           <p className="text-center text-xs text-slate-400">
             {doneCount} von {items.length} erledigt
+            {deferredCount > 0 && ` · ${deferredCount} verschoben`}
           </p>
         </div>
       )}
@@ -637,14 +649,18 @@ function ItemGroup({
             position={index + 1}
             expanded={openId === item.id}
             onToggle={() => onToggle(item.id)}
-            onMove={readOnly ? undefined : (delta) => move(index, index + delta)}
+            /* Ein verschobener Punkt behält seinen Platz von damals (siehe
+               `saveOrder`) – Pfeile und Ziehen hätten an ihm nichts zu tun. */
+            onMove={
+              readOnly || isDeferredView(item) ? undefined : (delta) => move(index, index + delta)
+            }
             first={index === 0}
             last={index === items.length - 1}
             readOnly={readOnly}
             nextMeeting={nextMeeting}
             meetingDate={meetingDate}
             onDragStart={
-              readOnly
+              readOnly || isDeferredView(item)
                 ? undefined
                 : (event: DragEvent<HTMLElement>) => {
                     setDragId(item.id)
@@ -936,7 +952,7 @@ function PrintProtocol({
                 <li key={item.id}>
                   <p className="font-semibold">
                     {index + 1}. <RichText text={item.title} rich={item.titleRich} />
-                    {item.status === 'done' && ' ✓'}
+                    {isDeferredView(item) ? ' → verschoben' : item.status === 'done' && ' ✓'}
                   </p>
                   {item.description && (
                     // Auch auf Papier mit Fett, Farben und Aufzählungen –

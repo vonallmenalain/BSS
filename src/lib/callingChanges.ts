@@ -203,31 +203,40 @@ export function normalizeCallingChanges(
  */
 export function serializeCallingChanges(changes: CallingChanges): CallingChanges {
   return {
-    members: changes.members.map((row) => {
-      const stored: CallingMemberRow = {
-        id: row.id,
-        memberIds: row.memberIds ?? [],
-        calling: row.calling ?? '',
-        ideas: row.ideas ?? '',
-        assignees: row.assignees ?? [],
-      }
-      if (row.urgency) stored.urgency = row.urgency
-      if (row.done) stored.done = true
-      return stored
-    }),
-    open: changes.open.map((row) => {
-      const stored: CallingOpenRow = {
-        id: row.id,
-        calling: row.calling ?? '',
-        candidates: row.candidates ?? '',
-        next: row.next ?? '',
-        assignees: row.assignees ?? [],
-      }
-      if (row.urgency) stored.urgency = row.urgency
-      if (row.done) stored.done = true
-      return stored
-    }),
+    members: changes.members.map(storedMemberRow),
+    open: changes.open.map(storedOpenRow),
   }
+}
+
+/*
+ * Eine Zeile, wie sie in Firestore steht – immer mit denselben Schlüsseln in
+ * derselben Reihenfolge. Daran vergleicht auch das Zusammenführen (siehe
+ * `mergeRows`).
+ */
+function storedMemberRow(row: CallingMemberRow): CallingMemberRow {
+  const stored: CallingMemberRow = {
+    id: row.id,
+    memberIds: row.memberIds ?? [],
+    calling: row.calling ?? '',
+    ideas: row.ideas ?? '',
+    assignees: row.assignees ?? [],
+  }
+  if (row.urgency) stored.urgency = row.urgency
+  if (row.done) stored.done = true
+  return stored
+}
+
+function storedOpenRow(row: CallingOpenRow): CallingOpenRow {
+  const stored: CallingOpenRow = {
+    id: row.id,
+    calling: row.calling ?? '',
+    candidates: row.candidates ?? '',
+    next: row.next ?? '',
+    assignees: row.assignees ?? [],
+  }
+  if (row.urgency) stored.urgency = row.urgency
+  if (row.done) stored.done = true
+  return stored
 }
 
 /* ------------------------------------------------------------------ */
@@ -253,13 +262,26 @@ function mergeRows<T extends CallingMemberRow | CallingOpenRow>(
   base: T[],
   ours: T[],
   theirs: T[],
+  stored: (row: T) => T,
 ): T[] {
   const byId = (rows: T[]) => new Map(rows.map((row) => [row.id, row]))
   const baseMap = byId(base)
   const theirMap = byId(theirs)
 
+  /*
+   * Verglichen wird der **Inhalt** einer Zeile, nicht ihre Schreibweise.
+   *
+   * Die drei Fassungen kommen verschieden daher: Der Stand beim Öffnen ist
+   * geradegezogen (`normalizeCallingChanges`), der aus Firestore nicht – dort
+   * stehen dieselben Schlüssel in anderer Reihenfolge, und an einer wieder
+   * geöffneten Zeile fehlt `done`, wo der Editor `done: false` trägt. Ein
+   * Vergleich des rohen Texts hielt deshalb **jede** Zeile für drüben
+   * geändert. Am meisten traf das das Löschen: Die eigene Löschung galt als
+   * Löschung einer fremd bearbeiteten Zeile, und die Zeile kam beim nächsten
+   * Speichern samt Inhalt zurück. Darum hier in der gespeicherten Gestalt.
+   */
   const same = (a: T | undefined, b: T | undefined) =>
-    JSON.stringify(a ?? null) === JSON.stringify(b ?? null)
+    JSON.stringify(a ? stored(a) : null) === JSON.stringify(b ? stored(b) : null)
 
   const pick = (id: string, ourRow: T | undefined): T | null => {
     const baseRow = baseMap.get(id)
@@ -303,8 +325,13 @@ export function mergeCallingChanges(
   theirs: CallingChanges | null | undefined,
 ): CallingChanges {
   return normalizeCallingChanges({
-    members: mergeRows(base?.members ?? [], ours.members ?? [], theirs?.members ?? []),
-    open: mergeRows(base?.open ?? [], ours.open ?? [], theirs?.open ?? []),
+    members: mergeRows(
+      base?.members ?? [],
+      ours.members ?? [],
+      theirs?.members ?? [],
+      storedMemberRow,
+    ),
+    open: mergeRows(base?.open ?? [], ours.open ?? [], theirs?.open ?? [], storedOpenRow),
   })
 }
 

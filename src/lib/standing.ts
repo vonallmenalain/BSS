@@ -5,6 +5,7 @@ import {
   STANDING_UNIT_PLURAL,
   toItemKind,
   type AgendaItem,
+  type DeferMark,
   type MeetingSection,
   type StandingRule,
   type StandingUndo,
@@ -400,20 +401,88 @@ export function asDoneIn<T extends AgendaItem>(item: T, meetingId: string): T {
   return { ...item, status: 'done', doneInMeeting: meetingId }
 }
 
+/* ------------------------------------------------------------------ */
+/* Verschoben – und in der Sitzung trotzdem noch da                    */
+/* ------------------------------------------------------------------ */
+
+/**
+ * Wie der Eintrag in dieser Sitzung stand, bevor er auf die nächste
+ * verschoben wurde – oder `null`, wenn er nie von hier verschoben wurde.
+ *
+ * Steht er inzwischen wieder in dieser Sitzung (zurückgeholt, aus dem
+ * Sammelkorb übernommen), ist er hier kein Verschobener mehr, sondern
+ * schlicht wieder da.
+ */
+export function deferMarkIn(
+  item: Pick<AgendaItem, 'deferredFrom' | 'meetingId'>,
+  meetingId: string,
+): DeferMark | null {
+  if (item.meetingId === meetingId) return null
+  const mark = item.deferredFrom?.[meetingId]
+  return mark && typeof mark === 'object' ? mark : null
+}
+
+/**
+ * Wie der Eintrag gerade in seiner Sitzung steht – festgehalten im
+ * Augenblick des Verschiebens, damit er dort an seinem Platz bleibt und sich
+ * genau so zurückholen lässt.
+ */
+export function deferMarkOf(
+  item: Pick<AgendaItem, 'kind' | 'meetingId' | 'firstMeetingId' | 'order' | 'status'>,
+  now: Date = new Date(),
+): DeferMark {
+  return {
+    kind: toItemKind(item),
+    order: item.order ?? 0,
+    status: item.status,
+    at: now.toISOString(),
+  }
+}
+
+/**
+ * Der Eintrag, wie er in der Sitzung dasteht, aus der er verschoben wurde:
+ * unter seiner Überschrift und an seinem Platz von damals.
+ *
+ * Verschieben macht aus einem Traktandum eine Pendenz und gibt ihm in der
+ * nächsten Sitzung einen neuen Platz. Hier zählt das nicht – sonst spränge
+ * der Punkt im Augenblick des Verschiebens in einen anderen Abschnitt, und
+ * mit ihm die Nummerierung der halben Sitzung.
+ */
+export function asDeferredIn<T extends AgendaItem>(item: T, meetingId: string): T {
+  const mark = deferMarkIn(item, meetingId)
+  if (!mark) return item
+  return {
+    ...item,
+    kind: mark.kind === 'traktandum' ? 'traktandum' : 'pendenz',
+    order: typeof mark.order === 'number' ? mark.order : item.order,
+    deferredInMeeting: meetingId,
+  }
+}
+
+/** Steht der Eintrag in dieser Ansicht bloss noch als verschoben da? */
+export function isDeferredView(item: Pick<AgendaItem, 'deferredInMeeting'>): boolean {
+  return Boolean(item.deferredInMeeting)
+}
+
 /**
  * Die Einträge einer Sitzung – samt den ständigen Pendenzen, die in ihr
- * abgehakt wurden.
+ * abgehakt wurden, und den Einträgen, die aus ihr verschoben wurden.
  *
  * Eine ständige Pendenz wandert beim Abhaken in die nächste Sitzung und ist
  * dort wieder offen. In der Sitzung, in der sie abgehakt wurde, soll sie
  * trotzdem stehen bleiben: mit dem grünen Haken, wie jede andere erledigte
  * Pendenz. Sonst verschwände sie mitten in der Sitzung aus der Liste, und
  * ob der Griff gewirkt hat, liesse sich nur noch in der nächsten nachsehen.
+ *
+ * Dasselbe gilt für «Auf nächste Sitzung»: Der Eintrag steht sofort in der
+ * nächsten Sitzung, hier aber weiterhin – grau, mit einem Pfeil (siehe
+ * `asDeferredIn`).
  */
 export function itemsOfMeeting<T extends AgendaItem>(items: T[], meetingId: string): T[] {
   return items.flatMap((item) => {
     if (item.meetingId === meetingId) return [item]
-    return standingDoneIn(item, meetingId) ? [asDoneIn(item, meetingId)] : []
+    if (standingDoneIn(item, meetingId)) return [asDoneIn(item, meetingId)]
+    return deferMarkIn(item, meetingId) ? [asDeferredIn(item, meetingId)] : []
   })
 }
 
@@ -428,8 +497,15 @@ export function itemsByMeeting<T extends AgendaItem>(items: T[]): Map<string, T[
 
   for (const item of items) {
     if (item.meetingId) add(item.meetingId, item)
-    for (const meetingId of normalizeStanding(item.standing)?.doneIn ?? []) {
+    const doneIn = normalizeStanding(item.standing)?.doneIn ?? []
+    for (const meetingId of doneIn) {
       if (meetingId !== item.meetingId) add(meetingId, asDoneIn(item, meetingId))
+    }
+    // Wie in `itemsOfMeeting`: Wer in einer Sitzung abgehakt wurde, steht
+    // dort als erledigt und nicht zusätzlich als verschoben.
+    for (const meetingId of Object.keys(item.deferredFrom ?? {})) {
+      if (doneIn.includes(meetingId) || !deferMarkIn(item, meetingId)) continue
+      add(meetingId, asDeferredIn(item, meetingId))
     }
   }
   return map

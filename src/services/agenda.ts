@@ -1,6 +1,7 @@
 import {
   collection,
   deleteDoc,
+  deleteField,
   doc,
   getDoc,
   getDocs,
@@ -19,6 +20,7 @@ import { dutyItemReturns, isDutyItem, monthKey } from '@/lib/monthlyDuties'
 import {
   advanceStanding,
   dayKey,
+  deferMarkOf,
   formatDayKey,
   nextStandingRound,
   normalizeStanding,
@@ -36,6 +38,7 @@ import { deleteMonthlyDuty } from '@/services/monthlyDuties'
 import type {
   AgendaItem,
   CallingChanges,
+  DeferMark,
   HistoryEntry,
   ItemKind,
   ItemLayout,
@@ -353,24 +356,64 @@ export async function undoStandingRound(
  * sichtbar, welche Themen immer wieder vertagt werden.
  */
 export async function deferToNextMeeting(
-  id: string,
+  item: Pick<AgendaItem, 'id' | 'meetingId' | 'kind' | 'firstMeetingId' | 'order' | 'status'>,
   meetingId: string | null,
+  actor: Actor,
+  mark: DeferMark = deferMarkOf(item),
+): Promise<SaveOutcome> {
+  const patch: Record<string, unknown> = {
+    // Wer verschoben wird, ist nicht erledigt – und damit von jetzt an eine
+    // Pendenz, auch wenn er in dieser Sitzung neu aufgetaucht ist.
+    kind: 'pendenz' satisfies ItemKind,
+    status: 'pending' satisfies ItemStatus,
+    meetingId,
+    deferCount: increment(1),
+    history: arrayUnion(
+      historyEntry(
+        meetingId ? 'Auf die nächste Sitzung verschoben' : 'Aus der Sitzung genommen',
+        actor,
+      ),
+    ),
+    ...touch(),
+  }
+
+  /*
+   * Die Sitzung, aus der er kommt, behält ihn im Blick – grau und mit einem
+   * Pfeil, an seinem bisherigen Platz (siehe `itemsOfMeeting`). Festgehalten
+   * wird dafür, wie er dort stand; im selben Schreibvorgang, damit er auf
+   * dem Bildschirm keinen Augenblick fehlt.
+   */
+  const from = item.meetingId
+  if (from && from !== meetingId) patch[`deferredFrom.${from}`] = mark
+
+  return commit(updateDoc(doc(db, COLLECTIONS.agendaItems, item.id), patch))
+}
+
+/**
+ * «Zurückholen» – das Verschieben zurücknehmen.
+ *
+ * Für den Griff daneben, oder wenn am Ende doch noch Zeit bleibt: Der Eintrag
+ * kehrt in die Sitzung zurück, aus der er verschoben wurde, und steht dort
+ * wieder so wie vorher – unter derselben Überschrift, am selben Platz, mit
+ * demselben Status. Auch der Zähler der Verschiebungen geht um eins zurück;
+ * es ist ja nichts vertagt worden.
+ */
+export async function undoDefer(
+  id: string,
+  meetingId: string,
+  /** Wie er dort stand – `deferMarkIn()` am Eintrag oder der Stand beim Verschieben */
+  mark: DeferMark,
   actor: Actor,
 ): Promise<SaveOutcome> {
   return commit(
     updateDoc(doc(db, COLLECTIONS.agendaItems, id), {
-      // Wer verschoben wird, ist nicht erledigt – und damit von jetzt an eine
-      // Pendenz, auch wenn er in dieser Sitzung neu aufgetaucht ist.
-      kind: 'pendenz' satisfies ItemKind,
-      status: 'pending' satisfies ItemStatus,
       meetingId,
-      deferCount: increment(1),
-      history: arrayUnion(
-        historyEntry(
-          meetingId ? 'Auf die nächste Sitzung verschoben' : 'Aus der Sitzung genommen',
-          actor,
-        ),
-      ),
+      kind: mark.kind,
+      status: mark.status,
+      order: mark.order,
+      deferCount: increment(-1),
+      [`deferredFrom.${meetingId}`]: deleteField(),
+      history: arrayUnion(historyEntry('Verschieben zurückgenommen', actor)),
       ...touch(),
     }),
   )
