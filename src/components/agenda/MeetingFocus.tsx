@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useMemo, useState } from 'react'
 import { useSearchParams } from 'react-router-dom'
-import { Check, ChevronLeft, ChevronRight, Plus, Trash2 } from 'lucide-react'
+import { ArrowRight, Check, ChevronLeft, ChevronRight, Plus, Trash2 } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { useAuth } from '@/contexts/AuthContext'
 import { useToast } from '@/contexts/ToastContext'
@@ -8,13 +8,14 @@ import { KindBadge, StandingBadge, StatusBadge } from '@/components/ui/Badge'
 import { ConfirmDialog } from '@/components/ui/Modal'
 import { EmptyState } from '@/components/ui/Feedback'
 import { AgendaItemEditor } from '@/components/agenda/AgendaItemEditor'
-import { DeferMenu } from '@/components/agenda/DeferMenu'
+import { DeferMenu, DeferredBadge, UndoDeferButton } from '@/components/agenda/DeferMenu'
 import { StandingButton } from '@/components/agenda/Standing'
 import { useStandingRound } from '@/hooks/useStanding'
 import { deleteAgendaItem, setItemStatus } from '@/services/agenda'
 import { hasOpenCallingRows } from '@/lib/callingChanges'
 import { isDutyItem } from '@/lib/monthlyDuties'
-import { normalizeStanding, sectionOf } from '@/lib/standing'
+import { formatDateShort } from '@/lib/dates'
+import { isDeferredView, normalizeStanding, sectionOf } from '@/lib/standing'
 import {
   ITEM_KIND_LABELS,
   MEETING_SECTION_COUNTED,
@@ -95,7 +96,18 @@ export function MeetingFocus({ items, onAdd, nextMeeting, readOnly = false }: Pr
     [goTo, items, index],
   )
 
-  const doneCount = useMemo(() => items.filter((item) => item.status === 'done').length, [items])
+  /*
+   * Was in dieser Sitzung erledigt ist – und was verschoben.
+   *
+   * Ein verschobener Punkt steht weiter in der Liste, ist aber weder erledigt
+   * noch offen: Für heute ist er besprochen. Er zählt deshalb für sich und
+   * füllt den Balken grau statt grün.
+   */
+  const doneCount = useMemo(
+    () => items.filter((item) => item.status === 'done' && !isDeferredView(item)).length,
+    [items],
+  )
+  const deferredCount = useMemo(() => items.filter(isDeferredView).length, [items])
 
   /**
    * Die Nummer jedes Punktes innerhalb seines Abschnitts.
@@ -167,6 +179,12 @@ export function MeetingFocus({ items, onAdd, nextMeeting, readOnly = false }: Pr
   const actor = profile ? { id: profile.id, name: profile.displayName } : null
   const kind = toItemKind(current)
   const standing = normalizeStanding(current.standing)
+  /*
+   * Aus dieser Sitzung verschoben: Er steht schon in der nächsten und hier
+   * bloss noch zur Auskunft. Abgehakt oder weiterverschoben wird er dort; hier
+   * lässt er sich nur zurückholen.
+   */
+  const deferred = isDeferredView(current)
 
   /*
    * Eine Berufungsrunde wird zeilenweise erledigt – im Menü rechts an jeder
@@ -221,14 +239,20 @@ export function MeetingFocus({ items, onAdd, nextMeeting, readOnly = false }: Pr
             {place.position} von {place.total} {MEETING_SECTION_COUNTED[place.section]}
           </span>
           <span className="text-slate-500 dark:text-slate-400">
-            {doneCount} erledigt · {items.length - doneCount} offen
+            {doneCount} erledigt
+            {deferredCount > 0 && ` · ${deferredCount} verschoben`} ·{' '}
+            {items.length - doneCount - deferredCount} offen
           </span>
         </div>
 
-        <div className="mb-3 h-1.5 overflow-hidden rounded-full bg-slate-200 dark:bg-slate-800">
+        <div className="mb-3 flex h-1.5 overflow-hidden rounded-full bg-slate-200 dark:bg-slate-800">
           <div
-            className="h-full rounded-full bg-emerald-500 transition-all duration-300"
+            className="h-full bg-emerald-500 transition-all duration-300"
             style={{ width: `${(doneCount / items.length) * 100}%` }}
+          />
+          <div
+            className="h-full bg-slate-400 transition-all duration-300 dark:bg-slate-500"
+            style={{ width: `${(deferredCount / items.length) * 100}%` }}
           />
         </div>
 
@@ -237,7 +261,10 @@ export function MeetingFocus({ items, onAdd, nextMeeting, readOnly = false }: Pr
             und wo das Neue. */}
         <div className="no-scrollbar -mx-1 flex gap-1 overflow-x-auto px-1">
           {items.map((item, itemIndex) => {
-            const isDone = item.status === 'done'
+            // Verschoben geht vor erledigt: In der nächsten Sitzung mag er
+            // inzwischen abgehakt sein – hier wurde er verschoben.
+            const isDeferred = isDeferredView(item)
+            const isDone = item.status === 'done' && !isDeferred
             const { section, number } = numbers[itemIndex]
             // Ein Abschnittswechsel bekommt Luft davor. Beim ersten Punkt
             // wäre sie ein Einzug ohne Gegenstück.
@@ -247,20 +274,29 @@ export function MeetingFocus({ items, onAdd, nextMeeting, readOnly = false }: Pr
                 key={item.id}
                 type="button"
                 onClick={() => goTo(item)}
-                title={`${MEETING_SECTION_LABELS[section]} ${number}: ${item.title}`}
+                title={`${MEETING_SECTION_LABELS[section]} ${number}: ${item.title}${
+                  isDeferred ? ' (verschoben)' : ''
+                }`}
                 className={cn(
                   'tabular grid size-8 shrink-0 place-items-center rounded-lg text-xs font-semibold transition',
                   first && 'ml-3',
                   itemIndex === index
                     ? 'bg-brand-600 text-white'
-                    : isDone
-                      ? 'bg-emerald-100 text-emerald-700 dark:bg-emerald-950 dark:text-emerald-300'
-                      : section === 'traktandum'
-                        ? 'bg-slate-100 text-slate-600 hover:bg-slate-200 dark:bg-slate-800 dark:text-slate-300 dark:hover:bg-slate-700'
-                        : 'bg-amber-100 text-amber-800 hover:bg-amber-200 dark:bg-amber-950 dark:text-amber-200',
+                    : isDeferred
+                      ? 'bg-slate-200 text-slate-500 dark:bg-slate-700 dark:text-slate-300'
+                      : isDone
+                        ? 'bg-emerald-100 text-emerald-700 dark:bg-emerald-950 dark:text-emerald-300'
+                        : section === 'traktandum'
+                          ? 'bg-slate-100 text-slate-600 hover:bg-slate-200 dark:bg-slate-800 dark:text-slate-300 dark:hover:bg-slate-700'
+                          : 'bg-amber-100 text-amber-800 hover:bg-amber-200 dark:bg-amber-950 dark:text-amber-200',
                 )}
               >
-                {isDone && itemIndex !== index ? (
+                {/* Wie der grüne Haken beim Erledigten: Der graue Pfeil sagt,
+                    dass der Punkt für heute durch ist – auf die nächste
+                    Sitzung verschoben. */}
+                {isDeferred && itemIndex !== index ? (
+                  <ArrowRight className="size-3.5" aria-hidden />
+                ) : isDone && itemIndex !== index ? (
                   <Check className="size-3.5" aria-hidden />
                 ) : (
                   number
@@ -286,13 +322,27 @@ export function MeetingFocus({ items, onAdd, nextMeeting, readOnly = false }: Pr
         {/* Angeschrieben wird nur, was vom Normalfall abweicht: «Pendent» neben
             «Pendenz» sagte dasselbe zweimal, und ein neues Traktandum braucht
             gar keine Zeile. */}
-        {(kind === 'pendenz' || current.status !== 'pending' || current.deferCount > 0) && (
+        {(deferred ||
+          kind === 'pendenz' ||
+          current.status !== 'pending' ||
+          current.deferCount > 0) && (
           <div className="mb-3 flex flex-wrap items-center gap-1.5">
             {/* Der Takt tritt an die Stelle des Etiketts «Pendenz»: Beide
                 sagen, worunter der Punkt steht, und dieses sagt es genauer. */}
             {standing ? <StandingBadge rule={standing} /> : <KindBadge kind={kind} />}
-            {current.status !== 'pending' && <StatusBadge status={current.status} />}
-            {current.deferCount > 0 && (
+            {/* Der Status eines verschobenen Punktes ist der aus der nächsten
+                Sitzung – hier sagt das Etikett «verschoben», was gilt. */}
+            {deferred ? (
+              <DeferredBadge
+                item={current}
+                meetingDate={(id) =>
+                  id === nextMeeting?.id ? formatDateShort(nextMeeting.date) : undefined
+                }
+              />
+            ) : (
+              current.status !== 'pending' && <StatusBadge status={current.status} />
+            )}
+            {current.deferCount > 0 && !deferred && (
               <span className="badge bg-amber-100 text-amber-800 dark:bg-amber-950 dark:text-amber-200">
                 {current.deferCount}× verschoben
               </span>
@@ -315,31 +365,41 @@ export function MeetingFocus({ items, onAdd, nextMeeting, readOnly = false }: Pr
               und würde die letzten Zeilen überdecken. */}
           <div className="card sticky bottom-24 z-20 p-2 lg:bottom-8">
             <div className="flex items-center gap-2">
-              <button
-                type="button"
-                className={cn(
-                  'min-w-0 flex-1',
-                  current.status === 'done' ? 'btn-secondary' : 'btn-success',
-                  openRows && 'cursor-default opacity-50',
-                )}
-                disabled={openRows}
-                onClick={() => void changeStatus(current.status === 'done' ? 'pending' : 'done')}
-              >
-                <Check className="size-4" aria-hidden />
-                <span className="truncate">
-                  {current.status === 'done' ? 'Wieder offen' : 'Erledigt'}
-                </span>
-              </button>
+              {deferred ? (
+                <UndoDeferButton item={current} className="min-w-0 flex-1" />
+              ) : (
+                <>
+                  <button
+                    type="button"
+                    className={cn(
+                      'min-w-0 flex-1',
+                      current.status === 'done' ? 'btn-secondary' : 'btn-success',
+                      openRows && 'cursor-default opacity-50',
+                    )}
+                    disabled={openRows}
+                    onClick={() =>
+                      void changeStatus(current.status === 'done' ? 'pending' : 'done')
+                    }
+                  >
+                    <Check className="size-4" aria-hidden />
+                    <span className="truncate">
+                      {current.status === 'done' ? 'Wieder offen' : 'Erledigt'}
+                    </span>
+                  </button>
 
-              {!current.doneInMeeting && (
-                <DeferMenu itemId={current.id} nextMeeting={nextMeeting} compact />
+                  {/* Weitergerückt wird wie nach «Erledigt»: Für heute ist der
+                      Punkt besprochen. Er bleibt mit dem grauen Pfeil stehen. */}
+                  {!current.doneInMeeting && (
+                    <DeferMenu item={current} nextMeeting={nextMeeting} compact onDone={advance} />
+                  )}
+
+                  {/* Am Sitzungstisch fällt auf, dass ein Punkt zum dritten Mal
+                      dasteht – deshalb steht der Weg zur ständigen Pendenz auch
+                      hier. Nicht an der Monatspendenz: Die kehrt bereits auf
+                      ihre eigene Weise wieder (siehe `lib/monthlyDuties`). */}
+                  {!isDutyItem(current) && <StandingButton item={current} compact />}
+                </>
               )}
-
-              {/* Am Sitzungstisch fällt auf, dass ein Punkt zum dritten Mal
-                  dasteht – deshalb steht der Weg zur ständigen Pendenz auch
-                  hier. Nicht an der Monatspendenz: Die kehrt bereits auf ihre
-                  eigene Weise wieder (siehe `lib/monthlyDuties`). */}
-              {!isDutyItem(current) && <StandingButton item={current} compact />}
 
               <button
                 type="button"

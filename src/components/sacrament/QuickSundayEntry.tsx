@@ -118,7 +118,7 @@ export function QuickBusinessDialog({ onClose }: { onClose: () => void }) {
   const handleSubmit = async (event: FormEvent) => {
     event.preventDefault()
     if (isBusinessEmpty(entry)) {
-      toast.error('Bitte wähle ein Mitglied aus oder gib eine Aufgabe an.')
+      toast.error('Bitte gib eine Person oder eine Aufgabe an.')
       return
     }
 
@@ -157,7 +157,7 @@ export function QuickBusinessDialog({ onClose }: { onClose: () => void }) {
         <SundayPicker value={date} onChange={setDate} />
 
         <div>
-          <span className="label">Art, Mitglied und Aufgabe</span>
+          <span className="label">Art, Person und Aufgabe</span>
           <BusinessFields entry={entry} index={0} onChange={setEntry} />
           <p className="hint">
             Der Eintrag hält fest, was am Sonntag vorgelesen wird. An der Berufung selbst ändert er

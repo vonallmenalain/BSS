@@ -7,7 +7,10 @@ import { BUSINESS_TYPE_LABELS, type BusinessEntry, type BusinessType } from '@/l
  * **Was** geschieht – Bestätigung, Entlassung, Segnung –, **wen** es betrifft
  * und **welche Aufgabe** gemeint ist. Mehr braucht der Wortlaut für den
  * Sonntag nicht. Die Person kommt aus dem Mitgliederverzeichnis: Getippt wird
- * der Anfang des Namens, gewählt wird aus den Treffern.
+ * der Anfang des Namens, gewählt wird aus den Treffern. Wer nicht darin steht –
+ * ein Gast, jemand aus einer anderen Gemeinde, ein neues Mitglied, dessen
+ * Datensatz noch nicht übertragen ist –, wird wie bei den Ansprachen von Hand
+ * eingetragen und keinem Mitglied zugeordnet.
  *
  * Die Aufgabe ist Freitext und **ändert an keiner Berufung etwas**. Wer welche
  * Berufung hat, sagt allein das LCR und der Import von dort.
@@ -58,7 +61,8 @@ export function BusinessFields({
         memberId={entry.memberId}
         name={entry.memberName ?? ''}
         onChange={(next) => patch({ memberId: next.memberId, memberName: next.name })}
-        label={`Mitglied im Eintrag ${index + 1}`}
+        label={`Person im Eintrag ${index + 1}`}
+        freeText
       />
 
       <input

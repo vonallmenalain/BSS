@@ -533,3 +533,76 @@ test('Zusammenführen: selbst gelöschte, drüben geänderte Zeile bleibt erhalt
   assert.ok(wieder)
   assert.equal(wieder.next, 'am Sonntag fragen')
 })
+
+/*
+ * Die Fassungen, wie sie im Editor wirklich ankommen: Der Stand beim Öffnen
+ * ist geradegezogen, der aus Firestore nicht – dort stehen die Schlüssel in
+ * anderer Reihenfolge (alphabetisch, wie Firestore sie zurückgibt). Die
+ * Tests darüber bauen alle drei Fassungen gleich und hätten den Fehler nie
+ * gesehen.
+ */
+function wieAusFirestore(value: CallingChanges): CallingChanges {
+  const sorted = <T extends object>(row: T): T =>
+    Object.fromEntries(Object.entries(row).sort(([a], [b]) => a.localeCompare(b))) as T
+  const stored = serializeCallingChanges(value)
+  return { members: stored.members.map(sorted), open: stored.open.map(sorted) }
+}
+
+test('Zusammenführen: eine gelöschte Zeile bleibt gelöscht – gegen den Firestore-Stand', () => {
+  // Dieselbe Person aus Versehen zweimal erfasst – die zweite Zeile soll weg.
+  const erste = { ...newCallingMemberRow(), memberIds: ['m1'], calling: 'PV-Leiterin' }
+  const doppelt = { ...newCallingMemberRow(), memberIds: ['m1'], calling: 'PV-Leiterin' }
+  const offen = { ...newCallingOpenRow(), calling: 'Sekretär', done: true as const }
+  const server = wieAusFirestore(changes({ members: [erste, doppelt], open: [offen] }))
+
+  const base = normalizeCallingChanges(server)
+  const meins = { ...base, members: base.members.filter((row) => row.id !== doppelt.id) }
+
+  const ergebnis = mergeCallingChanges(base, meins, server)
+  assert.deepEqual(
+    ergebnis.members.map((row) => row.id),
+    [erste.id],
+  )
+  assert.equal(ergebnis.open.length, 1)
+})
+
+test('Zusammenführen: eine gelöschte Zeile in «Offene Berufungen» bleibt gelöscht', () => {
+  const zeile = { ...newCallingOpenRow(), calling: 'Chorleiter', urgency: 'high' as const }
+  const behalten = { ...newCallingOpenRow(), calling: 'Sekretär', assignees: ['u1'] }
+  const server = wieAusFirestore(changes({ open: [zeile, behalten] }))
+
+  const base = normalizeCallingChanges(server)
+  const meins = { ...base, open: base.open.filter((row) => row.id !== zeile.id) }
+
+  const ergebnis = mergeCallingChanges(base, meins, server)
+  assert.deepEqual(
+    ergebnis.open.map((row) => row.calling),
+    ['Sekretär'],
+  )
+})
+
+test('Zusammenführen: wieder geöffnet (`done: false`) gilt wie nie abgehakt', () => {
+  const zeile = { ...newCallingOpenRow(), calling: 'Chorleiter' }
+  const server = wieAusFirestore(changes({ open: [zeile] }))
+  const base = normalizeCallingChanges(server)
+  // Abgehakt und gleich wieder geöffnet – geändert ist damit nichts.
+  const meins = { ...base, open: base.open.map((row) => ({ ...row, done: false })) }
+  const fremd = wieAusFirestore(changes({ open: [{ ...zeile, next: 'am Sonntag fragen' }] }))
+
+  // Die eigene Zeile ist unverändert und folgt deshalb dem Server.
+  const ergebnis = mergeCallingChanges(base, meins as CallingChanges, fremd)
+  assert.equal(ergebnis.open[0].next, 'am Sonntag fragen')
+})
+
+test('Zusammenführen: drüben weiterbearbeitet, hier gelöscht – bleibt auch gegen Firestore erhalten', () => {
+  const zeile = { ...newCallingOpenRow(), calling: 'Chorleiter' }
+  const behalten = { ...newCallingOpenRow(), calling: 'Sekretär' }
+  const base = normalizeCallingChanges(wieAusFirestore(changes({ open: [zeile, behalten] })))
+  const meins = { ...base, open: base.open.filter((row) => row.id !== zeile.id) }
+  const fremd = wieAusFirestore(
+    changes({ open: [{ ...zeile, next: 'am Sonntag fragen' }, behalten] }),
+  )
+
+  const ergebnis = mergeCallingChanges(base, meins, fremd)
+  assert.ok(ergebnis.open.some((row) => row.calling === 'Chorleiter'))
+})

@@ -18,7 +18,7 @@ import { StandingBadge, StatusBadge } from '@/components/ui/Badge'
 import { ConfirmDialog } from '@/components/ui/Modal'
 import { RichText } from '@/components/ui/RichText'
 import { AgendaItemEditor } from '@/components/agenda/AgendaItemEditor'
-import { DeferMenu } from '@/components/agenda/DeferMenu'
+import { DeferMenu, DeferredBadge, UndoDeferButton } from '@/components/agenda/DeferMenu'
 import { StandingButton } from '@/components/agenda/Standing'
 import { AuthorChip } from '@/components/agenda/AuthorChip'
 import { useStandingRound } from '@/hooks/useStanding'
@@ -26,7 +26,7 @@ import { deleteAgendaItem, setItemStatus } from '@/services/agenda'
 import { callingRowCounts } from '@/lib/callingChanges'
 import { formatDate } from '@/lib/dates'
 import { dutyItemReturns, formatMonthKey, isDutyItem, monthKey } from '@/lib/monthlyDuties'
-import { dayKey, normalizeStanding, standingWaits } from '@/lib/standing'
+import { dayKey, isDeferredView, normalizeStanding, standingWaits } from '@/lib/standing'
 import {
   ITEM_KIND_LABELS,
   lastEditedAt,
@@ -123,7 +123,13 @@ export function AgendaItemRow({
   const standingRound = useStandingRound()
   const [confirmDelete, setConfirmDelete] = useState(false)
 
-  const isDone = item.status === 'done'
+  /*
+   * Aus dieser Sitzung auf die nächste verschoben – hier steht er bloss noch
+   * grau und mit dem Pfeil (siehe `itemsOfMeeting`). Sein Status ist der aus
+   * der nächsten Sitzung und sagt hier nichts.
+   */
+  const deferred = isDeferredView(item)
+  const isDone = item.status === 'done' && !deferred
   const kind = toItemKind(item)
 
   /*
@@ -293,10 +299,14 @@ export function AgendaItemRow({
               </span>
               {/* «Pendent» neben «Pendenz» sagt dasselbe zweimal – angeschrieben
                   wird nur, was vom Normalfall abweicht. */}
-              {item.status !== 'pending' && <StatusBadge status={item.status} />}
+              {deferred ? (
+                <DeferredBadge item={item} meetingDate={meetingDate} />
+              ) : (
+                item.status !== 'pending' && <StatusBadge status={item.status} />
+              )}
               {standing && <StandingBadge rule={standing} waiting={standingWaiting} />}
               {dutyMonth && <DutyBadge month={dutyMonth} />}
-              {item.deferCount > 0 && (
+              {item.deferCount > 0 && !deferred && (
                 <span className="badge bg-amber-100 text-amber-800 dark:bg-amber-950 dark:text-amber-200">
                   <Repeat className="size-3" aria-hidden />
                   {item.deferCount}× verschoben
@@ -312,6 +322,7 @@ export function AgendaItemRow({
                 className={cn(
                   'line-clamp-1 min-w-0 text-sm leading-snug font-medium',
                   isDone && 'text-slate-500 line-through dark:text-slate-500',
+                  deferred && 'text-slate-500 dark:text-slate-400',
                 )}
               >
                 <RichText text={item.title} rich={item.titleRich} placeholder="Ohne Titel" />
@@ -329,10 +340,14 @@ export function AgendaItemRow({
               {/* Ohne den Haken vorne trägt die Zeile den Stand selbst: «Neu»
                   vor dem Start der Sitzung, «Erledigt» danach. «Pendent» ist
                   der Normalfall und bleibt ungeschrieben. */}
-              {item.status !== 'pending' && <StatusBadge status={item.status} />}
+              {deferred ? (
+                <DeferredBadge item={item} meetingDate={meetingDate} />
+              ) : (
+                item.status !== 'pending' && <StatusBadge status={item.status} />
+              )}
               {standing && <StandingBadge rule={standing} waiting={standingWaiting} />}
               {dutyMonth && <DutyBadge month={dutyMonth} />}
-              {item.deferCount > 0 && !isDone && (
+              {item.deferCount > 0 && !isDone && !deferred && (
                 <span
                   className="badge bg-slate-100 text-slate-500 dark:bg-slate-800 dark:text-slate-400"
                   title={`Wurde ${item.deferCount}× verschoben`}
@@ -430,11 +445,16 @@ export function AgendaItemRow({
 
           {!readOnly && (
             <div className="mt-4 flex flex-wrap items-center gap-2">
+              {/* Verschoben steht er schon in der nächsten Sitzung – abgehakt
+                  oder weiterverschoben wird er dort. Hier lässt er sich nur
+                  zurückholen. */}
+              {deferred && <UndoDeferButton item={item} className="btn-sm" />}
+
               {/* Eine Berufungsrunde wird zeilenweise erledigt (im Menü rechts
                   an jeder Zeile). Der ganze Eintrag ist erst fertig, wenn
                   keine Zeile mehr offen ist – bis dahin stünde hier ein Knopf,
                   der mehr abhakte, als besprochen wurde. */}
-              {closable && (
+              {closable && !deferred && (
                 <button
                   type="button"
                   className={isDone ? 'btn-secondary btn-sm' : 'btn-success btn-sm'}
@@ -448,15 +468,15 @@ export function AgendaItemRow({
 
               {/* Nicht an der Pendenz, die hier bloss als erledigt dasteht: Sie
                   wartet schon in der nächsten Sitzung. */}
-              {!duty && !item.doneInMeeting && (
-                <DeferMenu itemId={item.id} nextMeeting={nextMeeting} className="btn-sm" />
+              {!duty && !item.doneInMeeting && !deferred && (
+                <DeferMenu item={item} nextMeeting={nextMeeting} className="btn-sm" />
               )}
 
               {/* Der Weg in beide Richtungen: aus einer Pendenz eine ständige
                   machen – und aus einer ständigen wieder eine gewöhnliche.
                   Nicht an der Monatspendenz: Die kehrt bereits wieder, und
                   zwar auf ihre eigene Weise (siehe `lib/monthlyDuties`). */}
-              {!duty && <StandingButton item={item} className="btn-sm" />}
+              {!duty && !deferred && <StandingButton item={item} className="btn-sm" />}
 
               <button
                 type="button"

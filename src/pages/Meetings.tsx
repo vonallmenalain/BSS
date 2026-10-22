@@ -2,7 +2,7 @@ import { useEffect, useMemo, useState, type FormEvent } from 'react'
 import { Link, useSearchParams, useNavigate } from 'react-router-dom'
 import { FOCUS_PARAM } from '@/components/agenda/MeetingFocus'
 import { useUrlState } from '@/hooks/useUrlState'
-import { CalendarDays, Plus, MapPin, Clock, Search, X } from 'lucide-react'
+import { ArrowRight, CalendarDays, Plus, MapPin, Clock, Search, X } from 'lucide-react'
 import { useAuth } from '@/contexts/AuthContext'
 import { useData } from '@/contexts/DataContext'
 import { useAllItems, useMeetings, useOpenItems } from '@/hooks/useFirestore'
@@ -27,7 +27,12 @@ import {
   fromDateTimeInput,
 } from '@/lib/dates'
 import { isUpcomingMeeting } from '@/lib/meetingScope'
-import { asDoneIn, itemsByMeeting as groupByMeeting } from '@/lib/standing'
+import {
+  asDeferredIn,
+  asDoneIn,
+  isDeferredView,
+  itemsByMeeting as groupByMeeting,
+} from '@/lib/standing'
 import { isDutyItem } from '@/lib/monthlyDuties'
 import { cn, matchesSearch } from '@/lib/utils'
 import { searchSnippet } from '@/lib/search'
@@ -126,12 +131,15 @@ export function Meetings() {
    * Der Eintrag im Fenster, frisch aus dem Bestand – und, war er in seiner
    * Sitzung bloss als erledigt zu sehen (eine ständige Pendenz, die schon in
    * der nächsten wartet), wieder so wie dort. Sonst böte das Fenster
-   * «Erledigt» an und hakte eine Runde zu viel ab.
+   * «Erledigt» an und hakte eine Runde zu viel ab. Dasselbe für den Punkt,
+   * der aus der Sitzung verschoben wurde: Er bietet dort «Zurückholen» an.
    */
   const dialogItem = useMemo(() => {
     if (!openItem) return null
     const fresh = allItems.find((i) => i.id === openItem.id) ?? openItem
-    return openItem.doneInMeeting ? asDoneIn(fresh, openItem.doneInMeeting) : fresh
+    if (openItem.doneInMeeting) return asDoneIn(fresh, openItem.doneInMeeting)
+    if (openItem.deferredInMeeting) return asDeferredIn(fresh, openItem.deferredInMeeting)
+    return fresh
   }, [openItem, allItems])
 
   /* Je Sitzung ihre Einträge – samt den in ihr abgehakten ständigen Pendenzen. */
@@ -704,9 +712,13 @@ function ItemTitle({
   term?: string
   onOpen: (item: AgendaItem) => void
 }) {
+  // Aus dieser Sitzung verschoben: grau, ohne Strich – erledigt ist er nicht.
+  const deferred = isDeferredView(item)
   const className = cn(
     'min-w-0 rounded text-left transition hover:underline',
-    item.status === 'done' && 'text-slate-500 line-through dark:text-slate-500',
+    deferred
+      ? 'text-slate-500 dark:text-slate-400'
+      : item.status === 'done' && 'text-slate-500 line-through dark:text-slate-500',
   )
 
   const label = item.title ? (
@@ -719,10 +731,20 @@ function ItemTitle({
     <span className="text-slate-400">Ohne Titel</span>
   )
 
+  /* Der graue Pfeil wie im Sitzungsmodus – mit Worten für den Bildschirmleser. */
+  const marker = deferred && (
+    <>
+      {' '}
+      <ArrowRight className="inline size-3.5 text-slate-400" aria-hidden />
+      <span className="sr-only">verschoben</span>
+    </>
+  )
+
   if (term && item.meetingId) {
     return (
       <Link to={`/sitzungen/${item.meetingId}?${FOCUS_PARAM}=${item.id}`} className={className}>
         {label}
+        {marker}
       </Link>
     )
   }
@@ -730,6 +752,7 @@ function ItemTitle({
   return (
     <button type="button" onClick={() => onOpen(item)} className={className}>
       {label}
+      {marker}
     </button>
   )
 }

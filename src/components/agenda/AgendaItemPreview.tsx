@@ -5,8 +5,10 @@ import { StatusBadge } from '@/components/ui/Badge'
 import { RichText } from '@/components/ui/RichText'
 import { LayoutGrid } from '@/components/agenda/LayoutGrid'
 import { CallingChangesTables } from '@/components/agenda/CallingChanges'
+import { DeferredBadge } from '@/components/agenda/DeferMenu'
 import { normalizeLayout } from '@/lib/layout'
 import { normalizeCallingChanges } from '@/lib/callingChanges'
+import { isDeferredView } from '@/lib/standing'
 import { cn } from '@/lib/utils'
 import type { AgendaItem } from '@/lib/types'
 
@@ -40,7 +42,10 @@ export function AgendaItemPreview({
     [item.callingChanges],
   )
 
-  const isDone = item.status === 'done'
+  // Aus dieser Sitzung verschoben: grau und mit dem Pfeil, statt mit dem
+  // Status, den er in der nächsten Sitzung hat.
+  const deferred = isDeferredView(item)
+  const isDone = item.status === 'done' && !deferred
 
   return (
     <div className={cn('min-w-0', className)}>
@@ -52,6 +57,7 @@ export function AgendaItemPreview({
           className={cn(
             'min-w-0 flex-1 text-sm leading-snug font-medium',
             isDone && 'text-slate-500 line-through dark:text-slate-500',
+            deferred && 'text-slate-500 dark:text-slate-400',
           )}
         >
           <RichText
@@ -62,8 +68,12 @@ export function AgendaItemPreview({
           />
         </h4>
         <span className="flex shrink-0 items-center gap-1.5">
-          {item.status !== 'pending' && <StatusBadge status={item.status} />}
-          {item.deferCount > 0 && !isDone && (
+          {deferred ? (
+            <DeferredBadge item={item} />
+          ) : (
+            item.status !== 'pending' && <StatusBadge status={item.status} />
+          )}
+          {item.deferCount > 0 && !isDone && !deferred && (
             <span
               className="badge bg-slate-100 text-slate-500 dark:bg-slate-800 dark:text-slate-400"
               title={`Wurde ${item.deferCount}× verschoben`}

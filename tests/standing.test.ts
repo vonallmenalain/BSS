@@ -6,10 +6,13 @@ import {
   addMonths,
   advanceStanding,
   asDoneIn,
+  asDeferredIn,
   canUndoStanding,
   dayKey,
+  deferMarkIn,
   formatDayKey,
   isDayKey,
+  isDeferredView,
   isStanding,
   itemsByMeeting,
   itemsOfMeeting,
@@ -443,4 +446,90 @@ test('itemsByMeeting legt die erledigte Runde in jede ihrer Sitzungen', () => {
   assert.equal(map.get('m0')?.[0].status, 'done')
   assert.equal(map.get('m1')?.[0].doneInMeeting, 'm1')
   assert.equal(map.get('m2')?.[0].status, 'pending')
+})
+
+/* ---------------- Verschoben – und trotzdem noch da ---------------- */
+
+const VERSCHOBEN = {
+  kind: 'traktandum' as const,
+  order: 300,
+  status: 'pending' as const,
+  at: '2026-10-21T19:40:00.000Z',
+}
+
+test('aus der Sitzung verschoben: er steht dort weiterhin, als verschoben', () => {
+  // Ein Traktandum aus m1, mit «Auf nächste Sitzung» in m2 gelandet – dort
+  // ist es eine Pendenz mit neuem Platz.
+  const verschoben = item({
+    meetingId: 'm2',
+    kind: 'pendenz',
+    order: 900,
+    deferCount: 1,
+    deferredFrom: { m1: VERSCHOBEN },
+  })
+  const andere = item({ id: 'p2', meetingId: 'm1', kind: 'traktandum', order: 100 })
+
+  const ersteSitzung = itemsOfMeeting([verschoben, andere], 'm1')
+  assert.deepEqual(
+    ersteSitzung.map((entry) => [entry.id, entry.kind, entry.order, entry.deferredInMeeting]),
+    [
+      // Unter der Überschrift und an dem Platz von damals – nicht als Pendenz.
+      ['p1', 'traktandum', 300, 'm1'],
+      ['p2', 'traktandum', 100, undefined],
+    ],
+  )
+  assert.ok(isDeferredView(ersteSitzung[0]))
+  // Der Status bleibt der echte: Verschoben ist nicht erledigt.
+  assert.equal(ersteSitzung[0].status, 'pending')
+
+  // In der nächsten Sitzung steht er, wie er gespeichert ist.
+  const naechsteSitzung = itemsOfMeeting([verschoben, andere], 'm2')
+  assert.deepEqual(
+    naechsteSitzung.map((entry) => [entry.id, entry.kind, entry.order, entry.deferredInMeeting]),
+    [['p1', 'pendenz', 900, undefined]],
+  )
+})
+
+test('zurückgeholt oder wieder übernommen: kein Verschobener mehr', () => {
+  const zurueck = item({ meetingId: 'm1', deferredFrom: { m1: VERSCHOBEN } })
+  assert.equal(deferMarkIn(zurueck, 'm1'), null)
+  assert.deepEqual(
+    itemsOfMeeting([zurueck], 'm1').map((entry) => entry.deferredInMeeting),
+    [undefined],
+  )
+  // Unverändert, wo nichts zu kennzeichnen ist.
+  assert.equal(asDeferredIn(zurueck, 'm1'), zurueck)
+})
+
+test('in den Sammelkorb verschoben: er bleibt in der Sitzung trotzdem sichtbar', () => {
+  const imKorb = item({ meetingId: null, deferredFrom: { m1: VERSCHOBEN } })
+  assert.equal(itemsOfMeeting([imKorb], 'm1')[0]?.deferredInMeeting, 'm1')
+})
+
+test('ein kaputtes Kennzeichen aus Firestore wird übergangen', () => {
+  const kaputt = item({
+    meetingId: 'm2',
+    deferredFrom: { m1: null } as unknown as AgendaItem['deferredFrom'],
+  })
+  assert.deepEqual(itemsOfMeeting([kaputt], 'm1'), [])
+})
+
+test('itemsByMeeting legt den Verschobenen auch in die Sitzung, aus der er kommt', () => {
+  const map = itemsByMeeting([
+    item({ meetingId: 'm3', deferredFrom: { m1: VERSCHOBEN, m2: { ...VERSCHOBEN, order: 50 } } }),
+  ])
+
+  assert.deepEqual([...map.keys()].sort(), ['m1', 'm2', 'm3'])
+  assert.equal(map.get('m1')?.[0].deferredInMeeting, 'm1')
+  assert.equal(map.get('m2')?.[0].order, 50)
+  assert.equal(map.get('m3')?.[0].deferredInMeeting, undefined)
+})
+
+test('in einer Sitzung abgehakt zählt dort vor «verschoben»', () => {
+  const map = itemsByMeeting([
+    item({ meetingId: 'm2', standing: rule({ doneIn: ['m1'] }), deferredFrom: { m1: VERSCHOBEN } }),
+  ])
+  assert.equal(map.get('m1')?.length, 1)
+  assert.equal(map.get('m1')?.[0].status, 'done')
+  assert.equal(map.get('m1')?.[0].deferredInMeeting, undefined)
 })

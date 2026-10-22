@@ -15,7 +15,8 @@ import type { BusinessEntry } from '@/lib/types'
  * Drei Spalten, mehr braucht ein Eintrag nicht: **was** geschieht
  * (Bestätigung, Entlassung, Segnung …), **wer** es betrifft und **welche
  * Aufgabe** gemeint ist. Die Person kommt aus dem Mitgliederverzeichnis –
- * getippt wird der Anfang des Namens, gewählt wird aus den Treffern.
+ * getippt wird der Anfang des Namens, gewählt wird aus den Treffern. Wer
+ * nicht darin steht, wird von Hand und ohne Mitglied eingetragen.
  *
  * Gespeichert wird laufend: kurz nach der letzten Eingabe und spätestens beim
  * Verlassen der Seite. Einen Speichern-Knopf gibt es nicht – er war die

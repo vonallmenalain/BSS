@@ -1332,6 +1332,28 @@ export const MEETING_SECTION_COUNTED: Record<MeetingSection, string> = {
   pendenz: 'Pendenzen',
 }
 
+/**
+ * Wie ein Eintrag in einer Sitzung stand, bevor er auf die nächste verschoben
+ * wurde.
+ *
+ * Verschieben macht aus jedem Eintrag eine Pendenz und gibt ihm in der
+ * nächsten Sitzung einen neuen Platz. In der Sitzung, aus der er kommt, soll
+ * er dagegen dort stehen bleiben, wo er stand – ein Traktandum, das beim
+ * Verschieben zu den Pendenzen spränge, brächte die ganze Sitzung
+ * durcheinander. Und wer «Zurückholen» drückt, bekommt ihn so zurück, wie er
+ * war.
+ */
+export interface DeferMark {
+  /** Unter welcher Überschrift er stand */
+  kind: ItemKind
+  /** Sein Platz in jener Sitzung */
+  order: number
+  /** Sein Status davor – «Zurückholen» stellt genau ihn wieder her */
+  status: ItemStatus
+  /** Wann verschoben – als ISO-Text, wie die Einträge im Verlauf */
+  at: string
+}
+
 export interface AgendaItem extends WithId {
   title: string
   description?: string
@@ -1440,6 +1462,30 @@ export interface AgendaItem extends WithId {
    * setzen (siehe `itemsOfMeeting` in `lib/standing`).
    */
   doneInMeeting?: string
+
+  /**
+   * Die Sitzungen, aus denen der Eintrag mit «Auf nächste Sitzung» verschoben
+   * wurde – je Sitzung, wie er dort stand.
+   *
+   * Verschoben wandert der Eintrag sofort in die nächste Sitzung. In der, aus
+   * der er kommt, bleibt er trotzdem stehen: grau und mit einem Pfeil, an
+   * seinem bisherigen Platz und unter seiner bisherigen Überschrift (siehe
+   * `itemsOfMeeting` in `lib/standing`). Sonst verschwände er mitten in der
+   * Sitzung, und ob der Griff gewirkt hat, liesse sich nur in der nächsten
+   * nachsehen – wie früher bei der ständigen Pendenz.
+   *
+   * Der Schlüssel ist die ID der Sitzung. Fehlt das Feld, wurde der Eintrag
+   * nie aus einer Sitzung verschoben.
+   */
+  deferredFrom?: Record<string, DeferMark> | null
+
+  /**
+   * Nur in der Ansicht einer Sitzung, **nie in Firestore**: Dieser Eintrag
+   * wurde aus der Sitzung mit dieser ID verschoben und steht dort bloss noch
+   * als verschoben da. `kind` und `order` sind für diese Ansicht die von
+   * damals (siehe `DeferMark`).
+   */
+  deferredInMeeting?: string
 
   /*
    * Eine eigene Notizliste je Traktandum gab es einmal; sie ist weggefallen.
@@ -2663,7 +2709,8 @@ export const BUSINESS_TYPE_LABELS: Record<BusinessType, string> = {
  * Die Person kommt aus dem Mitgliederverzeichnis; ihr Name wird
  * mitgeschrieben, damit ein Programm von vor zwei Jahren auch dann lesbar
  * bleibt, wenn der Datensatz später nicht mehr da ist. Wie beim Liedtitel
- * und beim Namen der leitenden Person.
+ * und beim Namen der leitenden Person. Wer nicht im Verzeichnis steht, wird
+ * von Hand eingetragen – dann steht allein der Name da.
  *
  * Die Aufgabe ist Freitext und **ändert an keiner Berufung etwas**. Wer
  * welche Berufung hat, sagt allein das LCR; hier steht nur, was am Sonntag
@@ -2672,9 +2719,12 @@ export const BUSINESS_TYPE_LABELS: Record<BusinessType, string> = {
 export interface BusinessEntry {
   id: string
   type: BusinessType
-  /** Das betroffene Mitglied – `null` bei Einträgen früherer Fassungen */
+  /**
+   * Das betroffene Mitglied – `null` bei Einträgen früherer Fassungen und bei
+   * einem Namen, der von Hand ohne Mitglied eingetragen wurde
+   */
   memberId?: string | null
-  /** Denormalisiert, damit die Zeile ohne Verzeichnis lesbar bleibt */
+  /** Denormalisiert, damit die Zeile ohne Verzeichnis lesbar bleibt – oder der Name von Hand */
   memberName?: string
   /** Funktion bzw. Berufung: «Lehrer in der Sonntagsschule» */
   position?: string

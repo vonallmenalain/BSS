@@ -641,10 +641,22 @@ Knopf geworden – **auf die nächste Sitzung**. Die früheren Ziele «um eine
 Woche», «um einen Monat», «eigenes Datum» setzten bloss einen Termin, an dem
 nichts geschah.
 
+**Verschoben bleibt sichtbar.** Der Punkt steht sofort in der nächsten Sitzung
+(dort als Pendenz) – in der laufenden aber weiterhin, an seinem Platz und
+unter seiner Überschrift: grau, in der Sprungleiste mit einem **grauen Pfeil
+nach rechts** statt der Nummer, so wie der grüne Haken das Erledigte anzeigt,
+und im Eintrag mit dem Etikett «Verschoben auf _Datum_». Der Fortschrittsbalken
+füllt sich dafür grau, und oben steht «_n_ erledigt · _n_ verschoben · _n_
+offen». Wer sich vertan hat, drückt **«Rückgängig»** in der Meldung oder
+später **«Zurückholen»** am Punkt; dann steht er wieder wie vorher in dieser
+Sitzung. Festgehalten wird das am Eintrag (`deferredFrom`, siehe
+[`src/lib/standing.ts`](src/lib/standing.ts)), nicht an der Sitzung – auch im
+Ausdruck steht der Punkt mit «→ verschoben».
+
 Oben steht, wo man innerhalb der eigenen Gruppe ist – «2 von 5 Traktanden»,
 später «1 von 8 Pendenzen». Auch die Sprungleiste zählt je Gruppe von vorn und
-lässt zwischen ihnen eine Lücke. Nach «Erledigt» rückt die App von selbst zum
-nächsten Punkt; am Laptop blättern die Pfeiltasten.
+lässt zwischen ihnen eine Lücke. Nach «Erledigt» und nach «Auf nächste Sitzung»
+rückt die App von selbst zum nächsten Punkt; am Laptop blättern die Pfeiltasten.
 
 ### Variables Layout
 
@@ -721,6 +733,16 @@ kleines Menü mit den drei Kreisen, der Bischofschaft als Knopfleiste und
 «Zeile löschen». Ausgeschrieben brauchte das je Zeile eine eigene Zeile unter
 den Feldern; bei zwanzig Einträgen war das die halbe Ansicht für etwas, das man
 ein-, zweimal anfasst.
+
+**Löschen wirkt auch beim Speichern.** Gespeichert wird die Runde zeilenweise
+zusammengeführt, damit mehrere Personen gleichzeitig darin arbeiten können:
+Unangetastete Zeilen folgen dem Server, eine selbst gelöschte bleibt nur dann
+erhalten, wenn jemand anders sie in der Zwischenzeit geändert hat. Verglichen
+wird dabei der **Inhalt** einer Zeile, nicht ihre Schreibweise – Firestore
+liefert dieselben Felder in anderer Reihenfolge zurück, und ein Vergleich des
+rohen Texts hielt früher jede Zeile für «drüben geändert». Eine gelöschte
+Zeile kam deshalb beim nächsten Speichern samt Inhalt zurück, am Laptop wie am
+Telefon (geprüft in [`tests/calling-changes.test.ts`](tests/calling-changes.test.ts)).
 
 Dass die Zuständigkeit an der **Zeile** hängt und nicht am Traktandum, liegt an
 der Runde selbst: Sie geht zwanzig Namen durch, und die verteilt man
@@ -1525,11 +1547,20 @@ Die gelegte Reihenfolge gehört dem Sonntag und gilt damit für alle, die ihn
 
 Ein Eintrag hat drei Spalten, mehr braucht er nicht:
 
-| Spalte       | Was darin steht                                                    |
-| ------------ | ------------------------------------------------------------------ |
-| **Art**      | Bestätigung, Entlassung, Ordinierung, Konfirmierung, Segnung, …    |
-| **Mitglied** | Aus dem Verzeichnis – tippen genügt, gewählt wird aus den Treffern |
-| **Aufgabe**  | Funktion bzw. Berufung: «Lehrer in der Sonntagsschule»             |
+| Spalte      | Was darin steht                                                                                       |
+| ----------- | ----------------------------------------------------------------------------------------------------- |
+| **Art**     | Bestätigung, Entlassung, Ordinierung, Konfirmierung, Segnung, …                                       |
+| **Person**  | Aus dem Verzeichnis – tippen genügt, gewählt wird aus den Treffern; sonst «… ohne Mitglied eintragen» |
+| **Aufgabe** | Funktion bzw. Berufung: «Lehrer in der Sonntagsschule»                                                |
+
+**Wer nicht im Verzeichnis steht** – ein Gast, jemand aus einer anderen
+Gemeinde, ein neues Mitglied, dessen Datensatz noch nicht übertragen ist –,
+wird wie bei den Ansprachen von Hand eingetragen: Unter den Treffern steht
+**«…» ohne Mitglied eintragen**, und erst dieser Knopf (oder die Eingabetaste)
+übernimmt den getippten Namen. Ein so erfasster Name lässt sich mit dem Stift
+daneben nachbessern. Das gilt überall, wo Angelegenheiten erfasst werden:
+unter «Angelegenheiten», unter «Leitung → Bearbeiten» und im Fenster «Neue
+Angelegenheit» aus der Sitzung.
 
 Vorgelesen wird daraus «_Name_ – _Aufgabe_»; genauso steht es unter
 «Leitung» im Ablauf. Der Name wird beim Eintrag mitgeschrieben, damit ein
