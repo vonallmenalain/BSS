@@ -934,7 +934,7 @@ function CandidateList({
           items={otherHits}
           listKey={`${filter.search.trim()}|${JSON.stringify(filter)}`}
           pageSize={30}
-          hint="Diese Personen passen zur Suche, werden aber durch die Filter ausgeblendet – etwa weil sie nicht als aktiv geführt sind, unter dem Mindestalter liegen, erst kürzlich gesprochen haben oder auf Mission sind."
+          hint="Diese Personen passen zur Suche, werden aber durch die Filter ausgeblendet – etwa weil sie nicht als aktiv geführt sind, unter dem Mindestalter liegen, erst kürzlich gesprochen haben, schon für einen Sonntag eingetragen sind oder auf Mission sind."
         >
           {(page) => (
             <CandidateRows
@@ -976,6 +976,7 @@ function CandidateRows({
           age,
           monthsSince: months,
           alreadyPlanned,
+          upcoming,
           onHold,
           holdUntil,
           onMission,
@@ -999,7 +1000,13 @@ function CandidateRows({
                 {member.firstName} {member.lastName}
               </MemberLink>
               <p className="text-xs text-slate-500 dark:text-slate-400">
-                {months === null ? (
+                {/* Schon eingetragen: Das zählt statt der letzten Ansprache –
+                    bis der Eintrag wieder weg ist. */}
+                {upcoming ? (
+                  <>
+                    <TalkStatusBadge status={upcoming.status} /> für {formatDate(upcoming.date)}
+                  </>
+                ) : months === null ? (
                   <span className="font-medium text-amber-600 dark:text-amber-400">
                     Noch nie gesprochen
                   </span>
@@ -1011,7 +1018,6 @@ function CandidateRows({
                 )}
                 {age !== null && ` · ${age} Jahre`}
                 {member.status !== 'active' && ' · inaktiv'}
-                {alreadyPlanned && ' · bereits eingeplant'}
                 {onHold &&
                   (holdUntil
                     ? ` · nicht anfragen bis ${formatDate(holdUntil)}`
@@ -1344,7 +1350,7 @@ function AssignDialog({
                 }}
               />
               <ul className="mt-2 max-h-56 space-y-1 overflow-y-auto">
-                {results.map(({ member, monthsSince: months, alreadyPlanned, onHold }) => (
+                {results.map(({ member, monthsSince: months, upcoming, onHold }) => (
                   <li key={member.id}>
                     <button
                       type="button"
@@ -1360,10 +1366,11 @@ function AssignDialog({
                         {member.firstName} {member.lastName}
                       </span>
                       <span className="shrink-0 text-xs text-slate-400">
-                        {alreadyPlanned ? (
+                        {upcoming ? (
                           <span className="inline-flex items-center gap-1 text-amber-600">
                             <TriangleAlert className="size-3" aria-hidden />
-                            eingeplant
+                            {TALK_STATUS_LABELS[upcoming.status].toLowerCase()}{' '}
+                            {formatDate(upcoming.date)}
                           </span>
                         ) : onHold ? (
                           /* Ausgenommen heisst «nicht anfragen» – gesperrt ist

@@ -9,6 +9,7 @@ import {
   plannedTalkMemberIds,
   rankTalkCandidates,
   talkYearOptions,
+  upcomingTalksByMember,
   type TalkCandidate,
   type TalkCandidateFilter,
 } from '../src/lib/talkCandidates.ts'
@@ -76,6 +77,7 @@ const kandidat = (partial: Partial<TalkCandidate> & { member?: Member } = {}): T
   monthsSince: null,
   lastTalkYear: null,
   alreadyPlanned: false,
+  upcoming: null,
   onHold: false,
   holdUntil: null,
   onMission: false,
@@ -125,9 +127,74 @@ test('ein von Hand erfasster Name gehört zu keinem Mitglied', () => {
   assert.equal(ids.size, 0)
 })
 
+test('ein von Hand erfasster Name zählt, wenn er genau einem Mitglied gehört', () => {
+  // Wer den Namen tippt und die Eingabetaste drückt, hat einen Eintrag ohne
+  // Mitglied – angefragt ist die Person trotzdem.
+  const anna = member('g1', { firstName: 'Anna', lastName: 'Beispiel' })
+  const eintrag = { ...talk('', '2026-08-23', 'asked'), memberName: '  anna  BEISPIEL ' }
+  const upcoming = upcomingTalksByMember([eintrag], [anna, member('m2')], JETZT)
+  assert.deepEqual([...upcoming.keys()], ['g1'])
+})
+
+test('ein Name, den zwei Mitglieder tragen, wird niemandem zugeordnet', () => {
+  const vater = member('a1', { firstName: 'Adrian', lastName: 'Muster' })
+  const sohn = member('a2', { firstName: 'Adrian', lastName: 'Muster' })
+  const eintrag = { ...talk('', '2026-08-23', 'asked'), memberName: 'Adrian Muster' }
+  assert.equal(upcomingTalksByMember([eintrag], [vater, sohn], JETZT).size, 0)
+})
+
+test('gilt die nächste von mehreren kommenden Ansprachen', () => {
+  const upcoming = upcomingTalksByMember(
+    [talk('m1', '2026-10-04', 'planned'), talk('m1', '2026-08-23', 'asked')],
+    [],
+    JETZT,
+  )
+  assert.equal(upcoming.get('m1')?.status, 'asked')
+  assert.equal(upcoming.get('m1')?.date.getDate(), 23)
+})
+
 /* ------------------------------------------------------------------ */
 /* Die Bewertung                                                       */
 /* ------------------------------------------------------------------ */
+
+test('wer angefragt ist, reiht sich beim Sonntag der Ansprache ein', () => {
+  // Statt «noch nie gesprochen» oder «zuletzt vor 21 Monaten» zählt der
+  // eingetragene Sonntag: im Jahr der Ansprache, nicht mehr überfällig.
+  const members = [member('nie'), member('lange', { lastTalkDate: monateZurueck(21) as never })]
+  const talks = [talk('nie', '2026-08-23', 'asked'), talk('lange', '2026-09-06', 'planned')]
+  const ranked = rankTalkCandidates(members, talks, { now: JETZT })
+
+  for (const candidate of ranked) {
+    assert.equal(candidate.monthsSince, 0, candidate.member.id)
+    assert.equal(candidate.lastTalkYear, 2026, candidate.member.id)
+  }
+  const byId = new Map(ranked.map((c) => [c.member.id, c]))
+  assert.equal(byId.get('nie')?.upcoming?.status, 'asked')
+  assert.equal(byId.get('lange')?.upcoming?.status, 'planned')
+
+  // Damit fallen beide aus «nur seit über X Monaten» und aus «noch nie».
+  assert.equal(filterTalkCandidates(ranked, filter(), 18).length, 0)
+  assert.equal(filterTalkCandidates(ranked, filter({ years: [NEVER_SPOKE] }), 18).length, 0)
+  assert.equal(filterTalkCandidates(ranked, filter({ years: [2026] }), 18).length, 2)
+})
+
+test('ist der Eintrag weg, zählt wieder die letzte Ansprache', () => {
+  const members = [member('m1', { lastTalkDate: monateZurueck(21) as never })]
+  const [candidate] = rankTalkCandidates(members, [], { now: JETZT })
+
+  assert.equal(candidate.upcoming, null)
+  assert.equal(candidate.monthsSince, 21)
+})
+
+test('auch ein Eintrag nur mit dem Namen zeigt den Status', () => {
+  const anna = member('g1', { firstName: 'Anna', lastName: 'Beispiel' })
+  const eintrag = { ...talk('', '2026-08-23', 'asked'), memberName: 'Anna Beispiel' }
+  const [candidate] = rankTalkCandidates([anna], [eintrag], { now: JETZT })
+
+  assert.equal(candidate.alreadyPlanned, true)
+  assert.equal(candidate.upcoming?.status, 'asked')
+  assert.equal(candidate.monthsSince, 0)
+})
 
 test('wer vor Jahren gesprochen hat, steht wieder zur Verfügung', () => {
   const members = [member('m1', { lastTalkDate: new Date('2021-01-24') as never })]
