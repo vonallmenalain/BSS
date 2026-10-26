@@ -1,6 +1,7 @@
 /**
  * Erzeugt die Soundeffekte der Shorts (eigene Synthese, keine Samples, frei verwendbar):
- * Plopp, Benachrichtigung, Tippen, Pixel-Töne, Wusch, Stempel, Trommel, Klirren …
+ * Plopp, Benachrichtigung, Tippen, Pixel-Töne, Wusch, Stempel, Trommel, Klirren … und die leisen
+ * Klänge für sparsame Folgen (Klopfen, Warm, Hauch).
  *
  *   npm run sfx                      → public/sfx/<name>.wav
  *
@@ -232,6 +233,43 @@ const sounds: Record<string, () => Float32Array> = {
       b[i] = Math.sin(ph) * (t < 0.14 ? env(t, 0.005, 0.08) : env(t - 0.16, 0.005, 0.14)) * 0.7;
     }
     return b;
+  },
+  /*
+   * Die leisen Klänge für Folgen mit wenig Effekten (`sfx: "sparse"`): tief, weich, ohne
+   * helle Teiltöne – sie ersetzen dort Glocken, Pixel-Töne und Münzen.
+   */
+  /** Klopfen: dumpf und kurz, wie ein Buch, das auf den Tisch gelegt wird */
+  thud: () => {
+    const b = buf(0.35);
+    let ph = 0;
+    for (let i = 0; i < b.length; i++) {
+      const t = i / SR;
+      ph += (2 * Math.PI * (70 + 45 * Math.exp(-t / 0.025))) / SR;
+      b[i] = Math.sin(ph) * env(t, 0.004, 0.07);
+    }
+    const n = buf(0.05);
+    for (let i = 0; i < n.length; i++) n[i] = rnd() * env(i / SR, 0.002, 0.012);
+    return mixInto(b, lowpass(n, 0.06), 0, 0.35);
+  },
+  /** Warm: ein tiefer, weicher Akkord, der langsam anschwillt – für gute Momente */
+  warm: () => {
+    const b = buf(2);
+    [48, 55, 60].forEach((n, k) => {
+      const s = buf(2 - k * 0.05);
+      for (let i = 0; i < s.length; i++) {
+        const t = i / SR;
+        const ph = 2 * Math.PI * midi(n) * t;
+        s[i] = (Math.sin(ph) + 0.15 * Math.sin(2 * ph)) * Math.min(1, t / 0.12) * Math.exp(-t / 0.75);
+      }
+      mixInto(b, s, k * 0.05, 0.35);
+    });
+    return lowpass(b, 0.25);
+  },
+  /** Hauch: ein leiser, tiefer Wusch */
+  breath: () => {
+    const n = buf(0.7);
+    for (let i = 0; i < n.length; i++) n[i] = rnd() * Math.sin((Math.PI * i) / n.length) ** 2;
+    return lowpass(bandpass(n, (i) => 160 + 380 * (i / n.length), 0.8), 0.12);
   },
 };
 

@@ -406,6 +406,8 @@ export const episodeSchema = z
       name: z.string().default("de-DE-Chirp3-HD-Charon"),
       speakingRate: z.number().min(0.25).max(2).default(1),
     }),
+    /** Wie viele Soundeffekte: `full` (alle) oder `sparse` (nur die wichtigen, leise und tief – siehe `lib/sfx`) */
+    sfx: z.enum(["full", "sparse"]).default("full"),
     pronunciations: z
       .array(z.object({ phrase: z.string(), ipa: z.string() }))
       .default([]),

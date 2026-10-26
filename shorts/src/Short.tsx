@@ -14,6 +14,7 @@ import { DesertBg, DuskBg, FeedBg, ForestBg, KitchenBg, PostBg, TempleBg } from 
 import { Captions } from "./components/Captions";
 import { Sky } from "./components/Sky";
 import { fontsReady } from "./lib/fonts";
+import { SfxModeProvider } from "./lib/sfx";
 import { FPS, type Timeline, type TimelineScene, TRANSITION_FRAMES, buildTimeline, findCue } from "./lib/timing";
 import { LookProvider } from "./looks";
 import { ChatScene } from "./scenes/chat";
@@ -293,6 +294,7 @@ export const Short: React.FC<ShortProps> = ({ episode: raw, timeline }) => {
 
   return (
     <LookProvider look={episode.look}>
+    <SfxModeProvider mode={episode.sfx}>
     <AbsoluteFill style={{ backgroundColor: "#05071A" }}>
       <Backdrop look={episode.look} s={s} />
       <TransitionSeries>
@@ -320,6 +322,7 @@ export const Short: React.FC<ShortProps> = ({ episode: raw, timeline }) => {
         <Audio src={staticFile(episode.music.src)} volume={(f) => musicVolume(f, episode, timeline)} loop />
       ) : null}
     </AbsoluteFill>
+    </SfxModeProvider>
     </LookProvider>
   );
 };

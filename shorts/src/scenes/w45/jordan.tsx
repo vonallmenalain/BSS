@@ -674,7 +674,7 @@ export const Scene: React.FC<{ ts: TimelineScene }> = ({ ts }) => {
       {stage === "courage" ? (
         <>
           {[c1, c2, c3].map((c, i) => (
-            <Sfx key={i} frame={f(c)} name="stamp" volume={0.6} />
+            <Sfx key={i} frame={f(c)} name="stamp" volume={0.6} keep />
           ))}
           <Sfx frame={f(mitDir)} name="chime" volume={0.45} />
         </>
@@ -698,7 +698,7 @@ export const Scene: React.FC<{ ts: TimelineScene }> = ({ ts }) => {
         <>
           <Sfx frame={f(b[0] + 0.3)} name="whoosh" volume={0.35} />
           <Sfx frame={f(stopAt)} name="unlock" volume={0.4} />
-          <Sfx frame={f(stopAt + 0.3)} name="chime" volume={0.35} />
+          <Sfx frame={f(stopAt + 0.3)} name="chime" volume={0.35} keep />
           <Sfx frame={f(b[2])} name="drum" volume={0.45} />
         </>
       ) : null}

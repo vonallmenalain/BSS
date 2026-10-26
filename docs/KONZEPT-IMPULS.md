@@ -1935,6 +1935,14 @@ Teil des App-Builds (die App-Prüfungen und Netlify fassen es nicht an).
   Videos, das neue Quiz und das Minispiel zum Nachholen an, ohne dass eine
   Karte rückt; die ersetzten Karten stellt der Kasten «Ersetzte Karten
   zurückstellen» zurück.
+- **Wenig Soundeffekte, und keine hellen.** In den ersten Fassungen der
+  Woche zum Schriftstudium klang es etwa alle fünf Sekunden – helle Glocken,
+  Pixel-Töne, Münzen. Das störte. Seither hat jede Folge `"sfx": "sparse"`:
+  Nur zwei bis vier Momente je Folge behalten einen Klang (in der Szene mit
+  `keep` markiert), und auch die sind tief und weich – ein warmer Akkord, ein
+  dumpfes Klopfen, ein leiser Hauch statt Glocke, Klick und Wisch; die
+  Schlusszeilen bleiben stumm. Stimme, Musik und Bilder bleiben, wie sie
+  sind. Für neue Folgen ist das die Regel (`shorts/README.md`).
 - **Die Stimme**: Gedankenstriche sind Pausen, kein «Minus», und eine Zahl
   vor einem Satzpunkt ist eine Grundzahl («Alma 53.» = «dreiundfünfzig»).
   Jahreszahlen nach «Frühling», «Jahr» … liest sie, wie man sie sagt

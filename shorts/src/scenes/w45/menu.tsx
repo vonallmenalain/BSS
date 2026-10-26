@@ -161,7 +161,7 @@ const Versus: React.FC<P> = ({ ts, s, t, frame }) => {
       <div style={{ position: "absolute", top: 620, width: "100%", textAlign: "center", fontFamily: theme.font.display, fontSize: 150, color: look.accent2, textShadow: `0 0 30px ${look.accent2}, 0 10px 30px rgba(0,0,0,0.6)`, transform: `scale(${interpolate(vs, [0, 1], [2.2, 1]) * pulse}) rotate(-6deg)`, opacity: Math.min(1, vs * 1.5) }}>VS</div>
       <Sfx frame={2} name="clash" volume={0.4} />
       <Sfx frame={voiceFrame(ts, snack - 0.15)} name="pop" volume={0.45} />
-      <Sfx frame={voiceFrame(ts, feast + 0.1)} name="chime" volume={0.45} />
+      <Sfx frame={voiceFrame(ts, feast + 0.1)} name="chime" volume={0.45} keep />
     </AbsoluteFill>
   );
 };
@@ -293,7 +293,7 @@ const Feast: React.FC<P> = ({ ts, s, t, frame }) => {
       <Meter y={1110} value={value} on={meterOn} full={value > 0.97} frame={frame} />
       <Sfx frame={voiceFrame(ts, notJust - 0.2)} name="pop" volume={0.35} />
       <Sfx frame={voiceFrame(ts, strikeAt)} name="swipe" volume={0.35} />
-      <Sfx frame={voiceFrame(ts, feed)} name="chime" volume={0.45} />
+      <Sfx frame={voiceFrame(ts, feed)} name="chime" volume={0.45} keep />
       <Sfx frame={voiceFrame(ts, full + 0.8)} name="levelup" volume={0.4} />
     </AbsoluteFill>
   );
@@ -342,7 +342,7 @@ const Courses: React.FC<P> = ({ ts, s, t, frame }) => {
               <div style={{ fontFamily: HAND, fontWeight: 700, fontSize: SIZE, lineHeight: 1.04, color: INK, clipPath: `inset(0 ${100 - write * 100}% 0 0)` }}>{c.text}</div>
               {c.who ? <div style={{ fontFamily: BODY, fontWeight: 600, fontSize: 25, color: "#8A7456", marginTop: 2, opacity: interpolate(write, [0.6, 1], [0, 1], clamp) }}>{c.who}</div> : null}
             </div>
-            {fresh ? <Sfx frame={voiceFrame(ts, at)} name={c.label.toLowerCase().startsWith("geheim") ? "chime" : "ding"} volume={0.35} /> : null}
+            {fresh ? <Sfx frame={voiceFrame(ts, at)} name={c.label.toLowerCase().startsWith("geheim") ? "chime" : "ding"} volume={0.35} keep={c.label.toLowerCase().startsWith("geheim")} /> : null}
           </React.Fragment>
         );
       })}

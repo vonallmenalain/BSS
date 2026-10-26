@@ -529,14 +529,14 @@ export const Scene: React.FC<{ ts: TimelineScene }> = ({ ts }) => {
       {stage === "pray" ? (
         <>
           <Sfx frame={f(b[0] + 0.5)} name="ding" volume={0.3} />
-          <Sfx frame={f(b[2])} name="drum" volume={0.35} />
+          <Sfx frame={f(b[2])} name="drum" volume={0.35} keep />
           <Sfx frame={f(b[3])} name="tick" volume={0.35} />
         </>
       ) : null}
       {stage === "night" ? <Sfx frame={f(b[0])} name="whoosh" volume={0.3} /> : null}
       {stage === "voice" ? (
         <>
-          <Sfx frame={f(b[0])} name="chime" volume={0.45} />
+          <Sfx frame={f(b[0])} name="chime" volume={0.45} keep />
           <Sfx frame={f(freeAt + 0.2)} name="levelup" volume={0.35} />
         </>
       ) : null}
