@@ -2,7 +2,7 @@ import React, { useMemo } from "react";
 import { AbsoluteFill, Easing, interpolate, random, useCurrentFrame } from "remotion";
 import { useLook } from "../../looks";
 import { Sfx, beat, beats, voiceFrame } from "../../lib/sfx";
-import type { TimelineScene } from "../../lib/timing";
+import { type TimelineScene, findCue } from "../../lib/timing";
 import type { Scene as SceneData } from "../../schema";
 import { Robed, Scroll, clamp, useT, wordsOfTexts } from "./kitA";
 
@@ -92,11 +92,14 @@ const Attack: React.FC<{ text: string; k: number; out: number }> = ({ text, k, o
 };
 
 /** Die Antwort: eine Schriftrolle öffnet sich – «Es steht geschrieben». */
-const Answer: React.FC<{ s: WildT; open: number; words: number; header: string }> = ({ s, open, words, header }) => {
+const Answer: React.FC<{ ts: TimelineScene; s: WildT; open: number; header: string }> = ({ ts, s, open, header }) => {
   const look = useLook();
+  const t = useT(ts);
   if (!s.answer || open <= 0.002) return null;
   const tokens = s.answer.text.split(/\s+/);
-  const shown = Math.ceil(tokens.length * words);
+  // Jedes Wort leuchtet, wenn es gesprochen wird – die Rolle ersetzt hier die Untertitel
+  const cue = findCue(ts.words, s.answer.text);
+  const startOf = (i: number) => (cue && cue.last - cue.first + 1 === tokens.length ? ts.words[cue.first + i].start : ts.speechStartSec + i * 0.3);
   return (
     <>
       <svg width={1080} height={1920} style={{ position: "absolute", inset: 0 }}>
@@ -126,9 +129,9 @@ const Answer: React.FC<{ s: WildT; open: number; words: number; header: string }
       >
         <div style={{ fontFamily: look.label, fontWeight: 700, fontSize: 44, letterSpacing: "0.1em", color: "#7A4A12" }}>{header}</div>
         <div style={{ width: 380, height: 3, background: "#A8783A", opacity: 0.6, margin: "18px 0 22px" }} />
-        <div style={{ fontFamily: "Cormorant Garamond", fontStyle: "italic", fontWeight: 600, fontSize: s.answer.text.length > 60 ? 50 : 56, lineHeight: 1.14, color: "#2E1A08" }}>
+        <div style={{ fontFamily: "Cormorant Garamond", fontStyle: "italic", fontWeight: 600, fontSize: s.answer.text.length > 60 ? 54 : 60, lineHeight: 1.14, color: "#2E1A08" }}>
           {tokens.map((w, i) => (
-            <span key={i} style={{ opacity: i < shown ? 1 : 0.12 }}>
+            <span key={i} style={{ opacity: interpolate(t, [startOf(i) - 0.08, startOf(i) + 0.12], [0.28, 1], clamp) }}>
               {w}
               {i < tokens.length - 1 ? " " : ""}
             </span>
@@ -353,7 +356,6 @@ export const Scene: React.FC<{ ts: TimelineScene }> = ({ ts }) => {
   const answerAt = s.answer ? beat(ts, s.answer.at, 0.6) : 1e5;
   const attackK = interpolate(t, [attackAt - 0.35, attackAt + 0.1], [0, 1], clamp);
   const open = interpolate(t, [answerAt - 0.15, answerAt + 0.6], [0, 1], clamp);
-  const words = s.answer ? interpolate(t, [answerAt + 0.6, Math.max(answerAt + 0.8, ts.speechEndSec - 0.2)], [0, 1], clamp) : 0;
   // Rauch: zieht mit dem Angriff heran; in einer Antwort-Szene liegt er noch da und weicht
   const smoke = s.answer ? 0.75 * (1 - interpolate(t, [answerAt - 0.1, answerAt + 0.9], [0, 1], clamp)) : s.attack ? attackK : 0;
   const rays = s.answer ? interpolate(t, [answerAt - 0.1, answerAt + 0.5, answerAt + 1.6], [0, 1, 0.4], clamp) : 0;
@@ -366,7 +368,7 @@ export const Scene: React.FC<{ ts: TimelineScene }> = ({ ts }) => {
   if (s.stage === "fast") {
     const [vierzig, essen, versucher] = beats(ts, s.cues, 3);
     const count = Math.max(1, Math.min(40, Math.round(interpolate(frame, [4, ts.audioOffsetFrames + Math.round((vierzig + 0.9) * 30)], [1, 40], clamp))));
-    const eat = usePopLike(t, essen);
+    const eat = popAt(t, essen);
     const dark = interpolate(t, [versucher - 0.2, versucher + 1], [0, 1], clamp);
     stage = (
       <>
@@ -415,7 +417,7 @@ export const Scene: React.FC<{ ts: TimelineScene }> = ({ ts }) => {
   } else if (s.stage === "temple") {
     const [hoch, zitiert] = beats(ts, s.cues, 2);
     const lift = s.attack ? interpolate(t, [hoch - 0.6, hoch + 0.8], [0, 1], { ...clamp, easing: Easing.inOut(Easing.cubic) }) : 1;
-    const darkScroll = s.attack ? usePopLike(t, zitiert) : 0;
+    const darkScroll = s.attack ? popAt(t, zitiert) : 0;
     figure = { x: 730, y: 932 + (1 - lift) * 260, k: 0.36 };
     stage = (
       <>
@@ -497,14 +499,14 @@ export const Scene: React.FC<{ ts: TimelineScene }> = ({ ts }) => {
         {s.stage !== "fast" && s.stage !== "angels" ? <Smoke k={smoke} side={1} cy={560} /> : null}
       </svg>
       {s.attack ? <Attack text={s.attack.text} k={attackK} out={0} /> : null}
-      <Answer s={s} open={open} words={words} header={headerOf(s)} />
+      <Answer ts={ts} s={s} open={open} header={headerOf(s)} />
       {sfx}
     </AbsoluteFill>
   );
 };
 
-/** Ein Auftritt ohne Hook (in Bedingungen erlaubt): 0 … 1 mit leichtem Überschwingen. */
-function usePopLike(t: number, at: number): number {
+/** Ein Auftritt ab `at` (Sekunden): 0 … 1 mit leichtem Überschwingen – eine Rechnung, kein Hook. */
+function popAt(t: number, at: number): number {
   const k = Math.max(0, Math.min(1, (t - at + 0.1) / 0.35));
   return Easing.out(Easing.back(1.6))(k);
 }
