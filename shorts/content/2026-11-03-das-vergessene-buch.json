@@ -1,0 +1,117 @@
+{
+  "id": "2026-11-03-das-vergessene-buch",
+  "title": "Das vergessene Buch",
+  "date": "2026-11-03",
+  "series": "Für eine starke Jugend · November",
+  "brand": {
+    "name": "AntiDoom"
+  },
+  "look": "temple",
+  "voice": {
+    "provider": "google",
+    "languageCode": "de-DE",
+    "name": "de-DE-Chirp3-HD-Rasalgethi",
+    "speakingRate": 1.03
+  },
+  "music": {
+    "src": "music/temple.mp3",
+    "volume": 0.3,
+    "duckTo": 0.08
+  },
+  "scenes": [
+    {
+      "id": "hook",
+      "type": "templefind",
+      "stage": "eight",
+      "ref": "2 Könige 22:1",
+      "cues": [
+        "Er war acht",
+        "als er König wurde"
+      ],
+      "narration": "Er war acht, [pause short] als er König wurde."
+    },
+    {
+      "id": "josia",
+      "type": "templefind",
+      "stage": "king",
+      "ref": "2 Könige 22:1–2",
+      "cues": [
+        "Josia, König von Juda",
+        "was in Gottes Augen recht ist"
+      ],
+      "narration": "Josia, König von Juda. [pause short] Schon als Junge tut er, was in Gottes Augen recht ist."
+    },
+    {
+      "id": "baustelle",
+      "type": "templefind",
+      "stage": "repair",
+      "ref": "2 Könige 22:3–8",
+      "cues": [
+        "den Tempel ausbessern",
+        "Handwerker, Staub, Schutt",
+        "findet der Hohepriester Hilkija etwas"
+      ],
+      "narration": "Achtzehn Jahre später lässt er den Tempel ausbessern. [pause short] Handwerker, Staub, Schutt. [pause short] Und mittendrin findet der Hohepriester Hilkija etwas."
+    },
+    {
+      "id": "fund",
+      "type": "templefind",
+      "stage": "find",
+      "ref": "2 Könige 22:8, 13",
+      "cues": [
+        "Ein Buch",
+        "Das Buch des Gesetzes",
+        "Lange hatte niemand mehr danach gelebt"
+      ],
+      "narration": "Ein Buch. [pause short] Das Buch des Gesetzes. [pause short] Lange hatte niemand mehr danach gelebt."
+    },
+    {
+      "id": "vorlesen",
+      "type": "templefind",
+      "stage": "read",
+      "ref": "2 Könige 22:10–13",
+      "cues": [
+        "liest es dem König vor",
+        "zerreisst seine Kleider",
+        "Wir haben nicht getan"
+      ],
+      "narration": "Der Schreiber Schafan liest es dem König vor. [pause short] Josia zerreisst seine Kleider. [pause short] Er merkt: Wir haben nicht getan, was Gott uns gesagt hat."
+    },
+    {
+      "id": "volk",
+      "type": "templefind",
+      "stage": "people",
+      "ref": "2 Könige 23:1–2",
+      "cues": [
+        "ruft das ganze Volk zusammen",
+        "Klein und Gross",
+        "jedes Wort"
+      ],
+      "narration": "Josia ruft das ganze Volk zusammen, [pause short] Klein und Gross, [pause short] und liest ihnen jedes Wort aus dem Buch vor."
+    },
+    {
+      "id": "bund",
+      "type": "templefind",
+      "stage": "covenant",
+      "ref": "2 Könige 23:3",
+      "cues": [
+        "schliesst er einen Bund",
+        "das ganze Volk tritt dem Bund bei"
+      ],
+      "narration": "Dann schliesst er einen Bund mit Gott – [pause short] und das ganze Volk tritt dem Bund bei."
+    },
+    {
+      "id": "punch",
+      "type": "kinetic",
+      "holdAfterSec": 1.2,
+      "lines": [
+        "Ein Buch geht nicht",
+        "auf einmal verloren.",
+        "Sondern Tag für Tag,",
+        "an dem es zu bleibt.",
+        "Wie war deine letzte Woche?"
+      ],
+      "narration": "Ein Buch geht nicht auf einmal verloren. [pause short] Sondern Tag für Tag, an dem es zu bleibt. [pause short] Wie war deine letzte Woche?"
+    }
+  ]
+}

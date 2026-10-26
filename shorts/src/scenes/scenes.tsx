@@ -319,6 +319,13 @@ export const KineticScene: React.FC<P> = ({ ts }) => {
     space: "blip",
     palace: "chime",
     dream: "whoosh",
+    desert: "whoosh",
+    temple: "drum",
+    post: "ding",
+    feed: "swipe",
+    kitchen: "pop",
+    dusk: "chime",
+    forest: "whoosh",
   };
   const lineSfx = sfx[look.id];
   // Jede Zeile so gross, dass sie auf eine Zeile passt (Anton in Versalien ≈ 0.47 × Schriftgrösse pro Zeichen)

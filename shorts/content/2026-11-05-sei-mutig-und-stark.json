@@ -1,0 +1,106 @@
+{
+  "id": "2026-11-05-sei-mutig-und-stark",
+  "title": "Sei mutig und stark",
+  "date": "2026-11-05",
+  "series": "Für eine starke Jugend · November",
+  "brand": {
+    "name": "AntiDoom"
+  },
+  "look": "map",
+  "voice": {
+    "provider": "google",
+    "languageCode": "de-DE",
+    "name": "de-DE-Chirp3-HD-Sadaltager",
+    "speakingRate": 1.05
+  },
+  "music": {
+    "src": "music/anthem.mp3",
+    "volume": 0.3,
+    "duckTo": 0.08
+  },
+  "scenes": [
+    {
+      "id": "hook",
+      "type": "jordan",
+      "stage": "mourning",
+      "ref": "Josua 1:1–2",
+      "cues": [
+        "Mose ist tot",
+        "Und jetzt"
+      ],
+      "narration": "Mose ist tot. [pause short] Und jetzt?"
+    },
+    {
+      "id": "auftrag",
+      "type": "jordan",
+      "stage": "map",
+      "ref": "Josua 1:2 · 3:15",
+      "cues": [
+        "Josua soll das Volk Israel führen",
+        "der Jordan",
+        "Jericho"
+      ],
+      "narration": "Josua soll das Volk Israel führen. [pause short] Vor ihm: der Jordan, über die Ufer getreten. [pause short] Dahinter: Jericho."
+    },
+    {
+      "id": "mut",
+      "type": "jordan",
+      "stage": "courage",
+      "ref": "Josua 1:5–9",
+      "cues": [
+        "Sei mutig und stark",
+        "Sei nur mutig und sehr stark",
+        "hab keine Angst",
+        "ich bin mit dir"
+      ],
+      "narration": "Dreimal sagt der Herr zu ihm: [pause short] Sei mutig und stark. [pause short] Sei nur mutig und sehr stark. [pause short] Sei mutig und stark, hab keine Angst – [pause short] ich bin mit dir."
+    },
+    {
+      "id": "buch",
+      "type": "jordan",
+      "stage": "book",
+      "ref": "Josua 1:7–8",
+      "cues": [
+        "ein Buch",
+        "Das Buch der Weisung",
+        "danach handeln"
+      ],
+      "narration": "Und er gibt ihm etwas mit auf den Weg: [pause short] ein Buch. [pause short] Das Buch der Weisung. [pause short] Darüber soll Josua nachdenken – [pause short] und danach handeln."
+    },
+    {
+      "id": "verheissung",
+      "type": "jordan",
+      "stage": "book",
+      "ref": "Josua 1:8",
+      "cues": [
+        "wird dir alles gelingen"
+      ],
+      "narration": "Dann, verspricht der Herr, [pause short] wird dir alles gelingen."
+    },
+    {
+      "id": "jordan",
+      "type": "jordan",
+      "stage": "crossing",
+      "ref": "Josua 3:15–17",
+      "cues": [
+        "in den Jordan treten",
+        "bleibt das Wasser stehen",
+        "zieht trocken hindurch"
+      ],
+      "narration": "Und tatsächlich: [pause short] Als die Priester in den Jordan treten, [pause short] bleibt das Wasser stehen. [pause short] Das ganze Volk zieht trocken hindurch.",
+      "holdAfterSec": 0.8
+    },
+    {
+      "id": "punch",
+      "type": "kinetic",
+      "holdAfterSec": 1.2,
+      "lines": [
+        "Mutig und stark –",
+        "mit einem Buch in der Hand.",
+        "Nur: Wann soll Josua",
+        "darüber nachdenken?"
+      ],
+      "narration": "Mutig und stark – [pause short] mit einem Buch in der Hand. [pause short] Nur: Wann soll Josua darüber nachdenken?"
+    }
+  ]
+}

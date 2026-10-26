@@ -11,10 +11,12 @@ import {
   RunIntro,
   ShieldIntro,
   SortIntro,
+  StackIntro,
 } from '@/components/impulse/game/ImpulseGameIntros'
 import { attachRunControls, RunGame } from '@/components/impulse/game/runGame'
 import { attachShieldControls, ShieldGame } from '@/components/impulse/game/shieldGame'
 import { attachSortControls, SortGame } from '@/components/impulse/game/sortGame'
+import { attachStackControls, StackGame } from '@/components/impulse/game/stackGame'
 
 /*
  * Welches Spiel zu welchem Schlüssel gehört – die eine Stelle, an der die
@@ -92,5 +94,15 @@ export const IMPULSE_GAMES: Record<ImpulseGameId, GameDefinition> = {
       return { engine, detach }
     },
     Intro: ChainIntro,
+  },
+  stapeln: {
+    mount(surface, options, events, active) {
+      const engine = new StackGame(options, events)
+      const detach = attachStackControls(surface, () => {
+        if (active()) engine.press()
+      })
+      return { engine, detach }
+    },
+    Intro: StackIntro,
   },
 }

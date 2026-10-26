@@ -271,6 +271,113 @@ export const sceneSchema = z.discriminatedUnion("type", [
     /** Die Takte der Etappe (Hahn, Blick, Hinausgehen) */
     cues: z.array(z.string().min(1)).max(3).default([]),
   }),
+  /*
+   * Die Szenen der Woche 2.–8. November (Schriftstudium), je eine Folge. Jede Phrase, bei der
+   * etwas passiert, heisst `at`, endet auf `At` oder steht in `cues` – die Prüfung unten findet
+   * sie von selbst (`phrasesOf`).
+   */
+  base.extend({
+    /** Jerusalem bei Nacht: Quest-Log «Die Messingplatten» – Versuch um Versuch (1 Nephi 3–5, Omni 1) */
+    type: z.literal("quest"),
+    /** intro: Quest-Titel; brief: der Auftrag; ask/buy/quit/night: die Versuche; done: geschafft; contrast: das Volk ohne Schriften */
+    stage: z.enum(["intro", "brief", "ask", "buy", "quit", "night", "done", "contrast"]),
+    title: z.string().optional(),
+    /** Die Versuche im Log oben; `result` erscheint bei `at` als Stempel */
+    attempts: z.array(z.object({ label: z.string().min(1), text: z.string().optional(), result: z.enum(["open", "fail", "win"]).default("open"), at: z.string().min(1).optional() })).max(3).default([]),
+    /** Eine Sprechblase (Etappe quit) – erscheint bei `at` */
+    say: z.object({ text: z.string().min(1), at: z.string().min(1) }).optional(),
+    cues: z.array(z.string().min(1)).max(6).default([]),
+  }),
+  base.extend({
+    /** Wüste bei Nacht: die drei Versuchungen und «Es steht geschrieben» (Matthäus 4:1–11) */
+    type: z.literal("wilderness"),
+    stage: z.enum(["fast", "bread", "temple", "kingdoms", "angels"]),
+    /** Was der Versucher sagt – dunkle Schrift, erscheint bei `at` */
+    attack: z.object({ text: z.string().min(1), at: z.string().min(1) }).optional(),
+    /** Die Antwort – eine Schriftrolle «Es steht geschrieben», erscheint bei `at` */
+    answer: z.object({ text: z.string().min(1), ref: z.string().optional(), at: z.string().min(1) }).optional(),
+    cues: z.array(z.string().min(1)).max(6).default([]),
+  }),
+  base.extend({
+    /** Tempel in Jerusalem: König Josia, die Baustelle, das gefundene Buch (2 Könige 22–23) */
+    type: z.literal("templefind"),
+    /** eight: «Er war acht»; king: Josia, König von Juda; repair: die Baustelle; find: das Buch; read: vorgelesen; people: das ganze Volk; covenant: der Bund */
+    stage: z.enum(["eight", "king", "repair", "find", "read", "people", "covenant"]),
+    cues: z.array(z.string().min(1)).max(6).default([]),
+  }),
+  base.extend({
+    /** Sendungsverfolgung: Moronis Platten als Sendung durch die Zeit (Mormon 8:34–35, Moroni 10) */
+    type: z.literal("tracking"),
+    stage: z.enum(["sent", "sender", "hidden", "message", "transit", "delivered"]),
+    /** Zeilen der Verfolgung – erscheinen bei `at` */
+    events: z.array(z.object({ time: z.string().min(1), text: z.string().min(1), at: z.string().min(1).optional() })).max(5).default([]),
+    cues: z.array(z.string().min(1)).max(6).default([]),
+  }),
+  base.extend({
+    /** Kurzvideo-Feed spät in der Nacht: Uhr, Akku, «noch eins» – und die Leuchte (Psalm 119:105) */
+    type: z.literal("feed"),
+    stage: z.enum(["scroll", "late", "blank", "lamp"]),
+    /** Uhrzeit im Bild zu Beginn und am Ende der Szene (nur im Bild, nicht gesprochen) */
+    clock: z.tuple([z.string(), z.string()]).optional(),
+    battery: z.tuple([z.number().min(0).max(100), z.number().min(0).max(100)]).optional(),
+    cues: z.array(z.string().min(1)).max(6).default([]),
+  }),
+  base.extend({
+    /** Kochshow: Snack oder Festmahl – Menükarte mit Gängen (2 Nephi 31:20, 32:3) */
+    type: z.literal("menu"),
+    stage: z.enum(["versus", "snack", "feast", "courses"]),
+    /** Gänge auf der Menükarte; ohne `at` stehen sie schon da */
+    courses: z.array(z.object({ label: z.string().min(1), text: z.string().min(1), who: z.string().optional(), at: z.string().min(1).optional() })).max(4).default([]),
+    cues: z.array(z.string().min(1)).max(6).default([]),
+  }),
+  base.extend({
+    /** Kartentisch: Josua übernimmt – Jordan, Jericho, dreimal «Sei mutig und stark» (Josua 1, 3) */
+    type: z.literal("jordan"),
+    stage: z.enum(["mourning", "map", "courage", "book", "crossing"]),
+    cues: z.array(z.string().min(1)).max(6).default([]),
+  }),
+  base.extend({
+    /** Abendweg nach Emmaus: zwei Jünger, ein Fremder, das Brot (Lukas 24:13–35) */
+    type: z.literal("emmaus"),
+    stage: z.enum(["road", "stranger", "scriptures", "evening", "bread", "burn"]),
+    /** Einstieg: Der Fremde zeigt sich nur von fern, der Wegweiser nennt die elf Kilometer */
+    hook: z.boolean().default(false),
+    cues: z.array(z.string().min(1)).max(6).default([]),
+  }),
+  base.extend({
+    /** Wald bei Nacht: Enos auf der Jagd, Worte von zu Hause, Gebet bis in die Nacht (Enos 1:1–8) */
+    type: z.literal("enos"),
+    stage: z.enum(["hunt", "words", "pray", "night", "voice", "home"]),
+    /** Einstieg: Enos geht in den Wald – und kommt verändert zurück */
+    hook: z.boolean().default(false),
+    /** Worte, die ihm in den Sinn kommen – schweben bei `at` herein */
+    words: z.array(z.object({ text: z.string().min(1), at: z.string().min(1) })).max(4).default([]),
+    cues: z.array(z.string().min(1)).max(6).default([]),
+  }),
+  base.extend({
+    /** Game-Look: Vorschau auf das Minispiel «Bücherturm» – Bücher der Schriften stapeln */
+    type: z.literal("stack"),
+    stage: z.enum(["names", "play", "topple", "complete"]),
+    /**
+     * Die Bücher von unten nach oben. Ohne `at` liegen sie schon, mit `at` fallen sie in dem
+     * Moment, in dem die Stimme es sagt. `offset` legt ein Buch schief (in Buchbreiten gegen
+     * das darunter), `perfect` lässt es golden aufleuchten.
+     */
+    books: z
+      .array(z.object({ label: z.string().min(1), at: z.string().min(1).optional(), offset: z.number().min(-0.6).max(0.6).default(0), perfect: z.boolean().default(false) }))
+      .max(16)
+      .default([]),
+    /** Das Buch, das über dem Turm hin und her schwebt */
+    hover: z.string().optional(),
+    /** Punkte und Leben oben im Spielfeld zu Beginn der Szene */
+    score: z.number().int().min(0).default(0),
+    lives: z.number().int().min(0).max(3).default(3),
+    /**
+     * Die Takte: `play` – [Reihenfolge, Schweben, Tipp]; `topple` – [Wackeln, Kippen, Leben weg];
+     * `complete` – [Klammer, Zähler, Leben zurück]
+     */
+    cues: z.array(z.string().min(1)).max(6).default([]),
+  }),
   base.extend({
     /** Vorschau auf die nächste Karte im Feed – damit das Video zur Umfrage oder Aufgabe überleitet */
     type: z.literal("teaser"),
@@ -290,7 +397,9 @@ export const episodeSchema = z
     series: z.string().optional(),
     brand: z.object({ name: z.string(), label: z.string().optional() }),
     /** Visueller Stil der ganzen Episode (src/looks.tsx) */
-    look: z.enum(["dawn", "arcade", "chat", "map", "track", "noir", "show", "journal", "stone", "ember", "space", "palace", "dream"]).default("dawn"),
+    look: z
+      .enum(["dawn", "arcade", "chat", "map", "track", "noir", "show", "journal", "stone", "ember", "space", "palace", "dream", "desert", "temple", "post", "feed", "kitchen", "dusk", "forest"])
+      .default("dawn"),
     voice: z.object({
       provider: z.enum(["google", "piper"]).default("google"),
       languageCode: z.string().default("de-DE"),
@@ -365,6 +474,7 @@ export const episodeSchema = z
         if (s.bindAt) mustContain.push(["bindAt", s.bindAt]);
         if (s.breakAt) mustContain.push(["breakAt", s.breakAt]);
       }
+      if (W45_TYPES.has(s.type)) mustContain.push(...phrasesOf(s));
       for (const [field, text] of mustContain) {
         if (!spoken.includes(normalize(text))) {
           ctx.addIssue({
@@ -376,6 +486,24 @@ export const episodeSchema = z
       }
     });
   });
+
+/** Die Szenen der Woche zum Schriftstudium – ihre Phrasen sammelt `phrasesOf` von selbst. */
+const W45_TYPES = new Set(["quest", "wilderness", "templefind", "tracking", "feed", "menu", "jordan", "emmaus", "enos", "stack"]);
+
+/**
+ * Alle Phrasen einer Szene, bei denen etwas passiert: Felder `at`, Felder auf `…At` und die
+ * Einträge von `cues` – auch in Listen und Unterobjekten. Der Pfad steht in der Fehlermeldung.
+ */
+function phrasesOf(value: unknown, path = ""): Array<[string, string]> {
+  if (Array.isArray(value)) return value.flatMap((entry, i) => phrasesOf(entry, `${path}.${i}`));
+  if (!value || typeof value !== "object") return [];
+  return Object.entries(value as Record<string, unknown>).flatMap(([key, entry]): Array<[string, string]> => {
+    const at = path ? `${path}.${key}` : key;
+    if (typeof entry === "string" && (key === "at" || /[a-z]At$/.test(key))) return [[at, entry]];
+    if (key === "cues" && Array.isArray(entry)) return entry.filter((c): c is string => typeof c === "string").map((c, i): [string, string] => [`${at}.${i}`, c]);
+    return typeof entry === "object" ? phrasesOf(entry, at) : [];
+  });
+}
 
 export type Episode = z.infer<typeof episodeSchema>;
 export type Scene = z.infer<typeof sceneSchema>;

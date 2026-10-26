@@ -26,6 +26,16 @@ import fuerEineZeitWieDiese from "../content/2026-10-30-fuer-eine-zeit-wie-diese
 import nebelDerFinsternis from "../content/2026-10-31-nebel-der-finsternis.json";
 import dreiLuegen from "../content/2026-11-01-drei-luegen.json";
 import kettenSprengen from "../content/2026-11-01-ketten-sprengen.json";
+import dreiVersuche from "../content/2026-11-02-drei-versuche.json";
+import esStehtGeschrieben from "../content/2026-11-02-es-steht-geschrieben.json";
+import dasVergesseneBuch from "../content/2026-11-03-das-vergessene-buch.json";
+import postFuerDich from "../content/2026-11-03-post-fuer-dich.json";
+import nochEinVideo from "../content/2026-11-04-noch-ein-video.json";
+import snackOderFestmahl from "../content/2026-11-05-snack-oder-festmahl.json";
+import seiMutigUndStark from "../content/2026-11-05-sei-mutig-und-stark.json";
+import branntNichtUnserHerz from "../content/2026-11-06-brannte-nicht-unser-herz.json";
+import worteVonZuHause from "../content/2026-11-07-worte-von-zu-hause.json";
+import buecherturm from "../content/2026-11-08-buecherturm.json";
 
 export const episodes: Array<{ id: string } & Record<string, unknown>> = [
   anpackenStattWarten,
@@ -52,4 +62,14 @@ export const episodes: Array<{ id: string } & Record<string, unknown>> = [
   nebelDerFinsternis,
   dreiLuegen,
   kettenSprengen,
+  dreiVersuche,
+  esStehtGeschrieben,
+  dasVergesseneBuch,
+  postFuerDich,
+  nochEinVideo,
+  snackOderFestmahl,
+  seiMutigUndStark,
+  branntNichtUnserHerz,
+  worteVonZuHause,
+  buecherturm,
 ];

@@ -3525,19 +3525,23 @@ export const IMPULSE_KIND_LABELS: Record<ImpulseKind, string> = {
  *   Ausreden springen, Aufgaben einsammeln (tippen, halten).
  * - `befreien` – «Ketten sprengen», Wahrheit: Notlügen wegtippen, bevor
  *   sie zur Kette werden (tippen auf neun Plätze).
+ * - `stapeln` – «Bücherturm», Schriftstudium: die Bücher der Schriften in
+ *   ihrer Reihenfolge zu einem Turm stapeln, der nicht kippen darf
+ *   (tippen im richtigen Moment, wie Turmbau).
  *
  * Ein neues Spiel kommt mit einem neuen Schlüssel dazu (Regeln in
  * `lib/impulseGame*`, Bild in `components/impulse/game`, eingetragen in
  * `components/impulse/game/games.ts`); alte Ranglisten bleiben bei ihrem
  * Spiel.
  */
-export type ImpulseGameId = 'sortieren' | 'abwehren' | 'springen' | 'befreien'
+export type ImpulseGameId = 'sortieren' | 'abwehren' | 'springen' | 'befreien' | 'stapeln'
 
 export const IMPULSE_GAME_LABELS: Record<ImpulseGameId, string> = {
   sortieren: 'Gut für dich? – Gesundes und Schädliches sortieren',
   abwehren: 'Schild hoch! – Dunkles abwehren, Licht hereinlassen',
   springen: 'Keine Ausreden! – laufen, springen, Aufgaben einsammeln',
   befreien: 'Ketten sprengen – Notlügen wegtippen, bevor sie zur Kette werden',
+  stapeln: 'Bücherturm – die Bücher der Schriften der Reihe nach stapeln',
 }
 
 /**

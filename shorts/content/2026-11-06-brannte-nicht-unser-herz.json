@@ -1,0 +1,123 @@
+{
+  "id": "2026-11-06-brannte-nicht-unser-herz",
+  "title": "Brannte nicht unser Herz?",
+  "date": "2026-11-06",
+  "series": "Für eine starke Jugend · November",
+  "brand": {
+    "name": "AntiDoom"
+  },
+  "look": "dusk",
+  "voice": {
+    "provider": "google",
+    "languageCode": "de-DE",
+    "name": "de-DE-Chirp3-HD-Vindemiatrix",
+    "speakingRate": 1.0
+  },
+  "music": {
+    "src": "music/pad-dawn.mp3",
+    "volume": 0.3,
+    "duckTo": 0.08
+  },
+  "scenes": [
+    {
+      "id": "hook",
+      "type": "emmaus",
+      "stage": "road",
+      "hook": true,
+      "ref": "Lukas 24:13",
+      "sky": 0.7,
+      "cues": [
+        "Zwei Freunde",
+        "Rund elf Kilometer",
+        "Und ein Fremder"
+      ],
+      "narration": "Zwei Freunde. [pause short] Rund elf Kilometer. [pause short] Und ein Fremder, der alles verändert."
+    },
+    {
+      "id": "traurig",
+      "type": "emmaus",
+      "stage": "road",
+      "ref": "Lukas 24:13–17",
+      "sky": 0.65,
+      "cues": [
+        "nach der Kreuzigung",
+        "nach Emmaus",
+        "Sie sind traurig"
+      ],
+      "narration": "Es ist der Sonntag nach der Kreuzigung. [pause short] Zwei Jünger gehen von Jerusalem nach Emmaus. [pause short] Sie sind traurig. [pause short] Ihre Hoffnung ist weg."
+    },
+    {
+      "id": "fremder",
+      "type": "emmaus",
+      "stage": "stranger",
+      "ref": "Lukas 24:15–16",
+      "sky": 0.6,
+      "cues": [
+        "Da geht einer mit ihnen",
+        "sie erkennen ihn nicht"
+      ],
+      "narration": "Da geht einer mit ihnen. [pause short] Es ist Jesus – [pause short] doch sie erkennen ihn nicht."
+    },
+    {
+      "id": "schriften",
+      "type": "emmaus",
+      "stage": "scriptures",
+      "ref": "Lukas 24:27",
+      "sky": 0.5,
+      "cues": [
+        "fängt er bei Mose an",
+        "erklärt ihnen alle Schriften"
+      ],
+      "narration": "Unterwegs fängt er bei Mose an [pause short] und erklärt ihnen alle Schriften, [pause short] die von ihm sprechen."
+    },
+    {
+      "id": "abend",
+      "type": "emmaus",
+      "stage": "evening",
+      "ref": "Lukas 24:28–29",
+      "sky": 0.3,
+      "cues": [
+        "Bleib bei uns",
+        "Es wird schon dunkel"
+      ],
+      "narration": "Am Abend bitten sie ihn: [pause short] Bleib bei uns. [pause short] Es wird schon dunkel."
+    },
+    {
+      "id": "brot",
+      "type": "emmaus",
+      "stage": "bread",
+      "ref": "Lukas 24:30–31",
+      "sky": 0.2,
+      "cues": [
+        "nimmt er das Brot",
+        "bricht es",
+        "gehen ihnen die Augen auf"
+      ],
+      "narration": "Beim Essen nimmt er das Brot, [pause short] spricht den Segen und bricht es. [pause short] Da gehen ihnen die Augen auf."
+    },
+    {
+      "id": "herz",
+      "type": "emmaus",
+      "stage": "burn",
+      "ref": "Lukas 24:32",
+      "sky": 0.2,
+      "cues": [
+        "Brannte nicht unser Herz",
+        "als er uns die Schriften erklärte"
+      ],
+      "narration": "Sie sagen zueinander: [pause short] Brannte nicht unser Herz, [pause short] als er uns die Schriften erklärte?"
+    },
+    {
+      "id": "punch",
+      "type": "kinetic",
+      "holdAfterSec": 1.2,
+      "lines": [
+        "Die Schriften erzählen von ihm.",
+        "Bei welcher Stelle",
+        "bist du ihm",
+        "nähergekommen?"
+      ],
+      "narration": "Die Schriften erzählen von ihm. [pause short] Bei welcher Stelle bist du ihm nähergekommen?"
+    }
+  ]
+}

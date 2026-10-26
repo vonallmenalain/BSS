@@ -1,0 +1,122 @@
+{
+  "id": "2026-11-07-worte-von-zu-hause",
+  "title": "Worte von zu Hause",
+  "date": "2026-11-07",
+  "series": "Für eine starke Jugend · November",
+  "brand": {
+    "name": "AntiDoom"
+  },
+  "look": "forest",
+  "voice": {
+    "provider": "google",
+    "languageCode": "de-DE",
+    "name": "de-DE-Chirp3-HD-Enceladus",
+    "speakingRate": 1.0
+  },
+  "music": {
+    "src": "music/mystery.mp3",
+    "volume": 0.3,
+    "duckTo": 0.08
+  },
+  "scenes": [
+    {
+      "id": "hook",
+      "type": "enos",
+      "stage": "hunt",
+      "hook": true,
+      "ref": "Enos 1:3",
+      "sky": 0.55,
+      "cues": [
+        "Er ging jagen",
+        "als anderer Mensch zurück"
+      ],
+      "narration": "Er ging jagen – [pause short] und kam als anderer Mensch zurück."
+    },
+    {
+      "id": "enos",
+      "type": "enos",
+      "stage": "hunt",
+      "ref": "Enos 1:1, 3",
+      "sky": 0.55,
+      "cues": [
+        "Enos, der Sohn von Jakob",
+        "allein in den Wald"
+      ],
+      "narration": "Enos, der Sohn von Jakob, Nephis Bruder. [pause short] Eines Tages geht er allein in den Wald, um zu jagen."
+    },
+    {
+      "id": "worte",
+      "type": "enos",
+      "stage": "words",
+      "ref": "Enos 1:3",
+      "sky": 0.5,
+      "words": [
+        {
+          "text": "ewiges Leben",
+          "at": "über das ewige Leben"
+        },
+        {
+          "text": "Freude der Heiligen",
+          "at": "die Freude der Heiligen"
+        }
+      ],
+      "cues": [
+        "kommen ihm Worte in den Sinn",
+        "seinen Vater oft hatte sagen hören"
+      ],
+      "narration": "Da kommen ihm Worte in den Sinn, [pause short] die er seinen Vater oft hatte sagen hören: [pause short] über das ewige Leben [pause short] und die Freude der Heiligen."
+    },
+    {
+      "id": "hunger",
+      "type": "enos",
+      "stage": "pray",
+      "ref": "Enos 1:3–4",
+      "sky": 0.4,
+      "cues": [
+        "tief in sein Herz",
+        "Seine Seele hungert",
+        "Er kniet nieder",
+        "den ganzen Tag"
+      ],
+      "narration": "Sie dringen tief in sein Herz. [pause short] Seine Seele hungert. [pause short] Er kniet nieder und betet – [pause short] den ganzen Tag."
+    },
+    {
+      "id": "nacht",
+      "type": "enos",
+      "stage": "night",
+      "ref": "Enos 1:4",
+      "sky": 0.05,
+      "cues": [
+        "Es wird Nacht",
+        "Er betet immer noch"
+      ],
+      "narration": "Es wird Nacht. [pause short] Er betet immer noch."
+    },
+    {
+      "id": "stimme",
+      "type": "enos",
+      "stage": "voice",
+      "ref": "Enos 1:5",
+      "sky": 0.1,
+      "cues": [
+        "hört er eine Stimme",
+        "deine Sünden sind dir vergeben"
+      ],
+      "narration": "Dann hört er eine Stimme: [pause short] Enos, deine Sünden sind dir vergeben."
+    },
+    {
+      "id": "punch",
+      "type": "kinetic",
+      "holdAfterSec": 1.2,
+      "lines": [
+        "Woher kamen die Worte im Wald?",
+        "Von zu Hause.",
+        "Was ihr heute zusammen lest,",
+        "fällt jemandem vielleicht",
+        "Jahre später wieder ein."
+      ],
+      "narration": "Woher kamen die Worte im Wald? [pause short] Von zu Hause. [pause short] Was ihr heute zusammen lest, fällt jemandem vielleicht Jahre später wieder ein.",
+      "sky": 0.8
+    }
+  ]
+}

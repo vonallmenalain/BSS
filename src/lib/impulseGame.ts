@@ -263,6 +263,7 @@ export const GAME_UNITS: Record<ImpulseGameId, { one: string; many: string }> = 
   abwehren: { one: 'Punkt', many: 'Punkte' },
   springen: { one: 'Punkt', many: 'Punkte' },
   befreien: { one: 'Punkt', many: 'Punkte' },
+  stapeln: { one: 'Punkt', many: 'Punkte' },
 }
 
 /** Kennt diese Version der App das Spiel? Eine Karte aus einer neueren Version vielleicht nicht. */

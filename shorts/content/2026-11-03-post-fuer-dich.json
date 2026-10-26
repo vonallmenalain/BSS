@@ -1,0 +1,120 @@
+{
+  "id": "2026-11-03-post-fuer-dich",
+  "title": "Post für dich",
+  "date": "2026-11-03",
+  "series": "Für eine starke Jugend · November",
+  "brand": {
+    "name": "AntiDoom"
+  },
+  "look": "post",
+  "voice": {
+    "provider": "google",
+    "languageCode": "de-DE",
+    "name": "de-DE-Chirp3-HD-Gacrux",
+    "speakingRate": 1.02
+  },
+  "music": {
+    "src": "music/space.mp3",
+    "volume": 0.3,
+    "duckTo": 0.08
+  },
+  "scenes": [
+    {
+      "id": "hook",
+      "type": "tracking",
+      "stage": "sent",
+      "cues": [
+        "Eine Nachricht",
+        "Abgeschickt vor über sechzehnhundert Jahren",
+        "Empfänger: du"
+      ],
+      "narration": "Eine Nachricht. [pause short] Abgeschickt vor über sechzehnhundert Jahren. [pause short] Empfänger: du."
+    },
+    {
+      "id": "absender",
+      "type": "tracking",
+      "stage": "sender",
+      "ref": "Mormon 8:3–5 · Moroni 10:1",
+      "cues": [
+        "Absender: Moroni",
+        "Um das Jahr 421",
+        "Er ist allein"
+      ],
+      "narration": "Absender: Moroni. [pause short] Um das Jahr 421. [pause short] Sein Volk ist untergegangen, sein Vater gefallen. [pause short] Er ist allein."
+    },
+    {
+      "id": "versteckt",
+      "type": "tracking",
+      "stage": "hidden",
+      "ref": "Mormon 8:4",
+      "cues": [
+        "die letzten Worte",
+        "versteckt sie in der Erde"
+      ],
+      "narration": "Er schreibt die letzten Worte auf die Platten [pause short] und versteckt sie in der Erde."
+    },
+    {
+      "id": "botschaft",
+      "type": "tracking",
+      "stage": "message",
+      "ref": "Mormon 8:35",
+      "cues": [
+        "Ich spreche zu euch",
+        "Jesus Christus hat euch mir gezeigt",
+        "ich weiss, was ihr tut"
+      ],
+      "narration": "Und er schreibt etwas Erstaunliches: [pause short] Ich spreche zu euch, als wärt ihr da. [pause short] Jesus Christus hat euch mir gezeigt, [pause short] und ich weiss, was ihr tut."
+    },
+    {
+      "id": "unterwegs",
+      "type": "tracking",
+      "stage": "transit",
+      "ref": "Joseph Smith – Lebensgeschichte 1:59",
+      "events": [
+        {
+          "time": "421",
+          "text": "Versteckt in einem Hügel",
+          "at": "in einem Hügel"
+        },
+        {
+          "time": "1827",
+          "text": "Abgeholt von Joseph Smith",
+          "at": "bekommt Joseph Smith die Platten"
+        },
+        {
+          "time": "1830",
+          "text": "Übersetzt und gedruckt",
+          "at": "Übersetzt, gedruckt"
+        },
+        {
+          "time": "Heute",
+          "text": "Zugestellt",
+          "at": "und heute"
+        }
+      ],
+      "narration": "Rund vierzehnhundert Jahre liegt die Sendung in einem Hügel. [pause short] Im Jahr 1827 bekommt Joseph Smith die Platten. [pause short] Übersetzt, gedruckt – [pause short] und heute: zugestellt."
+    },
+    {
+      "id": "zugestellt",
+      "type": "tracking",
+      "stage": "delivered",
+      "cues": [
+        "Moroni hat dich gesehen",
+        "für dich geschrieben"
+      ],
+      "narration": "Moroni hat dich gesehen. [pause short] Und für dich geschrieben."
+    },
+    {
+      "id": "punch",
+      "type": "kinetic",
+      "holdAfterSec": 1.2,
+      "lines": [
+        "Alte Geschichten",
+        "ohne Bezug zu deinem Leben?",
+        "Fakt –",
+        "oder Mythos?"
+      ],
+      "narration": "Alte Geschichten ohne Bezug zu deinem Leben? [pause short] Fakt – [pause short] oder Mythos?"
+    }
+  ]
+}

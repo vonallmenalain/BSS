@@ -156,12 +156,13 @@ test('Themenpaket: der Feed wechselt den Takt – und endet mit der Teilen-Aufga
   }
 })
 
-test('Themenpaket: die Wochen im Oktober enden mit ihrem Minispiel – jede mit einem eigenen', () => {
+test('Themenpaket: die Wochen bis zum Schriftstudium enden mit ihrem Minispiel – jede mit einem eigenen', () => {
   const expected = [
     ['2026-W41', 'fsy26-w41-spiel', 'sortieren'],
     ['2026-W42', 'fsy26-w42-spiel', 'abwehren'],
     ['2026-W43', 'fsy26-w43-spiel', 'springen'],
     ['2026-W44', 'fsy26-w44-spiel', 'befreien'],
+    ['2026-W45', 'fsy26-w45-spiel', 'stapeln'],
   ] as const
   for (const [weekKey, id, game] of expected) {
     const week = PACK_WEEKS.find((entry) => entry.week === weekKey)!
@@ -237,9 +238,9 @@ test('deckOrders: eine nachgereichte Karte schiebt sich dazwischen – keine rü
 const SHORTS = ALL.filter((plan) => plan.kind === 'video')
 
 /** Die Wochen mit eigenen Shorts – vor jedem interaktiven Element eines. */
-const SHORT_WEEKS = ['2026-W43', '2026-W44']
+const SHORT_WEEKS = ['2026-W43', '2026-W44', '2026-W45']
 
-test('Shorts: die Wochen zu Helamans jungen Kriegern und zur Wahrheit tragen sie – und nur sie', () => {
+test('Shorts: die Wochen zu Helamans jungen Kriegern, zur Wahrheit und zum Schriftstudium tragen sie – und nur sie', () => {
   assert.deepEqual(
     [...new Set(SHORTS.map((plan) => plan.week))],
     SHORT_WEEKS,
@@ -309,6 +310,16 @@ test('Eigene Shorts: Videodateien der App – liegen bereit und spielen ohne Tex
       'w44-eigen-traum',
       'w44-eigen-petrus',
       'w44-eigen-spiel',
+      'w45-eigen-platten',
+      'w45-eigen-wueste',
+      'w45-eigen-josia',
+      'w45-eigen-moroni',
+      'w45-eigen-feed',
+      'w45-eigen-festmahl',
+      'w45-eigen-josua',
+      'w45-eigen-emmaus',
+      'w45-eigen-enos',
+      'w45-eigen-spiel',
     ],
   )
   const files = new Set<string>()
@@ -361,17 +372,24 @@ test('Wochen mit eigenen Shorts: vor jedem interaktiven Element ein eigenes Vide
 
 test('Shorts: eine schon eingespielte Woche holt sie nach – und keine Karte rückt', () => {
   /* So steht es in der Datenbank: das Paket ohne die Shorts, die Karten
-     auf ihren ganzen Plätzen (W43: 1 bis 13, W44: 1 bis 12), das Minispiel
-     direkt dahinter. */
-  for (const [key, places] of [
-    ['2026-W43', 14],
-    ['2026-W44', 13],
+     auf ihren ganzen Plätzen (W43: 1 bis 13, W44: 1 bis 12, W45: 1 bis 12),
+     das Minispiel direkt dahinter – in der Woche zum Schriftstudium kam es
+     erst mit den Shorts, zusammen mit dem Quiz, das die eiserne Stange
+     ablöst. */
+  for (const [key, places, retiredCards, added] of [
+    ['2026-W43', 14, ['feed-1', 'feed-2', 'feed-3'], []],
+    ['2026-W44', 13, ['feed-1', 'feed-2', 'feed-3'], []],
+    ['2026-W45', 12, ['feed-1', 'feed-2', 'feed-3', 'quiz-1'], ['quiz-4', 'spiel']],
   ] as const) {
     const week = PACK_WEEKS.find((entry) => entry.week === key)!
     const tag = key.slice(-3).toLowerCase()
-    // Damals noch mit den Textkarten, die inzwischen ersetzt sind
+    const id = (card: string) => `${PACK_ID_PREFIX}${tag}-${card}`
+    const newIds = new Set<string>(added.map(id))
+    // Damals noch mit den Karten, die inzwischen ersetzt sind
     const original = { ...week, deck: week.deck.map((card) => ({ ...card, retired: undefined })) }
-    const stored = packWeekPlans(original).filter((plan) => plan.kind !== 'video')
+    const stored = packWeekPlans(original).filter(
+      (plan) => plan.kind !== 'video' && !newIds.has(plan.id),
+    )
     assert.deepEqual(
       stored.filter((plan) => plan.order !== null && plan.order > 0).map((plan) => plan.order),
       Array.from({ length: places }, (_, index) => index + 1),
@@ -381,20 +399,20 @@ test('Shorts: eine schon eingespielte Woche holt sie nach – und keine Karte r�
     const plans = planPackItems(stored, key)
     const missing = plans.filter((plan) => plan.week === key)
     assert.deepEqual(
-      missing.map((plan) => plan.id),
-      SHORTS.filter((plan) => plan.week === key).map((plan) => plan.id),
+      missing.map((plan) => plan.id).sort(),
+      [...SHORTS.filter((plan) => plan.week === key).map((plan) => plan.id), ...newIds].sort(),
       key,
     )
-    // Jeder Short liegt zwischen zwei Karten, nie auf dem Platz einer anderen.
-    for (const plan of missing) assert.ok(!Number.isInteger(plan.order), plan.id)
+    // Jeder Short (und das neue Quiz) liegt zwischen zwei Karten, nie auf dem Platz einer
+    // anderen – das Minispiel hinter der letzten.
+    for (const plan of missing)
+      if (plan.kind === 'spiel') assert.equal(plan.order, places + 1, plan.id)
+      else assert.ok(!Number.isInteger(plan.order), plan.id)
 
     // Zusammen – und mit den ersetzten Karten zurückgestellt – ergibt das genau
     // den Feed, den ein frisch eingespieltes Paket legt.
     const retired = new Set(planPackRetirements(stored).map((entry) => entry.id))
-    assert.deepEqual(
-      [...retired].sort(),
-      ['feed-1', 'feed-2', 'feed-3'].map((card) => `${PACK_ID_PREFIX}${tag}-${card}`),
-    )
+    assert.deepEqual([...retired].sort(), retiredCards.map(id).sort(), key)
     const feed = (entries: typeof stored) =>
       deckOrder(
         entries.filter((plan) => plan.kind !== 'wochenziel' && plan.kind !== 'tageschallenge'),

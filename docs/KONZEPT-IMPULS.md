@@ -1263,6 +1263,38 @@ denselben Ablauf (Erklärung, Runde, Ergebnis):
   wachsen, erst eine dünne Schnur, dann starke Stricke (vgl. 2 Nephi
   26:22); die Tages-Challenge derselben Woche heisst «Sieben Tage ohne
   Notlüge».
+- **«Bücherturm»** (`stapeln`, Schriftstudium, 2.–8. Nov.): gebaut nach
+  dem Muster von Turmbau aus den Tier-1-Spielen von games.alae.app. Ein
+  Schreibtisch mit Lampe, darauf ein Turm aus den Büchern der heiligen
+  Schriften – jedes mit seinem Namen auf dem Rücken, in der Farbe seiner
+  Sammlung und so dick, wie es Kapitel hat (Alma dick, Enos dünn). Über
+  dem Turm schwebt das nächste Buch an seinem Lesebändchen hin und her;
+  ein Tipp irgendwo (Leertaste, Enter, Pfeil nach unten) lässt es
+  senkrecht fallen, ein Schatten auf der Spitze zeigt, wo es landen würde.
+  Die Bücher kommen **in der Reihenfolge der Schriften**: das Buch Mormon
+  (1 Nephi bis Moroni), dann das Neue Testament, Lehre und Bündnisse, die
+  Köstliche Perle und das Alte Testament – wer ein paar Runden spielt,
+  kennt die Reihenfolge. Anders als beim Turmbau bricht nichts ab: Ein
+  Buch, das schief aufliegt, bleibt schief liegen, und der Turm hält wie
+  echte Bücher, solange über jedem Buch der Schwerpunkt aller Bücher
+  darüber auf ihm liegt (`STACK_GRIP`: im Spiel etwas früher als in
+  Wirklichkeit). Wer immer zur selben Seite danebenliegt, baut einen
+  schiefen Turm – der wackelt sichtbar um die Kante, über die er kippen
+  würde, und kippt; wer gegensteuert, hält ihn. Kippt er, fällt alles ab
+  dem Buch, das nachgibt, und die gefallenen Bücher kommen der Reihe nach
+  wieder – im Turm steht immer die richtige Reihenfolge. Daneben oder zu
+  weit am Rand rutscht das Buch ab. Beides kostet eines von drei Leben.
+  Genau drauf (6 % einer Buchbreite) rastet ein und gibt Extrapunkte,
+  mehrere genaue am Stück immer mehr (bis vier dazu). Eine ganze Sammlung –
+  als Erstes alle fünfzehn Bücher des Buches Mormon – gibt fünf Punkte und
+  ein Leben zurück; links am Turm steht eine Klammer mit ihrem Namen, oben
+  zählt die Anzeige mit («9/15 Buch Mormon»). Das Buch schwebt mit jedem
+  Buch schneller und weiter, ab dem zwölften mit schwankendem Takt, ab dem
+  33. mit einem zweiten Schub (`stackSwing`). Die Kamera folgt der Spitze,
+  auch zur Seite; die Bibliothek dahinter zieht langsamer vorbei, und über
+  dem Raum geht es in den Himmel – nachts mit Sternen. Das Bild:
+  «Weidet euch an den Worten von Christus» (2 Nephi 32:3) und «Sucht aus
+  den besten Büchern Worte der Weisheit» (Lehre und Bündnisse 88:118).
 
 **Das Tempo** zieht von Anfang an an und hat ab etwa vierzig Sekunden einen
 zweiten Schub, den auf Dauer niemand hält (`sortPace`). Eine Uhr gibt es
@@ -1272,8 +1304,9 @@ einem nachgebildeten Spieler (`tests/impulse-game.test.ts`): Anfänger
 kommen auf gut 20 Sekunden, der Durchschnitt auf gut 30, die Besten auf
 knapp 55 – keine Runde dauert länger als eine Minute.
 
-Bei den drei neueren Spielen liegen die Regeln als Klasse ohne Leinwand in
-`lib/impulseGameShield`, `lib/impulseGameRun` und `lib/impulseGameChain`;
+Bei den vier neueren Spielen liegen die Regeln als Klasse ohne Leinwand in
+`lib/impulseGameShield`, `lib/impulseGameRun`, `lib/impulseGameChain` und
+`lib/impulseGameStack`;
 die Leinwand rechnet mit genau diesem Code, und der Test spielt ihn mit je
 200 nachgebildeten Runden für Anfänger, Durchschnitt und Spitze durch
 (Median der Rundenlänge):
@@ -1283,6 +1316,11 @@ die Leinwand rechnet mit genau diesem Code, und der Test spielt ihn mit je
 | «Schild hoch!»    | 22 s     | 32 s         | 49 s (52 s)            |
 | «Keine Ausreden!» | 21 s     | 27 s         | 45 s (55 s)            |
 | «Ketten sprengen» | 24 s     | 33 s         | 50 s (55 s)            |
+| «Bücherturm»      | 27 s     | 34 s         | 42 s (60 s)            |
+
+Beim Bücherturm zielt der nachgebildete Spieler dorthin, wo der Turm danach
+am sichersten steht – der Anfänger nur ein wenig, die Spitze ganz – und
+tippt mit einer Streuung in Sekunden (90, 60 und 35 Millisekunden).
 
 **Flüssig auch auf älteren Telefonen.** Gezeichnet wird auf eine Leinwand,
 wie Turmbau: jeder Gegenstand einmal vorgezeichnet und danach nur noch
@@ -1291,10 +1329,14 @@ mit der verstrichenen Zeit statt mit Bildern, die Pixeldichte auf 2
 begrenzt. React kennt nur die Ränder (Einführung, Ergebnis, X); die Runde
 selbst läuft ohne einen einzigen Render. Gemessen im Chromium mit
 Handy-Massen: knapp 60 Bilder je Sekunde, mit vierfach gedrosselter CPU
-noch über 50. Die drei neueren Spiele teilen dafür ein Gerüst
+noch über 50. Die vier neueren Spiele teilen dafür ein Gerüst
 (`components/impulse/game/canvasGame`: Bildschleife, Anhalten, Masse,
 Punkte und Herzen, Funken, Ausklang) und halten mit Handy-Massen knapp
-60 Bilder je Sekunde, auch mit vierfach gedrosselter CPU.
+60 Bilder je Sekunde, auch mit vierfach gedrosselter CPU. Beim Bücherturm
+liegt der ganze Raum (Wand, Regale, Fenster, Schein der Lampe) fertig auf
+einer hohen Leinwand, die je Bild einmal gestempelt wird; der Himmel kommt
+erst dazu, wenn der Turm über den Raum wächst (gut 50 Bilder je Sekunde mit
+vierfach gedrosselter CPU, wie «Ketten sprengen»).
 
 **Die Rangliste.** Je Spiel-Karte und Konto **ein** Eintrag mit dem besten
 Lauf (`impulseGameScores/{itemId}_{uid}`) – wie oft jemand gespielt hat,
@@ -1327,9 +1369,10 @@ Vorschau einer einzelnen Karte lässt sich spielen, speichert aber nichts;
 in der Vorschau der Woche lebt der Lauf im Arbeitsspeicher wie jede andere
 Antwort. In der Mitmach-Ecke lässt sich ein Minispiel nicht einreichen –
 ein Spiel ist Code, keine Karte zum Ausfüllen. Das Themenpaket bringt
-für die vier Oktoberwochen je ein Spiel mit – «Gut für dich?», «Schild
-hoch!», «Keine Ausreden!», «Ketten sprengen» – als letzte Karte der Woche
-(`fsy26-w41-spiel` bis `fsy26-w44-spiel`). War das Paket schon
+für die vier Oktoberwochen und die Woche zum Schriftstudium je ein Spiel
+mit – «Gut für dich?», «Schild hoch!», «Keine Ausreden!», «Ketten
+sprengen», «Bücherturm» – als letzte Karte der Woche (`fsy26-w41-spiel`
+bis `fsy26-w45-spiel`). War das Paket schon
 eingespielt, bietet der Kasten «Themenpaket» genau das Fehlende an und
 zählt es einzeln auf (vergangene Wochen bleiben weg); ein Klick auf
 «Einspielen» legt es an. Kommt ein Spiel mitten in einer laufenden Woche
@@ -1786,7 +1829,9 @@ Teil des App-Builds (die App-Prüfungen und Netlify fassen es nicht an).
 - **Jede Folge hat ihren eigenen Look** (`look` im JSON, `shorts/src/looks.tsx`):
   Videospiel, Handy-Chat, Kartentisch, Stadion, Detektiv, Quizshow,
   Notizbuch, Sonnenaufgang, Jerusalem bei Nacht, Feuer im Hof, Weltraum,
-  Palast und Traum – mit eigener Musik, eigener Stimme und Soundeffekten.
+  Palast, Traum, Wüste, Tempel-Baustelle, Sendungsverfolgung,
+  Kurzvideo-Feed, Kochshow, Abendweg und Wald – mit eigener Musik, eigener
+  Stimme und Soundeffekten.
   So sehen die Shorts einer Woche nicht gleich aus.
 - **Am besten kommen an:** Geschichten aus den Schriften, kurz, cool und
   informativ erzählt (die Taktik als Kartentisch wie «Mission Lockvogel»),
@@ -1851,6 +1896,45 @@ Teil des App-Builds (die App-Prüfungen und Netlify fassen es nicht an).
     Apostelgeschichte 4:18–20) → Teilen-Aufgabe – 11,5.
   - «Ketten sprengen» (Videospiel, 2 Nephi 26:22, Trailer zum Minispiel) →
     Minispiel – 12,5.
+- **In der Woche 2.–8. November** (Schriftstudium) wieder zehn Videos, vor
+  jedem interaktiven Element eines, jedes in einem eigenen Look – sechs
+  davon neu (Wüste, Tempel-Baustelle, Sendungsverfolgung, Kurzvideo-Feed,
+  Kochshow, Abendweg, Wald). Die drei Textkarten sind ersetzt: Isabellas
+  bunte Stifte und Liriels «Lesen. Nachdenken. Anwenden.» stehen jetzt auf
+  der Menükarte von «Snack oder Festmahl?», die Leuchte aus Psalm 119:105
+  am Schluss von «Noch ein Video». Ebenfalls ersetzt ist das Quiz zur
+  eisernen Stange: «Nebel der Finsternis» hatte die Antwort in der Woche
+  davor schon gegeben. An seine Stelle tritt ein Quiz zu Matthäus 4 (aus
+  welchem Buch Jesus dem Versucher dreimal antwortet – dem Deuteronomium),
+  nachgereicht wie die Videos (`quiz-4`, `late`). Die Folgen in der
+  Reihenfolge des Feeds:
+  - «Drei Versuche» (Jerusalem bei Nacht, Quest-Log: Nephi und die
+    Messingplatten, 1 Nephi 3–5, dazu Omni 1:15–17: ein Volk ohne Schriften)
+    → Umfrage «Wann liest du am ehesten in den Schriften?» – Platz 0,5.
+  - «Es steht geschrieben» (Wüste bei Nacht, Matthäus 4:1–11) → das neue
+    Quiz – 3,5 und 3,75, anstelle des Quiz zur eisernen Stange.
+  - «Das vergessene Buch» (Tempel als Baustelle, 2 Könige 22–23: König
+    Josia mit acht, das gefundene Buch des Gesetzes) → Skala «An wie vielen
+    Tagen hast du letzte Woche gelesen?» – 3,875.
+  - «Post für dich» (Sendungsverfolgung: Moronis Platten, abgeschickt um
+    421, Empfänger: du; Mormon 8:35) → «Fakt oder Mythos?» zu den «alten
+    Geschichten» – 5,5, anstelle der Textkarte.
+  - «Noch ein Video» (Kurzvideo-Feed um Mitternacht, Psalm 119:105) → «Was
+    würdest du tun?» vor dem Schlafen – 6,5.
+  - «Snack oder Festmahl?» (Kochshow, 2 Nephi 31:20, mit dem Menü aus den
+    Fragen und Antworten im Heft) → Vers-Puzzle 2 Nephi 32:3 – 7,5.
+  - «Sei mutig und stark» (Kartentisch, Josua 1 und 3) → Suchfrage
+    Josua 1:8 – 8,5.
+  - «Brannte nicht unser Herz?» (Abendweg nach Emmaus, Lukas 24:13–35) →
+    Frage nach der Schriftstelle, die einem Jesus nähergebracht hat – 10,5,
+    anstelle der Textkarte.
+  - «Worte von zu Hause» (Wald bis in die Nacht, Enos 1:1–8) →
+    Teilen-Aufgabe «Lest zu Hause ein Kapitel» – 11,5.
+  - «Bücherturm» (Videospiel, Trailer zum Minispiel) → Minispiel – 12,5.
+  Ist die Woche schon eingespielt, bietet der Kasten «Themenpaket» die
+  Videos, das neue Quiz und das Minispiel zum Nachholen an, ohne dass eine
+  Karte rückt; die ersetzten Karten stellt der Kasten «Ersetzte Karten
+  zurückstellen» zurück.
 - **Die Stimme**: Gedankenstriche sind Pausen, kein «Minus», und eine Zahl
   vor einem Satzpunkt ist eine Grundzahl («Alma 53.» = «dreiundfünfzig»).
   Jahreszahlen nach «Frühling», «Jahr» … liest sie, wie man sie sagt

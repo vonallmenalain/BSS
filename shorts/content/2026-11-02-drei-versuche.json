@@ -1,0 +1,225 @@
+{
+  "id": "2026-11-02-drei-versuche",
+  "title": "Drei Versuche",
+  "date": "2026-11-02",
+  "series": "Für eine starke Jugend · November",
+  "brand": {
+    "name": "AntiDoom"
+  },
+  "look": "stone",
+  "voice": {
+    "provider": "google",
+    "languageCode": "de-DE",
+    "name": "de-DE-Chirp3-HD-Alnilam",
+    "speakingRate": 1.06
+  },
+  "music": {
+    "src": "music/chase.mp3",
+    "volume": 0.3,
+    "duckTo": 0.08
+  },
+  "scenes": [
+    {
+      "id": "hook",
+      "type": "quest",
+      "stage": "intro",
+      "title": "Die Messingplatten",
+      "ref": "1 Nephi 3–5",
+      "attempts": [
+        {
+          "label": "Versuch 1"
+        },
+        {
+          "label": "Versuch 2"
+        },
+        {
+          "label": "Versuch 3"
+        }
+      ],
+      "cues": [
+        "Drei Versuche",
+        "Zwei gehen schief",
+        "für ein Buch"
+      ],
+      "narration": "Drei Versuche. [pause short] Zwei gehen schief. [pause short] Und alles für ein Buch."
+    },
+    {
+      "id": "auftrag",
+      "type": "quest",
+      "stage": "brief",
+      "title": "Die Messingplatten",
+      "ref": "1 Nephi 3:2–4",
+      "cues": [
+        "Lehi schickt seine Söhne",
+        "die Messingplatten holen",
+        "die heiligen Schriften"
+      ],
+      "narration": "Lehi schickt seine Söhne zurück nach Jerusalem. [pause short] Sie sollen bei Laban die Messingplatten holen – [pause short] die heiligen Schriften ihres Volkes."
+    },
+    {
+      "id": "versuch-1",
+      "type": "quest",
+      "stage": "ask",
+      "ref": "1 Nephi 3:11–13",
+      "attempts": [
+        {
+          "label": "Versuch 1",
+          "text": "Fragen",
+          "result": "fail",
+          "at": "wirft ihn hinaus"
+        },
+        {
+          "label": "Versuch 2"
+        },
+        {
+          "label": "Versuch 3"
+        }
+      ],
+      "cues": [
+        "Laman fragt einfach",
+        "Laban wird wütend"
+      ],
+      "narration": "Versuch eins: [pause short] Laman fragt einfach. [pause short] Laban wird wütend, nennt ihn einen Räuber [pause short] und wirft ihn hinaus."
+    },
+    {
+      "id": "versuch-2",
+      "type": "quest",
+      "stage": "buy",
+      "ref": "1 Nephi 3:22–26",
+      "attempts": [
+        {
+          "label": "Versuch 1",
+          "text": "Fragen",
+          "result": "fail"
+        },
+        {
+          "label": "Versuch 2",
+          "text": "Kaufen",
+          "result": "fail",
+          "at": "um sie zu töten"
+        },
+        {
+          "label": "Versuch 3"
+        }
+      ],
+      "cues": [
+        "Gold, Silber",
+        "Laban will das Gold"
+      ],
+      "narration": "Versuch zwei: [pause short] Sie bieten ihm Gold, Silber – alles, was sie haben. [pause short] Laban will das Gold – [pause short] und schickt seine Diener los, um sie zu töten."
+    },
+    {
+      "id": "aufgeben",
+      "type": "quest",
+      "stage": "quit",
+      "ref": "1 Nephi 3:14–15",
+      "attempts": [
+        {
+          "label": "Versuch 1",
+          "text": "Fragen",
+          "result": "fail"
+        },
+        {
+          "label": "Versuch 2",
+          "text": "Kaufen",
+          "result": "fail"
+        },
+        {
+          "label": "Versuch 3"
+        }
+      ],
+      "cues": [
+        "wollen aufgeben",
+        "Nephi sagt"
+      ],
+      "narration": "Die älteren Brüder wollen aufgeben. [pause short] Nephi sagt: [pause short] Wir gehen nicht zurück ohne die Platten.",
+      "say": {
+        "text": "Wir gehen nicht zurück ohne die Platten.",
+        "at": "Wir gehen nicht zurück ohne die Platten"
+      }
+    },
+    {
+      "id": "versuch-3",
+      "type": "quest",
+      "stage": "night",
+      "ref": "1 Nephi 4:5–6",
+      "attempts": [
+        {
+          "label": "Versuch 1",
+          "text": "Fragen",
+          "result": "fail"
+        },
+        {
+          "label": "Versuch 2",
+          "text": "Kaufen",
+          "result": "fail"
+        },
+        {
+          "label": "Versuch 3",
+          "text": "Vertrauen"
+        }
+      ],
+      "cues": [
+        "In der Nacht",
+        "allein in die Stadt",
+        "der Geist führt ihn"
+      ],
+      "narration": "Versuch drei: [pause short] In der Nacht schleicht Nephi allein in die Stadt. [pause short] Er weiss nicht, was er tun soll. [pause short] Aber der Geist führt ihn."
+    },
+    {
+      "id": "geschafft",
+      "type": "quest",
+      "stage": "done",
+      "title": "Die Messingplatten",
+      "ref": "1 Nephi 5:21",
+      "attempts": [
+        {
+          "label": "Versuch 1",
+          "text": "Fragen",
+          "result": "fail"
+        },
+        {
+          "label": "Versuch 2",
+          "text": "Kaufen",
+          "result": "fail"
+        },
+        {
+          "label": "Versuch 3",
+          "text": "Vertrauen",
+          "result": "win",
+          "at": "mit den Platten zurück"
+        }
+      ],
+      "cues": [
+        "von grossem Wert"
+      ],
+      "narration": "Und er kommt mit den Platten zurück. [pause short] Sie lesen darin und merken: [pause short] Die Platten sind von grossem Wert."
+    },
+    {
+      "id": "kontrast",
+      "type": "quest",
+      "stage": "contrast",
+      "ref": "Omni 1:15–17",
+      "cues": [
+        "Warum der ganze Aufwand",
+        "ohne Schriften",
+        "Sprache verdorben",
+        "leugnete seinen Schöpfer"
+      ],
+      "narration": "Warum der ganze Aufwand? [pause short] Ein anderes Volk verliess Jerusalem wenig später – [pause short] ohne Schriften. [pause short] Jahrhunderte danach war seine Sprache verdorben, [pause short] und es leugnete seinen Schöpfer."
+    },
+    {
+      "id": "punch",
+      "type": "kinetic",
+      "holdAfterSec": 1.2,
+      "lines": [
+        "Drei Versuche –",
+        "für ein Buch.",
+        "Deins liegt vielleicht",
+        "gerade neben dir.",
+        "Wann schlägst du es auf?"
+      ],
+      "narration": "Drei Versuche – [pause short] für ein Buch. [pause short] Deins liegt vielleicht gerade neben dir. [pause short] Wann schlägst du es auf?"
+    }
+  ]
+}

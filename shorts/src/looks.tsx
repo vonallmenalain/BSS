@@ -6,7 +6,27 @@
 import React, { createContext, useContext } from "react";
 import { theme } from "./theme";
 
-export type LookId = "dawn" | "arcade" | "chat" | "map" | "track" | "noir" | "show" | "journal" | "stone" | "ember" | "space" | "palace" | "dream";
+export type LookId =
+  | "dawn"
+  | "arcade"
+  | "chat"
+  | "map"
+  | "track"
+  | "noir"
+  | "show"
+  | "journal"
+  | "stone"
+  | "ember"
+  | "space"
+  | "palace"
+  | "dream"
+  | "desert"
+  | "temple"
+  | "post"
+  | "feed"
+  | "kitchen"
+  | "dusk"
+  | "forest";
 
 export type Look = {
   id: LookId;
@@ -156,6 +176,83 @@ export const LOOKS: Record<LookId, Look> = {
     display: theme.font.display,
     label: theme.font.body,
     glow: "0 0 30px rgba(255,233,163,0.4), 0 10px 40px rgba(0,0,0,0.6)",
+  },
+  /** Wüste bei Nacht: Dünen, Sterne, Mondlicht (Matthäus 4) */
+  desert: {
+    id: "desert",
+    accent: "#F7C873",
+    accent2: "#9CC3FF",
+    text: "#FFF6E8",
+    dim: "rgba(255,246,232,0.62)",
+    display: theme.font.display,
+    label: "Cinzel",
+    glow: "0 0 28px rgba(247,200,115,0.35), 0 10px 40px rgba(0,0,0,0.7)",
+  },
+  /** Tempel als Baustelle: Staub im Sonnenstrahl, Stein, Gerüst (2 Könige 22) */
+  temple: {
+    id: "temple",
+    accent: "#FFD27F",
+    accent2: "#D98A4A",
+    text: "#FFF4E0",
+    dim: "rgba(255,244,224,0.62)",
+    display: theme.font.display,
+    label: "Cinzel",
+    glow: "0 0 30px rgba(255,210,127,0.35), 0 10px 40px rgba(0,0,0,0.7)",
+  },
+  /** Sendungsverfolgung: eine App über einer dunklen Karte */
+  post: {
+    id: "post",
+    accent: "#FFCC33",
+    accent2: "#4FD1C5",
+    text: "#FFFFFF",
+    dim: "rgba(255,255,255,0.62)",
+    display: theme.font.display,
+    label: theme.font.body,
+    glow: "0 0 22px rgba(255,204,51,0.3), 0 10px 40px rgba(0,0,0,0.6)",
+  },
+  /** Kurzvideo-Feed spät in der Nacht: Bildschirmlicht im dunklen Zimmer */
+  feed: {
+    id: "feed",
+    accent: "#FF3D71",
+    accent2: "#8B7CFF",
+    text: "#FFFFFF",
+    dim: "rgba(255,255,255,0.6)",
+    display: theme.font.display,
+    label: theme.font.body,
+    glow: "0 0 26px rgba(255,61,113,0.4), 0 10px 40px rgba(0,0,0,0.6)",
+  },
+  /** Kochshow: Studioküche, Teller, Menükarte */
+  kitchen: {
+    id: "kitchen",
+    accent: "#FFB547",
+    accent2: "#7BD389",
+    text: "#FFF8EE",
+    dim: "rgba(255,248,238,0.62)",
+    display: theme.font.display,
+    label: "Caveat",
+    glow: "0 0 24px rgba(255,181,71,0.35), 0 10px 40px rgba(0,0,0,0.6)",
+  },
+  /** Abendweg nach Emmaus: Sonnenuntergang über den Hügeln (Lukas 24) */
+  dusk: {
+    id: "dusk",
+    accent: "#FFC27A",
+    accent2: "#FF8A5C",
+    text: "#FFF7EC",
+    dim: "rgba(255,247,236,0.65)",
+    display: theme.font.display,
+    label: "Cormorant Garamond",
+    glow: "0 0 26px rgba(255,194,122,0.35), 0 10px 40px rgba(0,0,0,0.6)",
+  },
+  /** Wald bei Nacht bis zum Morgen: Bäume, Mond, Glühwürmchen (Enos 1) */
+  forest: {
+    id: "forest",
+    accent: "#C7F59B",
+    accent2: "#FFE08A",
+    text: "#F4FFF0",
+    dim: "rgba(244,255,240,0.62)",
+    display: theme.font.display,
+    label: theme.font.body,
+    glow: "0 0 26px rgba(199,245,155,0.3), 0 10px 40px rgba(0,0,0,0.7)",
   },
   /** Stadion in der Abenddämmerung */
   track: {
