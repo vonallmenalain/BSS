@@ -137,7 +137,7 @@ Szenen der Looks:
 | `map` | Kartentisch: die Lockvogel-Taktik in Etappen | `stage` (`intro`, `plan`, `bait`, `chase`, `halt`, `battle`, `count`), `cues` (die Takte der Etappe) |
 | `relay` | Stadion: Glaube als Staffelstab | `stage` (`sword`, `run`, `mother`, `handoff`, `you`), `cues`, `line`, `chips` |
 | `teaser` | Vorschau auf die nächste Karte im Feed (nur erste Woche) | `label`, `question`, `options` oder `scale`, `hint` |
-| `chains` | Schnur, Strick, Kette um eine Figur – und wie sie zerspringen; auch als Spielvorschau | `center`, `label`, `from` (0–3), `cues`, `breakAt`, `breakWith` (`light`/`key`), `question`, `answers`, `pickAt` |
+| `chains` | Schnur, Strick, Kette um eine Figur – und wie sie zerspringen; mit `field` die Spielvorschau wie im Minispiel (neun Plätze, Notlügen wegtippen, Schlüssel) | `center`, `label`, `from` (0–3), `cues`, `breakAt`, `breakWith` (`light`/`key`), `field` (`emoji`, `text`, `slot` 0–8, `at`), `pickAt`, `hurtAt`, `keyAt` |
 | `dominoes` | Dominosteine: eine Tat stösst die nächste an | `pieces` (`label`, `sub`, `at`), `fallen` |
 | `mission` | Weltraum: Start, Flug, Landung, Ausweis, Checkliste | `stage` (`launch`, `cruise`, `land`, `badge`, `checklist`), `cues`, `title`, `lines`, `hud` |
 | `item` | Videospiel: ein Item fällt, zeigt Werte, ist verflucht oder ein Segen | `stage` (`drop`, `card`, `choice`), `name`, `rarity`, `icon`, `dropAt`, `stats`, `curseAt`, `choices` |

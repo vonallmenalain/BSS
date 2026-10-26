@@ -3523,9 +3523,8 @@ export const IMPULSE_KIND_LABELS: Record<ImpulseKind, string> = {
  *   drehen, dunkle Pfeile abwehren, Lichter hereinlassen (tippen, ziehen).
  * - `springen` – «Keine Ausreden!», Helamans junge Krieger: laufen, über
  *   Ausreden springen, Aufgaben einsammeln (tippen, halten).
- * - `befreien` – «Ketten sprengen», Wahrheit: auf eine Frage die ehrliche
- *   Antwort wählen statt der Notlüge, bevor die Schnur zur Kette wird
- *   (tippen auf zwei oder drei Antworten).
+ * - `befreien` – «Ketten sprengen», Wahrheit: Notlügen wegtippen, bevor
+ *   sie zur Kette werden (tippen auf neun Plätze).
  *
  * Ein neues Spiel kommt mit einem neuen Schlüssel dazu (Regeln in
  * `lib/impulseGame*`, Bild in `components/impulse/game`, eingetragen in
@@ -3538,7 +3537,7 @@ export const IMPULSE_GAME_LABELS: Record<ImpulseGameId, string> = {
   sortieren: 'Gut für dich? – Gesundes und Schädliches sortieren',
   abwehren: 'Schild hoch! – Dunkles abwehren, Licht hereinlassen',
   springen: 'Keine Ausreden! – laufen, springen, Aufgaben einsammeln',
-  befreien: 'Ketten sprengen – ehrlich antworten, bevor die Notlüge zur Kette wird',
+  befreien: 'Ketten sprengen – Notlügen wegtippen, bevor sie zur Kette werden',
 }
 
 /**

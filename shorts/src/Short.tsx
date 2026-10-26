@@ -116,8 +116,8 @@ const hiddenWords = (ts: TimelineScene): Set<number> => {
       return out;
     }
     case "chains":
-      // Frage und Antworten stehen gross im Bild
-      return wordsOf(ts, [s.question?.text, ...s.answers.map((a) => a.text)]);
+      // Die Notlügen stehen auf dem Spielfeld
+      return wordsOf(ts, s.field.map((x) => x.text));
     case "dossier":
       // Der handgeschriebene Zettel liest sich selbst; die Akte wird untertitelt
       return s.mode === "note" ? wordsOf(ts, s.entries.map((e) => e.text)) : new Set();

@@ -182,7 +182,7 @@ export const sceneSchema = z.discriminatedUnion("type", [
     pickups: z.array(z.object({ emoji: z.string(), label: z.string(), at: z.string().min(1) })).max(5).default([]),
   }),
   base.extend({
-    /** Ketten: Schnur, Strick, Kette um eine Figur – und wie sie zerspringen. Auch als Spielvorschau mit Frage und Antworten */
+    /** Ketten: Schnur, Strick, Kette um eine Figur – und wie sie zerspringen. Mit `field` die Spielvorschau: neun Plätze mit Notlügen */
     type: z.literal("chains"),
     /** In der Mitte: ein Emoji oder ein kurzes Wort */
     center: z.string().default("🙂"),
@@ -195,11 +195,14 @@ export const sceneSchema = z.discriminatedUnion("type", [
     breakAt: z.string().optional(),
     /** Womit: Licht oder der Schlüssel aus dem Spiel */
     breakWith: z.enum(["light", "key"]).default("light"),
-    /** Spielvorschau: wer fragt was */
-    question: z.object({ who: z.string().min(1), text: z.string().min(1), at: z.string().min(1) }).optional(),
-    answers: z.array(z.object({ text: z.string().min(1), honest: z.boolean().default(false), at: z.string().min(1) })).max(3).default([]),
-    /** Phrase, bei der die ehrliche Antwort angetippt wird */
+    /** Spielvorschau wie im Minispiel: Notlügen auf neun Plätzen (0 oben links … 8 unten rechts). Ohne `at` liegen sie von Anfang an da */
+    field: z.array(z.object({ emoji: z.string().min(1), text: z.string().min(1), slot: z.number().int().min(0).max(8), at: z.string().min(1).optional() })).max(8).default([]),
+    /** Spielvorschau: Phrase, bei der der Finger die erste Notlüge wegtippt */
     pickAt: z.string().optional(),
+    /** Spielvorschau: Phrase, bei der die erste übrige Kette zuschnappt – ein Leben weniger */
+    hurtAt: z.string().optional(),
+    /** Spielvorschau: Phrase, bei der der Schlüssel auf einem freien Platz auftaucht */
+    keyAt: z.string().optional(),
   }),
   base.extend({
     /** Dominosteine: eine Tat stösst die nächste an. Steine ohne `at` stehen (oder liegen schon, bis `fallen`) */
@@ -340,9 +343,10 @@ export const episodeSchema = z
       if (s.type === "chains") {
         s.cues.forEach((c, j) => mustContain.push([`cues.${j}`, c]));
         if (s.breakAt) mustContain.push(["breakAt", s.breakAt]);
-        if (s.question) mustContain.push(["question.at", s.question.at]);
-        s.answers.forEach((a, j) => mustContain.push([`answers.${j}.at`, a.at]));
+        s.field.forEach((x, j) => x.at && mustContain.push([`field.${j}.at`, x.at]));
         if (s.pickAt) mustContain.push(["pickAt", s.pickAt]);
+        if (s.hurtAt) mustContain.push(["hurtAt", s.hurtAt]);
+        if (s.keyAt) mustContain.push(["keyAt", s.keyAt]);
       }
       if (s.type === "dominoes") s.pieces.forEach((x, j) => x.at && mustContain.push([`pieces.${j}.at`, x.at]));
       if (s.type === "mission" || s.type === "palace" || s.type === "dream" || s.type === "fire") s.cues.forEach((c, j) => mustContain.push([`cues.${j}`, c]));
