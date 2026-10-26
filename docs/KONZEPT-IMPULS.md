@@ -1258,10 +1258,11 @@ denselben Ablauf (Erklärung, Runde, Ergebnis):
   Rechner die Ziffern 1–9, der Ziffernblock oder Q bis C. **Eine Woche lang
   war das Spiel umgebaut** (jemand fragt, man tippt die ehrliche Antwort
   statt der Notlüge, eine Runde fest eine Minute); die erste Fassung gefiel
-  besser und gilt wieder. Das Bild: kleine Lügen wachsen, erst eine dünne
-  Schnur, dann starke Stricke (vgl.
-  2 Nephi 26:22); die Tages-Challenge derselben Woche heisst «Sieben Tage
-  ohne Notlüge».
+  besser und gilt wieder; auch das Video davor («Ketten sprengen», Trailer)
+  zeigt wieder das Spielfeld mit den neun Plätzen. Das Bild: kleine Lügen
+  wachsen, erst eine dünne Schnur, dann starke Stricke (vgl. 2 Nephi
+  26:22); die Tages-Challenge derselben Woche heisst «Sieben Tage ohne
+  Notlüge».
 
 **Das Tempo** zieht von Anfang an an und hat ab etwa vierzig Sekunden einen
 zweiten Schub, den auf Dauer niemand hält (`sortPace`). Eine Uhr gibt es

@@ -44,42 +44,62 @@
     {
       "id": "spiel",
       "type": "chains",
-      "center": "🙂",
-      "label": "DU",
-      "from": 1,
-      "question": {
-        "who": "Mama",
-        "text": "Hast du dein Zimmer aufgeräumt?",
-        "at": "Hast du dein Zimmer aufgeräumt"
-      },
-      "answers": [
+      "ref": "2 Nephi 26:22",
+      "field": [
         {
-          "text": "Schon erledigt!",
-          "honest": false,
-          "at": "Schon erledigt"
+          "emoji": "🏃",
+          "text": "Bin gleich da",
+          "slot": 0,
+          "at": "Bin gleich da"
         },
         {
-          "text": "Noch nicht, mach ich jetzt.",
-          "honest": true,
-          "at": "Noch nicht, mach ich jetzt"
+          "emoji": "🙈",
+          "text": "Hab’s nicht gesehen",
+          "slot": 5,
+          "at": "Hab’s nicht gesehen"
+        },
+        {
+          "emoji": "🐕",
+          "text": "Der Hund war’s",
+          "slot": 7,
+          "at": "Der Hund war’s"
         }
       ],
-      "pickAt": "Tipp auf die ehrliche Antwort",
-      "breakAt": "die Schnur reisst",
-      "narration": "Im Spiel «Ketten sprengen» kommen Fragen. [pause short] Mama: Hast du dein Zimmer aufgeräumt? [pause short] Schon erledigt? [pause short] Oder: Noch nicht, mach ich jetzt. [pause short] Tipp auf die ehrliche Antwort – [pause short] und die Schnur reisst."
+      "pickAt": "Tipp sie weg",
+      "narration": "Im Spiel «Ketten sprengen» tauchen Notlügen auf: [pause short] Bin gleich da. [pause short] Hab’s nicht gesehen. [pause short] Der Hund war’s. [pause short] Tipp sie weg, solange sie dünn sind – [pause short] je früher, desto mehr Punkte."
     },
     {
       "id": "regeln",
       "type": "chains",
-      "center": "🙂",
-      "label": "DU",
+      "ref": "2 Nephi 26:22",
       "from": 1,
+      "field": [
+        {
+          "emoji": "🐕",
+          "text": "Der Hund war’s",
+          "slot": 7
+        },
+        {
+          "emoji": "🙈",
+          "text": "Hab’s nicht gesehen",
+          "slot": 5
+        },
+        {
+          "emoji": "🤷",
+          "text": "War nicht ich",
+          "slot": 0,
+          "at": "Wartest du"
+        }
+      ],
       "cues": [
+        "zu lange",
         "zur Kette"
       ],
-      "breakAt": "sprengt der Schlüssel",
+      "hurtAt": "kostet ein Leben",
+      "keyAt": "der Schlüssel der Wahrheit",
+      "breakAt": "sprengt alles",
       "breakWith": "key",
-      "narration": "Zögerst du zu lange oder wählst die Notlüge, wird sie zur Kette. [pause short] Fünf ehrliche Antworten am Stück? [pause short] Dann sprengt der Schlüssel eine Kette."
+      "narration": "Wartest du zu lange, wird die Schnur zur Kette – [pause short] und das kostet ein Leben. [pause short] Doch der Schlüssel der Wahrheit [pause short] sprengt alles – [pause short] und bringt ein Leben zurück."
     },
     {
       "id": "schluss",
@@ -88,10 +108,9 @@
       "holdAfterSec": 1.5,
       "lines": [
         "Die Wahrheit befreit.",
-        "Eine Minute.",
-        "Wie viele schaffst du?"
+        "Wie viele sprengst du?"
       ],
-      "narration": "Die Wahrheit befreit. [pause short] Eine Minute. [pause short] Wie viele schaffst du?"
+      "narration": "Die Wahrheit befreit. [pause short] Wie viele sprengst du?"
     }
   ]
 }
