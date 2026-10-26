@@ -7,6 +7,7 @@
     "name": "AntiDoom"
   },
   "look": "post",
+  "sfx": "sparse",
   "voice": {
     "provider": "google",
     "languageCode": "de-DE",

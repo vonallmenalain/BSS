@@ -361,7 +361,7 @@ export const Scene: React.FC<{ ts: TimelineScene }> = ({ ts }) => {
   const rays = s.answer ? interpolate(t, [answerAt - 0.1, answerAt + 0.5, answerAt + 1.6], [0, 1, 0.4], clamp) : 0;
   const sfx: React.ReactNode[] = [];
   if (s.attack) sfx.push(<Sfx key="a" frame={voiceFrame(ts, attackAt - 0.3)} name="glitch" volume={0.3} />);
-  if (s.answer) sfx.push(<Sfx key="b" frame={voiceFrame(ts, answerAt - 0.1)} name="swipe" volume={0.35} />, <Sfx key="c" frame={voiceFrame(ts, answerAt + 0.3)} name="chime" volume={0.5} />);
+  if (s.answer) sfx.push(<Sfx key="b" frame={voiceFrame(ts, answerAt - 0.1)} name="swipe" volume={0.35} />, <Sfx key="c" frame={voiceFrame(ts, answerAt + 0.3)} name="chime" volume={0.5} keep />);
 
   let stage: React.ReactNode = null;
   let figure: { x: number; y: number; k: number } = { x: 540, y: GROUND, k: 0.44 };

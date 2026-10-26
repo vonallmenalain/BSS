@@ -173,7 +173,7 @@ const Eight: React.FC<{ ts: TimelineScene; s: TempleT }> = ({ ts, s }) => {
         </text>
         {land ? <circle cx={540} cy={540} r={40 + (frame % 30)} fill="none" stroke="#FFF0B8" strokeWidth={3} opacity={0.2} /> : null}
       </svg>
-      <Sfx frame={voiceFrame(ts, acht)} name="drum" volume={0.5} />
+      <Sfx frame={voiceFrame(ts, acht)} name="drum" volume={0.5} keep />
       <Sfx frame={voiceFrame(ts, koenig + 0.1)} name="chime" volume={0.55} />
     </AbsoluteFill>
   );
@@ -340,7 +340,7 @@ const Find: React.FC<{ ts: TimelineScene; s: TempleT }> = ({ ts, s }) => {
       </div>
       <Sfx frame={voiceFrame(ts, buch)} name="chime" volume={0.5} />
       <Sfx frame={voiceFrame(ts, gesetz)} name="swipe" volume={0.35} />
-      <Sfx frame={voiceFrame(ts, lange + 0.2)} name="stamp" volume={0.45} />
+      <Sfx frame={voiceFrame(ts, lange + 0.2)} name="stamp" volume={0.45} keep />
     </AbsoluteFill>
   );
 };
@@ -488,7 +488,7 @@ const Covenant: React.FC<{ ts: TimelineScene; s: TempleT }> = ({ ts, s }) => {
       >
         DER BUND
       </div>
-      <Sfx frame={voiceFrame(ts, bund)} name="chime" volume={0.5} />
+      <Sfx frame={voiceFrame(ts, bund)} name="chime" volume={0.5} keep />
       <Sfx frame={voiceFrame(ts, volk)} name="levelup" volume={0.4} />
     </AbsoluteFill>
   );

@@ -616,13 +616,13 @@ export const Scene: React.FC<{ ts: TimelineScene }> = ({ ts }) => {
         <>
           <Sfx frame={f(b[0])} name="swipe" volume={0.25} />
           <Sfx frame={f(b[1] + 0.3)} name="pop" volume={0.4} />
-          <Sfx frame={f(b[2])} name="chime" volume={0.5} />
+          <Sfx frame={f(b[2])} name="chime" volume={0.5} keep />
         </>
       ) : null}
       {stage === "burn" ? (
         <>
           <Sfx frame={f(b[1])} name="whoosh" volume={0.3} />
-          <Sfx frame={f(b[2])} name="chime" volume={0.4} />
+          <Sfx frame={f(b[2])} name="chime" volume={0.4} keep />
         </>
       ) : null}
     </AbsoluteFill>

@@ -204,7 +204,7 @@ const Sent: React.FC<P> = ({ ts, s, t, frame }) => {
       <Sfx frame={voiceFrame(ts, msg - 0.1)} name="pop" volume={0.45} />
       <Sfx frame={voiceFrame(ts, sent)} name="tick" volume={0.35} />
       <Sfx frame={voiceFrame(ts, sent + 1.6)} name="blip" volume={0.25} />
-      <Sfx frame={voiceFrame(ts, to)} name="ding" volume={0.5} />
+      <Sfx frame={voiceFrame(ts, to)} name="ding" volume={0.5} keep />
     </AppCard>
   );
 };
@@ -339,7 +339,7 @@ const Hidden: React.FC<P> = ({ ts, s, t, frame }) => {
       </div>
       <Sfx frame={voiceFrame(ts, words)} name="type" volume={0.35} />
       <Sfx frame={voiceFrame(ts, bury)} name="whoosh" volume={0.35} />
-      <Sfx frame={voiceFrame(ts, bury + 1.0)} name="stamp" volume={0.45} />
+      <Sfx frame={voiceFrame(ts, bury + 1.0)} name="stamp" volume={0.45} keep />
       <Sfx frame={voiceFrame(ts, bury + 1.35)} name="pop" volume={0.4} />
     </AppCard>
   );
@@ -489,7 +489,7 @@ const Delivered: React.FC<P> = ({ ts, s, t, frame }) => {
       <div style={{ position: "absolute", top: BODY_Y + 566, width: "100%", textAlign: "center", fontFamily: "Caveat", fontWeight: 700, fontSize: 88, color: "#FFF3CF", clipPath: `inset(0 ${100 - write * 100}% 0 0)`, textShadow: "0 6px 24px rgba(0,0,0,0.5)" }}>
         Für dich geschrieben.
       </div>
-      <Sfx frame={4} name="ding" volume={0.45} />
+      <Sfx frame={4} name="ding" volume={0.45} keep />
       <Sfx frame={voiceFrame(ts, seen)} name="pop" volume={0.4} />
       <Sfx frame={voiceFrame(ts, wrote)} name="chime" volume={0.35} />
     </AppCard>

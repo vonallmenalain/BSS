@@ -272,7 +272,7 @@ const Late: React.FC<P> = ({ ts, s, t, frame }) => {
         </div>
       ) : null}
       <Sfx frame={voiceFrame(ts, late)} name="glitch" volume={0.4} />
-      <Sfx frame={voiceFrame(ts, late) + 2} name="drum" volume={0.45} />
+      <Sfx frame={voiceFrame(ts, late) + 2} name="drum" volume={0.45} keep />
       <Sfx frame={voiceFrame(ts, low)} name="blip" volume={0.4} />
     </AbsoluteFill>
   );
@@ -442,7 +442,7 @@ const Lamp: React.FC<P> = ({ ts, s, t, frame }) => {
         </div>
       ) : null}
       <Sfx frame={voiceFrame(ts, face)} name="blip" volume={0.25} />
-      <Sfx frame={voiceFrame(ts, way)} name="chime" volume={0.4} />
+      <Sfx frame={voiceFrame(ts, way)} name="chime" volume={0.4} keep />
       <Sfx frame={voiceFrame(ts, step)} name="ding" volume={0.35} />
     </AbsoluteFill>
   );

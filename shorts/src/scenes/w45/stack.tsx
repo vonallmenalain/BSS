@@ -698,12 +698,12 @@ export const Scene: React.FC<{ ts: TimelineScene }> = ({ ts }) => {
       )}
       {s.stage === 'topple' ? (
         <>
-          <Sfx frame={voiceFrame(ts, c1)} name="clash" volume={0.5} />
+          <Sfx frame={voiceFrame(ts, c1)} name="clash" volume={0.5} keep />
           <Sfx frame={voiceFrame(ts, c2)} name="glitch" volume={0.45} />
         </>
       ) : null}
       {s.stage === 'complete' ? (
-        <Sfx frame={voiceFrame(ts, c2)} name="levelup" volume={0.5} />
+        <Sfx frame={voiceFrame(ts, c2)} name="levelup" volume={0.5} keep />
       ) : null}
     </AbsoluteFill>
   )

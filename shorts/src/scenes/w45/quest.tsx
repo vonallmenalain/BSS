@@ -86,7 +86,7 @@ const ResultStamp: React.FC<{ ts: TimelineScene; s: QuestSceneT; y?: number }> =
   return (
     <>
       <Stamp x={540} y={y} text={a.result === "win" ? "GESCHAFFT" : "GESCHEITERT"} color={a.result === "win" ? GOLD : RED} pop={pop} rot={a.result === "win" ? -4 : -9} size={84} font={look.label} />
-      <Sfx frame={voiceFrame(ts, at)} name={a.result === "win" ? "levelup" : "stamp"} volume={0.55} />
+      <Sfx frame={voiceFrame(ts, at)} name={a.result === "win" ? "levelup" : "stamp"} volume={0.55} keep />
     </>
   );
 };
@@ -710,7 +710,7 @@ const Contrast: React.FC<{ ts: TimelineScene; s: QuestSceneT }> = ({ ts, s }) =>
           </g>
         </g>
       </svg>
-      <Sfx frame={voiceFrame(ts, warum)} name="drum" volume={0.45} />
+      <Sfx frame={voiceFrame(ts, warum)} name="drum" volume={0.45} keep />
       <Sfx frame={voiceFrame(ts, sprache)} name="glitch" volume={0.35} />
       <Sfx frame={voiceFrame(ts, schoepfer)} name="whoosh" volume={0.35} />
     </AbsoluteFill>

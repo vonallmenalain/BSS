@@ -43,6 +43,13 @@ Claude-Sitzung (Cloud) sieht das so aus:
 - **Vor jedem interaktiven Element ein Video.** Ein Einführungsvideo darf kurz sein (15–30 Sekunden):
   Neugier wecken, das Thema setzen, zur Karte überleiten. Längere Geschichten 50 bis 65 Sekunden.
 - Kurze Szenen, eine Aussage pro Szene, Pausen mit `[pause short]`.
+- **Wenig Soundeffekte, und keine hellen.** Seit der Woche zum Schriftstudium steht in jeder Folge
+  `"sfx": "sparse"`: Hörbar sind nur die Effekte, die eine Szene mit `keep` markiert – zwei bis vier je
+  Folge, an den Momenten, um die es geht (ein Stempel, die Antwort, «Zugestellt»). Und auch die klingen
+  tief und weich: Glocken, Pixel-Töne und Münzen werden zum warmen Akkord (`warm`), Klicks und Klirren
+  zum dumpfen Klopfen (`thud`), Wusch und Wisch zum Hauch (`breath`); die Kinetic-Zeilen bleiben stumm
+  (`src/lib/sfx.tsx`). Zu viele helle «Pings», etwa alle fünf Sekunden, störten. Ohne Angabe gilt
+  `full` – so klingen die älteren Folgen.
 
 Vollautomatisch kann das eine **geplante Aufgabe** sein (z.B. jeden Donnerstag): Claude legt die Shorts
 der nächsten Woche an, rendert sie und schickt sie zur Freigabe – du schaust nur noch und sagst ja.
@@ -176,6 +183,9 @@ es sagt. Die Validierung prüft, dass jede Phrase wörtlich vorkommt.
 
 Gemeinsam: `narration`, `sky` (0 = Nacht … 1 = goldener Morgen; wird weich interpoliert), `ref`, `captions`, `holdAfterSec`.
 
+Für die ganze Folge: `sfx` – `full` (jeder Effekt, wie die Szene ihn setzt) oder `sparse` (nur die mit `keep`,
+leise und tief; für neue Folgen die Regel).
+
 ### Looks
 
 | `look` | Stil | Musik (Vorschlag) |
@@ -243,7 +253,8 @@ Der Look färbt auch Untertitel, Quellenangabe und die `kinetic`-Zeilen (mit eig
 - Musik in `public/music/`: selbst synthetisiert, frei verwendbar. `npm run pad` macht den Sonnenaufgangs-Pad,
   `npm run music -- --style arcade|lofi|chase|anthem|temple|space|mystery --sec 75 --out x.wav` die übrigen (fürs Repo mit
   `ffmpeg -i x.wav -b:a 128k x.mp3` verkleinert). Für die echte Produktion besser Musik mit klarer Lizenz.
-- Soundeffekte in `public/sfx/`: mit `npm run sfx` selbst synthetisiert, frei verwendbar.
+- Soundeffekte in `public/sfx/`: mit `npm run sfx` selbst synthetisiert, frei verwendbar – darunter die leisen
+  `thud`, `warm` und `breath` für sparsame Folgen (ohne Anteile über 2 kHz).
 - Schriften zusätzlich: Press Start 2P (Pixel), Caveat (Handschrift), Courier Prime (Schreibmaschine), Space Mono
   (HUD) und Cinzel (römische Kapitalen) – SIL Open Font License.
 - Emoji in Chat-Stickern kommen aus der Emoji-Schrift des Systems (im Cloud-Container: Noto Color Emoji).
