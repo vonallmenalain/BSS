@@ -145,3 +145,26 @@ export function ChainIntro() {
     </Intro>
   )
 }
+
+/** «Bücherturm» – die Reihenfolge und das genaue Treffen. */
+export function StackIntro() {
+  return (
+    <Intro
+      boxes={
+        <>
+          <Box
+            tone="violet"
+            emoji="📘 📕 📗"
+            title="Der Reihe nach"
+            hint="1 Nephi, 2 Nephi, Jakob …"
+          />
+          <Box tone="amber" emoji="🎯" title="Genau drauf" hint="Extrapunkte, mehr am Stück" />
+        </>
+      }
+    >
+      Tippe, wenn das Buch über dem Turm schwebt – es fällt senkrecht hinunter. Liegt der Turm zu
+      schief, kippt er; daneben oder zu weit am Rand rutscht das Buch ab. Beides kostet eines von
+      drei Leben. Wer das ganze Buch Mormon stapelt, bekommt eines zurück. Am Rechner: Leertaste.
+    </Intro>
+  )
+}

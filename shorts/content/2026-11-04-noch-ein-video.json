@@ -1,0 +1,112 @@
+{
+  "id": "2026-11-04-noch-ein-video",
+  "title": "Noch ein Video",
+  "date": "2026-11-04",
+  "series": "Für eine starke Jugend · November",
+  "brand": {
+    "name": "AntiDoom"
+  },
+  "look": "feed",
+  "voice": {
+    "provider": "google",
+    "languageCode": "de-DE",
+    "name": "de-DE-Chirp3-HD-Laomedeia",
+    "speakingRate": 1.05
+  },
+  "music": {
+    "src": "music/lofi.mp3",
+    "volume": 0.3,
+    "duckTo": 0.08
+  },
+  "scenes": [
+    {
+      "id": "hook",
+      "type": "feed",
+      "stage": "scroll",
+      "clock": [
+        "22:58",
+        "22:58"
+      ],
+      "battery": [
+        41,
+        40
+      ],
+      "cues": [
+        "Zwei vor elf",
+        "Nur noch ein Video"
+      ],
+      "narration": "Zwei vor elf. [pause short] Nur noch ein Video."
+    },
+    {
+      "id": "scroll",
+      "type": "feed",
+      "stage": "scroll",
+      "clock": [
+        "22:59",
+        "23:47"
+      ],
+      "battery": [
+        40,
+        23
+      ],
+      "cues": [
+        "Und noch eins",
+        "Ein Trick",
+        "ein Fail",
+        "ein Ranking"
+      ],
+      "narration": "Und noch eins. [pause short] Und noch eins. [pause short] Ein Trick, ein Fail, ein Ranking."
+    },
+    {
+      "id": "spaet",
+      "type": "feed",
+      "stage": "late",
+      "clock": [
+        "00:31",
+        "00:31"
+      ],
+      "battery": [
+        9,
+        9
+      ],
+      "cues": [
+        "Plötzlich ist es halb eins",
+        "neun Prozent"
+      ],
+      "narration": "Plötzlich ist es halb eins. [pause short] Akku: neun Prozent."
+    },
+    {
+      "id": "leer",
+      "type": "feed",
+      "stage": "blank",
+      "holdAfterSec": 0.3,
+      "cues": [
+        "am nächsten Morgen",
+        "Eben"
+      ],
+      "narration": "Und was davon weisst du am nächsten Morgen noch? [pause long] Eben."
+    },
+    {
+      "id": "leuchte",
+      "type": "feed",
+      "stage": "lamp",
+      "ref": "Psalm 119:105",
+      "cues": [
+        "leuchtet dir ins Gesicht",
+        "leuchtet dir auf den Weg",
+        "den nächsten Schritt"
+      ],
+      "narration": "Ein Bildschirm leuchtet dir ins Gesicht. [pause short] Gottes Wort leuchtet dir auf den Weg – [pause short] wie eine Taschenlampe: [pause short] nicht die ganze Strecke, aber den nächsten Schritt."
+    },
+    {
+      "id": "punch",
+      "type": "kinetic",
+      "holdAfterSec": 1.2,
+      "lines": [
+        "Fünf Minuten vor dem Schlafen.",
+        "Was gewinnt bei dir?"
+      ],
+      "narration": "Fünf Minuten vor dem Schlafen. [pause short] Was gewinnt bei dir?"
+    }
+  ]
+}

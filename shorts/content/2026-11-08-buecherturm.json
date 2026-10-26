@@ -1,0 +1,249 @@
+{
+  "id": "2026-11-08-buecherturm",
+  "title": "Bücherturm",
+  "date": "2026-11-08",
+  "series": "Für eine starke Jugend · November",
+  "brand": {
+    "name": "AntiDoom"
+  },
+  "look": "arcade",
+  "voice": {
+    "provider": "google",
+    "languageCode": "de-DE",
+    "name": "de-DE-Chirp3-HD-Puck",
+    "speakingRate": 1.06
+  },
+  "music": {
+    "src": "music/arcade.mp3",
+    "volume": 0.3,
+    "duckTo": 0.08
+  },
+  "scenes": [
+    {
+      "id": "namen",
+      "type": "stack",
+      "stage": "names",
+      "books": [
+        {
+          "label": "1 Nephi",
+          "at": "Erstes Nephi"
+        },
+        {
+          "label": "2 Nephi",
+          "offset": 0.03,
+          "at": "Zweites Nephi"
+        },
+        {
+          "label": "Jakob",
+          "offset": -0.04,
+          "at": "Jakob"
+        },
+        {
+          "label": "Enos",
+          "offset": 0.02,
+          "at": "Enos"
+        }
+      ],
+      "narration": "Erstes Nephi. [pause short] Zweites Nephi. [pause short] Jakob. [pause short] Enos …"
+    },
+    {
+      "id": "spiel",
+      "type": "stack",
+      "stage": "play",
+      "score": 4,
+      "books": [
+        {
+          "label": "1 Nephi"
+        },
+        {
+          "label": "2 Nephi",
+          "offset": 0.03
+        },
+        {
+          "label": "Jakob",
+          "offset": -0.04
+        },
+        {
+          "label": "Enos",
+          "offset": 0.02
+        },
+        {
+          "label": "Jarom",
+          "offset": 0.06,
+          "at": "Tipp"
+        }
+      ],
+      "cues": [
+        "in der richtigen Reihenfolge",
+        "schwebt hin und her",
+        "Tipp"
+      ],
+      "narration": "Im Bücherturm stapelst du die Bücher der heiligen Schriften – [pause short] in der richtigen Reihenfolge. [pause short] Das Buch schwebt hin und her. [pause short] Tipp, und es fällt."
+    },
+    {
+      "id": "genau",
+      "type": "stack",
+      "stage": "play",
+      "score": 5,
+      "books": [
+        {
+          "label": "1 Nephi"
+        },
+        {
+          "label": "2 Nephi",
+          "offset": 0.03
+        },
+        {
+          "label": "Jakob",
+          "offset": -0.04
+        },
+        {
+          "label": "Enos",
+          "offset": 0.02
+        },
+        {
+          "label": "Jarom",
+          "offset": 0.06
+        },
+        {
+          "label": "Omni",
+          "perfect": true,
+          "at": "Genau drauf"
+        },
+        {
+          "label": "Worte Mormons",
+          "perfect": true,
+          "at": "noch mehr"
+        }
+      ],
+      "narration": "Genau drauf gibt Extrapunkte – [pause short] mehrere genaue hintereinander noch mehr."
+    },
+    {
+      "id": "kippen",
+      "type": "stack",
+      "stage": "topple",
+      "score": 10,
+      "books": [
+        {
+          "label": "1 Nephi"
+        },
+        {
+          "label": "2 Nephi",
+          "offset": 0.16
+        },
+        {
+          "label": "Jakob",
+          "offset": 0.18
+        },
+        {
+          "label": "Enos",
+          "offset": 0.2
+        },
+        {
+          "label": "Jarom",
+          "offset": 0.2
+        },
+        {
+          "label": "Omni",
+          "offset": 0.18
+        },
+        {
+          "label": "Worte Mormons",
+          "offset": 0.16
+        }
+      ],
+      "cues": [
+        "zu schief",
+        "kippt er",
+        "kostet ein Leben"
+      ],
+      "narration": "Aber Vorsicht: [pause short] Wird der Turm zu schief, kippt er. [pause short] Das kostet ein Leben."
+    },
+    {
+      "id": "komplett",
+      "type": "stack",
+      "stage": "complete",
+      "score": 28,
+      "lives": 2,
+      "books": [
+        {
+          "label": "1 Nephi",
+          "offset": 0
+        },
+        {
+          "label": "2 Nephi",
+          "offset": 0.02
+        },
+        {
+          "label": "Jakob",
+          "offset": -0.03
+        },
+        {
+          "label": "Enos",
+          "offset": 0.03
+        },
+        {
+          "label": "Jarom",
+          "offset": -0.02
+        },
+        {
+          "label": "Omni",
+          "offset": 0.0
+        },
+        {
+          "label": "Worte Mormons",
+          "offset": 0.03
+        },
+        {
+          "label": "Mosia",
+          "offset": -0.03
+        },
+        {
+          "label": "Alma",
+          "offset": 0.02
+        },
+        {
+          "label": "Helaman",
+          "offset": 0.0
+        },
+        {
+          "label": "3 Nephi",
+          "offset": -0.02
+        },
+        {
+          "label": "4 Nephi",
+          "offset": 0.03
+        },
+        {
+          "label": "Mormon",
+          "offset": -0.02
+        },
+        {
+          "label": "Ether",
+          "offset": 0.01
+        },
+        {
+          "label": "Moroni",
+          "offset": 0.01,
+          "at": "alle fünfzehn Bücher"
+        }
+      ],
+      "cues": [
+        "das ganze Buch Mormon",
+        "alle fünfzehn Bücher",
+        "ein Leben zurück"
+      ],
+      "narration": "Schaffst du das ganze Buch Mormon, [pause short] alle fünfzehn Bücher, [pause short] bekommst du ein Leben zurück."
+    },
+    {
+      "id": "punch",
+      "type": "kinetic",
+      "holdAfterSec": 1.2,
+      "lines": [
+        "Wie hoch baust du",
+        "deinen Turm?"
+      ],
+      "narration": "Wie hoch baust du deinen Turm?"
+    }
+  ]
+}

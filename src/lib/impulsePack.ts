@@ -39,10 +39,10 @@ import type {
  * (`order`, über alle Arten hinweg). Jede Woche trägt ihr eigenes
  * Wappen, das sich mit jeder geschafften Karte aufbaut.
  *
- * **Eigene Shorts.** Die Wochen zu Helamans jungen Kriegern und zu «Die
- * Wahrheit befreit dich» tragen dazu eigene kurze Videos – vor jedem
- * interaktiven Element eines; Textkarten ohne Interaktion sind durch Videos
- * ersetzt. Die Videos sind nachgereicht (`late`), weil das Paket schon
+ * **Eigene Shorts.** Die Wochen zu Helamans jungen Kriegern, zu «Die
+ * Wahrheit befreit dich» und zum Schriftstudium tragen dazu eigene kurze
+ * Videos – vor jedem interaktiven Element eines; Textkarten ohne
+ * Interaktion sind durch Videos ersetzt. Die Videos sind nachgereicht (`late`), weil das Paket schon
  * eingespielt sein kann: Sie schieben sich zwischen die Karten, ohne deren
  * Platz zu verschieben (`deckOrders`).
  * Die YouTube-Shorts der Kirche, die zuerst dort standen, hat die Redaktion
@@ -1633,6 +1633,18 @@ export const PACK_WEEKS: PackWeek[] = [
     },
     deck: [
       {
+        key: 'eigen-platten',
+        kind: 'video',
+        late: true,
+        emoji: '📜',
+        title: 'Short: Drei Versuche',
+        body:
+          'Lehis Söhne sollen bei Laban die Messingplatten holen – die heiligen Schriften ihres ' +
+          'Volkes. Zweimal geht es schief. Warum der ganze Aufwand für ein Buch (1 Nephi 3–5, ' +
+          'Omni 1:17)?',
+        ...ownShort('2026-11-02-drei-versuche', '1 Nephi 5:21'),
+      },
+      {
         key: 'umfrage-1',
         kind: 'umfrage',
         emoji: '⏰',
@@ -1647,6 +1659,7 @@ export const PACK_WEEKS: PackWeek[] = [
       },
       {
         key: 'feed-1',
+        retired: 'Ersetzt durch das Video «Snack oder Festmahl?».',
         kind: 'feed',
         emoji: '🖍️',
         title:
@@ -1659,6 +1672,9 @@ export const PACK_WEEKS: PackWeek[] = [
       },
       {
         key: 'quiz-1',
+        retired:
+          'Ersetzt durch das Quiz zu Matthäus 4 – die eiserne Stange erklärte schon das Video ' +
+          '«Nebel der Finsternis» in der Woche davor.',
         kind: 'quiz',
         emoji: '🛤️',
         title: 'Was stellt in Lehis Traum die eiserne Stange dar?',
@@ -1669,6 +1685,51 @@ export const PACK_WEEKS: PackWeek[] = [
             'Nebel bis zum Baum des Lebens (1 Nephi 8:24, 30).',
         ),
         source: verse('1 Nephi 11:25'),
+      },
+      {
+        key: 'eigen-wueste',
+        kind: 'video',
+        late: true,
+        emoji: '🏜️',
+        title: 'Short: Es steht geschrieben',
+        body:
+          'Vierzig Tage in der Wüste, dann kommt der Versucher – dreimal. Und dreimal antwortet ' +
+          'Jesus mit denselben Worten: Es steht geschrieben (Matthäus 4:1–11).',
+        ...ownShort('2026-11-02-es-steht-geschrieben', 'Matthäus 4:1–11'),
+      },
+      {
+        key: 'quiz-4',
+        kind: 'quiz',
+        late: true,
+        emoji: '📜',
+        title:
+          'Dreimal antwortet Jesus dem Versucher: «Es steht geschrieben.» Aus welchem Buch stammen alle drei Antworten?',
+        quiz: choice(
+          [
+            'Aus dem Buch Deuteronomium',
+            'Aus den Psalmen',
+            'Aus dem Buch Jesaja',
+            'Aus dem Buch Genesis',
+          ],
+          0,
+          'Alle drei stehen im Deuteronomium, dem fünften Buch Mose (8:3, 6:16 und 6:13). ' +
+            'Jesus kannte die Schriften so gut, dass er im entscheidenden Moment das richtige ' +
+            'Wort hatte. Übrigens: Auch der Teufel zitierte – aus Psalm 91. Wer die Schriften ' +
+            'kennt, merkt, wenn jemand sie verdreht.',
+        ),
+        source: verse('Matthäus 4:1–11'),
+      },
+      {
+        key: 'eigen-josia',
+        kind: 'video',
+        late: true,
+        emoji: '👑',
+        title: 'Short: Das vergessene Buch',
+        body:
+          'König mit acht. Mit sechsundzwanzig lässt Josia den Tempel ausbessern – und mitten im ' +
+          'Schutt findet man das Buch des Gesetzes. Ein Buch verändert ein ganzes Volk ' +
+          '(2 Könige 22–23).',
+        ...ownShort('2026-11-03-das-vergessene-buch', '2 Könige 22:8–13'),
       },
       {
         key: 'skala-1',
@@ -1685,6 +1746,7 @@ export const PACK_WEEKS: PackWeek[] = [
       },
       {
         key: 'feed-2',
+        retired: 'Ersetzt durch das Video «Noch ein Video».',
         kind: 'feed',
         emoji: '🔦',
         title: 'Ein Licht für deinen Weg',
@@ -1693,6 +1755,17 @@ export const PACK_WEEKS: PackWeek[] = [
           'Taschenlampe in der Nacht. Sie zeigt nicht die ganze Strecke, aber genug für den ' +
           'nächsten Schritt.',
         source: verse('Psalm 119:105'),
+      },
+      {
+        key: 'eigen-moroni',
+        kind: 'video',
+        late: true,
+        emoji: '📦',
+        title: 'Short: Post für dich',
+        body:
+          'Abgeschickt um das Jahr 421, Empfänger: du. Moroni schreibt: Jesus Christus hat euch ' +
+          'mir gezeigt, und ich weiss, was ihr tut (Mormon 8:35).',
+        ...ownShort('2026-11-03-post-fuer-dich', 'Mormon 8:34–35'),
       },
       {
         key: 'quiz-2',
@@ -1707,6 +1780,17 @@ export const PACK_WEEKS: PackWeek[] = [
             'lernen und zu spüren.',
         ),
         source: verse('1 Nephi 6:4–6'),
+      },
+      {
+        key: 'eigen-feed',
+        kind: 'video',
+        late: true,
+        emoji: '📱',
+        title: 'Short: Noch ein Video',
+        body:
+          'Zwei vor elf, nur noch ein Video – und plötzlich ist es halb eins. Ein Bildschirm ' +
+          'leuchtet dir ins Gesicht, Gottes Wort auf den Weg (Psalm 119:105).',
+        ...ownShort('2026-11-04-noch-ein-video', 'Psalm 119:105'),
       },
       {
         key: 'dilemma-1',
@@ -1727,6 +1811,17 @@ export const PACK_WEEKS: PackWeek[] = [
         source: FSY_OCTOBER('Fragen und Antworten'),
       },
       {
+        key: 'eigen-festmahl',
+        kind: 'video',
+        late: true,
+        emoji: '🍽️',
+        title: 'Short: Snack oder Festmahl?',
+        body:
+          'Ein Vers zwischen zwei Videos ist ein Snack. Nephi sagt: Weidet euch an den Worten ' +
+          'von Christus (2 Nephi 31:20) – mit einem Menü von Jugendlichen aus aller Welt.',
+        ...ownShort('2026-11-05-snack-oder-festmahl', '2 Nephi 31:20'),
+      },
+      {
         key: 'puzzle-1',
         kind: 'puzzle',
         emoji: '🧩',
@@ -1738,6 +1833,17 @@ export const PACK_WEEKS: PackWeek[] = [
             'findet Antworten fürs eigene Leben.',
         ),
         source: verse('2 Nephi 32:3'),
+      },
+      {
+        key: 'eigen-josua',
+        kind: 'video',
+        late: true,
+        emoji: '🌊',
+        title: 'Short: Sei mutig und stark',
+        body:
+          'Mose ist tot, vor Josua liegen der Jordan und Jericho. Dreimal sagt der Herr: Sei ' +
+          'mutig und stark – und gibt ihm ein Buch mit auf den Weg (Josua 1, 3).',
+        ...ownShort('2026-11-05-sei-mutig-und-stark', 'Josua 1:6–9'),
       },
       {
         key: 'quiz-3',
@@ -1753,6 +1859,7 @@ export const PACK_WEEKS: PackWeek[] = [
       },
       {
         key: 'feed-3',
+        retired: 'Ersetzt durch das Video «Snack oder Festmahl?».',
         kind: 'feed',
         emoji: '🧠',
         title: 'Lesen. Nachdenken. Anwenden.',
@@ -1763,11 +1870,33 @@ export const PACK_WEEKS: PackWeek[] = [
         source: FSY_OCTOBER('Fragen und Antworten'),
       },
       {
+        key: 'eigen-emmaus',
+        kind: 'video',
+        late: true,
+        emoji: '🌅',
+        title: 'Short: Brannte nicht unser Herz?',
+        body:
+          'Zwei Jünger auf dem Weg nach Emmaus, ein Fremder erklärt ihnen die Schriften – und ' +
+          'beim Brotbrechen erkennen sie ihn (Lukas 24:13–35).',
+        ...ownShort('2026-11-06-brannte-nicht-unser-herz', 'Lukas 24:32'),
+      },
+      {
         key: 'frage-1',
         kind: 'frage',
         emoji: '💬',
         title: 'Welche Schriftstelle hat dir geholfen, Jesus Christus näherzukommen?',
         body: 'Mit Stellenangabe – vielleicht wird sie zur Lieblingsstelle von jemand anderem.',
+      },
+      {
+        key: 'eigen-enos',
+        kind: 'video',
+        late: true,
+        emoji: '🌲',
+        title: 'Short: Worte von zu Hause',
+        body:
+          'Enos geht jagen – und im Wald kommen ihm die Worte seines Vaters in den Sinn. Er ' +
+          'betet den ganzen Tag und bis in die Nacht (Enos 1:1–8).',
+        ...ownShort('2026-11-07-worte-von-zu-hause', 'Enos 1:3'),
       },
       {
         key: 'teilen',
@@ -1776,7 +1905,30 @@ export const PACK_WEEKS: PackWeek[] = [
         title: 'Lest zu Hause ein Kapitel – und jeder nennt einen Vers, der ihm auffällt',
         body: 'Zehn Minuten genügen. Danach hier abhaken.',
       },
+      {
+        key: 'eigen-spiel',
+        kind: 'video',
+        late: true,
+        emoji: '🕹️',
+        title: 'Short: Bücherturm',
+        body:
+          'Das Minispiel der Woche: Staple die Bücher der Schriften der Reihe nach – 1 Nephi, ' +
+          '2 Nephi, Jakob, Enos … Genau drauf gibt Extrapunkte, ein schiefer Turm kippt.',
+        ...ownShort('2026-11-08-buecherturm', 'Lehre und Bündnisse 88:118'),
+      },
     ],
+    /* Die Bücher der Schriften in ihrer Reihenfolge – wie bei Turmbau: Ein Tipp
+       lässt das schwebende Buch fallen, ein schiefer Turm kippt. Wer das ganze
+       Buch Mormon stapelt, bekommt ein Leben zurück. */
+    game: {
+      game: 'stapeln',
+      emoji: '📚',
+      title: 'Bücherturm',
+      body:
+        'Staple die Bücher der Schriften in der richtigen Reihenfolge: 1 Nephi, 2 Nephi, Jakob, ' +
+        'Enos … Tippe, wenn das Buch über dem Turm schwebt – genau drauf gibt Extrapunkte. Aber ' +
+        'Vorsicht: Ein schiefer Turm kippt. Wie hoch baust du?',
+    },
   },
 
   /* ================================================================ */

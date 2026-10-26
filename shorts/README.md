@@ -53,9 +53,10 @@ der nächsten Woche an, rendert sie und schickt sie zur Freigabe – du schaust 
   (Menü der Cloud-Umgebung in der Titelleiste → Edit). Derselbe Schlüssel wie bei der Lernapp
   (Projekt mit Chirp 3 HD, bis 1 Mio. Zeichen im Monat gratis; ein Short sind etwa 600–900 Zeichen).
   Eine **neue Sitzung** sieht die Variable, eine laufende nicht.
-- Den vorinstallierten Chromium:
-  `REMOTION_BROWSER_EXECUTABLE=/opt/pw-browsers/chromium_headless_shell-1194/chrome-linux/headless_shell`
-  (sonst will Remotion ihn herunterladen, und das blockt das Netz der Umgebung).
+- Den vorinstallierten Chromium, z.B.
+  `REMOTION_BROWSER_EXECUTABLE=/opt/pw-browsers/chromium_headless_shell-1243/chrome-headless-shell-linux64/chrome-headless-shell`
+  (die Version im Pfad wechselt mit dem Container – `ls /opt/pw-browsers`; ohne ihn will Remotion einen
+  herunterladen, und das blockt das Netz der Umgebung).
 
 **Schrifttexte prüfen:** Die Cloud-Umgebung erreicht die Website der Kirche nicht. Versnummern und
 Abläufe lassen sich mit dem englischen Text prüfen (npm-Paket `@bencrowder/scriptures-json`, als Daten
@@ -152,6 +153,20 @@ Szenen der Looks:
 | `treasure` | Kartentisch: Schatzkarte zu einer Schriftstelle | `target`, `cues` |
 | `journal` | Notizbuch: Einträge mit kleinen Zeichnungen | `title`, `entries` (`text`, `at`, `icon`) |
 | `jumper` | Videospiel: die Figur springt über Ausreden und sammelt Aufgaben | `hurdles`, `pickups` (`emoji`, `label`, `at`) |
+| `quest` | Jerusalem bei Nacht: Quest-Log «Die Messingplatten», Versuch um Versuch, und das Volk ohne Schriften | `stage` (`intro`, `brief`, `ask`, `buy`, `quit`, `night`, `done`, `contrast`), `attempts` (`label`, `text`, `result`, `at`), `say`, `cues` |
+| `wilderness` | Wüste bei Nacht: die drei Versuchungen, dunkle Schrift gegen die Rolle «Es steht geschrieben» | `stage` (`fast`, `bread`, `temple`, `kingdoms`, `angels`), `attack` (`text`, `at`), `answer` (`text`, `ref`, `at`), `cues` |
+| `templefind` | Tempel als Baustelle: König Josia mit acht, das gefundene Buch, das Volk, der Bund | `stage` (`eight`, `king`, `repair`, `find`, `read`, `people`, `covenant`), `cues` |
+| `tracking` | Sendungsverfolgung: Moronis Platten als Sendung durch die Zeit, Empfänger: du | `stage` (`sent`, `sender`, `hidden`, `message`, `transit`, `delivered`), `events` (`time`, `text`, `at`), `cues` |
+| `feed` | Kurzvideo-Feed um Mitternacht: Uhr und Akku laufen, «noch eins» – und die Leuchte | `stage` (`scroll`, `late`, `blank`, `lamp`), `clock` (von, bis – nur im Bild), `battery`, `cues` |
+| `menu` | Kochshow: Snack oder Festmahl, Menükarte mit Gängen | `stage` (`versus`, `snack`, `feast`, `courses`), `courses` (`label`, `text`, `who`, `at`), `cues` |
+| `jordan` | Kartentisch: Josua übernimmt – Jordan, Jericho, dreimal «Sei mutig und stark», trocken hindurch | `stage` (`mourning`, `map`, `courage`, `book`, `crossing`), `cues` |
+| `emmaus` | Abendweg nach Emmaus: zwei Jünger, ein Fremder, das Brot, das brennende Herz | `stage` (`road`, `stranger`, `scriptures`, `evening`, `bread`, `burn`), `hook`, `cues` |
+| `enos` | Wald bis in die Nacht: Enos auf der Jagd, Worte von zu Hause, Gebet, die Stimme | `stage` (`hunt`, `words`, `pray`, `night`, `voice`, `home`), `hook`, `words` (`text`, `at`), `cues` |
+| `stack` | Videospiel: Vorschau auf das Minispiel «Bücherturm» – Bücher fallen, genau drauf, der Turm kippt | `stage` (`names`, `play`, `topple`, `complete`), `books` (`label`, `at`, `offset`, `perfect`), `hover`, `score`, `lives`, `cues` |
+
+Bei den Szenen der Woche zum Schriftstudium (`src/scenes/w45/`, je eine Datei mit `Scene` und `hidden`) findet
+die Prüfung die Phrasen von selbst: Jedes Feld `at`, jedes Feld auf `…At` und jeder Eintrag von `cues` muss
+wörtlich in der Narration stehen (`phrasesOf` in `src/schema.ts`).
 
 `illustration` mit `motif: "swords"` kennt dazu `phase`: `bury` (Schwerter versinken), `rise` (die Söhne
 stehen auf).
@@ -178,6 +193,13 @@ Gemeinsam: `narration`, `sky` (0 = Nacht … 1 = goldener Morgen; wird weich int
 | `space` | Weltraum: Sterne, Mars, Missionskontrolle | `music/space.mp3` |
 | `palace` | Persischer Palast: Gold, Purpur, Säulen | `music/temple.mp3` |
 | `dream` | Lehis Traum: Nebel, Licht des Baumes | `music/mystery.mp3` |
+| `desert` | Wüste bei Nacht: Dünen, Sterne, Mondlicht | `music/mystery.mp3` |
+| `temple` | Tempel als Baustelle: Staub im Sonnenstrahl, Stein, Gerüst | `music/temple.mp3` |
+| `post` | Sendungsverfolgung: App über einer dunklen Stadtkarte | `music/space.mp3` |
+| `feed` | Dunkles Zimmer im Bildschirmlicht | `music/lofi.mp3` |
+| `kitchen` | Kochshow: Kachelwand, Hängelampen, Theke | `music/arcade.mp3` |
+| `dusk` | Abendweg nach Emmaus: Sonne sinkt hinter Hügel mit Ölbäumen | `music/pad-dawn.mp3` |
+| `forest` | Wald, Tag bis Nacht: Bäume, Mond, Glühwürmchen | `music/mystery.mp3` |
 
 Der Look färbt auch Untertitel, Quellenangabe und die `kinetic`-Zeilen (mit eigenem Auftritt und Ton).
 

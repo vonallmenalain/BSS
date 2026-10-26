@@ -1,0 +1,153 @@
+{
+  "id": "2026-11-05-snack-oder-festmahl",
+  "title": "Snack oder Festmahl?",
+  "date": "2026-11-05",
+  "series": "Für eine starke Jugend · November",
+  "brand": {
+    "name": "AntiDoom"
+  },
+  "look": "kitchen",
+  "voice": {
+    "provider": "google",
+    "languageCode": "de-DE",
+    "name": "de-DE-Chirp3-HD-Umbriel",
+    "speakingRate": 1.05
+  },
+  "music": {
+    "src": "music/arcade.mp3",
+    "volume": 0.3,
+    "duckTo": 0.08
+  },
+  "scenes": [
+    {
+      "id": "hook",
+      "type": "menu",
+      "stage": "versus",
+      "cues": [
+        "Snack",
+        "oder Festmahl"
+      ],
+      "narration": "Snack [pause short] oder Festmahl?"
+    },
+    {
+      "id": "snack",
+      "type": "menu",
+      "stage": "snack",
+      "cues": [
+        "ist ein Snack",
+        "Besser als nichts",
+        "satt wird davon keiner"
+      ],
+      "narration": "Ein Vers zwischen zwei Videos ist ein Snack. [pause short] Besser als nichts – [pause short] aber satt wird davon keiner."
+    },
+    {
+      "id": "nephi",
+      "type": "menu",
+      "stage": "feast",
+      "ref": "2 Nephi 31:20",
+      "cues": [
+        "Nephi sagt nicht einfach",
+        "Weidet euch",
+        "richtig satt"
+      ],
+      "narration": "Nephi sagt nicht einfach: Lest. [pause short] Er sagt: Weidet euch an den Worten von Christus. [pause short] Esst euch richtig satt daran."
+    },
+    {
+      "id": "vorspeise",
+      "type": "menu",
+      "stage": "courses",
+      "ref": "Für eine starke Jugend, Oktober 2026",
+      "courses": [
+        {
+          "label": "Vorspeise",
+          "text": "Ein Gebet",
+          "at": "Zur Vorspeise"
+        }
+      ],
+      "narration": "Das Menü – von Jugendlichen aus aller Welt. [pause short] Zur Vorspeise: ein Gebet."
+    },
+    {
+      "id": "hauptgang",
+      "type": "menu",
+      "stage": "courses",
+      "ref": "Für eine starke Jugend, Oktober 2026",
+      "courses": [
+        {
+          "label": "Vorspeise",
+          "text": "Ein Gebet"
+        },
+        {
+          "label": "Hauptgang",
+          "text": "Lesen. Nachdenken. Anwenden.",
+          "who": "Liriel, 13, Brasilien",
+          "at": "Als Hauptgang"
+        }
+      ],
+      "narration": "Als Hauptgang, von Liriel, 13, aus Brasilien: [pause short] Lesen. Nachdenken. Überlegen, wie du es anwendest."
+    },
+    {
+      "id": "dessert",
+      "type": "menu",
+      "stage": "courses",
+      "ref": "Für eine starke Jugend, Oktober 2026",
+      "courses": [
+        {
+          "label": "Vorspeise",
+          "text": "Ein Gebet"
+        },
+        {
+          "label": "Hauptgang",
+          "text": "Lesen. Nachdenken. Anwenden.",
+          "who": "Liriel, 13, Brasilien"
+        },
+        {
+          "label": "Dessert",
+          "text": "Bunte Stifte: jede Farbe ein Thema",
+          "who": "Isabella, 16, Madrid",
+          "at": "Und zum Dessert"
+        }
+      ],
+      "narration": "Und zum Dessert, von Isabella, 16, aus Madrid: [pause short] bunte Stifte und Haftnotizen. [pause short] Jede Farbe steht für ein Thema."
+    },
+    {
+      "id": "geheimzutat",
+      "type": "menu",
+      "stage": "courses",
+      "ref": "Für eine starke Jugend, Oktober 2026",
+      "courses": [
+        {
+          "label": "Vorspeise",
+          "text": "Ein Gebet"
+        },
+        {
+          "label": "Hauptgang",
+          "text": "Lesen. Nachdenken. Anwenden.",
+          "who": "Liriel, 13, Brasilien"
+        },
+        {
+          "label": "Dessert",
+          "text": "Bunte Stifte: jede Farbe ein Thema",
+          "who": "Isabella, 16, Madrid"
+        },
+        {
+          "label": "Geheimzutat",
+          "text": "Der Heilige Geist bezeugt: Es ist wahr.",
+          "at": "die Geheimzutat"
+        }
+      ],
+      "narration": "Und die Geheimzutat: [pause short] Der Heilige Geist bezeugt dir, dass die Worte wahr sind."
+    },
+    {
+      "id": "punch",
+      "type": "kinetic",
+      "holdAfterSec": 1.2,
+      "lines": [
+        "Kein Snack.",
+        "Ein Festmahl.",
+        "Und was versprechen",
+        "die Worte von Christus?"
+      ],
+      "narration": "Kein Snack. [pause short] Ein Festmahl. [pause short] Und was versprechen die Worte von Christus?"
+    }
+  ]
+}

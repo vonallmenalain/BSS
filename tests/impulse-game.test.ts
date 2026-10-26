@@ -63,6 +63,24 @@ import {
   type ChainEvent,
   type ChainLock,
 } from '../src/lib/impulseGameChain.ts'
+import {
+  STACK_BOOKS,
+  STACK_CHAIN_MAX,
+  STACK_COLLECTIONS,
+  STACK_COMPLETE_POINTS,
+  STACK_GRIP,
+  STACK_LIVES,
+  STACK_PACE,
+  STACK_PERFECT,
+  STACK_TIMES,
+  StackRound,
+  stackBookAt,
+  stackFailLevel,
+  stackStability,
+  stackSwing,
+  type StackEvent,
+} from '../src/lib/impulseGameStack.ts'
+import { scriptureLink } from '../src/lib/scriptures.ts'
 
 /*
  * Die Minispiele ohne Leinwand: Rangliste, Name, Punkte – und das Tempo,
@@ -365,8 +383,8 @@ test('eine Runde dauert 20 bis 60 Sekunden – vom Anfänger bis zur Spitze', ()
 
 const GAME_IDS = Object.keys(IMPULSE_GAME_LABELS) as ImpulseGameId[]
 
-test('Spiele: vier Schlüssel – jeder bereit, mit Namen und Einheit', () => {
-  assert.deepEqual(GAME_IDS, ['sortieren', 'abwehren', 'springen', 'befreien'])
+test('Spiele: fünf Schlüssel – jeder bereit, mit Namen und Einheit', () => {
+  assert.deepEqual(GAME_IDS, ['sortieren', 'abwehren', 'springen', 'befreien', 'stapeln'])
   for (const game of GAME_IDS) {
     assert.ok(isImpulseGameId(game), game)
     assert.deepEqual(readyProblems({ kind: 'spiel', title: 'Ein Spiel', game }), [], game)
@@ -1407,5 +1425,255 @@ test('Ketten: eine Runde dauert 20 bis 60 Sekunden – vom Anfänger bis zur Spi
     beginner: play({ reaction: 0.5, spread: 0.12, move: 0.42, moveSpread: 0.1, error: 0.05 }),
     average: play({ reaction: 0.4, spread: 0.1, move: 0.32, moveSpread: 0.08, error: 0.03 }),
     top: play({ reaction: 0.3, spread: 0.06, move: 0.22, moveSpread: 0.05, error: 0.01 }),
+  })
+})
+
+/* ------------------------------------------------------------------ */
+/* «Bücherturm»                                                        */
+/* ------------------------------------------------------------------ */
+
+test('Bücherturm: die Bücher der Schriften in ihrer Reihenfolge – das Buch Mormon zuerst', () => {
+  assert.deepEqual(
+    STACK_COLLECTIONS.map((collection) => collection.label),
+    ['Buch Mormon', 'Neues Testament', 'Lehre und Bündnisse', 'Köstliche Perle', 'Altes Testament'],
+  )
+  assert.deepEqual(
+    STACK_BOOKS.slice(0, 15).map((book) => book.label),
+    [
+      '1 Nephi',
+      '2 Nephi',
+      'Jakob',
+      'Enos',
+      'Jarom',
+      'Omni',
+      'Worte Mormons',
+      'Mosia',
+      'Alma',
+      'Helaman',
+      '3 Nephi',
+      '4 Nephi',
+      'Mormon',
+      'Ether',
+      'Moroni',
+    ],
+  )
+  // 15 + 27 + 1 + 5 + 39 – alle Bücher, jedes einmal.
+  assert.equal(STACK_BOOKS.length, 87)
+  assert.equal(new Set(STACK_BOOKS.map((book) => book.label)).size, STACK_BOOKS.length)
+  // Dieselben Namen, die die App als Schriftstelle erkennt – keine eigenen Schreibweisen.
+  for (const book of STACK_BOOKS) {
+    const reference = book.label === 'Glaubensartikel' ? 'Glaubensartikel 1' : `${book.label} 1`
+    assert.ok(scriptureLink(reference), `${book.label}: kein Buch der Schriften`)
+    assert.ok(!book.label.includes('ß'), book.label)
+  }
+  // Je Sammlung genau ein letztes Buch – dort gibt es den Bonus.
+  assert.deepEqual(
+    STACK_BOOKS.filter((book) => book.last).map((book) => book.label),
+    ['Moroni', 'Offenbarung', 'Lehre und Bündnisse', 'Glaubensartikel', 'Maleachi'],
+  )
+  // Dicke Bücher sind dicker – aber keines so dünn, dass man es verfehlt.
+  const thickness = (label: string) => STACK_BOOKS.find((book) => book.label === label)!.thickness
+  assert.ok(thickness('Alma') > thickness('Mosia'))
+  assert.ok(thickness('Mosia') > thickness('Enos'))
+  for (const book of STACK_BOOKS) assert.ok(book.thickness >= 0.15 && book.thickness <= 0.32)
+  // Wer alle schafft, beginnt von vorn.
+  assert.equal(stackBookAt(STACK_BOOKS.length).label, '1 Nephi')
+})
+
+test('Bücherturm: das Buch schwebt mit jedem Buch schneller – nie schneller als das Minimum', () => {
+  let last = Infinity
+  for (let placed = 0; placed <= 80; placed += 1) {
+    const { period, amp } = stackSwing(placed)
+    assert.ok(period <= last + 1e-9, `${placed}: wieder langsamer`)
+    assert.ok(period >= STACK_PACE.periodMin, `${placed}: zu schnell`)
+    assert.ok(amp >= STACK_PACE.ampStart && amp <= STACK_PACE.ampMax, `${placed}: Weite`)
+    last = period
+  }
+  // Am Anfang bleibt Zeit: fast drei Sekunden für ein Hin und Her.
+  assert.ok(stackSwing(0).period > 2.5)
+  // Ab dem zwölften Buch schwankt der Takt – auswendig lernen geht nicht.
+  assert.notEqual(stackSwing(20, () => 0).period, stackSwing(20, () => 1).period)
+  assert.equal(stackSwing(5, () => 0).period, stackSwing(5, () => 1).period)
+})
+
+/** Das schwebende Buch genau über `x` fallen lassen – und warten, bis das nächste schwebt. */
+function dropAt(round: StackRound, x: number): StackEvent[] {
+  const events: StackEvent[] = []
+  for (let guard = 0; round.state !== 'swing' && !round.over && guard < 1000; guard += 1)
+    events.push(...round.step(1 / 60))
+  if (round.over) return events
+  round.swing = { ...round.swing, center: x, amp: 0 }
+  events.push(...round.tap())
+  for (let guard = 0; round.state !== 'swing' && !round.over && guard < 1000; guard += 1)
+    events.push(...round.step(1 / 60))
+  return events
+}
+
+test('Bücherturm: genau drauf rastet ein und zählt mehr – mehrere am Stück noch mehr', () => {
+  const round = new StackRound(seededRandom(1))
+  assert.equal(round.book.label, '1 Nephi')
+  let events = dropAt(round, 0.02)
+  const first = events.find((event) => event.kind === 'land')
+  assert.ok(first && first.kind === 'land')
+  // Auf dem Tisch genau in der Mitte: eingerastet, 1 + 1 Punkt.
+  assert.equal(first.placed.x, 0)
+  assert.equal(first.placed.perfect, true)
+  assert.equal(first.points, 2)
+  const points: number[] = []
+  for (let index = 0; index < 6; index += 1) {
+    events = dropAt(round, round.topX + STACK_PERFECT * 0.8)
+    const land = events.find((event) => event.kind === 'land')
+    assert.ok(land && land.kind === 'land')
+    points.push(land.points)
+  }
+  // 2, 3, 4 … bis zum Deckel von STACK_CHAIN_MAX dazu.
+  assert.deepEqual(
+    points,
+    [3, 4, 5, 5, 5, 5].map((value) => Math.min(value, 1 + STACK_CHAIN_MAX)),
+  )
+  assert.equal(round.chain, 7)
+  // Knapp daneben: liegt schief, zählt einen Punkt, die Reihe ist vorbei.
+  events = dropAt(round, round.topX + 0.2)
+  const land = events.find((event) => event.kind === 'land')
+  assert.ok(land && land.kind === 'land')
+  assert.equal(land.placed.perfect, false)
+  assert.equal(land.points, 1)
+  assert.equal(round.chain, 0)
+  assert.equal(round.tower.at(-1)!.x, round.tower.at(-2)!.x + 0.2)
+})
+
+test('Bücherturm: daneben oder zu weit am Rand – ein Leben weniger, dasselbe Buch nochmals', () => {
+  const round = new StackRound(seededRandom(2))
+  dropAt(round, 0)
+  assert.equal(round.book.label, '2 Nephi')
+  // Ganz daneben: berührt nichts.
+  let events = dropAt(round, 1.2)
+  const miss = events.find((event) => event.kind === 'miss')
+  assert.ok(miss && miss.kind === 'miss' && !miss.slid)
+  assert.equal(round.lives, STACK_LIVES - 1)
+  assert.equal(round.book.label, '2 Nephi')
+  assert.equal(round.tower.length, 1)
+  // Liegt auf, aber der Schwerpunkt ist über den Rand hinaus: rutscht ab.
+  events = dropAt(round, (STACK_GRIP / 2) * 1.1)
+  const slid = events.find((event) => event.kind === 'miss')
+  assert.ok(slid && slid.kind === 'miss' && slid.slid)
+  assert.equal(round.lives, STACK_LIVES - 2)
+  // Ein drittes Mal – vorbei.
+  events = dropAt(round, -2)
+  assert.ok(events.some((event) => event.kind === 'over'))
+  assert.equal(round.over, true)
+  // Danach nimmt die Runde nichts mehr an.
+  assert.deepEqual(round.tap(), [])
+})
+
+test('Bücherturm: ein schiefer Turm kippt – die Bücher kommen der Reihe nach wieder', () => {
+  const round = new StackRound(seededRandom(3))
+  // Jedes Buch ein Stück weiter nach rechts: Jedes für sich liegt gut, zusammen kippen sie.
+  let toppled: Extract<StackEvent, { kind: 'topple' }> | null = null
+  for (let index = 0; index < 12 && !toppled; index += 1) {
+    const events = dropAt(round, round.topX + 0.3)
+    toppled = (events.find((event) => event.kind === 'topple') as typeof toppled) ?? null
+    // Solange er steht, gibt nirgends etwas nach.
+    if (!toppled) assert.equal(stackFailLevel(round.tower), null)
+  }
+  assert.ok(toppled, 'der Turm hätte kippen müssen')
+  assert.equal(toppled.side, 1)
+  assert.ok(toppled.fallen.length >= 2, 'mehr als nur das oberste Buch')
+  assert.equal(round.lives, STACK_LIVES - 1)
+  // Was steht, steht in der Reihenfolge der Schriften – und das erste gefallene Buch kommt als Nächstes.
+  round.tower.forEach((placed, level) => assert.equal(placed.index, level))
+  assert.equal(round.next, round.tower.length)
+  assert.equal(round.book.label, toppled.fallen[0].book.label)
+  // Und der Rest des Turms hält.
+  assert.equal(stackFailLevel(round.tower), null)
+  assert.ok(stackStability(round.tower).margin > 0)
+})
+
+test('Bücherturm: das ganze Buch Mormon gibt fünf Punkte und ein Leben zurück', () => {
+  const round = new StackRound(seededRandom(4))
+  dropAt(round, 3)
+  assert.equal(round.lives, STACK_LIVES - 1)
+  let complete: Extract<StackEvent, { kind: 'complete' }> | null = null
+  for (let index = 0; index < 15; index += 1) {
+    const events = dropAt(round, round.topX)
+    complete = (events.find((event) => event.kind === 'complete') as typeof complete) ?? complete
+  }
+  assert.ok(complete)
+  assert.equal(complete.collection.label, 'Buch Mormon')
+  assert.equal(complete.points, STACK_COMPLETE_POINTS)
+  assert.equal(complete.healed, true)
+  assert.equal(round.lives, STACK_LIVES)
+  assert.equal(round.tower.at(-1)!.book.label, 'Moroni')
+  assert.equal(round.book.label, 'Matthäus')
+})
+
+test('Bücherturm: fällt kein Buch, geht nichts weiter – das Schweben wartet auf den Tipp', () => {
+  const round = new StackRound(seededRandom(5))
+  for (let index = 0; index < 600; index += 1) round.step(1 / 60)
+  assert.equal(round.tower.length, 0)
+  assert.equal(round.lives, STACK_LIVES)
+  assert.equal(round.state, 'swing')
+  // Ein Tipp, während das Buch fällt, zählt nicht doppelt.
+  round.tap()
+  assert.deepEqual(round.tap(), [])
+  round.step(STACK_TIMES.drop + 0.01)
+  assert.equal(round.tower.length + (STACK_LIVES - round.lives), 1)
+})
+
+/**
+ * Ein nachgebildeter Spieler: Er schaut, wohin das Buch am besten kommt –
+ * dorthin, wo der Turm danach am sichersten steht, je nach Können mehr
+ * oder weniger genau –, und tippt, wenn das Buch dort vorbeischwebt,
+ * mit einer Streuung in Sekunden. Ab und zu ist er abgelenkt.
+ */
+function playStack(
+  player: { timing: number; reaction: number; lapse: number; judgement: number },
+  seed: number,
+) {
+  const round = new StackRound(seededRandom(seed))
+  const noise = seededRandom(seed * 7919 + 13)
+  const gauss = gaussian(noise)
+  let planned: number | null = null
+  while (!round.over && round.time < 300) {
+    if (round.state === 'swing' && planned === null) {
+      let best = 0
+      let bestMargin = -1
+      for (let d = -0.3; d <= 0.3001; d += 0.02) {
+        const trial = [
+          ...round.tower,
+          { index: round.next, book: round.book, x: round.topX + d, perfect: false },
+        ]
+        const margin = stackStability(trial).margin - Math.abs(d) * 0.05
+        if (margin > bestMargin) {
+          bestMargin = margin
+          best = d
+        }
+      }
+      const aim = round.topX + best * player.judgement
+      // Wann das Buch dort vorbeikommt – nach der Reaktionszeit.
+      let t = round.time + player.reaction
+      let before = round.hoverX(t) - aim
+      for (let step = 0; step < 4000; step += 1) {
+        const after = round.hoverX(t + 1 / 400) - aim
+        t += 1 / 400
+        if (before * after <= 0) break
+        before = after
+      }
+      planned = t + gauss() * player.timing * (noise() < player.lapse ? 4 : 1)
+    }
+    if (planned !== null && round.state === 'swing' && round.time >= planned) round.tap()
+    round.step(1 / 120)
+    if (round.state !== 'swing') planned = null
+  }
+  return { seconds: round.time, points: round.points }
+}
+
+test('Bücherturm: eine Runde dauert 20 bis 60 Sekunden – vom Anfänger bis zur Spitze', () => {
+  const play = (player: Parameters<typeof playStack>[0]) =>
+    Array.from({ length: 200 }, (_, index) => playStack(player, 500 + index))
+  assertRoundLengths('Bücherturm', {
+    beginner: play({ timing: 0.09, reaction: 0.3, lapse: 0.06, judgement: 0.3 }),
+    average: play({ timing: 0.06, reaction: 0.25, lapse: 0.04, judgement: 0.6 }),
+    top: play({ timing: 0.035, reaction: 0.2, lapse: 0.015, judgement: 1 }),
   })
 })

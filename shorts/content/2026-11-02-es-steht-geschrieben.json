@@ -1,0 +1,149 @@
+{
+  "id": "2026-11-02-es-steht-geschrieben",
+  "title": "Es steht geschrieben",
+  "date": "2026-11-02",
+  "series": "Für eine starke Jugend · November",
+  "brand": {
+    "name": "AntiDoom"
+  },
+  "look": "desert",
+  "voice": {
+    "provider": "google",
+    "languageCode": "de-DE",
+    "name": "de-DE-Chirp3-HD-Schedar",
+    "speakingRate": 1.0
+  },
+  "music": {
+    "src": "music/mystery.mp3",
+    "volume": 0.3,
+    "duckTo": 0.08
+  },
+  "scenes": [
+    {
+      "id": "hook",
+      "type": "wilderness",
+      "stage": "fast",
+      "ref": "Matthäus 4:1–3",
+      "sky": 0.1,
+      "cues": [
+        "Vierzig Tage",
+        "Kein Essen",
+        "der Versucher"
+      ],
+      "narration": "Vierzig Tage. [pause short] Kein Essen. [pause short] Und dann kommt der Versucher."
+    },
+    {
+      "id": "brot",
+      "type": "wilderness",
+      "stage": "bread",
+      "ref": "Matthäus 4:3",
+      "attack": {
+        "text": "Wenn du Gottes Sohn bist, mach aus diesen Steinen Brot.",
+        "at": "Wenn du Gottes Sohn bist"
+      },
+      "narration": "Erster Angriff: [pause short] Wenn du Gottes Sohn bist, [pause short] mach aus diesen Steinen Brot."
+    },
+    {
+      "id": "antwort-1",
+      "type": "wilderness",
+      "stage": "bread",
+      "ref": "Matthäus 4:4",
+      "answer": {
+        "text": "Der Mensch lebt nicht nur von Brot, sondern von jedem Wort aus Gottes Mund.",
+        "ref": "Matthäus 4:4",
+        "at": "Es steht geschrieben"
+      },
+      "narration": "Jesus antwortet: [pause short] Es steht geschrieben: [pause short] Der Mensch lebt nicht nur von Brot, [pause short] sondern von jedem Wort aus Gottes Mund."
+    },
+    {
+      "id": "tempel",
+      "type": "wilderness",
+      "stage": "temple",
+      "ref": "Matthäus 4:5–6",
+      "attack": {
+        "text": "Spring! Engel werden dich auffangen.",
+        "at": "Spring"
+      },
+      "cues": [
+        "hoch oben auf dem Tempel",
+        "zitiert der Teufel selbst die Schrift"
+      ],
+      "narration": "Zweiter Angriff, [pause short] hoch oben auf dem Tempel: [pause short] Spring! [pause short] Und jetzt zitiert der Teufel selbst die Schrift: [pause short] Engel werden dich auffangen."
+    },
+    {
+      "id": "antwort-2",
+      "type": "wilderness",
+      "stage": "temple",
+      "ref": "Matthäus 4:7",
+      "answer": {
+        "text": "Du sollst den Herrn, deinen Gott, nicht auf die Probe stellen.",
+        "ref": "Matthäus 4:7",
+        "at": "Es steht auch geschrieben"
+      },
+      "narration": "Jesus: [pause short] Es steht auch geschrieben: [pause short] Du sollst den Herrn, deinen Gott, nicht auf die Probe stellen."
+    },
+    {
+      "id": "reiche",
+      "type": "wilderness",
+      "stage": "kingdoms",
+      "ref": "Matthäus 4:8–9",
+      "attack": {
+        "text": "Alle Reiche der Welt – wenn du dich vor mir niederwirfst.",
+        "at": "Alle Reiche der Welt"
+      },
+      "cues": [
+        "auf einem sehr hohen Berg"
+      ],
+      "narration": "Dritter Angriff, [pause short] auf einem sehr hohen Berg: [pause short] Alle Reiche der Welt – [pause short] wenn du dich vor mir niederwirfst."
+    },
+    {
+      "id": "antwort-3",
+      "type": "wilderness",
+      "stage": "kingdoms",
+      "ref": "Matthäus 4:10",
+      "answer": {
+        "text": "Den Herrn, deinen Gott, sollst du anbeten und ihm allein dienen.",
+        "ref": "Matthäus 4:10",
+        "at": "Denn es steht geschrieben"
+      },
+      "cues": [
+        "Weg mit dir, Satan"
+      ],
+      "narration": "Weg mit dir, Satan! [pause short] Denn es steht geschrieben: [pause short] Den Herrn, deinen Gott, sollst du anbeten [pause short] und ihm allein dienen."
+    },
+    {
+      "id": "engel",
+      "type": "wilderness",
+      "stage": "angels",
+      "ref": "Matthäus 4:11",
+      "sky": 0.6,
+      "cues": [
+        "lässt der Teufel von ihm ab",
+        "Engel kommen"
+      ],
+      "narration": "Da lässt der Teufel von ihm ab. [pause short] Und Engel kommen und dienen ihm."
+    },
+    {
+      "id": "punch-1",
+      "type": "kinetic",
+      "holdAfterSec": 0.4,
+      "lines": [
+        "Dreimal dieselben Worte:",
+        "Es steht geschrieben."
+      ],
+      "narration": "Dreimal dieselben Worte: [pause short] Es steht geschrieben."
+    },
+    {
+      "id": "punch-2",
+      "type": "kinetic",
+      "holdAfterSec": 1.2,
+      "lines": [
+        "Er kannte die Schriften.",
+        "Als es darauf ankam,",
+        "waren sie da.",
+        "Nur: Woher stammen alle drei?"
+      ],
+      "narration": "Er kannte die Schriften. [pause short] Als es darauf ankam, waren sie da. [pause short] Nur: Woher stammen alle drei?"
+    }
+  ]
+}

@@ -10,6 +10,7 @@ import { EmberBg } from "./components/backgrounds/EmberBg";
 import { PalaceBg } from "./components/backgrounds/PalaceBg";
 import { SpaceBg } from "./components/backgrounds/SpaceBg";
 import { StoneBg } from "./components/backgrounds/StoneBg";
+import { DesertBg, DuskBg, FeedBg, ForestBg, KitchenBg, PostBg, TempleBg } from "./components/backgrounds/w45";
 import { Captions } from "./components/Captions";
 import { Sky } from "./components/Sky";
 import { fontsReady } from "./lib/fonts";
@@ -29,6 +30,7 @@ import { FireScene } from "./scenes/w44/fire";
 import { ItemScene } from "./scenes/w44/item";
 import { MissionScene } from "./scenes/w44/mission";
 import { PalaceScene } from "./scenes/w44/palace";
+import { W45_SCENES } from "./scenes/w45";
 import {
   BigNumberScene,
   CtaScene,
@@ -124,7 +126,7 @@ const hiddenWords = (ts: TimelineScene): Set<number> => {
     case "fire":
       return wordsOf(ts, s.bubbles.map((b) => b.text));
     default:
-      return new Set();
+      return W45_SCENES[s.type]?.hidden(ts) ?? new Set();
   }
 };
 
@@ -182,6 +184,10 @@ const SceneBody: React.FC<{ ts: TimelineScene }> = ({ ts }) => {
       return <DreamScene ts={ts} />;
     case "fire":
       return <FireScene ts={ts} />;
+    default: {
+      const w45 = W45_SCENES[ts.scene.type];
+      return w45 ? <w45.Scene ts={ts} /> : null;
+    }
   }
 };
 
@@ -212,6 +218,20 @@ const Backdrop: React.FC<{ look: Episode["look"]; s: number }> = ({ look, s }) =
       return <PalaceBg />;
     case "dream":
       return <DreamBg />;
+    case "desert":
+      return <DesertBg />;
+    case "temple":
+      return <TempleBg />;
+    case "post":
+      return <PostBg />;
+    case "feed":
+      return <FeedBg />;
+    case "kitchen":
+      return <KitchenBg />;
+    case "dusk":
+      return <DuskBg />;
+    case "forest":
+      return <ForestBg />;
     default:
       return (
         <>
