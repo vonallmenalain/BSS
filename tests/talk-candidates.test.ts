@@ -77,7 +77,7 @@ const kandidat = (partial: Partial<TalkCandidate> & { member?: Member } = {}): T
   monthsSince: null,
   lastTalkYear: null,
   alreadyPlanned: false,
-  upcoming: null,
+  scheduled: null,
   onHold: false,
   holdUntil: null,
   onMission: false,
@@ -169,8 +169,8 @@ test('wer angefragt ist, reiht sich beim Sonntag der Ansprache ein', () => {
     assert.equal(candidate.lastTalkYear, 2026, candidate.member.id)
   }
   const byId = new Map(ranked.map((c) => [c.member.id, c]))
-  assert.equal(byId.get('nie')?.upcoming?.status, 'asked')
-  assert.equal(byId.get('lange')?.upcoming?.status, 'planned')
+  assert.equal(byId.get('nie')?.scheduled?.status, 'asked')
+  assert.equal(byId.get('lange')?.scheduled?.status, 'planned')
 
   // Damit fallen beide aus «nur seit über X Monaten» und aus «noch nie».
   assert.equal(filterTalkCandidates(ranked, filter(), 18).length, 0)
@@ -182,7 +182,7 @@ test('ist der Eintrag weg, zählt wieder die letzte Ansprache', () => {
   const members = [member('m1', { lastTalkDate: monateZurueck(21) as never })]
   const [candidate] = rankTalkCandidates(members, [], { now: JETZT })
 
-  assert.equal(candidate.upcoming, null)
+  assert.equal(candidate.scheduled, null)
   assert.equal(candidate.monthsSince, 21)
 })
 
@@ -192,8 +192,64 @@ test('auch ein Eintrag nur mit dem Namen zeigt den Status', () => {
   const [candidate] = rankTalkCandidates([anna], [eintrag], { now: JETZT })
 
   assert.equal(candidate.alreadyPlanned, true)
-  assert.equal(candidate.upcoming?.status, 'asked')
+  assert.equal(candidate.scheduled?.status, 'asked')
   assert.equal(candidate.monthsSince, 0)
+})
+
+/** Ein Eintrag an einem Tag, der von heute aus gerechnet ist – wie `monateZurueck`. */
+const eintragAm = (memberId: string, date: Date, status: Talk['status']): Talk =>
+  ({ ...talk(memberId, '2000-01-01', status), date }) as Talk
+
+const tageZurueck = (days: number) => {
+  const date = new Date()
+  date.setHours(10, 0, 0, 0)
+  date.setDate(date.getDate() - days)
+  return date
+}
+
+test('ein vorbeigegangener Sonntag, nie zugesagt, zählt wie ein Eintrag', () => {
+  // Der Fall aus dem Programm: vorgesehen für den letzten Sonntag, nie auf
+  // «Zugesagt» gestellt – in den Vorschlägen stand «noch nie gesprochen».
+  const sonntag = tageZurueck(8)
+  const [candidate] = rankTalkCandidates([member('m1')], [eintragAm('m1', sonntag, 'planned')])
+
+  assert.equal(candidate.scheduled?.status, 'planned')
+  assert.equal(candidate.scheduled?.date.getTime(), sonntag.getTime())
+  assert.equal(candidate.monthsSince, 0)
+  assert.equal(candidate.lastTalkYear, sonntag.getFullYear())
+  // Gesperrt ist er nicht: Der Sonntag ist vorbei.
+  assert.equal(candidate.alreadyPlanned, false)
+  assert.equal(filterTalkCandidates([candidate], filter(), 18).length, 0)
+})
+
+test('ein offener Eintrag nach der letzten Ansprache tritt an ihre Stelle', () => {
+  const members = [member('m1', { lastTalkDate: monateZurueck(21) as never })]
+  const [candidate] = rankTalkCandidates(members, [eintragAm('m1', monateZurueck(2), 'asked')])
+
+  assert.equal(candidate.scheduled?.status, 'asked')
+  assert.equal(candidate.monthsSince, 2)
+})
+
+test('ein offener Eintrag vor der letzten Ansprache ist erledigt', () => {
+  // Vorgesehen, dann doch an einem anderen Sonntag gesprochen: Es zählt die
+  // gehaltene Ansprache.
+  const members = [member('m1', { lastTalkDate: monateZurueck(3) as never })]
+  const [candidate] = rankTalkCandidates(members, [eintragAm('m1', monateZurueck(10), 'planned')])
+
+  assert.equal(candidate.scheduled, null)
+  assert.equal(candidate.monthsSince, 3)
+})
+
+test('ein kommender Sonntag geht einem offenen vergangenen Eintrag vor', () => {
+  const kommend = tageZurueck(-12)
+  const [candidate] = rankTalkCandidates(
+    [member('m1')],
+    [eintragAm('m1', tageZurueck(8), 'planned'), eintragAm('m1', kommend, 'asked')],
+  )
+
+  assert.equal(candidate.scheduled?.status, 'asked')
+  assert.equal(candidate.scheduled?.date.getTime(), kommend.getTime())
+  assert.equal(candidate.alreadyPlanned, true)
 })
 
 test('wer vor Jahren gesprochen hat, steht wieder zur Verfügung', () => {

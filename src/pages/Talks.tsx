@@ -43,7 +43,14 @@ import {
 } from '@/components/sacrament/SundayResponsible'
 import { TalkStatusBadge } from '@/components/ui/Badge'
 import { Avatar } from '@/components/ui/Avatar'
-import { formatDate, formatDateLong, toDate, toDateInput, upcomingWeekdays } from '@/lib/dates'
+import {
+  formatDate,
+  formatDateLong,
+  formatDayMonthYear,
+  toDate,
+  toDateInput,
+  upcomingWeekdays,
+} from '@/lib/dates'
 import { cn, formatPhone, matchesSearch, telHref } from '@/lib/utils'
 import {
   activeTalkFilterCount,
@@ -976,7 +983,7 @@ function CandidateRows({
           age,
           monthsSince: months,
           alreadyPlanned,
-          upcoming,
+          scheduled,
           onHold,
           holdUntil,
           onMission,
@@ -1002,9 +1009,10 @@ function CandidateRows({
               <p className="text-xs text-slate-500 dark:text-slate-400">
                 {/* Schon eingetragen: Das zählt statt der letzten Ansprache –
                     bis der Eintrag wieder weg ist. */}
-                {upcoming ? (
+                {scheduled ? (
                   <>
-                    <TalkStatusBadge status={upcoming.status} /> für {formatDate(upcoming.date)}
+                    <TalkStatusBadge status={scheduled.status} /> für{' '}
+                    {formatDayMonthYear(scheduled.date)}
                   </>
                 ) : months === null ? (
                   <span className="font-medium text-amber-600 dark:text-amber-400">
@@ -1350,45 +1358,50 @@ function AssignDialog({
                 }}
               />
               <ul className="mt-2 max-h-56 space-y-1 overflow-y-auto">
-                {results.map(({ member, monthsSince: months, upcoming, onHold }) => (
-                  <li key={member.id}>
-                    <button
-                      type="button"
-                      onClick={() => setSelected(member)}
-                      className="flex w-full items-center gap-2 rounded-lg px-2 py-2 text-left transition hover:bg-slate-100 dark:hover:bg-slate-800"
-                    >
-                      <Avatar
-                        name={`${member.firstName} ${member.lastName}`}
-                        id={member.id}
-                        size="sm"
-                      />
-                      <span className="min-w-0 flex-1 truncate text-sm">
-                        {member.firstName} {member.lastName}
-                      </span>
-                      <span className="shrink-0 text-xs text-slate-400">
-                        {upcoming ? (
-                          <span className="inline-flex items-center gap-1 text-amber-600">
-                            <TriangleAlert className="size-3" aria-hidden />
-                            {TALK_STATUS_LABELS[upcoming.status].toLowerCase()}{' '}
-                            {formatDate(upcoming.date)}
-                          </span>
-                        ) : onHold ? (
-                          /* Ausgenommen heisst «nicht anfragen» – gesperrt ist
-                             hier trotzdem nichts: Wer die Person ausdrücklich
-                             sucht, weiss, was er tut. */
-                          <span className="inline-flex items-center gap-1 text-amber-600">
-                            <UserMinus className="size-3" aria-hidden />
-                            nicht anfragen
-                          </span>
-                        ) : months === null ? (
-                          'nie'
-                        ) : (
-                          `${months} Mt.`
-                        )}
-                      </span>
-                    </button>
-                  </li>
-                ))}
+                {results.map(
+                  ({ member, monthsSince: months, alreadyPlanned, scheduled, onHold }) => (
+                    <li key={member.id}>
+                      <button
+                        type="button"
+                        onClick={() => setSelected(member)}
+                        className="flex w-full items-center gap-2 rounded-lg px-2 py-2 text-left transition hover:bg-slate-100 dark:hover:bg-slate-800"
+                      >
+                        <Avatar
+                          name={`${member.firstName} ${member.lastName}`}
+                          id={member.id}
+                          size="sm"
+                        />
+                        <span className="min-w-0 flex-1 truncate text-sm">
+                          {member.firstName} {member.lastName}
+                        </span>
+                        <span className="shrink-0 text-xs text-slate-400">
+                          {alreadyPlanned && scheduled ? (
+                            <span className="inline-flex items-center gap-1 text-amber-600">
+                              <TriangleAlert className="size-3" aria-hidden />
+                              {TALK_STATUS_LABELS[scheduled.status].toLowerCase()}{' '}
+                              {formatDate(scheduled.date)}
+                            </span>
+                          ) : onHold ? (
+                            /* Ausgenommen heisst «nicht anfragen» – gesperrt ist
+                               hier trotzdem nichts: Wer die Person ausdrücklich
+                               sucht, weiss, was er tut. */
+                            <span className="inline-flex items-center gap-1 text-amber-600">
+                              <UserMinus className="size-3" aria-hidden />
+                              nicht anfragen
+                            </span>
+                          ) : scheduled ? (
+                            // Vorbei, aber nie zugesagt – kein Grund zur Warnung.
+                            `${TALK_STATUS_LABELS[scheduled.status].toLowerCase()} ${formatDate(scheduled.date)}`
+                          ) : months === null ? (
+                            'nie'
+                          ) : (
+                            `${months} Mt.`
+                          )}
+                        </span>
+                      </button>
+                    </li>
+                  ),
+                )}
               </ul>
 
               {results.length === 0 && search.trim().length > 1 && (

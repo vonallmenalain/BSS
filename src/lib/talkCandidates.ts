@@ -13,8 +13,8 @@ import { ACTIVE_TALK_STATUSES, type Member, type Talk, type TalkStatus } from '.
  * die Oberfläche kennt nur diesen einen Ort.
  */
 
-/** Die nächste Ansprache, für die jemand schon eingetragen ist. */
-export interface UpcomingTalk {
+/** Eine Ansprache, für die jemand eingetragen ist – kommend oder noch offen. */
+export interface ScheduledTalk {
   /** Der Sonntag */
   date: Date
   /** Vorgesehen, angefragt oder zugesagt */
@@ -28,16 +28,20 @@ export interface TalkCandidate {
   /**
    * Monate seit der letzten Ansprache; `null` = noch nie gesprochen.
    *
-   * Wer für einen kommenden Sonntag eingetragen ist, zählt schon ab diesem
-   * Sonntag (`0`) – siehe `rankTalkCandidates`.
+   * Wer eingetragen ist (`scheduled`), zählt ab dem Sonntag dieses Eintrags –
+   * bei einem kommenden mit `0`, siehe `rankTalkCandidates`.
    */
   monthsSince: number | null
   /** Jahr der letzten Ansprache – oder der eingetragenen; `null` = noch nie gesprochen */
   lastTalkYear: number | null
   /** Für einen **kommenden** Sonntag eingeplant? Dann nicht doppelt anfragen. */
   alreadyPlanned: boolean
-  /** Für welchen Sonntag und wie weit – `null`, wenn nichts eingetragen ist */
-  upcoming: UpcomingTalk | null
+  /**
+   * Der Eintrag, der statt der letzten Ansprache zählt: der nächste kommende
+   * oder ein offener, der jünger ist als die letzte gehaltene Ansprache.
+   * `null`, wenn keiner da ist.
+   */
+  scheduled: ScheduledTalk | null
   /** Von Hand ausgenommen – nicht anfragen (siehe `lib/availability`). */
   onHold: boolean
   /** Bis wann der Vermerk gilt; `null` heisst «auf Weiteres» */
@@ -73,6 +77,18 @@ function membersByName(members: Member[]): Map<string, string> {
 }
 
 /**
+ * Zu welchem Mitglied ein Eintrag gehört – `null` bei einem Gast.
+ *
+ * Ein von Hand erfasster Name gehört zu keinem Mitglied – ausser er ist
+ * genau der Name eines Mitglieds. Wer «Anna Beispiel» tippt und die
+ * Eingabetaste drückt, hat sie eingetragen, auch wenn der Eintrag nur den
+ * Namen trägt.
+ */
+function talkMemberId(talk: Talk, byName: Map<string, string>): string | null {
+  return talk.memberId || byName.get(nameKey(talk.memberName ?? '')) || null
+}
+
+/**
  * Wer für einen kommenden Sonntag bereits eingetragen ist – mit der
  * nächsten Ansprache je Mitglied.
  *
@@ -91,24 +107,51 @@ export function upcomingTalksByMember(
   talks: Talk[],
   members: Member[] = [],
   from: Date = new Date(),
-): Map<string, UpcomingTalk> {
+): Map<string, ScheduledTalk> {
   const start = startOfDay(from)
   const byName = membersByName(members)
-  const upcoming = new Map<string, UpcomingTalk>()
+  const upcoming = new Map<string, ScheduledTalk>()
   for (const talk of talks) {
     if (!ACTIVE_TALK_STATUSES.includes(talk.status)) continue
     const date = toDate(talk.date)
     if (!date || date < start) continue
-    /* Ein von Hand erfasster Name gehört zu keinem Mitglied – ausser er ist
-       genau der Name eines Mitglieds. Wer «Anna Beispiel» tippt und die
-       Eingabetaste drückt, hat sie angefragt, auch wenn der Eintrag nur den
-       Namen trägt. */
-    const memberId = talk.memberId || byName.get(nameKey(talk.memberName ?? ''))
+    const memberId = talkMemberId(talk, byName)
     if (!memberId) continue
     const known = upcoming.get(memberId)
     if (!known || date < known.date) upcoming.set(memberId, { date, status: talk.status })
   }
   return upcoming
+}
+
+/** Noch ohne Zusage: vorgesehen oder angefragt. */
+const OPEN_TALK_STATUSES: TalkStatus[] = ['planned', 'asked']
+
+/**
+ * Der jüngste offene Eintrag je Mitglied – vorgesehen oder angefragt, ob
+ * der Sonntag bevorsteht oder schon vorbei ist.
+ *
+ * Nicht jeder Eintrag wird nach der Versammlung auf «Zugesagt» gestellt.
+ * Bleibt ein vorgesehener Sonntag so stehen, stünde die Person in den
+ * Vorschlägen sonst wieder mit «noch nie gesprochen» da, obwohl sie im
+ * Programm eingetragen ist. Ob er zählt, entscheidet `rankTalkCandidates`:
+ * nur, wenn er jünger ist als die letzte gehaltene Ansprache.
+ */
+export function openTalksByMember(
+  talks: Talk[],
+  members: Member[] = [],
+): Map<string, ScheduledTalk> {
+  const byName = membersByName(members)
+  const open = new Map<string, ScheduledTalk>()
+  for (const talk of talks) {
+    if (!OPEN_TALK_STATUSES.includes(talk.status)) continue
+    const date = toDate(talk.date)
+    if (!date) continue
+    const memberId = talkMemberId(talk, byName)
+    if (!memberId) continue
+    const known = open.get(memberId)
+    if (!known || date > known.date) open.set(memberId, { date, status: talk.status })
+  }
+  return open
 }
 
 /** Nur die Mitglieder aus `upcomingTalksByMember`. */
@@ -142,9 +185,12 @@ export function plannedTalkMemberIds(
  * **Wer schon eingetragen ist** – vorgesehen, angefragt oder zugesagt –,
  * reiht sich beim Sonntag seiner Ansprache ein, als hätte er dann schon
  * gesprochen: kein «noch nie gesprochen» und kein «zuletzt vor 21 Monaten»
- * mehr, im Jahr der Ansprache und nicht mehr überfällig. Wird der Eintrag
- * gelöscht oder die Person ausgetauscht, gilt wieder die letzte gehaltene
- * Ansprache.
+ * mehr, im Jahr der Ansprache und nicht mehr überfällig. Das gilt für den
+ * nächsten kommenden Sonntag und ebenso für einen vorbeigegangenen, der nie
+ * auf «Zugesagt» gestellt wurde – solange er jünger ist als die letzte
+ * gehaltene Ansprache. Gesperrt («bereits eingeplant») ist aber nur, wer für
+ * einen kommenden Sonntag eingetragen ist. Wird der Eintrag gelöscht oder
+ * die Person ausgetauscht, gilt wieder die letzte gehaltene Ansprache.
  *
  * **Wer auf Mission ist, fällt dagegen ganz heraus** – er ist nicht da, und
  * kein Filter macht ihn anfragbar. Nur die Suche neben den Filtern holt ihn
@@ -170,6 +216,7 @@ export function rankTalkCandidates(
     now = new Date(),
   } = options
   const upcomingTalks = upcomingTalksByMember(plannedTalks, members, now)
+  const openTalks = openTalksByMember(plannedTalks, members)
 
   return members
     .map((member) => ({ member, age: getAge(member.birthDate), mission: missionOf(member, now) }))
@@ -180,8 +227,18 @@ export function rankTalkCandidates(
       return true
     })
     .map(({ member, age, mission }) => {
+      const lastHeld = toDate(member.lastTalkDate)
+      const open = openTalks.get(member.id) ?? null
+      // Der nächste kommende Eintrag – sonst ein offener, der jünger ist als
+      // die letzte gehaltene Ansprache.
       const upcoming = upcomingTalks.get(member.id) ?? null
-      const months = upcoming ? 0 : monthsSince(member.lastTalkDate)
+      const scheduled = upcoming ?? (open && (!lastHeld || open.date > lastHeld) ? open : null)
+      // Ein kommender Sonntag zählt wie heute, ein vorbeigegangener ab seinem Datum.
+      const months = upcoming
+        ? 0
+        : scheduled
+          ? Math.max(0, monthsSince(scheduled.date) ?? 0)
+          : monthsSince(member.lastTalkDate)
       const alreadyPlanned = upcoming !== null
       const availability = talkAvailability(member, now)
       const onHold = !availability.available
@@ -199,11 +256,9 @@ export function rankTalkCandidates(
         member,
         age,
         monthsSince: months,
-        lastTalkYear: upcoming
-          ? upcoming.date.getFullYear()
-          : (toDate(member.lastTalkDate)?.getFullYear() ?? null),
+        lastTalkYear: scheduled ? scheduled.date.getFullYear() : (lastHeld?.getFullYear() ?? null),
         alreadyPlanned,
-        upcoming,
+        scheduled,
         onHold,
         holdUntil: onHold ? availability.until : null,
         onMission,

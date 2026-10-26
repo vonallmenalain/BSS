@@ -1390,14 +1390,18 @@ mehr an.
 
 **Wer eingetragen ist, reiht sich beim Sonntag seiner Ansprache ein.** Statt
 «Noch nie gesprochen» oder «Zuletzt vor 21 Monaten» steht dann der Status mit
-dem Datum – «Vorgesehen», «Angefragt» oder «Zugesagt für 08.11.2026» –, und
-gezählt wird, als hätte die Person an diesem Sonntag schon gesprochen: Sie ist
-nicht mehr überfällig (der Filter «Nur seit über X Monaten» blendet sie aus,
-die Suche findet sie darunter) und steht im Jahr der Ansprache statt unter
-«noch nie». Wird der Eintrag gelöscht oder die Person ausgetauscht, erscheint
-wieder die letzte gehaltene Ansprache. Auch ein Eintrag, der nur den Namen
-trägt – getippt und mit der Eingabetaste übernommen –, zählt, wenn der Name
-genau einem Mitglied gehört; tragen zwei denselben Namen, wird nicht geraten.
+dem Datum – «Vorgesehen», «Angefragt» oder «Zugesagt für 8. November 2026» –,
+und gezählt wird, als hätte die Person an diesem Sonntag schon gesprochen: Sie
+ist nicht mehr überfällig (der Filter «Nur seit über X Monaten» blendet sie
+aus, die Suche findet sie darunter) und steht im Jahr der Ansprache statt
+unter «noch nie». Das gilt auch für einen Sonntag, der schon vorbei ist, aber
+nie auf «Zugesagt» gestellt wurde – «Vorgesehen für 18. Oktober 2026» –,
+solange der Eintrag jünger ist als die letzte gehaltene Ansprache. Gesperrt
+(«Anfragen» ausgegraut) ist nur, wer für einen kommenden Sonntag eingetragen
+ist. Wird der Eintrag gelöscht oder die Person ausgetauscht, erscheint wieder
+die letzte gehaltene Ansprache. Auch ein Eintrag, der nur den Namen trägt –
+getippt und mit der Eingabetaste übernommen –, zählt, wenn der Name genau
+einem Mitglied gehört; tragen zwei denselben Namen, wird nicht geraten.
 
 **Der Filter.** Neben der Namenssuche steht **Filter**; die Zahl am Knopf sagt,
 wie viele Einstellungen von der Voreinstellung abweichen, auch wenn das Menü
