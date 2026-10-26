@@ -239,14 +239,15 @@ export interface PackWeek {
 }
 
 /**
- * Der Text zum Minispiel «Ketten sprengen». Das Spiel wurde umgebaut (ehrlich
- * antworten statt Felder wegtippen); `PACK_CORRECTIONS` bietet den neuen Text
- * auch einer schon eingespielten Woche an.
+ * Der Text zum Minispiel «Ketten sprengen». Das Spiel war eine Woche lang
+ * umgebaut (ehrlich antworten statt Notlügen wegtippen) und ist wieder wie
+ * zuerst; `PACK_CORRECTIONS` bietet den alten Text auch einer Woche an, die
+ * mit dem umgebauten eingespielt wurde.
  */
 const CHAIN_GAME_BODY =
-  'Mama, die Lehrerin, der Trainer fragen – und die Notlüge liegt auf der Zunge: «Schon ' +
-  'erledigt», «Hatte kein Netz». Tippe die ehrliche Antwort, bevor die Schnur zur Kette wird; ' +
-  'fünf ehrliche am Stück sprengen eine Kette. Eine Minute – wie viele schaffst du?'
+  '«Bin gleich da», «Hab’s nicht gesehen» – Notlügen fangen als dünne Schnur an und ' +
+  'werden zur Kette. Tippe sie weg, solange sie dünn sind: je früher, desto mehr Punkte. ' +
+  'Der Schlüssel der Wahrheit sprengt alles.'
 
 export const PACK_WEEKS: PackWeek[] = [
   /* ================================================================ */
@@ -2351,15 +2352,15 @@ export const PACK_CORRECTIONS: readonly PackCorrection[] = [
     from: 'Frag deine Eltern oder Grosseltern: Wann hat ihnen das Wort der Weisheit schon geholfen?',
     to: 'Frag jemanden in deinem Umfeld: «Wann hat dir das Wort der Weisheit schon geholfen?»',
   },
-  /* «Ketten sprengen» ist umgebaut: Statt Notlügen wegzutippen, wählt man in
-     Alltagssituationen die ehrliche Antwort. */
+  /* «Ketten sprengen» ist wieder wie zuerst: Notlügen wegtippen, solange sie
+     dünn sind. Der Umbau (ehrlich antworten auf Fragen) gefiel weniger. */
   {
     id: 'fsy26-w44-spiel',
     field: 'body',
     from:
-      '«Bin gleich da», «Hab’s nicht gesehen» – Notlügen fangen als dünne Schnur an und ' +
-      'werden zur Kette. Tippe sie weg, solange sie dünn sind: je früher, desto mehr Punkte. ' +
-      'Der Schlüssel der Wahrheit sprengt alles.',
+      'Mama, die Lehrerin, der Trainer fragen – und die Notlüge liegt auf der Zunge: «Schon ' +
+      'erledigt», «Hatte kein Netz». Tippe die ehrliche Antwort, bevor die Schnur zur Kette wird; ' +
+      'fünf ehrliche am Stück sprengen eine Kette. Eine Minute – wie viele schaffst du?',
     to: CHAIN_GAME_BODY,
   },
 ]

@@ -1248,29 +1248,18 @@ denselben Ablauf (Erklärung, Runde, Ergebnis):
   die Knie an, im Fallen streckt er die Beine, bei jedem Schritt staubt
   es; Wolken, Berge und Hügel ziehen in eigener Tiefe vorbei.
 - **«Ketten sprengen»** (`befreien`, «Die Wahrheit befreit dich»,
-  26. Okt.–1. Nov.): Jemand fragt etwas – «Mama: Hast du dein Zimmer
-  aufgeräumt?», «Lehrerin: Wo sind deine Hausaufgaben?», «Papa: Warum hast
-  du nicht abgenommen?» –, und unten stehen grosse Knöpfe: die ehrliche
-  Antwort («Noch nicht – mach ich jetzt») und eine Notlüge («Schon
-  erledigt», «Hatte kein Netz», «Der Hund war’s»), ab der zehnten Frage
-  zwei. Um die Figur in der Mitte zieht sich derweil eine Schnur zusammen
-  und wird zum Strick und zur Kette: Ehrlich geantwortet gibt als Schnur
-  drei Punkte, als Strick zwei, als Kette einen (die kleine Zahl an der
-  Schnur sagt es). Eine Notlüge oder zu langes Zögern lässt sie zuschnappen
-  – ein Leben weniger, und kurz leuchtet, was ehrlich gewesen wäre. Fünf
-  ehrliche Antworten am Stück bringen den Schlüssel: Er sprengt eine Kette
-  und gibt ein Leben zurück, bei vollen Leben fünf Punkte. Sechzehn
-  Situationen aus dem Alltag, keine kommt doppelt, bevor alle dran waren.
-  Am Rechner die Ziffern 1–3 (auch Ziffernblock), bei zwei Antworten auch
-  die Pfeile. **Zuerst gab es neun Plätze**, auf denen Notlügen
-  auftauchten und weggetippt wurden – das wurde zum blinden Hämmern auf
-  jedes volle Feld, und niemand las mehr, worum es ging. Jetzt zählt der
-  Inhalt: Die ersten Fragen lassen sieben Sekunden zum Lesen, danach wird
-  es langsam knapper, nie unter drei (bei drei Antworten eine mehr), und
-  wildes Tippen trifft bald die Notlüge. Eine Runde dauert fest eine
-  Minute; die Rangliste trennt über die Punkte – wer zügiger ehrlich
-  antwortet, schafft mehr Fragen und mehr Punkte je Frage. Das Bild:
-  kleine Lügen wachsen, erst eine dünne Schnur, dann starke Stricke (vgl.
+  26. Okt.–1. Nov.): Neun Plätze; auf ihnen tauchen Notlügen auf – «Bin
+  gleich da», «Hab’s nicht gesehen», «Der Hund war’s» –, um jede eine
+  Schnur, die sich zusammenzieht und zur Kette wird. Ein Tipp sprengt sie:
+  als Schnur drei Punkte, als Strick zwei, als Kette einen (die kleine Zahl
+  daneben sagt es). Schnappt sie zu, kostet das ein Leben. Der Schlüssel
+  der Wahrheit sprengt alles auf dem Feld und bringt ein Leben zurück. Ein
+  Tipp ins Leere lähmt kurz – wildes Tippen überall lohnt sich nicht. Am
+  Rechner die Ziffern 1–9, der Ziffernblock oder Q bis C. **Eine Woche lang
+  war das Spiel umgebaut** (jemand fragt, man tippt die ehrliche Antwort
+  statt der Notlüge, eine Runde fest eine Minute); die erste Fassung gefiel
+  besser und gilt wieder. Das Bild: kleine Lügen wachsen, erst eine dünne
+  Schnur, dann starke Stricke (vgl.
   2 Nephi 26:22); die Tages-Challenge derselben Woche heisst «Sieben Tage
   ohne Notlüge».
 
@@ -1292,12 +1281,7 @@ die Leinwand rechnet mit genau diesem Code, und der Test spielt ihn mit je
 | ----------------- | -------- | ------------ | ---------------------- |
 | «Schild hoch!»    | 22 s     | 32 s         | 49 s (52 s)            |
 | «Keine Ausreden!» | 21 s     | 27 s         | 45 s (55 s)            |
-| «Ketten sprengen» | 60 s     | 60 s         | 60 s (60 s)            |
-
-«Ketten sprengen» läuft fest eine Minute – wer liest statt hämmert, soll
-die Runde zu Ende spielen. Getrennt wird über die Punkte: im Median 25
-(Anfänger), 43 (Durchschnitt) und 89 (Spitze); der nachgebildete Spieler
-liest dafür Frage und Antworten, beim ersten Mal langsamer als später.
+| «Ketten sprengen» | 24 s     | 33 s         | 50 s (55 s)            |
 
 **Flüssig auch auf älteren Telefonen.** Gezeichnet wird auf eine Leinwand,
 wie Turmbau: jeder Gegenstand einmal vorgezeichnet und danach nur noch
@@ -1844,8 +1828,7 @@ Teil des App-Builds (die App-Prüfungen und Netlify fassen es nicht an).
     bekommen einen Platz hinter dem Spiel und bleiben vor der Teilen-Aufgabe.
 - **In der Woche 26. Oktober – 1. November** («Die Wahrheit befreit dich»,
   Fastsonntag) genauso: zehn Videos, vor jedem interaktiven Element eines,
-  die drei Textkarten ersetzt. Das Minispiel «Ketten sprengen» ist dafür
-  umgebaut (13.7). Die Folgen in der Reihenfolge des Feeds:
+  die drei Textkarten ersetzt. Die Folgen in der Reihenfolge des Feeds:
   - «Gruppenchat 1820» (Chat, Joseph Smith – Lebensgeschichte 1:5–17) →
     Umfrage «Wo suchst du zuerst?» – Platz 0,5.
   - «Was ist Wahrheit?» (Jerusalem bei Nacht, Johannes 8:32–36, 18:38) →
