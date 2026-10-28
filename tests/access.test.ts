@@ -9,6 +9,7 @@ import {
   impulseAssignable,
   impulseFieldsFor,
   impulseLevelOf,
+  isLegacyPendingAccount,
   NEW_ACCOUNT_ACCESS,
   notificationAreas,
   roleManagementOf,
@@ -332,4 +333,49 @@ test('Benachrichtigungen: Assistenz ohne «Anti Doom» und wartende Konten haben
   assert.equal(areasOf(user('assistant', { assistantAreas: ['music'] })).cleaning, false)
   assert.equal(areasOf(user('pending')).any, false)
   assert.equal(areasOf(null).any, false)
+})
+
+test('Konto einer älteren Fassung: holt den Standardzugang nach – nur unberührt', () => {
+  // Wie ein Firestore-Zeitstempel: Sekunden und Nanosekunden.
+  const at = (seconds: number, nanoseconds = 0) =>
+    ({ seconds, nanoseconds }) as unknown as AppUser['createdAt']
+  const legacy = (patch: Partial<AppUser> = {}) =>
+    user('pending', { createdAt: at(1_760_000_000, 5), updatedAt: at(1_760_000_000, 5), ...patch })
+
+  assert.equal(isLegacyPendingAccount(legacy()), true)
+  // Seither angefasst: Rolle geändert, Schalter gesetzt, Bereiche, Hinweis.
+  assert.equal(isLegacyPendingAccount(legacy({ updatedAt: at(1_760_000_500) })), false)
+  assert.equal(isLegacyPendingAccount(legacy({ updatedAt: at(1_760_000_000, 6) })), false)
+  assert.equal(isLegacyPendingAccount(legacy({ impulse: false })), false)
+  assert.equal(isLegacyPendingAccount(legacy({ assistantAreas: [] })), false)
+  assert.equal(isLegacyPendingAccount(legacy({ newAccount: true })), false)
+  // Deaktiviert, ohne Zeitstempel oder mit einer Rolle – nichts nachzuholen.
+  assert.equal(isLegacyPendingAccount(legacy({ active: false })), false)
+  assert.equal(
+    isLegacyPendingAccount(legacy({ createdAt: undefined, updatedAt: undefined })),
+    false,
+  )
+  assert.equal(isLegacyPendingAccount(legacy({ role: 'ap_viewer' })), false)
+  assert.equal(isLegacyPendingAccount(null), false)
+})
+
+test('dieselben Bedingungen wie in den Zugriffsregeln (Standardzugang nachholen)', () => {
+  const rules = readFileSync(new URL('../firestore.rules', import.meta.url), 'utf8')
+  const start = rules.indexOf("&& resource.data.role == 'pending'")
+  assert.notEqual(start, -1)
+  const rule = rules.slice(start, rules.indexOf(';', start))
+  for (const field of [
+    'impulse',
+    'impulseEditor',
+    'assistantAreas',
+    'assistantWrite',
+    'newAccount',
+  ]) {
+    assert.match(rule, new RegExp(`!\\('${field}' in resource\\.data\\)`), field)
+  }
+  assert.match(rule, /resource\.data\.updatedAt == resource\.data\.createdAt/)
+  // Nachgeholt wird genau, was ein neues Konto beim Anlegen bekommt.
+  assert.match(rule, new RegExp(`request\\.resource\\.data\\.role == '${NEW_ACCOUNT_ACCESS.role}'`))
+  assert.match(rule, /request\.resource\.data\.impulse == true/)
+  assert.match(rule, /request\.resource\.data\.newAccount == true/)
 })

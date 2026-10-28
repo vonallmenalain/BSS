@@ -24,12 +24,13 @@ import {
   serverTimestamp,
   setDoc,
   terminate,
+  updateDoc,
 } from 'firebase/firestore'
 import { auth, db, COLLECTIONS, isFirebaseConfigured } from '@/lib/firebase'
 import { getInitials } from '@/lib/utils'
 import { commit } from '@/lib/sync'
 import { clearSyncWatermarks, stopCollectionStores } from '@/lib/collectionStore'
-import { accessOf, NEW_ACCOUNT_ACCESS } from '@/lib/access'
+import { accessOf, isLegacyPendingAccount, NEW_ACCOUNT_ACCESS } from '@/lib/access'
 import { BISHOPRIC_ROLES, type AppUser, type AssistantArea, type Role } from '@/lib/types'
 
 interface AuthContextValue {
@@ -278,6 +279,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     /** Das Profil war in dieser Sitzung schon einmal da. */
     let existed = false
     let healing: ReturnType<typeof setTimeout> | undefined
+    /** Der Standardzugang wird gerade nachgeholt (siehe unten) – nur einmal je Sitzung. */
+    let upgrading = false
     const apply = (next: AppUser | null) => {
       clearTimeout(waiting)
       setProfile(next)
@@ -295,6 +298,25 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         if (next) {
           existed = true
           clearTimeout(healing)
+          /*
+           * Von einer älteren Fassung als «wartet auf Freigabe» angelegt und
+           * seither unberührt: Das Konto holt sich den Standardzugang nach,
+           * den es heute von Anfang an bekäme (`isLegacyPendingAccount`).
+           * Bis die Änderung zurückkommt, bleibt der Ladebildschirm stehen
+           * statt des Wartebereichs. Lehnen die Zugriffsregeln ab, bleibt es
+           * beim Wartebereich – ein Versuch je Sitzung.
+           */
+          if (!upgrading && !snapshot.metadata.fromCache && isLegacyPendingAccount(next)) {
+            upgrading = true
+            clearTimeout(waiting)
+            commit(updateDoc(ref, { ...NEW_ACCOUNT_ACCESS, updatedAt: serverTimestamp() })).catch(
+              (err: unknown) => {
+                console.warn('[auth] Standardzugang liess sich nicht nachholen:', err)
+                apply(next)
+              },
+            )
+            return
+          }
         } else if (!existed && !snapshot.metadata.fromCache) {
           /*
            * Angemeldet, aber laut Server ohne Profil – das Anlegen bei der
