@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react'
 import { Clock, Loader2, LogOut, RefreshCw } from 'lucide-react'
-import { useAppUpdate } from '@/contexts/AppUpdateContext'
 import { useAuth } from '@/contexts/AuthContext'
+import { checkForUpdate } from '@/lib/appUpdate'
 
 /**
  * Wartebereich für Konten, die nichts sehen dürfen.
@@ -19,7 +19,6 @@ import { useAuth } from '@/contexts/AuthContext'
  */
 export function PendingApproval() {
   const { profile, firebaseUser, signOut, unknownRole } = useAuth()
-  const { needRefresh, applyUpdate, checkForUpdate } = useAppUpdate()
   const [checking, setChecking] = useState(false)
   const name = profile?.displayName ?? firebaseUser?.displayName ?? ''
   const inactive = profile && !profile.active
@@ -32,29 +31,23 @@ export function PendingApproval() {
   const outdated = unknownRole && profile?.active === true
 
   /*
-   * Eine neue Fassung wird hier sofort übernommen, statt wie sonst zu
-   * fragen: Im Wartebereich geht beim Neuladen nichts verloren – und
-   * vielleicht ist es gerade die neue Fassung, die das Konto hereinlässt.
+   * Hier wird beim Öffnen nach einer neuen Fassung gefragt und sie ohne
+   * Umweg geladen: Im Wartebereich geht beim Neuladen nichts verloren – und
+   * vielleicht ist es gerade die neue Fassung, die das Konto hereinlässt
+   * (etwa, wenn die Rolle neuer ist als die App auf dem Gerät).
    */
   useEffect(() => {
-    if (needRefresh) applyUpdate()
-  }, [needRefresh, applyUpdate])
-
-  // Kennt die App die Rolle nicht, fragt sie von sich aus nach der neuen Fassung.
-  useEffect(() => {
-    if (outdated) void checkForUpdate()
-  }, [outdated, checkForUpdate])
+    void checkForUpdate()
+  }, [])
 
   /*
-   * «Neu prüfen» fragt zuerst nach einer neuen Fassung. Kommt eine, lädt die
-   * Wirkung oben neu, sobald sie bereitliegt; sonst – oder wenn sie hängen
-   * bleibt – genügt ein gewöhnliches Neuladen, und das Profil kommt frisch
+   * «Neu prüfen» fragt zuerst nach einer neuen Fassung und lädt sie. Gibt es
+   * keine, genügt ein gewöhnliches Neuladen – das Profil kommt dabei frisch
    * vom Server.
    */
   const recheck = async () => {
     setChecking(true)
-    const coming = await checkForUpdate()
-    window.setTimeout(() => window.location.reload(), coming ? 10_000 : 0)
+    if (!(await checkForUpdate())) window.location.reload()
   }
   /*
    * Eine Assistenz ohne einen einzigen Bereich.

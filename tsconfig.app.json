@@ -27,7 +27,7 @@
       "@/*": ["./src/*"]
     },
 
-    "types": ["vite/client", "vite-plugin-pwa/react"]
+    "types": ["vite/client", "vite-plugin-pwa/vanillajs"]
   },
   "include": ["src"]
 }

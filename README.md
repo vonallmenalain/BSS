@@ -3740,8 +3740,7 @@ src/
 │   ├── sacrament/       Abendmahlsversammlung: Rahmen mit Sonntagswahl, Lied- und Personenfelder
 │   ├── ui/              Bausteine: Modal, Badges, Avatare, Auswahlfelder,
 │   │                    «@»-Feld und «@»-Text
-│   ├── Layout.tsx       Navigation (Seitenleiste bzw. untere Leiste)
-│   └── UpdatePrompt.tsx Hinweis auf neue Version (überall, siehe AppUpdateContext)
+│   └── Layout.tsx       Navigation (Seitenleiste bzw. untere Leiste)
 ├── contexts/            Anmeldung, Stammdaten, Meldungen
 ├── hooks/               Sammlungen lesen, Weg zurück, Ansicht in der Adresse,
 │                        Bekanntmachungen eines Sonntags, Monatspendenzen,
@@ -3774,31 +3773,44 @@ docs/KONZEPT.md          Fachliches Konzept
 Die App ist installierbar (Browser-Menü → «Zum Startbildschirm hinzufügen»)
 und läuft offline. Firestore hält eine lokale Kopie der Daten vor.
 
-Neue Versionen werden nicht ungefragt geladen – stattdessen erscheint ein
-Hinweis mit einer Schaltfläche. So startet die App nicht mitten in der Sitzung
-neu und verliert Eingaben. Der Hinweis steht auf jeder Seite, auch auf der
-Anmeldung (`AppUpdateProvider` in `src/main.tsx`).
+**Neue Versionen kommen von selbst – ohne Hinweis und ohne Knopf.** Früher
+wartete eine neue Version, bis jemand «Aktualisieren» antippte, und bis dahin
+lieferte der Service Worker die alte aus dem Cache – auch nach mehrmaligem
+Neuladen. Wer sich in dieser Lage registrierte, bekam ein Konto nach den
+Regeln der alten Fassung («wartet auf Freigabe» statt Anti Doom). Heute
+sorgen drei Sicherungen dafür, dass jedes Gerät die neueste Version zeigt
+(`vite.config.ts`, `src/lib/appUpdate.ts`):
 
-**«Aktualisieren» lädt immer neu.** Der Knopf weckt die wartende Version und
-lädt die Seite neu, sobald sie übernimmt; wartet keine mehr (etwa weil ein
-anderes Fenster schon aktualisiert hat), lädt er sofort neu. Früher hing das
-Neuladen an der Bibliothek, und die tat es nur, wenn die Seite schon beim
-Öffnen von einem Service Worker gesteuert war. Beim ersten Öffnen der App ist
-sie das nicht – kam in derselben Sitzung eine neue Version, blieb der Hinweis
-stehen, und jeder Klick ging ins Leere.
+1. **Seitenaufrufe gehen ans Netz.** Wer die App öffnet oder neu lädt,
+   bekommt die `index.html` vom Server und damit die neueste Version. Die
+   gespeicherte Seite springt nur ohne Verbindung ein.
+2. **Der Service Worker übernimmt sofort** (`registerType: 'autoUpdate'`).
+3. **Die App vergleicht ihre Version mit `/version.json`** – beim Start, wenn
+   sie wieder in den Vordergrund kommt, und alle fünf Minuten. Liefert der
+   Server eine andere, lädt sie still neu. Kommt die neue Version danach
+   immer noch nicht an, meldet sie den Service Worker ab, leert alle Caches
+   und lädt noch einmal. Nach drei Versuchen für dieselbe Version hört sie
+   auf, statt endlos neu zu laden.
 
-**Im Wartebereich wird nicht gefragt.** Dort geht beim Neuladen nichts
-verloren, und oft ist es gerade die neue Version, die das Konto hereinlässt:
-Eine Rolle, die neuer ist als die App auf dem Gerät – etwa «Nur Anti Doom»
-auf einem Telefon mit der Fassung von gestern –, kennt die alte Fassung nicht.
-Der Wartebereich übernimmt eine bereitliegende Version deshalb sofort, und
-«Neu prüfen» fragt zuerst nach einer neuen. Kennt die App die Rolle nicht,
-steht dort «Neue Version nötig» statt «Freigabe ausstehend», und sie sucht
-von sich aus nach der neuen Fassung.
+Neu geladen wird in einem Moment, in dem es niemand merkt und nichts verloren
+geht: gleich beim Start, wenn die App nach mindestens 30 Sekunden im
+Hintergrund wieder geöffnet wird, oder beim Wechsel in einen anderen Bereich.
+Nie, solange ein Dialog offen ist oder jemand in einem Feld schreibt – dann
+wartet die neue Version auf den nächsten solchen Moment. Im **Wartebereich**
+wird sofort geladen, und «Neu prüfen» fragt zuerst nach einer neuen Version.
+Kennt die App die Rolle nicht, steht dort «Neue Version nötig» statt
+«Freigabe ausstehend».
 
-> Eine Fassung, die das noch nicht kann, bleibt im Wartebereich auf der alten
-> Version stehen. Dann hilft einmal: die App ganz schliessen (auch aus der
-> Übersicht der offenen Apps wegwischen) und wieder öffnen – notfalls zweimal.
+**Welche Version läuft?** Das Administrator-Konto sieht sie im Menü oben
+rechts (im Anti-Doom-Vollbild unten in der Navigations-Schublade): «Version
+#190» ist die Nummer des Pull Requests, mit dem sie auf `main` kam, darunter
+der Zeitpunkt des Builds. In der Netlify-Vorschau eines Pull Requests steht
+«Vorschau #191». Dieselbe Auskunft liegt unter `/version.json`.
+
+> Ein Gerät mit einer Fassung **vor** diesem Umbau wechselt einmal noch auf die
+> alte Weise: Beim ersten Öffnen danach holt sich der Browser den neuen
+> Service Worker, ab dem nächsten Öffnen oder Neuladen läuft die neue Version
+> – und ab dann bleibt sie von selbst aktuell.
 
 **Kein Wartebereich beim Anmelden.** Zwischen der Anmeldung und dem ersten
 Profil liegt ein Augenblick, in dem das Konto schon bekannt ist, seine Rolle
