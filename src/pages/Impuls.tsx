@@ -113,6 +113,7 @@ import {
 import { recordImpulseOpen, trackImpulseTime } from '@/lib/impulseUsage'
 import { impulseProgressWasReset } from '@/lib/impulseReset'
 import { refreshImpulseResponses } from '@/services/impulse'
+import { useImpulseNameSync } from '@/hooks/useImpulseNameSync'
 import { impulseVideoSource } from '@/lib/impulseVideo'
 import {
   IMPULSE_KIND_LABELS,
@@ -1098,6 +1099,18 @@ function ImpulsPage() {
     }
     progressSeen.current = { uid, progress: myProgress }
   }, [preview, progressState.loading, myProgress, uid])
+
+  /*
+   * Wurde der Name am Profil geändert, führt dieses Gerät den eigenen
+   * Vornamen in Fortschritt und Beiträgen nach – damit ihn auch die
+   * anderen gleich so sehen (`useImpulseNameSync`). Nicht in der Vorschau.
+   */
+  useImpulseNameSync({
+    profile,
+    progress: realProgress.stored,
+    comments: realComments.stored,
+    enabled: !preview && !realProgress.loading && !realComments.loading,
+  })
 
   /* Die erste Karte, an der noch etwas fehlt – dort setzt «Weiter swipen» an. */
   const firstOpenStep = crestSteps.find((step) => !step.done) ?? null

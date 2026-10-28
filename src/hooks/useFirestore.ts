@@ -1,6 +1,7 @@
 import { useCallback, useMemo, useSyncExternalStore } from 'react'
 import { COLLECTIONS } from '@/lib/firebase'
 import { useAuth } from '@/contexts/AuthContext'
+import { useData } from '@/contexts/DataContext'
 import {
   collectionSnapshot,
   subscribeToCollection,
@@ -8,7 +9,7 @@ import {
   type StoreState,
 } from '@/lib/collectionStore'
 import { toDate } from '@/lib/dates'
-import { impulseKindRank } from '@/lib/impulse'
+import { impulseKindRank, withCurrentFirstNames } from '@/lib/impulse'
 import { isDutyItem, monthLeaders } from '@/lib/monthlyDuties'
 import { dayKey, itemsOfMeeting, standingWaits } from '@/lib/standing'
 import {
@@ -577,6 +578,16 @@ export function useImpulseItems() {
 }
 
 /**
+ * Der Name am Profil zu einem Konto – wo dieses Gerät die Profile lesen
+ * darf (Bischofschaft, Administrator-Konto), sonst nichts. Damit zeigt
+ * «Anti Doom» einen geänderten Namen sofort (`withCurrentFirstNames`).
+ */
+function useDisplayNameOf(): (uid: string) => string | undefined {
+  const { usersById } = useData()
+  return useCallback((uid: string) => usersById.get(uid)?.displayName, [usersById])
+}
+
+/**
  * Alle Antworten auf Quizfragen.
  *
  * Der ganze Bestand, nicht nur die eigenen: Die Auflösung vergangener
@@ -585,11 +596,12 @@ export function useImpulseItems() {
  */
 export function useImpulseAnswers() {
   const { canViewImpulse } = useAuth()
+  const displayNameOf = useDisplayNameOf()
   const state = useCollection<ImpulseAnswer>(COLLECTIONS.impulseAnswers, canViewImpulse)
-  return useMemo(
-    () => ({ ...state, byId: new Map(state.data.map((answer) => [answer.id, answer])) }),
-    [state],
-  )
+  return useMemo(() => {
+    const data = withCurrentFirstNames(state.data, displayNameOf)
+    return { ...state, data, byId: new Map(data.map((answer) => [answer.id, answer])) }
+  }, [state, displayNameOf])
 }
 
 /**
@@ -600,18 +612,34 @@ export function useImpulseAnswers() {
  */
 export function useImpulseProgress() {
   const { canViewImpulse } = useAuth()
+  const displayNameOf = useDisplayNameOf()
   const state = useCollection<ImpulseProgress>(COLLECTIONS.impulseProgress, canViewImpulse)
-  return useMemo(
-    () => ({ ...state, byUid: new Map(state.data.map((progress) => [progress.uid, progress])) }),
-    [state],
-  )
+  return useMemo(() => {
+    const data = withCurrentFirstNames(state.data, displayNameOf)
+    return {
+      ...state,
+      data,
+      byUid: new Map(data.map((progress) => [progress.uid, progress])),
+      /** Wie gespeichert – für das Nachführen des eigenen Namens (`useImpulseNameSync`). */
+      stored: state.data,
+    }
+  }, [state, displayNameOf])
 }
 
 /** Beiträge zur Frage der Woche – die ältesten zuerst, wie ein Gespräch. */
 export function useImpulseComments() {
   const { canViewImpulse } = useAuth()
+  const displayNameOf = useDisplayNameOf()
   const state = useCollection<ImpulseComment>(COLLECTIONS.impulseComments, canViewImpulse)
-  return useMemo(() => ({ ...state, data: byDate(state.data, 'createdAt', 'asc') }), [state])
+  return useMemo(
+    () => ({
+      ...state,
+      data: byDate(withCurrentFirstNames(state.data, displayNameOf), 'createdAt', 'asc'),
+      /** Wie gespeichert – für das Nachführen des eigenen Namens (`useImpulseNameSync`). */
+      stored: state.data,
+    }),
+    [state, displayNameOf],
+  )
 }
 
 /**

@@ -865,6 +865,37 @@ export async function setImpulseLastSeenWeek(
   )
 }
 
+/**
+ * Den eigenen Vornamen nachführen – am Fortschritt und in den eigenen, nicht
+ * anonymen Beiträgen (`commentIds`).
+ *
+ * Die anderen Geräte lesen den Namen dort; fremde Profile dürfen sie nicht
+ * lesen. Wird er am Profil geändert – von der Person selbst oder vom
+ * Administrator-Konto –, holt das Gerät der Person ihn beim nächsten Öffnen
+ * von «Anti Doom» nach (`useImpulseNameSync`), statt bis zur nächsten
+ * Antwort zu warten. Ein Stapel, damit überall derselbe Name steht.
+ *
+ * Am Protokoll vorbei wie `setImpulseLastSeenWeek`: Am Bestand der Gemeinde
+ * ändert sich nichts. Den Zeitpunkt der Beiträge lässt er stehen – sie sind
+ * nicht bearbeitet worden.
+ */
+export async function syncImpulseFirstName(
+  user: { uid: string; displayName: string },
+  commentIds: readonly string[],
+): Promise<SaveOutcome> {
+  const firstName = impulseFirstName(user.displayName)
+  const batch = fbWriteBatch(db)
+  batch.set(
+    doc(db, COLLECTIONS.impulseProgress, user.uid),
+    { uid: user.uid, firstName, updatedAt: serverTimestamp() },
+    { merge: true },
+  )
+  for (const id of commentIds) {
+    batch.update(doc(db, COLLECTIONS.impulseComments, id), { firstName })
+  }
+  return commit(batch.commit())
+}
+
 /** Wie viele Schreibvorgänge ein Stapel höchstens trägt – Firestore erlaubt 500. */
 const BATCH_LIMIT = 450
 

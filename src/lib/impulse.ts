@@ -329,6 +329,35 @@ export function impulseFirstName(displayName: string): string {
 }
 
 /**
+ * Der Vorname so, wie er jetzt am Profil steht.
+ *
+ * Fortschritt, Antworten und Beiträge tragen den Vornamen mit – so zeigen
+ * alle Geräte Namen, ohne fremde Profile lesen zu dürfen. Wird ein Name
+ * am Profil geändert (etwa «Lauener Ammo» zu «Ammon Lauener»), stünde dort
+ * bis zum nächsten Schritt der Person noch der alte. Wo das Gerät die
+ * Profile lesen darf (Bischofschaft, Administrator-Konto), gilt deshalb
+ * gleich der Name am Profil; die übrigen sehen den mitgeschriebenen, bis
+ * das Gerät der Person ihn nachführt (`syncImpulseFirstName`).
+ *
+ * Ein leerer Vorname bleibt leer: Anonyme Beiträge und Umfragestimmen
+ * tragen bewusst keinen, und das soll so bleiben.
+ */
+export function withCurrentFirstNames<T extends { uid: string; firstName: string }>(
+  docs: T[],
+  displayNameOf: (uid: string) => string | undefined,
+): T[] {
+  let changed = false
+  const next = docs.map((entry) => {
+    const displayName = entry.firstName ? displayNameOf(entry.uid) : undefined
+    const current = displayName ? impulseFirstName(displayName) : entry.firstName
+    if (current === entry.firstName) return entry
+    changed = true
+    return { ...entry, firstName: current }
+  })
+  return changed ? next : docs
+}
+
+/**
  * Ob eine Quizantwort stimmt – bestimmt bei der Auswahl selbst. Die
  * Suchfrage bleibt unbewertet (`null`), es zählt die Teilnahme.
  */
