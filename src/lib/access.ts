@@ -150,6 +150,54 @@ export const NEW_ACCOUNT_ACCESS = {
 } as const satisfies Pick<AppUser, 'role' | 'impulse' | 'newAccount'>
 
 /**
+ * Ein Konto, das eine ältere Fassung der App als `pending` angelegt hat – und
+ * das seither niemand angefasst hat.
+ *
+ * Bis die App sich selbst aktualisierte, lief auf manchen Geräten noch eine
+ * Fassung aus der Zeit vor dem Standardzugang. Wer sich dort registrierte,
+ * landete im Wartebereich, obwohl die Anmeldung «sofort AP-Kalender und
+ * Anti Doom» versprach – und daran änderte auch die neue Fassung nichts mehr,
+ * denn das Konto stand so auf dem Server. Ein solches Konto holt sich den
+ * Standardzugang jetzt selbst nach (`AuthContext`), genau den, den es mit
+ * der heutigen Fassung von Anfang an bekommen hätte.
+ *
+ * «Niemand angefasst» heisst: noch so, wie die alte Fassung es anlegte –
+ * aktiv, ohne Schalter und Bereiche, und `updatedAt` gleich `createdAt`.
+ * Jede Änderung der Rolle schreibt `updatedAt` neu; ein Konto, das die
+ * Bischofschaft bewusst auf «Wartet auf Freigabe» gesetzt hat, bleibt damit
+ * dort. Dieselben Bedingungen stehen in `firestore.rules`.
+ */
+export function isLegacyPendingAccount(
+  profile: Pick<
+    AppUser,
+    | 'role'
+    | 'active'
+    | 'impulse'
+    | 'impulseEditor'
+    | 'assistantAreas'
+    | 'assistantWrite'
+    | 'newAccount'
+    | 'createdAt'
+    | 'updatedAt'
+  > | null,
+): boolean {
+  if (!profile || profile.role !== 'pending' || profile.active !== true) return false
+  const untouched =
+    profile.impulse === undefined &&
+    profile.impulseEditor === undefined &&
+    profile.assistantAreas === undefined &&
+    profile.assistantWrite === undefined &&
+    profile.newAccount === undefined
+  const { createdAt, updatedAt } = profile
+  return (
+    untouched &&
+    Boolean(createdAt && updatedAt) &&
+    createdAt?.seconds === updatedAt?.seconds &&
+    createdAt?.nanoseconds === updatedAt?.nanoseconds
+  )
+}
+
+/**
  * Wie weit ein Konto Benutzer und Rollen verwalten darf.
  *
  * - `all` – das Administrator-Konto: alles, auch Vollzugriff, Aktivstatus

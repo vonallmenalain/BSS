@@ -32,6 +32,7 @@ import {
   query,
   serverTimestamp,
   setDoc,
+  Timestamp,
   updateDoc,
   where,
 } from 'firebase/firestore'
@@ -1007,6 +1008,130 @@ describe('Rollen und Rechteausweitung', () => {
     await assertFails(profile({ impulse: true }))
     await assertFails(profile({ newAccount: true }))
     await assertSucceeds(profile({}))
+  })
+
+  /*
+   * Ein Konto, das eine ältere Fassung der App als «pending» angelegt hat,
+   * holt sich den Standardzugang nach – solange es so ist, wie die alte
+   * Fassung es anlegte (siehe `isLegacyPendingAccount`).
+   */
+  describe('Standardzugang für Konten älterer Fassungen', () => {
+    const uid = 'uid-alt-wartend'
+    const as = () => testEnv.authenticatedContext(uid).firestore()
+    /**
+     * So legt die alte Fassung ein Konto an – `createdAt` gleich `updatedAt`.
+     * `undefined` heisst: Das Feld fehlt ganz.
+     */
+    const seedLegacy = (patch = {}) =>
+      testEnv.withSecurityRulesDisabled(async (context) => {
+        const data = {
+          email: 'alt-wartend@example.ch',
+          displayName: 'Alt',
+          initials: 'A',
+          role: 'pending',
+          active: true,
+          memberId: null,
+          createdAt: serverTimestamp(),
+          updatedAt: serverTimestamp(),
+          lastLoginAt: serverTimestamp(),
+          ...patch,
+        }
+        for (const key of Object.keys(data)) if (data[key] === undefined) delete data[key]
+        await setDoc(doc(context.firestore(), 'users', uid), data)
+      })
+    const upgrade = (db, patch = {}) =>
+      updateDoc(doc(db, 'users', uid), {
+        role: 'ap_viewer',
+        impulse: true,
+        newAccount: true,
+        updatedAt: serverTimestamp(),
+        ...patch,
+      })
+    const cleanup = () =>
+      testEnv.withSecurityRulesDisabled(async (context) => {
+        await deleteDoc(doc(context.firestore(), 'users', uid))
+      })
+
+    it('holt genau den Standardzugang nach – nicht mehr', async () => {
+      try {
+        await seedLegacy()
+        await assertFails(upgrade(as(), { role: 'ap_editor' }))
+        await assertFails(upgrade(as(), { role: 'impulse_only' }))
+        await assertFails(upgrade(as(), { role: 'bishop' }))
+        await assertFails(upgrade(as(), { impulseEditor: true }))
+        await assertFails(upgrade(as(), { assistantAreas: ['music'] }))
+        await assertFails(upgrade(as(), { newAccount: false }))
+        await assertFails(upgrade(as(), { impulse: false }))
+        // In derselben Änderung nichts anderes …
+        await assertFails(upgrade(as(), { displayName: 'Anders' }))
+        await assertFails(upgrade(as(), { active: false }))
+        // … und nicht ohne neuen Zeitstempel: Sonst bliebe die Marke stehen.
+        await assertFails(
+          updateDoc(doc(as(), 'users', uid), {
+            role: 'ap_viewer',
+            impulse: true,
+            newAccount: true,
+          }),
+        )
+        // Ein fremdes Konto hebt niemand auf diesem Weg an.
+        await assertFails(upgrade(asSecretary()))
+        await assertFails(upgrade(asPending()))
+
+        await assertSucceeds(upgrade(as()))
+        const after = (await getDoc(doc(as(), 'users', uid))).data()
+        assert.equal(after.role, 'ap_viewer')
+        assert.equal(after.impulse, true)
+        assert.equal(after.newAccount, true)
+        // Danach ist es ein gewöhnliches neues Konto: Mehr gibt es nicht.
+        await assertFails(updateDoc(doc(as(), 'users', uid), { role: 'ap_editor' }))
+        await assertFails(updateDoc(doc(as(), 'users', uid), { impulseEditor: true }))
+        // Und es sieht, was ein neues Konto sieht.
+        await assertSucceeds(getDoc(doc(as(), 'impulseItems', 'impuls-woche')))
+        await assertFails(getDocs(collection(as(), 'members')))
+      } finally {
+        await cleanup()
+      }
+    })
+
+    it('lässt ein bewusst auf «wartet» gesetztes Konto, wo es ist', async () => {
+      try {
+        // Die Rolle wurde später geändert – `updatedAt` ist neuer.
+        await seedLegacy({
+          createdAt: Timestamp.fromMillis(1_700_000_000_000),
+          updatedAt: Timestamp.fromMillis(1_700_000_500_000),
+        })
+        await assertFails(upgrade(as()))
+        // Ein Konto mit Schalter war schon einmal etwas anderes.
+        await seedLegacy({ impulse: false })
+        await assertFails(upgrade(as()))
+        await seedLegacy({ assistantAreas: [] })
+        await assertFails(upgrade(as()))
+        await seedLegacy({ newAccount: true })
+        await assertFails(upgrade(as()))
+        // Deaktiviert bleibt deaktiviert.
+        await seedLegacy({ active: false })
+        await assertFails(upgrade(as()))
+        // Ohne Zeitstempel lässt sich nichts beurteilen.
+        await seedLegacy({ createdAt: undefined, updatedAt: undefined })
+        await assertFails(upgrade(as()))
+        // Wer schon eine Rolle hat, braucht diesen Weg nicht.
+        await seedLegacy({ role: 'impulse_only' })
+        await assertFails(upgrade(as()))
+      } finally {
+        await cleanup()
+      }
+    })
+
+    it('lässt das wartende Konto aus dem Bestand nicht durch (ohne Zeitstempel)', async () => {
+      await assertFails(
+        updateDoc(doc(asPending(), 'users', PENDING), {
+          role: 'ap_viewer',
+          impulse: true,
+          newAccount: true,
+          updatedAt: serverTimestamp(),
+        }),
+      )
+    })
   })
 
   it('gibt dem Standardzugang den AP-Kalender zum Lesen und «Anti Doom» – sonst nichts', async () => {

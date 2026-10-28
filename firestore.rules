@@ -345,8 +345,8 @@ service cloud.firestore {
       //
       // Ältere Fassungen der App legen ein neues Konto noch als `pending`
       // an – das bleibt erlaubt, sonst scheiterte dort die Registrierung.
-      // Ein solches Konto sieht nichts und erscheint wie bisher als offene
-      // Freigabe.
+      // Ein solches Konto sieht nichts, bis die heutige Fassung den
+      // Standardzugang nachholt (Update-Regel unten).
       //
       // Mehr kann sich niemand selbst geben: weder eine andere Rolle noch
       // die Redaktion oder Bereiche der Assistenz. Sie blieben sonst als
@@ -383,6 +383,36 @@ service cloud.firestore {
         && unchanged('assistantAreas')
         && unchanged('assistantWrite')
         && !request.resource.data.diff(resource.data).affectedKeys().hasAny(['newAccount']);
+
+      // Ein Konto, das eine ältere Fassung der App als `pending` angelegt
+      // hat, holt sich den Standardzugang nach – genau den, den es mit der
+      // heutigen Fassung beim Anlegen bekäme, samt Hinweis an die
+      // Bischofschaft. Mehr nicht, und in derselben Änderung nichts anderes.
+      //
+      // Nur, solange das Konto so ist, wie die alte Fassung es anlegte:
+      // aktiv, ohne Schalter und Bereiche, `updatedAt` gleich `createdAt`.
+      // Jede Änderung der Rolle schreibt `updatedAt` neu – ein Konto, das
+      // die Bischofschaft bewusst auf «Wartet auf Freigabe» gesetzt hat,
+      // kommt so nicht heraus. Dasselbe steht als `isLegacyPendingAccount`
+      // in src/lib/access.ts.
+      allow update: if signedIn()
+        && request.auth.uid == userId
+        && resource.data.role == 'pending'
+        && resource.data.active == true
+        && !('impulse' in resource.data)
+        && !('impulseEditor' in resource.data)
+        && !('assistantAreas' in resource.data)
+        && !('assistantWrite' in resource.data)
+        && !('newAccount' in resource.data)
+        && 'createdAt' in resource.data
+        && 'updatedAt' in resource.data
+        && resource.data.updatedAt == resource.data.createdAt
+        && request.resource.data.role == 'ap_viewer'
+        && request.resource.data.impulse == true
+        && request.resource.data.newAccount == true
+        && request.resource.data.updatedAt == request.time
+        && request.resource.data.diff(resource.data).affectedKeys()
+             .hasOnly(['role', 'impulse', 'newAccount', 'updatedAt']);
 
       // Benutzer verwalten – freischalten, Rollen zuweisen, deaktivieren,
       // löschen – darf der Administrator. Damit genügt ein kompromittiertes

@@ -3533,7 +3533,20 @@ ihr Profil neu an – mit dem Standardzugang.
 ### Ältere Registrierungen freischalten
 
 Ältere Fassungen der App legen ein neues Konto noch mit der Rolle «Wartet auf
-Freigabe» an; es sieht nichts. Auch das steht dann **zuoberst auf der
+Freigabe» an; es sieht nichts. Lief auf dem Gerät noch eine solche Fassung aus
+dem Cache, stand das Konto danach so auf dem Server – und kein Neuladen
+änderte daran etwas. **Heute holt sich ein solches Konto den Standardzugang
+selbst nach**, sobald es mit der aktuellen Fassung geöffnet wird: AP-Kalender
+lesen und Anti Doom, samt Hinweis «Ein neues Konto wurde erstellt» auf der
+Übersicht – genau das, was es mit der heutigen Fassung von Anfang an bekommen
+hätte (`isLegacyPendingAccount` in `src/lib/access.ts`, dieselben Bedingungen
+in `firestore.rules`). Das gilt nur, solange das Konto unberührt ist: aktiv,
+ohne Anti-Doom-Schalter und Bereiche, `updatedAt` gleich `createdAt`. Ein
+Konto, dessen Rolle die Bischofschaft bewusst auf «Wartet auf Freigabe»
+gesetzt hat, bleibt dort; wer gar nichts sehen soll, wird wie immer
+deaktiviert.
+
+Bleibt ein Konto auf «Wartet auf Freigabe», steht es **zuoberst auf der
 Übersicht** – ein Klick darauf führt geradewegs zu **Einstellungen → Benutzer
 und Rollen**, wo das Konto in einem Kasten **«Neue Registrierungen»** steht.
 Zur Wahl stehen dort fünf Zugriffsstufen – Vollzugriff, Assistenz der
