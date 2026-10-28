@@ -11,6 +11,7 @@ import {
   Download,
   Loader2,
   Mic,
+  Pencil,
   RefreshCw,
   ShieldCheck,
   Trash2,
@@ -1214,6 +1215,89 @@ function AccessTerm({ term, children }: { term: string; children: React.ReactNod
   )
 }
 
+/**
+ * Der Name eines Kontos in der Kopfzeile – für das Administrator-Konto mit
+ * einem Stift daneben, der ihn zum Bearbeiten öffnet.
+ *
+ * Den Namen tippt bei der Registrierung jede Person selbst ein, und nicht
+ * immer so, wie er in der App stehen soll – «Lauener Ammo» statt «Ammon
+ * Lauener». Bisher liess er sich nur von der Person selbst ändern (unter
+ * «Profil»). Gespeichert wird wie bei den Namen im AP-Plan beim Verlassen
+ * des Felds oder mit Enter; Escape bricht ab, ein leeres Feld lässt den
+ * bisherigen Namen stehen. Das Kürzel für den Avatar zieht
+ * `updateUserProfile` mit.
+ *
+ * Wo der Name anderswo festgehalten ist – etwa der Vorname in «Anti Doom» –,
+ * schreibt ihn die Person mit ihrem nächsten Schritt dort neu.
+ */
+function UserName({ user, editable }: { user: AppUser; editable: boolean }) {
+  const toast = useToast()
+  const [editing, setEditing] = useState(false)
+  const [draft, setDraft] = useState(user.displayName)
+  /* Escape soll nicht über das Verlassen des Felds doch noch speichern. */
+  const cancelled = useRef(false)
+
+  const start = () => {
+    cancelled.current = false
+    setDraft(user.displayName)
+    setEditing(true)
+  }
+
+  const save = async () => {
+    setEditing(false)
+    if (cancelled.current) return
+    const next = draft.trim().replace(/\s+/g, ' ')
+    if (!next || next === user.displayName) return
+    try {
+      const outcome = await updateUserProfile(user.id, { displayName: next })
+      toast.saved(`${user.displayName} heisst jetzt ${next}.`, outcome)
+    } catch (error) {
+      console.error(error)
+      toast.error('Der Name konnte nicht gespeichert werden.')
+    }
+  }
+
+  if (editing) {
+    return (
+      <input
+        className="input w-full max-w-xs py-1 text-sm font-medium"
+        value={draft}
+        autoFocus
+        autoComplete="off"
+        aria-label={`Name von ${user.displayName}`}
+        onChange={(event) => setDraft(event.target.value)}
+        onBlur={() => void save()}
+        onKeyDown={(event) => {
+          if (event.key === 'Escape') {
+            cancelled.current = true
+            event.currentTarget.blur()
+          } else if (event.key === 'Enter') {
+            event.preventDefault()
+            event.currentTarget.blur()
+          }
+        }}
+      />
+    )
+  }
+
+  return (
+    <>
+      {user.displayName}
+      {editable && (
+        <button
+          type="button"
+          className="btn-ghost rounded-md p-1 text-slate-400 hover:text-slate-600 dark:hover:text-slate-200"
+          onClick={start}
+          aria-label={`Name von ${user.displayName} ändern`}
+          title="Name ändern"
+        >
+          <Pencil className="size-3.5" aria-hidden />
+        </button>
+      )}
+    </>
+  )
+}
+
 /** Ein beschriftetes Feld unter einem Konto – die Beschriftung über dem Feld. */
 function UserField({
   label,
@@ -1339,7 +1423,8 @@ function UserRow({
         <UserAvatar userId={user.id} name={user.displayName} size="md" />
         <div className="min-w-0 flex-1">
           <p className="flex flex-wrap items-center gap-x-1.5 gap-y-0.5 text-sm font-medium break-words">
-            {user.displayName}
+            {/* Den Namen ändert das Administrator-Konto (siehe `UserName`). */}
+            <UserName user={user} editable={admin} />
             {isSelf && <span className="text-xs font-normal text-slate-400">(du)</span>}
             {isAdminAccount && (
               <span className="badge bg-slate-100 text-slate-600 dark:bg-slate-800 dark:text-slate-300">
