@@ -13,6 +13,7 @@ import { DataProvider } from '@/contexts/DataContext'
 import { ToastProvider } from '@/contexts/ToastContext'
 import { useAccessLog } from '@/hooks/useAccessLog'
 import { usePushNavigation } from '@/hooks/usePushNavigation'
+import { useUpdateOnNavigation } from '@/hooks/useUpdateOnNavigation'
 import { isStandalone, rememberBoard, rememberedBoard } from '@/lib/install'
 import { appIdentityFor, applyAppIdentity } from '@/lib/appIdentity'
 import { usePutzplanPreview } from '@/hooks/usePutzplanPreview'
@@ -320,6 +321,12 @@ function PushNavigation() {
   return null
 }
 
+/** Lädt eine bereitliegende neue Fassung beim Wechsel des Bereichs (`lib/appUpdate`). */
+function UpdateOnNavigation() {
+  useUpdateOnNavigation()
+  return null
+}
+
 /**
  * Welche App sich installieren würde – Symbol und Name je nach Zugang
  * (`lib/appIdentity`): die Bischofschaft, die AP's oder, ohne Konto, das
@@ -351,6 +358,7 @@ export default function App() {
     <ErrorBoundary>
       <BrowserRouter>
         <PushNavigation />
+        <UpdateOnNavigation />
         <ToastProvider>
           <AuthProvider>
             <AppIdentitySwitch />

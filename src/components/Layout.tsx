@@ -53,6 +53,8 @@ import {
 } from '@/lib/types'
 import { NotificationsModal } from '@/components/NotificationsModal'
 import { notificationAreas } from '@/lib/access'
+import { APP_VERSION, versionLabel } from '@/lib/appVersion'
+import { formatDateTime } from '@/lib/dates'
 
 interface NavItem {
   to: string
@@ -148,6 +150,7 @@ export function Layout() {
     isAssistant,
     assistantAreas,
     isGuest,
+    isAdmin,
     profile,
     signOut,
   } = useAuth()
@@ -498,6 +501,9 @@ export function Layout() {
               ))}
               {immersive && (
                 <div className="mt-auto border-t border-slate-200 pt-2 pb-safe dark:border-slate-800">
+                  {/* Das Menü oben rechts fehlt im Vollbild – die Fassung
+                      steht deshalb hier. */}
+                  {isAdmin && <AppVersionNote className="px-3 py-2" />}
                   {notificationAreas({ isApproved, canViewAp, canViewImpulse }).any && (
                     <button
                       type="button"
@@ -746,6 +752,25 @@ function BottomLink({ item }: { item: NavItem }) {
 }
 
 /**
+ * Welche Fassung dieses Gerät zeigt – «#190», die Nummer des Pull Requests.
+ *
+ * Für das Administrator-Konto: So lässt sich nach einer Veröffentlichung
+ * sehen, ob sie auf dem Gerät angekommen ist (siehe `lib/appVersion`).
+ */
+function AppVersionNote({ className }: { className?: string }) {
+  return (
+    <p className={cn('text-xs text-slate-500 tabular-nums dark:text-slate-400', className)}>
+      Version {versionLabel(APP_VERSION)}
+      {APP_VERSION.builtAt && (
+        <span className="block text-[11px] text-slate-400 dark:text-slate-500">
+          gebaut {formatDateTime(APP_VERSION.builtAt)}
+        </span>
+      )}
+    </p>
+  )
+}
+
+/**
  * Name, Rolle, Einstellungen, Abmelden – hinter dem Kürzel oben rechts.
  *
  * Ein Griff irgendwohin in die App schliesst das Menü wieder, und zwar über
@@ -760,7 +785,7 @@ function BottomLink({ item }: { item: NavItem }) {
  * und nicht erst, wenn er wieder loslässt.
  */
 function UserMenu() {
-  const { profile, signOut, isApproved, canViewAp, canViewImpulse } = useAuth()
+  const { profile, signOut, isAdmin, isApproved, canViewAp, canViewImpulse } = useAuth()
   const [open, setOpen] = useState(false)
   const [notifications, setNotifications] = useState(false)
   const menu = useRef<HTMLDivElement>(null)
@@ -811,6 +836,7 @@ function UserMenu() {
             <p className="text-brand-600 dark:text-brand-300 mt-1 text-xs font-medium">
               {ROLE_LABELS[profile.role]}
             </p>
+            {isAdmin && <AppVersionNote className="mt-1" />}
           </div>
           {areas.any && (
             <button

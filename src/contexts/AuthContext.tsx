@@ -165,6 +165,12 @@ const AuthContext = createContext<AuthContextValue | undefined>(undefined)
  */
 const CACHED_PROFILE_GRACE_MS = 4000
 
+/**
+ * So lange lässt die App der Registrierung Zeit, das Profil selbst anzulegen,
+ * bevor sie es nachholt (siehe das Profil-Abo im `AuthProvider`).
+ */
+const PROFILE_HEAL_MS = 4000
+
 /** Firebase-Fehlercodes in verständliche deutsche Meldungen übersetzen. */
 function translateAuthError(error: unknown): string {
   const code =
@@ -226,56 +232,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     )
   }, [])
 
-  /* Profil live mitverfolgen – eine Rollenänderung wirkt sofort ------- */
-  useEffect(() => {
-    if (!firebaseUser) return
-
-    const { uid, email } = firebaseUser
-    const ref = doc(db, COLLECTIONS.users, uid)
-    let waiting: ReturnType<typeof setTimeout> | undefined
-    const apply = (next: AppUser | null) => {
-      clearTimeout(waiting)
-      setProfile(next)
-      setProfileUid(uid)
-      setLoading(false)
-    }
-    const unsubscribe = onSnapshot(
-      ref,
-      // Auch die Meldung, dass der Server einen Stand bestätigt hat –
-      // gebraucht für die Frist unten.
-      { includeMetadataChanges: true },
-      (snapshot) => {
-        // Ohne Dokument: Das Konto existiert in Auth, aber (noch) kein Profil.
-        const next = snapshot.exists() ? ({ id: snapshot.id, ...snapshot.data() } as AppUser) : null
-        /*
-         * Ein Stand aus dem Gerätespeicher kann überholt sein – etwa noch
-         * «wartet auf Freigabe», obwohl die Rolle längst vergeben ist. Gibt
-         * er keinen Zugang, wartet die App einen Moment auf den Server,
-         * statt den Wartebereich aufblitzen zu lassen. Gibt er Zugang, gilt
-         * er sofort: So startet die App auch ohne Verbindung. Und ohne
-         * Verbindung wartet sie auf nichts, was nicht kommen kann.
-         */
-        if (snapshot.metadata.fromCache && navigator.onLine && !accessOf(next, email).hasAccess) {
-          clearTimeout(waiting)
-          waiting = setTimeout(() => apply(next), CACHED_PROFILE_GRACE_MS)
-          return
-        }
-        apply(next)
-      },
-      (err) => {
-        clearTimeout(waiting)
-        console.error('[auth] Profil konnte nicht geladen werden:', err)
-        setError('Dein Profil konnte nicht geladen werden. Bist du bereits freigeschaltet?')
-        setProfileUid(uid)
-        setLoading(false)
-      },
-    )
-    return () => {
-      clearTimeout(waiting)
-      unsubscribe()
-    }
-  }, [firebaseUser])
-
   /**
    * Legt das Firestore-Profil an, falls es fehlt.
    *
@@ -311,6 +267,92 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       await commit(setDoc(ref, { lastLoginAt: serverTimestamp() }, { merge: true }))
     }
   }, [])
+
+  /* Profil live mitverfolgen – eine Rollenänderung wirkt sofort ------- */
+  useEffect(() => {
+    if (!firebaseUser) return
+
+    const { uid, email } = firebaseUser
+    const ref = doc(db, COLLECTIONS.users, uid)
+    let waiting: ReturnType<typeof setTimeout> | undefined
+    /** Das Profil war in dieser Sitzung schon einmal da. */
+    let existed = false
+    let healing: ReturnType<typeof setTimeout> | undefined
+    const apply = (next: AppUser | null) => {
+      clearTimeout(waiting)
+      setProfile(next)
+      setProfileUid(uid)
+      setLoading(false)
+    }
+    const unsubscribe = onSnapshot(
+      ref,
+      // Auch die Meldung, dass der Server einen Stand bestätigt hat –
+      // gebraucht für die Frist unten.
+      { includeMetadataChanges: true },
+      (snapshot) => {
+        // Ohne Dokument: Das Konto existiert in Auth, aber (noch) kein Profil.
+        const next = snapshot.exists() ? ({ id: snapshot.id, ...snapshot.data() } as AppUser) : null
+        if (next) {
+          existed = true
+          clearTimeout(healing)
+        } else if (!existed && !snapshot.metadata.fromCache) {
+          /*
+           * Angemeldet, aber laut Server ohne Profil – das Anlegen bei der
+           * Registrierung ist nicht durchgekommen (Verbindung weg, App
+           * mittendrin geschlossen oder neu geladen). Bis anhin blieb das
+           * Konto dann für immer im Wartebereich: Angelegt wurde nur beim
+           * Anmelden, und wer angemeldet bleibt, meldet sich nicht mehr an.
+           *
+           * Jetzt legt die App das Profil selbst nach – mit dem
+           * Standardzugang eines neuen Kontos. Erst nach einer kurzen Frist:
+           * Gleich nach der Registrierung ist `signUp` noch dabei, und es
+           * kennt den Namen aus dem Formular. Bis dahin bleibt der
+           * Ladebildschirm stehen statt «Freigabe ausstehend».
+           *
+           * Nur, wenn das Profil in dieser Sitzung nie da war: Ein Profil,
+           * das der Administrator eben entfernt hat, kommt nicht von selbst
+           * zurück (siehe «Ablehnen» in den Einstellungen).
+           */
+          clearTimeout(waiting)
+          if (healing === undefined) {
+            healing = setTimeout(() => {
+              ensureProfile(firebaseUser).catch((err: unknown) => {
+                console.warn('[auth] Profil liess sich nicht nachträglich anlegen:', err)
+                apply(null)
+              })
+            }, PROFILE_HEAL_MS)
+          }
+          return
+        }
+        /*
+         * Ein Stand aus dem Gerätespeicher kann überholt sein – etwa noch
+         * «wartet auf Freigabe», obwohl die Rolle längst vergeben ist. Gibt
+         * er keinen Zugang, wartet die App einen Moment auf den Server,
+         * statt den Wartebereich aufblitzen zu lassen. Gibt er Zugang, gilt
+         * er sofort: So startet die App auch ohne Verbindung. Und ohne
+         * Verbindung wartet sie auf nichts, was nicht kommen kann.
+         */
+        if (snapshot.metadata.fromCache && navigator.onLine && !accessOf(next, email).hasAccess) {
+          clearTimeout(waiting)
+          waiting = setTimeout(() => apply(next), CACHED_PROFILE_GRACE_MS)
+          return
+        }
+        apply(next)
+      },
+      (err) => {
+        clearTimeout(waiting)
+        console.error('[auth] Profil konnte nicht geladen werden:', err)
+        setError('Dein Profil konnte nicht geladen werden. Bist du bereits freigeschaltet?')
+        setProfileUid(uid)
+        setLoading(false)
+      },
+    )
+    return () => {
+      clearTimeout(waiting)
+      clearTimeout(healing)
+      unsubscribe()
+    }
+  }, [firebaseUser, ensureProfile])
 
   const signIn = useCallback(
     async (email: string, password: string) => {

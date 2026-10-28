@@ -2,8 +2,10 @@ import { defineConfig, type Plugin } from 'vite'
 import react from '@vitejs/plugin-react'
 import tailwindcss from '@tailwindcss/vite'
 import { VitePWA } from 'vite-plugin-pwa'
+import { execFileSync } from 'node:child_process'
 import path from 'node:path'
 import { applySharePreview, sharePreviewPages } from './src/lib/sharePreview.ts'
+import { prNumberFrom, type AppVersion } from './src/lib/appVersion.ts'
 
 /**
  * Eigene Seiten für geteilte Links: Neben `index.html` legt der Build für
@@ -31,13 +33,87 @@ function sharePreviews(): Plugin {
   }
 }
 
+/** Eine Zeile aus Git – oder nichts, wo es kein Git gibt. */
+function git(...args: string[]): string | null {
+  try {
+    return execFileSync('git', args, {
+      encoding: 'utf8',
+      stdio: ['ignore', 'pipe', 'ignore'],
+    }).trim()
+  } catch {
+    return null
+  }
+}
+
+/**
+ * Welche Fassung dieser Build ist (siehe `src/lib/appVersion.ts`).
+ *
+ * Netlify nennt den Commit (`COMMIT_REF`) und in der Vorschau eines Pull
+ * Requests dessen Nummer (`REVIEW_ID`). Auf `main` steht die Nummer in der
+ * Betreffzeile des Squash-Merges – Netlify baut aus einem Git-Klon, die
+ * Zeile ist also da.
+ */
+function buildVersion(): AppVersion {
+  const env = process.env
+  const commit = env.COMMIT_REF || git('rev-parse', 'HEAD')
+  const preview = env.CONTEXT === 'deploy-preview'
+  const pr = preview ? Number(env.REVIEW_ID) || null : prNumberFrom(git('log', '-1', '--format=%s'))
+  const builtAt = new Date().toISOString()
+  return {
+    id: `${commit?.slice(0, 12) ?? 'lokal'}-${builtAt}`,
+    pr,
+    preview,
+    commit: commit?.slice(0, 7) ?? null,
+    builtAt,
+  }
+}
+
+/**
+ * Schreibt die Fassung in den Code und daneben nach `/version.json`.
+ *
+ * Die App vergleicht beides, um eine neue Fassung zu erkennen – auch dann,
+ * wenn der Service Worker selbst hängen sollte (siehe `lib/appUpdate`).
+ * Die Datei kommt nicht in den Precache: `globPatterns` kennt kein `json`.
+ */
+function appVersion(): Plugin {
+  const version = buildVersion()
+  return {
+    name: 'bss:app-version',
+    config: () => ({ define: { __APP_VERSION__: JSON.stringify(version) } }),
+    generateBundle() {
+      this.emitFile({
+        type: 'asset',
+        fileName: 'version.json',
+        source: `${JSON.stringify(version)}\n`,
+      })
+    },
+  }
+}
+
 export default defineConfig({
   plugins: [
     react(),
     tailwindcss(),
     sharePreviews(),
+    appVersion(),
+    /*
+     * Neue Fassungen kommen von selbst – ohne Hinweis, ohne Knopf.
+     *
+     * Bis anhin wartete eine neue Fassung, bis jemand «Aktualisieren»
+     * antippte, und bis dahin lieferte der Service Worker die alte aus dem
+     * Cache – auch nach mehrmaligem Neuladen. Wer sich in dieser Lage neu
+     * registrierte, bekam das Konto der alten Fassung. Jetzt gilt:
+     *
+     *  - `autoUpdate`: Ein neuer Service Worker übernimmt sofort
+     *    (`skipWaiting`, `clientsClaim`).
+     *  - Seitenaufrufe gehen immer zuerst ans Netz (`NetworkOnly` unten);
+     *    nur ohne Verbindung springt die gespeicherte `index.html` ein. Wer
+     *    die App öffnet oder neu lädt, bekommt damit die neueste Fassung.
+     *  - Die App vergleicht ausserdem ihre Fassung mit `/version.json` und
+     *    lädt still neu, sobald es eine neuere gibt (`src/lib/appUpdate.ts`).
+     */
     VitePWA({
-      registerType: 'prompt',
+      registerType: 'autoUpdate',
       injectRegister: null,
       includeAssets: ['favicon.svg', 'apple-touch-icon.png', 'robots.txt'],
       manifest: {
@@ -109,12 +185,38 @@ export default defineConfig({
         // da; die App selbst startet offline aus `index.html`.
         globIgnores: ['**/push-sw.js', 'anti-doom.html', 'anti-doom/**', 'icons/ap-share-*.png'],
         cleanupOutdatedCaches: true,
+        skipWaiting: true,
         clientsClaim: true,
-        navigateFallback: '/index.html',
-        // Firestore/Auth niemals aus dem Service-Worker-Cache bedienen –
-        // das Firebase-SDK bringt eine eigene Offline-Persistenz (IndexedDB) mit.
-        navigateFallbackDenylist: [/^\/__/, /\/[^/?]+\.[^/]+$/],
+        /*
+         * Kein App-Shell aus dem Cache: Seitenaufrufe regelt die Route
+         * unten. `directoryIndex: null` hält auch die Startseite «/» aus dem
+         * Precache – sonst bediente er sie mit der gespeicherten
+         * `index.html`, bevor die Route unten zum Zug käme.
+         */
+        navigateFallback: null,
+        directoryIndex: null,
         runtimeCaching: [
+          /*
+           * Seitenaufrufe immer vom Server – mit der gespeicherten
+           * `index.html` nur als Rückfall ohne Verbindung.
+           *
+           * Zwischengespeichert wird dabei nichts: Eine gespeicherte Seite
+           * verwiese nach dem nächsten Update auf Dateien, die es nicht mehr
+           * gibt. Die `index.html` im Precache passt immer zu den Dateien
+           * daneben.
+           *
+           * Ausgenommen wie bisher: `/__/…` (Anmeldung über Firebase) und
+           * Adressen mit Dateiendung. Die Funktion landet als Text im Service
+           * Worker – sie darf nichts von ausserhalb verwenden.
+           */
+          {
+            urlPattern: ({ request, url }) =>
+              request.mode === 'navigate' &&
+              !url.pathname.startsWith('/__') &&
+              !/\/[^/?]+\.[^/]+$/.test(url.pathname),
+            handler: 'NetworkOnly',
+            options: { precacheFallback: { fallbackURL: 'index.html' } },
+          },
           {
             urlPattern: ({ url }) =>
               url.origin === 'https://fonts.googleapis.com' ||

@@ -1,8 +1,7 @@
 import { StrictMode } from 'react'
 import { createRoot } from 'react-dom/client'
 import App from '@/App'
-import { UpdatePrompt } from '@/components/UpdatePrompt'
-import { AppUpdateProvider } from '@/contexts/AppUpdateContext'
+import { startAppUpdates } from '@/lib/appUpdate'
 import '@/index.css'
 // Lauscht ab dem Start auf das Angebot des Browsers, die App zu installieren –
 // es kommt früh, oft bevor die Seite steht, die den Knopf dazu zeigt.
@@ -15,16 +14,15 @@ if (!container) throw new Error('Element #root nicht gefunden.')
 container.replaceChildren()
 
 /*
- * Die Aktualisierung steht um die ganze App herum und nicht im Layout: Der
- * Hinweis auf eine neue Fassung soll auf jeder Seite erscheinen – auf der
- * Anmeldung, im Wartebereich und auch dann, wenn die App abgestürzt ist
- * (siehe `AppUpdateProvider`).
+ * Die Suche nach neuen Fassungen läuft neben React und nicht in einer
+ * Komponente: Sie soll auf jeder Seite laufen – auf der Anmeldung, im
+ * Wartebereich und auch dann, wenn die App abgestürzt ist (siehe
+ * `lib/appUpdate`).
  */
+startAppUpdates()
+
 createRoot(container).render(
   <StrictMode>
-    <AppUpdateProvider>
-      <App />
-      <UpdatePrompt />
-    </AppUpdateProvider>
+    <App />
   </StrictMode>,
 )
