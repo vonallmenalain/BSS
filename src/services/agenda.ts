@@ -28,10 +28,10 @@ import {
   sectionOf,
   serializeStanding,
   standingLabel,
-  standingWaits,
   type StandingMeeting,
   type StandingRound,
 } from '@/lib/standing'
+import { itemWaits } from '@/lib/defer'
 import { stripUndefined, uid } from '@/lib/utils'
 import { commit, type SaveOutcome } from '@/lib/sync'
 import { deleteMonthlyDuty } from '@/services/monthlyDuties'
@@ -343,23 +343,29 @@ export async function undoStandingRound(
 }
 
 /**
- * Verschiebt einen Punkt auf die nächste Sitzung.
+ * Verschiebt einen Punkt – auf die nächste Sitzung oder auf einen Tag.
  *
- * Mehr Ziele gibt es nicht mehr. Früher liess sich um eine Woche, einen
- * Monat oder auf ein freies Datum verschieben – das setzte einen Termin,
- * der mit keiner Sitzung zusammenfiel und an dem folglich nichts geschah.
- * Ein Punkt gehört in eine Sitzung, und die nächste ist die Antwort auf
- * «nicht heute».
+ * **Ohne `until`** ist es das gewohnte «Nächste Sitzung»: `meetingId` ist
+ * die nächste geplante Sitzung, oder `null`, wenn keine geplant ist – dann
+ * landet der Punkt im Sammelkorb und steht so lange unter «Pendenzen», bis
+ * eine Sitzung ihn aufnimmt.
  *
- * Ist keine Sitzung geplant, landet er im Sammelkorb und steht so lange
- * unter «Pendenzen», bis eine Sitzung ihn aufnimmt. `deferCount` macht
- * sichtbar, welche Themen immer wieder vertagt werden.
+ * **Mit `until`** («2027-01-01») wurde um ein paar Wochen oder auf ein Datum
+ * verschoben. `meetingId` ist dann die erste Sitzung an oder nach diesem Tag
+ * (siehe `meetingFrom` in `lib/defer`) – oder `null`, wenn noch keine so spät
+ * geplant ist. Dann wartet der Punkt im Sammelkorb und kommt erst mit einer
+ * Sitzung mit, die spät genug liegt (`itemWaits`). Der Tag wird in beiden
+ * Fällen festgehalten: Wird die Sitzung später gelöscht, weiss der Punkt
+ * noch, worauf er wartet.
+ *
+ * `deferCount` macht sichtbar, welche Themen immer wieder vertagt werden.
  */
-export async function deferToNextMeeting(
+export async function deferItem(
   item: Pick<AgendaItem, 'id' | 'meetingId' | 'kind' | 'firstMeetingId' | 'order' | 'status'>,
   meetingId: string | null,
   actor: Actor,
   mark: DeferMark = deferMarkOf(item),
+  until: string | null = null,
 ): Promise<SaveOutcome> {
   const patch: Record<string, unknown> = {
     // Wer verschoben wird, ist nicht erledigt – und damit von jetzt an eine
@@ -367,10 +373,17 @@ export async function deferToNextMeeting(
     kind: 'pendenz' satisfies ItemKind,
     status: 'pending' satisfies ItemStatus,
     meetingId,
+    // «Nächste Sitzung» räumt einen früheren Tag weg: Wer jetzt die
+    // nächste Sitzung wählt, meint sie, gleich worauf vorher gewartet wurde.
+    deferredUntil: until,
     deferCount: increment(1),
     history: arrayUnion(
       historyEntry(
-        meetingId ? 'Auf die nächste Sitzung verschoben' : 'Aus der Sitzung genommen',
+        until
+          ? `Verschoben – wieder ab ${formatDayKey(until)}`
+          : meetingId
+            ? 'Auf die nächste Sitzung verschoben'
+            : 'Aus der Sitzung genommen',
         actor,
       ),
     ),
@@ -412,6 +425,8 @@ export async function undoDefer(
       status: mark.status,
       order: mark.order,
       deferCount: increment(-1),
+      // Er steht wieder in seiner Sitzung und wartet auf keinen Tag mehr.
+      deferredUntil: null,
       [`deferredFrom.${meetingId}`]: deleteField(),
       history: arrayUnion(historyEntry('Verschieben zurückgenommen', actor)),
       ...touch(),
@@ -553,9 +568,11 @@ export async function carryOverOpenItems(
      * Sie liegen im Sammelkorb, weil ihre nächste Runde noch nicht begonnen
      * hat – nicht, weil ihnen eine Sitzung fehlt. In diese hineinzuziehen
      * hiesse, den Takt zu übergehen, den jemand eben eingestellt hat
-     * (siehe `lib/standing`).
+     * (siehe `lib/standing`). Dasselbe gilt für einen Punkt, der auf einen
+     * späteren Tag verschoben wurde: Er gehört erst in eine Sitzung an oder
+     * nach diesem Tag (siehe `lib/defer`).
      */
-    if (standingWaits(data, meetingDay)) return
+    if (itemWaits(data, meetingDay)) return
     const index = taken++
     batch.update(item.ref, {
       meetingId,

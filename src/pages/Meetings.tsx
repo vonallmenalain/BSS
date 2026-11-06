@@ -30,9 +30,11 @@ import { isUpcomingMeeting } from '@/lib/meetingScope'
 import {
   asDeferredIn,
   asDoneIn,
+  dayKey,
   isDeferredView,
   itemsByMeeting as groupByMeeting,
 } from '@/lib/standing'
+import { itemWaits } from '@/lib/defer'
 import { isDutyItem } from '@/lib/monthlyDuties'
 import { cn, matchesSearch } from '@/lib/utils'
 import { searchSnippet } from '@/lib/search'
@@ -187,8 +189,14 @@ export function Meetings() {
   const inScope =
     filter === 'upcoming' ? upcoming : filter === 'past' ? past : [...upcoming, ...past]
   /* Ohne die Monatspendenzen: Die warten auf keine Sitzung, sondern
-     gehören dem Monat (siehe `lib/monthlyDuties`). */
-  const unassignedCount = openItems.filter((item) => !item.meetingId && !isDutyItem(item)).length
+     gehören dem Monat (siehe `lib/monthlyDuties`). Und ohne, was heute
+     noch gar nicht dran ist – eine ständige Pendenz vor ihrer nächsten
+     Runde, ein Punkt, der auf einen späteren Tag verschoben wurde (siehe
+     `lib/defer`). */
+  const today = dayKey(new Date())
+  const unassignedCount = openItems.filter(
+    (item) => !item.meetingId && !isDutyItem(item) && !itemWaits(item, today),
+  ).length
 
   /*
    * Was der Suchbegriff trifft – je Sitzung die passenden Einträge.

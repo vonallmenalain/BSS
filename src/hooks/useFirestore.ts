@@ -11,7 +11,8 @@ import {
 import { toDate } from '@/lib/dates'
 import { impulseKindRank, withCurrentFirstNames } from '@/lib/impulse'
 import { isDutyItem, monthLeaders } from '@/lib/monthlyDuties'
-import { dayKey, itemsOfMeeting, standingWaits } from '@/lib/standing'
+import { itemWaits } from '@/lib/defer'
+import { dayKey, itemsOfMeeting } from '@/lib/standing'
 import {
   isWithdrawnTalk,
   OPEN_STATUSES,
@@ -169,12 +170,19 @@ export function useMeetingItems(meetingId: string | undefined) {
  * stehen sollten (siehe `lib/monthlyDuties`).
  *
  * Und ohne die ständigen Pendenzen, deren nächste Runde noch nicht begonnen
- * hat: Auch sie liegen ohne Sitzung da, aber nicht, weil ihnen eine fehlt –
- * sie sind schlicht noch nicht dran (siehe `lib/standing`).
+ * hat, und ohne die Punkte, die auf einen späteren Tag verschoben wurden:
+ * Auch sie liegen ohne Sitzung da, aber nicht, weil ihnen eine fehlt – sie
+ * sind schlicht noch nicht dran (siehe `lib/standing` und `lib/defer`).
+ *
+ * «Noch nicht» heisst: am Tag der Sitzung, für die gerade geplant wird
+ * (`day`, «2027-01-05»). Ein Punkt, der auf den 1. Januar verschoben ist,
+ * gehört in die Sitzung vom 5. Januar, auch wenn sie im Dezember geplant
+ * wird – und in die vom 15. Dezember nicht. Ohne Angabe zählt der heutige Tag.
+ * Dieselbe Frage stellt «Alle übernehmen» (`carryOverOpenItems`).
  */
-export function useUnassignedItems() {
+export function useUnassignedItems(day?: string) {
   const state = useAgendaStore()
-  const today = dayKey(new Date())
+  const when = day ?? dayKey(new Date())
   return useMemo(
     () => ({
       ...state,
@@ -182,11 +190,11 @@ export function useUnassignedItems() {
         (item) =>
           !item.meetingId &&
           !isDutyItem(item) &&
-          !standingWaits(item, today) &&
+          !itemWaits(item, when) &&
           OPEN_STATUSES.includes(item.status),
       ),
     }),
-    [state, today],
+    [state, when],
   )
 }
 

@@ -57,7 +57,8 @@ import {
 } from '@/lib/dates'
 import { isDutyItem } from '@/lib/monthlyDuties'
 import { canManageUser, roleManagementOf } from '@/lib/access'
-import { dayKey, standingWaits } from '@/lib/standing'
+import { itemWaits } from '@/lib/defer'
+import { dayKey } from '@/lib/standing'
 import { cn } from '@/lib/utils'
 import { sortForMeeting, sortForPendenzen } from '@/services/agenda'
 import { dismissNewAccounts } from '@/services/users'
@@ -172,10 +173,13 @@ export function Dashboard() {
 
   /* Ohne die Monatspendenzen: Die warten auf keine Sitzung, sondern
      gehören dem Monat (siehe `lib/monthlyDuties`). Und ohne die ständigen
-     Pendenzen, die noch auf ihre nächste Runde warten – sie liegen ebenfalls
-     ohne Sitzung da, sind aber schlicht noch nicht dran. */
+     Pendenzen, die noch auf ihre nächste Runde warten, und die Punkte, die
+     auf einen späteren Tag verschoben wurden – sie liegen ebenfalls ohne
+     Sitzung da, sind am Tag der nächsten Sitzung aber noch nicht dran
+     (dieselbe Frage wie «Alle übernehmen» in der Sitzung). */
+  const poolDay = dayKey(nextMeetingRef?.date ?? new Date())
   const unassignedCount = pendenzen.filter(
-    (item) => !item.meetingId && !isDutyItem(item) && !standingWaits(item, dayKey(new Date())),
+    (item) => !item.meetingId && !isDutyItem(item) && !itemWaits(item, poolDay),
   ).length
 
   /* Ansprachen: die nächsten Sonntage und ihre Lücken ---------------- */

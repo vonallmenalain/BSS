@@ -84,7 +84,9 @@ export function MeetingDetail() {
 
   const { meeting, loading } = useMeeting(meetingId)
   const { data: items } = useMeetingItems(meetingId)
-  const { data: poolItems } = useUnassignedItems()
+  // Angeboten wird, was am Tag **dieser** Sitzung dran ist – ein Punkt, der
+  // auf den 1. Januar verschoben ist, gehört nicht in die vom Dezember.
+  const { data: poolItems } = useUnassignedItems(dayKey(toDate(meeting?.date) ?? new Date()))
   const { data: openItems } = useOpenItems()
   const { data: meetings } = useMeetings(50)
 
