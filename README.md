@@ -636,10 +636,26 @@ wieder hineinklicken – mitten im Satz. Fünf Dinge halten jetzt dagegen:
 **Kein Fälligkeitsdatum und keine Priorität.** Beide sagten dasselbe noch
 einmal und meist anders: Eine Pendenz gehört in eine Sitzung, und die hat
 bereits ein Datum; was zuerst drankommt, sagt die Reihenfolge der Liste, und
-die lässt sich von Hand festlegen. Aus «Verschieben» ist deshalb ein einziger
-Knopf geworden – **auf die nächste Sitzung**. Die früheren Ziele «um eine
-Woche», «um einen Monat», «eigenes Datum» setzten bloss einen Termin, an dem
-nichts geschah.
+die lässt sich von Hand festlegen.
+
+**Verschieben – auf die nächste Sitzung, um Wochen oder auf ein Datum.** Der
+Knopf **«Verschieben»** öffnet ein kleines Fenster mit sechs Zielen: **nächste
+Sitzung**, **1, 2, 3 oder 4 Wochen später** und **auf ein Datum**. Bei jedem
+steht, wo der Punkt damit landet («In die Sitzung vom Fr, 27.11.2026»); ein
+Griff auf eines der festen Ziele verschiebt sofort. Die Wochen zählen ab der
+Sitzung, in der der Punkt steht, sofern sie noch bevorsteht – sonst ab heute.
+
+Das Datum ist kein Fälligkeitsdatum, sondern der Tag, **ab dem der Punkt
+wieder in eine Sitzung gehört**: Wer auf den 1. Januar verschiebt, findet ihn
+in der ersten Sitzung an oder nach dem 1. Januar, etwa am 5. Januar. Ist so
+spät noch keine geplant, wartet er unter «Pendenzen» mit dem Etikett «ab
+_Datum_». Einer früheren Sitzung wird er weder angeboten noch von «Pendenzen
+übernehmen» mitgenommen; die erste Sitzung, die spät genug liegt, nimmt ihn
+auf – genau wie eine ständige Pendenz, die auf ihre nächste Runde wartet.
+Festgehalten wird der Tag am Eintrag (`deferredUntil`, siehe
+[`src/lib/defer.ts`](src/lib/defer.ts)). Die früheren Ziele «um eine Woche»,
+«um einen Monat», «eigenes Datum» setzten dagegen bloss einen Termin, an dem
+nichts geschah – deshalb ist es ein neues Feld und nicht das alte.
 
 **Verschoben bleibt sichtbar.** Der Punkt steht sofort in der nächsten Sitzung
 (dort als Pendenz) – in der laufenden aber weiterhin, an seinem Platz und
@@ -655,7 +671,7 @@ Ausdruck steht der Punkt mit «→ verschoben».
 
 Oben steht, wo man innerhalb der eigenen Gruppe ist – «2 von 5 Traktanden»,
 später «1 von 8 Pendenzen». Auch die Sprungleiste zählt je Gruppe von vorn und
-lässt zwischen ihnen eine Lücke. Nach «Erledigt» und nach «Auf nächste Sitzung»
+lässt zwischen ihnen eine Lücke. Nach «Erledigt» und nach «Verschieben»
 rückt die App von selbst zum nächsten Punkt; am Laptop blättern die Pfeiltasten.
 
 ### Variables Layout

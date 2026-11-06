@@ -6,6 +6,7 @@ import { useToast } from '@/contexts/ToastContext'
 import { AssigneeAvatars } from '@/components/ui/Avatar'
 import { KindBadge, StandingBadge, StatusBadge } from '@/components/ui/Badge'
 import { RichText } from '@/components/ui/RichText'
+import { WaitingBadge } from '@/components/agenda/DeferMenu'
 import { useStandingRound } from '@/hooks/useStanding'
 import { setItemStatus } from '@/services/agenda'
 import { hasOpenCallingRows } from '@/lib/callingChanges'
@@ -152,6 +153,7 @@ export function AgendaItemCard({
                 {item.deferCount}×
               </span>
             )}
+            <WaitingBadge item={item} />
             {meetingLabel && (
               <span className="badge bg-slate-100 text-slate-500 dark:bg-slate-800 dark:text-slate-400">
                 <CalendarClock className="size-3" aria-hidden />

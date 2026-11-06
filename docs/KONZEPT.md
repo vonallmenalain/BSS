@@ -112,7 +112,7 @@ die in einer halben Minute festgehalten sind, ein Umweg.
 **Durchführen (Sitzungsmodus).** Fortschrittsbalken, Sprungleiste über alle
 Punkte – zuerst die ständigen Pendenzen, dann die neuen Traktanden, zuletzt
 die übrigen Pendenzen –, dann das aktuelle Thema in voller Breite und
-unmittelbar bearbeitbar: Titel, Beschreibung, Zuständige. Darunter die Aktionsleiste – _Erledigt_, _Auf nächste Sitzung_,
+unmittelbar bearbeitbar: Titel, Beschreibung, Zuständige. Darunter die Aktionsleiste – _Erledigt_, _Verschieben_ (nächste Sitzung, 1–4 Wochen oder ein Datum),
 _Löschen_ – und Vor/Zurück. Nach «Erledigt» rückt die App von
 selbst zum nächsten Punkt. Am Laptop geht das Blättern auch mit den
 Pfeiltasten.

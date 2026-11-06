@@ -474,7 +474,7 @@ export function isDeferredView(item: Pick<AgendaItem, 'deferredInMeeting'>): boo
  * Pendenz. Sonst verschwände sie mitten in der Sitzung aus der Liste, und
  * ob der Griff gewirkt hat, liesse sich nur noch in der nächsten nachsehen.
  *
- * Dasselbe gilt für «Auf nächste Sitzung»: Der Eintrag steht sofort in der
+ * Dasselbe gilt für «Verschieben»: Der Eintrag steht sofort in der
  * nächsten Sitzung, hier aber weiterhin – grau, mit einem Pfeil (siehe
  * `asDeferredIn`).
  */

@@ -18,7 +18,12 @@ import { StandingBadge, StatusBadge } from '@/components/ui/Badge'
 import { ConfirmDialog } from '@/components/ui/Modal'
 import { RichText } from '@/components/ui/RichText'
 import { AgendaItemEditor } from '@/components/agenda/AgendaItemEditor'
-import { DeferMenu, DeferredBadge, UndoDeferButton } from '@/components/agenda/DeferMenu'
+import {
+  DeferMenu,
+  DeferredBadge,
+  UndoDeferButton,
+  WaitingBadge,
+} from '@/components/agenda/DeferMenu'
 import { StandingButton } from '@/components/agenda/Standing'
 import { AuthorChip } from '@/components/agenda/AuthorChip'
 import { useStandingRound } from '@/hooks/useStanding'
@@ -306,6 +311,7 @@ export function AgendaItemRow({
               )}
               {standing && <StandingBadge rule={standing} waiting={standingWaiting} />}
               {dutyMonth && <DutyBadge month={dutyMonth} />}
+              <WaitingBadge item={item} />
               {item.deferCount > 0 && !deferred && (
                 <span className="badge bg-amber-100 text-amber-800 dark:bg-amber-950 dark:text-amber-200">
                   <Repeat className="size-3" aria-hidden />
@@ -356,6 +362,7 @@ export function AgendaItemRow({
                   {item.deferCount}×
                 </span>
               )}
+              <WaitingBadge item={item} />
               {meetingLabel && (
                 <span className="badge bg-slate-100 text-slate-500 dark:bg-slate-800 dark:text-slate-400">
                   <CalendarClock className="size-3" aria-hidden />

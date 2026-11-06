@@ -1464,7 +1464,7 @@ export interface AgendaItem extends WithId {
   doneInMeeting?: string
 
   /**
-   * Die Sitzungen, aus denen der Eintrag mit «Auf nächste Sitzung» verschoben
+   * Die Sitzungen, aus denen der Eintrag mit «Verschieben» verschoben
    * wurde – je Sitzung, wie er dort stand.
    *
    * Verschoben wandert der Eintrag sofort in die nächste Sitzung. In der, aus
@@ -1486,6 +1486,23 @@ export interface AgendaItem extends WithId {
    * damals (siehe `DeferMark`).
    */
   deferredInMeeting?: string
+
+  /**
+   * Auf diesen Tag verschoben – «2027-01-01».
+   *
+   * Gesetzt von «Verschieben» um ein paar Wochen oder auf ein Datum (siehe
+   * `lib/defer`). Steht an oder nach diesem Tag schon eine Sitzung, steht der
+   * Eintrag gleich in ihr, und das Feld bleibt bloss als Spur stehen. Sonst
+   * wartet er im Sammelkorb, bis eine Sitzung geplant wird, die spät genug
+   * liegt – einer früheren wird er nicht angeboten. Ist der Tag vorbei, gilt
+   * das Feld nicht mehr.
+   *
+   * Nicht dasselbe wie das frühere Fälligkeitsdatum (siehe oben), und
+   * deshalb ein eigenes Feld, in dem keine alten Werte liegen: Jenes bewirkte
+   * nichts, dieses entscheidet, in welche Sitzung der Eintrag gehört.
+   * «Nächste Sitzung» und «Zurückholen» räumen es weg.
+   */
+  deferredUntil?: string | null
 
   /*
    * Eine eigene Notizliste je Traktandum gab es einmal; sie ist weggefallen.
