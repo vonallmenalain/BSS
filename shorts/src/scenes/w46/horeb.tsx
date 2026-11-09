@@ -901,7 +901,7 @@ const AngelStage: React.FC<StageP> = ({ ts, s, t }) => {
             <Broom x={330} y={SAND} s={0.95} />
             <Lying x={560} y={SAND + 2} k={1} breathe={Math.sin(frame / 18)} />
             {/* Berührung */}
-            {touch > 0 ? <circle cx={530} cy={SAND - 50} r={20 + 50 * touch} fill="#FFF6DC" opacity={0.3 * touch * (1 - fade(t, engelAt + 1.2, 0.6))} /> : null}
+            {touch > 0 ? <circle cx={620} cy={SAND - 70} r={20 + 50 * touch} fill="#FFF6DC" opacity={0.3 * touch * (1 - fade(t, engelAt + 1.2, 0.6))} /> : null}
             <Angel x={790} y={SAND} k={0.95} o={angel} reach={touch} />
             {/* Brot auf glühenden Steinen, ein Krug Wasser */}
             {food > 0.01 ? (
