@@ -125,18 +125,22 @@ export const SummitBg: React.FC = () => {
             <stop offset="60%" stopColor="#A03CA0" stopOpacity="0.05" />
             <stop offset="100%" stopColor="#A03CA0" stopOpacity="0" />
           </radialGradient>
+          <linearGradient id="sgBand" x1="0" y1="0" x2="0" y2="1">
+            <stop offset="0%" stopColor="#C8C2FF" stopOpacity="0" />
+            <stop offset="45%" stopColor="#D8D4FF" stopOpacity="0.1" />
+            <stop offset="55%" stopColor="#FFFFFF" stopOpacity="0.11" />
+            <stop offset="100%" stopColor="#C8C2FF" stopOpacity="0" />
+          </linearGradient>
           <radialGradient id="sgBloom" cx="0.5" cy="0.32" r="0.7">
             <stop offset="0%" stopColor="#FFF0C8" stopOpacity="0.5" />
             <stop offset="45%" stopColor="#B48CFF" stopOpacity="0.16" />
             <stop offset="100%" stopColor="#B48CFF" stopOpacity="0" />
           </radialGradient>
-          <linearGradient id="sgCloud" x1="0" y1="0" x2="0" y2="1">
-            <stop offset="0%" stopColor="#5E64A8" stopOpacity="0.9" />
-            <stop offset="100%" stopColor="#1C1A44" stopOpacity="0.95" />
-          </linearGradient>
-          <filter id="sgSoft" x="-20%" y="-50%" width="140%" height="200%">
-            <feGaussianBlur stdDeviation="14" />
-          </filter>
+          <radialGradient id="sgCloud" cx="0.5" cy="0.4" r="0.6">
+            <stop offset="0%" stopColor="#6A70B8" stopOpacity="0.85" />
+            <stop offset="55%" stopColor="#3A3A7A" stopOpacity="0.55" />
+            <stop offset="100%" stopColor="#1C1A44" stopOpacity="0" />
+          </radialGradient>
         </defs>
         <rect width={WIDTH} height={HEIGHT} fill="url(#sgSky)" />
 
@@ -146,8 +150,9 @@ export const SummitBg: React.FC = () => {
         <ellipse cx={700} cy={300 + Math.sin(t / 13) * 20} rx={420} ry={300} fill="url(#sgNebM)" />
 
         {/* Milchstrasse */}
-        <path d="M -120 1180 C 220 900, 620 620, 1200 160 L 1200 360 C 660 760, 280 1020, -120 1330 Z" fill="#C8C2FF" opacity={0.06} />
-        <path d="M -120 1220 C 240 960, 640 680, 1200 230 L 1200 290 C 640 730, 260 990, -120 1270 Z" fill="#FFFFFF" opacity={0.05} />
+        <g transform="rotate(-36.4 550 630)">
+          <rect x={-600} y={630 - 170} width={2300} height={340} fill="url(#sgBand)" />
+        </g>
         {band.map((s, i) => (
           <circle key={`b${i}`} cx={s.x} cy={s.y} r={s.r} fill="#E8E6FF" opacity={0.25 + 0.3 * (0.5 + 0.5 * Math.sin(t * 1.3 + s.p))} />
         ))}
@@ -178,12 +183,11 @@ export const SummitBg: React.FC = () => {
           </g>
         ))}
         <rect x={0} y={1360} width={WIDTH} height={HEIGHT - 1360} fill="#1A1844" />
-        <g filter="url(#sgSoft)">
-          {clouds.map((c, i) => {
-            const x = ((c.x + t * c.v) % 1500) - 200;
-            return <ellipse key={i} cx={x} cy={c.y} rx={c.rx} ry={c.ry} fill="url(#sgCloud)" opacity={0.75} />;
-          })}
-        </g>
+        {/* Weiche Wolkenballen (Verlauf statt Filter – ein Filter pro Frame wäre teuer) */}
+        {clouds.map((c, i) => {
+          const x = ((c.x + t * c.v) % 1500) - 200;
+          return <ellipse key={i} cx={x} cy={c.y} rx={c.rx * 1.3} ry={c.ry * 1.6} fill="url(#sgCloud)" opacity={0.8} />;
+        })}
         <rect x={0} y={1290} width={WIDTH} height={60} fill="#8E96E0" opacity={0.05} />
       </svg>
       <AbsoluteFill style={{ background: "radial-gradient(ellipse 95% 75% at 50% 42%, rgba(0,0,0,0) 55%, rgba(2,2,12,0.6) 100%)" }} />

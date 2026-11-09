@@ -1,5 +1,5 @@
 import React, { useMemo } from "react";
-import { AbsoluteFill, interpolate, random, useCurrentFrame, useVideoConfig } from "remotion";
+import { AbsoluteFill, random, useCurrentFrame, useVideoConfig } from "remotion";
 
 /*
  * Farmhaus 1829 bei Kerzenlicht (Oliver Cowdery, LuB 6): eine Wand aus dunklen Holzbohlen, oben
@@ -154,7 +154,6 @@ export const CandleBg: React.FC = () => {
       </svg>
       {/* Ein Hauch Wärme, der mit dem Frühling zunimmt */}
       <AbsoluteFill style={{ background: `radial-gradient(ellipse 70% 45% at 60% 62%, rgba(255,190,110,${(0.04 + 0.04 * spring) * fl}) 0%, rgba(255,190,110,0) 100%)` }} />
-      <AbsoluteFill style={{ opacity: interpolate(p, [0, 1], [0, 0]) }} />
     </AbsoluteFill>
   );
 };
