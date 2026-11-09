@@ -1830,8 +1830,10 @@ Teil des App-Builds (die App-Prüfungen und Netlify fassen es nicht an).
   Videospiel, Handy-Chat, Kartentisch, Stadion, Detektiv, Quizshow,
   Notizbuch, Sonnenaufgang, Jerusalem bei Nacht, Feuer im Hof, Weltraum,
   Palast, Traum, Wüste, Tempel-Baustelle, Sendungsverfolgung,
-  Kurzvideo-Feed, Kochshow, Abendweg und Wald – mit eigener Musik, eigener
-  Stimme und Soundeffekten.
+  Kurzvideo-Feed, Kochshow, Abendweg, Wald, Kerzenlicht, Heiligtum bei
+  Nacht, Labor, Bildergeschichte, Nachrichtensender, Meer bei Nacht, Gipfel,
+  Unwetter und Thronsaal – mit eigener Musik, eigener Stimme und
+  Soundeffekten.
   So sehen die Shorts einer Woche nicht gleich aus.
 - **Am besten kommen an:** Geschichten aus den Schriften, kurz, cool und
   informativ erzählt (die Taktik als Kartentisch wie «Mission Lockvogel»),
@@ -1935,6 +1937,49 @@ Teil des App-Builds (die App-Prüfungen und Netlify fassen es nicht an).
   Videos, das neue Quiz und das Minispiel zum Nachholen an, ohne dass eine
   Karte rückt; die ersetzten Karten stellt der Kasten «Ersetzte Karten
   zurückstellen» zurück.
+- **In der Woche 9.–15. November** (Suche nach Wahrheit) neun Videos, vor
+  jedem interaktiven Element eines – die Woche hat kein Minispiel. Gewünscht
+  waren vor allem Geschichten aus den Schriften, spannend und abwechslungsreich,
+  mit wenig Spiel: Jede Folge erzählt eine Geschichte, und jede hat einen
+  eigenen, neuen Look (Kerzenlicht, Heiligtum bei Nacht, Labor, Bildergeschichte,
+  Nachrichtensender, Meer bei Nacht, Gipfel unter den Welten, Unwetter am
+  Horeb, Thronsaal). Die drei Textkarten sind ersetzt; James aus dem
+  Schwimmbad erzählt jetzt «Nicht im Sturm». Ersetzt ist auch das Quiz zu
+  Jakobus 1:5: Die Antwort gab schon «Gruppenchat 1820» zwei Wochen davor. An
+  seine Stelle tritt ein Quiz zu Samuel (`quiz-4`, `late`) – das Video davor
+  endet beim vierten Ruf, ohne Samuels Antwort zu verraten. Die Folgen in der
+  Reihenfolge des Feeds:
+  - «Niemand wusste es» (Kerzenlicht im Farmhaus 1829: Oliver Cowdery betet
+    still, und LuB 6:22–23 erinnert ihn an genau diese Nacht; LuB 8:2) →
+    Umfrage «Woran merkst du am ehesten, dass etwas wahr ist?» – Platz 0,5.
+  - «Samuel!» (Heiligtum in Schilo bei Nacht, 1 Samuel 3:1–19) → das neue
+    Quiz «Was sagt Samuel?» – 3,5 und 3,75, anstelle der Textkarte zu Joseph
+    Smith und des Quiz zu Jakobus 1:5.
+  - «Das Experiment» (Labor, Alma 32:27–43: das Wort als Samenkorn, mit
+    Gegenprobe) → Skala «Wie sicher bist du dir gerade in deinem Glauben?» –
+    3,875.
+  - «Habt ihr gefragt?» (Bildergeschichte, 1 Nephi 10–11 und 15:1–20:
+    dieselbe Frage, nur einer fragt Gott) → «Fakt oder Mythos? Wer Fragen
+    hat, hat keinen Glauben.» – 5,5, anstelle der «7 Tipps».
+  - «Eilmeldung aus Beröa» (Nachrichtensender, Apostelgeschichte 17:1–21:
+    Thessalonich regt sich auf, Beröa prüft, Athen will nur das Neueste) →
+    «Was würdest du tun? Ein Video behauptet etwas Krasses über die Kirche.»
+    – 6,5.
+  - «Sechzehn Steine» (Meer bei Nacht, Ether 2–3 und 6: erst die Schiffe,
+    dann die Luft, dann das Licht) → Vers-Puzzle 2 Nephi 28:30 – 7,5.
+  - «Echt oder Fälschung?» (Gipfel unter einem Himmel voller Welten, Mose
+    1:1–30: Wer das Original kennt, erkennt die Fälschung) → Quiz zu Mose
+    1:39 – 9,5, anstelle der Textkarte; das Video nennt den Vers, verrät ihn
+    aber nicht.
+  - «Nicht im Sturm» (Unwetter am Horeb, 1 Könige 19:2–13, dann James im
+    Hallenbad aus «Stimmen von Jugendlichen») → Frage «Wie hast du schon
+    einmal eine Antwort von Gott bekommen?» – 10,5.
+  - «Wer lügt?» (Thronsaal, 1 Könige 3:7–28: zwei Frauen, ein Kind, das
+    hörende Herz) → Teilen-Aufgabe «Drei Wahrheiten, eine Lüge» – 11,5.
+  Die Szenen der Woche bringen ihr Schema und ihren Look in eigenen Dateien
+  mit (`shorts/src/scenes/w46/<typ>.schema.ts`, `<typ>.look.ts`); so konnten
+  die neun Folgen nebeneinander entstehen, ohne sich gemeinsame Dateien
+  streitig zu machen.
 - **Wenig Soundeffekte, und keine hellen.** In den ersten Fassungen der
   Woche zum Schriftstudium klang es etwa alle fünf Sekunden – helle Glocken,
   Pixel-Töne, Münzen. Das störte. Seither hat jede Folge `"sfx": "sparse"`:

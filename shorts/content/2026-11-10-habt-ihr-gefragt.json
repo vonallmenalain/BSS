@@ -11,11 +11,11 @@
   "voice": {
     "provider": "google",
     "languageCode": "de-DE",
-    "name": "de-DE-Chirp3-HD-Charon",
-    "speakingRate": 1.0
+    "name": "de-DE-Chirp3-HD-Fenrir",
+    "speakingRate": 1.05
   },
   "music": {
-    "src": "music/mystery.mp3",
+    "src": "music/chase.mp3",
     "volume": 0.3,
     "duckTo": 0.08
   },
@@ -23,8 +23,145 @@
     {
       "id": "hook",
       "type": "comic",
+      "stage": "hook",
+      "ref": "1 Nephi 15:8–9",
+      "sky": 0.2,
+      "cues": [
+        "Drei Brüder",
+        "Dieselbe Frage",
+        "Nur einer fragt Gott"
+      ],
+      "narration": "Drei Brüder. [pause short] Dieselbe Frage. [pause short] Nur einer fragt Gott."
+    },
+    {
+      "id": "oelbaum",
+      "type": "comic",
       "stage": "dream",
-      "narration": "Habt ihr gefragt?"
+      "caption": "Im Tal Lemuel",
+      "ref": "1 Nephi 10:12–14",
+      "sky": 0.25,
+      "cues": [
+        "von einem Ölbaum",
+        "abgebrochen",
+        "wieder eingepfropft"
+      ],
+      "narration": "Lehi erzählt seinen Söhnen von einem Ölbaum. [pause short] Die Zweige werden abgebrochen, verstreut – [pause short] und eines Tages wieder eingepfropft."
+    },
+    {
+      "id": "nephi",
+      "type": "comic",
+      "stage": "ponder",
+      "caption": "Nephi",
+      "ref": "1 Nephi 10:17; 11:1",
+      "sky": 0.15,
+      "cues": [
+        "selbst sehen",
+        "hören",
+        "wissen",
+        "Er glaubt",
+        "auf einen hohen Berg"
+      ],
+      "narration": "Nephi will es selbst sehen, hören und wissen. [pause short] Er glaubt, sinnt nach – [pause short] und wird im Geist auf einen hohen Berg entrückt."
+    },
+    {
+      "id": "streit",
+      "type": "comic",
+      "stage": "dispute",
+      "caption": "Zurück im Zelt",
+      "ref": "1 Nephi 15:1–7",
+      "sky": 0.15,
+      "cues": [
+        "streiten seine Brüder"
+      ],
+      "bubble": {
+        "text": "Wir verstehen nicht, was Vater mit dem Ölbaum meint!",
+        "at": "Wir verstehen nicht",
+        "who": "brothers"
+      },
+      "narration": "Zurück im Zelt streiten seine Brüder. [pause short] Wir verstehen nicht, was Vater mit dem Ölbaum meint!"
+    },
+    {
+      "id": "frage",
+      "type": "comic",
+      "stage": "ask",
+      "ref": "1 Nephi 15:8",
+      "sky": 0.15,
+      "cues": [
+        "Nephi fragt nur"
+      ],
+      "bubble": {
+        "text": "Habt ihr den Herrn gefragt?",
+        "at": "Habt ihr den Herrn gefragt",
+        "who": "nephi"
+      },
+      "narration": "Nephi fragt nur: [pause short] Habt ihr den Herrn gefragt?"
+    },
+    {
+      "id": "antwort",
+      "type": "comic",
+      "stage": "reply",
+      "ref": "1 Nephi 15:9",
+      "sky": 0.15,
+      "bubble": {
+        "text": "Nein. Der Herr macht uns so etwas nicht kund.",
+        "at": "Nein",
+        "who": "brothers"
+      },
+      "narration": "Nein. [pause short] Der Herr macht uns so etwas nicht kund."
+    },
+    {
+      "id": "versprechen",
+      "type": "comic",
+      "stage": "answer",
+      "ref": "1 Nephi 15:11",
+      "sky": 0.2,
+      "items": [
+        {
+          "text": "Herz nicht verhärten",
+          "icon": "heart",
+          "at": "sein Herz nicht verhärtet"
+        },
+        {
+          "text": "Im Glauben bitten",
+          "icon": "hands",
+          "at": "im Glauben bittet"
+        },
+        {
+          "text": "Gebote halten",
+          "icon": "tablets",
+          "at": "die Gebote hält"
+        }
+      ],
+      "cues": [
+        "Doch Gott hat versprochen",
+        "dem wird es kundgetan"
+      ],
+      "narration": "Doch Gott hat versprochen: [pause short] Wer sein Herz nicht verhärtet, [pause short] im Glauben bittet und die Gebote hält, [pause short] dem wird es kundgetan."
+    },
+    {
+      "id": "ruhe",
+      "type": "comic",
+      "stage": "peace",
+      "ref": "1 Nephi 15:12–20",
+      "sky": 0.25,
+      "cues": [
+        "erklärt Nephi ihnen den Ölbaum",
+        "ruhig und demütig"
+      ],
+      "narration": "Dann erklärt Nephi ihnen den Ölbaum. [pause short] Und die Brüder werden ruhig und demütig."
+    },
+    {
+      "id": "punch",
+      "type": "kinetic",
+      "holdAfterSec": 1.2,
+      "lines": [
+        "Dieselbe Frage.",
+        "Derselbe Vater.",
+        "Nur einer hat Gott gefragt.",
+        "Was machst du",
+        "mit deinen Fragen?"
+      ],
+      "narration": "Dieselbe Frage. [pause short] Derselbe Vater. [pause short] Nur einer hat Gott gefragt. [pause short] Was machst du mit deinen Fragen?"
     }
   ]
 }

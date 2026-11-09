@@ -2034,8 +2034,8 @@ export const PACK_WEEKS: PackWeek[] = [
         emoji: '🪔',
         title: 'Short: Samuel!',
         body:
-          'Mitten in der Nacht ruft jemand den jungen Samuel – dreimal. Und dreimal läuft er zum ' +
-          'falschen (1 Samuel 3:1–10).',
+          'Mitten in der Nacht ruft jemand den jungen Samuel – dreimal. Und jedes Mal rennt er zu ' +
+          'Eli (1 Samuel 3:1–10).',
         ...ownShort('2026-11-09-samuel', '1 Samuel 3:1–10'),
       },
       {
@@ -2107,8 +2107,8 @@ export const PACK_WEEKS: PackWeek[] = [
         emoji: '💭',
         title: 'Short: Habt ihr gefragt?',
         body:
-          'Laman und Lemuel streiten, was Lehis Traum bedeutet. Nephi hat dieselbe Frage – aber er ' +
-          'macht etwas anderes damit (1 Nephi 15:1–11).',
+          'Laman und Lemuel streiten, was Lehis Ölbaum bedeutet. Nephi hat dieselbe Frage – aber ' +
+          'nur er fragt Gott (1 Nephi 15:1–11).',
         ...ownShort('2026-11-10-habt-ihr-gefragt', '1 Nephi 15:8–11'),
       },
       {

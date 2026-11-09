@@ -188,13 +188,13 @@
         "Der Herr ist mit ihm",
         "zu Boden fallen"
       ],
-      "narration": "Am Morgen öffnet Samuel die Türen des Heiligtums. [pause short] Er wächst heran. [pause short] Der Herr ist mit ihm [pause short] und lässt keines seiner Worte zu Boden fallen."
+      "narration": "Am Morgen öffnet Samuel die Türen. [pause short] Er wächst heran. [pause short] Der Herr ist mit ihm [pause short] und lässt keines seiner Worte zu Boden fallen."
     },
     {
       "id": "punch",
       "type": "kinetic",
       "sky": 0.9,
-      "holdAfterSec": 1.2,
+      "holdAfterSec": 1.0,
       "lines": [
         "Gott ruft.",
         "Oft leise.",
