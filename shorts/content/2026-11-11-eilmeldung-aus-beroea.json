@@ -11,11 +11,11 @@
   "voice": {
     "provider": "google",
     "languageCode": "de-DE",
-    "name": "de-DE-Chirp3-HD-Charon",
-    "speakingRate": 1.0
+    "name": "de-DE-Chirp3-HD-Kore",
+    "speakingRate": 1.08
   },
   "music": {
-    "src": "music/mystery.mp3",
+    "src": "music/anthem.mp3",
     "volume": 0.3,
     "duckTo": 0.08
   },
@@ -24,7 +24,142 @@
       "id": "hook",
       "type": "news",
       "stage": "breaking",
-      "narration": "Eilmeldung aus Beröa"
+      "ref": "Apostelgeschichte 17:1–3",
+      "tag": "Eilmeldung",
+      "headline": "Zwei Fremde: «Der Messias ist schon da»",
+      "cues": [
+        "Eilmeldung",
+        "Zwei Fremde behaupten",
+        "Der Messias ist schon da"
+      ],
+      "narration": "Eilmeldung! [pause short] Zwei Fremde behaupten: [pause short] Der Messias ist schon da."
+    },
+    {
+      "id": "route",
+      "type": "news",
+      "stage": "route",
+      "ref": "Apostelgeschichte 17",
+      "tag": "Unterwegs",
+      "headline": "Paulus und Silas in Griechenland",
+      "cues": [
+        "Paulus und Silas",
+        "Drei Städte",
+        "jede reagiert anders"
+      ],
+      "narration": "Paulus und Silas ziehen von Stadt zu Stadt. [pause short] Drei Städte hören ihre Botschaft – [pause short] und jede reagiert anders."
+    },
+    {
+      "id": "thessalonich",
+      "type": "news",
+      "stage": "thessalonich",
+      "ref": "Apostelgeschichte 17:1–4",
+      "tag": "Live · Thessalonich",
+      "headline": "Paulus erklärt die Schriften",
+      "bubble": "Jesus ist der Messias.",
+      "cues": [
+        "Station eins: Thessalonich",
+        "erklärt aus den Schriften",
+        "Jesus ist der Messias",
+        "Einige glauben"
+      ],
+      "narration": "Station eins: Thessalonich. [pause short] Paulus erklärt aus den Schriften: [pause short] Jesus ist der Messias. [pause short] Einige glauben."
+    },
+    {
+      "id": "aufruhr",
+      "type": "news",
+      "stage": "riot",
+      "ref": "Apostelgeschichte 17:5–7",
+      "tag": "Live · Thessalonich",
+      "headline": "Die ganze Stadt in Aufruhr",
+      "items": [
+        "Die stellen die Welt auf den Kopf!",
+        "Sie sagen, es gibt einen anderen König!",
+        "Zum Haus des Jason!",
+        "Holt sie raus!"
+      ],
+      "cues": [
+        "andere werden eifersüchtig",
+        "rotten eine Menge zusammen",
+        "die ganze Stadt in Aufruhr"
+      ],
+      "narration": "Doch andere werden eifersüchtig. [pause short] Sie rotten eine Menge zusammen [pause short] und bringen die ganze Stadt in Aufruhr."
+    },
+    {
+      "id": "beroea",
+      "type": "news",
+      "stage": "beroea",
+      "ref": "Apostelgeschichte 17:10–11",
+      "tag": "Live · Beröa",
+      "headline": "Hier hört man offen zu",
+      "cues": [
+        "Nachts müssen die beiden fliehen",
+        "Station zwei: Beröa",
+        "offen zu"
+      ],
+      "narration": "Nachts müssen die beiden fliehen. [pause short] Station zwei: Beröa. [pause short] Hier hören die Menschen offen zu."
+    },
+    {
+      "id": "pruefen",
+      "type": "news",
+      "stage": "check",
+      "ref": "Apostelgeschichte 17:11–12",
+      "tag": "Faktencheck · Beröa",
+      "headline": "Jeden Tag in den Schriften geprüft",
+      "cues": [
+        "nicht einfach alles",
+        "Jeden Tag",
+        "ob es stimmt",
+        "viele kommen zum Glauben"
+      ],
+      "narration": "Aber sie glauben nicht einfach alles. [pause short] Jeden Tag forschen sie in den Schriften, [pause short] ob es stimmt. [pause short] Und viele kommen zum Glauben."
+    },
+    {
+      "id": "athen",
+      "type": "news",
+      "stage": "athens",
+      "ref": "Apostelgeschichte 17:13–21",
+      "tag": "Live · Athen",
+      "headline": "Hauptsache neu",
+      "items": [
+        "Was gibt’s Neues?",
+        "Paulus redet auf dem Markt",
+        "Epikureer gegen Stoiker",
+        "Neue Götter?",
+        "Altar «Dem unbekannten Gott»"
+      ],
+      "cues": [
+        "Die Gegner reisen hinterher",
+        "Station drei: Athen",
+        "nichts lieber",
+        "das Neueste"
+      ],
+      "narration": "Die Gegner reisen hinterher. [pause short] Station drei: Athen. [pause short] Hier tun die Leute nichts lieber, [pause short] als das Neueste zu erzählen oder zu hören."
+    },
+    {
+      "id": "vergleich",
+      "type": "news",
+      "stage": "choice",
+      "tag": "Analyse",
+      "headline": "Drei Städte, drei Reaktionen",
+      "cues": [
+        "Drei Städte",
+        "regen sich auf",
+        "wollen nur Neues",
+        "Und Beröa",
+        "prüft nach"
+      ],
+      "narration": "Drei Städte. [pause short] Die einen regen sich auf. [pause short] Die anderen wollen nur Neues. [pause short] Und Beröa? [pause short] Hört offen zu – und prüft nach."
+    },
+    {
+      "id": "frage",
+      "type": "kinetic",
+      "holdAfterSec": 1.2,
+      "lines": [
+        "Wenn du etwas Krasses hörst:",
+        "Welche Stadt",
+        "bist du?"
+      ],
+      "narration": "Wenn du etwas Krasses hörst: [pause short] Welche Stadt bist du?"
     }
   ]
 }
