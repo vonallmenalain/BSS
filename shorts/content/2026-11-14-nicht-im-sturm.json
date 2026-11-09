@@ -11,11 +11,11 @@
   "voice": {
     "provider": "google",
     "languageCode": "de-DE",
-    "name": "de-DE-Chirp3-HD-Charon",
+    "name": "de-DE-Chirp3-HD-Despina",
     "speakingRate": 1.0
   },
   "music": {
-    "src": "music/mystery.mp3",
+    "src": "music/temple.mp3",
     "volume": 0.3,
     "duckTo": 0.08
   },
@@ -24,7 +24,118 @@
       "id": "hook",
       "type": "horeb",
       "stage": "hook",
-      "narration": "Nicht im Sturm"
+      "ref": "1 Könige 19:11–12",
+      "sky": 0.1,
+      "lines": [
+        { "text": "Sturm", "at": "Ein Sturm" },
+        { "text": "Erdbeben", "at": "Ein Erdbeben" },
+        { "text": "Feuer", "at": "Ein Feuer" }
+      ],
+      "cues": ["Und Gott war in keinem davon"],
+      "narration": "Ein Sturm. [pause short] Ein Erdbeben. [pause short] Ein Feuer. [pause short] Und Gott war in keinem davon."
+    },
+    {
+      "id": "ginster",
+      "type": "horeb",
+      "stage": "broom",
+      "ref": "1 Könige 19:2–4",
+      "sky": 0.1,
+      "cues": ["Königin Isebel droht ihm"],
+      "lines": [
+        { "text": "Es ist genug.", "at": "Es ist genug", "style": "say" }
+      ],
+      "narration": "Der Prophet Elija ist am Ende. [pause short] Königin Isebel droht ihm mit dem Tod. [pause short] Er flieht in die Wüste, [pause short] setzt sich unter einen Ginsterstrauch und sagt: [pause short] Es ist genug."
+    },
+    {
+      "id": "engel",
+      "type": "horeb",
+      "stage": "angel",
+      "ref": "1 Könige 19:5–8",
+      "sky": 0.15,
+      "cues": ["Ein Engel weckt ihn", "Steh auf und iss", "vierzig Tage und Nächte", "Gottesberg Horeb"],
+      "narration": "Ein Engel weckt ihn: [pause short] Steh auf und iss. [pause short] Gestärkt geht Elija vierzig Tage und Nächte [pause short] bis zum Gottesberg Horeb."
+    },
+    {
+      "id": "hoehle",
+      "type": "horeb",
+      "stage": "cave",
+      "ref": "1 Könige 19:9",
+      "sky": 0.1,
+      "cues": ["In einer Höhle"],
+      "lines": [
+        { "text": "Was tust du hier, Elija?", "at": "Was tust du hier, Elija", "style": "voice" }
+      ],
+      "narration": "In einer Höhle fragt ihn Gott: [pause short] Was tust du hier, Elija?"
+    },
+    {
+      "id": "sturm",
+      "type": "horeb",
+      "stage": "wind",
+      "ref": "1 Könige 19:11",
+      "sky": 0.05,
+      "cues": ["Stell dich auf den Berg", "Ein gewaltiger Sturm", "zerbricht die Felsen"],
+      "lines": [
+        { "text": "Nicht im Sturm.", "at": "Doch der Herr war nicht im Sturm" }
+      ],
+      "narration": "Stell dich auf den Berg! [pause short] Ein gewaltiger Sturm zerbricht die Felsen. [pause short] Doch der Herr war nicht im Sturm."
+    },
+    {
+      "id": "beben-feuer",
+      "type": "horeb",
+      "stage": "quakefire",
+      "ref": "1 Könige 19:11–12",
+      "sky": 0.05,
+      "cues": ["Dann ein Erdbeben", "Dann ein Feuer"],
+      "lines": [
+        { "text": "Nicht im Erdbeben.", "at": "Nicht im Erdbeben" },
+        { "text": "Nicht im Feuer.", "at": "Auch nicht im Feuer" }
+      ],
+      "narration": "Dann ein Erdbeben. [pause short] Nicht im Erdbeben. [pause short] Dann ein Feuer. [pause short] Auch nicht im Feuer."
+    },
+    {
+      "id": "saeuseln",
+      "type": "horeb",
+      "stage": "whisper",
+      "ref": "1 Könige 19:12–13",
+      "sky": 0.2,
+      "cues": ["ein sanftes, leises Säuseln", "verhüllt sein Gesicht", "tritt hinaus"],
+      "narration": "Und dann: [pause short] ein sanftes, leises Säuseln. [pause] Elija verhüllt sein Gesicht mit dem Mantel [pause short] und tritt hinaus."
+    },
+    {
+      "id": "james",
+      "type": "horeb",
+      "stage": "pool",
+      "ref": "Für eine starke Jugend, Oktober 2026",
+      "sky": 0.6,
+      "cues": ["ist Rettungsschwimmer", "Zweimal kommt ihm der Gedanke"],
+      "lines": [
+        { "text": "Heute", "at": "Heute" },
+        { "text": "Schau nach der Frau am Beckenrand.", "at": "Schau nach der Frau am Beckenrand", "style": "thought" }
+      ],
+      "narration": "Heute. [pause short] James, 19, ist Rettungsschwimmer. [pause short] Zweimal kommt ihm der Gedanke: [pause short] Schau nach der Frau am Beckenrand."
+    },
+    {
+      "id": "meldung",
+      "type": "horeb",
+      "stage": "report",
+      "ref": "Für eine starke Jugend, Oktober 2026",
+      "sky": 0.6,
+      "cues": ["Er zögert", "meldet es dann doch", "wird ohnmächtig", "Am Ende geht es ihr wieder gut"],
+      "narration": "Er zögert – [pause short] und meldet es dann doch. [pause short] Die Frau ist Diabetikerin und wird ohnmächtig. [pause short] Am Ende geht es ihr wieder gut."
+    },
+    {
+      "id": "frage",
+      "type": "horeb",
+      "stage": "end",
+      "ref": "Für eine starke Jugend, Oktober 2026",
+      "sky": 0.4,
+      "holdAfterSec": 1.4,
+      "lines": [
+        { "text": "Hör auf die sanfte, leise Stimme.", "at": "Hör auf die sanfte, leise Stimme", "style": "quote", "by": "James, 19" },
+        { "text": "Gott antwortet selten mit Donner.", "at": "Gott antwortet selten mit Donner", "style": "say" },
+        { "text": "Wie hat er dir schon geantwortet?", "at": "Wie hat er dir schon geantwortet", "style": "question" }
+      ],
+      "narration": "James sagt: [pause short] Hör auf die sanfte, leise Stimme. [pause short] Gott antwortet selten mit Donner. [pause short] Wie hat er dir schon geantwortet?"
     }
   ]
 }

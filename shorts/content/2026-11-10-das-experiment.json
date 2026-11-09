@@ -12,7 +12,7 @@
     "provider": "google",
     "languageCode": "de-DE",
     "name": "de-DE-Chirp3-HD-Puck",
-    "speakingRate": 1.0
+    "speakingRate": 1.05
   },
   "music": {
     "src": "music/space.mp3",
@@ -30,7 +30,7 @@
         "Ein Experiment",
         "ein einziges Samenkorn"
       ],
-      "narration": "Ein Experiment. [pause short] Alles, was du brauchst: [pause short] ein einziges Samenkorn."
+      "narration": "Ein Experiment. [pause short] Du brauchst nur [pause short] ein einziges Samenkorn."
     },
     {
       "id": "zoramiten",
@@ -171,13 +171,13 @@
         {
           "label": "Das Korn",
           "text": "war gut",
-          "at": "Nicht, weil das Korn schlecht war"
+          "at": "Nicht weil das Korn schlecht war"
         }
       ],
       "cues": [
         "Die Gegenprobe"
       ],
-      "narration": "Die Gegenprobe: [pause short] Ohne Pflege bekommt die Pflanze keine Wurzeln [pause short] und verdorrt in der Sonne. [pause short] Nicht, weil das Korn schlecht war."
+      "narration": "Die Gegenprobe: [pause short] Ohne Pflege bekommt die Pflanze keine Wurzeln [pause short] und verdorrt in der Sonne. [pause short] Nicht weil das Korn schlecht war."
     },
     {
       "id": "baum",
