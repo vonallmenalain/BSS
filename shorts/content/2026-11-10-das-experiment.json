@@ -1,0 +1,30 @@
+{
+  "id": "2026-11-10-das-experiment",
+  "title": "Das Experiment",
+  "date": "2026-11-10",
+  "series": "Für eine starke Jugend · November",
+  "brand": {
+    "name": "AntiDoom"
+  },
+  "look": "lab",
+  "sfx": "sparse",
+  "voice": {
+    "provider": "google",
+    "languageCode": "de-DE",
+    "name": "de-DE-Chirp3-HD-Charon",
+    "speakingRate": 1.0
+  },
+  "music": {
+    "src": "music/mystery.mp3",
+    "volume": 0.3,
+    "duckTo": 0.08
+  },
+  "scenes": [
+    {
+      "id": "hook",
+      "type": "seed",
+      "stage": "hook",
+      "narration": "Das Experiment"
+    }
+  ]
+}

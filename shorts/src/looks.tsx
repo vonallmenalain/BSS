@@ -4,6 +4,7 @@
  * Akzentfarben und Schriften; die Szenen holen sich das über `useLook()`.
  */
 import React, { createContext, useContext } from "react";
+import { W46_LOOKS } from "./scenes/w46/looks";
 import { theme } from "./theme";
 
 export type LookId =
@@ -26,7 +27,16 @@ export type LookId =
   | "feed"
   | "kitchen"
   | "dusk"
-  | "forest";
+  | "forest"
+  | "candle"
+  | "lamp"
+  | "lab"
+  | "comic"
+  | "news"
+  | "sea"
+  | "summit"
+  | "storm"
+  | "court";
 
 export type Look = {
   id: LookId;
@@ -45,6 +55,8 @@ export type Look = {
 };
 
 export const LOOKS: Record<LookId, Look> = {
+  /* Die Looks der Woche zur Suche nach Wahrheit – je einer bei seiner Folge (`scenes/w46/<typ>.look.ts`) */
+  ...W46_LOOKS,
   /** Sonnenaufgang – der ursprüngliche Stil */
   dawn: {
     id: "dawn",

@@ -1,0 +1,30 @@
+{
+  "id": "2026-11-14-nicht-im-sturm",
+  "title": "Nicht im Sturm",
+  "date": "2026-11-14",
+  "series": "Für eine starke Jugend · November",
+  "brand": {
+    "name": "AntiDoom"
+  },
+  "look": "storm",
+  "sfx": "sparse",
+  "voice": {
+    "provider": "google",
+    "languageCode": "de-DE",
+    "name": "de-DE-Chirp3-HD-Charon",
+    "speakingRate": 1.0
+  },
+  "music": {
+    "src": "music/mystery.mp3",
+    "volume": 0.3,
+    "duckTo": 0.08
+  },
+  "scenes": [
+    {
+      "id": "hook",
+      "type": "horeb",
+      "stage": "hook",
+      "narration": "Nicht im Sturm"
+    }
+  ]
+}

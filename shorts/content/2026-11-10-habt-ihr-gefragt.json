@@ -1,0 +1,30 @@
+{
+  "id": "2026-11-10-habt-ihr-gefragt",
+  "title": "Habt ihr gefragt?",
+  "date": "2026-11-10",
+  "series": "Für eine starke Jugend · November",
+  "brand": {
+    "name": "AntiDoom"
+  },
+  "look": "comic",
+  "sfx": "sparse",
+  "voice": {
+    "provider": "google",
+    "languageCode": "de-DE",
+    "name": "de-DE-Chirp3-HD-Charon",
+    "speakingRate": 1.0
+  },
+  "music": {
+    "src": "music/mystery.mp3",
+    "volume": 0.3,
+    "duckTo": 0.08
+  },
+  "scenes": [
+    {
+      "id": "hook",
+      "type": "comic",
+      "stage": "dream",
+      "narration": "Habt ihr gefragt?"
+    }
+  ]
+}

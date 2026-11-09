@@ -23,6 +23,8 @@ const fonts: Array<{ family: string; file: string; weight: string; style?: "norm
   { family: "Space Mono", file: "space-mono-latin-700-normal.woff2", weight: "700" },
   { family: "Cinzel", file: "cinzel-latin-400-normal.woff2", weight: "400" },
   { family: "Cinzel", file: "cinzel-latin-700-normal.woff2", weight: "700" },
+  /* Comic-Schrift für die Bildergeschichte (Woche zur Suche nach Wahrheit) */
+  { family: "Bangers", file: "bangers-latin-400-normal.woff2", weight: "400" },
 ];
 
 export const fontsReady = Promise.all(

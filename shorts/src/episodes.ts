@@ -36,6 +36,15 @@ import seiMutigUndStark from "../content/2026-11-05-sei-mutig-und-stark.json";
 import branntNichtUnserHerz from "../content/2026-11-06-brannte-nicht-unser-herz.json";
 import worteVonZuHause from "../content/2026-11-07-worte-von-zu-hause.json";
 import buecherturm from "../content/2026-11-08-buecherturm.json";
+import niemandWussteEs from "../content/2026-11-09-niemand-wusste-es.json";
+import samuel from "../content/2026-11-09-samuel.json";
+import dasExperiment from "../content/2026-11-10-das-experiment.json";
+import habtIhrGefragt from "../content/2026-11-10-habt-ihr-gefragt.json";
+import eilmeldungAusBeroea from "../content/2026-11-11-eilmeldung-aus-beroea.json";
+import sechzehnSteine from "../content/2026-11-12-sechzehn-steine.json";
+import echtOderFaelschung from "../content/2026-11-13-echt-oder-faelschung.json";
+import nichtImSturm from "../content/2026-11-14-nicht-im-sturm.json";
+import werLuegt from "../content/2026-11-15-wer-luegt.json";
 
 export const episodes: Array<{ id: string } & Record<string, unknown>> = [
   anpackenStattWarten,
@@ -72,4 +81,13 @@ export const episodes: Array<{ id: string } & Record<string, unknown>> = [
   branntNichtUnserHerz,
   worteVonZuHause,
   buecherturm,
+  niemandWussteEs,
+  samuel,
+  dasExperiment,
+  habtIhrGefragt,
+  eilmeldungAusBeroea,
+  sechzehnSteine,
+  echtOderFaelschung,
+  nichtImSturm,
+  werLuegt,
 ];

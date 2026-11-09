@@ -1,0 +1,30 @@
+{
+  "id": "2026-11-11-eilmeldung-aus-beroea",
+  "title": "Eilmeldung aus Beröa",
+  "date": "2026-11-11",
+  "series": "Für eine starke Jugend · November",
+  "brand": {
+    "name": "AntiDoom"
+  },
+  "look": "news",
+  "sfx": "sparse",
+  "voice": {
+    "provider": "google",
+    "languageCode": "de-DE",
+    "name": "de-DE-Chirp3-HD-Charon",
+    "speakingRate": 1.0
+  },
+  "music": {
+    "src": "music/mystery.mp3",
+    "volume": 0.3,
+    "duckTo": 0.08
+  },
+  "scenes": [
+    {
+      "id": "hook",
+      "type": "news",
+      "stage": "breaking",
+      "narration": "Eilmeldung aus Beröa"
+    }
+  ]
+}

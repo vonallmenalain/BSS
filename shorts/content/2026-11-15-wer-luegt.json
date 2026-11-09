@@ -1,0 +1,30 @@
+{
+  "id": "2026-11-15-wer-luegt",
+  "title": "Wer lügt?",
+  "date": "2026-11-15",
+  "series": "Für eine starke Jugend · November",
+  "brand": {
+    "name": "AntiDoom"
+  },
+  "look": "court",
+  "sfx": "sparse",
+  "voice": {
+    "provider": "google",
+    "languageCode": "de-DE",
+    "name": "de-DE-Chirp3-HD-Charon",
+    "speakingRate": 1.0
+  },
+  "music": {
+    "src": "music/mystery.mp3",
+    "volume": 0.3,
+    "duckTo": 0.08
+  },
+  "scenes": [
+    {
+      "id": "hook",
+      "type": "verdict",
+      "stage": "hook",
+      "narration": "Wer lügt?"
+    }
+  ]
+}

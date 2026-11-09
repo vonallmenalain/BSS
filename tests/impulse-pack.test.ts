@@ -238,9 +238,9 @@ test('deckOrders: eine nachgereichte Karte schiebt sich dazwischen – keine rü
 const SHORTS = ALL.filter((plan) => plan.kind === 'video')
 
 /** Die Wochen mit eigenen Shorts – vor jedem interaktiven Element eines. */
-const SHORT_WEEKS = ['2026-W43', '2026-W44', '2026-W45']
+const SHORT_WEEKS = ['2026-W43', '2026-W44', '2026-W45', '2026-W46']
 
-test('Shorts: die Wochen zu Helamans jungen Kriegern, zur Wahrheit und zum Schriftstudium tragen sie – und nur sie', () => {
+test('Shorts: die Wochen zu Helamans jungen Kriegern, zur Wahrheit, zum Schriftstudium und zur Suche nach Wahrheit tragen sie – und nur sie', () => {
   assert.deepEqual(
     [...new Set(SHORTS.map((plan) => plan.week))],
     SHORT_WEEKS,
@@ -320,6 +320,15 @@ test('Eigene Shorts: Videodateien der App – liegen bereit und spielen ohne Tex
       'w45-eigen-emmaus',
       'w45-eigen-enos',
       'w45-eigen-spiel',
+      'w46-eigen-oliver',
+      'w46-eigen-samuel',
+      'w46-eigen-experiment',
+      'w46-eigen-brueder',
+      'w46-eigen-beroea',
+      'w46-eigen-steine',
+      'w46-eigen-mose',
+      'w46-eigen-elija',
+      'w46-eigen-salomo',
     ],
   )
   const files = new Set<string>()
@@ -351,7 +360,8 @@ test('Wochen mit eigenen Shorts: vor jedem interaktiven Element ein eigenes Vide
     )
     const own = new Set(OWN_SHORTS.filter((plan) => plan.week === key).map((plan) => plan.id))
     const interactive = feed.filter((plan) => !['impuls', 'video', 'feed'].includes(plan.kind))
-    assert.ok(interactive.length >= 10, `${key}: ${interactive.length} interaktive Elemente`)
+    // Neun bis elf – die Woche zur Suche nach Wahrheit hat kein Minispiel.
+    assert.ok(interactive.length >= 9, `${key}: ${interactive.length} interaktive Elemente`)
     for (const plan of interactive) {
       const before = feed[feed.indexOf(plan) - 1]
       assert.ok(before && own.has(before.id), `${plan.id}: davor ${before?.id ?? 'nichts'}`)
@@ -372,14 +382,16 @@ test('Wochen mit eigenen Shorts: vor jedem interaktiven Element ein eigenes Vide
 
 test('Shorts: eine schon eingespielte Woche holt sie nach – und keine Karte rückt', () => {
   /* So steht es in der Datenbank: das Paket ohne die Shorts, die Karten
-     auf ihren ganzen Plätzen (W43: 1 bis 13, W44: 1 bis 12, W45: 1 bis 12),
+     auf ihren ganzen Plätzen (W43: 1 bis 13, W44: 1 bis 12, W45 und W46: 1 bis 12),
      das Minispiel direkt dahinter – in der Woche zum Schriftstudium kam es
      erst mit den Shorts, zusammen mit dem Quiz, das die eiserne Stange
-     ablöst. */
+     ablöst. In der Woche zur Suche nach Wahrheit kommt mit den Shorts das
+     Quiz zu Samuel, das die Frage nach Jakobus 1:5 ablöst. */
   for (const [key, places, retiredCards, added] of [
     ['2026-W43', 14, ['feed-1', 'feed-2', 'feed-3'], []],
     ['2026-W44', 13, ['feed-1', 'feed-2', 'feed-3'], []],
     ['2026-W45', 12, ['feed-1', 'feed-2', 'feed-3', 'quiz-1'], ['quiz-4', 'spiel']],
+    ['2026-W46', 12, ['feed-1', 'feed-2', 'feed-3', 'quiz-1'], ['quiz-4']],
   ] as const) {
     const week = PACK_WEEKS.find((entry) => entry.week === key)!
     const tag = key.slice(-3).toLowerCase()
