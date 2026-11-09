@@ -11,11 +11,11 @@
   "voice": {
     "provider": "google",
     "languageCode": "de-DE",
-    "name": "de-DE-Chirp3-HD-Charon",
+    "name": "de-DE-Chirp3-HD-Iapetus",
     "speakingRate": 1.0
   },
   "music": {
-    "src": "music/mystery.mp3",
+    "src": "music/lofi.mp3",
     "volume": 0.3,
     "duckTo": 0.08
   },
@@ -24,7 +24,111 @@
       "id": "hook",
       "type": "oliver",
       "stage": "hook",
-      "narration": "Niemand wusste es"
+      "sky": 0,
+      "cues": [
+        "Ein Gebet mitten in der Nacht",
+        "Kein Mensch hat davon gewusst"
+      ],
+      "narration": "Ein Gebet mitten in der Nacht. [pause short] Kein Mensch hat davon gewusst."
+    },
+    {
+      "id": "lehrer",
+      "type": "oliver",
+      "stage": "house",
+      "ref": "Heilige, Band 1",
+      "sky": 0.1,
+      "cues": [
+        "Oliver Cowdery",
+        "wohnt bei Familie Smith",
+        "von goldenen Platten"
+      ],
+      "narration": "Winter 1828. [pause short] Oliver Cowdery, 22, ist Lehrer und wohnt bei Familie Smith. [pause short] Dort hört er von ihrem Sohn Joseph – [pause short] und von goldenen Platten."
+    },
+    {
+      "id": "nacht",
+      "type": "oliver",
+      "stage": "night",
+      "ref": "Lehre und Bündnisse 6:22–23",
+      "sky": 0,
+      "cues": [
+        "Oliver will es genau wissen",
+        "betet er im Bett",
+        "Frieden"
+      ],
+      "narration": "Oliver will es genau wissen. [pause short] Eines Nachts betet er im Bett, ganz still in seinem Herzen. [pause short] Und er spürt: Frieden."
+    },
+    {
+      "id": "geheim",
+      "type": "oliver",
+      "stage": "secret",
+      "sky": 0,
+      "cues": [
+        "Er erzählt es niemandem",
+        "Nur Gott und Oliver"
+      ],
+      "narration": "Er erzählt es niemandem. [pause short] Nur Gott und Oliver wissen davon."
+    },
+    {
+      "id": "reise",
+      "type": "oliver",
+      "stage": "journey",
+      "ref": "Heilige, Band 1",
+      "sky": 0.3,
+      "cues": [
+        "reist er nach Harmony",
+        "zu Joseph",
+        "sein Schreiber"
+      ],
+      "narration": "Im Frühling 1829 reist er nach Harmony in Pennsylvania – [pause short] zu Joseph. [pause short] Er wird sein Schreiber."
+    },
+    {
+      "id": "offenbarung",
+      "type": "oliver",
+      "stage": "revelation",
+      "ref": "Lehre und Bündnisse 6:22–23",
+      "sky": 0.2,
+      "cues": [
+        "eine Offenbarung für Oliver"
+      ],
+      "lines": [
+        {
+          "text": "Denk an die Nacht, in der du in deinem Herzen zu mir gerufen hast.",
+          "at": "Denk an die Nacht"
+        },
+        {
+          "text": "Habe ich deinem Sinn nicht Frieden zugesprochen?",
+          "at": "Habe ich deinem Sinn"
+        }
+      ],
+      "glowAt": "Frieden zugesprochen",
+      "narration": "Eines Tages empfängt Joseph eine Offenbarung für Oliver. [pause short] Darin steht: [pause short] Denk an die Nacht, in der du in deinem Herzen zu mir gerufen hast. [pause short] Habe ich deinem Sinn nicht Frieden zugesprochen?"
+    },
+    {
+      "id": "zeugnis",
+      "type": "oliver",
+      "stage": "witness",
+      "ref": "Lehre und Bündnisse 6:23–24",
+      "sky": 0.3,
+      "cues": [
+        "Oliver erstarrt",
+        "Das wusste nur Gott",
+        "grössere Zeugnis"
+      ],
+      "narration": "Oliver erstarrt. [pause short] Das wusste nur Gott. [pause short] Welches grössere Zeugnis kannst du haben als von Gott?"
+    },
+    {
+      "id": "punch",
+      "type": "kinetic",
+      "ref": "Lehre und Bündnisse 8:2",
+      "holdAfterSec": 1.2,
+      "lines": [
+        "Gott spricht",
+        "zu Verstand und Herz.",
+        "Bei Oliver war es Frieden.",
+        "Woran merkst du,",
+        "dass etwas wahr ist?"
+      ],
+      "narration": "Gott spricht zu Verstand und Herz. [pause short] Bei Oliver war es Frieden. [pause short] Woran merkst du, dass etwas wahr ist?"
     }
   ]
 }

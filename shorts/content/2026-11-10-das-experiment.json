@@ -11,11 +11,11 @@
   "voice": {
     "provider": "google",
     "languageCode": "de-DE",
-    "name": "de-DE-Chirp3-HD-Charon",
+    "name": "de-DE-Chirp3-HD-Puck",
     "speakingRate": 1.0
   },
   "music": {
-    "src": "music/mystery.mp3",
+    "src": "music/space.mp3",
     "volume": 0.3,
     "duckTo": 0.08
   },
@@ -24,7 +24,201 @@
       "id": "hook",
       "type": "seed",
       "stage": "hook",
-      "narration": "Das Experiment"
+      "ref": "Alma 32",
+      "title": "Versuch Nr. 32",
+      "cues": [
+        "Ein Experiment",
+        "ein einziges Samenkorn"
+      ],
+      "narration": "Ein Experiment. [pause short] Alles, was du brauchst: [pause short] ein einziges Samenkorn."
+    },
+    {
+      "id": "zoramiten",
+      "type": "seed",
+      "stage": "outcast",
+      "ref": "Alma 32:2–5",
+      "cues": [
+        "Bei den Zoramiten",
+        "aus der Synagoge geworfen",
+        "selbst gebaut",
+        "groben Kleider"
+      ],
+      "narration": "Bei den Zoramiten werden arme Leute aus der Synagoge geworfen – [pause short] obwohl sie sie selbst gebaut haben. [pause short] Nur wegen ihrer groben Kleider."
+    },
+    {
+      "id": "frage",
+      "type": "seed",
+      "stage": "ask",
+      "ref": "Alma 32:5, 27",
+      "say": [
+        {
+          "who": "volk",
+          "text": "Was sollen wir jetzt tun?",
+          "at": "Was sollen wir jetzt tun"
+        },
+        {
+          "who": "alma",
+          "text": "Macht einen Versuch mit meinen Worten.",
+          "at": "Macht einen Versuch mit meinen Worten"
+        }
+      ],
+      "cues": [
+        "Sie fragen Alma"
+      ],
+      "narration": "Sie fragen Alma: [pause short] Was sollen wir jetzt tun? [pause short] Seine Antwort: [pause short] Macht einen Versuch mit meinen Worten."
+    },
+    {
+      "id": "material",
+      "type": "seed",
+      "stage": "material",
+      "ref": "Alma 32:27–28",
+      "title": "Material",
+      "lines": [
+        {
+          "label": "Samenkorn",
+          "text": "Gottes Wort",
+          "at": "Gottes Wort"
+        },
+        {
+          "label": "Boden",
+          "text": "dein Herz",
+          "at": "dein Herz"
+        },
+        {
+          "label": "Für den Anfang",
+          "text": "der Wunsch zu glauben",
+          "at": "der Wunsch zu glauben"
+        }
+      ],
+      "narration": "Das Samenkorn: [pause short] Gottes Wort. [pause short] Der Boden: [pause short] dein Herz. [pause short] Und für den Anfang reicht schon der Wunsch zu glauben."
+    },
+    {
+      "id": "beobachtung",
+      "type": "seed",
+      "stage": "swell",
+      "ref": "Alma 32:28–30",
+      "title": "Beobachtung",
+      "lines": [
+        {
+          "label": "01",
+          "text": "quillt auf",
+          "at": "quillt es auf"
+        },
+        {
+          "label": "02",
+          "text": "keimt",
+          "at": "Es keimt"
+        },
+        {
+          "label": "03",
+          "text": "wächst",
+          "at": "Es wächst"
+        },
+        {
+          "label": "Seele",
+          "text": "weit",
+          "at": "weitet deine Seele"
+        },
+        {
+          "label": "Verstand",
+          "text": "hell",
+          "at": "Verstand hell"
+        }
+      ],
+      "narration": "Ist das Korn gut, [pause short] quillt es auf. [pause short] Es keimt. [pause short] Es wächst. [pause short] Es weitet deine Seele und macht deinen Verstand hell."
+    },
+    {
+      "id": "ergebnis",
+      "type": "seed",
+      "stage": "know",
+      "ref": "Alma 32:33–36",
+      "title": "Ergebnis",
+      "lines": [
+        {
+          "label": "Vollkommenes Wissen",
+          "text": "noch nicht",
+          "at": "Noch nicht"
+        }
+      ],
+      "stamp": {
+        "text": "Das Korn ist gut",
+        "at": "Das Korn ist gut"
+      },
+      "narration": "Ist das schon vollkommenes Wissen? [pause short] Noch nicht. [pause short] Aber du weisst jetzt: [pause short] Das Korn ist gut."
+    },
+    {
+      "id": "gegenprobe",
+      "type": "seed",
+      "stage": "neglect",
+      "ref": "Alma 32:37–39",
+      "title": "Gegenprobe",
+      "lines": [
+        {
+          "label": "Pflege",
+          "text": "keine",
+          "at": "Ohne Pflege"
+        },
+        {
+          "label": "Wurzeln",
+          "text": "keine",
+          "at": "keine Wurzeln"
+        },
+        {
+          "label": "Ergebnis",
+          "text": "verdorrt",
+          "at": "verdorrt in der Sonne"
+        },
+        {
+          "label": "Das Korn",
+          "text": "war gut",
+          "at": "Nicht, weil das Korn schlecht war"
+        }
+      ],
+      "cues": [
+        "Die Gegenprobe"
+      ],
+      "narration": "Die Gegenprobe: [pause short] Ohne Pflege bekommt die Pflanze keine Wurzeln [pause short] und verdorrt in der Sonne. [pause short] Nicht, weil das Korn schlecht war."
+    },
+    {
+      "id": "baum",
+      "type": "seed",
+      "stage": "tree",
+      "ref": "Alma 32:41–42",
+      "title": "Langzeitversuch",
+      "lines": [
+        {
+          "label": "Sorgfalt",
+          "text": "✓",
+          "at": "Mit Sorgfalt"
+        },
+        {
+          "label": "Eifer",
+          "text": "✓",
+          "at": "Eifer"
+        },
+        {
+          "label": "Geduld",
+          "text": "✓",
+          "at": "Geduld"
+        }
+      ],
+      "cues": [
+        "ein Baum",
+        "ewigen Leben"
+      ],
+      "narration": "Mit Sorgfalt, Eifer und Geduld [pause short] wird daraus ein Baum, [pause short] der bis zum ewigen Leben wächst."
+    },
+    {
+      "id": "du",
+      "type": "seed",
+      "stage": "you",
+      "holdAfterSec": 1.4,
+      "cues": [
+        "Glaube ist kein Schalter",
+        "Er wächst",
+        "Wo steht dein Pflänzchen gerade"
+      ],
+      "narration": "Glaube ist kein Schalter. [pause short] Er wächst. [pause short] Wo steht dein Pflänzchen gerade?"
     }
   ]
 }
