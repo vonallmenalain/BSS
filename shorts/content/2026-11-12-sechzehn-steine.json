@@ -1,0 +1,153 @@
+{
+  "id": "2026-11-12-sechzehn-steine",
+  "title": "Sechzehn Steine",
+  "date": "2026-11-12",
+  "series": "Für eine starke Jugend · November",
+  "brand": {
+    "name": "AntiDoom"
+  },
+  "look": "sea",
+  "sfx": "sparse",
+  "voice": {
+    "provider": "google",
+    "languageCode": "de-DE",
+    "name": "de-DE-Chirp3-HD-Algieba",
+    "speakingRate": 1.05
+  },
+  "music": {
+    "src": "music/temple.mp3",
+    "volume": 0.3,
+    "duckTo": 0.08
+  },
+  "scenes": [
+    {
+      "id": "hook",
+      "type": "barges",
+      "stage": "hook",
+      "ref": "Ether 3:1",
+      "sky": 0.2,
+      "lines": [
+        { "text": "8 Schiffe", "at": "Acht Schiffe" },
+        { "text": "16 Steine", "at": "Sechzehn Steine" },
+        { "text": "0 Fenster", "at": "Kein einziges Fenster" }
+      ],
+      "narration": "Acht Schiffe. [pause short] Sechzehn Steine. [pause short] Kein einziges Fenster."
+    },
+    {
+      "id": "werft",
+      "type": "barges",
+      "stage": "build",
+      "ref": "Ether 2:16–17",
+      "sky": 0.3,
+      "cues": [
+        "Baut Schiffe",
+        "dicht wie eine Schüssel"
+      ],
+      "narration": "Der Herr sagt zum Bruder Jareds: Baut Schiffe – [pause short] dicht wie eine Schüssel."
+    },
+    {
+      "id": "luft",
+      "type": "barges",
+      "stage": "air",
+      "ref": "Ether 2:19–21",
+      "sky": 0.25,
+      "lines": [
+        { "text": "Luft", "at": "Kaum Luft" },
+        { "text": "Licht", "at": "Kein Licht" }
+      ],
+      "cues": [
+        "Für die Luft sagt ihm der Herr",
+        "ein Loch oben",
+        "eins unten"
+      ],
+      "narration": "Doch drinnen: [pause short] Kaum Luft. [pause short] Kein Licht. [pause short] Für die Luft sagt ihm der Herr, wie es geht: [pause short] ein Loch oben, eins unten."
+    },
+    {
+      "id": "dunkel",
+      "type": "barges",
+      "stage": "dark",
+      "ref": "Ether 2:22–23",
+      "sky": 0.1,
+      "cues": [
+        "Fenster würden zerschmettert",
+        "Feuer geht nicht"
+      ],
+      "say": {
+        "text": "Was willst du, dass ich tun soll?",
+        "at": "Was willst du, dass ich tun soll"
+      },
+      "narration": "Beim Licht fragt der Herr zurück: [pause short] Was willst du, dass ich tun soll? [pause short] Fenster würden zerschmettert, [pause short] Feuer geht nicht."
+    },
+    {
+      "id": "steine",
+      "type": "barges",
+      "stage": "stones",
+      "ref": "Ether 3:1",
+      "sky": 0.2,
+      "cues": [
+        "denkt der Bruder Jareds nach",
+        "schmilzt er aus einem Felsen",
+        "sechzehn kleine Steine",
+        "klar wie Glas"
+      ],
+      "narration": "Also denkt der Bruder Jareds nach. [pause short] Am Berg Schelem schmilzt er aus einem Felsen sechzehn kleine Steine, [pause short] klar wie Glas."
+    },
+    {
+      "id": "gipfel",
+      "type": "barges",
+      "stage": "mount",
+      "ref": "Ether 3:1–4",
+      "sky": 0.2,
+      "cues": [
+        "auf den Gipfel",
+        "berühre sie mit deinem Finger"
+      ],
+      "narration": "Er trägt sie auf den Gipfel und bittet: [pause short] Herr, berühre sie mit deinem Finger."
+    },
+    {
+      "id": "finger",
+      "type": "barges",
+      "stage": "touch",
+      "ref": "Ether 3:6",
+      "sky": 0.3,
+      "cues": [
+        "berührt die Steine",
+        "einen nach dem anderen",
+        "Sie leuchten",
+        "sieht den Finger des Herrn"
+      ],
+      "narration": "Der Herr berührt die Steine, [pause short] einen nach dem anderen. [pause short] Sie leuchten. [pause short] Und der Bruder Jareds sieht den Finger des Herrn."
+    },
+    {
+      "id": "fahrt",
+      "type": "barges",
+      "stage": "voyage",
+      "ref": "Ether 6:2–11",
+      "sky": 0.2,
+      "cues": [
+        "Zwei Steine in jedes Schiff",
+        "Wellen wie Berge",
+        "344 Tage",
+        "immer Licht"
+      ],
+      "narration": "Zwei Steine in jedes Schiff. [pause short] Dann Wellen wie Berge, [pause short] 344 Tage lang – [pause short] und immer Licht."
+    },
+    {
+      "id": "stueck",
+      "type": "barges",
+      "stage": "recap",
+      "sky": 0.6,
+      "holdAfterSec": 1.2,
+      "lines": [
+        { "text": "Erst die Schiffe", "at": "Erst die Schiffe" },
+        { "text": "Dann die Luft", "at": "Dann die Luft" },
+        { "text": "Dann das Licht", "at": "Dann das Licht" }
+      ],
+      "say": {
+        "text": "Stück für Stück.",
+        "at": "Stück für Stück"
+      },
+      "narration": "Erst die Schiffe. [pause short] Dann die Luft. [pause short] Dann das Licht. [pause short] Gott antwortet oft Stück für Stück."
+    }
+  ]
+}

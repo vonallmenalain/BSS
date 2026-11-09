@@ -1,0 +1,107 @@
+{
+  "id": "2026-11-15-wer-luegt",
+  "title": "Wer lügt?",
+  "date": "2026-11-15",
+  "series": "Für eine starke Jugend · November",
+  "brand": {
+    "name": "AntiDoom"
+  },
+  "look": "court",
+  "sfx": "sparse",
+  "voice": {
+    "provider": "google",
+    "languageCode": "de-DE",
+    "name": "de-DE-Chirp3-HD-Zubenelgenubi",
+    "speakingRate": 1.05
+  },
+  "music": {
+    "src": "music/temple.mp3",
+    "volume": 0.3,
+    "duckTo": 0.08
+  },
+  "scenes": [
+    {
+      "id": "hook",
+      "type": "verdict",
+      "stage": "hook",
+      "ref": "1 Könige 3:16–22",
+      "cues": ["Zwei Frauen", "Ein Baby"],
+      "bubbles": [
+        { "who": "a", "text": "Es ist meins!", "at": "Es ist meins" },
+        { "who": "b", "text": "Es ist meins!", "at": "Es ist meins" }
+      ],
+      "narration": "Zwei Frauen. [pause short] Ein Baby. [pause short] Beide sagen: Es ist meins."
+    },
+    {
+      "id": "koenig",
+      "type": "verdict",
+      "stage": "wish",
+      "ref": "1 Könige 3:7–12",
+      "cues": ["der junge König Salomo", "nicht um Reichtum", "ein hörendes Herz", "Gut und Böse"],
+      "narration": "Entscheiden muss der junge König Salomo. [pause short] Er hatte Gott nicht um Reichtum gebeten, [pause short] sondern um ein hörendes Herz, [pause short] um Gut und Böse zu unterscheiden."
+    },
+    {
+      "id": "haus",
+      "type": "verdict",
+      "stage": "women",
+      "ref": "1 Könige 3:17–19",
+      "cues": ["im selben Haus", "Beide hatten ein Baby", "In der Nacht"],
+      "narration": "Die beiden Frauen wohnen im selben Haus. [pause short] Beide hatten ein Baby. [pause short] In der Nacht ist das Kind der einen gestorben."
+    },
+    {
+      "id": "streit",
+      "type": "verdict",
+      "stage": "claims",
+      "ref": "1 Könige 3:18–22",
+      "cues": ["Die eine sagt", "Die andere", "Zeugen gibt es keine", "Wem glaubst du"],
+      "bubbles": [
+        { "who": "a", "text": "Sie hat die Kinder vertauscht!", "at": "Sie hat die Kinder vertauscht" },
+        { "who": "b", "text": "Nein, das lebende ist meins!", "at": "Nein, das lebende ist meins" }
+      ],
+      "narration": "Die eine sagt: [pause short] Sie hat die Kinder vertauscht! [pause short] Die andere: [pause short] Nein, das lebende ist meins! [pause short] Zeugen gibt es keine. [pause short] Wem glaubst du?"
+    },
+    {
+      "id": "schwert",
+      "type": "verdict",
+      "stage": "sword",
+      "ref": "1 Könige 3:24–25",
+      "cues": ["Bringt mir ein Schwert", "Teilt das lebende Kind"],
+      "narration": "Salomo sagt: [pause short] Bringt mir ein Schwert! [pause short] Teilt das lebende Kind in zwei Teile."
+    },
+    {
+      "id": "mutter",
+      "type": "verdict",
+      "stage": "mother",
+      "ref": "1 Könige 3:26",
+      "cues": ["Da ruft die eine", "Die andere"],
+      "bubbles": [
+        { "who": "a", "text": "Gebt ihr das Kind – nur tötet es nicht!", "at": "Gebt ihr das Kind" },
+        { "who": "b", "text": "Es soll weder mir noch dir gehören.", "at": "Es soll weder mir noch dir gehören" }
+      ],
+      "narration": "Da ruft die eine: [pause short] Gebt ihr das Kind – nur tötet es nicht! [pause short] Die andere: [pause short] Es soll weder mir noch dir gehören."
+    },
+    {
+      "id": "urteil",
+      "type": "verdict",
+      "stage": "verdict",
+      "ref": "1 Könige 3:27",
+      "cues": ["Salomo entscheidet", "Gebt ihr das Kind", "Sie ist seine Mutter"],
+      "narration": "Salomo entscheidet: [pause short] Gebt ihr das Kind. [pause short] Sie ist seine Mutter."
+    },
+    {
+      "id": "weisheit",
+      "type": "verdict",
+      "stage": "wisdom",
+      "ref": "1 Könige 3:28",
+      "cues": ["Ganz Israel erkennt", "Gottes Weisheit ist in ihm", "ans Licht gebracht"],
+      "narration": "Ganz Israel erkennt: [pause short] Gottes Weisheit ist in ihm. [pause short] Die Liebe der Mutter hat die Wahrheit ans Licht gebracht."
+    },
+    {
+      "id": "punch",
+      "type": "kinetic",
+      "holdAfterSec": 1.2,
+      "lines": ["Nicht jede Lüge", "klingt wie eine.", "Würdest du merken,", "wer lügt?"],
+      "narration": "Nicht jede Lüge klingt wie eine. [pause short] Würdest du merken, wer lügt?"
+    }
+  ]
+}

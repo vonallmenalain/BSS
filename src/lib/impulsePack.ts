@@ -1968,6 +1968,18 @@ export const PACK_WEEKS: PackWeek[] = [
     },
     deck: [
       {
+        key: 'eigen-oliver',
+        kind: 'video',
+        late: true,
+        emoji: '🕯️',
+        title: 'Short: Niemand wusste es',
+        body:
+          'Oliver Cowdery betet eines Nachts still, ob die Sache mit den goldenen Platten wahr ist ' +
+          '– und erzählt es niemandem. Monate später nennt eine Offenbarung genau diese Nacht ' +
+          '(Lehre und Bündnisse 6:22–23).',
+        ...ownShort('2026-11-09-niemand-wusste-es', 'Lehre und Bündnisse 6:22–23'),
+      },
+      {
         key: 'umfrage-1',
         kind: 'umfrage',
         emoji: '❓',
@@ -1986,6 +1998,9 @@ export const PACK_WEEKS: PackWeek[] = [
       },
       {
         key: 'feed-1',
+        retired:
+          'Ersetzt durch das Video «Samuel!» – Joseph Smith und Jakobus 1:5 erzählte schon das ' +
+          'Video «Gruppenchat 1820» in der Woche zur Wahrheit.',
         kind: 'feed',
         emoji: '🌲',
         title: 'Joseph Smith, 14: Ein Vers, der alles verändert hat',
@@ -1998,6 +2013,9 @@ export const PACK_WEEKS: PackWeek[] = [
       },
       {
         key: 'quiz-1',
+        retired:
+          'Ersetzt durch das Quiz zu Samuel – Jakobus 1:5 nannte schon das Video «Gruppenchat ' +
+          '1820» in der Woche zur Wahrheit.',
         kind: 'quiz',
         emoji: '📖',
         title: 'Welchen Vers las Joseph Smith, bevor er in den Wald ging, um zu beten?',
@@ -2008,6 +2026,49 @@ export const PACK_WEEKS: PackWeek[] = [
             'aber das Buch Mormon kam erst Jahre später ans Licht.',
         ),
         source: verse('Joseph Smith – Lebensgeschichte 1:11'),
+      },
+      {
+        key: 'eigen-samuel',
+        kind: 'video',
+        late: true,
+        emoji: '🪔',
+        title: 'Short: Samuel!',
+        body:
+          'Mitten in der Nacht ruft jemand den jungen Samuel – dreimal rennt er zu Eli. Beim ' +
+          'vierten Mal antwortet er anders (1 Samuel 3:1–10).',
+        ...ownShort('2026-11-09-samuel', '1 Samuel 3:1–10'),
+      },
+      {
+        key: 'quiz-4',
+        kind: 'quiz',
+        late: true,
+        emoji: '👂',
+        title:
+          'Eli sagt Samuel, was er antworten soll, wenn der Ruf wieder kommt. Was sagt Samuel?',
+        quiz: choice(
+          [
+            '«Rede, denn dein Diener hört.»',
+            '«Hier bin ich, sende mich!»',
+            '«Dein Wille geschehe.»',
+            '«Ich bin bereit, Herr.»',
+          ],
+          0,
+          '«Rede, denn dein Diener hört» (1 Samuel 3:9–10). Samuel war bereit zuzuhören – und ' +
+            'der Herr liess keines von seinen Worten zur Erde fallen (3:19). «Hier bin ich, ' +
+            'sende mich!» sagt übrigens Jesaja (Jesaja 6:8).',
+        ),
+        source: verse('1 Samuel 3:9–10'),
+      },
+      {
+        key: 'eigen-experiment',
+        kind: 'video',
+        late: true,
+        emoji: '🌱',
+        title: 'Short: Das Experiment',
+        body:
+          'Aus der Synagoge geworfen – und Alma sagt: Macht einen Versuch mit meinen Worten. Das ' +
+          'Wort ist wie ein Samenkorn: Pflanz es und schau, was wächst (Alma 32:27–43).',
+        ...ownShort('2026-11-10-das-experiment', 'Alma 32:28'),
       },
       {
         key: 'skala-1',
@@ -2024,6 +2085,7 @@ export const PACK_WEEKS: PackWeek[] = [
       },
       {
         key: 'feed-2',
+        retired: 'Ersetzt durch das Video «Habt ihr gefragt?».',
         kind: 'feed',
         emoji: '📡',
         title: '7 Tipps, wenn die Leitung zur Offenbarung verstopft scheint',
@@ -2039,6 +2101,17 @@ export const PACK_WEEKS: PackWeek[] = [
         source: FSY_OCTOBER('«7 Tipps, wie vermehrt Offenbarung fliessen kann»'),
       },
       {
+        key: 'eigen-brueder',
+        kind: 'video',
+        late: true,
+        emoji: '💭',
+        title: 'Short: Habt ihr gefragt?',
+        body:
+          'Lehi spricht von einem Ölbaum. Laman und Lemuel streiten, was das heissen soll – Nephi ' +
+          'fragt nur: Habt ihr den Herrn gefragt? (1 Nephi 15:1–11)',
+        ...ownShort('2026-11-10-habt-ihr-gefragt', '1 Nephi 15:8–11'),
+      },
+      {
         key: 'quiz-2',
         kind: 'quiz',
         emoji: '🧐',
@@ -2050,6 +2123,18 @@ export const PACK_WEEKS: PackWeek[] = [
             'Frage führte zur ersten Vision.',
         ),
         source: FSY_OCTOBER('Dritter Sonntag im November'),
+      },
+      {
+        key: 'eigen-beroea',
+        kind: 'video',
+        late: true,
+        emoji: '🗞️',
+        title: 'Short: Eilmeldung aus Beröa',
+        body:
+          'Drei Städte hören dieselbe Botschaft: Thessalonich regt sich auf, Athen will nur das ' +
+          'Neueste – und Beröa hört offen zu und prüft jeden Tag in den Schriften, ob es stimmt ' +
+          '(Apostelgeschichte 17:1–21).',
+        ...ownShort('2026-11-11-eilmeldung-aus-beroea', 'Apostelgeschichte 17:11'),
       },
       {
         key: 'dilemma-1',
@@ -2070,6 +2155,17 @@ export const PACK_WEEKS: PackWeek[] = [
         source: FSY_OCTOBER('Anregung für eine Jugendaktivität im November'),
       },
       {
+        key: 'eigen-steine',
+        kind: 'video',
+        late: true,
+        emoji: '💎',
+        title: 'Short: Sechzehn Steine',
+        body:
+          'Schiffe ohne Fenster, kein Licht für die Fahrt übers Meer. Der Herr fragt zurück: Was ' +
+          'willst du, dass ich tun soll? Da schmilzt der Bruder Jareds sechzehn Steine (Ether 2–3).',
+        ...ownShort('2026-11-12-sechzehn-steine', 'Ether 3:1–6'),
+      },
+      {
         key: 'puzzle-1',
         kind: 'puzzle',
         emoji: '🧩',
@@ -2084,6 +2180,7 @@ export const PACK_WEEKS: PackWeek[] = [
       },
       {
         key: 'feed-3',
+        retired: 'Ersetzt durch das Video «Nicht im Sturm», das die Geschichte von James erzählt.',
         kind: 'feed',
         emoji: '🏊',
         title: 'Eine Eingebung im Schwimmbad',
@@ -2099,6 +2196,17 @@ export const PACK_WEEKS: PackWeek[] = [
           '• Der Vater im Himmel glaubt an dich, auch wenn du es selbst nicht tust.\n' +
           '• Lerne aus deinen Fehlern.',
         source: FSY_OCTOBER('Stimmen von Jugendlichen'),
+      },
+      {
+        key: 'eigen-mose',
+        kind: 'video',
+        late: true,
+        emoji: '🔍',
+        title: 'Short: Echt oder Fälschung?',
+        body:
+          'Satan verlangt von Mose: Bete mich an. Doch Mose hat Gottes Herrlichkeit gesehen – wer ' +
+          'das Original kennt, erkennt die Fälschung (Mose 1:1–22).',
+        ...ownShort('2026-11-13-echt-oder-faelschung', 'Mose 1:13–18'),
       },
       {
         key: 'quiz-3',
@@ -2119,11 +2227,33 @@ export const PACK_WEEKS: PackWeek[] = [
         source: verse('Mose 1:39'),
       },
       {
+        key: 'eigen-elija',
+        kind: 'video',
+        late: true,
+        emoji: '⛈️',
+        title: 'Short: Nicht im Sturm',
+        body:
+          'Sturm, Erdbeben, Feuer – und Gott ist in keinem davon. Dann ein sanftes, leises ' +
+          'Säuseln (1 Könige 19:11–13). Und James, 19, hört es im Schwimmbad.',
+        ...ownShort('2026-11-14-nicht-im-sturm', '1 Könige 19:11–13'),
+      },
+      {
         key: 'frage-1',
         kind: 'frage',
         emoji: '💬',
         title: 'Wie hast du schon einmal eine Antwort von Gott bekommen?',
         body: 'Gross oder klein – manchmal kommt sie Zeile um Zeile. Teile, was du teilen magst.',
+      },
+      {
+        key: 'eigen-salomo',
+        kind: 'video',
+        late: true,
+        emoji: '⚖️',
+        title: 'Short: Wer lügt?',
+        body:
+          'Zwei Frauen, ein Baby – und beide sagen: Es ist meins. Der junge König Salomo hatte um ' +
+          'ein hörendes Herz gebeten. Jetzt braucht er es (1 Könige 3:16–28).',
+        ...ownShort('2026-11-15-wer-luegt', '1 Könige 3:16–28'),
       },
       {
         key: 'teilen',

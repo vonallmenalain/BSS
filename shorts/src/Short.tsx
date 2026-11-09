@@ -11,6 +11,7 @@ import { PalaceBg } from "./components/backgrounds/PalaceBg";
 import { SpaceBg } from "./components/backgrounds/SpaceBg";
 import { StoneBg } from "./components/backgrounds/StoneBg";
 import { DesertBg, DuskBg, FeedBg, ForestBg, KitchenBg, PostBg, TempleBg } from "./components/backgrounds/w45";
+import { CandleBg, ComicBg, CourtBg, LabBg, LampBg, NewsBg, SeaBg, StormBg, SummitBg } from "./components/backgrounds/w46";
 import { Captions } from "./components/Captions";
 import { Sky } from "./components/Sky";
 import { fontsReady } from "./lib/fonts";
@@ -32,6 +33,7 @@ import { ItemScene } from "./scenes/w44/item";
 import { MissionScene } from "./scenes/w44/mission";
 import { PalaceScene } from "./scenes/w44/palace";
 import { W45_SCENES } from "./scenes/w45";
+import { W46_SCENES } from "./scenes/w46";
 import {
   BigNumberScene,
   CtaScene,
@@ -127,7 +129,7 @@ const hiddenWords = (ts: TimelineScene): Set<number> => {
     case "fire":
       return wordsOf(ts, s.bubbles.map((b) => b.text));
     default:
-      return W45_SCENES[s.type]?.hidden(ts) ?? new Set();
+      return (W45_SCENES[s.type] ?? W46_SCENES[s.type])?.hidden(ts) ?? new Set();
   }
 };
 
@@ -186,8 +188,8 @@ const SceneBody: React.FC<{ ts: TimelineScene }> = ({ ts }) => {
     case "fire":
       return <FireScene ts={ts} />;
     default: {
-      const w45 = W45_SCENES[ts.scene.type];
-      return w45 ? <w45.Scene ts={ts} /> : null;
+      const own = W45_SCENES[ts.scene.type] ?? W46_SCENES[ts.scene.type];
+      return own ? <own.Scene ts={ts} /> : null;
     }
   }
 };
@@ -233,6 +235,24 @@ const Backdrop: React.FC<{ look: Episode["look"]; s: number }> = ({ look, s }) =
       return <DuskBg />;
     case "forest":
       return <ForestBg />;
+    case "candle":
+      return <CandleBg />;
+    case "lamp":
+      return <LampBg />;
+    case "lab":
+      return <LabBg />;
+    case "comic":
+      return <ComicBg />;
+    case "news":
+      return <NewsBg />;
+    case "sea":
+      return <SeaBg />;
+    case "summit":
+      return <SummitBg />;
+    case "storm":
+      return <StormBg />;
+    case "court":
+      return <CourtBg />;
     default:
       return (
         <>

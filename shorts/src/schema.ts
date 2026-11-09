@@ -5,23 +5,8 @@
  */
 import { z } from "zod";
 
-const idRegex = /^[a-z0-9][a-z0-9-]*$/;
-
-const base = z.object({
-  id: z.string().regex(idRegex, "Szenen-ID: nur a-z, 0-9 und '-'"),
-  /** Text für die Stimme. Erlaubt Chirp-Pausen-Tags: [pause short] | [pause] | [pause long] */
-  narration: z.string().min(1).max(1200),
-  /** 0 = Nacht, 1 = goldener Morgen. Wird über Szenengrenzen weich interpoliert. */
-  sky: z.number().min(0).max(1).default(0.5),
-  /** Untertitel ganz abschalten (z.B. wenn der Text ohnehin gross im Bild steht). */
-  captions: z.boolean().default(true),
-  /** Die ersten n Wörter nicht untertiteln (z.B. weil eine grosse Zahl sie schon zeigt). */
-  captionSkipWords: z.number().int().min(0).default(0),
-  /** Zusätzliche Standzeit nach dem Sprechen (Lesezeit für Karten). */
-  holdAfterSec: z.number().min(0).max(10).default(0),
-  /** Bibelstelle oder Quelle, klein im Bild. */
-  ref: z.string().optional(),
-});
+import { idRegex, sceneBase as base } from "./schemaBase";
+import { W46_SCHEMAS, W46_TYPES } from "./scenes/w46/schemas";
 
 export const sceneSchema = z.discriminatedUnion("type", [
   base.extend({
@@ -378,6 +363,11 @@ export const sceneSchema = z.discriminatedUnion("type", [
      */
     cues: z.array(z.string().min(1)).max(6).default([]),
   }),
+  /*
+   * Die Szenen der Woche 9.–15. November (Suche nach Wahrheit) bringen ihr Schema selbst mit –
+   * je eine Datei `scenes/w46/<typ>.schema.ts`. Auch ihre Phrasen findet `phrasesOf`.
+   */
+  ...W46_SCHEMAS,
   base.extend({
     /** Vorschau auf die nächste Karte im Feed – damit das Video zur Umfrage oder Aufgabe überleitet */
     type: z.literal("teaser"),
@@ -398,7 +388,11 @@ export const episodeSchema = z
     brand: z.object({ name: z.string(), label: z.string().optional() }),
     /** Visueller Stil der ganzen Episode (src/looks.tsx) */
     look: z
-      .enum(["dawn", "arcade", "chat", "map", "track", "noir", "show", "journal", "stone", "ember", "space", "palace", "dream", "desert", "temple", "post", "feed", "kitchen", "dusk", "forest"])
+      .enum([
+        "dawn", "arcade", "chat", "map", "track", "noir", "show", "journal", "stone", "ember", "space", "palace", "dream",
+        "desert", "temple", "post", "feed", "kitchen", "dusk", "forest",
+        "candle", "lamp", "lab", "comic", "news", "sea", "summit", "storm", "court",
+      ])
       .default("dawn"),
     voice: z.object({
       provider: z.enum(["google", "piper"]).default("google"),
@@ -476,7 +470,7 @@ export const episodeSchema = z
         if (s.bindAt) mustContain.push(["bindAt", s.bindAt]);
         if (s.breakAt) mustContain.push(["breakAt", s.breakAt]);
       }
-      if (W45_TYPES.has(s.type)) mustContain.push(...phrasesOf(s));
+      if (W45_TYPES.has(s.type) || W46_TYPES.has(s.type)) mustContain.push(...phrasesOf(s));
       for (const [field, text] of mustContain) {
         if (!spoken.includes(normalize(text))) {
           ctx.addIssue({

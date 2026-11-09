@@ -1,0 +1,107 @@
+{
+  "id": "2026-11-13-echt-oder-faelschung",
+  "title": "Echt oder Fälschung?",
+  "date": "2026-11-13",
+  "series": "Für eine starke Jugend · November",
+  "brand": {
+    "name": "AntiDoom"
+  },
+  "look": "summit",
+  "sfx": "sparse",
+  "voice": {
+    "provider": "google",
+    "languageCode": "de-DE",
+    "name": "de-DE-Chirp3-HD-Rasalgethi",
+    "speakingRate": 1.08
+  },
+  "music": {
+    "src": "music/space.mp3",
+    "volume": 0.3,
+    "duckTo": 0.08
+  },
+  "scenes": [
+    {
+      "id": "hook",
+      "type": "moses",
+      "stage": "hook",
+      "ref": "Mose 1",
+      "cues": ["Echt", "oder Fälschung", "ganz allein"],
+      "narration": "Echt [pause short] oder Fälschung? [pause short] Mose muss es erkennen – [pause short] ganz allein."
+    },
+    {
+      "id": "herrlichkeit",
+      "type": "moses",
+      "stage": "glory",
+      "ref": "Mose 1:1–4",
+      "cues": ["sehr hohen Berg", "von Angesicht zu Angesicht", "Du bist mein Sohn"],
+      "lines": [{ "text": "Du bist mein Sohn.", "at": "Du bist mein Sohn" }],
+      "narration": "Auf einem sehr hohen Berg [pause short] sieht Mose Gott von Angesicht zu Angesicht. [pause short] Gott sagt zu ihm: [pause short] Du bist mein Sohn."
+    },
+    {
+      "id": "schwach",
+      "type": "moses",
+      "stage": "weak",
+      "ref": "Mose 1:9–10",
+      "cues": ["ist die Herrlichkeit weg", "fällt zu Boden", "stundenlang"],
+      "narration": "Dann ist die Herrlichkeit weg. [pause short] Mose fällt zu Boden – [pause short] stundenlang ohne Kraft."
+    },
+    {
+      "id": "versucher",
+      "type": "moses",
+      "stage": "tempter",
+      "ref": "Mose 1:12",
+      "cues": ["Da kommt Satan"],
+      "attack": { "text": "Mose, Menschensohn, bete mich an.", "at": "Mose, Menschensohn" },
+      "narration": "Da kommt Satan: [pause short] Mose, Menschensohn, [pause short] bete mich an."
+    },
+    {
+      "id": "wer-bist-du",
+      "type": "moses",
+      "stage": "compare",
+      "ref": "Mose 1:13",
+      "cues": ["Mose schaut ihn an"],
+      "lines": [
+        { "text": "Wer bist du?", "at": "Wer bist du" },
+        { "text": "Ich bin ein Sohn Gottes.", "at": "Ich bin ein Sohn Gottes" },
+        { "text": "Wo ist deine Herrlichkeit?", "at": "Wo ist deine Herrlichkeit" }
+      ],
+      "narration": "Mose schaut ihn an: [pause short] Wer bist du? [pause short] Ich bin ein Sohn Gottes. [pause short] Wo ist deine Herrlichkeit?"
+    },
+    {
+      "id": "pruefung",
+      "type": "moses",
+      "stage": "judge",
+      "ref": "Mose 1:15, 18",
+      "cues": ["Gottes Herrlichkeit gesehen", "Darum kann er unterscheiden", "Wer das Original kennt", "erkennt die Fälschung"],
+      "narration": "Mose hat Gottes Herrlichkeit gesehen. [pause short] Darum kann er unterscheiden. [pause short] Wer das Original kennt, [pause short] erkennt die Fälschung."
+    },
+    {
+      "id": "weiche",
+      "type": "moses",
+      "stage": "depart",
+      "ref": "Mose 1:19–22",
+      "cues": ["Satan tobt", "bekommt Angst", "ruft Gott an", "bekommt Kraft", "Im Namen des Einziggezeugten"],
+      "lines": [{ "text": "Weiche, Satan!", "at": "Weiche, Satan" }],
+      "narration": "Satan tobt. [pause short] Mose bekommt Angst – [pause short] doch er ruft Gott an und bekommt Kraft. [pause short] Im Namen des Einziggezeugten: [pause short] Weiche, Satan!"
+    },
+    {
+      "id": "welten",
+      "type": "moses",
+      "stage": "worlds",
+      "ref": "Mose 1:27–30",
+      "cues": ["die ganze Erde", "Menschen ohne Zahl", "wie Sand am Meer"],
+      "lines": [{ "text": "Warum ist das alles so?", "at": "Warum ist das alles so" }],
+      "narration": "Danach sieht Mose die ganze Erde [pause short] und Menschen ohne Zahl, [pause short] wie Sand am Meer. [pause short] Er fragt Gott: [pause short] Warum ist das alles so?"
+    },
+    {
+      "id": "antwort",
+      "type": "moses",
+      "stage": "answer",
+      "ref": "Mose 1:39",
+      "holdAfterSec": 1.2,
+      "cues": ["was sein Werk ist", "Mose 1:39"],
+      "lines": [{ "text": "Weisst du, was dort steht?", "at": "Weisst du, was dort steht" }],
+      "narration": "Gott sagt ihm, was sein Werk ist: [pause short] Mose 1:39. [pause short] Weisst du, was dort steht?"
+    }
+  ]
+}
