@@ -204,17 +204,29 @@ const Cushion: React.FC<{ x: number; y: number }> = ({ x, y }) => (
   </g>
 );
 
-/** Ein sitzender Löwe aus Gold, schaut nach +x. */
+/** Zacken der Mähne – ein Stern um (cx, cy). */
+const MANE = Array.from({ length: 16 }, (_, i) => {
+  const a = (i / 16) * Math.PI * 2;
+  const r = i % 2 ? 17 : 25;
+  return `${(14 + Math.cos(a) * r).toFixed(1)} ${(-46 + Math.sin(a) * r).toFixed(1)}`;
+}).join(" L ");
+
+/** Ein sitzender Löwe aus Gold, von der Seite, schaut nach +x. */
 const Lion: React.FC<{ x: number; y: number; s: number; dir?: 1 | -1 }> = ({ x, y, s, dir = 1 }) => (
   <g transform={`translate(${x} ${y}) scale(${dir * s} ${s})`}>
-    <path d="M -34 -20 q -18 -4 -14 -26" stroke="#B8862E" strokeWidth={5} fill="none" strokeLinecap="round" />
-    <ellipse cx={-10} cy={-18} rx={26} ry={16} fill="url(#vdGold)" />
-    <circle cx={-26} cy={-16} r={15} fill="url(#vdGold)" />
-    <rect x={6} y={-34} width={10} height={34} rx={4} fill="url(#vdGold)" />
-    <rect x={-30} y={-6} width={22} height={8} rx={4} fill="url(#vdGold)" />
-    <circle cx={14} cy={-44} r={19} fill="#C9902E" />
-    <circle cx={22} cy={-44} r={11} fill="url(#vdGold)" />
-    <ellipse cx={31} cy={-40} rx={6} ry={4.5} fill="#F2CF7A" />
+    {/* Schwanz mit Quaste */}
+    <path d="M -30 -6 C -50 -8, -52 -30, -40 -40" stroke="#B8862E" strokeWidth={4} fill="none" strokeLinecap="round" />
+    <circle cx={-40} cy={-42} r={5} fill="#8A5E1A" />
+    {/* Körper, sitzend */}
+    <path d="M -34 0 C -42 -24, -24 -42, 2 -38 L 16 -30 L 18 0 Z" fill="url(#vdGold)" />
+    <rect x={6} y={-30} width={11} height={30} rx={4} fill="#E3B04F" />
+    <rect x={-30} y={-7} width={26} height={8} rx={4} fill="#C9993F" />
+    {/* Mähne, Kopf, Ohr, Schnauze */}
+    <path d={`M ${MANE} Z`} fill="#9C6A1C" />
+    <circle cx={20} cy={-46} r={12} fill="url(#vdGold)" />
+    <circle cx={12} cy={-58} r={4} fill="#E3B04F" />
+    <path d="M 26 -44 L 34 -41 L 30 -36 L 24 -37 Z" fill="#F2CF7A" />
+    <circle cx={22} cy={-49} r={1.8} fill="#3A2410" />
   </g>
 );
 
@@ -299,11 +311,15 @@ const King: React.FC<{ x: number; y: number; k?: number; gesture?: number }> = (
   </g>
 );
 
-/** Der Wächter mit dem Schwert. `raise` 0 = Schwert gesenkt, 1 = hoch erhoben. */
-const Guard: React.FC<{ x: number; y: number; k?: number; dir?: 1 | -1; raise: number; gleam?: number; o?: number }> = ({ x, y, k = 1, dir = -1, raise, gleam = -1, o = 1 }) => {
+/**
+ * Der Wächter mit dem Schwert. `raise` 0 = Arm unten, 1 = hoch erhoben. Ohne `angle` dreht das
+ * Schwert beim Senken nach hinten weg (über die Schulter nach unten) – die Klinge zeigt nie zum
+ * Kind, das vor ihm liegt.
+ */
+const Guard: React.FC<{ x: number; y: number; k?: number; dir?: 1 | -1; raise: number; angle?: number; gleam?: number; o?: number }> = ({ x, y, k = 1, dir = -1, raise, angle, gleam = -1, o = 1 }) => {
   if (o <= 0.01) return null;
   const h: Pt = lerp([40, -120], [62, -352], raise);
-  const ang = interpolate(raise, [0, 1], [96, -84]);
+  const ang = angle ?? interpolate(raise, [0, 1], [-250, -84]);
   const L = 250;
   return (
     <g opacity={o}>
@@ -335,7 +351,12 @@ const Guard: React.FC<{ x: number; y: number; k?: number; dir?: 1 | -1; raise: n
 const wrap = (text: string, max: number): string[] => {
   const out: string[] = [];
   let cur = "";
-  for (const w of text.split(/\s+/)) {
+  const words = text.split(/\s+/).reduce<string[]>((acc, w) => {
+    if (/^[–—-]$/.test(w) && acc.length) acc[acc.length - 1] += ` ${w}`;
+    else acc.push(w);
+    return acc;
+  }, []);
+  for (const w of words) {
     const next = cur ? `${cur} ${w}` : w;
     if (next.length > max && cur) {
       out.push(cur);
@@ -349,7 +370,7 @@ const wrap = (text: string, max: number): string[] => {
 /** Eine Sprechblase, unten Mitte bei (x, bottom); der Zipfel zeigt nach `tail`. */
 const Bubble: React.FC<{ x: number; bottom: number; text: string; tail: Pt; pop: number; o?: number; tone?: "warm" | "cold" | "plain" }> = ({ x, bottom, text, tail, pop, o = 1, tone = "plain" }) => {
   if (pop <= 0.01 || o <= 0.01) return null;
-  const lines = wrap(text, 18);
+  const lines = wrap(text, 19);
   const fs = 42;
   const w = Math.max(...lines.map((l) => l.length)) * fs * 0.56 + 76;
   const h = lines.length * fs * 1.2 + 46;
@@ -601,7 +622,7 @@ const Memory: React.FC<P> = ({ ts, s }) => {
   const house = fade(t, haus - 0.1, 0.6);
   const kids = fade(t, babys - 0.1, 0.5);
   const night = fade(t, nacht - 0.2, 1.4);
-  const out = interpolate(t, [nacht + 0.8, nacht + 2.4], [0, 1], clamp);
+  const out = interpolate(t, [nacht + 0.5, nacht + 1.6], [0, 1], { ...clamp, easing: Easing.inOut(Easing.sin) });
   const sky = (a: string, b: string) => {
     const pa = [1, 3, 5].map((i) => parseInt(a.slice(i, i + 2), 16));
     const pb = [1, 3, 5].map((i) => parseInt(b.slice(i, i + 2), 16));
@@ -626,21 +647,25 @@ const Memory: React.FC<P> = ({ ts, s }) => {
       <svg width={1080} height={1920} style={{ position: "absolute", inset: 0 }}>
         <Defs />
         <Dim o={0.45} />
-        <Woman x={300} k={0.95} dir={1} tone="a" />
-        <Woman x={780} k={0.95} dir={-1} tone="b" />
-        <g opacity={Math.min(1, frameIn * 1.4)} transform={`translate(540 560) scale(${interpolate(frameIn, [0, 1], [0.9, 1])}) translate(-540 -560)`}>
+        <Woman x={AX} dir={1} tone="a" />
+        <Woman x={BX} dir={-1} tone="b" />
+        <g opacity={Math.min(1, frameIn * 1.4)} transform={`translate(0 -48) translate(540 560) scale(${interpolate(frameIn, [0, 1], [0.9, 1])}) translate(-540 -560)`}>
           <rect x={126} y={306} width={828} height={528} rx={34} fill="#000" opacity={0.5} />
           <clipPath id="vdMem">
             <rect x={140} y={320} width={800} height={500} rx={26} />
           </clipPath>
           <g clipPath="url(#vdMem)">
-            <rect x={140} y={320} width={800} height={500} fill={sky("#2C3A72", "#070A22")} />
-            <rect x={140} y={560} width={800} height={200} fill={sky("#B9645A", "#121233")} opacity={0.7} />
+            <linearGradient id="vdMemSky" x1="0" y1="0" x2="0" y2="1">
+              <stop offset="0%" stopColor={sky("#26346E", "#060920")} />
+              <stop offset="55%" stopColor={sky("#6A4A82", "#0D1236")} />
+              <stop offset="85%" stopColor={sky("#E2906E", "#1B1A44")} />
+            </linearGradient>
+            <rect x={140} y={320} width={800} height={500} fill="url(#vdMemSky)" />
             {stars.map((st, i) => (
               <circle key={i} cx={st.x} cy={st.y} r={st.r} fill="#FFF8E0" opacity={night * (0.5 + 0.5 * Math.sin(frame / 14 + st.p))} />
             ))}
             <circle cx={830} cy={400} r={36} fill="#F4F0DC" opacity={night} />
-            <circle cx={846} cy={392} r={34} fill={sky("#2C3A72", "#070A22")} opacity={night} />
+            <circle cx={846} cy={392} r={34} fill={sky("#26346E", "#060920")} opacity={night} />
             {/* Hügel und Palme */}
             <path d="M 140 760 Q 300 690 470 740 T 940 720 L 940 820 L 140 820 Z" fill={sky("#3A2A30", "#0B0A18")} />
             <g opacity={house}>
@@ -727,7 +752,7 @@ const Sword: React.FC<P> = ({ ts, s }) => {
   const t = useT(ts);
   const [bring, teilt] = beats(ts, s.cues, 2);
   const enter = interpolate(t, [bring - 0.3, bring + 0.7], [0, 1], { ...clamp, easing: Easing.out(Easing.cubic) });
-  const raise = interpolate(t, [teilt - 0.35, teilt + 0.45], [0.15, 1], { ...clamp, easing: Easing.out(Easing.back(1.4)) });
+  const raise = interpolate(t, [teilt - 0.35, teilt + 0.45], [0.4, 1], { ...clamp, easing: Easing.out(Easing.back(1.4)) });
   const gleam = interpolate(t, [teilt + 0.35, teilt + 1.1], [0, 1], clamp);
   const flash = interpolate(t, [teilt + 0.3, teilt + 0.45, teilt + 0.9], [0, 0.35, 0], clamp);
   const shock = interpolate(t, [teilt - 0.1, teilt + 0.4], [0, 1], { ...clamp, easing: Easing.out(Easing.cubic) });
@@ -741,7 +766,7 @@ const Sword: React.FC<P> = ({ ts, s }) => {
         <Spot x={AX} k={0.7} />
         <Spot x={BX} k={0.7} />
         <Spot x={CX} k={0.5 * enter} cold={cold} />
-        <Guard x={interpolate(enter, [0, 1], [900, 610])} y={1062} k={0.92} dir={-1} raise={t < teilt - 0.35 ? 0.15 : raise} gleam={t > teilt + 0.35 && t < teilt + 1.1 ? gleam : -1} o={enter} />
+        <Guard x={interpolate(enter, [0, 1], [900, 610])} y={1062} k={0.92} dir={-1} raise={t < teilt - 0.35 ? 0.4 : raise} angle={-82} gleam={t > teilt + 0.35 && t < teilt + 1.1 ? gleam : -1} o={enter} />
         <Cushion x={CX} y={CY + 20} />
         <Bundle x={CX} y={CY - 18} glow={0.3} />
         <Woman x={AX} dir={1} pose={{ recoil: 0.85 * shock, lean: -0.6 * shock }} tone="a" />
@@ -806,10 +831,10 @@ const Verdict: React.FC<P> = ({ ts, s }) => {
         <King x={540} y={800} k={0.82} gesture={gesture} />
         {/* Lichtstrahl aus dem linken Fenster auf die Mutter */}
         <path d={`M 150 440 L 310 440 L ${AX + 190} ${FEET + 20} L ${AX - 170} ${FEET + 20} Z`} fill="url(#vdSpot)" opacity={0.15 + 0.75 * light} style={{ mixBlendMode: "screen" }} />
-        <Guard x={760} y={1080} k={0.84} dir={-1} raise={lower} o={1} />
+        <Guard x={690} y={1086} k={0.84} dir={-1} raise={lower} o={1} />
         <Cushion x={CX} y={CY + 20} />
         <Woman x={AX} dir={1} pose={{ hold }} glow={0.4 + 0.6 * light} tone="a" />
-        <Woman x={BX + 20} dir={-1} o={1 - 0.6 * bDim} tone="b" />
+        <Woman x={BX + 40} dir={-1} o={1 - 0.6 * bDim} tone="b" />
         <Bundle x={bx} y={by} s={interpolate(move, [0, 1], [1, 0.82])} rot={interpolate(move, [0, 1], [-8, -20])} glow={0.4 + 0.5 * light} />
         {light > 0.01
           ? Array.from({ length: 12 }, (_, i) => {
@@ -875,7 +900,7 @@ const Wisdom: React.FC<P> = ({ ts, s }) => {
           return (
             <g key={i} transform={`translate(${p.x} ${p.y + (1 - k) * 160}) scale(${p.s})`} opacity={k}>
               <circle cx={0} cy={-80} r={90} fill="#FFD58A" opacity={0.12 * light} />
-              <path d="M -66 70 C -66 4, -40 -26, 0 -26 C 40 -26, 66 4, 66 70 Z" fill={fill} />
+              <path d="M -70 400 L -66 70 C -66 4, -40 -26, 0 -26 C 40 -26, 66 4, 66 70 L 70 400 Z" fill={fill} />
               <circle cx={0} cy={-58} r={33} fill={fill} />
               {p.veil ? <path d="M -38 -60 C -40 -102, 40 -102, 38 -60 L 46 -10 L -46 -10 Z" fill="#1E120C" /> : null}
               <path d="M -64 66 C -64 4, -40 -24, 0 -24" stroke={RIM} strokeWidth={3} fill="none" opacity={0.3 + 0.4 * light} />

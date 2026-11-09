@@ -14,11 +14,15 @@ const RED = "#FF3B3B";
 const BLUE = "#3FA9FF";
 
 /** Das Laufband: Meldungen aus der Apostelgeschichte 17, eine nach der anderen */
-const TICKER =
-  "Thessalonich: Menge zieht vor das Haus des Jason  +++  Beröa: Menschen forschen jeden Tag in den Schriften  +++  " +
-  "Athen: Neue Lehre auf dem Areopag  +++  Paulus und Silas weiter unterwegs  +++  ";
+const SEP = "\u00A0\u00A0+++\u00A0\u00A0";
+const TICKER = [
+  "Thessalonich: Menge zieht vor das Haus des Jason",
+  "Beröa: Menschen forschen jeden Tag in den Schriften",
+  "Athen: Neue Lehre auf dem Areopag",
+  "Paulus und Silas weiter unterwegs",
+].join(SEP) + SEP;
 /** So breit ist eine Runde des Laufbands (SVG `textLength` zwingt den Text genau auf diese Länge) */
-const TICKER_W = 4300;
+const TICKER_W = 3820;
 const TICKER_Y = 1600;
 
 /** Der Globus: Breiten- und Längenkreise, die Längenkreise drehen sich */
@@ -56,7 +60,6 @@ export const NewsBg: React.FC = () => {
     [],
   );
   const shift = -((frame * 3.4) % TICKER_W);
-  const blink = 0.45 + 0.55 * (Math.sin(t * 5) > 0 ? 1 : 0.25);
   const sweep = interpolate((t * 0.18) % 1, [0, 1], [-600, WIDTH + 600]);
   return (
     <AbsoluteFill style={{ background: "linear-gradient(180deg, #050A19 0%, #0A1631 38%, #0B1735 62%, #050915 100%)" }}>
@@ -95,6 +98,9 @@ export const NewsBg: React.FC = () => {
           <line key={y} x1={0} y1={y + 0} x2={WIDTH} y2={y} stroke={BLUE} strokeWidth={1} opacity={0.08 + i * 0.03} />
         ))}
 
+      </svg>
+      <AbsoluteFill style={{ background: "radial-gradient(ellipse 85% 70% at 50% 42%, rgba(0,0,0,0) 50%, rgba(1,3,10,0.7) 100%)" }} />
+      <svg width={WIDTH} height={HEIGHT} style={{ position: "absolute", inset: 0 }}>
         {/* Laufband */}
         <rect x={0} y={TICKER_Y - 4} width={WIDTH} height={4} fill={RED} />
         <rect x={0} y={TICKER_Y} width={WIDTH} height={78} fill="#0A1228" opacity={0.96} />
@@ -129,16 +135,7 @@ export const NewsBg: React.FC = () => {
         {/* Fortschritt der Sendung, ganz fein unter dem Laufband */}
         <rect x={0} y={TICKER_Y + 78} width={WIDTH * p} height={3} fill="#FFFFFF" opacity={0.5} />
 
-        {/* LIVE oben rechts */}
-        <g transform="translate(872 70)">
-          <rect x={0} y={0} width={136} height={50} rx={10} fill={RED} />
-          <circle cx={30} cy={25} r={9} fill="#FFFFFF" opacity={blink} />
-          <text x={52} y={36} fontFamily="Inter" fontWeight={800} fontSize={29} letterSpacing={2} fill="#FFFFFF">
-            LIVE
-          </text>
-        </g>
       </svg>
-      <AbsoluteFill style={{ background: "radial-gradient(ellipse 85% 70% at 50% 42%, rgba(0,0,0,0) 50%, rgba(1,3,10,0.7) 100%)" }} />
     </AbsoluteFill>
   );
 };

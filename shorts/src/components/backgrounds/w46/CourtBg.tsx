@@ -33,6 +33,7 @@ export const CourtBg: React.FC = () => {
   /* Gegen Ende (Urteil, Weisheit) wird das Licht wärmer und heller */
   const warm = interpolate(p, [0.62, 0.86], [0, 1], { extrapolateLeft: "clamp", extrapolateRight: "clamp" });
   const breathe = 0.88 + 0.12 * Math.sin(t * 0.6);
+  const endDim = interpolate(p, [0.88, 0.93], [0, 0.62], { extrapolateLeft: "clamp", extrapolateRight: "clamp" });
 
   const planks = useMemo(
     () => Array.from({ length: 19 }, (_, i) => ({ x: i * 60 - 30, tone: random(`cbp${i}`), grain: random(`cbg${i}`) })),
@@ -237,6 +238,8 @@ export const CourtBg: React.FC = () => {
           </g>
         ))}
         <rect x={0} y={0} width={WIDTH} height={HEIGHT} fill="url(#cbWarm)" opacity={warm * 0.6} style={{ mixBlendMode: "screen" }} />
+        {/* Zum Schluss (die Frage) tritt der Saal zurück, damit die Zeilen gut lesbar sind */}
+        <rect x={0} y={0} width={WIDTH} height={HEIGHT} fill="#0A0503" opacity={endDim} />
       </svg>
       <AbsoluteFill style={{ background: "radial-gradient(ellipse 90% 72% at 50% 46%, rgba(0,0,0,0) 52%, rgba(10,5,2,0.78) 100%)" }} />
     </AbsoluteFill>

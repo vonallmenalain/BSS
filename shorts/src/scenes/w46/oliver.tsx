@@ -413,11 +413,28 @@ const TableFront: React.FC<{ y: number }> = ({ y }) => (
 
 type StageProps = { t: number; frame: number; b: number[]; s: OliverSceneT; ts: TimelineScene; end: number };
 
+/** Verschneiter Vordergrund unten: Wehe, Zaunpfähle, Dunkel zum Rand */
+const Foreground: React.FC = () => (
+  <g>
+    <path d="M -20 1560 Q 220 1500 520 1540 T 1100 1520 L 1100 1920 L -20 1920 Z" fill="#1A2140" />
+    <path d="M -20 1560 Q 220 1500 520 1540 T 1100 1520" stroke="#7A88B4" strokeWidth={5} fill="none" opacity={0.45} />
+    {[70, 240, 830, 1000].map((px, i) => (
+      <g key={px}>
+        <rect x={px - 9} y={1440 + (i % 2) * 20} width={18} height={180} fill="#0E1124" />
+        <rect x={px - 11} y={1436 + (i % 2) * 20} width={22} height={8} fill="#C9D2F0" opacity={0.55} />
+      </g>
+    ))}
+    <rect x={-20} y={1478} width={340} height={8} fill="#0E1124" />
+    <rect x={760} y={1478} width={340} height={8} fill="#0E1124" />
+    <rect x={0} y={1600} width={1080} height={320} fill="url(#olFloorFade)" />
+  </g>
+);
+
 /** Das Haus im Schnitt: Alle schlafen – in einer Kammer steigt ein Gebet auf. */
 const HookStage: React.FC<StageProps> = ({ t, frame, b }) => {
   const rise = interpolate(t, [b[0] - 0.1, b[0] + 1.8], [0, 1], { ...clamp, easing: Easing.inOut(Easing.cubic) });
   const asleep = fade(t, b[1] - 0.2, 0.8);
-  const zoom = interpolate(t, [-0.4, 5], [1.0, 1.07], clamp);
+  const zoom = interpolate(t, [-0.4, 5], [1.18, 1.25], clamp);
   const ember = 0.8 - 0.55 * asleep;
   const room = "#1C120C";
   const wall = "#4A3020";
@@ -428,9 +445,9 @@ const HookStage: React.FC<StageProps> = ({ t, frame, b }) => {
       {Array.from({ length: 40 }, (_, i) => (
         <circle key={i} cx={random(`hs${i}`) * 1080} cy={240 + random(`ht${i}`) * 420} r={1 + random(`hr${i}`) * 1.8} fill="#EEF0FF" opacity={0.3 + 0.4 * Math.sin(frame / 16 + i)} />
       ))}
-      <circle cx={880} cy={330} r={60} fill="#E8EEFF" opacity={0.12} />
-      <circle cx={880} cy={330} r={36} fill="#EEF2FF" />
-      <g transform={`translate(540 860) scale(${zoom}) translate(-540 -860)`}>
+      <g transform={`translate(540 880) scale(${zoom}) translate(-540 -880)`}>
+        <circle cx={860} cy={410} r={50} fill="#E8EEFF" opacity={0.12} />
+        <circle cx={860} cy={410} r={30} fill="#EEF2FF" />
         {/* Schnee am Boden */}
         <path d="M -40 1160 Q 200 1130 540 1150 T 1120 1140 L 1120 1920 L -40 1920 Z" fill="#26304E" />
         <path d="M -40 1160 Q 200 1130 540 1150 T 1120 1140" stroke="#8C9CC8" strokeWidth={6} fill="none" opacity={0.6} />
@@ -480,19 +497,20 @@ const HookStage: React.FC<StageProps> = ({ t, frame, b }) => {
       </g>
       {/* Das Gebet steigt auf – durchs Dach zum Himmel */}
       {rise > 0.01 ? (
-        <g transform={`translate(540 860) scale(${zoom}) translate(-540 -860)`}>
-          <path d="M 683 790 C 690 690, 640 600, 700 500 S 820 380, 880 330" stroke="#FFD98A" strokeWidth={22} fill="none" opacity={0.18} pathLength={1} strokeDasharray={`${rise} 1`} strokeLinecap="round" />
-          <path d="M 683 790 C 690 690, 640 600, 700 500 S 820 380, 880 330" stroke="#FFF1C8" strokeWidth={5} fill="none" pathLength={1} strokeDasharray={`${rise} 1`} strokeLinecap="round" />
+        <g transform={`translate(540 880) scale(${zoom}) translate(-540 -880)`}>
+          <path d="M 683 790 C 690 700, 650 620, 700 540 S 800 440, 860 410" stroke="#FFD98A" strokeWidth={20} fill="none" opacity={0.18} pathLength={1} strokeDasharray={`${rise} 1`} strokeLinecap="round" />
+          <path d="M 683 790 C 690 700, 650 620, 700 540 S 800 440, 860 410" stroke="#FFF1C8" strokeWidth={4.5} fill="none" pathLength={1} strokeDasharray={`${rise} 1`} strokeLinecap="round" />
           {Array.from({ length: 8 }, (_, i) => {
             const q = (frame / 40 + i / 8) % 1;
             const k = q * rise;
-            const px = 683 + (880 - 683) * k + Math.sin(k * 9) * 20;
-            const py = 790 + (330 - 790) * k;
+            const px = 683 + (860 - 683) * k + Math.sin(k * 9) * 20;
+            const py = 790 + (410 - 790) * k;
             return <circle key={i} cx={px} cy={py} r={3 + 2 * Math.sin(i)} fill="#FFF1C8" opacity={(1 - q) * 0.8 * rise} />;
           })}
-          <circle cx={880} cy={330} r={60 + 30 * rise} fill="url(#olWarm)" opacity={rise} />
+          <circle cx={860} cy={410} r={50 + 26 * rise} fill="url(#olWarm)" opacity={rise} />
         </g>
       ) : null}
+      <Foreground />
       <Snowfall frame={frame} seed="hk" n={70} />
     </g>
   );
@@ -501,7 +519,7 @@ const HookStage: React.FC<StageProps> = ({ t, frame, b }) => {
 /** Das Farmhaus im Schnee: Oliver kommt mit den Schulbüchern; von Joseph und den Platten. */
 const HouseStage: React.FC<StageProps> = ({ t, frame, b, ts }) => {
   const walkK = interpolate(t, [-0.4, 2.6], [0, 1], { ...clamp, easing: Easing.out(Easing.quad) });
-  const x = -90 + 450 * walkK;
+  const x = -110 + 410 * walkK;
   const walking = interpolate(t, [2.0, 2.7], [1, 0], clamp);
   const ph = frame * 0.19;
   const card = fade(t, b[0] - 0.15, 0.4);
@@ -576,7 +594,7 @@ const HouseStage: React.FC<StageProps> = ({ t, frame, b, ts }) => {
       <rect x={0} y={1104} width={1080} height={8} fill="#1A1420" />
       <rect x={0} y={1134} width={1080} height={8} fill="#1A1420" />
       <rect x={0} y={1100} width={1080} height={4} fill="#C9D2F0" opacity={0.4} />
-      <g transform="translate(470 1020) rotate(-3)" opacity={smith}>
+      <g transform="translate(548 1024) rotate(-3)" opacity={smith}>
         <rect x={-6} y={0} width={12} height={110} fill="#2A1E16" />
         <rect x={-82} y={-46} width={164} height={64} rx={6} fill="#D9C8A4" stroke="#4A3420" strokeWidth={5} />
         <text x={0} y={2} textAnchor="middle" fontFamily="Cinzel" fontWeight={700} fontSize={40} fill="#3A2414">
@@ -584,10 +602,15 @@ const HouseStage: React.FC<StageProps> = ({ t, frame, b, ts }) => {
         </text>
       </g>
       {/* Oliver */}
-      <Gent x={x} y={1170} k={1.3} j={walkPose(ph, walking)} d={shadeDress(OLIVER, dark)} rim="#9FB6F0" rimO={0.55} hat books />
+      {/* Fussspuren im Schnee */}
+      {Array.from({ length: 14 }, (_, i) => {
+        const fx = -100 + i * 30;
+        return fx < x - 40 ? <ellipse key={i} cx={fx} cy={1176 + (i % 2) * 10} rx={11} ry={4} fill="#1A2240" opacity={0.8} /> : null;
+      })}
+      <Gent x={x} y={1176} k={1.45} j={walkPose(ph, walking)} d={shadeDress(OLIVER, dark)} rim="#9FB6F0" rimO={0.55} hat books />
       {/* «?» über Oliver, sobald von den Platten die Rede ist */}
       {plates > 0.01 ? (
-        <text x={x + 40} y={650 - 10 * plates} textAnchor="middle" fontFamily="Cormorant Garamond" fontStyle="italic" fontWeight={600} fontSize={110} fill="#FFE9C4" opacity={plates} stroke="#0B0710" strokeWidth={8} paintOrder="stroke">
+        <text x={x + 96} y={690 - 14 * plates} textAnchor="middle" fontFamily="Cormorant Garamond" fontStyle="italic" fontWeight={600} fontSize={150} fill="#FFE9C4" opacity={plates} stroke="#0B0710" strokeWidth={8} paintOrder="stroke">
           ?
         </text>
       ) : null}
@@ -595,7 +618,7 @@ const HouseStage: React.FC<StageProps> = ({ t, frame, b, ts }) => {
       {bubble > 0.01 ? (
         <g transform={`translate(770 440) scale(${0.8 + 0.2 * bubble})`} opacity={bubble}>
           <path d="M -200 -100 Q -200 -130 -170 -130 L 170 -130 Q 200 -130 200 -100 L 200 90 Q 200 120 170 120 L 60 120 L 20 190 L 10 120 L -170 120 Q -200 120 -200 90 Z" fill="#F4E8CC" stroke="#4A3420" strokeWidth={5} />
-          <text x={0} y={18} textAnchor="middle" fontFamily="Caveat" fontWeight={700} fontSize={64} fill={INK} opacity={1 - plates}>
+          <text x={0} y={18} textAnchor="middle" fontFamily="Caveat" fontWeight={700} fontSize={58} fill={INK} opacity={1 - plates}>
             «unser Joseph …»
           </text>
           <Plates x={0} y={-4} k={0.9} o={plates} glow={plates} frame={frame} />
@@ -620,6 +643,7 @@ const HouseStage: React.FC<StageProps> = ({ t, frame, b, ts }) => {
           Winter 1828
         </text>
       ) : null}
+      <rect x={0} y={1560} width={1080} height={360} fill="url(#olFloorFade)" />
       <Snowfall frame={frame} seed="hs" n={60} />
       <Snowfall frame={frame} seed="hf" n={14} front />
     </g>
@@ -643,19 +667,16 @@ const NightStage: React.FC<StageProps> = ({ t, frame, b }) => {
       {Array.from({ length: 9 }, (_, i) => (
         <line key={i} x1={i * 140 - 80} y1={1180} x2={i * 200 - 300} y2={1920} stroke="#0C0704" strokeWidth={4} opacity={0.6} />
       ))}
-      {/* Nachttisch mit Kerze */}
-      <rect x={110} y={1010} width={170} height={20} fill="#5A3A22" />
-      <rect x={124} y={1030} width={142} height={150} fill="#3A2416" />
-      <rect x={140} y={1060} width={110} height={8} fill="#1A0F08" opacity={0.6} />
-      <Candle x={196} y={1010} k={1.2} lit={snuff} smoke={smoke} frame={frame} />
+      {/* Kerze auf dem Fensterbrett */}
+      <Candle x={360} y={784} k={1.15} lit={snuff} smoke={smoke} frame={frame} />
       {/* Das Bett */}
-      <Bed id="nb" x={300} y={1180} k={1.42} w={530} wood="#4A2E1A" linen="#C9C0AC" quiltA="#7A3A30" quiltB="#3E4E74" skin="#C79A78" hair="#3A2414" pray={pray} frame={frame} />
+      <Bed id="nb" x={200} y={1180} k={1.62} w={530} wood="#4A2E1A" linen="#C9C0AC" quiltA="#7A3A30" quiltB="#3E4E74" skin="#C79A78" hair="#3A2414" pray={pray} frame={frame} />
       {/* Er denkt an die Platten */}
       {thought > 0.01 ? (
         <g opacity={thought}>
-          <circle cx={470} cy={930} r={10} fill="#F4E8CC" />
-          <circle cx={500} cy={880} r={16} fill="#F4E8CC" />
-          <g transform={`translate(640 690) scale(${0.85 + 0.15 * thought})`}>
+          <circle cx={410} cy={890} r={11} fill="#F4E8CC" />
+          <circle cx={456} cy={840} r={17} fill="#F4E8CC" />
+          <g transform={`translate(650 680) scale(${0.85 + 0.15 * thought})`}>
             <ellipse rx={210} ry={150} fill="#F4E8CC" stroke="#4A3420" strokeWidth={5} />
             <Plates x={-40} y={0} k={0.85} frame={frame} />
             <text x={120} y={40} textAnchor="middle" fontFamily="Cormorant Garamond" fontStyle="italic" fontWeight={600} fontSize={150} fill="#7A3A22">
@@ -667,20 +688,20 @@ const NightStage: React.FC<StageProps> = ({ t, frame, b }) => {
       {/* Das Gebet steigt still auf */}
       {thread > 0.01 ? (
         <g>
-          <path d="M 568 960 C 560 860, 480 820, 430 760 S 330 660, 300 560" stroke="#FFD98A" strokeWidth={18} fill="none" opacity={0.16} pathLength={1} strokeDasharray={`${thread} 1`} strokeLinecap="round" />
-          <path d="M 568 960 C 560 860, 480 820, 430 760 S 330 660, 300 560" stroke="#FFF1C8" strokeWidth={4} fill="none" opacity={0.8} pathLength={1} strokeDasharray={`${thread} 1`} strokeLinecap="round" />
+          <path d="M 511 930 C 510 860, 470 820, 420 760 S 300 680, 260 580" stroke="#FFD98A" strokeWidth={18} fill="none" opacity={0.16} pathLength={1} strokeDasharray={`${thread} 1`} strokeLinecap="round" />
+          <path d="M 511 930 C 510 860, 470 820, 420 760 S 300 680, 260 580" stroke="#FFF1C8" strokeWidth={4} fill="none" opacity={0.8} pathLength={1} strokeDasharray={`${thread} 1`} strokeLinecap="round" />
         </g>
       ) : null}
       {/* Frieden: warmes Licht von oben */}
       {peace > 0.01 ? (
         <g>
-          <path d={`M 360 250 L 760 250 L ${880 + 60 * peace} 1180 L ${300 - 60 * peace} 1180 Z`} fill="url(#olBeam)" opacity={0.75 * peace} />
-          <circle cx={560} cy={960} r={140 + 260 * peace} fill="url(#olWarm)" opacity={0.55 * peace} />
+          <path d={`M 380 -40 L 760 -40 L ${900 + 60 * peace} 1180 L ${260 - 60 * peace} 1180 Z`} fill="url(#olBeamV)" opacity={0.9 * peace} />
+          <circle cx={510} cy={930} r={140 + 260 * peace} fill="url(#olWarm)" opacity={0.55 * peace} />
           {Array.from({ length: 14 }, (_, i) => {
             const q = (frame / 60 + i / 14) % 1;
             return <circle key={i} cx={380 + random(`pz${i}`) * 420} cy={300 + q * 760} r={2.5 + random(`pr${i}`) * 3} fill="#FFF1C8" opacity={peace * Math.sin(q * Math.PI) * 0.8} />;
           })}
-          <text x={600} y={560 - 20 * peace} textAnchor="middle" fontFamily="Cormorant Garamond" fontStyle="italic" fontWeight={600} fontSize={150} fill="#FFE7A8" opacity={peace} style={{ filter: "drop-shadow(0 0 22px rgba(255,214,140,0.85))" }}>
+          <text x={640} y={580 - 20 * peace} textAnchor="middle" fontFamily="Cormorant Garamond" fontStyle="italic" fontWeight={600} fontSize={150} fill="#FFE7A8" opacity={peace} style={{ filter: "drop-shadow(0 0 22px rgba(255,214,140,0.85))" }}>
             Frieden
           </text>
         </g>
@@ -718,7 +739,7 @@ const SecretStage: React.FC<StageProps> = ({ t, frame, b }) => {
         {/* offener Deckel (hinter dem Zettel) */}
         {flap > 0 ? <path d={`M ${EX - EW / 2} ${top} L ${EX} ${top - 200 * flap} L ${EX + EW / 2} ${top} Z`} fill="#D9C8A4" stroke="#8A6A3E" strokeWidth={3} /> : null}
         {/* Zettel mit der Frage */}
-        <g transform={`translate(${EX} ${top + 30 - 210 * noteIn * (1 - noteDown) + 60 * noteDown})`} opacity={Math.min(1, noteIn * 2)}>
+        <g transform={`translate(${EX} ${top + 30 - 210 * noteIn * (1 - noteDown) + 150 * noteDown})`} opacity={Math.min(1, noteIn * 2)}>
           <rect x={-230} y={-120} width={460} height={240} rx={4} fill="#F7EEDA" stroke="#B8986A" strokeWidth={3} />
           <text x={0} y={-30} textAnchor="middle" fontFamily="Caveat" fontWeight={700} fontSize={66} fill={INK}>
             Ist es wahr?
@@ -730,10 +751,10 @@ const SecretStage: React.FC<StageProps> = ({ t, frame, b }) => {
         {flap <= 0 ? <path d={`M ${EX - EW / 2} ${top} L ${EX} ${top - 200 * flap} L ${EX + EW / 2} ${top} Z`} fill="#DCCBA6" stroke="#8A6A3E" strokeWidth={3} /> : null}
       </g>
       {/* Das Siegel */}
-      {sealK > 0.01 ? <Seal x={EX} y={top + 190} k={0.95 * squash} o={sealK} frame={frame} /> : null}
+      {sealK > 0.01 ? <Seal x={EX} y={top + 190} k={1.12 * squash} o={sealK} frame={frame} /> : null}
       {/* Petschaft, das herunterkommt */}
       {press > 0.01 ? (
-        <g transform={`translate(${EX} ${top + 190 - 420 * (1 - press)})`} opacity={Math.min(1, press * 3)}>
+        <g transform={`translate(${EX} ${top + 190 - 300 * (1 - press)})`} opacity={interpolate(press, [0.15, 0.6], [0, 1], clamp)}>
           <rect x={-60} y={-40} width={120} height={36} rx={6} fill="#B8862E" stroke="#6E4A14" strokeWidth={3} />
           <path d="M -26 -40 C -30 -120, -40 -170, 0 -230 C 40 -170, 30 -120, 26 -40 Z" fill="#5A3A22" stroke="#2A1A10" strokeWidth={3} />
           <ellipse cx={0} cy={-232} rx={30} ry={20} fill="#6A4628" />
@@ -778,8 +799,12 @@ const JourneyStage: React.FC<StageProps> = ({ t, frame, b }) => {
           Ontariosee
         </text>
         {/* Fingerseen */}
-        {[430, 480, 540].map((lx, i) => (
-          <path key={lx} d={`M ${lx} ${520 + i * 6} q 10 80 -6 ${150 - i * 20}`} stroke="#5A7A92" strokeWidth={9} fill="none" strokeLinecap="round" opacity={0.6} />
+        {[
+          [470, 650, 70],
+          [520, 640, 82],
+          [568, 660, 60],
+        ].map(([lx, ly, h]) => (
+          <ellipse key={lx} cx={lx} cy={ly} rx={8} ry={h} fill="#7A9AB0" stroke="#4A6A82" strokeWidth={2} opacity={0.75} transform={`rotate(6 ${lx} ${ly})`} />
         ))}
         {/* Grenze */}
         <path d="M 110 870 L 990 870" stroke="#6A4A26" strokeWidth={4} strokeDasharray="18 12" />
@@ -805,14 +830,14 @@ const JourneyStage: React.FC<StageProps> = ({ t, frame, b }) => {
           <path key={i} d={`M ${hx - 30} ${hy} L ${hx} ${hy - 26} L ${hx + 30} ${hy}`} stroke="#8A6A3E" strokeWidth={3} fill="none" opacity={0.7} />
         ))}
         {/* Route */}
-        <path d={routeD} stroke="#7A2A1A" strokeWidth={7} fill="none" strokeDasharray="2 16" strokeLinecap="round" pathLength={1} opacity={0.25} />
+        <path d={routeD} stroke="#7A2A1A" strokeWidth={7} fill="none" strokeDasharray="2 18" strokeLinecap="round" opacity={0.35} />
         <path d={routeD} stroke="#9A2E1E" strokeWidth={8} fill="none" pathLength={1} strokeDasharray={`${route} 1`} strokeLinecap="round" />
         {/* Orte */}
         <circle cx={300} cy={560} r={14} fill="#3A2414" />
         <text x={300} y={520} textAnchor="middle" fontFamily="Cinzel" fontWeight={700} fontSize={40} fill="#3A2414">
           Manchester
         </text>
-        <text x={300} y={612} textAnchor="middle" fontFamily="Cormorant Garamond" fontStyle="italic" fontWeight={600} fontSize={34} fill="#5A3A22">
+        <text x={250} y={612} textAnchor="middle" fontFamily="Cormorant Garamond" fontStyle="italic" fontWeight={600} fontSize={34} fill="#5A3A22">
           bei Palmyra
         </text>
         <circle cx={790} cy={960} r={14} fill="#3A2414" />
@@ -840,7 +865,7 @@ const JourneyStage: React.FC<StageProps> = ({ t, frame, b }) => {
           </text>
         ) : null}
         {/* Titel */}
-        <text x={560} y={480} textAnchor="middle" fontFamily="Caveat" fontWeight={700} fontSize={84} fill={INK} opacity={title}>
+        <text x={720} y={490} textAnchor="middle" fontFamily="Caveat" fontWeight={700} fontSize={84} fill={INK} opacity={title}>
           Frühling 1829
         </text>
       </g>
@@ -872,7 +897,7 @@ const RevelationStage: React.FC<StageProps> = ({ t, frame, b, end }) => {
   const oj: Joints = { ...SIT, hand: [SIT.hand[0] + 8 * w, SIT.hand[1] - 3 * Math.abs(w)], elbow: [SIT.elbow[0] + 4 * w, SIT.elbow[1]], shoulder: [SIT.shoulder[0] + 8, SIT.shoulder[1] + 4], head: [SIT.head[0] + 14, SIT.head[1] + 10] };
   const jj: Joints = { ...SIT, hand: [SIT.hand[0] - 20, SIT.hand[1] - 4], shoulder: [SIT.shoulder[0] - 2, SIT.shoulder[1] - 4], head: [SIT.head[0] - 2, SIT.head[1] - 8] };
   const K = 1.6;
-  const TY = 1010;
+  const TY = 1070;
   const floor = TY - TABLE_Y * K;
   return (
     <g>
@@ -908,7 +933,6 @@ const WitnessStage: React.FC<StageProps> = ({ t, frame, b }) => {
   const sealIn = fade(t, b[1] - 0.2, 0.5);
   const crack = interpolate(t, [b[1] + 0.6, b[1] + 1.4], [0, 1], { ...clamp, easing: Easing.out(Easing.cubic) });
   const warm = interpolate(t, [b[2] - 0.2, b[2] + 1.2], [0, 1], { ...clamp, easing: ease });
-  const pulse = interpolate(t, [b[0], b[0] + 0.9], [0, 1], clamp);
   const writing = t < b[0] ? Math.sin(frame / 2.2) : 0;
   const K = 2.3;
   const TY = 1130;
@@ -928,8 +952,6 @@ const WitnessStage: React.FC<StageProps> = ({ t, frame, b }) => {
       {/* Erinnerung: das Siegel – und es bricht auf */}
       {sealIn > 0.01 ? <Seal x={540} y={520} k={1.25 * (0.8 + 0.2 * sealIn)} crack={crack} o={sealIn} frame={frame} /> : null}
       {warm > 0.01 ? <path d={`M 470 560 L 610 560 L ${1000} 1130 L ${420} 1130 Z`} fill="url(#olBeam)" opacity={0.6 * warm} /> : null}
-      {/* Schreck: ein Ring um den Kopf */}
-      {pulse > 0.01 && pulse < 1 ? <circle cx={760 - (SIT.head[0] + 4) * K} cy={floor + (SIT.head[1] - 4) * K} r={60 + 120 * pulse} fill="none" stroke="#FFE7A8" strokeWidth={5} opacity={(1 - pulse) * 0.7} /> : null}
       <g transform={`translate(760 ${floor}) scale(${-K} ${K})`}>
         <rect x={-46} y={-260} width={10} height={260} fill="#2A1A10" />
         {[-220, -190, -160].map((ry) => (
@@ -941,7 +963,7 @@ const WitnessStage: React.FC<StageProps> = ({ t, frame, b }) => {
       <TableFront y={TY} />
       {/* fallende Feder */}
       {drop > 0.01 ? (
-        <g transform={`translate(${handX - 30 * drop} ${floor + (SIT.hand[1] - 2) * K + (TY - (floor + (SIT.hand[1] - 2) * K) - 8) * drop}) rotate(${-30 + 100 * drop}) scale(${K * 0.9})`}>
+        <g transform={`translate(${handX - 40 * drop} ${floor + (SIT.hand[1] - 2) * K + (TY - 10 - (floor + (SIT.hand[1] - 2) * K)) * drop}) rotate(${-62 * drop}) scale(${K * 0.9})`}>
           <path d="M 0 0 L -34 -64" stroke="#EDE6D6" strokeWidth={3} />
           <path d="M -10 -18 C -26 -40, -38 -62, -40 -76 C -28 -64, -16 -44, -10 -18 Z" fill="#EDE6D6" />
         </g>
@@ -985,7 +1007,7 @@ const Handwriting: React.FC<{ ts: TimelineScene; s: OliverSceneT; t: number; sho
         const at = cue ? ts.words[cue.first].start : 1 + li * 3;
         const span = cue ? ts.words[cue.last].end - at : 2.5;
         return (
-          <div key={li} style={{ fontFamily: "Caveat", fontWeight: 700, fontSize: 66, lineHeight: 1.12, color: INK, marginTop: li ? 14 : 0 }}>
+          <div key={li} style={{ fontFamily: "Caveat", fontWeight: 700, fontSize: 62, lineHeight: 1.12, color: INK, marginTop: li ? 14 : 0 }}>
             {tokens.map((tok, i) => {
               const w = cue && cue.last - cue.first + 1 === tokens.length ? ts.words[cue.first + i] : null;
               const ws = w ? w.start : at + (i / tokens.length) * span;
@@ -999,7 +1021,7 @@ const Handwriting: React.FC<{ ts: TimelineScene; s: OliverSceneT; t: number; sho
                   style={{
                     display: "inline-block",
                     marginRight: 16,
-                    clipPath: `inset(-20% ${(1 - k) * 100}% -30% -5%)`,
+                    clipPath: `inset(-20% ${(1 - k) * 112 - 12}% -30% -5%)`,
                     color: g > 0 ? mix("#2A1A0E", "#B8761A", g) : INK,
                     textShadow: g > 0 ? `0 0 ${18 * g}px rgba(255,190,80,${0.8 * g})` : undefined,
                   }}
@@ -1052,6 +1074,15 @@ export const Scene: React.FC<{ ts: TimelineScene }> = ({ ts }) => {
             <stop offset="0%" stopColor="#FFE7A8" stopOpacity="0.5" />
             <stop offset="100%" stopColor="#FFE7A8" stopOpacity="0" />
           </linearGradient>
+          <linearGradient id="olBeamV" x1="0" y1="0" x2="0" y2="1">
+            <stop offset="0%" stopColor="#FFE7A8" stopOpacity="0" />
+            <stop offset="40%" stopColor="#FFE7A8" stopOpacity="0.3" />
+            <stop offset="100%" stopColor="#FFE7A8" stopOpacity="0.06" />
+          </linearGradient>
+          <linearGradient id="olFloorFade" x1="0" y1="0" x2="0" y2="1">
+            <stop offset="0%" stopColor="#05060E" stopOpacity="0" />
+            <stop offset="100%" stopColor="#05060E" stopOpacity="0.75" />
+          </linearGradient>
           <linearGradient id="olNight" x1="0" y1="0" x2="0" y2="1">
             <stop offset="0%" stopColor="#050818" />
             <stop offset="50%" stopColor="#0E1634" />
@@ -1095,8 +1126,6 @@ export const hidden = (ts: TimelineScene): Set<number> => {
       return wordsOfTexts(ts, ["Winter 1828", "Oliver Cowdery, 22"]);
     case "night":
       return wordsOfTexts(ts, ["Frieden"]);
-    case "secret":
-      return wordsOfTexts(ts, ["Nur Gott und Oliver"]);
     case "journey":
       return wordsOfTexts(ts, ["Frühling 1829"]);
     case "revelation":

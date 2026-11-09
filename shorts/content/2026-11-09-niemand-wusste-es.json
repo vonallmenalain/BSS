@@ -55,7 +55,8 @@
         "betet er im Bett",
         "Frieden"
       ],
-      "narration": "Oliver will es genau wissen. [pause short] Eines Nachts betet er im Bett, ganz still in seinem Herzen. [pause short] Und er spürt: Frieden."
+      "narration": "Oliver will es genau wissen. [pause short] Eines Nachts betet er im Bett, ganz still in seinem Herzen. [pause short] Und er spürt: Frieden.",
+      "holdAfterSec": 0.8
     },
     {
       "id": "geheim",

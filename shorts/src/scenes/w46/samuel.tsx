@@ -30,15 +30,15 @@ const bump = (t: number, at: number, up = 0.25, hold = 0.5, down = 0.5) => inter
 
 /** Der Leuchter steht vor dem Vorhang */
 const LAMP_X = 520;
-const LAMP_TOP = LAMP_FLOOR - 340;
+const LAMP_TOP = LAMP_FLOOR - 390;
 /** Samuel: auf der Matte und an Elis Bett */
 const MAT_X = 250;
-const ELI_SIDE = 690;
+const ELI_SIDE = 640;
 /** Eli: Hüfte auf dem Bett */
-const ELI_X = 905;
+const ELI_X = 900;
 const ELI_GROUND = ELI_ROOM.bedTop - 6;
-const K_S = 1.3;
-const K_E = 1.25;
+const K_S = 1.7;
+const K_E = 1.5;
 const NIGHT = "#06060F";
 
 /* ------------------------------------------------------------------ */
@@ -242,7 +242,7 @@ const ELI_C: Colors = { tunic: "#5A3A6E", legs: "#3A2A3E", skin: "#9A7058", hair
 
 /** Der siebenarmige Leuchter – die Lampe Gottes. `boost` lässt die Flammen grösser brennen. */
 const Lampstand: React.FC<{ frame: number; boost: number; calm: number }> = ({ frame, boost, calm }) => {
-  const arms = [60, 104, 148];
+  const arms = [66, 116, 166];
   const flames: P[] = [[LAMP_X, LAMP_TOP], ...arms.flatMap((r) => [[LAMP_X - r, LAMP_TOP], [LAMP_X + r, LAMP_TOP]] as P[])];
   return (
     <g>
@@ -300,7 +300,7 @@ const Echo: React.FC<{ parts: Array<{ text: string; at: number }>; t: number; fo
       {parts.map((p, i) => {
         const k = interpolate(t, [p.at - 0.06, p.at + 0.16], [0, 1], { ...clamp, easing: Easing.out(Easing.back(1.8)) });
         if (k <= 0) return null;
-        const y = two ? 520 + i * 170 : 600;
+        const y = two ? 590 + i * 196 : 660;
         const size = two ? 150 : 190;
         return (
           <g key={i} opacity={out}>
@@ -308,7 +308,7 @@ const Echo: React.FC<{ parts: Array<{ text: string; at: number }>; t: number; fo
               const e = (t - p.at - n * 0.12) / 1.2;
               if (e <= 0 || e >= 1) return null;
               return (
-                <text key={n} x={540} y={y} textAnchor="middle" fontFamily={font} fontSize={size} letterSpacing="0.04em" fill="none" stroke="#FFE6A8" strokeWidth={3} opacity={0.5 * (1 - e)} transform={`translate(540 ${y - size * 0.35}) scale(${1 + 0.45 * e}) translate(-540 ${-(y - size * 0.35)})`}>
+                <text key={n} x={540} y={y} textAnchor="middle" fontFamily={font} fontSize={size} letterSpacing="0.04em" fill="none" stroke="#FFE6A8" strokeWidth={3} opacity={0.5 * (1 - e)} transform={`translate(540 ${y - size * 0.35}) scale(${1 + 0.3 * e}) translate(-540 ${-(y - size * 0.35)})`}>
                   {p.text}
                 </text>
               );
@@ -341,8 +341,9 @@ const VeilLight: React.FC<{ k: number; frame: number }> = ({ k, frame }) => {
   return (
     <g opacity={Math.min(1, k)}>
       <rect x={VEIL.x0} y={VEIL.top} width={VEIL.x1 - VEIL.x0} height={LAMP_FLOOR - VEIL.top} fill="url(#smVeilGlow)" />
+      <ellipse cx={cx} cy={(VEIL.top + LAMP_FLOOR) / 2 + 80} rx={(VEIL.x1 - VEIL.x0) * 0.45} ry={260} fill="url(#smFloorGlow)" opacity={0.45 * k} />
       {[-1, 1].map((sd) => (
-        <path key={sd} d={`M ${cx + sd * 220} ${VEIL.top + 10} L ${cx + sd * (300 + 30 * Math.sin(frame / 20))} ${LAMP_FLOOR} L ${cx + sd * 212} ${LAMP_FLOOR} Z`} fill="#FFE6A8" opacity={0.18 * k} />
+        <path key={sd} d={`M ${cx + sd * 220} ${VEIL.top + 10} L ${cx + sd * (300 + 30 * Math.sin(frame / 20))} ${LAMP_FLOOR} L ${cx + sd * 212} ${LAMP_FLOOR} Z`} fill="#FFE6A8" opacity={0.3 * k} />
       ))}
       <ellipse cx={cx} cy={LAMP_FLOOR} rx={(VEIL.x1 - VEIL.x0) * 0.62} ry={60} fill="url(#smFloorGlow)" opacity={k} />
     </g>
@@ -356,7 +357,7 @@ const Bubble: React.FC<{ x: number; y: number; text: string; k: number; tail: P;
   const lines: string[] = [];
   for (const w of words) {
     const lastLine = lines[lines.length - 1];
-    if (lastLine !== undefined && (lastLine + " " + w).length <= 16) lines[lines.length - 1] = `${lastLine} ${w}`;
+    if (lastLine !== undefined && (lastLine + " " + w).length <= 20) lines[lines.length - 1] = `${lastLine} ${w}`;
     else lines.push(w);
   }
   const fs = 48;
@@ -425,7 +426,7 @@ const Front: React.FC<{ x: number; y: number; k: number; arms: number; fill: str
   if (o <= 0.01) return null;
   const hand: P = lerp([52, -96], [150, -176], arms);
   const elbow: P = lerp([46, -146], [96, -176], arms);
-  const sw = stroke ? 4 / k : 0;
+  const sw = stroke ? 3 / k : 0;
   const robe = `M -50 0 C -46 -80, -40 -160, -34 -196 Q 0 -210, 34 -196 C 40 -160, 46 -80, 50 0 Z`;
   const cloak = `M -66 0 C -64 -90, -58 -170, -40 -200 Q 0 -214, 40 -200 C 58 -170, 64 -90, 66 0 Z`;
   return (
@@ -542,14 +543,15 @@ const Morning: React.FC<{ t: number; frame: number; b: number[]; wordsAt: number
       <rect x={DX1} y={DTOP - 50} width={40} height={LAMP_FLOOR - DTOP + 50} fill="#24160E" />
       {/* Samuel in der Tür: wächst heran */}
       <ellipse cx={540} cy={1190} rx={260} ry={46} fill="#FFE6B0" opacity={0.35 * withHim} />
+      {withHim > 0 ? <ellipse cx={540} cy={LAMP_FLOOR - 150 * k} rx={150 * k} ry={190 * k} fill="url(#smSun)" opacity={0.55 * withHim} /> : null}
+      <Front x={540} y={LAMP_FLOOR} k={k} arms={push * (1 - open * 0.8)} fill="#120A0A" mantle={grow} />
+      {/* So klein war er: Umrisse, die zurückbleiben */}
       {grow > 0.02 ? (
         <>
-          <Front x={540} y={LAMP_FLOOR} k={1.15} arms={0} fill="none" stroke="#FFE6A8" o={0.7 * (1 - fade(t, b[2] + 0.4, 1.2))} />
-          <Front x={540} y={LAMP_FLOOR} k={1.42} arms={0} fill="none" stroke="#FFE6A8" o={(grow > 0.5 ? 0.6 : 0) * (1 - fade(t, b[2] + 0.6, 1.2))} />
+          <Front x={540} y={LAMP_FLOOR} k={1.15} arms={0} fill="none" stroke="#FFE6A8" o={0.5 * fade(t, b[1] - 0.1, 0.3) * (1 - fade(t, b[2] + 0.6, 1.2))} />
+          <Front x={540} y={LAMP_FLOOR} k={1.42} arms={0} fill="none" stroke="#FFE6A8" o={0.4 * fade(t, b[1] + 0.6, 0.3) * (1 - fade(t, b[2] + 0.8, 1.2))} />
         </>
       ) : null}
-      <Front x={540} y={LAMP_FLOOR} k={k} arms={push * (1 - open * 0.8)} fill="#120A0A" mantle={grow} />
-      {withHim > 0 ? <circle cx={540} cy={LAMP_FLOOR - 270 * k * 0.86} r={70 * k} fill="url(#smSun)" opacity={0.35 * withHim} /> : null}
       {/* Worte, die nicht zu Boden fallen */}
       {tokens.map((tk, i) => {
         const s0 = wordsAt + tk.dl * 0.6;
@@ -655,7 +657,6 @@ export const Scene: React.FC<{ ts: TimelineScene }> = ({ ts }) => {
     zzz = 1 - fade(t, b[1] - 0.2, 0.3);
   } else if (stage === "temple") {
     dark = interpolate(t, [b[0] - 0.3, b[0] + 1.2], [0.86, 0.48], clamp);
-    zzz = fade(t, b[1], 0.6);
     presence = interpolate(t, [b[3] - 0.1, b[3] + 1.0], [0.16, 0.03], clamp);
   } else if (stage === "call") {
     const c1 = calls[0]?.times[0] ?? b[1] + 1.5;
@@ -751,8 +752,8 @@ export const Scene: React.FC<{ ts: TimelineScene }> = ({ ts }) => {
     const endAt = stage === "call" ? b[3] - 0.05 : next - 0.05;
     const k = spring({ frame: frame - f(at - 0.05), fps: FPS, config: { damping: 13, stiffness: 190 } }) * (1 - fade(t, endAt, 0.2));
     const isEli = sy.who === "eli";
-    const head: P = isEli ? [ELI_X + 4, ELI_GROUND - 150] : [sx + sdir * 6, LAMP_FLOOR - (pose.kneel ? 166 : 196) * K_S];
-    const tail: P = isEli ? [head[0] - 26, head[1] - 40] : [head[0] + 18, head[1] - 46];
+    const head: P = isEli ? [ELI_X - 6, ELI_GROUND - 120 * K_E] : [sx + sdir * 6, LAMP_FLOOR - (pose.kneel ? 166 : 196) * K_S];
+    const tail: P = isEli ? [head[0] - 30, head[1] - 48] : [head[0] + 18, head[1] - 50];
     const bx = isEli ? 800 : sx + 60;
     const by = isEli ? head[1] - 90 : head[1] - 90;
     return { ...sy, k, tail, bx, by };
@@ -834,18 +835,17 @@ export const Scene: React.FC<{ ts: TimelineScene }> = ({ ts }) => {
               ? [0, 1, 2].map((i) => {
                   const ph = ((frame / FPS) * 0.6 + i / 3) % 1;
                   return (
-                    <text key={i} x={MAT.x0 + 40 + ph * 70} y={LAMP_FLOOR - 80 - ph * 120} fontFamily="Cormorant Garamond" fontStyle="italic" fontWeight={600} fontSize={40 + 18 * i} fill="#D8D2FF" opacity={zzz * Math.sin(ph * Math.PI) * 0.8}>
+                    <text key={i} x={MAT.x0 + 50 + ph * 90} y={LAMP_FLOOR - 110 - ph * 150} fontFamily="Cormorant Garamond" fontStyle="italic" fontWeight={600} fontSize={56 + 22 * i} fill="#D8D2FF" opacity={zzz * Math.sin(ph * Math.PI) * 0.8}>
                       z
                     </text>
                   );
                 })
               : null}
-            <Mark x={stage === "hook" ? MAT_X - 60 : qX} y={stage === "hook" ? LAMP_FLOOR - 190 : LAMP_FLOOR - 300} text="?" k={question} frame={frame} />
-            <Mark x={stage === "call" ? MAT_X - 30 : qX} y={LAMP_FLOOR - 230} text="?" k={stage === "call" ? question : 0} frame={frame} />
-            <Mark x={ELI_X + 10} y={ELI_GROUND - 210} text="!" k={eliMark} frame={frame} color="#FFE6A8" size={110} />
+            <Mark x={stage === "hook" || stage === "call" ? MAT_X - 70 : qX} y={stage === "hook" || stage === "call" ? LAMP_FLOOR - 250 : LAMP_FLOOR - 400} text="?" k={question} frame={frame} size={110} />
+            <Mark x={ELI_X + 10} y={ELI_GROUND - 250} text="!" k={eliMark} frame={frame} color="#FFE6A8" size={120} />
             {/* Namen der Figuren */}
-            <Tag x={MAT_X - 40} y={LAMP_FLOOR - 190} to={[MAT_X - 110, LAMP_FLOOR - 50]} text="SAMUEL" k={tagS} color={look.accent} />
-            <Tag x={ELI_X + 30} y={ELI_GROUND - 150} to={[ELI_X + 110, ELI_GROUND - 42]} text="ELI" k={tagE} color={look.accent} />
+            <Tag x={MAT_X + 90} y={LAMP_FLOOR - 250} to={[MAT_X + 30, LAMP_FLOOR - 64]} text="SAMUEL" k={tagS} color={look.accent} />
+            <Tag x={ELI_X} y={ELI_GROUND - 190} to={[ELI_X + 140, ELI_GROUND - 52]} text="ELI" k={tagE} color={look.accent} />
           </g>
         )}
 

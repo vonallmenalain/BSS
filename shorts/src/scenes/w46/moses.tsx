@@ -164,8 +164,8 @@ const Dark: React.FC<{ id: string; x: number; y?: number; k?: number; o?: number
   const frame = useCurrentFrame();
   const dust = useMemo(
     () =>
-      Array.from({ length: 90 }, (_, i) => ({
-        x: (random(`${id}dx${i}`) - 0.5) * 150,
+      Array.from({ length: 170 }, (_, i) => ({
+        x: (random(`${id}dx${i}`) - 0.5) * 170,
         y: -random(`${id}dy${i}`) * 380,
         r: 2 + random(`${id}dr${i}`) * 5,
         vx: 120 + random(`${id}vx${i}`) * 260,
@@ -181,8 +181,8 @@ const Dark: React.FC<{ id: string; x: number; y?: number; k?: number; o?: number
   const flick = 0.82 + 0.18 * Math.sin(frame * 1.9) * Math.sin(frame * 0.7 + 1.3);
   const jit = (1 + rage * 3) * (1 - gone);
   const grow = 1 + rage * 0.16;
-  // Zerfall: die Grenze wandert von oben nach unten
-  const edge = -420 + gone * 440;
+  // Zerfall: die Gestalt wird durchsichtig, treibt davon und löst sich in Staub auf
+  const fade = 1 - interpolate(gone, [0.05, 0.75], [0, 1], { ...clamp, easing: Easing.in(Easing.quad) });
   return (
     <g transform={`translate(${x} ${y})`} opacity={o}>
       <defs>
@@ -191,9 +191,6 @@ const Dark: React.FC<{ id: string; x: number; y?: number; k?: number; o?: number
           <stop offset="50%" stopColor="#1C1030" stopOpacity="0.4" />
           <stop offset="100%" stopColor="#1C1030" stopOpacity="0" />
         </radialGradient>
-        <clipPath id={`${id}Clip`}>
-          <rect x={-400} y={edge} width={800} height={500} />
-        </clipPath>
       </defs>
       {/* Rauch um ihn */}
       <g opacity={smoke * (1 - gone)}>
@@ -201,8 +198,8 @@ const Dark: React.FC<{ id: string; x: number; y?: number; k?: number; o?: number
           <circle key={i} cx={p.x * grow + Math.sin(frame / 23 + p.p) * 20} cy={p.y - ((frame * 0.8 + p.p * 40) % 60)} r={p.r * grow} fill={`url(#${id}Smoke)`} />
         ))}
       </g>
-      <g transform={`scale(${k * grow})`}>
-        <g clipPath={`url(#${id}Clip)`}>
+      <g transform={`translate(${gone * 60} ${-gone * 30}) scale(${k * grow} ${k * grow * (1 - gone * 0.12)})`} opacity={fade}>
+        <g>
           {/* Flackernde Ränder in stumpfem Violett – Kopien, die nicht ganz deckungsgleich sind */}
           {[0, 1, 2].map((i) => (
             <g key={i} transform={`translate(${Math.sin(frame * (1.3 + i) + i * 2) * 4 * jit} ${Math.cos(frame * (1.1 + i * 0.7)) * 3 * jit})`} opacity={0.42 * flick}>
@@ -218,10 +215,10 @@ const Dark: React.FC<{ id: string; x: number; y?: number; k?: number; o?: number
       {gone > 0
         ? dust.map((d, i) => {
             const yy = d.y * k * grow;
-            const born = (yy + 420) / 440; // wann die Grenze dieses Korn erreicht
-            const age = Math.max(0, gone - born) * 2.2;
+            const born = random(`${id}db${i}`) * 0.55 + (1 - (yy + 420) / 440) * 0.15; // oben etwas früher
+            const age = Math.max(0, gone - born) * 2.4;
             if (age <= 0 || age > 1.4) return null;
-            return <circle key={i} cx={d.x * k + d.vx * age} cy={yy + d.vy * age} r={d.r * (1 - age * 0.5)} fill={i % 3 ? "#3A2E58" : "#6A5A90"} opacity={(1 - age / 1.4) * 0.9} />;
+            return <circle key={i} cx={d.x * k + d.vx * age} cy={yy + d.vy * age} r={d.r * 1.3 * (1 - age * 0.5)} fill={i % 3 ? "#2E2448" : "#7A6AA0"} opacity={(1 - age / 1.4) * 0.95} />;
           })
         : null}
     </g>
@@ -288,13 +285,13 @@ const Peak: React.FC<{ light: number; glowO?: number }> = ({ light, glowO = 1 })
   const right = mix("#0E0C22", "#1E1620", light * 0.5);
   const face = mix("#171538", "#2E2434", light * 0.6);
   const top =
-    "M -40 2700 L -40 1640 L 90 1500 L 190 1360 L 250 1240 L 300 1176 L 380 1156 L 470 1150 L 560 1147 L 660 1150 L 760 1156 L 830 1170 L 890 1220 L 960 1330 L 1040 1450 L 1120 1540 L 1120 2700 Z";
+    "M -900 2700 L -900 2100 L -40 1640 L 90 1500 L 190 1360 L 250 1240 L 300 1176 L 380 1156 L 470 1150 L 560 1147 L 660 1150 L 760 1156 L 830 1170 L 890 1220 L 960 1330 L 1040 1450 L 1120 1540 L 1980 2100 L 1980 2700 Z";
   return (
     <g>
       <path d={top} fill={face} />
       {/* Flanken: links im Licht, rechts im Schatten */}
-      <path d="M 300 1176 L 380 1156 L 400 1260 L 330 1420 L 230 1640 L 120 1820 L -40 1900 L -40 1640 L 90 1500 L 190 1360 L 250 1240 Z" fill={left} />
-      <path d="M 760 1156 L 830 1170 L 890 1220 L 960 1330 L 1040 1450 L 1120 1540 L 1120 2000 L 960 1900 L 860 1640 L 800 1420 L 740 1260 Z" fill={right} />
+      <path d="M 300 1176 L 380 1156 L 400 1260 L 330 1420 L 230 1640 L 120 1820 L -40 1900 L -900 2400 L -900 2100 L -40 1640 L 90 1500 L 190 1360 L 250 1240 Z" fill={left} />
+      <path d="M 760 1156 L 830 1170 L 890 1220 L 960 1330 L 1040 1450 L 1120 1540 L 1980 2100 L 1980 2500 L 1120 2000 L 960 1900 L 860 1640 L 800 1420 L 740 1260 Z" fill={right} />
       <path d="M 470 1150 L 520 1240 L 500 1380 L 560 1560 M 660 1150 L 640 1270 L 700 1430 L 680 1640 M 380 1156 L 400 1260" stroke={mix("#0A0918", "#1A1218", light)} strokeWidth={4} fill="none" opacity={0.45} />
       {/* Schnee am Rand */}
       <path d="M 300 1176 L 380 1156 L 470 1150 L 440 1168 L 380 1172 L 330 1192 Z" fill={mix("#B8C2FF", "#FFF0D0", light)} opacity={0.55} />
@@ -541,7 +538,7 @@ const Earth: React.FC<{ x: number; y: number; r: number; o: number }> = ({ x, y,
 const Sand: React.FC<{ x: number; y: number; r: number; lit: number }> = ({ x, y, r, lit }) => {
   const frame = useCurrentFrame();
   const grains = useMemo(
-    () => Array.from({ length: 900 }, (_, i) => ({ a: random(`sgA${i}`) * 6.28, d: 1.08 + random(`sgD${i}`) ** 1.6 * 1.05, v: 0.002 + random(`sgV${i}`) * 0.006, s: 0.8 + random(`sgS${i}`) * 2 })),
+    () => Array.from({ length: 900 }, (_, i) => ({ a: random(`sgA${i}`) * 6.28, d: 1.08 + random(`sgD${i}`) ** 1.6 * 1.15, v: 0.002 + random(`sgV${i}`) * 0.006, s: 1.2 + random(`sgS${i}`) * 2.2 })),
     [],
   );
   const n = Math.round(grains.length * lit);
@@ -551,7 +548,7 @@ const Sand: React.FC<{ x: number; y: number; r: number; lit: number }> = ({ x, y
       {grains.slice(0, n).map((g, i) => {
         const a = g.a + frame * g.v;
         const rr = r * g.d;
-        return <circle key={i} cx={Math.cos(a) * rr} cy={Math.sin(a) * rr * 0.42} r={g.s} fill={i % 4 ? "#FFE3A0" : "#FFFFFF"} opacity={0.75} />;
+        return <circle key={i} cx={Math.cos(a) * rr} cy={Math.sin(a) * rr * 0.55} r={g.s} fill={i % 4 ? "#FFE3A0" : "#FFFFFF"} opacity={0.75} />;
       })}
     </g>
   );
@@ -560,18 +557,18 @@ const Sand: React.FC<{ x: number; y: number; r: number; lit: number }> = ({ x, y
 const WORLDS = [
   { x: 170, y: 520, r: 46, c: ["#FFB37A", "#8A3E2A"], ring: false },
   { x: 900, y: 470, r: 58, c: ["#E7D6A0", "#8A6A3A"], ring: true },
-  { x: 120, y: 820, r: 30, c: ["#9AE6C8", "#2A6A5A"], ring: false },
-  { x: 960, y: 820, r: 36, c: ["#C8A8FF", "#4A2E8A"], ring: false },
-  { x: 300, y: 360, r: 20, c: ["#FFFFFF", "#8A9AC8"], ring: false },
-  { x: 780, y: 330, r: 24, c: ["#FF9AB8", "#7A2A4A"], ring: false },
+  { x: 120, y: 735, r: 30, c: ["#9AE6C8", "#2A6A5A"], ring: false },
+  { x: 965, y: 735, r: 36, c: ["#C8A8FF", "#4A2E8A"], ring: false },
+  { x: 300, y: 450, r: 20, c: ["#FFFFFF", "#8A9AC8"], ring: false },
+  { x: 720, y: 455, r: 24, c: ["#FF9AB8", "#7A2A4A"], ring: false },
   { x: 250, y: 1010, r: 24, c: ["#8AD0FF", "#1E4A8A"], ring: true },
   { x: 850, y: 1040, r: 22, c: ["#FFD27A", "#8A5A1A"], ring: false },
   { x: 60, y: 660, r: 16, c: ["#E0E0FF", "#5A5A8A"], ring: false },
   { x: 1020, y: 640, r: 18, c: ["#A8FFB0", "#2A7A3A"], ring: false },
-  { x: 420, y: 300, r: 12, c: ["#FFC8A0", "#8A4A2A"], ring: false },
+  { x: 640, y: 1080, r: 12, c: ["#FFC8A0", "#8A4A2A"], ring: false },
   { x: 680, y: 1000, r: 14, c: ["#C0F0FF", "#3A7A9A"], ring: false },
   { x: 380, y: 1090, r: 10, c: ["#FFFFFF", "#8888AA"], ring: false },
-  { x: 990, y: 300, r: 12, c: ["#FFE0A0", "#8A6A2A"], ring: false },
+  { x: 1030, y: 420, r: 12, c: ["#FFE0A0", "#8A6A2A"], ring: false },
 ];
 
 /** Welten ohne Zahl – sie gehen nacheinander auf. */
@@ -725,7 +722,7 @@ export const Scene: React.FC<{ ts: TimelineScene }> = ({ ts }) => {
     const rise = interpolate(t, [berg - 0.5, berg + 1.4], [0, 1], { ...clamp, easing: ease });
     const g = interpolate(t, [angesicht - 0.3, angesicht + 0.9], [0.12, 1], { ...clamp, easing: ease });
     light = g;
-    cam = { z: 1, dy: (1 - rise) * 420, shake: 0 };
+    cam = { z: 1, dy: (1 - rise) * 300, shake: 0 };
     back = <Glory k={g} x={540} />;
     mose = <Mose x={540} pose={{ look: 0.9, raise: 0.12 * g }} rim={mix(COLD, GOLD, g)} aura={g} />;
     front = <Lines t={t} top={500} font="Cinzel" items={s.lines.map((l, i) => ({ text: l.text, at: lineAt(i, sohn), size: 78 }))} />;
@@ -826,7 +823,7 @@ export const Scene: React.FC<{ ts: TimelineScene }> = ({ ts }) => {
     const call = interpolate(t, [ruft - 0.1, ruft + 0.6], [0, 1], { ...clamp, easing: ease });
     const strength = interpolate(t, [kraft - 0.2, kraft + 0.6], [0, 1], { ...clamp, easing: ease });
     const cmd = interpolate(t, [namen - 0.1, namen + 0.6], [0, 1], { ...clamp, easing: ease });
-    const gone = interpolate(t, [weiche - 0.05, weiche + 1.5], [0, 1], { ...clamp, easing: Easing.in(Easing.quad) });
+    const gone = interpolate(t, [weiche - 0.05, weiche + 1.25], [0, 1], { ...clamp, easing: Easing.in(Easing.quad) });
     const beam = Math.max(call * 0.45, strength) * (0.7 + 0.3 * cmd);
     const kneel = Math.max(0, fear - strength);
     light = beam;
@@ -852,8 +849,9 @@ export const Scene: React.FC<{ ts: TimelineScene }> = ({ ts }) => {
     const out = interpolate(t, [warum - 0.4, warum + 0.8], [0, 1], { ...clamp, easing: ease });
     const r = interpolate(out, [0, 1], [190, 120]);
     const ey = interpolate(out, [0, 1], [680, 700]);
+    const pull = interpolate(t, [-0.3, 1.4], [0, 1], { ...clamp, easing: ease });
     light = 0.75;
-    cam = { z: 0.78, dy: 70, shake: 0 };
+    cam = { z: interpolate(pull, [0, 1], [1, 0.78]), dy: 70 * pull, shake: 0 };
     back = (
       <>
         <Glory k={0.35} x={540} spread={0.5} />
@@ -871,7 +869,7 @@ export const Scene: React.FC<{ ts: TimelineScene }> = ({ ts }) => {
     const tab = interpolate(t, [werk - 0.5, werk + 0.5], [0, 1], { ...clamp, easing: ease });
     const engrave = interpolate(t, [ref - 0.1, ref + 0.9], [0, 1], clamp);
     light = 0.7;
-    cam = { z: 0.8, dy: 120, shake: 0 };
+    cam = { z: 0.78, dy: 70, shake: 0 };
     back = (
       <>
         <Glory k={0.3} x={540} spread={0.5} />

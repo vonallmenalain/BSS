@@ -27,6 +27,8 @@ export const CandleBg: React.FC = () => {
   /* Winter → Frühling: ab gut einem Drittel der Folge */
   const spring = smooth(0.4, 0.55, p);
   const snow = 1 - spring;
+  /* Die letzte Szene (grosse Zeilen) bekommt eine ruhige, dunklere Wand */
+  const outro = smooth(0.855, 0.885, p);
   const fl = 0.86 + 0.08 * Math.sin(frame / 2.9) + 0.06 * Math.sin(frame / 5.1 + 1) + 0.03 * Math.sin(frame / 1.7);
   const W = CANDLE_WINDOW;
 
@@ -151,6 +153,7 @@ export const CandleBg: React.FC = () => {
         {/* Kerzenlicht wärmt die Wand */}
         <ellipse cx={800} cy={1080} rx={760} ry={820} fill="url(#cbCandle)" opacity={fl} />
         <rect x={0} y={0} width={1080} height={1920} fill="url(#cbVig)" />
+        {outro > 0.01 ? <rect x={0} y={0} width={1080} height={1920} fill="#050307" opacity={0.62 * outro} /> : null}
       </svg>
       {/* Ein Hauch Wärme, der mit dem Frühling zunimmt */}
       <AbsoluteFill style={{ background: `radial-gradient(ellipse 70% 45% at 60% 62%, rgba(255,190,110,${(0.04 + 0.04 * spring) * fl}) 0%, rgba(255,190,110,0) 100%)` }} />

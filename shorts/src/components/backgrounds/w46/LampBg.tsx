@@ -11,13 +11,13 @@ import { HEIGHT, WIDTH } from "../../../lib/timing";
  */
 
 /** Boden der Halle – dieselbe Linie wie in der Szene */
-export const LAMP_FLOOR = 1150;
+export const LAMP_FLOOR = 1190;
 /** Der Vorhang (x von … bis) und seine Oberkante */
-export const VEIL = { x0: 300, x1: 740, top: 430 };
+export const VEIL = { x0: 300, x1: 740, top: 450 };
 /** Elis Kammer: Türöffnung und Bett */
-export const ELI_ROOM = { x0: 770, x1: 1080, top: 640, bedX0: 790, bedX1: 1050, bedTop: 1078 };
+export const ELI_ROOM = { x0: 770, x1: 1080, top: 620, bedX0: 784, bedX1: 1076, bedTop: 1112 };
 /** Samuels Matte */
-export const MAT = { x0: 96, x1: 396 };
+export const MAT = { x0: 56, x1: 430 };
 
 const hex = (s: string) => [1, 3, 5].map((i) => parseInt(s.slice(i, i + 2), 16));
 export const mixHex = (a: string, b: string, k: number) => {
@@ -35,6 +35,7 @@ export const LampBg: React.FC = () => {
   const p = frame / Math.max(1, durationInFrames);
   const dawn = lampDawn(p);
   const m = (night: string, day: string) => mixHex(night, day, dawn);
+  const endDim = interpolate(p, [0.88, 0.91], [0, 1], { extrapolateLeft: "clamp", extrapolateRight: "clamp" });
 
   const blocks = useMemo(
     () =>
@@ -55,20 +56,20 @@ export const LampBg: React.FC = () => {
   const veilW = VEIL.x1 - VEIL.x0;
 
   return (
-    <AbsoluteFill style={{ background: m("#0B0C1C", "#2A2430") }}>
+    <AbsoluteFill style={{ background: m("#0B0C1C", "#141018") }}>
       <svg width={WIDTH} height={HEIGHT} style={{ position: "absolute", inset: 0 }}>
         <defs>
           <linearGradient id="lbWall" x1="0" y1="0" x2="0" y2="1">
-            <stop offset="0%" stopColor={m("#0C0E22", "#3A3140")} />
-            <stop offset="55%" stopColor={m("#18172C", "#5A4844")} />
-            <stop offset="100%" stopColor={m("#100F1E", "#3E3134")} />
+            <stop offset="0%" stopColor={m("#0C0E22", "#1A1520")} />
+            <stop offset="55%" stopColor={m("#18172C", "#261E24")} />
+            <stop offset="100%" stopColor={m("#100F1E", "#18131A")} />
           </linearGradient>
           <linearGradient id="lbWindow" x1="0" y1="0" x2="0" y2="1">
             <stop offset="0%" stopColor={m("#0A1236", "#7FA4D8")} />
             <stop offset="100%" stopColor={m("#1A2150", "#FFC79A")} />
           </linearGradient>
           <linearGradient id="lbFloor" x1="0" y1="0" x2="0" y2="1">
-            <stop offset="0%" stopColor={m("#17142A", "#4A3A36")} />
+            <stop offset="0%" stopColor={m("#17142A", "#221A1E")} />
             <stop offset="100%" stopColor={m("#07070F", "#1E1718")} />
           </linearGradient>
           <linearGradient id="lbVeil" x1="0" y1="0" x2="1" y2="0">
@@ -78,9 +79,18 @@ export const LampBg: React.FC = () => {
             <stop offset="100%" stopColor="#1B2366" />
           </linearGradient>
           <linearGradient id="lbRoom" x1="0" y1="0" x2="1" y2="0">
-            <stop offset="0%" stopColor={m("#05060F", "#2A2026")} />
-            <stop offset="100%" stopColor={m("#0B0C1C", "#3A2C2E")} />
+            <stop offset="0%" stopColor={m("#05060F", "#18121A")} />
+            <stop offset="100%" stopColor={m("#0B0C1C", "#22191C")} />
           </linearGradient>
+          <radialGradient id="lbEndDim" cx="540" cy="600" r="700" gradientUnits="userSpaceOnUse">
+            <stop offset="0%" stopColor="#05040A" stopOpacity="0.72" />
+            <stop offset="60%" stopColor="#05040A" stopOpacity="0.45" />
+            <stop offset="100%" stopColor="#05040A" stopOpacity="0.2" />
+          </radialGradient>
+          <radialGradient id="lbReflect">
+            <stop offset="0%" stopColor="#E8A050" stopOpacity="0.16" />
+            <stop offset="100%" stopColor="#E8A050" stopOpacity="0" />
+          </radialGradient>
           <radialGradient id="lbSeam" cx="0.5" cy="1" r="0.6">
             <stop offset="0%" stopColor="#FFE6A8" stopOpacity="0.55" />
             <stop offset="100%" stopColor="#FFE6A8" stopOpacity="0" />
@@ -101,13 +111,13 @@ export const LampBg: React.FC = () => {
         <line x1={540} y1={262} x2={540} y2={380} stroke="#06060E" strokeWidth={8} />
 
         {/* Balken unter der Decke */}
-        <rect x={0} y={200} width={WIDTH} height={30} fill={m("#120C0A", "#3A2618")} />
+        <rect x={0} y={200} width={WIDTH} height={30} fill={m("#120C0A", "#24170F")} />
         {Array.from({ length: 9 }, (_, i) => (
-          <rect key={i} x={i * 130 + 10} y={196} width={34} height={44} rx={4} fill={m("#1C120C", "#4A3020")} />
+          <rect key={i} x={i * 130 + 10} y={196} width={34} height={44} rx={4} fill={m("#1C120C", "#2C1C12")} />
         ))}
 
         {/* Linke Säule */}
-        <rect x={20} y={230} width={58} height={LAMP_FLOOR - 230} fill={m("#1A120E", "#4A3424")} />
+        <rect x={20} y={230} width={58} height={LAMP_FLOOR - 230} fill={m("#1A120E", "#2C1E14")} />
         <rect x={20} y={230} width={10} height={LAMP_FLOOR - 230} fill="#FFFFFF" opacity={0.04} />
         <rect x={8} y={LAMP_FLOOR - 40} width={82} height={40} rx={4} fill={m("#4A3416", "#9A7034")} />
 
@@ -175,19 +185,25 @@ export const LampBg: React.FC = () => {
           return <line key={i} x1={540 + (x - 540) * 0.35} y1={LAMP_FLOOR} x2={x} y2={HEIGHT} stroke="#000" strokeWidth={3} opacity={0.3} />;
         })}
 
+        {/* Spiegelung von Leuchter und Vorhanglicht auf dem Stein */}
+        <ellipse cx={520} cy={LAMP_FLOOR + 80} rx={260} ry={90} fill="url(#lbReflect)" />
+        <rect x={VEIL.x0 + 20} y={LAMP_FLOOR + 2} width={VEIL.x1 - VEIL.x0 - 40} height={60} fill="url(#lbSeam)" opacity={0.18} transform={`scale(1 -1) translate(0 ${-2 * LAMP_FLOOR - 64})`} />
+
         {/* Samuels Matte mit Kissen und Krug */}
         <rect x={MAT.x0} y={LAMP_FLOOR - 12} width={MAT.x1 - MAT.x0} height={16} rx={6} fill={m("#4A3018", "#8A6232")} />
-        {Array.from({ length: 12 }, (_, i) => (
+        {Array.from({ length: 15 }, (_, i) => (
           <line key={i} x1={MAT.x0 + 12 + i * 24} y1={LAMP_FLOOR - 10} x2={MAT.x0 + 12 + i * 24} y2={LAMP_FLOOR + 2} stroke="#000" strokeWidth={2} opacity={0.25} />
         ))}
         <ellipse cx={MAT.x0 + 26} cy={LAMP_FLOOR - 18} rx={30} ry={12} fill={m("#5A4A3A", "#A08A6A")} />
-        <g transform={`translate(${MAT.x0 - 34} ${LAMP_FLOOR})`}>
+        <g transform={`translate(${MAT.x1 + 40} ${LAMP_FLOOR}) scale(0.9)`}>
           <path d="M -16 0 C -22 -26, -18 -44, -8 -52 L -8 -62 L 8 -62 L 8 -52 C 18 -44, 22 -26, 16 0 Z" fill={m("#5A2E1A", "#A0583A")} />
           <rect x={-10} y={-66} width={20} height={6} rx={3} fill={m("#3A1E10", "#7A4026")} />
         </g>
 
+        {/* Zum Schluss: die Mitte etwas dunkler, damit die grossen Zeilen gut lesbar sind */}
+        {endDim > 0 ? <rect x={0} y={0} width={WIDTH} height={HEIGHT} fill="url(#lbEndDim)" opacity={endDim} /> : null}
         {/* Morgenlicht: ein warmer Schleier über allem */}
-        {dawn > 0 ? <rect x={0} y={0} width={WIDTH} height={HEIGHT} fill="#FFB27A" opacity={0.1 * dawn} /> : null}
+        {dawn > 0 ? <rect x={0} y={0} width={WIDTH} height={HEIGHT} fill="#FFB27A" opacity={0.05 * dawn} /> : null}
       </svg>
     </AbsoluteFill>
   );

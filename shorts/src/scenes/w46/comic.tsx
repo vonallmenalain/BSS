@@ -181,7 +181,7 @@ const Body: React.FC<{ j: J; c: Colors; solid?: string; face?: Face }> = ({ j, c
       <g transform={`rotate(${tilt} ${kx} ${ky + 26})`}>
         <path d={`M ${kx - 10} ${ky + 14} L ${kx - 10} ${sy + 2} L ${kx + 10} ${sy + 2} L ${kx + 10} ${ky + 14} Z`} fill={solid ?? c.skin} stroke={ink} strokeWidth={4} />
         {c.hood && !solid ? (
-          <path d={`M ${kx - 34} ${ky + 50} C ${kx - 44} ${ky - 10}, ${kx - 20} ${ky - 44}, ${kx + 10} ${ky - 40} C ${kx + 32} ${ky - 36}, ${kx + 38} ${ky - 14}, ${kx + 30} ${ky - 6} L ${kx - 4} ${ky + 4} L ${kx - 8} ${ky + 56} Z`} fill={c.hood} stroke={INK} strokeWidth={5} strokeLinejoin="round" />
+          <path d={`M ${kx - 36} ${ky + 54} C ${kx - 46} ${ky - 10}, ${kx - 22} ${ky - 44}, ${kx + 6} ${ky - 40} C ${kx + 26} ${ky - 38}, ${kx + 34} ${ky - 22}, ${kx + 30} ${ky - 14} L ${kx - 10} ${ky - 4} L ${kx - 14} ${ky + 58} Z`} fill={c.hood} stroke={INK} strokeWidth={5} strokeLinejoin="round" />
         ) : null}
         <circle cx={kx} cy={ky} r={solid ? 29 : 26} fill={solid ?? c.skin} stroke={solid ? "none" : INK} strokeWidth={5} />
         {solid ? null : (
@@ -194,7 +194,7 @@ const Body: React.FC<{ j: J; c: Colors; solid?: string; face?: Face }> = ({ j, c
             )}
             {c.band ? <path d={`M ${kx - 25} ${ky - 6} Q ${kx} ${ky - 26} ${kx + 24} ${ky - 15}`} stroke={c.band} strokeWidth={6} fill="none" strokeLinecap="round" /> : null}
             {c.beard ? (
-              <path d={`M ${kx + 22} ${ky + 8} C ${kx + 30} ${ky + 40}, ${kx + 14} ${ky + 66}, ${kx + 2} ${ky + 70} C ${kx - 6} ${ky + 50}, ${kx - 12} ${ky + 30}, ${kx - 14} ${ky + 14} Z`} fill={c.beard} stroke={INK} strokeWidth={4} strokeLinejoin="round" />
+              <path d={`M ${kx + 24} ${ky + 10} C ${kx + 30} ${ky + 38}, ${kx + 18} ${ky + 60}, ${kx + 8} ${ky + 66} C ${kx + 2} ${ky + 48}, ${kx - 4} ${ky + 32}, ${kx - 6} ${ky + 18} C ${kx + 6} ${ky + 22}, ${kx + 14} ${ky + 18}, ${kx + 24} ${ky + 10} Z`} fill={c.beard} stroke={INK} strokeWidth={4} strokeLinejoin="round" />
             ) : null}
             {/* Auge und Braue */}
             <circle cx={kx + 14} cy={ky - 1} r={3.4} fill={INK} />
@@ -292,7 +292,7 @@ const wrap = (text: string, max: number) => {
 };
 
 /** Sprech-, Schrei- oder Gedankenblase mit Schwanz zur Figur */
-const Bubble: React.FC<{ cx: number; cy: number; text: string; max: number; fs: number; k: number; tail: P; kind?: "speech" | "shout" | "thought"; frame: number; color?: string }> = ({
+const Bubble: React.FC<{ cx: number; cy: number; text: string; max: number; fs: number; k: number; tail: P; kind?: "speech" | "shout" | "thought"; frame: number; color?: string; size?: P }> = ({
   cx,
   cy,
   text,
@@ -303,14 +303,15 @@ const Bubble: React.FC<{ cx: number; cy: number; text: string; max: number; fs: 
   kind = "speech",
   frame,
   color = PAPER,
+  size,
 }) => {
   if (k <= 0.01) return null;
-  const lines = wrap(text.toUpperCase(), max);
-  const longest = Math.max(...lines.map((l) => l.length));
+  const lines = wrap(text.toUpperCase(), max).filter((l) => l.trim());
+  const longest = Math.max(1, ...lines.map((l) => l.length));
   const w = Math.max(longest * fs * 0.5, fs * 1.6) + 40;
   const h = lines.length * fs * 1.04 + 26;
-  const rx = w * 0.62;
-  const ry = h * 0.72 + 10;
+  const rx = size ? size[0] / 2 : w * 0.62;
+  const ry = size ? size[1] / 2 : h * 0.72 + 10;
   const shake = kind === "shout" ? Math.sin(frame / 1.7) * 3 : 0;
   // Schwanz: zwei Punkte unten auf der Blase, Spitze bei der Figur
   const ang = Math.atan2(tail[1] - cy, tail[0] - cx);
@@ -382,13 +383,13 @@ const QBubble: React.FC<{ x: number; y: number; k: number; tail: P; lit: number;
   return (
     <g>
       {lit > 0.01 ? <circle cx={x} cy={y} r={120 + 10 * Math.sin(frame / 6)} fill={`url(#${uid}-gold)`} opacity={lit} /> : null}
-      <Bubble cx={x} cy={y} text=" " max={4} fs={10} k={k} tail={tail} frame={frame} color={fill} />
+      <Bubble cx={x} cy={y} text="" max={4} fs={10} k={k} tail={tail} frame={frame} color={fill} size={[150, 132]} />
       <text
         x={x}
-        y={y + 34}
+        y={y + 36}
         textAnchor="middle"
         fontFamily="Bangers"
-        fontSize={104}
+        fontSize={108}
         fill={mix(INK, "#B07A10", lit)}
         opacity={Math.min(1, k * 1.8)}
         transform={`translate(${x} ${y}) scale(${0.55 + 0.45 * k}) translate(${-x} ${-y})`}
@@ -513,9 +514,9 @@ const OliveTree: React.FC<{ x: number; y: number; s: number; scatter?: number; g
       {branches.map((br, i) => {
         const sc = Math.max(0, scatter - graft);
         const fly = Math.min(1, sc * (1 + i * 0.15));
-        const ox = br.dir[0] * 190 * fly;
-        const oy = br.dir[1] * 120 * fly + 60 * fly * fly;
-        const rot = (i - 1) * 50 * fly + (i === 1 ? 30 * fly : 0);
+        const ox = br.dir[0] * 36 * fly;
+        const oy = br.dir[1] * 46 * fly + 64 * fly * fly;
+        const rot = (i - 1) * 55 * fly + (i === 1 ? 35 * fly : 0);
         const g = graft;
         return (
           <g key={i}>
@@ -620,7 +621,7 @@ const StripPanel: React.FC<{ id: string; x: number; w: number; k: number; label?
     {children}
     {label ? (
       <g>
-        <rect x={x + w / 2 - (label.length * 13 + 24)} y={SY + SH - 70} width={label.length * 26 + 48} height={52} fill={YELLOW} stroke={INK} strokeWidth={5} />
+        <rect x={x + w / 2 - Math.min(w - 20, label.length * 18 + 44) / 2} y={SY + SH - 70} width={Math.min(w - 20, label.length * 18 + 44)} height={52} fill={YELLOW} stroke={INK} strokeWidth={5} />
         <text x={x + w / 2} y={SY + SH - 31} textAnchor="middle" fontFamily="Bangers" fontSize={38} letterSpacing={2} fill={INK}>
           {label.toUpperCase()}
         </text>
@@ -746,9 +747,9 @@ export const Scene: React.FC<{ ts: TimelineScene }> = ({ ts }) => {
           o={Math.min(1, figs * 1.5)}
           face={{ brow: "calm", tilt: -14 * look }}
         />
-        <QBubble x={300} y={560} k={q[0]} tail={[286, 680]} lit={0} dim={light} frame={frame} uid={uid} />
-        <QBubble x={480} y={510} k={q[1]} tail={[462, 668]} lit={0} dim={light} frame={frame} uid={uid} />
-        <QBubble x={760} y={560} k={q[2]} tail={[748, 680]} lit={light} dim={0} frame={frame} uid={uid} />
+        <QBubble x={250} y={540} k={q[0]} tail={[268, 668]} lit={0} dim={light} frame={frame} uid={uid} />
+        <QBubble x={470} y={540} k={q[1]} tail={[458, 676]} lit={0} dim={light} frame={frame} uid={uid} />
+        <QBubble x={790} y={530} k={q[2]} tail={[768, 666]} lit={light} dim={0} frame={frame} uid={uid} />
       </g>
     );
     /* Titel unten */
@@ -792,10 +793,9 @@ export const Scene: React.FC<{ ts: TimelineScene }> = ({ ts }) => {
         <rect x={MX} y={1010} width={MW} height={MY + MH - 1010} fill={`url(#${uid}-dots)`} opacity={0.4} />
         <Fire x={560} y={1090} s={0.85} frame={frame} uid={uid} />
         <Fig x={360} y={1100} k={1.25} j={blend(STAND, TELL, raise)} c={tone(LEHI, lit)} rim="#FFB15A" rimO={0.85} face={{ brow: "calm", shout: 0.3 + 0.3 * Math.abs(Math.sin(frame / 3)) * (t < end ? 1 : 0) }} />
-        <Fig x={720} y={1100} k={1.12} dir={-1} j={SIT_LAP} c={tone(NEPHI, lit)} rim="#FFB15A" rimO={0.85} face={{ brow: "calm", tilt: -6 }} />
-        <Fig x={845} y={1104} k={1.16} dir={-1} j={SIT_LAP} c={tone(LAMAN, lit)} rim="#FFB15A" rimO={0.85} />
-        <Fig x={960} y={1108} k={1.12} dir={-1} j={SIT_LAP} c={tone(LEMUEL, lit)} rim="#FFB15A" rimO={0.85} />
-        <CaptionBox x={MX + 26} y={MY + 26} text={s.caption ?? ""} k={s.caption ? sp(-0.2) : 0} />
+        <Fig x={690} y={1100} k={1.12} dir={-1} j={SIT_LAP} c={tone(NEPHI, lit)} rim="#FFB15A" rimO={0.85} face={{ brow: "calm", tilt: -6 }} />
+        <Fig x={805} y={1104} k={1.16} dir={-1} j={SIT_LAP} c={tone(LAMAN, lit)} rim="#FFB15A" rimO={0.85} />
+        <Fig x={915} y={1108} k={1.12} dir={-1} j={SIT_LAP} c={tone(LEMUEL, lit)} rim="#FFB15A" rimO={0.85} />
       </g>
     );
     const p1 = sp(b[0] - 0.1);
@@ -807,13 +807,13 @@ export const Scene: React.FC<{ ts: TimelineScene }> = ({ ts }) => {
     strip = (
       <g>
         <StripPanel id={`${uid}-s1`} x={MX} w={w3} k={p1} label="Der Ölbaum" bg="#2E3F5C">
-          <OliveTree x={MX + w3 / 2} y={SY + 250} s={0.9} frame={frame} uid={uid} />
+          <OliveTree x={MX + w3 / 2} y={SY + 252} s={0.8} frame={frame} uid={uid} />
         </StripPanel>
         <StripPanel id={`${uid}-s2`} x={MX + w3 + 27} w={w3} k={p2} label="Verstreut" bg="#4A2E48">
-          <OliveTree x={MX + w3 + 27 + w3 / 2} y={SY + 250} s={0.9} scatter={scatter} frame={frame} uid={uid} />
+          <OliveTree x={MX + w3 + 27 + w3 / 2} y={SY + 252} s={0.8} scatter={scatter} frame={frame} uid={uid} />
         </StripPanel>
         <StripPanel id={`${uid}-s3`} x={MX + 2 * (w3 + 27)} w={w3} k={p3} label="Eingepfropft" bg="#2F4A3A" glow={graft * 0.8}>
-          <OliveTree x={MX + 2 * (w3 + 27) + w3 / 2} y={SY + 250} s={0.9} scatter={1} graft={graft} frame={frame} uid={uid} />
+          <OliveTree x={MX + 2 * (w3 + 27) + w3 / 2} y={SY + 252} s={0.8} scatter={1} graft={graft} frame={frame} uid={uid} />
         </StripPanel>
       </g>
     );
@@ -832,7 +832,7 @@ export const Scene: React.FC<{ ts: TimelineScene }> = ({ ts }) => {
     const flash = interpolate(t, [away - 0.1, away + 0.25, away + 0.9], [0, 1, 0], clamp);
     const gone = fade(t, away + 0.1, 0.5);
     const mount = interpolate(t, [away - 0.2, away + 1.2], [0, 1], { ...clamp, easing: Easing.out(Easing.cubic) });
-    const beam = fade(t, away - 0.3, 0.4);
+    const beam = fade(t, away - 0.3, 0.4) * (1 - 0.7 * fade(t, away + 0.8, 0.8));
     main = (
       <g transform={zoom(460, 900, 1.0, 1.05)}>
         <Sky uid={uid} x={MX} y={MY} w={MW} h={MH} frame={frame} seed="pd" n={110} />
@@ -856,9 +856,9 @@ export const Scene: React.FC<{ ts: TimelineScene }> = ({ ts }) => {
         <path d="M 260 1060 C 300 1040, 340 1036, 380 1040" stroke={INK} strokeWidth={4} fill="none" opacity={0.6} />
         {beam > 0 ? <path d={`M 340 ${MY} L 520 ${MY} L 620 1110 L 240 1110 Z`} fill={`url(#${uid}-beam)`} opacity={beam} /> : null}
         <Fig x={380} y={1010} k={1.36} j={SIT} c={tone(NEPHI, 0.42)} rim="#9FC4FF" rimO={0.8} face={{ brow: "calm", tilt: -4 }} o={1 - gone} shadow={false} />
-        <Bubble cx={620} cy={560} text=" " max={4} fs={10} k={think * (1 - gone)} tail={[470, 720]} kind="thought" frame={frame} color={mix(PAPER, "#FFF0B0", belief)} />
+        <Bubble cx={640} cy={540} text="" max={4} fs={10} k={think * (1 - gone)} tail={[470, 700]} kind="thought" frame={frame} color={mix(PAPER, "#FFF0B0", belief)} size={[250, 210]} />
         {think * (1 - gone) > 0.01 ? (
-          <g transform={`translate(620 560) scale(${0.55 + 0.45 * think})`} opacity={(1 - gone) * Math.min(1, think * 1.8)}>
+          <g transform={`translate(640 540) scale(${0.55 + 0.45 * think})`} opacity={(1 - gone) * Math.min(1, think * 1.8)}>
             <circle r={90} fill={`url(#${uid}-gold)`} opacity={belief} />
             <text y={40} textAnchor="middle" fontFamily="Bangers" fontSize={120} fill={mix(INK, "#B07A10", belief)}>
               ?
@@ -866,7 +866,6 @@ export const Scene: React.FC<{ ts: TimelineScene }> = ({ ts }) => {
           </g>
         ) : null}
         <rect x={MX} y={MY} width={MW} height={MH} fill="#FFF8DE" opacity={flash * 0.85} />
-        <CaptionBox x={MX + 26} y={MY + 26} text={s.caption ?? ""} k={s.caption ? sp(-0.2) : 0} />
       </g>
     );
     const w3 = 306;
@@ -901,30 +900,36 @@ export const Scene: React.FC<{ ts: TimelineScene }> = ({ ts }) => {
     main = (
       <g transform={zoom(540, 760, 1.0, 1.05)}>
         <TentInside uid={uid} frame={frame} />
-        <Fig x={330} y={1120} k={1.34} j={jl} c={tone(LAMAN, 0.2, "#3A2418")} rim="#FFC870" rimO={0.8} face={{ brow: "angry", shout }} o={Math.min(1, fight * 1.4)} />
-        <Fig x={760} y={1120} k={1.28} dir={-1} j={jr} c={tone(LEMUEL, 0.2, "#3A2418")} rim="#FFC870" rimO={0.8} face={{ brow: "angry", shout: 1 - shout * 0.6 }} o={Math.min(1, fight * 1.4)} />
-        <Anger x={420} y={650} k={fight} frame={frame} s={1.4} />
-        <Anger x={672} y={670} k={fight} frame={frame + 10} s={1.2} />
+        <Fig x={330} y={1120} k={1.26} j={jl} c={tone(LAMAN, 0.2, "#3A2418")} rim="#FFC870" rimO={0.8} face={{ brow: "angry", shout }} o={Math.min(1, fight * 1.4)} />
+        <Fig x={760} y={1120} k={1.22} dir={-1} j={jr} c={tone(LEMUEL, 0.2, "#3A2418")} rim="#FFC870" rimO={0.8} face={{ brow: "angry", shout: 1 - shout * 0.6 }} o={Math.min(1, fight * 1.4)} />
+        <Anger x={210} y={690} k={fight} frame={frame} s={1.3} />
+        <Anger x={880} y={700} k={fight} frame={frame + 10} s={1.2} />
         <Motion x={420} y={830} k={fight * 0.9} />
         <Motion x={660} y={840} k={fight * 0.9} flip />
-        <Bubble cx={540} cy={480} text={s.bubble?.text ?? ""} max={18} fs={62} k={bubbleK} tail={[450, 680]} kind="shout" frame={frame} />
-        <CaptionBox x={MX + 26} y={MY + 26} text={s.caption ?? ""} k={s.caption ? sp(-0.2) : 0} />
+        <Bubble cx={560} cy={570} text={s.bubble?.text ?? ""} max={20} fs={52} k={bubbleK} tail={[452, 720]} kind="shout" frame={frame} />
       </g>
     );
     const nk = sp(0.4);
     strip = (
       <Panel id={`${uid}-s1`} x={MX} y={SY} w={MW} h={SH} k={nk} tilt={1.5}>
         {/* Von innen: der Eingang, draussen die Nacht, Nephi im Mondlicht */}
-        <rect x={MX} y={SY} width={MW} height={SH} fill="#5A3E26" />
+        <rect x={MX} y={SY} width={MW} height={SH} fill="#6A4A2C" />
+        {Array.from({ length: 8 }, (_, i) => (
+          <path key={i} d={`M ${MX + i * 130} ${SY} C ${MX + i * 130 + 30} ${SY + 120}, ${MX + i * 130 - 20} ${SY + 220}, ${MX + i * 130 + 20} ${SY + SH}`} stroke="#4E3420" strokeWidth={34} fill="none" opacity={0.7} />
+        ))}
         <rect x={MX} y={SY} width={MW} height={SH} fill={`url(#${uid}-dots)`} opacity={0.35} />
-        <path d={`M 420 ${SY + SH} L 540 ${SY + 30} L 660 ${SY + SH} Z`} fill="#1B2550" stroke={INK} strokeWidth={7} />
-        <Sky uid={uid} x={420} y={SY + 30} w={240} h={SH} frame={frame} seed="dsn" n={10} />
-        <path d={`M 420 ${SY + SH} L 540 ${SY + 30} L 660 ${SY + SH} Z`} fill="none" stroke={INK} strokeWidth={7} />
-        <path d={`M ${MX} ${SY} L 540 ${SY + 30} L ${MX + MW} ${SY}`} stroke={INK} strokeWidth={5} fill="none" opacity={0.5} />
-        <Fig x={540} y={SY + SH + 40} k={0.95} j={pose({ head: [8, -286] })} c={tone(NEPHI, 0.75)} rim="#9FC4FF" rimO={1} shadow={false} face={{ brow: "sad" }} />
-        <text x={760} y={SY + 150} fontFamily="Bangers" fontSize={70} fill={PAPER} stroke={INK} strokeWidth={6} paintOrder="stroke" opacity={Math.min(1, nk * 1.4)}>
-          …
-        </text>
+        <clipPath id={`${uid}-door`}>
+          <path d={`M 330 ${SY + SH} L 540 ${SY + 18} L 750 ${SY + SH} Z`} />
+        </clipPath>
+        <g clipPath={`url(#${uid}-door)`}>
+          <Sky uid={uid} x={330} y={SY} w={420} h={SH} frame={frame} seed="dsn" n={22} />
+          <circle cx={640} cy={SY + 120} r={34} fill="#F4EBCF" stroke={INK} strokeWidth={5} />
+          <Ridge x={330} w={420} y={SY + 270} amp={10} seed={1.7} fill="#1A1934" bottom={SY + SH} />
+          <Fig x={520} y={SY + SH + 150} k={1.2} j={pose({ head: [8, -286] })} c={tone(NEPHI, 0.78)} rim="#9FC4FF" rimO={1} shadow={false} face={{ brow: "sad" }} />
+        </g>
+        <path d={`M 330 ${SY + SH} L 540 ${SY + 18} L 750 ${SY + SH}`} fill="none" stroke={INK} strokeWidth={9} strokeLinejoin="round" />
+        <path d={`M 330 ${SY + SH} L 540 ${SY + 18} L 750 ${SY + SH}`} fill="none" stroke="#C59A60" strokeWidth={4} strokeLinejoin="round" />
+        <Bubble cx={800} cy={SY + 110} text="…" max={4} fs={60} k={sp(1.0)} tail={[640, SY + 150]} kind="thought" frame={frame} size={[170, 110]} />
       </Panel>
     );
     sfx = (
@@ -940,8 +945,8 @@ export const Scene: React.FC<{ ts: TimelineScene }> = ({ ts }) => {
     main = (
       <g>
         <rect x={MX} y={MY} width={MW} height={MH} fill="#24305E" />
-        <Burst cx={700} cy={760} n={40} r1={60} r2={1200} color="#3B4C8C" o={1} spin={frame / 300} />
-        <Burst cx={700} cy={760} n={40} r1={60} r2={1200} color={YELLOW} o={burst * 0.35} spin={frame / 300 + 0.05} />
+        <Burst cx={770} cy={900} n={40} r1={40} r2={1300} color="#3B4C8C" o={1} spin={frame / 300} />
+        <Burst cx={770} cy={900} n={40} r1={40} r2={1300} color={YELLOW} o={burst * 0.35} spin={frame / 300 + 0.05} />
         <rect x={MX} y={MY} width={MW} height={MH} fill={`url(#${uid}-dots)`} opacity={0.3} />
         <g transform={`translate(${-10 * (1 - mainK)} 0)`}>
           <Fig x={790} y={1640} k={2.5} dir={-1} j={blend(STAND, ASK, raise)} c={tone(NEPHI, 0.12)} rim="#FFE9A8" rimO={0.9} rimDx={-7} face={{ brow: "calm" }} shadow={false} />
@@ -992,10 +997,8 @@ export const Scene: React.FC<{ ts: TimelineScene }> = ({ ts }) => {
       <Panel id={`${uid}-s1`} x={MX} y={SY} w={MW} h={SH} k={nk} tilt={-1.2}>
         <rect x={MX} y={SY} width={MW} height={SH} fill="#2A3358" />
         <rect x={MX} y={SY} width={MW} height={SH} fill={`url(#${uid}-dots)`} opacity={0.4} />
-        <Fig x={660} y={SY + 690} k={1.75} dir={-1} j={HEART} c={tone(NEPHI, 0.2)} rim="#9FC4FF" rimO={0.7} rimDx={-6} shadow={false} face={{ brow: "sad", tilt: 8 }} />
-        <text x={300} y={SY + 200} textAnchor="middle" fontFamily="Bangers" fontSize={80} fill={PAPER} stroke={INK} strokeWidth={7} paintOrder="stroke" opacity={Math.min(1, nk * 1.4)}>
-          …
-        </text>
+        <Fig x={680} y={SY + 590} k={1.7} dir={-1} j={HEART} c={tone(NEPHI, 0.2)} rim="#9FC4FF" rimO={0.7} rimDx={-6} shadow={false} face={{ brow: "sad", tilt: 8 }} />
+        <Bubble cx={330} cy={SY + 120} text="…" max={4} fs={60} k={sp(bubbleAt + 1.5)} tail={[560, SY + 130]} kind="thought" frame={frame} size={[180, 116]} />
       </Panel>
     );
     sfx = <Sfx frame={f(bubbleAt)} name="thud" volume={0.3} />;
@@ -1061,7 +1064,7 @@ export const Scene: React.FC<{ ts: TimelineScene }> = ({ ts }) => {
         <Fig x={330} y={1100} k={1.2} j={SIT_TALK} c={tone(NEPHI, lit)} rim="#FFB15A" rimO={0.85} face={{ brow: "calm", shout: 0.25 * Math.abs(Math.sin(frame / 3)) * (t < b[1] ? 1 : 0) }} />
         <Fig x={760} y={1104} k={1.18} dir={-1} j={blend(SIT_LAP, SIT_BOW, calm)} c={tone(LAMAN, lit)} rim="#FFB15A" rimO={0.85} face={{ brow: calm > 0.5 ? "calm" : undefined }} />
         <Fig x={890} y={1108} k={1.14} dir={-1} j={blend(SIT_LAP, SIT_BOW, calm)} c={tone(LEMUEL, lit)} rim="#FFB15A" rimO={0.85} face={{ brow: calm > 0.5 ? "calm" : undefined }} />
-        <Bubble cx={560} cy={520} text=" " max={4} fs={10} k={vision} tail={[400, 760]} kind="thought" frame={frame} color="#E9F0FF" />
+        <Bubble cx={560} cy={520} text="" max={4} fs={10} k={vision} tail={[390, 740]} kind="thought" frame={frame} color="#E9F0FF" size={[400, 330]} />
         {vision > 0.01 ? (
           <g opacity={Math.min(1, vision * 1.6)} transform={`translate(560 520) scale(${0.55 + 0.45 * vision}) translate(-560 -520)`}>
             <OliveTree x={560} y={640} s={0.95} scatter={1} graft={graft} frame={frame} uid={uid} />
@@ -1069,7 +1072,7 @@ export const Scene: React.FC<{ ts: TimelineScene }> = ({ ts }) => {
         ) : null}
       </g>
     );
-    const nk = sp(b[1] + 0.1);
+    const nk = sp(b[1] - 0.4);
     strip = (
       <Panel id={`${uid}-s1`} x={MX} y={SY} w={MW} h={SH} k={nk} tilt={1.2}>
         <Sky uid={uid} x={MX} y={SY} w={MW} h={SH} frame={frame} seed="pcs" n={40} />
@@ -1093,6 +1096,7 @@ export const Scene: React.FC<{ ts: TimelineScene }> = ({ ts }) => {
         {defs}
         <Panel id={`${uid}-main`} x={MX} y={MY} w={MW} h={MH} k={mainK} tilt={stage === "ask" ? -1.2 : stage === "hook" ? 1 : 0}>
           {main}
+          <CaptionBox x={MX + 30} y={MY + 30} text={s.caption ?? ""} k={s.caption ? sp(-0.2) : 0} />
         </Panel>
         {strip}
       </svg>

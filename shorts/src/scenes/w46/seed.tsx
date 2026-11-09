@@ -171,6 +171,9 @@ const POT_W = 280;
 const POT_H = 360;
 const SOIL = 250;
 const SEED_Y = 70;
+/** Der grosse Topf in der Mitte (Material, Beobachtung, Ergebnis, Baum) */
+const MAIN_K = 1.15;
+const RULER_X = 540 + (POT_W / 2) * MAIN_K + 70;
 
 type PotProps = {
   id: string;
@@ -188,6 +191,8 @@ type PotProps = {
   seedIn?: number;
   seedGlow?: number;
   seedS?: number;
+  seedO?: number;
+  seedHover?: number;
   /** Hitze von oben 0 … 1 */
   hot?: number;
   /** Fehlende Wurzeln: gestrichelter Umriss 0 … 1 */
@@ -213,6 +218,8 @@ const Pot: React.FC<PotProps> = ({
   seedIn = 1,
   seedGlow = 0,
   seedS = 1.8,
+  seedO = 1,
+  seedHover = 0,
   hot = 0,
   noRoots = 0,
   label,
@@ -231,7 +238,7 @@ const Pot: React.FC<PotProps> = ({
     [id, soilTop],
   );
   const seedLocalY = soilTop + SEED_Y;
-  const fallY = interpolate(seedIn, [0, 1], [soilTop - 260, seedLocalY], { ...clamp, easing: Easing.in(Easing.quad) });
+  const fallY = interpolate(seedIn, [0, 1], [soilTop - 150, seedLocalY], { ...clamp, easing: Easing.in(Easing.quad) });
   const potPath = `M ${-hw} ${-POT_H} L ${-hw} -26 Q ${-hw} 0 ${-hw + 26} 0 L ${hw - 26} 0 Q ${hw} 0 ${hw} -26 L ${hw} ${-POT_H}`;
   const inner = `M ${-hw + 6} ${soilTop - 4} L ${-hw + 6} -28 Q ${-hw + 6} -6 ${-hw + 28} -6 L ${hw - 28} -6 Q ${hw - 6} -6 ${hw - 6} -28 L ${hw - 6} ${soilTop - 4} Z`;
   const surface = `M ${-hw + 6} ${soilTop + 4} C ${-hw + 60} ${soilTop - 6}, -20 ${soilTop + 8}, 20 ${soilTop} S ${hw - 50} ${soilTop - 4}, ${hw - 6} ${soilTop + 4}`;
@@ -286,7 +293,9 @@ const Pot: React.FC<PotProps> = ({
         <path d={surface} stroke={mix("#6A4C34", "#B89A6E", dry)} strokeWidth={6} fill="none" />
       </g>
       {/* Korn und Keimling */}
-      <Seed x={0} y={fallY} s={seedS * (1 + 0.45 * swell)} glow={seedGlow} split={split} frame={frame} />
+      <g opacity={seedO}>
+        <Seed x={0} y={fallY + seedHover} s={seedS * (1 + 0.45 * swell)} glow={seedGlow} split={split} frame={frame} />
+      </g>
       <g transform={`translate(0 ${soilTop})`}>
         <Sprout g={g} dry={dry} seedY={SEED_Y} H={300} frame={frame} phase={phase} />
       </g>
@@ -309,8 +318,8 @@ const Pot: React.FC<PotProps> = ({
       ))}
       {label ? (
         <g opacity={labelO}>
-          <rect x={-hw + 16} y={-POT_H + 22} width={label.length * 21 + 34} height={50} rx={8} fill="rgba(4,20,16,0.78)" stroke="rgba(124,255,178,0.6)" strokeWidth={2} />
-          <text x={-hw + 33} y={-POT_H + 58} fontFamily={MONO} fontWeight={700} fontSize={32} fill="#DFFFEF">
+          <rect x={-(label.length * 25 + 40) / 2} y={14} width={label.length * 25 + 40} height={60} rx={8} fill="#E8F7EF" stroke="rgba(124,255,178,0.8)" strokeWidth={2} />
+          <text x={0} y={57} textAnchor="middle" fontFamily={MONO} fontWeight={700} fontSize={42} fill="#0B2A20">
             {label}
           </text>
         </g>
@@ -330,7 +339,7 @@ const Tree: React.FC<{ x: number; y0: number; k: number; fruit: number; frame: n
       Array.from({ length: 26 }, (_, i) => {
         const a = random(`tb${i}`) * Math.PI * 2;
         const r = Math.sqrt(random(`tr${i}`)) * 1;
-        return { x: Math.cos(a) * r * 250, y: Math.sin(a) * r * 170, r: 70 + random(`ts${i}`) * 60, c: random(`tc${i}`) };
+        return { x: Math.cos(a) * r * 240, y: Math.sin(a) * r * 140, r: 62 + random(`ts${i}`) * 50, c: random(`tc${i}`) };
       }),
     [],
   );
@@ -339,16 +348,16 @@ const Tree: React.FC<{ x: number; y0: number; k: number; fruit: number; frame: n
       Array.from({ length: 11 }, (_, i) => {
         const a = random(`fa${i}`) * Math.PI * 2;
         const r = 0.25 + Math.sqrt(random(`fr${i}`)) * 0.7;
-        return { x: Math.cos(a) * r * 230, y: Math.sin(a) * r * 150 + 30, d: random(`fd${i}`) * 0.6 };
+        return { x: Math.cos(a) * r * 220, y: Math.sin(a) * r * 120 + 20, d: random(`fd${i}`) * 0.6 };
       }),
     [],
   );
   if (k <= 0.005) return null;
   const trunkK = interpolate(k, [0, 0.55], [0, 1], { ...clamp, easing: Easing.out(Easing.quad) });
   const crownK = interpolate(k, [0.3, 1], [0, 1], { ...clamp, easing: Easing.out(Easing.back(1.2)) });
-  const H = 560 * scale;
+  const H = 470 * scale;
   const top: P = [x, y0 - H * trunkK];
-  const crownC: P = [x, y0 - H * 0.92];
+  const crownC: P = [x, y0 - H * 0.9];
   const sway = Math.sin(frame / 40) * 4;
   const tw = (26 + 18 * k) * scale;
   return (
@@ -371,7 +380,10 @@ const Tree: React.FC<{ x: number; y0: number; k: number; fruit: number; frame: n
       {/* Krone */}
       {crownK > 0.01 ? (
         <g transform={`translate(${crownC[0] + sway} ${crownC[1]}) scale(${crownK * scale})`}>
-          <ellipse cx={0} cy={0} rx={330} ry={250} fill="url(#sdPlantGlow)" opacity={0.6 + 0.4 * fruit} />
+          <ellipse cx={0} cy={0} rx={320} ry={230} fill="url(#sdPlantGlow)" opacity={0.6 + 0.4 * fruit} />
+          {blobs.map((bl, i) => (
+            <circle key={`o${i}`} cx={bl.x + 4} cy={bl.y + 8} r={bl.r + 5} fill="#17502F" />
+          ))}
           {blobs.map((bl, i) => (
             <circle key={i} cx={bl.x} cy={bl.y} r={bl.r} fill={bl.c < 0.33 ? "#2C8F52" : bl.c < 0.66 ? "#3DB46A" : "#2A7A4C"} />
           ))}
@@ -448,7 +460,7 @@ const Protocol: React.FC<{ title: string; titleK: number; lines: Line[]; o: numb
   const y = 262 - (1 - slide) * 40;
   const twoCols = lines.length > 3;
   const rows = twoCols ? Math.ceil(lines.length / 2) : lines.length;
-  const h = 150 + rows * 62 + (stamp ? 140 : 26);
+  const h = 156 + rows * 66 + (stamp ? 118 : 26);
   const cursorOn = Math.floor(frame / 8) % 2 === 0;
   const colW = twoCols ? (w - 72) / 2 : w - 72;
   const colLines = (c: number) => (twoCols ? lines.filter((_, i) => (c === 0 ? i < rows : i >= rows)) : c === 0 ? lines : []);
@@ -478,21 +490,19 @@ const Protocol: React.FC<{ title: string; titleK: number; lines: Line[]; o: numb
       {[0, 1].map((c) =>
         colLines(c).map((ln, r) => {
           const lx = x + 36 + c * (colW + 0);
-          const ly = y + 190 + r * 62;
+          const ly = y + 196 + r * 66;
           const labelLen = Math.max(...colLines(c).map((l) => l.label.length));
-          const tx = lx + Math.max(80, labelLen * 18 + 46);
+          const tx = lx + Math.max(96, labelLen * 20.5 + 56);
           const avail = lx + colW - tx - 10;
           const longest = Math.max(...colLines(c).map((l) => l.text.length));
-          const fs = Math.min(40, avail / (longest * 0.62));
+          const fs = Math.min(46, avail / (longest * 0.62));
           const isCheck = ln.text === "✓";
           return (
             <g key={`${c}-${r}`} opacity={ln.k > 0 ? 1 : 0.28}>
-              <text x={lx} y={ly} fontFamily={MONO} fontSize={30} fill="rgba(200,255,228,0.62)">
+              <text x={lx} y={ly} fontFamily={MONO} fontSize={34} fill="rgba(200,255,228,0.66)">
                 {ln.label}
               </text>
-              <text x={tx - 34} y={ly} fontFamily={MONO} fontSize={30} fill="rgba(124,255,178,0.6)">
-                →
-              </text>
+              <path d={`M ${tx - 40} ${ly - 11} L ${tx - 14} ${ly - 11} M ${tx - 22} ${ly - 19} L ${tx - 14} ${ly - 11} L ${tx - 22} ${ly - 3}`} stroke="rgba(124,255,178,0.7)" strokeWidth={3} fill="none" strokeLinecap="round" strokeLinejoin="round" />
               {isCheck ? (
                 <Check x={tx} y={ly - 4} k={ln.k} />
               ) : (
@@ -505,7 +515,7 @@ const Protocol: React.FC<{ title: string; titleK: number; lines: Line[]; o: numb
           );
         }),
       )}
-      {stamp ? <Stamp x={x + w / 2} y={y + h - 74} text={stamp.text.toUpperCase()} color="#7CFFB2" pop={stamp.pop} rot={-4} size={50} font={MONO} /> : null}
+      {stamp ? <Stamp x={x + w / 2} y={y + h - 64} text={stamp.text.toUpperCase()} color="#7CFFB2" pop={stamp.pop} rot={-4} size={50} font={MONO} /> : null}
     </g>
   );
 };
@@ -915,7 +925,6 @@ export const Scene: React.FC<{ ts: TimelineScene }> = ({ ts }) => {
     const heartAt = lineAt(1);
     const wishAt = lineAt(2);
     const drop = interpolate(t, [wishAt + 0.6, wishAt + 1.4], [0, 1], { ...clamp, easing: Easing.in(Easing.quad) });
-    const hover = (1 - drop) * Math.sin(frame / 14) * 6;
     const soilGlow = fade(t, soilAt - 0.1, 0.4) * (1 - fade(t, heartAt + 0.2, 0.6));
     body = (
       <g>
@@ -923,21 +932,18 @@ export const Scene: React.FC<{ ts: TimelineScene }> = ({ ts }) => {
         <Pot
           id="m"
           x={540}
+          k={MAIN_K}
+          seedO={seedOn}
+          seedS={2}
           seedIn={drop}
+          seedHover={(1 - drop) * Math.sin(frame / 12) * 8}
           seedGlow={fade(t, wordAt - 0.1, 0.5) * (0.7 + 0.3 * drop)}
           heart={fade(t, heartAt - 0.1, 0.6)}
           glow={soilGlow * 0.6}
           frame={frame}
           o={1}
         />
-        {seedOn > 0 && drop <= 0 ? (
-          <g transform={`translate(0 ${hover})`} opacity={seedOn}>
-            {/* Pinzette */}
-            <path d={`M 560 ${BENCH - 640} L 548 ${BENCH - 566} M 520 ${BENCH - 640} L 532 ${BENCH - 566}`} stroke="#CFE7DD" strokeWidth={8} strokeLinecap="round" />
-            <path d={`M 540 ${BENCH - 720} L 520 ${BENCH - 640} M 540 ${BENCH - 720} L 560 ${BENCH - 640}`} stroke="#CFE7DD" strokeWidth={10} strokeLinecap="round" />
-          </g>
-        ) : null}
-        <Ruler x={760} top={640} mark={null} o={fade(t, -0.2, 0.5)} />
+        <Ruler x={RULER_X} top={660} mark={null} o={fade(t, -0.2, 0.5)} />
       </g>
     );
     protocol = proto(1);
@@ -966,7 +972,7 @@ export const Scene: React.FC<{ ts: TimelineScene }> = ({ ts }) => {
     } else {
       bright = 1;
     }
-    const plantTop = BENCH - SOIL - g * 300;
+    const plantTop = BENCH - (SOIL + g * 300 * (1 - 0)) * MAIN_K;
     body = (
       <g>
         <ellipse cx={540} cy={900} rx={420} ry={380} fill="url(#sdSpot)" />
@@ -978,8 +984,8 @@ export const Scene: React.FC<{ ts: TimelineScene }> = ({ ts }) => {
               return <circle key={i} cx={540} cy={plantTop + 80} r={60 + life * 360} fill="none" stroke="#7CFFB2" strokeWidth={5 * (1 - life)} opacity={rings * (1 - life) * 0.8} />;
             })
           : null}
-        <Pot id="s" x={540} swell={swell} split={split} g={g} roots={roots} seedGlow={stage === "know" ? fade(t, stampAt - 0.1, 0.5) : 0.25 * swell} glow={0.35 * bright + 0.25 * rings} frame={frame} />
-        <Ruler x={760} top={640} mark={g > 0.02 ? plantTop : null} o={1} />
+        <Pot id="s" x={540} k={MAIN_K} swell={swell} split={split} g={g} roots={roots} seedGlow={stage === "know" ? fade(t, stampAt - 0.1, 0.5) : 0.25 * swell} glow={0.35 * bright + 0.25 * rings} frame={frame} />
+        <Ruler x={RULER_X} top={660} mark={g > 0.02 ? plantTop : null} o={1} />
       </g>
     );
     protocol = proto(1, s.stamp ? { text: s.stamp.text, pop: stampPop } : undefined);
@@ -1049,7 +1055,7 @@ export const Scene: React.FC<{ ts: TimelineScene }> = ({ ts }) => {
     const drops = Array.from({ length: 6 }, (_, i) => {
       const at = careAt + i * 0.12;
       const q = interpolate(t, [at, at + 0.55], [0, 1], { ...clamp, easing: Easing.in(Easing.quad) });
-      return { x: 520 + (i % 3) * 20, y: 520 + q * 330, o: q > 0 && q < 1 ? 1 : 0 };
+      return { x: 482 + (i % 3) * 14, y: 812 + q * 66, o: q > 0 && q < 1 ? 1 : 0 };
     });
     body = (
       <g>
@@ -1059,12 +1065,14 @@ export const Scene: React.FC<{ ts: TimelineScene }> = ({ ts }) => {
         {fruit > 0 ? <path d={`M 440 0 L 640 0 L 700 600 L 380 600 Z`} fill="url(#sdBeam)" opacity={fruit * 0.7} /> : null}
         {/* Pipette */}
         <g opacity={fade(t, careAt - 0.4, 0.3) * (1 - fade(t, careAt + 1.0, 0.3))}>
-          <rect x={516} y={360} width={48} height={110} rx={20} fill="#FF7AD9" opacity={0.8} />
-          <path d="M 524 470 L 556 470 L 544 540 L 536 540 Z" fill="rgba(220,255,240,0.7)" />
+          <g transform="rotate(-28 450 760)">
+            <rect x={426} y={650} width={48} height={100} rx={20} fill="#FF7AD9" opacity={0.85} />
+            <path d="M 434 750 L 466 750 L 454 812 L 446 812 Z" fill="rgba(220,255,240,0.75)" />
+          </g>
         </g>
         {drops.map((d, i) => (d.o ? <path key={i} d={`M ${d.x} ${d.y - 12} C ${d.x + 9} ${d.y}, ${d.x + 7} ${d.y + 10}, ${d.x} ${d.y + 10} C ${d.x - 7} ${d.y + 10}, ${d.x - 9} ${d.y}, ${d.x} ${d.y - 12} Z`} fill="#9FE8FF" /> : null))}
-        <Pot id="t" x={540} swell={1} split={1} g={g * sproutO} roots={1} o={potO} glow={0.3 * bright} frame={frame} />
-        <Tree x={540} y0={BENCH - SOIL} k={treeK} fruit={fruit} frame={frame} />
+        <Pot id="t" x={540} k={MAIN_K} swell={1} split={1} g={g * sproutO} roots={1} o={potO} glow={0.3 * bright} frame={frame} />
+        <Tree x={540} y0={BENCH - SOIL * MAIN_K} k={treeK} fruit={fruit} frame={frame} />
         {lapse > 0.01 ? (
           <g opacity={lapse}>
             <rect x={680} y={BENCH - 120} width={330} height={64} rx={10} fill="rgba(3,18,15,0.8)" stroke="#FF7AD9" strokeWidth={2} />
@@ -1116,10 +1124,10 @@ export const Scene: React.FC<{ ts: TimelineScene }> = ({ ts }) => {
           return (
             <g key={i} opacity={o}>
               {i < 4 ? (
-                <Pot id={`y${i}`} x={pp.x} k={0.5} swell={pp.g > 0 ? 1 : 0.4} split={pp.g > 0 ? 1 : 0} g={pp.g * k} roots={pp.g > 0 ? Math.min(1, pp.g * 1.6) * k : 0} seedS={2.2} frame={frame} phase={i} />
+                <Pot id={`y${i}`} x={pp.x} k={0.55} swell={pp.g > 0 ? 1 : 0.4} split={pp.g > 0 ? 1 : 0} g={pp.g * k} roots={pp.g > 0 ? Math.min(1, pp.g * 1.6) * k : 0} seedS={2.2} frame={frame} phase={i} />
               ) : (
                 <g>
-                  <Pot id={`y${i}`} x={pp.x} k={0.5} swell={1} split={1} g={0} roots={k} frame={frame} />
+                  <Pot id={`y${i}`} x={pp.x} k={0.55} swell={1} split={1} g={0} roots={k} frame={frame} />
                   <Tree x={pp.x} y0={BENCH - SOIL * 0.5} k={k} fruit={k} frame={frame} scale={0.36} />
                 </g>
               )}

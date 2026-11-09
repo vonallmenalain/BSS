@@ -170,6 +170,19 @@ Szenen der Looks:
 | `emmaus` | Abendweg nach Emmaus: zwei Jünger, ein Fremder, das Brot, das brennende Herz | `stage` (`road`, `stranger`, `scriptures`, `evening`, `bread`, `burn`), `hook`, `cues` |
 | `enos` | Wald bis in die Nacht: Enos auf der Jagd, Worte von zu Hause, Gebet, die Stimme | `stage` (`hunt`, `words`, `pray`, `night`, `voice`, `home`), `hook`, `words` (`text`, `at`), `cues` |
 | `stack` | Videospiel: Vorschau auf das Minispiel «Bücherturm» – Bücher fallen, genau drauf, der Turm kippt | `stage` (`names`, `play`, `topple`, `complete`), `books` (`label`, `at`, `offset`, `perfect`), `hover`, `score`, `lives`, `cues` |
+| `oliver` | Farmhaus 1829 bei Kerzenlicht: Oliver Cowdery, sein stilles Gebet, das Siegel, die Reise nach Harmony, die Offenbarung in Handschrift (LuB 6) | `stage` (`hook`, `house`, `night`, `secret`, `journey`, `revelation`, `witness`), `lines` (`text`, `at`), `glowAt`, `cues` |
+| `samuel` | Heiligtum in Schilo bei Nacht: der Ruf, Samuel rennt zu Eli, der Zähler der Rufe, versiegelte Antworten (1 Samuel 3) | `stage` (`hook`, `temple`, `call`, `eli`, `again`, `understand`, `answer`, `grow`), `calls` (`n`, `at`, `text`), `count`, `say` (`who`, `text`, `at`, `sealed`), `cues` |
+| `seed` | Labor mit Pflanzenlicht: Versuchsprotokoll zum Samenkorn, Topf im Querschnitt, Gegenprobe, Baum (Alma 32) | `stage` (`hook`, `outcast`, `ask`, `material`, `swell`, `know`, `neglect`, `tree`, `you`), `title`, `lines` (`label`, `text`, `at`), `stamp`, `say` (`who`, `text`, `at`), `cues` |
+| `comic` | Bildergeschichte: eine Comicseite je Szene, grosses Panel und Streifen, Sprech- und Gedankenblasen (1 Nephi 10–11, 15) | `stage` (`hook`, `dream`, `ponder`, `dispute`, `ask`, `reply`, `answer`, `peace`), `caption`, `bubble` (`text`, `at`, `who`), `items` (`text`, `icon`, `at`), `cues` |
+| `news` | Nachrichtensender: Eilmeldung, Karte, Live-Bild, Bauchbinde, Kommentare und Trends (Apostelgeschichte 17) | `stage` (`breaking`, `route`, `thessalonich`, `riot`, `beroea`, `check`, `athens`, `choice`), `tag`, `headline`, `bubble`, `items`, `cues` |
+| `barges` | Meer bei Nacht: die Werft, die Probleme, das Schmelzfeuer, sechzehn Steine, die einer nach dem anderen leuchten, die Fahrt (Ether 2–3, 6) | `stage` (`hook`, `build`, `air`, `dark`, `stones`, `mount`, `touch`, `voyage`, `recap`), `lines` (`text`, `at`), `say`, `cues` |
+| `moses` | Gipfel unter den Welten: die Herrlichkeit als Licht, die dunkle Gestalt, die Echtheitsprüfung, Welten ohne Zahl (Mose 1) | `stage` (`hook`, `glory`, `weak`, `tempter`, `compare`, `judge`, `depart`, `worlds`, `answer`), `attack` (`text`, `at`), `lines` (`text`, `at`), `cues` |
+| `horeb` | Horeb im Unwetter: Ginsterstrauch, Höhle, Sturm, Beben, Feuer, das leise Säuseln – und James im Hallenbad (1 Könige 19) | `stage` (`hook`, `broom`, `angel`, `cave`, `wind`, `quakefire`, `whisper`, `pool`, `report`, `end`), `lines` (`text`, `at`, `style`, `by`), `cues` |
+| `verdict` | Thronsaal aus Zedernholz: zwei Frauen im Lichtkegel, die Waage, das erhobene Schwert, das Urteil (1 Könige 3) | `stage` (`hook`, `wish`, `women`, `claims`, `sword`, `mother`, `verdict`, `wisdom`), `bubbles` (`who`, `text`, `at`), `cues` |
+
+Die Szenen der Woche zur Suche nach Wahrheit (`src/scenes/w46/`) bringen dazu ihr Schema und ihren Look in eigenen
+Dateien mit (`<typ>.schema.ts` auf Basis von `src/schemaBase.ts`, `<typ>.look.ts`) – so entstehen mehrere Folgen
+nebeneinander, ohne dass sie sich `schema.ts` oder `looks.tsx` streitig machen.
 
 Bei den Szenen der Woche zum Schriftstudium (`src/scenes/w45/`, je eine Datei mit `Scene` und `hidden`) findet
 die Prüfung die Phrasen von selbst: Jedes Feld `at`, jedes Feld auf `…At` und jeder Eintrag von `cues` muss
@@ -210,6 +223,15 @@ leise und tief; für neue Folgen die Regel).
 | `kitchen` | Kochshow: Kachelwand, Hängelampen, Theke | `music/arcade.mp3` |
 | `dusk` | Abendweg nach Emmaus: Sonne sinkt hinter Hügel mit Ölbäumen | `music/pad-dawn.mp3` |
 | `forest` | Wald, Tag bis Nacht: Bäume, Mond, Glühwürmchen | `music/mystery.mp3` |
+| `candle` | Farmhaus 1829: Bohlenwand, Frostfenster, Kerzenlicht – vom Winter in den Frühling | `music/lofi.mp3` |
+| `lamp` | Heiligtum in Schilo bei Nacht: Vorhänge, die Lampe Gottes, Morgendämmerung | `music/pad-dawn.mp3` |
+| `lab` | Labor mit Pflanzenlicht: Glas, Raster, Messlineal | `music/space.mp3` |
+| `comic` | Bildergeschichte: Panels, Rasterpunkte, Comic-Schrift (Bangers) | `music/chase.mp3` |
+| `news` | Nachrichtenstudio: Linien-Globus, Laufband (eigene Gestaltung, kein echter Sender) | `music/anthem.mp3` |
+| `sea` | Meer bei Nacht: Wellen, Sturm, Lichter auf dem Wasser | `music/temple.mp3` |
+| `summit` | Gipfel unter einem Himmel voller Galaxien | `music/space.mp3` |
+| `storm` | Horeb im Unwetter: Regen, Blitz, dann Stille | `music/temple.mp3` |
+| `court` | Thronsaal aus Zedernholz und Elfenbein: Bogenfenster, Lichtstrahlen, Löwen | `music/temple.mp3` |
 
 Der Look färbt auch Untertitel, Quellenangabe und die `kinetic`-Zeilen (mit eigenem Auftritt und Ton).
 
@@ -256,7 +278,7 @@ Der Look färbt auch Untertitel, Quellenangabe und die `kinetic`-Zeilen (mit eig
 - Soundeffekte in `public/sfx/`: mit `npm run sfx` selbst synthetisiert, frei verwendbar – darunter die leisen
   `thud`, `warm` und `breath` für sparsame Folgen (ohne Anteile über 2 kHz).
 - Schriften zusätzlich: Press Start 2P (Pixel), Caveat (Handschrift), Courier Prime (Schreibmaschine), Space Mono
-  (HUD) und Cinzel (römische Kapitalen) – SIL Open Font License.
+  (HUD), Cinzel (römische Kapitalen) und Bangers (Comic) – SIL Open Font License.
 - Emoji in Chat-Stickern kommen aus der Emoji-Schrift des Systems (im Cloud-Container: Noto Color Emoji).
 - Schrifttexte: Zitate aus der deutschen Ausgabe des Buches Mormon. Kirchliche Bilder/Videos aus der Mediathek nur gemäss
   deren Nutzungsbedingungen verwenden; kein Logo/keine Wortmarke der Kirche.

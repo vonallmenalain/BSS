@@ -11,6 +11,9 @@ import { HEIGHT, WIDTH } from "../../../lib/timing";
  */
 
 export const HORIZON = 880;
+/** Der Mond: rechts, unter den grossen Zeilen oben */
+const MOON_X = 940;
+const MOON_Y = 700;
 
 const STOPS: Array<{ p: number; top: string; mid: string; hor: string; sea: string; deep: string }> = [
   { p: 0, top: "#040817", mid: "#0A1A33", hor: "#1E3F5C", sea: "#0B2638", deep: "#020A12" },
@@ -78,7 +81,7 @@ export const SeaBg: React.FC = () => {
       })),
     [],
   );
-  const moonO = (1 - storm) * (1 - dawn * 0.7);
+  const moonO = (1 - storm) * (1 - Math.min(1, dawn * 3));
   const starO = (1 - storm) * (1 - dawn);
   const wrap = (x: number, span: number) => ((x % span) + span) % span;
   const amp = 1 + storm * 3.2;
@@ -116,10 +119,10 @@ export const SeaBg: React.FC = () => {
         {/* Mond mit Hof */}
         {moonO > 0.02 ? (
           <g opacity={moonO}>
-            <circle cx={810} cy={360} r={260} fill="url(#sbMoon)" />
-            <circle cx={810} cy={360} r={48} fill="#EEF4FA" />
-            <circle cx={796} cy={350} r={10} fill="#D2DEE8" opacity={0.7} />
-            <circle cx={826} cy={374} r={7} fill="#D2DEE8" opacity={0.6} />
+            <circle cx={MOON_X} cy={MOON_Y} r={240} fill="url(#sbMoon)" />
+            <circle cx={MOON_X} cy={MOON_Y} r={44} fill="#EEF4FA" />
+            <circle cx={MOON_X - 13} cy={MOON_Y - 9} r={9} fill="#D2DEE8" opacity={0.7} />
+            <circle cx={MOON_X + 15} cy={MOON_Y + 13} r={6} fill="#D2DEE8" opacity={0.6} />
           </g>
         ) : null}
         {/* Morgenlicht am Horizont */}
@@ -156,7 +159,7 @@ export const SeaBg: React.FC = () => {
           ? Array.from({ length: 22 }, (_, i) => {
               const y = HORIZON + 10 + i * i * 1.6;
               const w = 30 + i * 9 + 18 * Math.sin(frame / 7 + i * 1.7);
-              return <rect key={i} x={810 - w / 2 + 10 * Math.sin(frame / 11 + i)} y={y} width={w} height={2 + i * 0.25} rx={2} fill="#DDEBF7" opacity={moonO * (0.5 - i * 0.018)} />;
+              return <rect key={i} x={MOON_X - w / 2 + 10 * Math.sin(frame / 11 + i)} y={y} width={w} height={2 + i * 0.25} rx={2} fill="#DDEBF7" opacity={moonO * (0.5 - i * 0.018)} />;
             })
           : null}
         {/* Dünung: Linien, nach vorn höher und schneller */}

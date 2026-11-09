@@ -4,7 +4,7 @@ import { useLook } from "../../looks";
 import { Sfx, beat, beats, voiceFrame } from "../../lib/sfx";
 import { type TimelineScene, findCue } from "../../lib/timing";
 import type { Scene as SceneData } from "../../schema";
-import { Motes, Robed, type RobePose, clamp, useT, wordsOfTexts } from "../w45/kitA";
+import { Motes, Robed, clamp, useT, wordsOfTexts } from "../w45/kitA";
 
 /*
  * Nicht im Sturm (1 Könige 19:2–13) – und heute im Hallenbad.
@@ -32,7 +32,7 @@ const CAVE_X = 268;
 /** Elija im Höhleneingang */
 const ELIJA_X = 276;
 
-const ROBE = "#1B1511";
+const ROBE = "#241B15";
 const MOON_RIM = "#8FA6DA";
 const FIRE_RIM = "#FF9A4A";
 
@@ -188,15 +188,17 @@ const Fire: React.FC<{ k: number }> = ({ k }) => {
   const frame = useCurrentFrame();
   const flames = useMemo(() => {
     const out: Array<{ x: number; y: number; h: number; w: number; ph: number; d: number }> = [];
-    // Am fernen Hang des Gottesbergs
-    for (let i = 0; i < 9; i++) {
-      const f = i / 8;
-      out.push({ x: 600 + f * 440 + random(`hfx${i}`) * 20, y: 1060 - Math.sin(f * Math.PI) * 120 + random(`hfy${i}`) * 20, h: 70 + random(`hfh${i}`) * 50, w: 22 + random(`hfw${i}`) * 10, ph: random(`hfp${i}`) * 6, d: 0.15 + f * 0.25 });
+    // Am fernen Hang des Gottesbergs, klein
+    for (let i = 0; i < 12; i++) {
+      const f = random(`hff${i}`);
+      out.push({ x: 600 + f * 460, y: 1110 - Math.sin(f * Math.PI) * 150 + random(`hfy${i}`) * 40, h: 40 + random(`hfh${i}`) * 70, w: 14 + random(`hfw${i}`) * 14, ph: random(`hfp${i}`) * 6, d: 0.15 + f * 0.3 });
     }
-    // Vorn auf dem Felsvorsprung, rechts der Höhle
-    for (let i = 0; i < 9; i++) {
-      out.push({ x: 560 + i * 62 + random(`hgx${i}`) * 18, y: LEDGE + 6, h: 120 + random(`hgh${i}`) * 110, w: 32 + random(`hgw${i}`) * 14, ph: random(`hgp${i}`) * 6, d: i * 0.05 });
+    // Vorn auf dem Felsvorsprung, rechts der Höhle – unterschiedlich gross, ineinander
+    for (let i = 0; i < 13; i++) {
+      const big = random(`hgb${i}`);
+      out.push({ x: 540 + random(`hgx${i}`) * 500, y: LEDGE + 4 + random(`hgy${i}`) * 8, h: 70 + big * big * 260, w: 26 + big * 40, ph: random(`hgp${i}`) * 6, d: random(`hgd${i}`) * 0.4 });
     }
+    out.sort((a, b) => b.h - a.h);
     return out;
   }, []);
   if (k <= 0.01) return null;
@@ -259,14 +261,14 @@ const Breath: React.FC<{ k: number }> = ({ k }) => {
         </linearGradient>
       </defs>
       {Array.from({ length: 6 }, (_, i) => {
-        const y0 = 640 + i * 90;
+        const y0 = 700 + i * 80;
         const shift = wrap(frame * (1.6 + i * 0.25) + i * 230, 1500) - 400;
         const pts: string[] = [];
         for (let s = 0; s <= 24; s++) {
           const x = 1180 - s * 34 - shift;
           pts.push(`${x.toFixed(1)} ${(y0 + Math.sin(s / 3 + frame / 30 + i) * (14 + i * 3)).toFixed(1)}`);
         }
-        return <path key={i} d={`M ${pts.join(" L ")}`} fill="none" stroke="url(#hbBreath)" strokeWidth={2.5 + (i % 3)} strokeLinecap="round" opacity={0.35 + 0.25 * Math.sin(frame / 20 + i)} />;
+        return <path key={i} d={`M ${pts.join(" L ")}`} fill="none" stroke="url(#hbBreath)" strokeWidth={3.5 + (i % 3) * 1.5} strokeLinecap="round" opacity={0.5 + 0.3 * Math.sin(frame / 20 + i)} />;
       })}
     </g>
   );
@@ -278,15 +280,19 @@ const Breath: React.FC<{ k: number }> = ({ k }) => {
 
 const CLIFF = "M -40 1190 L -40 500 L 40 478 L 110 506 L 180 488 L 240 530 L 310 540 L 360 600 L 395 680 L 415 780 L 430 900 L 440 1020 L 452 1120 L 470 1190 Z";
 const CLIFF_RIM = "M 40 478 L 110 506 L 180 488 L 240 530 L 310 540 L 360 600 L 395 680 L 415 780 L 430 900";
-const PLATFORM = "M -40 1176 C 200 1170, 420 1184, 620 1176 C 800 1170, 960 1184, 1120 1178 L 1120 1920 L -40 1920 Z";
+/** Der Felsvorsprung vor der Höhle – darunter fällt der Berg steil ab */
+const PLATFORM =
+  "M -40 1176 C 200 1170, 420 1184, 620 1176 C 760 1171, 900 1180, 1010 1184 L 1032 1198 L 990 1224 L 930 1232 L 862 1254 L 760 1246 L 680 1268 L 560 1262 L 470 1292 L 420 1362 L 384 1500 L 336 1700 L 300 1940 L -40 1940 Z";
+const PLATFORM_TOP = "M -40 1176 C 200 1170, 420 1184, 620 1176 C 760 1171, 900 1180, 1010 1184 L 1032 1198";
 const CAVE = `M ${CAVE_X - 122} ${LEDGE} L ${CAVE_X - 122} 1030 C ${CAVE_X - 122} 920, ${CAVE_X - 40} 868, ${CAVE_X} 868 C ${CAVE_X + 52} 868, ${CAVE_X + 124} 914, ${CAVE_X + 124} 1030 L ${CAVE_X + 124} ${LEDGE} Z`;
 /** Risse im Fels – sie wachsen beim Beben */
 const CRACKS = [
-  "M 452 1180 L 500 1236 L 488 1290 L 540 1360 L 530 1440",
-  "M 760 1178 L 740 1230 L 790 1290 L 772 1350",
-  "M 980 1180 L 1010 1250 L 990 1300 L 1040 1380",
+  "M 520 1178 L 546 1214 L 530 1262",
+  "M 760 1176 L 742 1208 L 770 1244",
+  "M 930 1180 L 956 1208 L 940 1230",
   "M 300 560 L 280 640 L 320 700 L 300 790",
   "M 120 520 L 150 600 L 120 690 L 160 760 L 140 860",
+  "M 360 1300 L 330 1400 L 352 1480 L 318 1600",
 ];
 
 /** Der Felsblock oben auf der Klippe – zerbricht im Sturm. Splitter: Umriss und Flugrichtung. */
@@ -327,6 +333,28 @@ const Boulder: React.FC<{ x: number; y: number; breakAt: number; t: number; rim:
   );
 };
 
+/** Tief unter dem Vorsprung: ein Tal im Nebel, ferne Kämme. */
+const Abyss: React.FC = () => {
+  const frame = useCurrentFrame();
+  return (
+    <g>
+      <defs>
+        <linearGradient id="hbAbyss" x1="0" y1="0" x2="0" y2="1">
+          <stop offset="0%" stopColor="#1E2848" />
+          <stop offset="55%" stopColor="#0E1328" />
+          <stop offset="100%" stopColor="#05060E" />
+        </linearGradient>
+      </defs>
+      <rect x={0} y={1150} width={1080} height={790} fill="url(#hbAbyss)" />
+      <path d="M 300 1500 L 420 1440 L 520 1470 L 640 1400 L 760 1450 L 880 1410 L 1000 1460 L 1100 1430 L 1100 1940 L 300 1940 Z" fill="#141B34" />
+      <path d="M 300 1660 L 460 1600 L 600 1640 L 740 1580 L 900 1630 L 1100 1590 L 1100 1940 L 300 1940 Z" fill="#0D1226" />
+      {[1320, 1520, 1700].map((y, i) => (
+        <ellipse key={i} cx={wrap(700 + i * 260 - frame * (0.5 + i * 0.2), 1400) - 160} cy={y} rx={420} ry={44} fill="#9FB4E8" opacity={0.07} />
+      ))}
+    </g>
+  );
+};
+
 /** Fels mit Höhleneingang und Vorsprung. `crack` 0 … 1 lässt Risse wachsen, `fire` färbt das Streiflicht. */
 const Mountain: React.FC<{ crack?: number; fire?: number; light?: number; children?: React.ReactNode }> = ({ crack = 0, fire = 0, light = 0, children }) => {
   const rim = mix(MOON_RIM, FIRE_RIM, fire);
@@ -343,14 +371,15 @@ const Mountain: React.FC<{ crack?: number; fire?: number; light?: number; childr
           <stop offset="100%" stopColor="#070912" />
         </linearGradient>
         <radialGradient id="hbCaveIn" cx="0.5" cy="0.75" r="0.7">
-          <stop offset="0%" stopColor="#1A1A26" />
-          <stop offset="100%" stopColor="#030308" />
+          <stop offset="0%" stopColor="#2C3248" />
+          <stop offset="100%" stopColor="#0A0B14" />
         </radialGradient>
         <radialGradient id="hbCaveLight" cx="0.5" cy="0.8" r="0.6">
           <stop offset="0%" stopColor="#FFF2D2" stopOpacity="0.55" />
           <stop offset="100%" stopColor="#FFF2D2" stopOpacity="0" />
         </radialGradient>
       </defs>
+      <Abyss />
       <path d={CLIFF} fill="url(#hbRock)" />
       {/* Schichten im Fels */}
       {[620, 720, 820, 930, 1050].map((y, i) => (
@@ -362,7 +391,10 @@ const Mountain: React.FC<{ crack?: number; fire?: number; light?: number; childr
       <path d={CAVE.replace(/ Z$/, "")} fill="none" stroke={rim} strokeWidth={3} opacity={0.4} />
       {children}
       <path d={PLATFORM} fill="url(#hbLedge)" />
-      <path d="M -40 1176 C 200 1170, 420 1184, 620 1176 C 800 1170, 960 1184, 1120 1178" fill="none" stroke={rim} strokeWidth={3} opacity={0.5} />
+      <path d={PLATFORM_TOP} fill="none" stroke={rim} strokeWidth={3} opacity={0.5} />
+      {[1330, 1460, 1600, 1760].map((y, i) => (
+        <path key={i} d={`M -40 ${y} C 80 ${y - 16}, 220 ${y + 10}, ${400 - i * 22} ${y - 8}`} stroke="#1A2034" strokeWidth={3} fill="none" opacity={0.8} />
+      ))}
       {/* Steine am Rand */}
       {[520, 690, 880, 1010].map((x, i) => (
         <path key={i} d={`M ${x - 26} ${LEDGE + 2} L ${x - 14} ${LEDGE - 22} L ${x + 12} ${LEDGE - 26} L ${x + 28} ${LEDGE + 2} Z`} fill="#141A2C" stroke={rim} strokeWidth={1.5} strokeOpacity={0.4} />
@@ -392,32 +424,49 @@ const Desert: React.FC = () => (
   </g>
 );
 
-/** Ein Ginsterstrauch: viele dünne Ruten, oben mit kleinen hellen Blüten. */
+/** Ein Ginsterstrauch: ein Busch aus vielen Ruten mit kleinen hellen Blüten, im Mondlicht. */
 const Broom: React.FC<{ x: number; y: number; s?: number; rustle?: number }> = ({ x, y, s = 1, rustle = 0 }) => {
   const frame = useCurrentFrame();
-  const stems = useMemo(
-    () =>
-      Array.from({ length: 30 }, (_, i) => {
-        const a = (random(`hbs${i}`) - 0.5) * 2.2;
-        const h = 230 + random(`hbh${i}`) * 170;
-        return { a, h, bx: (random(`hbb${i}`) - 0.5) * 40, c: (random(`hbc${i}`) - 0.5) * 60 };
+  const parts = useMemo(() => {
+    const branches = Array.from({ length: 9 }, (_, i) => {
+      const a = -1.15 + i * 0.29 + (random(`hba${i}`) - 0.5) * 0.12;
+      const len = 210 + random(`hbl${i}`) * 110 - Math.abs(a) * 40;
+      return { a, len };
+    });
+    const twigs = branches.flatMap((b, i) =>
+      Array.from({ length: 7 }, (_, j) => {
+        const f = 0.35 + j * 0.11;
+        const da = (j % 2 ? 1 : -1) * (0.25 + random(`hbt${i}-${j}`) * 0.35);
+        return { b: i, f, a: b.a + da, len: 60 + random(`hbn${i}-${j}`) * 70 };
       }),
-    [],
-  );
-  const sway = Math.sin(frame / 34) * 6 + rustle * Math.sin(frame / 2.5) * 10;
+    );
+    return { branches, twigs };
+  }, []);
+  const sway = Math.sin(frame / 34) * 0.02 + rustle * Math.sin(frame / 2.5) * 0.04;
+  const tip = (a: number, len: number): [number, number] => [Math.sin(a + sway) * len, -Math.cos(a + sway) * len * 0.92];
   return (
     <g transform={`translate(${x} ${y}) scale(${s})`}>
-      {stems.map((st, i) => {
-        const tx = st.bx + Math.sin(st.a) * st.h + sway * (st.h / 400);
-        const ty = -Math.cos(st.a * 0.7) * st.h;
-        const d = `M ${st.bx * 0.3} 0 Q ${st.bx + st.c} ${ty * 0.5} ${tx} ${ty}`;
+      <ellipse cx={0} cy={4} rx={190} ry={14} fill="#000" opacity={0.3} />
+      {/* Die Krone als dunkle Masse */}
+      {[[-110, -170, 120, 90], [0, -230, 150, 100], [110, -170, 120, 90], [-40, -120, 120, 70], [60, -120, 120, 70]].map(([cx, cy, rx, ry], i) => (
+        <ellipse key={i} cx={cx} cy={cy} rx={rx} ry={ry} fill="#141C18" opacity={0.75} />
+      ))}
+      {parts.branches.map((b, i) => {
+        const [tx, ty] = tip(b.a, b.len);
+        return <path key={i} d={`M ${i * 3 - 12} 0 Q ${tx * 0.25} ${ty * 0.55} ${tx} ${ty}`} stroke="#1C2620" strokeWidth={7} fill="none" strokeLinecap="round" />;
+      })}
+      {parts.twigs.map((tw, i) => {
+        const b = parts.branches[tw.b];
+        const [bx, by] = tip(b.a, b.len * tw.f);
+        const [dx, dy] = tip(tw.a, tw.len);
+        const ex = bx + dx;
+        const ey = by + dy;
+        const lit = ex < 0;
         return (
           <g key={i}>
-            <path d={d} stroke="#151C17" strokeWidth={5} fill="none" strokeLinecap="round" />
-            <path d={d} stroke={MOON_RIM} strokeWidth={1.5} fill="none" opacity={tx < 0 ? 0.45 : 0.15} transform="translate(-2 -1)" />
-            {[0.55, 0.72, 0.88, 1].map((f, k) => (
-              <circle key={k} cx={st.bx * 0.3 + (tx - st.bx * 0.3) * f + (k % 2 ? 6 : -6)} cy={ty * f} r={3.2} fill="#E4E2CC" opacity={0.55} />
-            ))}
+            <path d={`M ${bx} ${by} q ${dx * 0.4} ${dy * 0.7} ${dx} ${dy}`} stroke={lit ? "#35473A" : "#1E2A22"} strokeWidth={3.5} fill="none" strokeLinecap="round" />
+            <circle cx={ex} cy={ey} r={3.6} fill="#ECE8D0" opacity={lit ? 0.85 : 0.45} />
+            <circle cx={bx + dx * 0.6} cy={by + dy * 0.6} r={2.8} fill="#ECE8D0" opacity={lit ? 0.6 : 0.3} />
           </g>
         );
       })}
@@ -431,19 +480,21 @@ const Broom: React.FC<{ x: number; y: number; s?: number; rustle?: number }> = (
 
 /** Elija sitzend, die Knie angezogen, der Kopf gesenkt – Blick nach rechts. Ursprung unter der Hüfte. */
 const SitShape: React.FC<{ fill: string; bow: number }> = ({ fill, bow }) => {
-  const hx = 30 + bow * 26;
-  const hy = -214 + bow * 44;
+  const hx = 34 + bow * 22;
+  const hy = -206 + bow * 34;
   return (
     <g>
-      {/* Gewand über Rücken und Beinen */}
-      <path d="M -78 0 C -92 -70, -82 -150, -44 -196 C -18 -226, 30 -222, 46 -190 C 58 -166, 62 -150, 70 -128 C 96 -120, 110 -96, 104 -60 C 100 -30, 96 -8, 92 0 Z" fill={fill} />
+      {/* Rücken und Gesäss */}
+      <path d="M -70 0 C -88 -52, -84 -122, -50 -160 C -32 -178, -4 -182, 14 -172 C 26 -150, 22 -100, 12 -60 L 34 0 Z" fill={fill} />
+      {/* Oberschenkel zum Knie, Schienbein zum Fuss */}
+      <path d="M -8 -18 L 74 -116 L 108 -6" stroke={fill} strokeWidth={48} strokeLinejoin="round" strokeLinecap="round" fill="none" />
       {/* Kopf mit Tuch */}
+      <path d={`M 2 -168 L ${hx - 4} ${hy + 14}`} stroke={fill} strokeWidth={26} strokeLinecap="round" />
       <circle cx={hx} cy={hy} r={25} fill={fill} />
-      <path d={`M ${hx - 32} ${hy + 6} C ${hx - 34} ${hy - 40}, ${hx + 28} ${hy - 44}, ${hx + 30} ${hy - 4} L ${hx + 26} ${hy + 30} L ${hx - 40} ${hy + 46} Z`} fill={fill} />
-      {/* Arme um die Knie */}
-      <path d={`M -14 -178 C 20 -150, 60 -128, 96 -112`} stroke={fill} strokeWidth={22} strokeLinecap="round" fill="none" />
-      {/* Füsse */}
-      <ellipse cx={100} cy={-6} rx={22} ry={8} fill={fill} />
+      <path d={`M ${hx - 31} ${hy + 6} C ${hx - 33} ${hy - 38}, ${hx + 27} ${hy - 42}, ${hx + 30} ${hy - 2} L ${hx + 14} ${hy + 18} L ${hx - 44} ${hy + 46} Z`} fill={fill} />
+      {/* Arm um die Knie */}
+      <path d="M -26 -150 C 8 -126, 48 -110, 92 -104" stroke={fill} strokeWidth={21} strokeLinecap="round" fill="none" />
+      <ellipse cx={118} cy={-6} rx={22} ry={8} fill={fill} />
     </g>
   );
 };
@@ -458,49 +509,124 @@ const Sitting: React.FC<{ x: number; y: number; k?: number; bow?: number; rim?: 
   </g>
 );
 
-/** Elija schlafend auf der Seite, den Kopf links. Ursprung unter der Körpermitte. */
-const LieShape: React.FC<{ fill: string }> = ({ fill }) => (
-  <g>
-    <path d="M -128 0 C -138 -34, -108 -62, -60 -66 C 0 -72, 84 -60, 132 -38 C 162 -24, 160 0, 140 0 Z" fill={fill} />
-    <circle cx={-148} cy={-34} r={25} fill={fill} />
-    <path d="M -178 -22 C -186 -62, -126 -76, -118 -40 L -110 -2 L -170 0 Z" fill={fill} />
-  </g>
-);
-
-const Lying: React.FC<{ x: number; y: number; k?: number; o?: number; breathe: number }> = ({ x, y, k = 1, o = 1, breathe }) => (
-  <g transform={`translate(${x} ${y}) scale(${k} ${k * (1 + 0.015 * breathe)})`} opacity={o}>
-    <ellipse cx={0} cy={4} rx={170} ry={12} fill="#000" opacity={0.35} />
-    <g transform="translate(-4 -4)">
-      <LieShape fill={MOON_RIM} />
+/** Elija schlafend auf der Seite, den Kopf links auf dem Arm, den Mantel über sich. Ursprung unter der Körpermitte. */
+const LieShape: React.FC<{ c: Tones; flat?: string }> = ({ c, flat }) => {
+  const col = (x: string) => flat ?? x;
+  return (
+    <g>
+      <ellipse cx={150} cy={-8} rx={20} ry={9} fill={col(c.hair)} />
+      <path d="M -116 0 C -126 -30, -100 -54, -60 -58 C 0 -64, 84 -54, 132 -34 C 160 -22, 158 0, 140 0 Z" fill={col(c.robe)} />
+      <path d="M -92 -50 C -30 -72, 60 -64, 124 -38 C 96 -18, 10 -12, -84 -16 Z" fill={col(c.mantle)} />
+      <path d="M -104 -40 L -150 -8" stroke={col(c.robe)} strokeWidth={20} strokeLinecap="round" />
+      <circle cx={-146} cy={-40} r={23} fill={col(c.skin)} />
+      <path d="M -170 -36 C -176 -66, -132 -74, -124 -52 C -136 -56, -150 -52, -156 -40 C -160 -28, -166 -24, -170 -36 Z" fill={col(c.hair)} />
+      <path d="M -150 -22 C -144 -18, -130 -20, -124 -28 C -116 -14, -122 2, -136 6 C -146 2, -152 -10, -150 -22 Z" fill={col(c.hair)} />
     </g>
-    <LieShape fill={ROBE} />
-  </g>
-);
+  );
+};
 
-/** Elija stehend; mit `veil` legt sich der Mantel über das Gesicht, mit `flap` weht er im Sturm. */
-const Elija: React.FC<{ x: number; y: number; k: number; pose?: RobePose; rim?: string; veil?: number; flap?: number; o?: number }> = ({ x, y, k, pose = {}, rim = MOON_RIM, veil = 0, flap = 0, o = 1 }) => {
+const Lying: React.FC<{ x: number; y: number; k?: number; o?: number; breathe: number }> = ({ x, y, k = 1, o = 1, breathe }) => {
+  const c = toned(0.45);
+  return (
+    <g transform={`translate(${x} ${y}) scale(${k} ${k * (1 + 0.015 * breathe)})`} opacity={o}>
+      <ellipse cx={0} cy={4} rx={170} ry={12} fill="#000" opacity={0.35} />
+      <g transform="translate(-4 -4)">
+        <LieShape c={c} flat={MOON_RIM} />
+      </g>
+      <LieShape c={c} />
+    </g>
+  );
+};
+
+type ProphetPose = {
+  /** Schrittphase (Bogenmass); ohne Angabe steht er */
+  step?: number;
+  /** Unterarm vor dem Gesicht – Schutz vor Sturm und Feuer, 0 … 1 */
+  shield?: number;
+  /** Den Mantel über Kopf und Gesicht gezogen, 0 … 1 */
+  veil?: number;
+  /** Kopf gesenkt, 0 … 1 */
+  bow?: number;
+};
+
+type Tones = { robe: string; mantle: string; skin: string; hair: string; belt: string; staff: string };
+const NIGHT = "#0B0E1C";
+const toned = (light: number): Tones => ({
+  robe: mix("#5A4432", NIGHT, 0.62 - 0.3 * light),
+  mantle: mix("#7A6248", NIGHT, 0.6 - 0.3 * light),
+  skin: mix("#9A7258", NIGHT, 0.6 - 0.3 * light),
+  hair: mix("#2A2018", NIGHT, 0.3),
+  belt: mix("#3A2614", NIGHT, 0.4),
+  staff: mix("#6A4A2A", NIGHT, 0.5 - 0.2 * light),
+});
+
+/** Elija von der Seite, Blick nach rechts: Gewand mit Ledergürtel, Mantel, Bart, Stab. Ursprung zwischen den Füssen, gut 300 hoch. */
+const ProphetShape: React.FC<{ c: Tones; pose: ProphetPose; flat?: string }> = ({ c, pose, flat }) => {
+  const { step, shield = 0, veil = 0, bow = 0 } = pose;
+  const col = (x: string) => flat ?? x;
+  const walking = step !== undefined;
+  const sw = walking ? Math.sin(step) : 0;
+  const bob = walking ? -Math.abs(Math.sin(step)) * 5 : 0;
+  const hx = 10 + bow * 12;
+  const hy = -266 + bow * 12 + bob;
+  // Vorderer Arm: am Stab, vor dem Gesicht oder den Mantel haltend
+  const guard = Math.max(shield, veil);
+  const elbow: [number, number] = [26 + 18 * guard, -186 - 20 * guard + bob];
+  const hand: [number, number] = [44 - 6 * guard + 10 * veil, -150 - 108 * guard + 26 * veil + bob];
+  const staffOn = 1 - guard;
+  const staffX = hand[0] + 6 + sw * 4;
+  return (
+    <g>
+      {/* hinterer Arm */}
+      <path d={`M -16 ${-222 + bob} L ${-24 - sw * 10} ${-170 + bob} L ${-20 - sw * 16} ${-128 + bob}`} stroke={col(c.robe)} strokeWidth={19} strokeLinecap="round" strokeLinejoin="round" fill="none" />
+      {/* Füsse */}
+      <ellipse cx={-10 + sw * 22} cy={-5} rx={17} ry={7} fill={col(c.hair)} />
+      <ellipse cx={14 - sw * 22} cy={-5} rx={17} ry={7} fill={col(c.hair)} />
+      {/* Mantel hinten */}
+      <path d={`M -28 ${-236 + bob} C -58 -196, -68 -120, ${-62 + sw * 4} -46 L -38 -56 C -32 -130, -18 -196, 6 ${-240 + bob} Z`} fill={col(c.mantle)} />
+      {/* Gewand */}
+      <path d={`M -30 ${-234 + bob} C -40 -170, -48 -90, ${-50 + sw * 6} -10 L ${50 + sw * 6} -10 C 44 -90, 40 -170, 30 ${-234 + bob} Q 0 ${-248 + bob} -30 ${-234 + bob} Z`} fill={col(c.robe)} />
+      {/* Ledergürtel */}
+      <path d={`M -42 ${-150 + bob} L 42 ${-150 + bob} L 43 ${-138 + bob} L -43 ${-138 + bob} Z`} fill={col(c.belt)} />
+      {/* Mantel über den Schultern */}
+      <path d={`M -32 ${-234 + bob} Q 0 ${-252 + bob} 32 ${-232 + bob} L 26 ${-198 + bob} Q -4 ${-212 + bob} -34 ${-204 + bob} Z`} fill={col(c.mantle)} />
+      {/* Kopf: Haar, Gesicht, Bart */}
+      <rect x={hx - 9} y={hy + 14} width={18} height={20} fill={col(c.skin)} />
+      <circle cx={hx} cy={hy} r={23} fill={col(c.skin)} />
+      <path d={`M ${hx - 24} ${hy + 4} C ${hx - 28} ${hy - 30}, ${hx + 16} ${hy - 36}, ${hx + 22} ${hy - 12} C ${hx + 8} ${hy - 18}, ${hx - 4} ${hy - 10}, ${hx - 8} ${hy + 4} C ${hx - 10} ${hy + 18}, ${hx - 18} ${hy + 22}, ${hx - 24} ${hy + 4} Z`} fill={col(c.hair)} />
+      <path d={`M ${hx - 4} ${hy + 8} C ${hx + 8} ${hy + 12}, ${hx + 22} ${hy + 8}, ${hx + 24} ${hy + 2} C ${hx + 28} ${hy + 24}, ${hx + 20} ${hy + 46}, ${hx + 4} ${hy + 50} C ${hx - 6} ${hy + 40}, ${hx - 8} ${hy + 24}, ${hx - 4} ${hy + 8} Z`} fill={col(c.hair)} />
+      {/* Stab */}
+      {staffOn > 0.02 ? <line x1={staffX + 6} y1={-318 + bob} x2={staffX + 16 + sw * 8} y2={-4} stroke={col(c.staff)} strokeWidth={8} strokeLinecap="round" opacity={staffOn} /> : null}
+      {/* Mantel über Kopf und Gesicht */}
+      {veil > 0.01 ? (
+        <path
+          d={`M ${hx - 30} ${hy + 14} C ${hx - 36} ${hy - 34}, ${hx + 26} ${hy - 46}, ${hx + 28 + 6 * veil} ${hy - 6} C ${hx + 34 + 6 * veil} ${hy + 22}, ${hx + 30} ${hy + 50}, 24 ${-200 + bob} L -34 ${-206 + bob} C -40 ${-226 + bob}, ${hx - 34} ${hy + 30}, ${hx - 30} ${hy + 14} Z`}
+          fill={col(c.mantle)}
+          opacity={Math.min(1, veil * 1.3)}
+        />
+      ) : null}
+      {/* vorderer Arm */}
+      <path d={`M 18 ${-222 + bob} L ${elbow[0]} ${elbow[1]} L ${hand[0]} ${hand[1]}`} stroke={col(c.robe)} strokeWidth={20} strokeLinecap="round" strokeLinejoin="round" fill="none" />
+      <circle cx={hand[0]} cy={hand[1]} r={9} fill={col(c.skin)} />
+    </g>
+  );
+};
+
+/** Elija stehend oder gehend; mit `flap` weht der Mantel im Sturm. `light` hellt die Farben auf (Feuer, Morgen). */
+const Elija: React.FC<{ x: number; y: number; k: number; pose?: ProphetPose; rim?: string; light?: number; flap?: number; o?: number; dir?: 1 | -1 }> = ({ x, y, k, pose = {}, rim = MOON_RIM, light = 0.3, flap = 0, o = 1, dir = 1 }) => {
   const frame = useCurrentFrame();
-  const bow = pose.bow ?? 0;
-  const hx = 4 + bow * 14;
-  const hy = -282 + bow * 16;
+  const c = toned(light);
   const wave = Math.sin(frame / 2.2) * 18 * flap;
   return (
-    <g opacity={o}>
+    <g transform={`translate(${x} ${y}) scale(${dir * k} ${k})`} opacity={o}>
+      <ellipse cx={0} cy={3} rx={70} ry={9} fill="#000" opacity={0.35} />
       {flap > 0.01 ? (
-        <g transform={`translate(${x} ${y}) scale(${k})`}>
-          <path d={`M -24 -236 C ${-90 - 40 * flap} ${-230 + wave}, ${-150 - 60 * flap} ${-200 - wave}, ${-180 - 70 * flap} ${-150 + wave} C ${-130 - 40 * flap} ${-150 - wave * 0.5}, -70 -170, -30 -160 Z`} fill="#2A2018" opacity={0.95} />
-        </g>
+        <path d={`M -24 -236 C ${-90 - 40 * flap} ${-230 + wave}, ${-150 - 60 * flap} ${-200 - wave}, ${-180 - 70 * flap} ${-150 + wave} C ${-130 - 40 * flap} ${-150 - wave * 0.5}, -70 -170, -30 -160 Z`} fill={c.mantle} />
       ) : null}
-      <Robed x={x} y={y} k={k} fill={ROBE} rim={rim} rimSide={-1} pose={pose} />
-      {veil > 0.01 ? (
-        <g transform={`translate(${x} ${y}) scale(${k})`} opacity={Math.min(1, veil * 1.4)}>
-          <path
-            d={`M ${hx - 36} ${hy - 4} C ${hx - 30} ${hy - 50}, ${hx + 34} ${hy - 50}, ${hx + 30 + 16 * veil} ${hy + 4} C ${hx + 28 + 14 * veil} ${hy + 34}, ${hx + 18} ${hy + 64}, 22 -190 L -30 -196 C -36 -220, ${hx - 40} ${hy + 20}, ${hx - 36} ${hy - 4} Z`}
-            fill="#3A2C20"
-          />
-          <path d={`M ${hx - 30} ${hy - 44} C ${hx - 4} ${hy - 56}, ${hx + 26} ${hy - 44}, ${hx + 30 + 16 * veil} ${hy + 4}`} fill="none" stroke={rim} strokeWidth={4} opacity={0.6} />
-        </g>
-      ) : null}
+      <g transform="translate(-4 -2)">
+        <ProphetShape c={c} pose={pose} flat={rim} />
+      </g>
+      <ProphetShape c={c} pose={pose} />
     </g>
   );
 };
@@ -664,7 +790,7 @@ const HookStage: React.FC<StageP> = ({ ts, s, t }) => {
         <g transform={`translate(${dx} ${dy})`}>
           <Fire k={fire} />
           <Mountain crack={crack} fire={fire} light={glowK * 0.7}>
-            <Elija x={ELIJA_X} y={LEDGE} k={0.6} pose={{ hold: 0.8 * calm, bow: 0.4 }} rim={mix(MOON_RIM, FIRE_RIM, fire)} />
+            <Elija x={ELIJA_X} y={LEDGE} k={0.72} pose={{ shield: 0.8 * calm, bow: 0.3 }} rim={mix(MOON_RIM, FIRE_RIM, fire)} />
           </Mountain>
           <Debris k={storm * 0.8} />
         </g>
@@ -677,7 +803,7 @@ const HookStage: React.FC<StageP> = ({ ts, s, t }) => {
         ) : null}
       </svg>
       {s.lines.map((l, i) => (
-        <Headline key={i} text={l.text} k={lineK(ts, t, l)} y={340 + i * 128} x={600} size={118} color={i === 2 && fire > 0.3 ? "#FFC27A" : look.text} dim={dimAll} strike={fade(t, stillAt + 0.2 + i * 0.15, 0.4)} />
+        <Headline key={i} text={l.text} k={i === 0 ? popAt(t, -0.38) : lineK(ts, t, l)} y={340 + i * 128} x={600} size={118} color={i === 2 && fire > 0.3 ? "#FFC27A" : look.text} dim={dimAll} strike={fade(t, stillAt + 0.2 + i * 0.15, 0.4)} />
       ))}
       <Sfx frame={voiceFrame(ts, bebenAt)} name="thud" volume={0.5} keep />
     </AbsoluteFill>
@@ -755,17 +881,17 @@ const AngelStage: React.FC<StageP> = ({ ts, s, t }) => {
   const sleepO = 1 - walk;
   const route = interpolate(t, [tageAt, horebAt + 0.6], [0, 1], { ...clamp, easing: Easing.inOut(Easing.quad) });
   const horeb = popAt(t, horebAt, 0.5);
-  // Die Route: vom Rand der Wüste bis zum Fuss des Gottesbergs, 40 Punkte
+  // Der Weg durch die Wüste bis zum Gottesberg: 40 Punkte, einer je Tag
   const routePts = useMemo(
     () =>
       Array.from({ length: 40 }, (_, i) => {
         const f = i / 39;
-        return { x: 110 + f * 640, y: 1110 - Math.sin(f * Math.PI * 0.5) * 240 - Math.sin(f * 9) * 14 };
+        return { x: 70 + f * 900, y: SAND + 40 + Math.sin(f * 5.2) * 10 };
       }),
     [],
   );
   const lit = Math.round(route * 40);
-  const walkerX = 130 + route * 520;
+  const walkerX = 90 + route * 700;
   return (
     <AbsoluteFill>
       <svg width={1080} height={1920} style={{ position: "absolute", inset: 0 }}>
@@ -775,11 +901,11 @@ const AngelStage: React.FC<StageP> = ({ ts, s, t }) => {
             <Broom x={330} y={SAND} s={0.95} />
             <Lying x={560} y={SAND + 2} k={1} breathe={Math.sin(frame / 18)} />
             {/* Berührung */}
-            {touch > 0 ? <circle cx={600} cy={SAND - 56} r={20 + 50 * touch} fill="#FFF6DC" opacity={0.3 * touch * (1 - fade(t, engelAt + 1.2, 0.6))} /> : null}
-            <Angel x={730} y={SAND} k={0.95} o={angel} reach={touch} />
+            {touch > 0 ? <circle cx={530} cy={SAND - 50} r={20 + 50 * touch} fill="#FFF6DC" opacity={0.3 * touch * (1 - fade(t, engelAt + 1.2, 0.6))} /> : null}
+            <Angel x={790} y={SAND} k={0.95} o={angel} reach={touch} />
             {/* Brot auf glühenden Steinen, ein Krug Wasser */}
             {food > 0.01 ? (
-              <g transform={`translate(330 ${SAND - 6}) scale(${food})`}>
+              <g transform={`translate(296 ${SAND - 6}) scale(${food})`}>
                 <ellipse cx={0} cy={0} rx={110} ry={50} fill="#FF9A4A" opacity={0.18 + 0.06 * Math.sin(frame / 5)} />
                 {[-36, -12, 14, 38].map((x, i) => (
                   <ellipse key={i} cx={x} cy={2} rx={16} ry={9} fill={i % 2 ? "#FF7A2A" : "#C9461A"} />
@@ -799,7 +925,7 @@ const AngelStage: React.FC<StageP> = ({ ts, s, t }) => {
             {routePts.map((p, i) => (
               <circle key={i} cx={p.x} cy={p.y} r={i < lit ? 7 : 4.5} fill={i < lit ? look.accent : "#5A6488"} opacity={i < lit ? 0.95 : 0.5} />
             ))}
-            <Elija x={walkerX} y={SAND} k={0.62} pose={{ step: frame * 0.32, bow: 0.15 }} />
+            <Elija x={walkerX} y={SAND + 4} k={0.8} pose={{ step: frame * 0.32, bow: 0.1 }} light={0.5} />
           </g>
         ) : null}
         {horeb > 0.01 ? (
@@ -839,7 +965,7 @@ const CaveStage: React.FC<StageP> = ({ ts, s, t }) => {
             <stop offset="100%" stopColor="#040308" />
           </radialGradient>
           <linearGradient id="hbMoonBeam" x1="0" y1="0" x2="0" y2="1">
-            <stop offset="0%" stopColor="#CFDBFF" stopOpacity="0.16" />
+            <stop offset="0%" stopColor="#CFDBFF" stopOpacity="0.3" />
             <stop offset="100%" stopColor="#CFDBFF" stopOpacity="0" />
           </linearGradient>
         </defs>
@@ -859,6 +985,13 @@ const CaveStage: React.FC<StageP> = ({ ts, s, t }) => {
           {/* Boden der Höhle */}
           <path d="M -60 1150 L 1140 1150 L 1140 1980 L -60 1980 Z" fill="#08070D" />
           <path d="M 230 1150 L 880 1150" stroke={MOON_RIM} strokeWidth={3} opacity={0.3} />
+          <path d="M 300 1150 L 820 1150 L 980 1460 L 140 1460 Z" fill="url(#hbMoonBeam)" />
+          {[[120, 1250, 70], [880, 1300, 90], [980, 1180, 50], [60, 1400, 110], [700, 1520, 60]].map(([x, y, r], i) => (
+            <g key={i}>
+              <ellipse cx={x} cy={y} rx={r} ry={r * 0.45} fill="#120F18" />
+              <path d={`M ${x - r * 0.8} ${y - r * 0.2} C ${x - r * 0.4} ${y - r * 0.5}, ${x + r * 0.4} ${y - r * 0.5}, ${x + r * 0.8} ${y - r * 0.2}`} stroke={MOON_RIM} strokeWidth={2} fill="none" opacity={0.3} />
+            </g>
+          ))}
           <Sitting x={300} y={1150} k={1.12} bow={0.15 + 0.15 * (1 - qK)} rimSide={1} />
         </g>
       </svg>
@@ -901,7 +1034,7 @@ const WindStage: React.FC<StageP> = ({ ts, s, t }) => {
         <StormClouds k={storm} speed={1.6} />
         <Lightning f={flashAt(t, sturmAt + 0.1) * 0.9} x={880} />
         <Mountain>
-          <Elija x={ELIJA_X} y={LEDGE} k={0.62} pose={{ hold: 0.9, bow: 0.25 + 0.25 * stand }} flap={storm * 0.8} />
+          <Elija x={ELIJA_X} y={LEDGE} k={0.72} pose={{ shield: 0.3 + 0.6 * stand, bow: 0.2 + 0.25 * stand }} flap={storm * 0.8} />
         </Mountain>
         <Boulder x={150} y={482} breakAt={felsAt + 0.35} t={t} rim={MOON_RIM} />
         <Debris k={storm} />
@@ -937,7 +1070,7 @@ const QuakeFireStage: React.FC<StageP> = ({ ts, s, t }) => {
         <g transform={`translate(${dx} ${dy})`}>
           <Fire k={fire} />
           <Mountain crack={crack} fire={fire}>
-            <Elija x={ELIJA_X} y={LEDGE} k={0.62} pose={{ hold: 0.9, bow: 0.4 }} rim={mix(MOON_RIM, FIRE_RIM, fire)} />
+            <Elija x={ELIJA_X} y={LEDGE} k={0.72} pose={{ shield: 0.9, bow: 0.35 }} rim={mix(MOON_RIM, FIRE_RIM, fire)} light={0.3 + 0.4 * fire} />
           </Mountain>
           {dust > 0
             ? [140, 420, 760, 980].map((x, i) => <ellipse key={i} cx={x} cy={LEDGE - 10} rx={80 + (1 - dust) * 160} ry={40 + (1 - dust) * 60} fill="#7A819A" opacity={dust * 0.5} />)
@@ -966,13 +1099,14 @@ const WhisperStage: React.FC<StageP> = ({ ts, s, t }) => {
   const breath = fade(t, hauchAt - 0.2, 1.2);
   const veil = ease(fade(t, huellAt, 1.1));
   const out = ease(fade(t, hinausAt - 0.1, 1.2));
-  const zoom = 1 + 0.18 * ease(interpolate(frame, [0, ts.durationInFrames], [0, 1], clamp));
+  const zoom = 1.15 + 0.4 * ease(interpolate(frame, [0, ts.durationInFrames], [0, 1], clamp));
   return (
     <AbsoluteFill>
       <svg width={1080} height={1920} style={{ position: "absolute", inset: 0 }}>
-        <g transform={`translate(330 1030) scale(${zoom}) translate(-330 -1030)`}>
-          <Mountain crack={1} light={breath * 0.55}>
-            <Elija x={ELIJA_X + out * 120} y={LEDGE} k={0.66} pose={{ hold: veil, bow: 0.25 + 0.2 * veil, step: out > 0 && out < 1 ? frame * 0.3 : undefined }} veil={veil} />
+        <rect width={1080} height={1920} fill="#BFD6FF" opacity={0.05 * breath} />
+        <g transform={`translate(400 1060) scale(${zoom}) translate(-360 -1060)`}>
+          <Mountain crack={1} light={breath * 0.65}>
+            <Elija x={ELIJA_X + out * 110} y={LEDGE} k={0.72} pose={{ veil, bow: 0.15 + 0.2 * veil, step: out > 0 && out < 1 ? frame * 0.3 : undefined }} light={0.3 + 0.3 * breath} />
           </Mountain>
           {/* Glut, die verglimmt */}
           {embers > 0.01
@@ -993,12 +1127,18 @@ const WhisperStage: React.FC<StageP> = ({ ts, s, t }) => {
 /* Das Hallenbad                                                       */
 /* ------------------------------------------------------------------ */
 
-const WATER_TOP = 840;
-const NEAR_DECK = 1196;
-const CHAIR_X = 210;
-const SEAT_Y = 880;
-const WOMAN_X = 840;
-const BENCH_Y = 812;
+/** Hinterer Beckenrand (Oberkante) und Wasser */
+const FAR_DECK = 600;
+const WATER_TOP = 690;
+const NEAR_DECK = 1190;
+const CHAIR_X = 200;
+const SEAT_Y = 900;
+/** James sitzt so gross im Bild */
+const JK = 1.5;
+const WOMAN_X = 830;
+const BENCH_Y = 604;
+/** Die Frau und die Helferin am hinteren Rand */
+const WK = 1.05;
 
 /** Das Hallenbad bei Nacht: Fenster, Kacheln, Wasserlicht. */
 const Pool: React.FC = () => {
@@ -1030,18 +1170,18 @@ const Pool: React.FC = () => {
       </defs>
       <rect width={1080} height={WATER_TOP} fill="url(#hpWall)" />
       {/* Kacheln an der Wand */}
-      {Array.from({ length: 14 }, (_, i) => (
-        <line key={`h${i}`} x1={0} x2={1080} y1={680 + i * 12} y2={680 + i * 12} stroke="#1E5868" strokeWidth={1} opacity={0.5} />
+      {Array.from({ length: 6 }, (_, i) => (
+        <line key={`h${i}`} x1={0} x2={1080} y1={540 + i * 11} y2={540 + i * 11} stroke="#1E5868" strokeWidth={1} opacity={0.5} />
       ))}
       {/* Fenster mit Nachthimmel */}
       {[70, 330, 590, 850].map((x, i) => (
         <g key={i}>
-          <rect x={x} y={300} width={180} height={330} fill="url(#hpWin)" />
+          <rect x={x} y={290} width={180} height={230} fill="url(#hpWin)" />
           {stars.map((st, k) =>
-            k % 4 === i ? <circle key={k} cx={x + 10 + st.x * 160} cy={310 + st.y * 300} r={st.r} fill="#EEF3FF" opacity={0.6} /> : null,
+            k % 4 === i ? <circle key={k} cx={x + 10 + st.x * 160} cy={300 + st.y * 210} r={st.r} fill="#EEF3FF" opacity={0.6} /> : null,
           )}
-          <rect x={x} y={300} width={180} height={330} fill="none" stroke="#7FA0AA" strokeWidth={6} />
-          <line x1={x + 90} x2={x + 90} y1={300} y2={630} stroke="#7FA0AA" strokeWidth={4} />
+          <rect x={x} y={290} width={180} height={230} fill="none" stroke="#7FA0AA" strokeWidth={6} />
+          <line x1={x + 90} x2={x + 90} y1={290} y2={520} stroke="#7FA0AA" strokeWidth={4} />
         </g>
       ))}
       {/* Deckenlampen */}
@@ -1052,22 +1192,22 @@ const Pool: React.FC = () => {
         </g>
       ))}
       {/* Hinterer Beckenrand */}
-      <rect x={0} y={760} width={1080} height={WATER_TOP - 760} fill="#9CB6BC" />
+      <rect x={0} y={FAR_DECK} width={1080} height={WATER_TOP - FAR_DECK} fill="#9CB6BC" />
       {Array.from({ length: 18 }, (_, i) => (
-        <line key={i} x1={i * 64} x2={i * 64 - 10} y1={760} y2={WATER_TOP} stroke="#7F9AA2" strokeWidth={2} />
+        <line key={i} x1={i * 64} x2={i * 64 - 14} y1={FAR_DECK} y2={WATER_TOP} stroke="#7F9AA2" strokeWidth={2} />
       ))}
       <rect x={0} y={WATER_TOP - 8} width={1080} height={8} fill="#5E7E88" />
       {/* Wasser */}
       <rect x={0} y={WATER_TOP} width={1080} height={NEAR_DECK - WATER_TOP} fill="url(#hpWater)" />
-      {Array.from({ length: 12 }, (_, i) => {
-        const y = WATER_TOP + 20 + i * 30;
+      {Array.from({ length: 15 }, (_, i) => {
+        const y = WATER_TOP + 20 + i * 32;
         const pts: string[] = [];
         for (let s = 0; s <= 30; s++) pts.push(`${s * 38} ${(y + Math.sin(s * 0.9 + frame / 14 + i * 1.7) * (4 + i * 0.6)).toFixed(1)}`);
         return <path key={i} d={`M ${pts.join(" L ")}`} stroke="#B9F0FF" strokeWidth={2 + i * 0.15} fill="none" opacity={0.18 + 0.05 * Math.sin(frame / 20 + i)} />;
       })}
       {/* Leinen */}
-      {[920, 1030, 1150].map((y, li) => {
-        const r = 7 + li * 3;
+      {[780, 920, 1110].map((y, li) => {
+        const r = 8 + li * 4;
         return (
           <g key={li}>
             {Array.from({ length: Math.ceil(1080 / (r * 2.4)) + 1 }, (_, i) => (
@@ -1083,32 +1223,35 @@ const Pool: React.FC = () => {
         <line key={i} x1={0} x2={1080} y1={NEAR_DECK + 40 + i * 60} y2={NEAR_DECK + 40 + i * 60} stroke="#0E1A20" strokeWidth={2} opacity={0.5} />
       ))}
       {/* Bank am hinteren Rand */}
-      <rect x={WOMAN_X - 90} y={BENCH_Y} width={200} height={14} rx={4} fill="#C9D6D9" />
-      <rect x={WOMAN_X - 80} y={BENCH_Y + 14} width={10} height={30} fill="#8AA0A6" />
-      <rect x={WOMAN_X + 90} y={BENCH_Y + 14} width={10} height={30} fill="#8AA0A6" />
+      <rect x={WOMAN_X - 120} y={BENCH_Y} width={290} height={16} rx={5} fill="#D6E2E4" />
+      <rect x={WOMAN_X - 108} y={BENCH_Y + 16} width={12} height={FAR_DECK + 76 - BENCH_Y - 16} fill="#8AA0A6" />
+      <rect x={WOMAN_X + 146} y={BENCH_Y + 16} width={12} height={FAR_DECK + 76 - BENCH_Y - 16} fill="#8AA0A6" />
     </g>
   );
 };
 
 /** Der Hochsitz mit Rettungsring. */
-const Chair: React.FC = () => (
-  <g>
-    <path d={`M ${CHAIR_X - 70} ${NEAR_DECK + 120} L ${CHAIR_X - 30} ${SEAT_Y + 10} M ${CHAIR_X + 70} ${NEAR_DECK + 120} L ${CHAIR_X + 30} ${SEAT_Y + 10}`} stroke="#E8EEF0" strokeWidth={14} strokeLinecap="round" />
-    {[0.25, 0.5, 0.75].map((f, i) => {
-      const y = SEAT_Y + 10 + (NEAR_DECK + 120 - SEAT_Y - 10) * f;
-      const half = 30 + 40 * f;
-      return <line key={i} x1={CHAIR_X - half} x2={CHAIR_X + half} y1={y} y2={y} stroke="#E8EEF0" strokeWidth={9} />;
-    })}
-    <rect x={CHAIR_X - 54} y={SEAT_Y} width={108} height={16} rx={5} fill="#F4F7F8" />
-    <rect x={CHAIR_X - 56} y={SEAT_Y - 120} width={14} height={124} rx={5} fill="#F4F7F8" />
-    <g transform={`translate(${CHAIR_X + 4} ${SEAT_Y + 120})`}>
-      <circle r={40} fill="none" stroke="#E0453A" strokeWidth={18} />
-      {[0, 90, 180, 270].map((a) => (
-        <path key={a} d="M 31 0 L 49 0" transform={`rotate(${a + 45})`} stroke="#F4F4F4" strokeWidth={18} />
-      ))}
+const Chair: React.FC = () => {
+  const foot = NEAR_DECK + 34;
+  return (
+    <g>
+      <path d={`M ${CHAIR_X - 96} ${foot} L ${CHAIR_X - 40} ${SEAT_Y + 14} M ${CHAIR_X + 96} ${foot} L ${CHAIR_X + 40} ${SEAT_Y + 14}`} stroke="#E8EEF0" strokeWidth={18} strokeLinecap="round" />
+      {[0.22, 0.44, 0.66, 0.88].map((f, i) => {
+        const y = SEAT_Y + 14 + (foot - SEAT_Y - 14) * f;
+        const half = 40 + 56 * f;
+        return <line key={i} x1={CHAIR_X - half} x2={CHAIR_X + half} y1={y} y2={y} stroke="#E8EEF0" strokeWidth={11} />;
+      })}
+      <rect x={CHAIR_X - 74} y={SEAT_Y} width={150} height={20} rx={6} fill="#F4F7F8" />
+      <rect x={CHAIR_X - 78} y={SEAT_Y - 170} width={18} height={176} rx={6} fill="#F4F7F8" />
+      <g transform={`translate(${CHAIR_X + 4} ${SEAT_Y + 170})`}>
+        <circle r={52} fill="none" stroke="#E0453A" strokeWidth={22} />
+        {[0, 90, 180, 270].map((a) => (
+          <path key={a} d="M 41 0 L 63 0" transform={`rotate(${a + 45})`} stroke="#F4F4F4" strokeWidth={22} />
+        ))}
+      </g>
     </g>
-  </g>
-);
+  );
+};
 
 const JAMES = { shirt: "#E0453A", skin: "#C99A78", legs: "#1E2A3A", hair: "#3A2A1E" };
 const WOMAN = { shirt: "#2E7D8C", skin: "#E0B896", legs: "#2E7D8C", hair: "#5A3A26" };
@@ -1141,22 +1284,22 @@ const PoolStage: React.FC<StageP> = ({ ts, s, t }) => {
   const bubble = popAt(t, thoughtAt - 0.05, 0.45);
   const trail = ease(fade(t, thoughtAt + 0.2, 1.2));
   const buoy = fade(t, schwimmerAt, 0.5);
-  const headX = CHAIR_X + 12;
-  const headY = SEAT_Y - 128;
+  const headX = CHAIR_X - 10 + 8 * JK;
+  const headY = SEAT_Y - 128 * JK;
   return (
     <AbsoluteFill>
       <svg width={1080} height={1920} style={{ position: "absolute", inset: 0 }}>
         <Pool />
         {/* Spot auf der Frau */}
-        <ellipse cx={WOMAN_X} cy={BENCH_Y - 40} rx={140} ry={150} fill="#FFF6DC" opacity={0.12 * trail} />
-        <Person x={WOMAN_X} y={BENCH_Y} k={0.62} dir={-1} sit {...WOMAN} bun />
+        <ellipse cx={WOMAN_X} cy={BENCH_Y - 60} rx={190} ry={200} fill="#FFF6DC" opacity={0.14 * trail} />
+        <Person x={WOMAN_X} y={BENCH_Y} k={WK} dir={-1} sit {...WOMAN} bun />
         <Chair />
-        <circle cx={CHAIR_X + 4} cy={SEAT_Y + 120} r={64} fill="#FF8A6A" opacity={0.25 * buoy * (1 - fade(t, schwimmerAt + 0.9, 0.6))} />
-        <Person x={CHAIR_X - 6} y={SEAT_Y} k={1} sit {...JAMES} />
+        <circle cx={CHAIR_X + 4} cy={SEAT_Y + 170} r={84} fill="#FF8A6A" opacity={0.25 * buoy * (1 - fade(t, schwimmerAt + 0.9, 0.6))} />
+        <Person x={CHAIR_X - 10} y={SEAT_Y} k={JK} sit {...JAMES} />
         {/* Der Gedanke wandert zur Frau */}
         {trail > 0.01 ? (
           <path
-            d={`M ${headX + 40} ${headY - 30} Q 560 ${560} ${WOMAN_X - 30} ${BENCH_Y - 120}`}
+            d={`M ${headX + 90} ${headY - 70} Q 560 ${330} ${WOMAN_X - 20} ${BENCH_Y - 190}`}
             pathLength={1}
             strokeDasharray="0.012 0.02"
             strokeDashoffset={-frame * 0.002}
@@ -1168,10 +1311,10 @@ const PoolStage: React.FC<StageP> = ({ ts, s, t }) => {
             style={{ clipPath: `inset(0 ${(1 - trail) * 100}% 0 0)` }}
           />
         ) : null}
-        <ThoughtDot x={headX + 52} y={headY - 46} k={dot} pulse={pulse} />
+        <ThoughtDot x={headX + 80} y={headY - 64} k={dot} pulse={pulse} />
       </svg>
       {heuteK > 0.01 ? (
-        <div style={{ position: "absolute", top: 300, left: 0, right: 0, textAlign: "center", opacity: Math.min(1, heuteK * 1.4) }}>
+        <div style={{ position: "absolute", top: 330, left: 0, right: 0, textAlign: "center", opacity: Math.min(1, heuteK * 1.4) }}>
           <span style={{ display: "inline-block", padding: "10px 46px", borderRadius: 14, background: look.accent, color: "#0A1A2A", fontFamily: look.display, fontSize: 96, letterSpacing: "0.12em", textTransform: "uppercase", transform: `scale(${interpolate(heuteK, [0, 1], [1.3, 1])})`, boxShadow: "0 18px 50px rgba(0,0,0,0.45)" }}>
             {heute?.text}
           </span>
@@ -1181,9 +1324,9 @@ const PoolStage: React.FC<StageP> = ({ ts, s, t }) => {
         <div
           style={{
             position: "absolute",
-            left: 330,
-            right: 60,
-            top: 420,
+            left: 360,
+            right: 50,
+            top: 250,
             padding: "26px 34px",
             borderRadius: 40,
             background: "rgba(255,250,236,0.95)",
@@ -1212,39 +1355,39 @@ const ReportStage: React.FC<StageP> = ({ ts, s, t }) => {
   const hesitate = fade(t, zoegertAt - 0.1, 0.3) * (1 - fade(t, meldetAt - 0.1, 0.3));
   const signal = fade(t, meldetAt - 0.1, 0.4);
   const ring = t > meldetAt ? wrap((t - meldetAt) / 0.9, 1) : 0;
-  const slump = ease(fade(t, ohnmAt + 0.3, 1.0)) * (1 - ease(fade(t, gutAt - 0.1, 1.0)));
-  const walkIn = ease(fade(t, meldetAt + 0.3, 1.6));
-  const kneel = fade(t, meldetAt + 1.8, 0.3);
+  const slump = ease(fade(t, ohnmAt - 0.1, 0.6)) * (1 - ease(fade(t, gutAt + 0.2, 0.9)));
+  const walkIn = ease(fade(t, meldetAt + 0.2, Math.max(0.8, ohnmAt - meldetAt - 0.4)));
+  const kneel = fade(t, ohnmAt - 0.15, 0.3);
   const good = fade(t, gutAt, 0.8);
   const heart = popAt(t, gutAt + 0.3, 0.5);
-  const helperX = interpolate(walkIn, [0, 1], [1160, WOMAN_X - 110]);
-  const headX = CHAIR_X + 12;
-  const headY = SEAT_Y - 128;
+  const helperX = interpolate(walkIn, [0, 1], [1180, WOMAN_X - 150]);
+  const headX = CHAIR_X - 10 + 8 * JK;
+  const headY = SEAT_Y - 128 * JK;
   return (
     <AbsoluteFill>
       <svg width={1080} height={1920} style={{ position: "absolute", inset: 0 }}>
         <Pool />
-        {good > 0 ? <ellipse cx={WOMAN_X - 30} cy={BENCH_Y - 50} rx={190} ry={150} fill="#FFD9A0" opacity={0.22 * good} /> : null}
-        <Person x={WOMAN_X} y={BENCH_Y} k={0.62} dir={-1} sit lean={-62 * slump} towel={good} {...WOMAN} bun />
+        {good > 0 ? <ellipse cx={WOMAN_X - 60} cy={BENCH_Y - 70} rx={240} ry={190} fill="#FFD9A0" opacity={0.22 * good} /> : null}
+        <Person x={WOMAN_X} y={BENCH_Y} k={WK} dir={-1} sit lean={-62 * slump} towel={good} {...WOMAN} bun />
         {kneel > 0.5 ? (
-          <Person x={WOMAN_X - 100} y={BENCH_Y + 24} k={0.62} kneel {...HELPER} />
+          <Person x={WOMAN_X - 150} y={FAR_DECK + 52} k={WK} kneel {...HELPER} />
         ) : walkIn > 0.01 ? (
-          <Person x={helperX} y={BENCH_Y + 24} k={0.62} dir={-1} step={frame * 0.35} {...HELPER} />
+          <Person x={helperX} y={FAR_DECK + 52} k={WK} dir={-1} step={frame * 0.35} {...HELPER} />
         ) : null}
         <Chair />
         {signal > 0.01 ? (
           <g>
             {[0, 0.33, 0.66].map((o, i) => {
               const r = wrap(ring + o, 1);
-              return <circle key={i} cx={headX + 40} cy={headY - 110} r={20 + r * 140} fill="none" stroke="#FFF2CC" strokeWidth={4} opacity={signal * (1 - r) * 0.7 * (1 - good)} />;
+              return <circle key={i} cx={headX + 40} cy={headY - 150} r={20 + r * 170} fill="none" stroke="#FFF2CC" strokeWidth={4} opacity={signal * (1 - r) * 0.7 * (1 - good)} />;
             })}
           </g>
         ) : null}
-        <Person x={CHAIR_X - 6} y={SEAT_Y} k={1} sit armUp={signal} {...JAMES} />
+        <Person x={CHAIR_X - 10} y={SEAT_Y} k={JK} sit armUp={signal} {...JAMES} />
         {/* Der Gedanke noch da – beim Zögern flackert er */}
-        <ThoughtDot x={headX + 52} y={headY - 46} k={(1 - signal) * (0.6 + 0.4 * Math.abs(Math.sin(frame / 5)) * hesitate + 0.4 * (1 - hesitate))} pulse={0} />
+        <ThoughtDot x={headX + 80} y={headY - 64} k={(1 - signal) * (0.6 + 0.4 * Math.abs(Math.sin(frame / 5)) * hesitate + 0.4 * (1 - hesitate))} pulse={0} />
         {heart > 0.01 ? (
-          <g transform={`translate(${WOMAN_X - 20} ${BENCH_Y - 190 - heart * 30}) scale(${heart * 1.3})`} opacity={Math.min(1, heart * 1.4)}>
+          <g transform={`translate(${WOMAN_X - 40} ${BENCH_Y - 250 - heart * 30}) scale(${heart * 1.6})`} opacity={Math.min(1, heart * 1.4)}>
             <path d="M 0 18 C -30 -2, -30 -30, -12 -32 C -4 -33, 0 -26, 0 -20 C 0 -26, 4 -33, 12 -32 C 30 -30, 30 -2, 0 18 Z" fill="#FF7A6A" stroke="#FFF2E6" strokeWidth={3} />
           </g>
         ) : null}
@@ -1267,9 +1410,9 @@ const EndStage: React.FC<StageP> = ({ ts, s, t }) => {
   return (
     <AbsoluteFill>
       <svg width={1080} height={1920} style={{ position: "absolute", inset: 0 }}>
-        <g opacity={0.9}>
-          <Mountain crack={1} light={0.5}>
-            <Elija x={ELIJA_X + 120} y={LEDGE} k={0.66} pose={{ hold: 1, bow: 0.45 }} veil={1} />
+        <g transform="translate(400 1060) scale(1.25) translate(-380 -1060)">
+          <Mountain crack={1} light={0.6}>
+            <Elija x={ELIJA_X + 110} y={LEDGE} k={0.72} pose={{ veil: 1, bow: 0.35 }} light={0.55} />
           </Mountain>
         </g>
         <Breath k={0.6} />

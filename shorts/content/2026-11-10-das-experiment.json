@@ -41,9 +41,9 @@
         "Bei den Zoramiten",
         "aus der Synagoge geworfen",
         "selbst gebaut",
-        "groben Kleider"
+        "groben Kleidung"
       ],
-      "narration": "Bei den Zoramiten werden arme Leute aus der Synagoge geworfen – [pause short] obwohl sie sie selbst gebaut haben. [pause short] Nur wegen ihrer groben Kleider."
+      "narration": "Bei den Zoramiten werden arme Leute aus der Synagoge geworfen – [pause short] obwohl sie sie selbst gebaut haben. [pause short] Wegen ihrer groben Kleidung."
     },
     {
       "id": "frage",
@@ -89,6 +89,10 @@
           "text": "der Wunsch zu glauben",
           "at": "der Wunsch zu glauben"
         }
+      ],
+      "cues": [
+        "Das Samenkorn",
+        "Der Boden"
       ],
       "narration": "Das Samenkorn: [pause short] Gottes Wort. [pause short] Der Boden: [pause short] dein Herz. [pause short] Und für den Anfang reicht schon der Wunsch zu glauben."
     },

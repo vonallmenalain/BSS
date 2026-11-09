@@ -94,7 +94,8 @@
         "at": "Habt ihr den Herrn gefragt",
         "who": "nephi"
       },
-      "narration": "Nephi fragt nur: [pause short] Habt ihr den Herrn gefragt?"
+      "narration": "Nephi fragt nur: [pause short] Habt ihr den Herrn gefragt?",
+      "holdAfterSec": 0.4
     },
     {
       "id": "antwort",
@@ -117,7 +118,7 @@
       "sky": 0.2,
       "items": [
         {
-          "text": "Herz nicht verhärten",
+          "text": "Offenes Herz",
           "icon": "heart",
           "at": "sein Herz nicht verhärtet"
         },

@@ -1974,8 +1974,8 @@ export const PACK_WEEKS: PackWeek[] = [
         emoji: '🕯️',
         title: 'Short: Niemand wusste es',
         body:
-          'Oliver Cowdery betet eines Nachts still, ob die Geschichte von den Platten wahr ist – ' +
-          'und erzählt es niemandem. Monate später erinnert ihn der Herr genau an diese Nacht ' +
+          'Oliver Cowdery betet eines Nachts still, ob die Sache mit den goldenen Platten wahr ist ' +
+          '– und erzählt es niemandem. Monate später nennt eine Offenbarung genau diese Nacht ' +
           '(Lehre und Bündnisse 6:22–23).',
         ...ownShort('2026-11-09-niemand-wusste-es', 'Lehre und Bündnisse 6:22–23'),
       },
@@ -2034,8 +2034,8 @@ export const PACK_WEEKS: PackWeek[] = [
         emoji: '🪔',
         title: 'Short: Samuel!',
         body:
-          'Mitten in der Nacht ruft jemand den jungen Samuel – dreimal. Und jedes Mal rennt er zu ' +
-          'Eli (1 Samuel 3:1–10).',
+          'Mitten in der Nacht ruft jemand den jungen Samuel – dreimal rennt er zu Eli. Beim ' +
+          'vierten Mal antwortet er anders (1 Samuel 3:1–10).',
         ...ownShort('2026-11-09-samuel', '1 Samuel 3:1–10'),
       },
       {
@@ -2066,8 +2066,8 @@ export const PACK_WEEKS: PackWeek[] = [
         emoji: '🌱',
         title: 'Short: Das Experiment',
         body:
-          'Alma schlägt ein Experiment vor: Pflanz das Wort wie ein Samenkorn in dein Herz – und ' +
-          'beobachte, was passiert (Alma 32:27–43).',
+          'Aus der Synagoge geworfen – und Alma sagt: Macht einen Versuch mit meinen Worten. Das ' +
+          'Wort ist wie ein Samenkorn: Pflanz es und schau, was wächst (Alma 32:27–43).',
         ...ownShort('2026-11-10-das-experiment', 'Alma 32:28'),
       },
       {
@@ -2107,8 +2107,8 @@ export const PACK_WEEKS: PackWeek[] = [
         emoji: '💭',
         title: 'Short: Habt ihr gefragt?',
         body:
-          'Laman und Lemuel streiten, was Lehis Ölbaum bedeutet. Nephi hat dieselbe Frage – aber ' +
-          'nur er fragt Gott (1 Nephi 15:1–11).',
+          'Lehi spricht von einem Ölbaum. Laman und Lemuel streiten, was das heissen soll – Nephi ' +
+          'fragt nur: Habt ihr den Herrn gefragt? (1 Nephi 15:1–11)',
         ...ownShort('2026-11-10-habt-ihr-gefragt', '1 Nephi 15:8–11'),
       },
       {
@@ -2131,8 +2131,9 @@ export const PACK_WEEKS: PackWeek[] = [
         emoji: '🗞️',
         title: 'Short: Eilmeldung aus Beröa',
         body:
-          'Drei Städte hören dieselbe Botschaft. Thessalonich regt sich auf, Athen will nur das ' +
-          'Neueste – und Beröa prüft jeden Tag in den Schriften, ob es stimmt (Apostelgeschichte 17).',
+          'Drei Städte hören dieselbe Botschaft: Thessalonich regt sich auf, Athen will nur das ' +
+          'Neueste – und Beröa hört offen zu und prüft jeden Tag in den Schriften, ob es stimmt ' +
+          '(Apostelgeschichte 17:1–21).',
         ...ownShort('2026-11-11-eilmeldung-aus-beroea', 'Apostelgeschichte 17:11'),
       },
       {
@@ -2160,8 +2161,8 @@ export const PACK_WEEKS: PackWeek[] = [
         emoji: '💎',
         title: 'Short: Sechzehn Steine',
         body:
-          'Dichte Schiffe, keine Luft, kein Licht. Der Herr löst nicht alles auf einmal – und beim ' +
-          'Licht fragt er den Bruder Jareds zurück: Was willst du, dass ich tun soll (Ether 2–3)?',
+          'Schiffe ohne Fenster, kein Licht für die Fahrt übers Meer. Der Herr fragt zurück: Was ' +
+          'willst du, dass ich tun soll? Da schmilzt der Bruder Jareds sechzehn Steine (Ether 2–3).',
         ...ownShort('2026-11-12-sechzehn-steine', 'Ether 3:1–6'),
       },
       {
@@ -2200,12 +2201,12 @@ export const PACK_WEEKS: PackWeek[] = [
         key: 'eigen-mose',
         kind: 'video',
         late: true,
-        emoji: '🌌',
+        emoji: '🔍',
         title: 'Short: Echt oder Fälschung?',
         body:
-          'Mose hat Gottes Herrlichkeit gesehen. Darum erkennt er sofort, wer da vor ihm steht, ' +
-          'als Satan sagt: Bete mich an (Mose 1:12–22).',
-        ...ownShort('2026-11-13-echt-oder-faelschung', 'Mose 1:13–15'),
+          'Satan verlangt von Mose: Bete mich an. Doch Mose hat Gottes Herrlichkeit gesehen – wer ' +
+          'das Original kennt, erkennt die Fälschung (Mose 1:1–22).',
+        ...ownShort('2026-11-13-echt-oder-faelschung', 'Mose 1:13–18'),
       },
       {
         key: 'quiz-3',
@@ -2250,8 +2251,8 @@ export const PACK_WEEKS: PackWeek[] = [
         emoji: '⚖️',
         title: 'Short: Wer lügt?',
         body:
-          'Zwei Frauen, ein Kind, und beide sagen: Es ist meins. Kein Zeuge. Salomo hatte Gott um ' +
-          'ein hörendes Herz gebeten (1 Könige 3:9–28).',
+          'Zwei Frauen, ein Baby – und beide sagen: Es ist meins. Der junge König Salomo hatte um ' +
+          'ein hörendes Herz gebeten. Jetzt braucht er es (1 Könige 3:16–28).',
         ...ownShort('2026-11-15-wer-luegt', '1 Könige 3:16–28'),
       },
       {

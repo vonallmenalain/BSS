@@ -194,14 +194,14 @@
       "id": "punch",
       "type": "kinetic",
       "sky": 0.9,
-      "holdAfterSec": 1.0,
+      "holdAfterSec": 0.8,
       "lines": [
         "Gott ruft.",
         "Oft leise.",
-        "Manchmal mehrmals.",
+        "Oft mehr als einmal.",
         "Würdest du ihn hören?"
       ],
-      "narration": "Gott ruft. [pause short] Oft leise. [pause short] Manchmal mehrmals. [pause short] Würdest du ihn hören?"
+      "narration": "Gott ruft. [pause short] Oft leise. [pause short] Oft mehr als einmal. [pause short] Würdest du ihn hören?"
     }
   ]
 }

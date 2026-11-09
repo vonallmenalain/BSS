@@ -1,6 +1,6 @@
 import React, { useMemo } from "react";
 import { AbsoluteFill, Easing, interpolate, random, useCurrentFrame, useVideoConfig } from "remotion";
-import { HORIZON, mixHex, stormAt } from "../../components/backgrounds/w46/SeaBg";
+import { HORIZON, stormAt } from "../../components/backgrounds/w46/SeaBg";
 import { useLook } from "../../looks";
 import { Sfx, beat, beats, voiceFrame } from "../../lib/sfx";
 import { FPS, type TimelineScene } from "../../lib/timing";
@@ -23,6 +23,16 @@ const clamp = { extrapolateLeft: "clamp", extrapolateRight: "clamp" } as const;
 const ease = Easing.inOut(Easing.sin);
 const fade = (t: number, at: number, d = 0.35) => interpolate(t, [at, at + d], [0, 1], clamp);
 const pop = (t: number, at: number, d = 0.28) => interpolate(t, [at, at + d], [0, 1], { ...clamp, easing: Easing.out(Easing.back(1.7)) });
+
+/** Farben mischen – Hex oder schon gemischtes rgb(…) */
+const rgbOf = (c: string) =>
+  c.startsWith("#") ? [1, 3, 5].map((i) => parseInt(c.slice(i, i + 2), 16)) : (c.match(/\d+(\.\d+)?/g) ?? ["0", "0", "0"]).slice(0, 3).map(Number);
+const mixHex = (a: string, b: string, k: number) => {
+  const pa = rgbOf(a);
+  const pb = rgbOf(b);
+  const kk = Math.max(0, Math.min(1, k));
+  return `rgb(${pa.map((v, i) => Math.round(v + (pb[i] - v) * kk)).join(",")})`;
+};
 
 const WOOD = "#4B301C";
 const WOOD_D = "#22150B";
@@ -169,31 +179,37 @@ const Stone: React.FC<{ x: number; y: number; r: number; lit?: number; hot?: num
  */
 const Kneeling: React.FC<{ x: number; y: number; k?: number; bow?: number; raise?: number; fill?: string; rim?: string; o?: number }> = ({ x, y, k = 1, bow = 0, raise = 0, fill = "#0E0B0A", rim = MOON, o = 1 }) => {
   if (o <= 0.01) return null;
-  const ang = 78 * bow;
-  const shape = (c: string) => {
-    const ux = 34 + raise * 12;
-    const uy = -178 - raise * 130;
-    const hx = 64 + raise * 2;
-    const hy = -178 - raise * 210;
-    const fx = 70 - raise * 34;
-    const fy = -120;
-    const arm = raise > 0 ? `M -6 -170 Q ${ux} ${uy} ${hx} ${hy}` : `M -6 -170 Q 40 -150 ${fx} ${fy}`;
-    return (
-      <g>
-        {/* Beine, unter dem Gewand gefaltet */}
-        <path d="M -96 0 C -104 -26, -86 -56, -52 -64 L 24 -60 C 50 -50, 66 -24, 70 0 Z" fill={c} />
-        <g transform={`rotate(${ang} -36 -58)`}>
-          <path d="M -66 -58 C -74 -110, -62 -158, -40 -186 Q -12 -202 16 -188 C 32 -160, 30 -110, 12 -58 Z" fill={c} />
-          <circle cx={-6} cy={-218} r={25} fill={c} />
-          <path d="M -36 -214 C -40 -254, 26 -258, 26 -216 L 30 -176 L -44 -174 Z" fill={c} />
-          <path d={arm} stroke={c} strokeWidth={20} strokeLinecap="round" fill="none" />
-        </g>
+  const ang = 84 * bow;
+  const lerp = (a: number, c: number) => a + (c - a) * raise;
+  // Arm: Schulter → Ellbogen → Hände; vor der Brust gefaltet oder zum Himmel gehoben
+  const elbow: [number, number] = [lerp(30, 30), lerp(-134, -206)];
+  const hand: [number, number] = [lerp(40, 58), lerp(-170, -244)];
+  const elbowB: [number, number] = [lerp(22, -12), lerp(-136, -212)];
+  const handB: [number, number] = [lerp(34, -18), lerp(-166, -256)];
+  const shape = (c: string, back = false) => (
+    <g>
+      {/* Beine, unter dem Gewand gefaltet: Füsse hinten, Knie vorn */}
+      <path d="M -96 0 L -92 -12 C -78 -40, -46 -60, -12 -62 L 38 -58 C 58 -50, 68 -26, 66 0 Z" fill={c} />
+      <g transform={`rotate(${ang} -20 -58)`}>
+        <path d="M -54 -56 C -62 -100, -56 -150, -38 -178 C -24 -194, 4 -196, 14 -180 C 24 -150, 22 -100, 16 -56 Z" fill={c} />
+        <circle cx={-10} cy={-206} r={23} fill={c} />
+        <path d="M -38 -200 C -42 -240, 18 -244, 16 -206 L 20 -176 L -46 -174 Z" fill={c} />
+        <path
+          d={back ? `M -12 -172 L ${elbowB[0]} ${elbowB[1]} L ${handB[0]} ${handB[1]}` : `M -2 -170 L ${elbow[0]} ${elbow[1]} L ${hand[0]} ${hand[1]}`}
+          stroke={c}
+          strokeWidth={16}
+          strokeLinecap="round"
+          strokeLinejoin="round"
+          fill="none"
+        />
+        <circle cx={back ? handB[0] : hand[0]} cy={back ? handB[1] : hand[1]} r={9.5} fill={c} />
       </g>
-    );
-  };
+    </g>
+  );
   return (
     <g transform={`translate(${x} ${y}) scale(${k})`} opacity={o}>
       <ellipse cx={-10} cy={3} rx={96} ry={10} fill="#000" opacity={0.35} />
+      <g opacity={0.8}>{shape(mixHex(fill, "#000000", 0.3), true)}</g>
       <g transform="translate(-5 -2)">{shape(rim)}</g>
       {shape(fill)}
     </g>
@@ -230,18 +246,41 @@ const Mark: React.FC<{ x: number; y: number; ok: boolean; k: number; size?: numb
   ) : null;
 
 /** Weiche Wolkenbank */
-const CloudBank: React.FC<{ y: number; frame: number; color: string; o?: number; speed?: number; seed: string }> = ({ y, frame, color, o = 1, speed = 0.4, seed }) => {
+const CloudBank: React.FC<{ y: number; frame: number; color: string; top?: string; o?: number; speed?: number; seed: string; solid?: boolean; scale?: number }> = ({
+  y,
+  frame,
+  color,
+  top,
+  o = 1,
+  speed = 0.4,
+  seed,
+  solid = true,
+  scale = 1,
+}) => {
   const puffs = useMemo(() => Array.from({ length: 10 }, (_, i) => ({ x: i * 150 + random(`${seed}x${i}`) * 60, r: 90 + random(`${seed}r${i}`) * 70, dy: random(`${seed}y${i}`) * 50 })), [seed]);
   const wrap = (x: number) => ((x % 1500) + 1500) % 1500 - 210;
   return (
     <g opacity={o}>
+      {top
+        ? puffs.map((p, i) => <ellipse key={`t${i}`} cx={wrap(p.x + frame * speed) - 6} cy={y + p.dy - 7} rx={p.r * 1.5 * scale} ry={p.r * 0.62 * scale} fill={top} />)
+        : null}
       {puffs.map((p, i) => (
-        <ellipse key={i} cx={wrap(p.x + frame * speed)} cy={y + p.dy} rx={p.r * 1.5} ry={p.r * 0.62} fill={color} />
+        <ellipse key={i} cx={wrap(p.x + frame * speed)} cy={y + p.dy} rx={p.r * 1.5 * scale} ry={p.r * 0.62 * scale} fill={color} />
       ))}
-      <rect x={0} y={y + 30} width={1080} height={260} fill={color} />
+      {solid ? <rect x={0} y={y + 30} width={1080} height={300} fill={color} /> : null}
     </g>
   );
 };
+
+/** Ein weicher Lichtkegel von oben: drei Lagen, damit die Ränder nicht hart wirken */
+const Beam: React.FC<{ x: number; top: number; bottom: number; w0: number; w1: number; o: number }> = ({ x, top, bottom, w0, w1, o }) =>
+  o > 0.01 ? (
+    <g style={{ mixBlendMode: "screen" }}>
+      {[1, 0.66, 0.36].map((k, i) => (
+        <path key={i} d={`M ${x - (w0 * k) / 2} ${top} L ${x + (w0 * k) / 2} ${top} L ${x + (w1 * k) / 2} ${bottom} L ${x - (w1 * k) / 2} ${bottom} Z`} fill="url(#bgBeam)" opacity={o * (i === 2 ? 0.55 : 0.32)} />
+      ))}
+    </g>
+  ) : null;
 
 /* ------------------------------------------------------------------ */
 /* Etappen                                                             */
@@ -273,7 +312,7 @@ const HookStage: React.FC<StageP> = ({ s, ts, t, frame }) => {
         return <Stone key={j} x={540 + u * 440} y={812 - 46 * (1 - u * u)} r={22 * k} i={j} frame={frame} o={Math.min(1, k * 2) * (1 - 0.45 * dark)} lit={0.08 * (1 - dark)} halo={0.6} />;
       })}
       {FLEET.map((f, i) => {
-        const o = fade(t, at[0] - 0.35 + i * 0.07, 0.4);
+        const o = fade(t, at[0] - 0.62 + i * 0.05, 0.4);
         const bob = Math.sin(frame / 17 + i * 1.7) * 5 * f.k;
         return <Barge key={i} id={`h${i}`} x={f.x} y={f.y + bob + (1 - o) * 30} k={f.k} rot={Math.sin(frame / 23 + i) * 2.5} dim={0.55 * (1 - f.k) + 0.3 * dark} o={o} frame={frame} />;
       })}
@@ -302,9 +341,9 @@ const BuildStage: React.FC<StageP> = ({ t, frame, b }) => {
       <path d="M 0 1040 C 260 1010, 640 1036, 1080 1000 L 1080 1920 L 0 1920 Z" fill="url(#bgSand)" />
       <path d="M 0 1040 C 260 1010, 640 1036, 1080 1000" stroke="#7FA8BC" strokeWidth={3} fill="none" opacity={0.35} />
       {/* Feuer am Ufer */}
-      <circle cx={110} cy={1070} r={460} fill="url(#bgFire)" opacity={0.75 * fireK} style={{ mixBlendMode: "screen" }} />
-      <path d="M 70 1096 L 150 1096 L 136 1082 L 84 1082 Z" fill="#2A1A10" />
-      <Flame x={110} y={1088} k={0.8} frame={frame} />
+      <circle cx={70} cy={1070} r={460} fill="url(#bgFire)" opacity={0.75 * fireK} style={{ mixBlendMode: "screen" }} />
+      <path d="M 30 1096 L 110 1096 L 96 1082 L 44 1082 Z" fill="#2A1A10" />
+      <Flame x={70} y={1088} k={0.8} frame={frame} />
       {/* Böcke */}
       {[330, 750].map((bx) => (
         <g key={bx} stroke="#1A0F08" strokeWidth={14} strokeLinecap="round">
@@ -319,13 +358,17 @@ const BuildStage: React.FC<StageP> = ({ t, frame, b }) => {
       {bowlO > 0.01 ? (
         <g transform="translate(540 882) scale(1.55)" opacity={bowlO}>
           <path d={BOWL_TOP} transform={`translate(0 ${-150 * (1 - bowl)})`} fill="rgba(191,243,255,0.08)" stroke={LIGHT} strokeWidth={4} strokeLinejoin="round" />
-          <path d={BOWL_BOTTOM} transform={`translate(0 ${150 * (1 - bowl)})`} fill="rgba(191,243,255,0.08)" stroke={LIGHT} strokeWidth={4} strokeLinejoin="round" />
+          <g transform={`translate(0 ${150 * (1 - bowl)})`}>
+            <path d="M -186 2 C -146 46, -82 70, 0 72 C 82 70, 146 46, 186 2 Z" fill="#6EAFCD" opacity={0.45} />
+            <path d={`M -186 2 Q -93 ${2 + 5 * Math.sin(frame / 5)} 0 2 T 186 2`} stroke="#DDF6FF" strokeWidth={3} fill="none" opacity={0.7} />
+            <path d={BOWL_BOTTOM} fill="rgba(191,243,255,0.08)" stroke={LIGHT} strokeWidth={4} strokeLinejoin="round" />
+          </g>
           {outline > 0.01 ? <path d={HULL} fill="none" stroke={LIGHT} strokeWidth={10} opacity={0.35 * outline} /> : null}
         </g>
       ) : null}
       {/* Arbeiter mit Streiflicht vom Feuer */}
-      <Robed x={250} y={1104} k={0.95} rim={WARM} rimSide={-1} pose={{ raise: 0.25 + 0.55 * hammer }} />
-      <Robed x={860} y={1104} k={0.95} dir={-1} rim={WARM} rimSide={1} pose={{ reach: 0.8 }} />
+      <Robed x={178} y={1104} k={0.72} rim={WARM} rimSide={-1} pose={{ reach: 0.85 }} />
+      <Robed x={930} y={1104} k={0.72} dir={-1} rim={mixHex(WARM, MOON, 0.5)} rimSide={1} pose={{ raise: 0.2 + 0.6 * hammer }} />
     </g>
   );
 };
@@ -360,19 +403,18 @@ const AirStage: React.FC<StageP> = ({ s, ts, t, frame, b }) => {
           const h = i % 2 ? 46 : 54;
           return (
             <g key={i} transform={`translate(${px} ${42 + slump * 0.3})`}>
-              <path d={`M -15 0 C -17 ${-h * 0.5}, -11 ${-h * 0.8}, 0 ${-h * 0.82} C 11 ${-h * 0.8}, 17 ${-h * 0.5}, 15 0 Z`} fill="#2C1E15" />
-              <circle cx={i % 2 ? 2 : -2} cy={-h + slump} r={9.5} fill="#2C1E15" />
-              <path d={`M -15 ${-h * 0.62} Q 0 ${-h * 0.72} 15 ${-h * 0.62}`} stroke={mixHex("#5E7C8A", WARM, 0)} strokeWidth={1.4} fill="none" opacity={0.4 * (1 - dark * 0.7)} />
+              <path d={`M -15 0 C -17 ${-h * 0.5}, -11 ${-h * 0.8}, 0 ${-h * 0.82} C 11 ${-h * 0.8}, 17 ${-h * 0.5}, 15 0 Z`} fill="#46342A" stroke="#9DBDCB" strokeWidth={1.2} strokeOpacity={0.5 * (1 - dark * 0.6)} />
+              <circle cx={i % 2 ? 2 : -2} cy={-h + slump} r={9.5} fill="#46342A" stroke="#9DBDCB" strokeWidth={1.2} strokeOpacity={0.55 * (1 - dark * 0.6)} />
             </g>
           );
         })}
         <g transform="translate(164 38)">
-          <ellipse cx={0} cy={-14} rx={20} ry={13} fill="#3A2E26" />
-          <circle cx={18} cy={-24} r={7} fill="#3A2E26" />
+          <ellipse cx={0} cy={-14} rx={20} ry={13} fill="#5A4A3E" />
+          <circle cx={18} cy={-24} r={7} fill="#5A4A3E" />
         </g>
         {/* Stickig: rötlicher Schleier; dunkel: Schwärze */}
         <path d="M -196 -10 C -160 -58, -90 -76, 0 -78 C 90 -76, 160 -58, 196 -10 C 158 40, 86 66, 0 68 C -86 66, -158 40, -196 -10 Z" fill="#5A1A10" opacity={0.32 * stuffy} />
-        <path d="M -196 -10 C -160 -58, -90 -76, 0 -78 C 90 -76, 160 -58, 196 -10 C 158 40, 86 66, 0 68 C -86 66, -158 40, -196 -10 Z" fill="#000" opacity={0.45 * dark} />
+        <path d="M -196 -10 C -160 -58, -90 -76, 0 -78 C 90 -76, 160 -58, 196 -10 C 158 40, 86 66, 0 68 C -86 66, -158 40, -196 -10 Z" fill="#000" opacity={0.38 * dark} />
         {/* Fugen aussen */}
         <path d={seam(1, true)} stroke={MOON} strokeWidth={2.2} fill="none" opacity={0.6} />
         <path d={HULL} fill="none" stroke={SEAM} strokeWidth={3} />
@@ -437,24 +479,32 @@ const DarkStage: React.FC<StageP> = ({ s, ts, t, frame, b }) => {
   const drops = useMemo(() => Array.from({ length: 22 }, (_, i) => ({ a: -0.6 + random(`da${i}`) * 1.2, v: 120 + random(`dv${i}`) * 300 })), []);
   return (
     <g>
-      {/* Drinnen: Spanten, Planken, fast nichts zu sehen */}
-      <rect x={0} y={0} width={1080} height={1920} fill="#060409" />
-      {Array.from({ length: 8 }, (_, i) => {
-        const x = 40 + i * 143;
-        const bend = (x - 540) * 0.16;
+      {/* Drinnen: der Blick durch den Rumpf – Spanten als Ringe, Planken laufen in die Tiefe */}
+      <rect x={0} y={0} width={1080} height={1920} fill="#050308" />
+      {Array.from({ length: 22 }, (_, i) => {
+        const a = (i / 22) * Math.PI * 2;
+        return <line key={i} x1={540} y1={720} x2={540 + Math.cos(a) * 1500} y2={720 + Math.sin(a) * 1500} stroke="#130C07" strokeWidth={5} />;
+      })}
+      {Array.from({ length: 7 }, (_, i) => {
+        const k = 1 / (1 + i * 0.62);
+        const rx = 700 * k;
+        const ry = 760 * k;
         return (
-          <g key={i}>
-            <path d={`M ${x - bend} 200 Q ${x + bend * 0.4} 760 ${x - bend} 1320`} stroke="#160E08" strokeWidth={34} fill="none" />
-            <path d={`M ${x - bend + 14} 200 Q ${x + bend * 0.4 + 14} 760 ${x - bend + 14} 1320`} stroke="#2A2A36" strokeWidth={3} fill="none" opacity={0.5} />
+          <g key={i} opacity={1 - i * 0.1}>
+            <ellipse cx={540} cy={720} rx={rx} ry={ry} fill="none" stroke="#1A100A" strokeWidth={52 * k} />
+            <path d={`M ${540 - rx * 0.97} ${720 - ry * 0.25} A ${rx} ${ry} 0 0 1 ${540 - rx * 0.25} ${720 - ry * 0.97}`} stroke="#3A4250" strokeWidth={3.5 * k + 1} fill="none" opacity={0.55} />
           </g>
         );
       })}
-      {Array.from({ length: 10 }, (_, i) => (
-        <path key={i} d={`M -20 ${260 + i * 110} Q 540 ${230 + i * 110 + (i - 5) * 10} 1100 ${260 + i * 110}`} stroke="#0E0906" strokeWidth={4} fill="none" />
+      <ellipse cx={540} cy={720} rx={90} ry={98} fill="#020104" />
+      {/* Boden aus Brettern */}
+      <path d="M -40 1920 L 470 900 L 610 900 L 1120 1920 Z" fill="#0B0705" />
+      {Array.from({ length: 6 }, (_, i) => (
+        <line key={i} x1={490 + i * 20} y1={900} x2={-40 + i * 232} y2={1920} stroke="#1A110A" strokeWidth={3} />
       ))}
       {/* Schultern und Köpfe im Dunkeln */}
       {[150, 330, 520, 720, 900].map((x, i) => (
-        <g key={x} transform={`translate(${x} ${1180 + (i % 2) * 20})`} opacity={0.9}>
+        <g key={x} transform={`translate(${x} ${1140 + (i % 2) * 18})`} opacity={0.95}>
           <path d="M -70 60 C -66 -10, -40 -30, 0 -32 C 40 -30, 66 -10, 70 60 Z" fill="#0D0907" />
           <circle cx={0} cy={-62} r={34} fill="#0D0907" />
           <path d="M -34 -62 A 34 34 0 0 1 22 -88" stroke="#33414E" strokeWidth={2} fill="none" opacity={0.45} />
@@ -524,8 +574,12 @@ const DarkStage: React.FC<StageP> = ({ s, ts, t, frame, b }) => {
 };
 
 /** Der Berg Schelem: hoch über dem Meer */
-const MOUNT = "M 300 1320 L 470 1040 L 560 900 L 640 690 L 712 520 L 770 360 L 830 452 L 880 418 L 960 520 L 1080 600 L 1080 1320 Z";
-const MOUNT_RIM = "M 470 1040 L 560 900 L 640 690 L 712 520 L 770 360";
+const MOUNT = "M 150 1320 L 330 1100 L 420 1020 L 500 880 L 560 820 L 640 640 L 700 560 L 760 360 L 800 420 L 830 400 L 900 500 L 960 540 L 1040 640 L 1080 660 L 1080 1320 Z";
+/** Die Flanke im Mondlicht – ein Band entlang des linken Grats */
+const MOUNT_FACE = "M 150 1320 L 330 1100 L 420 1020 L 500 880 L 560 820 L 640 640 L 700 560 L 760 360 L 776 470 L 744 600 L 706 700 L 650 860 L 600 960 L 540 1080 L 500 1320 Z";
+const MOUNT_RIM = "M 330 1100 L 420 1020 L 500 880 L 560 820 L 640 640 L 700 560 L 760 360";
+/** Rinnen und Grate im Fels */
+const MOUNT_LINES = ["M 760 360 L 790 520 L 860 640 L 900 800", "M 830 400 L 860 520 L 940 620", "M 700 560 L 740 700 L 760 860 L 820 1000", "M 560 820 L 610 940 L 640 1100"];
 
 const StonesStage: React.FC<StageP> = ({ t, frame, b }) => {
   const think = fade(t, b[0] + 0.9, 0.5) * (1 - fade(t, b[1], 0.4));
@@ -540,10 +594,16 @@ const StonesStage: React.FC<StageP> = ({ t, frame, b }) => {
   return (
     <g>
       {/* Der Berg */}
-      <path d={MOUNT} fill="url(#bgRock)" />
-      <path d={MOUNT_RIM} stroke={MOON} strokeWidth={4} fill="none" opacity={0.45} />
-      <CloudBank y={640} frame={frame} color="#1C2B40" o={0.75} speed={0.5} seed="bm" />
-      <text x={770} y={318} textAnchor="middle" fontFamily="Cinzel" fontWeight={700} fontSize={36} letterSpacing={6} fill="#D8EEF6" opacity={0.85} stroke="#05070C" strokeWidth={6} paintOrder="stroke">
+      <path d={MOUNT} fill="#0B0F18" />
+      <path d={MOUNT_FACE} fill="url(#bgFace)" />
+      {MOUNT_LINES.map((d, i) => (
+        <path key={i} d={d} stroke="#05070C" strokeWidth={5} fill="none" opacity={0.8} strokeLinejoin="round" />
+      ))}
+      <path d="M 760 360 L 772 430 L 752 418 L 744 470 L 730 440 L 716 470 L 726 420 Z" fill="#D6E6EE" opacity={0.75} />
+      <path d="M 760 360 L 800 420 L 788 432 L 776 414 Z" fill="#AFC4D0" opacity={0.5} />
+      <path d={MOUNT_RIM} stroke={MOON} strokeWidth={4} fill="none" opacity={0.6} />
+      <CloudBank y={640} frame={frame} color="#16223A" top="#3A4E6A" o={0.6} speed={0.5} seed="bm" solid={false} scale={0.7} />
+      <text x={790} y={300} textAnchor="middle" fontFamily="Cinzel" fontWeight={700} fontSize={36} letterSpacing={6} fill="#D8EEF6" opacity={0.85} stroke="#05070C" strokeWidth={6} paintOrder="stroke">
         BERG SCHELEM
       </text>
       {/* Felsband vorne */}
@@ -591,8 +651,8 @@ const MountStage: React.FC<StageP> = ({ t, frame, b }) => {
   const wy = 1110 - 128 * climb;
   return (
     <g>
-      <CloudBank y={1050} frame={frame} color="#344760" o={0.95} speed={0.6} seed="mc" />
-      <CloudBank y={1120} frame={frame + 400} color="#22324A" o={1} speed={0.9} seed="mc2" />
+      <CloudBank y={1040} frame={frame} color="#2C3D56" top="#6A84A2" o={0.95} speed={0.6} seed="mc" />
+      <CloudBank y={1130} frame={frame + 400} color="#1C2A40" top="#40587A" o={1} speed={0.9} seed="mc2" />
       <path d={SUMMIT} fill="url(#bgRock)" />
       <path d="M 0 1040 C 90 1010, 170 990, 250 1000 C 330 1008, 380 978, 470 976 L 930 970" stroke={MOON} strokeWidth={3} fill="none" opacity={0.4} />
       {/* Ein flacher Stein, darauf die sechzehn */}
@@ -601,7 +661,7 @@ const MountStage: React.FC<StageP> = ({ t, frame, b }) => {
         <Stone key={j} x={612 + (j % 8) * 38} y={950 - Math.floor(j / 8) * 2 + (j >= 8 ? -14 : 8)} r={13} i={j} frame={frame} o={fade(t, kneelAt + 0.1 + j * 0.03, 0.25)} lit={0.15 + beam * 0.4} halo={0.5} />
       ))}
       {/* Licht von oben, das sich auf die Steine legt */}
-      {beam > 0.01 ? <path d="M 650 230 L 850 230 L 920 960 L 580 960 Z" fill="url(#bgBeam)" opacity={beam} style={{ mixBlendMode: "screen" }} /> : null}
+      <Beam x={748} top={230} bottom={962} w0={160} w1={420} o={beam * 1.6} />
       {/* Er steigt hinauf, das Bündel vor der Brust – dann kniet er */}
       <Robed x={wx} y={wy} k={1.05} rim={MOON} rimSide={1} pose={{ step: frame * 0.17, hold: 1 }} o={1 - kneel} />
       {1 - kneel > 0.01 ? <ellipse cx={wx + 22} cy={wy - 200} rx={20} ry={14} fill="#CFE3EA" opacity={0.7 * (1 - kneel)} /> : null}
@@ -646,7 +706,7 @@ const TouchStage: React.FC<StageP> = ({ t, frame, b }) => {
       {/* Kein Bild vom Herrn – nur Licht von oben */}
       {pointO > 0.01 ? (
         <g opacity={pointO} style={{ mixBlendMode: "screen" }}>
-          <path d={`M ${px - 40} 230 L ${px + 40} 230 L ${px + 10} ${py} L ${px - 10} ${py} Z`} fill="url(#bgBeam)" opacity={0.6} />
+          <path d={`M ${px - 30} 230 L ${px + 30} 230 L ${px + 8} ${py} L ${px - 8} ${py} Z`} fill="url(#bgBeam)" opacity={0.45} />
           <circle cx={px} cy={py} r={70} fill="url(#bgHalo)" />
           <circle cx={px} cy={py} r={11} fill="#FFFFFF" />
         </g>
@@ -654,8 +714,12 @@ const TouchStage: React.FC<StageP> = ({ t, frame, b }) => {
       {/* Er sieht den Finger des Herrn: Licht von oben über allem */}
       {see > 0.01 ? (
         <g style={{ mixBlendMode: "screen" }}>
-          <ellipse cx={540} cy={180} rx={760} ry={900} fill="url(#bgHalo)" opacity={0.95 * see} />
-          <path d="M 380 0 L 700 0 L 980 1300 L 100 1300 Z" fill="url(#bgBeam)" opacity={0.55 * see} />
+          <ellipse cx={540} cy={160} rx={760} ry={860} fill="url(#bgHalo)" opacity={0.9 * see} />
+        </g>
+      ) : null}
+      {see > 0.01 ? (
+        <g>
+          <Beam x={540} top={0} bottom={1060} w0={340} w1={1060} o={see * 1.1} />
         </g>
       ) : null}
       <Kneeling x={170} y={1186} k={0.9} raise={1 - bow} bow={bow} rim={mixHex(MOON, "#F2FEFF", Math.max(all, see))} />
@@ -668,67 +732,80 @@ const VoyageStage: React.FC<StageP> = ({ t, frame, b, ts }) => {
   const global = ts.from + frame;
   const storm = stormAt(global / Math.max(1, durationInFrames));
   const gt = global / FPS;
-  const amp = 0.35 + 0.65 * storm;
-  const H = (x: number, base: number, ph = 0) => base + amp * (60 * Math.sin(x / 230 + gt * 1.5 + ph) + 32 * Math.sin(x / 113 - gt * 2.2 + ph));
-  const dH = (x: number, ph = 0) => amp * ((60 / 230) * Math.cos(x / 230 + gt * 1.5 + ph) + (32 / 113) * Math.cos(x / 113 - gt * 2.2 + ph));
-  const tilt = (x: number, ph = 0) => (Math.atan(dH(x, ph)) * 180) / Math.PI * 0.8;
+  const amp = 0.5 + 1.0 * storm;
+  const ripple = (x: number, ph = 0) => amp * (58 * Math.sin(x / 230 + gt * 1.5 + ph) + 30 * Math.sin(x / 113 - gt * 2.2 + ph));
+  const dRipple = (x: number, ph = 0) => amp * ((58 / 230) * Math.cos(x / 230 + gt * 1.5 + ph) + (30 / 113) * Math.cos(x / 113 - gt * 2.2 + ph));
+  const tilt = (x: number, ph = 0) => ((Math.atan(dRipple(x, ph)) * 180) / Math.PI) * 0.9;
   const zoom = interpolate(t, [b[1] - 0.45, b[1] + 0.7], [0, 1], { ...clamp, easing: ease });
-  // Zwei Steine fliegen in das Schiff
+  // Zwei Steine fliegen in das Schiff, je einer an ein Ende
   const s1 = interpolate(t, [b[0] + 0.1, b[0] + 0.6], [0, 1], { ...clamp, easing: Easing.in(Easing.quad) });
   const s2 = interpolate(t, [b[0] + 0.5, b[0] + 1.0], [0, 1], { ...clamp, easing: Easing.in(Easing.quad) });
   const g1 = fade(t, b[0] + 0.55, 0.3);
   const g2 = fade(t, b[0] + 0.95, 0.3);
-  const ever = 1 + 0.35 * fade(t, b[3] - 0.1, 0.4) * (0.8 + 0.2 * Math.sin(frame / 4));
-  const heroK = 1.6 - 0.85 * zoom;
-  const heroX = 540 + 10 * zoom;
-  const heroY = interpolate(zoom, [0, 1], [880, H(550, 1060)]);
-  const heroRot = tilt(550) * zoom + Math.sin(frame / 15) * 3 * (1 - zoom);
-  const others = [
-    { x: 150, base: 940, k: 0.42, ph: 0.6 },
-    { x: 400, base: 930, k: 0.36, ph: 1.9 },
-    { x: 690, base: 935, k: 0.38, ph: 2.6 },
-    { x: 950, base: 945, k: 0.44, ph: 3.4 },
-    { x: 230, base: 1035, k: 0.6, ph: 4.2 },
-    { x: 860, base: 1040, k: 0.62, ph: 5.1 },
-    { x: 1030, base: 1010, k: 0.5, ph: 0.2 },
+  const ever = 1 + 0.4 * fade(t, b[3] - 0.1, 0.4) * (0.8 + 0.2 * Math.sin(frame / 4));
+  // Ein Wellenberg rollt durchs Bild und begräbt ein Schiff – das Licht leuchtet unter Wasser weiter
+  const rise = interpolate(t, [b[1] - 0.3, b[1] + 0.7, b[2] + 1.4, b[2] + 2.6], [0, 1, 1, 0.25], { ...clamp, easing: ease });
+  const crestX = interpolate(t, [b[1] - 0.3, b[3] + 0.6], [-60, 560], clamp);
+  const bump = (x: number) => 430 * rise * Math.exp(-(((x - crestX) / 220) ** 2));
+  const heroK = 1.6 - 0.86 * zoom;
+  const heroBaseY = 1070;
+  const heroX = 600;
+  const heroY = interpolate(zoom, [0, 1], [880 + 0.3 * ripple(540), heroBaseY + ripple(heroX)]);
+  const heroRot = tilt(heroX) * zoom + Math.sin(frame / 15) * 3 * (1 - zoom);
+  const fleet = [
+    { x: 120, base: 925, k: 0.34, ph: 0.6 },
+    { x: 380, base: 915, k: 0.3, ph: 1.9 },
+    { x: 700, base: 922, k: 0.32, ph: 2.6 },
+    { x: 960, base: 930, k: 0.36, ph: 3.4 },
+    { x: 250, base: 1020, k: 0.56, ph: 4.2 },
+    { x: 930, base: 1010, k: 0.54, ph: 5.1 },
+    { x: 1060, base: 960, k: 0.4, ph: 0.2 },
   ];
-  // Ein Schiff taucht unter die Welle – und das Licht leuchtet unter Wasser weiter
-  const dive = interpolate(t, [b[1] + 0.9, b[1] + 1.5, b[1] + 2.6, b[1] + 3.2], [0, 1, 1, 0], { ...clamp, easing: ease });
-  const front = (base: number, ph: number, a: number) => {
+  const surface = (base: number, ph: number, k: number, withBump: boolean) => {
     const pts: string[] = [];
-    for (let x = -40; x <= 1120; x += 20) pts.push(`${x} ${(base + a * (H(x, 0, ph) - 0)).toFixed(1)}`);
+    for (let x = -40; x <= 1120; x += 16) pts.push(`${x} ${(base + k * ripple(x, ph) - (withBump ? bump(x) : 0)).toFixed(1)}`);
     return pts;
   };
-  const wave1 = front(1105, 1.2, 1.25);
-  const wave2 = front(1190, 2.4, 1.5);
+  const wave1 = surface(1150, 1.2, 1.35, true);
+  const wave2 = surface(1270, 2.4, 1.6, false);
+  const buried = Math.min(1, bump(fleet[4].x) / 200);
+  const near = interpolate(zoom, [0, 1], [0, 1]);
   return (
     <g>
-      {/* Ferne Schiffe, alle mit zwei Lichtern */}
-      {others.map((o, i) => {
-        const yy = H(o.x, o.base, o.ph) + (i === 4 ? 150 * dive : 0);
-        return (
-          <Barge key={i} id={`v${i}`} x={o.x} y={yy} k={o.k} rot={tilt(o.x, o.ph)} glow={[ever * zoom, ever * zoom]} dim={0.3} o={zoom} frame={frame} />
-        );
-      })}
+      {/* Die anderen Schiffe, alle mit zwei Lichtern */}
+      {fleet.map((o, i) => (
+        <Barge key={i} id={`v${i}`} x={o.x} y={o.base + (o.base > 990 ? 1 : 0.55) * ripple(o.x, o.ph)} k={o.k} rot={tilt(o.x, o.ph)} glow={[ever * zoom, ever * zoom]} dim={o.base > 990 ? 0.15 : 0.35} o={zoom} frame={frame} />
+      ))}
       {/* Das nahe Schiff: zwei Steine, je einer an jedem Ende */}
-      <Barge id="held" x={heroX} y={heroY} k={heroK} rot={heroRot} glow={[g1 * ever, g2 * ever]} frame={frame} />
-      {s1 > 0 && s1 < 1 ? <Stone x={540 + (heroX - 150 * heroK - 540) * s1} y={300 + (heroY - 8 - 300) * s1} r={30} i={1} frame={frame} lit={1} /> : null}
-      {s2 > 0 && s2 < 1 ? <Stone x={540 + (heroX + 150 * heroK - 540) * s2} y={300 + (heroY - 8 - 300) * s2} r={30} i={2} frame={frame} lit={1} /> : null}
-      {/* Hohe Wellen vorne */}
-      <g opacity={zoom}>
-        <path d={`M -40 1920 L ${wave1.join(" L ")} L 1120 1920 Z`} fill="#0A2232" opacity={0.86} />
-        <path d={`M ${wave1.join(" L ")}`} stroke="#BFD8E4" strokeWidth={5} fill="none" opacity={0.55} />
-        {/* Licht unter Wasser */}
-        {dive > 0.05 ? <circle cx={230} cy={H(230, 1035, 4.2) + 150 * dive} r={120} fill="url(#bgHalo)" opacity={0.55 * dive * ever} style={{ mixBlendMode: "screen" }} /> : null}
-        <path d={`M -40 1920 L ${wave2.join(" L ")} L 1120 1920 Z`} fill="#061620" opacity={0.95} />
-        <path d={`M ${wave2.join(" L ")}`} stroke="#9FC2D2" strokeWidth={4} fill="none" opacity={0.45} />
+      <Barge id="held" x={interpolate(zoom, [0, 1], [540, heroX])} y={heroY} k={heroK} rot={heroRot} glow={[g1 * ever, g2 * ever]} frame={frame} />
+      {s1 > 0 && s1 < 1 ? <Stone x={540 + (540 - 150 * heroK - 540) * s1} y={300 + (heroY - 8 - 300) * s1} r={30} i={1} frame={frame} lit={1} /> : null}
+      {s2 > 0 && s2 < 1 ? <Stone x={540 + (540 + 150 * heroK - 540) * s2} y={300 + (heroY - 8 - 300) * s2} r={30} i={2} frame={frame} lit={1} /> : null}
+      {/* Wasser vor dem nahen Schiff in der Nahaufnahme */}
+      {1 - near > 0.01 ? (
+        <g opacity={1 - near}>
+          <path d={`M -40 1920 L ${surface(heroY + 52, 0.4, 0.35, false).join(" L ")} L 1120 1920 Z`} fill="#0A2232" opacity={0.92} />
+          <path d={`M ${surface(heroY + 52, 0.4, 0.35, false).join(" L ")}`} stroke="#9FC2D2" strokeWidth={4} fill="none" opacity={0.5} />
+        </g>
+      ) : null}
+      {/* Hohe Wellen vorne – mit dem Wellenberg */}
+      <g opacity={near}>
+        <path d={`M -40 1920 L ${wave1.join(" L ")} L 1120 1920 Z`} fill="url(#bgWave)" opacity={0.9} />
+        {buried > 0.05 ? (
+          <circle cx={fleet[4].x} cy={fleet[4].base + ripple(fleet[4].x, fleet[4].ph)} r={150} fill="url(#bgHalo)" opacity={0.6 * buried * ever} style={{ mixBlendMode: "screen" }} />
+        ) : null}
+        <path d={`M ${wave1.join(" L ")}`} stroke="#D8EAF2" strokeWidth={5} fill="none" opacity={0.75} />
+        <path d={`M ${wave1.join(" L ")}`} stroke="#F2FAFF" strokeWidth={12} fill="none" opacity={0.35} strokeDasharray="70 30 26 40" strokeDashoffset={-frame * 4} strokeLinecap="round" />
+        <path d={`M -40 1920 L ${wave2.join(" L ")} L 1120 1920 Z`} fill="url(#bgWave)" opacity={0.75} />
+        <path d={`M -40 1920 L ${wave2.join(" L ")} L 1120 1920 Z`} fill="#04111A" opacity={0.5} />
+        <path d={`M ${wave2.join(" L ")}`} stroke="#A8C8D6" strokeWidth={5} fill="none" opacity={0.5} strokeDasharray="40 22" strokeDashoffset={frame * 3} />
       </g>
-      {/* Gischt */}
-      {zoom > 0.5
-        ? Array.from({ length: 18 }, (_, i) => {
-            const x = (i * 67 + frame * 7) % 1120 - 20;
-            const y = 1100 + amp * 60 * Math.sin(x / 230 + gt * 1.5 + 1.2) - ((frame + i * 9) % 30) * 3;
-            return <circle key={i} cx={x} cy={y} r={3 + (i % 3)} fill="#DCEBF2" opacity={0.5 * ((30 - ((frame + i * 9) % 30)) / 30)} />;
+      {/* Gischt über dem Wellenberg */}
+      {rise > 0.2
+        ? Array.from({ length: 26 }, (_, i) => {
+            const life = ((frame + i * 7) % 26) / 26;
+            const x0 = crestX - 160 + (i * 37) % 320;
+            const y0 = 1150 + 1.35 * ripple(x0, 1.2) - bump(x0);
+            return <circle key={i} cx={x0 + life * 60} cy={y0 - life * 70 + life * life * 60} r={3 + (i % 4)} fill="#E6F2F8" opacity={0.7 * (1 - life) * rise} />;
           })
         : null}
     </g>
@@ -834,8 +911,9 @@ export const Scene: React.FC<{ ts: TimelineScene }> = ({ ts }) => {
               marginTop: 54,
               textAlign: "center",
               fontFamily: look.display,
-              fontSize: 158,
+              fontSize: 118,
               lineHeight: 1,
+              whiteSpace: "nowrap",
               textTransform: "uppercase",
               color: look.accent,
               textShadow: look.glow,
@@ -878,12 +956,12 @@ export const Scene: React.FC<{ ts: TimelineScene }> = ({ ts }) => {
     ) : null;
 
   /* Zähler: Steine am Feuer, Steine im Licht, Tage auf dem Meer */
-  let hud: { label: string; value: string; o: number } | null = null;
+  let hud: { label: string; value: string; o: number; left?: boolean } | null = null;
   if (s.stage === "stones") {
     const t0 = b[1] + 0.45;
     const t1 = b[2] + 0.9;
     const n = Math.max(0, Math.min(16, Math.floor(((t - t0) / (t1 - t0)) * 16) + 1));
-    hud = { label: "STEINE", value: `${t < t0 ? 0 : n} / 16`, o: fade(t, t0 - 0.2, 0.3) };
+    hud = { label: "STEINE", value: `${t < t0 ? 0 : n} / 16`, o: fade(t, t0 - 0.2, 0.3), left: true };
   } else if (s.stage === "touch") {
     const t0 = b[0] + 0.25;
     const t1 = b[2] - 0.15;
@@ -933,6 +1011,17 @@ export const Scene: React.FC<{ ts: TimelineScene }> = ({ ts }) => {
             <stop offset="55%" stopColor="#151A24" />
             <stop offset="100%" stopColor="#07090E" />
           </linearGradient>
+          <linearGradient id="bgFace" x1="0" y1="0" x2="0" y2="1">
+            <stop offset="0%" stopColor="#3A4C66" />
+            <stop offset="45%" stopColor="#223047" />
+            <stop offset="100%" stopColor="#0F1520" />
+          </linearGradient>
+          <linearGradient id="bgWave" x1="0" y1="0" x2="0" y2="1">
+            <stop offset="0%" stopColor="#2C6E8A" />
+            <stop offset="22%" stopColor="#164660" />
+            <stop offset="60%" stopColor="#0A2536" />
+            <stop offset="100%" stopColor="#04111A" />
+          </linearGradient>
           <radialGradient id="bgVignette" cx="50%" cy="45%" r="75%">
             <stop offset="55%" stopColor="#000" stopOpacity="0" />
             <stop offset="100%" stopColor="#000" stopOpacity="0.75" />
@@ -954,7 +1043,7 @@ export const Scene: React.FC<{ ts: TimelineScene }> = ({ ts }) => {
       {question}
       {recap}
       {hud && hud.o > 0.01 ? (
-        <div style={{ position: "absolute", top: 268, left: 0, right: 0, textAlign: "center", opacity: hud.o }}>
+        <div style={{ position: "absolute", top: 268, left: hud.left ? 72 : 0, right: 0, textAlign: hud.left ? "left" : "center", opacity: hud.o }}>
           <div style={{ fontFamily: look.label, fontWeight: 800, fontSize: 30, letterSpacing: "0.32em", color: look.dim }}>{hud.label}</div>
           <div style={{ fontFamily: look.display, fontSize: 120, lineHeight: 1.05, color: look.accent, textShadow: look.glow, fontVariantNumeric: "tabular-nums" }}>{hud.value}</div>
         </div>

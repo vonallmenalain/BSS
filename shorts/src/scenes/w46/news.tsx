@@ -4,7 +4,7 @@ import { Sfx, beats, voiceFrame } from "../../lib/sfx";
 import { FPS, type TimelineScene } from "../../lib/timing";
 import type { Scene as SceneDef } from "../../schema";
 import { theme } from "../../theme";
-import { Robed, Scroll, Stamp, wordsOfTexts } from "../w45/kitA";
+import { Scroll, wordsOfTexts } from "../w45/kitA";
 
 /*
  * «Eilmeldung aus Beröa» (Apostelgeschichte 17) als Nachrichtensendung: Über allen Etappen steht
@@ -161,6 +161,117 @@ const LowerThird: React.FC<{ tag?: string; headline?: string; tagOn?: number; he
 /* Figuren                                                             */
 /* ------------------------------------------------------------------ */
 
+/** Farben einer Gestalt: Gewand, Mantel, Haut, Haar/Bart, Tuch */
+type Palette = { robe: string; mantle: string; skin: string; hair: string; cloth: string };
+const PAUL: Palette = { robe: "#6E4B36", mantle: "#A85A32", skin: "#C98E64", hair: "#3A2418", cloth: "#E2D2B0" };
+const SILAS: Palette = { robe: "#3F5068", mantle: "#6B7FA3", skin: "#B67D58", hair: "#2A1A12", cloth: "#D8CCB4" };
+
+const shadeHex = (hex: string, k: number, to = "#0A0614") => {
+  const a = [1, 3, 5].map((i) => parseInt(hex.slice(i, i + 2), 16));
+  const b = [1, 3, 5].map((i) => parseInt(to.slice(i, i + 2), 16));
+  return `rgb(${a.map((v, i) => Math.round(v + (b[i] - v) * Math.max(0, Math.min(1, k)))).join(",")})`;
+};
+const shadePal = (p: Palette, k: number): Palette => ({ robe: shadeHex(p.robe, k), mantle: shadeHex(p.mantle, k), skin: shadeHex(p.skin, k), hair: shadeHex(p.hair, k), cloth: shadeHex(p.cloth, k) });
+
+/**
+ * Eine Gestalt im Gewand, von der Seite (schaut nach rechts; `dir` −1 nach links). Ursprung zwischen
+ * den Füssen, bei k = 1 gut 300 hoch. `walk` 0 … 1 lässt sie gehen (Phase `phase`), `raise` hebt den
+ * vorderen Arm zum Reden, `scroll` hält eine kleine Rolle, `reach` streckt die Hand einladend aus.
+ */
+const Person: React.FC<{
+  x: number;
+  y: number;
+  k?: number;
+  dir?: 1 | -1;
+  pal: Palette;
+  rim?: string;
+  walk?: number;
+  phase?: number;
+  raise?: number;
+  reach?: number;
+  scroll?: number;
+  staff?: boolean;
+  beard?: boolean;
+  o?: number;
+}> = ({ x, y, k = 1, dir = 1, pal, rim, walk = 0, phase = 0, raise = 0, reach = 0, scroll = 0, staff = false, beard = true, o = 1 }) => {
+  const swing = Math.sin(phase) * walk;
+  const bob = -Math.abs(Math.sin(phase)) * 5 * walk;
+  const hem = swing * 7;
+  const hx = 10;
+  const hy = -274;
+  // vorderer Arm: hängend/schwingend → Rolle halten → einladen → reden (erhoben)
+  let elbow: [number, number] = [26 + swing * 10, -176];
+  let hand: [number, number] = [34 + swing * 26, -128];
+  const mixP = (a: [number, number], c: [number, number], m: number): [number, number] => [a[0] + (c[0] - a[0]) * m, a[1] + (c[1] - a[1]) * m];
+  if (scroll > 0) {
+    elbow = mixP(elbow, [40, -168], scroll);
+    hand = mixP(hand, [66, -190], scroll);
+  }
+  if (reach > 0) {
+    elbow = mixP(elbow, [58, -196], reach);
+    hand = mixP(hand, [112, -206], reach);
+  }
+  if (raise > 0) {
+    elbow = mixP(elbow, [58, -238], raise);
+    hand = mixP(hand, [78, -318], raise);
+  }
+  const backHand: [number, number] = [-12 - swing * 26, -130];
+  const shape = (c: Palette | null, r?: string) => {
+    const f = (v: string) => r ?? v;
+    return (
+      <g>
+        {/* Füsse */}
+        <ellipse cx={-12 + swing * 24} cy={-5} rx={17} ry={6.5} fill={f(c ? shadeHex(c.hair, 0.3) : "#000")} />
+        <ellipse cx={14 - swing * 24} cy={-5} rx={17} ry={6.5} fill={f(c ? shadeHex(c.hair, 0.3) : "#000")} />
+        {/* hinterer Arm */}
+        <path d={`M -4 -224 Q ${-14 - swing * 10} -176 ${backHand[0]} ${backHand[1]}`} stroke={f(c ? shadeHex(c.robe, 0.35) : "#000")} strokeWidth={19} strokeLinecap="round" fill="none" />
+        {/* Gewand */}
+        <path d={`M ${-44 + hem} -10 C -52 -96, -46 -178, -34 -232 C -26 -260, 28 -262, 36 -232 C 48 -178, 54 -98, ${48 + hem} -10 Z`} fill={f(c ? c.robe : "#000")} />
+        {/* Gürtel */}
+        <path d="M -44 -150 Q 4 -140 46 -150 L 47 -137 Q 4 -127 -45 -137 Z" fill={f(c ? shadeHex(c.mantle, 0.45) : "#000")} />
+        {/* Mantel über der Schulter */}
+        <path d={`M -38 -234 C -12 -256, 30 -248, 40 -226 L 30 -104 C 6 -94, -30 -104, ${-48 + hem * 0.5} -118 Z`} fill={f(c ? c.mantle : "#000")} />
+        {/* Kopf */}
+        <circle cx={hx} cy={hy} r={25} fill={f(c ? c.skin : "#000")} />
+        <path d={`M ${hx + 22} ${hy - 6} L ${hx + 32} ${hy + 4} L ${hx + 22} ${hy + 8} Z`} fill={f(c ? c.skin : "#000")} />
+        {beard ? <path d={`M ${hx - 6} ${hy + 8} Q ${hx + 4} ${hy + 44} ${hx + 22} ${hy + 14} Q ${hx + 12} ${hy + 22} ${hx + 4} ${hy + 12} Z`} fill={f(c ? c.hair : "#000")} /> : null}
+        {/* Tuch über dem Kopf */}
+        <path d={`M ${hx - 30} ${hy + 34} C ${hx - 38} ${hy - 30}, ${hx + 20} ${hy - 46}, ${hx + 30} ${hy - 8} C ${hx + 31} ${hy + 1}, ${hx + 22} ${hy + 1}, ${hx + 18} ${hy - 8} C ${hx + 8} ${hy - 22}, ${hx - 10} ${hy - 20}, ${hx - 12} ${hy + 4} L ${hx - 8} ${hy + 38} Z`} fill={f(c ? c.cloth : "#000")} />
+        <path d={`M ${hx - 30} ${hy - 12} Q ${hx} ${hy - 22} ${hx + 26} ${hy - 14}`} stroke={f(c ? shadeHex(c.mantle, 0.3) : "#000")} strokeWidth={5} fill="none" />
+        {/* Stab */}
+        {staff ? <line x1={hand[0] + 6} y1={hand[1] - 110} x2={hand[0] + 16} y2={0} stroke={f("#4A2E16")} strokeWidth={7} strokeLinecap="round" /> : null}
+        {/* vorderer Arm */}
+        <path d={`M 18 -222 Q ${elbow[0]} ${elbow[1]} ${hand[0]} ${hand[1]}`} stroke={f(c ? shadeHex(c.mantle, 0.12) : "#000")} strokeWidth={20} strokeLinecap="round" fill="none" />
+        <circle cx={hand[0]} cy={hand[1]} r={9} fill={f(c ? c.skin : "#000")} />
+        {/* kleine Rolle in der Hand */}
+        {scroll > 0.05 ? (
+          <g transform={`translate(${hand[0] + 4} ${hand[1] - 4})`} opacity={Math.min(1, scroll * 1.5)}>
+            <rect x={-6} y={-18} width={44} height={34} fill={f("#F2DFB4")} />
+            <rect x={-12} y={-24} width={12} height={46} rx={5} fill={f("#9C6A30")} />
+            <rect x={34} y={-24} width={12} height={46} rx={5} fill={f("#9C6A30")} />
+          </g>
+        ) : null}
+      </g>
+    );
+  };
+  return (
+    <g transform={`translate(${x} ${y + bob}) scale(${dir * k} ${k})`} opacity={o}>
+      <ellipse cx={4} cy={2} rx={68} ry={9} fill="#000" opacity={0.3} />
+      {rim ? <g transform="translate(-4 -2)">{shape(null, rim)}</g> : null}
+      {shape(pal)}
+    </g>
+  );
+};
+
+/** Eine Gestalt von vorn (Kopf, Tuch, Schultern) – für die Menschen, die zum Glauben kommen. Ursprung: Füsse. */
+const Front: React.FC<{ x: number; y: number; k: number; fill: string; cloth: string; rim: string; tilt?: number }> = ({ x, y, k, fill, cloth, rim, tilt = 0 }) => (
+  <g transform={`translate(${x} ${y}) scale(${k}) rotate(${tilt} 0 -100)`}>
+    <path d="M -46 0 C -50 -60, -44 -104, -26 -118 C -12 -126, 12 -126, 26 -118 C 44 -104, 50 -60, 46 0 Z" fill={fill} stroke={rim} strokeWidth={3} />
+    <circle cx={0} cy={-146} r={23} fill={fill} stroke={rim} strokeWidth={3} />
+    <path d="M -27 -128 C -32 -170, -18 -176, 0 -176 C 18 -176, 32 -170, 27 -128 L 22 -132 C 22 -160, -22 -160, -22 -132 Z" fill={cloth} />
+  </g>
+);
+
 /** Sitzende Gestalt im Gewand, von der Seite (schaut nach rechts; `dir` −1 nach links). Ursprung: Boden unter dem Sitz. */
 const Sitter: React.FC<{ x: number; y: number; k?: number; dir?: 1 | -1; fill: string; rim?: string; lean?: number; glow?: number; frame: number; scroll?: boolean }> = ({
   x,
@@ -213,8 +324,10 @@ const Rioter: React.FC<{ x: number; y: number; k: number; fill: string; torch: b
   return (
     <g transform={`translate(${x} ${y}) scale(${k})`}>
       {torch ? <circle cx={hand[0] + 4} cy={hand[1] - 46} r={70} fill="url(#nwFire)" opacity={0.55 * fl} /> : null}
-      <path d={`M -34 0 C -38 -60, -36 -110, -22 -128 C -8 -136, 10 -136, 24 -128 C 36 -110, 38 -60, 36 0 Z`} fill={fill} />
-      <circle cx={sway * 0.3} cy={-152} r={20} fill={fill} />
+      <path d={`M 20 -122 L ${hand[0]} ${hand[1]}`} stroke="#FF8A3A" strokeOpacity={0.55} strokeWidth={19} strokeLinecap="round" />
+      <path d={`M -34 0 C -38 -60, -36 -110, -22 -128 C -8 -136, 10 -136, 24 -128 C 36 -110, 38 -60, 36 0 Z`} fill={fill} stroke="#FF8A3A" strokeOpacity={0.45} strokeWidth={3} />
+      <circle cx={sway * 0.3} cy={-152} r={20} fill={fill} stroke="#FF8A3A" strokeOpacity={0.45} strokeWidth={3} />
+      <path d={`M ${-22 + sway * 0.3} -150 C ${-24 + sway * 0.3} -182, ${24 + sway * 0.3} -182, ${22 + sway * 0.3} -150 L ${26 + sway * 0.3} -124 L ${-26 + sway * 0.3} -124 Z`} fill={fill} />
       <path d={`M 20 -122 L ${hand[0]} ${hand[1]}`} stroke={fill} strokeWidth={14} strokeLinecap="round" />
       {torch ? (
         <g transform={`translate(${hand[0] + 4} ${hand[1]})`}>
@@ -283,12 +396,12 @@ const along = (p: number): [number, number] => {
   return [a[0] + (c[0] - a[0]) * k, a[1] + (c[1] - a[1]) * k];
 };
 
-const Pin: React.FC<{ at: LL; on: number; label: string; side: 1 | -1; color?: string; frame: number; q?: { on: number; color: string } }> = ({ at, on, label, side, color = RED, frame, q }) => {
+const Pin: React.FC<{ at: LL; on: number; label: string; side: 1 | -1; color?: string; frame: number; q?: { on: number; color: string; dx: number }; ks?: number }> = ({ at, on, label, side, color = RED, frame, q, ks = 1 }) => {
   if (on <= 0.01) return null;
   const [x, y] = proj(at);
   const pulse = (frame % 40) / 40;
   return (
-    <g transform={`translate(${x} ${y})`}>
+    <g transform={`translate(${x} ${y}) scale(${ks})`}>
       <circle r={14 + 40 * pulse} fill={color} opacity={0.35 * (1 - pulse) * on} />
       <g transform={`scale(${on})`}>
         <path d="M 0 0 C -9 -18, -26 -28, -26 -48 A 26 26 0 1 1 26 -48 C 26 -28, 9 -18, 0 0 Z" fill={color} stroke="#FFFFFF" strokeWidth={3} />
@@ -310,7 +423,7 @@ const Pin: React.FC<{ at: LL; on: number; label: string; side: 1 | -1; color?: s
         {label}
       </text>
       {q && q.on > 0.01 ? (
-        <g transform={`translate(${-side * 6} -116) scale(${q.on * (1 + 0.06 * Math.sin(frame / 5))})`}>
+        <g transform={`translate(${q.dx} -118) scale(${q.on * (1 + 0.06 * Math.sin(frame / 5))})`}>
           <circle r={30} fill={q.color} stroke="#FFFFFF" strokeWidth={4} />
           <text y={13} textAnchor="middle" fontFamily={theme.font.display} fontSize={40} fill="#FFFFFF">
             ?
@@ -331,8 +444,11 @@ const GreeceMap: React.FC<{
   zoom?: { cx: number; cy: number; s: number };
   foes?: number;
   q?: number;
-}> = ({ frame, pins, route, mover, night = 0, zoom, foes = -1, q = 0 }) => {
-  const z = zoom ?? { cx: MON.w / 2, cy: MON.h / 2, s: 1 };
+  labels?: boolean;
+}> = ({ frame, pins, route, mover, night = 0, zoom, foes = -1, q = 0, labels = true }) => {
+  /* Ohne Zoom rückt die Karte etwas nach unten: oben ist Platz für die Fragezeichen */
+  const z = zoom ?? { cx: MON.w / 2, cy: MON.h / 2 - 60, s: 1 };
+  const ks = z.s > 1 ? 1.3 / z.s : 1;
   const moverPt = mover !== undefined ? along(mover) : null;
   const sea = night > 0.5 ? ["#050E22", "#081631"] : ["#0B2850", "#0A1B38"];
   const seaId = night > 0.5 ? "nwSeaN" : "nwSeaD";
@@ -367,7 +483,9 @@ const GreeceMap: React.FC<{
           return <ellipse key={i} cx={x} cy={y} rx={r} ry={r * 0.7} fill={night > 0.5 ? "#13223F" : "#1C3A63"} stroke="#7CC4FF" strokeWidth={2 / z.s} transform={`rotate(${(i * 37) % 60 - 30} ${x} ${y})`} />;
         })}
         {/* Landschaften */}
-        <text x={proj([21.2, 41.25])[0]} y={proj([21.2, 41.25])[1]} fontFamily="Cinzel" fontWeight={700} fontSize={30} letterSpacing={8} fill="#9CCBFF" opacity={0.55}>
+        {labels ? (
+          <>
+        <text x={proj([19.7, 41.75])[0]} y={proj([19.7, 41.75])[1]} fontFamily="Cinzel" fontWeight={700} fontSize={30} letterSpacing={8} fill="#9CCBFF" opacity={0.55}>
           MAKEDONIEN
         </text>
         <text x={proj([21.75, 37.4])[0]} y={proj([21.75, 37.4])[1]} fontFamily="Cinzel" fontWeight={700} fontSize={30} letterSpacing={8} fill="#9CCBFF" opacity={0.55}>
@@ -376,6 +494,8 @@ const GreeceMap: React.FC<{
         <text x={proj([24.85, 39.45])[0]} y={proj([24.85, 39.45])[1]} fontFamily="Cormorant Garamond" fontStyle="italic" fontWeight={600} fontSize={46} fill="#6FA8E8" opacity={0.6}>
           Ägäis
         </text>
+          </>
+        ) : null}
         {/* Die Reise */}
         <g mask="url(#nwRouteMask)">
           <path d={routeD} stroke={GOLD} strokeWidth={6 / Math.sqrt(z.s)} fill="none" strokeDasharray={`${16 / z.s} ${12 / z.s}`} strokeDashoffset={-frame * 1.2} strokeLinecap="round" />
@@ -386,23 +506,24 @@ const GreeceMap: React.FC<{
               const p = Math.max(0, Math.min(1, foes - i * 0.08));
               const [x, y] = along(p * BEROEA_AT);
               return (
-                <g key={i} opacity={foes > i * 0.08 ? 1 : 0}>
-                  <circle cx={x} cy={y + i * 8 - 8} r={24} fill={RED} opacity={0.25} />
-                  <circle cx={x} cy={y + i * 8 - 8} r={11} fill={RED} stroke="#FFFFFF" strokeWidth={2.5} />
+                <g key={i} opacity={foes > i * 0.08 ? 1 : 0} transform={`translate(${x + (i - 1) * 16} ${y + 26 + (i % 2) * 10})`}>
+                  <circle r={30} fill={RED} opacity={0.3 + 0.15 * Math.sin(frame / 3 + i)} />
+                  <circle r={14} fill={RED} stroke="#FFFFFF" strokeWidth={3} />
                 </g>
               );
             })
           : null}
-        <Pin at={CITY.thess} on={pins[0]} label="Thessalonich" side={1} frame={frame} q={{ on: q, color: RED }} />
-        <Pin at={CITY.beroea} on={pins[1]} label="Beröa" side={-1} frame={frame} q={{ on: q, color: GOLD }} />
-        <Pin at={CITY.athens} on={pins[2]} label="Athen" side={1} frame={frame} q={{ on: q, color: BLUE }} />
+        <Pin at={CITY.thess} on={pins[0]} label="Thessalonich" side={1} frame={frame} q={{ on: q, color: RED, dx: 40 }} ks={ks} />
+        <Pin at={CITY.beroea} on={pins[1]} label="Beröa" side={-1} frame={frame} q={{ on: q, color: GOLD, dx: -40 }} ks={ks} />
+        <Pin at={CITY.athens} on={pins[2]} label="Athen" side={-1} frame={frame} q={{ on: q, color: BLUE, dx: -40 }} ks={ks} />
         {/* Paulus und Silas: zwei Punkte – oder ein Schiff auf dem Meer */}
         {moverPt
           ? (() => {
               const atSea = (mover ?? 0) > BEROEA_AT + 0.02;
               const [x, y] = moverPt;
+              const arrived = interpolate(mover ?? 0, [0.97, 1], [1, 0], clamp);
               return (
-                <g transform={`translate(${x} ${y}) scale(${1 / Math.sqrt(z.s)})`}>
+                <g transform={`translate(${x} ${y}) scale(${ks * 1.15})`} opacity={arrived}>
                   <circle r={30} fill="#FFFFFF" opacity={0.18 + 0.1 * Math.sin(frame / 4)} />
                   {atSea ? (
                     <g transform="translate(0 4)">
@@ -522,7 +643,7 @@ const Breaking: React.FC<P> = ({ ts, s, t, frame, b }) => {
   const away = interpolate(t, [fremde - 0.2, fremde + 0.4], [0, 1], { ...clamp, easing: Easing.inOut(Easing.cubic) });
   const enter = spring({ frame: frame - voiceFrame(ts, fremde - 0.15), fps: FPS, config: { damping: 15, stiffness: 120 } });
   const step = frame / 4.2;
-  const walkX = interpolate(t, [fremde - 0.2, ts.speechEndSec + 1], [250, 360], clamp);
+  const walkX = interpolate(frame, [0, 140], [330, 450]);
   return (
     <AbsoluteFill>
       <Monitor frame={frame} enter={enter}>
@@ -551,8 +672,8 @@ const Breaking: React.FC<P> = ({ ts, s, t, frame, b }) => {
         {/* Weg zur Stadt */}
         <path d="M 120 726 C 300 640, 520 600, 720 500 L 745 500 C 560 620, 420 680, 360 726 Z" fill="#C88A62" opacity={0.55} />
         {/* Paulus und Silas */}
-        <Robed x={walkX} y={688} k={0.95} dir={1} fill="#1A0F1C" rim="#FFB27A" rimSide={-1} pose={{ step, hood: true }} />
-        <Robed x={walkX - 110} y={700} k={0.9} dir={1} fill="#1A0F1C" rim="#FFB27A" rimSide={-1} pose={{ step: step + 1.6, hood: true }} />
+        <Person x={walkX - 120} y={676} k={0.72} pal={shadePal(SILAS, 0.45)} rim="#FFB27A" walk={1} phase={step + 1.6} staff />
+        <Person x={walkX} y={690} k={0.76} pal={shadePal(PAUL, 0.4)} rim="#FFB27A" walk={1} phase={step} staff />
       </Monitor>
       {/* Das grosse Banner, das in die Bauchbinde wandert */}
       <div
@@ -600,7 +721,7 @@ const Route: React.FC<P> = ({ ts, s, t, frame, b }) => {
 /** Thessalonich: Paulus erklärt aus den Schriften, einige glauben */
 const Thessalonich: React.FC<P> = ({ ts, s, t, frame, b }) => {
   const [station, explain, messiah, believe] = b;
-  const open = interpolate(t, [explain - 0.1, explain + 0.7], [0, 1], { ...clamp, easing: Easing.out(Easing.cubic) });
+  const open = interpolate(t, [explain - 0.4, explain + 0.3], [0.35, 1], { ...clamp, easing: Easing.out(Easing.cubic) });
   const bubble = popAt(frame, ts, messiah - 0.1, 200, 13);
   const raise = interpolate(t, [messiah - 0.2, messiah + 0.3, believe + 0.4, believe + 1.0], [0, 0.55, 0.55, 0.15], clamp);
   const sitters: Array<[number, number, number]> = [
@@ -626,10 +747,7 @@ const Thessalonich: React.FC<P> = ({ ts, s, t, frame, b }) => {
           </radialGradient>
         </defs>
         <Synagogue day={false} frame={frame} ark={0.15} />
-        <Robed x={235} y={592} k={1.12} dir={1} fill="#1C120C" rim="#F2B661" rimSide={-1} pose={{ hold: raise > 0.05 ? 0 : 1, raise, hood: true }} />
-        {open > 0.01 && raise < 0.05 ? (
-          <Scroll x={300} y={372} w={130} h={58} open={open} id="nwScrollP" />
-        ) : null}
+        <Person x={225} y={592} k={1.05} pal={shadePal(PAUL, 0.25)} rim="#F2B661" scroll={open * (1 - raise)} raise={raise} />
         {sitters.map(([x, y, k], i) => {
           const isB = believers.includes(i);
           const glow = isB ? popAt(frame, ts, believe + believers.indexOf(i) * 0.18, 150, 14) : 0;
@@ -664,23 +782,23 @@ const Thessalonich: React.FC<P> = ({ ts, s, t, frame, b }) => {
   );
 };
 
-/** Aufruhr: erst ein paar Neider, dann eine Menge mit Fackeln; Kommentare poppen auf */
+/** Aufruhr: erst drei Neider, die tuscheln, dann eine Menge mit Fackeln vor dem Haus des Jason; Kommentare poppen auf */
 const Riot: React.FC<P> = ({ ts, s, t, frame, b }) => {
   const [envy, crowd, uproar] = b;
   const people = useMemo(
     () =>
-      Array.from({ length: 22 }, (_, i) => {
-        const row = i < 3 ? 0 : 1 + ((i - 3) % 3);
+      Array.from({ length: 20 }, (_, i) => {
+        const row = i % 3;
         return {
-          x: i < 3 ? 120 + i * 62 : 60 + random(`rx${i}`) * 560,
-          y: i < 3 ? 640 : 560 + row * 52 + random(`ry${i}`) * 20,
-          k: i < 3 ? 0.95 : 0.62 + row * 0.12,
-          torch: i >= 3 && random(`rt${i}`) > 0.45,
+          x: -20 + ((i * 53) % 20) * 50 + random(`rx${i}`) * 30,
+          y: 640 + row * 58 + random(`ry${i}`) * 16,
+          k: 0.78 + row * 0.2 + random(`rk${i}`) * 0.1,
+          torch: random(`rt${i}`) > 0.45,
           seed: random(`rs${i}`) * 10,
-          at: i < 3 ? envy - 0.2 + i * 0.12 : crowd - 0.1 + ((i - 3) / 19) * 1.5,
+          at: crowd - 0.15 + random(`ra${i}`) * 1.4,
         };
       }).sort((a, c) => a.y - c.y),
-    [envy, crowd],
+    [crowd],
   );
   const heat = interpolate(t, [crowd, uproar + 0.4], [0, 1], clamp);
   const quake = interpolate(t, [uproar - 0.05, uproar + 0.2, ts.speechEndSec + 0.6], [0, 1, 0.5], clamp);
@@ -690,6 +808,8 @@ const Riot: React.FC<P> = ({ ts, s, t, frame, b }) => {
   const comments = s.items;
   const cAt = comments.map((_, i) => crowd + 0.25 + i * 0.62);
   const pulse = quake * (0.5 + 0.5 * Math.sin(frame / 3));
+  const envyOn = interpolate(t, [envy - 0.3, envy + 0.2, crowd + 0.1, crowd + 0.6], [0, 1, 1, 0], clamp);
+  const wall = shadeHex("#7A5048", 0.65 - 0.4 * heat);
   return (
     <AbsoluteFill>
       <Monitor
@@ -700,7 +820,8 @@ const Riot: React.FC<P> = ({ ts, s, t, frame, b }) => {
               const on = spring({ frame: frame - voiceFrame(ts, cAt[i]), fps: FPS, config: { damping: 14, stiffness: 210 } });
               if (on <= 0.01) return null;
               const newer = cAt.filter((a, j) => j > i && t >= a).length;
-              const rise = cAt.reduce((acc, a, j) => (j > i ? acc + interpolate(t, [a, a + 0.25], [0, 1], clamp) : acc), 0);
+              const hOf = (j: number) => 30 + (comments[j].length > 22 ? 2 : 1) * 37 + 34 + 12;
+              const rise = cAt.reduce((acc, a, j) => (j > i ? acc + hOf(j) * interpolate(t, [a, a + 0.25], [0, 1], clamp) : acc), 0);
               const likes = Math.round(interpolate(t, [cAt[i], cAt[i] + 2.5], [3, 120 + i * 90], clamp));
               return (
                 <div
@@ -709,10 +830,10 @@ const Riot: React.FC<P> = ({ ts, s, t, frame, b }) => {
                     position: "absolute",
                     right: 0,
                     left: 0,
-                    bottom: rise * 140,
+                    bottom: rise,
                     padding: "14px 18px 14px 18px",
                     borderRadius: 18,
-                    background: "rgba(8,10,24,0.88)",
+                    background: "rgba(8,10,24,0.9)",
                     borderLeft: `8px solid ${RED}`,
                     boxShadow: "0 12px 30px rgba(0,0,0,0.5)",
                     display: "flex",
@@ -737,49 +858,73 @@ const Riot: React.FC<P> = ({ ts, s, t, frame, b }) => {
       >
         <defs>
           <linearGradient id="nwNight" x1="0" y1="0" x2="0" y2="1">
-            <stop offset="0%" stopColor="#070B1E" />
-            <stop offset="70%" stopColor="#22122A" />
-            <stop offset="100%" stopColor="#4A1A1E" />
+            <stop offset="0%" stopColor="#121838" />
+            <stop offset="60%" stopColor="#3B1F44" />
+            <stop offset="100%" stopColor="#7A2E2A" />
           </linearGradient>
           <radialGradient id="nwFire">
             <stop offset="0%" stopColor="#FFB04A" stopOpacity="0.8" />
             <stop offset="100%" stopColor="#FF6A2A" stopOpacity="0" />
           </radialGradient>
-          <radialGradient id="nwGold">
-            <stop offset="0%" stopColor="#FFE08A" stopOpacity="0.8" />
-            <stop offset="100%" stopColor="#FFE08A" stopOpacity="0" />
+          <radialGradient id="nwRed">
+            <stop offset="0%" stopColor="#FF3B3B" stopOpacity="0.55" />
+            <stop offset="100%" stopColor="#FF3B3B" stopOpacity="0" />
           </radialGradient>
         </defs>
         <g transform={`translate(${sx} ${sy})`}>
           <rect x={-20} y={-20} width={MON.w + 40} height={MON.h + 40} fill="url(#nwNight)" />
-          <ellipse cx={360} cy={700} rx={600} ry={260} fill="#FF6A2A" opacity={0.08 + 0.28 * heat} />
-          {/* Häuser hinten */}
-          <path d="M -20 420 L 60 420 L 60 360 L 150 360 L 150 400 L 260 400 L 260 330 L 330 330 L 330 390 L 470 390 L 470 350 L 600 350 L 600 410 L 720 410 L 720 340 L 840 340 L 840 400 L 990 400 L 990 760 L -20 760 Z" fill="#160F22" />
+          <circle cx={820} cy={110} r={34} fill="#FFF3CF" opacity={0.75} />
+          {/* Häuser hinten mit ein paar Lichtern */}
+          <path d="M -20 400 L 60 400 L 60 330 L 160 330 L 160 380 L 420 380 L 420 320 L 520 320 L 520 370 L 640 370 L 640 300 L 760 300 L 760 360 L 990 360 L 990 760 L -20 760 Z" fill="#22182E" />
+          {[[96, 350], [470, 340], [690, 324], [700, 324], [860, 390], [560, 392]].map(([x, y], i) => (
+            <rect key={i} x={x} y={y} width={16} height={20} fill="#FFB868" opacity={0.35 + 0.3 * heat} />
+          ))}
+          <ellipse cx={330} cy={560} rx={520} ry={300} fill="#FF7A2A" opacity={0.06 + 0.3 * heat} />
           {/* Das Haus des Jason */}
-          <g transform="translate(250 300)">
-            <rect x={0} y={0} width={300} height={300} fill="#2A1C2C" />
-            <rect x={-14} y={-18} width={328} height={22} fill="#1C1220" />
-            <rect x={40} y={60} width={46} height={58} fill="#FFB060" opacity={0.25 + 0.5 * heat} />
-            <rect x={214} y={60} width={46} height={58} fill="#FFB060" opacity={0.25 + 0.5 * heat} />
-            <path d="M 112 300 L 112 190 A 38 38 0 0 1 188 190 L 188 300 Z" fill="#120A12" />
-            <text x={150} y={150} textAnchor="middle" fontFamily="Cinzel" fontWeight={700} fontSize={28} fill="#E8C9A0" opacity={0.85}>
+          <g transform="translate(90 252)">
+            <rect x={0} y={0} width={340} height={360} fill={wall} />
+            <rect x={-16} y={-22} width={372} height={26} fill={shadeHex("#4A2E30", 0.4)} />
+            {[0, 1, 2, 3, 4].map((r) => (
+              <line key={r} x1={0} y1={60 + r * 62} x2={340} y2={60 + r * 62} stroke="#000" strokeWidth={2} opacity={0.15} />
+            ))}
+            <rect x={44} y={62} width={56} height={70} fill="#FFB060" opacity={0.35 + 0.55 * heat} />
+            <rect x={240} y={62} width={56} height={70} fill="#FFB060" opacity={0.35 + 0.55 * heat} />
+            <path d="M 126 360 L 126 226 A 44 44 0 0 1 214 226 L 214 360 Z" fill="#140A10" />
+            <rect x={110} y={150} width={120} height={46} rx={6} fill="#2A1A1A" opacity={0.6} />
+            <text x={170} y={184} textAnchor="middle" fontFamily="Cinzel" fontWeight={700} fontSize={32} fill="#F2D2A8">
               JASON
             </text>
           </g>
-          <rect x={-20} y={600} width={MON.w + 40} height={160} fill="#1A1016" />
-          {/* Die Menge */}
+          <rect x={-20} y={600} width={MON.w + 40} height={160} fill="#2A1820" />
+          {/* Die drei Neider: Köpfe zusammen, rote Kontur, schmale Augen */}
+          {envyOn > 0.01 ? (
+            <g opacity={envyOn}>
+              <ellipse cx={660} cy={560} rx={260} ry={220} fill="url(#nwRed)" />
+              {[
+                [560, -10],
+                [660, 0],
+                [760, 10],
+              ].map(([x, tilt], i) => (
+                <g key={i} transform={`translate(${x} ${740 + (i === 1 ? 10 : 0)}) rotate(${tilt + Math.sin(frame / 9 + i) * 2} 0 -150)`}>
+                  <Front x={0} y={0} k={1.25} fill="#0C0710" cloth="#1A0E16" rim={RED} />
+                  {[-1, 1].map((e) => (
+                    <path key={e} d={`M ${e * 7 - 6} -186 L ${e * 7 + 6} ${-182 - e * 3}`} stroke="#FFD6D6" strokeWidth={4} strokeLinecap="round" />
+                  ))}
+                </g>
+              ))}
+            </g>
+          ) : null}
+          {/* Die Menge von hinten, mit Fackeln */}
           {people.map((pp, i) => {
             const on = interpolate(t, [pp.at, pp.at + 0.3], [0, 1], { ...clamp, easing: Easing.out(Easing.back(1.6)) });
             if (on <= 0.01) return null;
             const arm = pp.torch ? 0.6 + 0.4 * heat * (0.5 + 0.5 * Math.sin(frame / 4 + pp.seed)) : heat * (0.4 + 0.4 * Math.sin(frame / 3.5 + pp.seed));
             return (
               <g key={i} transform={`translate(0 ${(1 - on) * 80})`} opacity={on}>
-                <Rioter x={pp.x} y={pp.y} k={pp.k} fill={i % 3 === 0 ? "#0A0610" : "#120A14"} torch={pp.torch} arm={arm} frame={frame} seed={pp.seed} heat={heat} />
+                <Rioter x={pp.x} y={pp.y} k={pp.k} fill={i % 3 === 0 ? "#0A0610" : "#140A16"} torch={pp.torch} arm={arm} frame={frame} seed={pp.seed} heat={heat} />
               </g>
             );
           })}
-          {/* Neid: ein roter Schimmer um die ersten drei */}
-          <ellipse cx={180} cy={560} rx={150} ry={120} fill={RED} opacity={0.18 * interpolate(t, [envy, envy + 0.5, crowd + 0.5], [0, 1, 0], clamp)} />
         </g>
         <rect x={0} y={0} width={MON.w} height={MON.h} fill={RED} opacity={0.14 * pulse} />
       </Monitor>
@@ -819,16 +964,16 @@ const Beroea: React.FC<P> = ({ ts, s, t, frame, b }) => {
         </defs>
         {cut < 1 ? (
           <g opacity={1 - cut}>
-            <GreeceMap frame={frame} pins={[1, 1, 0]} route={route} mover={route} night={1} zoom={{ cx: 425, cy: 190, s: 2.3 }} />
+            <GreeceMap frame={frame} pins={[1, 1, 0]} route={route} mover={route} night={1} zoom={{ cx: 430, cy: 205, s: 2.0 }} labels={false} />
             {/* Mond */}
-            <circle cx={820} cy={130} r={46} fill="#FFF3CF" opacity={0.9} />
-            <circle cx={842} cy={118} r={42} fill="#071226" />
+            <circle cx={880} cy={96} r={40} fill="#FFF3CF" opacity={0.9} />
+            <circle cx={900} cy={86} r={36} fill="#081631" />
           </g>
         ) : null}
         {cut > 0 ? (
           <g opacity={cut}>
             <Synagogue day frame={frame} ark={ark} />
-            <Robed x={235} y={592} k={1.12} dir={1} fill="#2A1C14" rim="#FFE2A8" rimSide={-1} pose={{ reach: 0.5 + 0.3 * Math.sin(frame / 14), hood: true }} />
+            <Person x={225} y={592} k={1.05} pal={PAUL} rim="#FFE9C0" reach={0.55 + 0.25 * Math.sin(frame / 14)} />
             {sitters.map(([x, y, k, sc], i) => (
               <Sitter key={i} x={x} y={y} k={k} dir={-1} fill="#2A1A10" rim="#FFE2A8" lean={0.1 + 0.55 * lean} frame={frame} scroll={sc} />
             ))}
@@ -837,7 +982,7 @@ const Beroea: React.FC<P> = ({ ts, s, t, frame, b }) => {
       </Monitor>
       {cut < 0.5 ? (
         <div style={{ position: "absolute", left: MON.x + 26, top: MON.y + 24, padding: "8px 18px", borderRadius: 10, background: "rgba(5,8,20,0.8)", fontFamily: BODY, fontWeight: 800, fontSize: 26, letterSpacing: "0.14em", color: "#9CCBFF", opacity: 1 - cut * 2 }}>
-          ☾ NACHTS UNTERWEGS
+          NACHTS UNTERWEGS
         </div>
       ) : null}
       <LowerThird tag={s.tag} headline={s.headline} headOn={fadeIn(t, openAt - 0.1, 0.5)} />
@@ -853,7 +998,8 @@ const Check: React.FC<P> = ({ ts, s, t, frame, b }) => {
   const lupeP = interpolate(t, [daily - 0.2, true_ + 0.2], [0, 1], clamp);
   const lines = 5;
   const lineY = (i: number) => -100 + i * 46;
-  const lupeLine = Math.min(lines - 1, Math.floor(lupeP * lines));
+  const lupeLine = lupeP >= 1 ? lines : Math.min(lines - 1, Math.floor(lupeP * lines));
+  const lineScale = (i: number) => (i === lines - 1 ? 0.6 : 1);
   const lupeX = interpolate((lupeP * lines) % 1, [0, 1], [-300, 300]);
   const stamp = popAt(frame, ts, true_, 200, 11);
   const calOut = interpolate(t, [many - 0.2, many + 0.3], [0, 1], clamp);
@@ -884,7 +1030,15 @@ const Check: React.FC<P> = ({ ts, s, t, frame, b }) => {
           {Array.from({ length: lines }, (_, i) => (
             <g key={i}>
               {t >= daily - 0.2 && (i < lupeLine || (i === lupeLine && lupeP > 0)) ? (
-                <rect x={-330} y={lineY(i) - 18} width={i < lupeLine ? 660 : lupeX + 330} height={34} rx={6} fill="#FFE45C" opacity={0.55} />
+                <rect
+                  x={-330 * lineScale(i)}
+                  y={lineY(i) - 18}
+                  width={Math.max(0, i < lupeLine ? 660 * lineScale(i) : Math.min(660 * lineScale(i), lupeX + 330 * lineScale(i)))}
+                  height={34}
+                  rx={6}
+                  fill="#FFE45C"
+                  opacity={0.55}
+                />
               ) : null}
               <path
                 d={`M -320 ${lineY(i)} ${Array.from({ length: 16 }, (_, k) => `q 10 ${k % 2 ? -12 : 10} 20 0 t 20 0`).join(" ")}`}
@@ -893,13 +1047,13 @@ const Check: React.FC<P> = ({ ts, s, t, frame, b }) => {
                 fill="none"
                 opacity={0.7}
                 strokeLinecap="round"
-                transform={`scale(${i === lines - 1 ? 0.6 : 1} 1)`}
+                transform={`scale(${lineScale(i)} 1)`}
               />
             </g>
           ))}
         </Scroll>
         {/* Lupe */}
-        {lupeP > 0 && lupeP < 1 ? (
+        {lupeP > 0 && lupeP < 1 && lupeX < 330 * lineScale(lupeLine) ? (
           <g transform={`translate(${484 + lupeX + 40} ${290 + lineY(lupeLine) + 40})`}>
             <line x1={46} y1={46} x2={120} y2={120} stroke="#2A1A0E" strokeWidth={20} strokeLinecap="round" />
             <circle r={64} fill="#CFE8FF" opacity={0.22} stroke="#E8EEF6" strokeWidth={10} />
@@ -919,26 +1073,42 @@ const Check: React.FC<P> = ({ ts, s, t, frame, b }) => {
                 <text x={x + 58} y={556} textAnchor="middle" fontFamily={BODY} fontWeight={800} fontSize={24} fill={k > 0.5 ? INK : "#C9D6F2"}>
                   TAG {i + 1}
                 </text>
-                <path d={`M ${x + 34} ${618} L ${x + 52} ${636} L ${x + 84} ${598}`} stroke={OK} strokeWidth={10} fill="none" strokeLinecap="round" strokeLinejoin="round" pathLength={1} strokeDasharray={`${Math.max(0, k)} 1`} />
+                {k > 0.03 ? (
+                  <path d={`M ${x + 34} ${618} L ${x + 52} ${636} L ${x + 84} ${598}`} stroke={OK} strokeWidth={10} fill="none" strokeLinecap="round" strokeLinejoin="round" pathLength={1} strokeDasharray={`${Math.min(1, k)} 1`} />
+                ) : null}
               </g>
             );
           })}
         </g>
         {/* Viele kommen zum Glauben */}
         {calOut > 0.01
-          ? Array.from({ length: 11 }, (_, i) => {
-              const x = 64 + i * 84;
-              const k = popAt(frame, ts, many + 0.1 + i * 0.08, 170, 13);
+          ? Array.from({ length: 13 }, (_, j) => {
+              /* zwei Reihen, die hintere kleiner; die Reihenfolge des Auftritts springt hin und her */
+              const back = j < 6;
+              const i = back ? j : j - 6;
+              const x = back ? 130 + i * 142 : 70 + i * 138;
+              const order = [3, 9, 0, 6, 11, 1, 7, 4, 12, 2, 8, 5, 10][j];
+              const k = popAt(frame, ts, many + 0.05 + order * 0.07, 170, 13);
+              const h = 0.85 + random(`nh${j}`) * 0.3;
+              const tone = ["#3A2618", "#2E2234", "#3A3020", "#24303A"][j % 4];
+              const cloth = ["#E8D8B4", "#C9B48C", "#D8C6E0", "#BFD3E0"][j % 4];
               return (
-                <g key={i} transform={`translate(${x} ${700 - 60 * k})`} opacity={k}>
-                  <circle cx={0} cy={-120} r={50} fill="url(#nwGold)" />
-                  <circle cx={0} cy={-128} r={20} fill="#2A1A10" stroke="#FFD27A" strokeWidth={3} />
-                  <path d="M -30 -10 C -30 -70, -22 -100, 0 -104 C 22 -100, 30 -70, 30 -10 Z" fill="#2A1A10" stroke="#FFD27A" strokeWidth={3} />
+                <g key={j} transform={`translate(${x} ${(back ? 640 : 726) + (1 - k) * 90})`} opacity={k}>
+                  <circle cx={0} cy={-150 * h * (back ? 0.78 : 0.95)} r={70} fill="url(#nwGold)" opacity={0.7} />
+                  <Front x={0} y={0} k={(back ? 0.78 : 0.95) * h} fill={tone} cloth={cloth} rim="#FFD27A" tilt={(random(`nt${j}`) - 0.5) * 8} />
                 </g>
               );
             })
           : null}
-        <Stamp x={700} y={180} text="GEPRÜFT" color={OK} pop={stamp} rot={-10} size={70} font={theme.font.display} />
+        {stamp > 0.001 ? (
+          <g transform={`translate(700 186) rotate(-9) scale(${interpolate(stamp, [0, 1], [2.2, 1])})`} opacity={Math.min(1, stamp * 1.8)}>
+            <rect x={-178} y={-62} width={356} height={124} rx={18} fill="rgba(6,30,20,0.35)" stroke={OK} strokeWidth={9} />
+            <rect x={-164} y={-48} width={328} height={96} rx={10} fill="none" stroke={OK} strokeWidth={3} opacity={0.7} />
+            <text x={0} y={21} textAnchor="middle" fontFamily={BODY} fontWeight={800} fontSize={58} letterSpacing={4} fill={OK}>
+              GEPRÜFT
+            </text>
+          </g>
+        ) : null}
       </Monitor>
       {/* Faktencheck-Etikett */}
       <div
@@ -967,7 +1137,7 @@ const Check: React.FC<P> = ({ ts, s, t, frame, b }) => {
         STIMMT DAS?
       </div>
       <LowerThird tag={s.tag} headline={s.headline} headOn={fadeIn(t, daily - 0.1, 0.5)} />
-      <Sfx frame={voiceFrame(ts, true_)} name="stamp" volume={0.5} keep />
+      <Sfx frame={voiceFrame(ts, true_)} name="thud" volume={0.5} keep />
     </AbsoluteFill>
   );
 };
@@ -1052,7 +1222,8 @@ const Athens: React.FC<P> = ({ ts, s, t, frame, b }) => {
             {Array.from({ length: 9 }, (_, i) => {
               const dir = i % 2 ? 1 : -1;
               const x = ((random(`ax${i}`) * 1100 + dir * frame * (1.6 + random(`av${i}`) * 1.4)) % 1100 + 1100) % 1100 - 70;
-              return <Robed key={i} x={x} y={700 - (i % 3) * 18} k={0.42 + (i % 3) * 0.04} dir={dir as 1 | -1} fill="#3A2420" rim="#FFD8A0" rimSide={-dir as 1 | -1} pose={{ step: frame / 3.5 + i, hood: i % 3 !== 0 }} shadow={false} />;
+              const pal = [PAUL, SILAS, { robe: "#7A6A4A", mantle: "#B0965E", skin: "#C48A60", hair: "#2A1A12", cloth: "#E8DCC2" }][i % 3];
+              return <Person key={i} x={x} y={712 - (i % 3) * 16} k={0.36 + (i % 3) * 0.04} dir={dir as 1 | -1} pal={shadePal(pal, 0.15)} walk={1} phase={frame / 3.2 + i * 1.3} beard={i % 2 === 0} />;
             })}
           </g>
         ) : null}
@@ -1104,7 +1275,7 @@ const Athens: React.FC<P> = ({ ts, s, t, frame, b }) => {
                   background: fresh ? "rgba(255,59,59,0.18)" : "transparent",
                 }}
               >
-                <span style={{ width: 42, fontFamily: theme.font.display, fontSize: 44, color: to === 0 ? GOLD : "rgba(255,255,255,0.55)", textAlign: "center" }}>{to + 1}</span>
+                <span style={{ width: 42, fontFamily: theme.font.display, fontSize: 44, color: (mv > 0.5 ? to : from) === 0 ? GOLD : "rgba(255,255,255,0.55)", textAlign: "center" }}>{(mv > 0.5 ? to : from) + 1}</span>
                 <span style={{ flex: 1, fontFamily: BODY, fontWeight: 700, fontSize: 30, color: "#FFFFFF", whiteSpace: "nowrap", overflow: "hidden" }}>{text}</span>
                 {fresh ? (
                   <span style={{ padding: "4px 10px", borderRadius: 8, background: RED, fontFamily: BODY, fontWeight: 800, fontSize: 20, color: "#FFFFFF" }}>NEU</span>
