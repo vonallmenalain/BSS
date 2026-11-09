@@ -11,11 +11,11 @@
   "voice": {
     "provider": "google",
     "languageCode": "de-DE",
-    "name": "de-DE-Chirp3-HD-Charon",
+    "name": "de-DE-Chirp3-HD-Autonoe",
     "speakingRate": 1.0
   },
   "music": {
-    "src": "music/mystery.mp3",
+    "src": "music/pad-dawn.mp3",
     "volume": 0.3,
     "duckTo": 0.08
   },
@@ -24,7 +24,184 @@
       "id": "hook",
       "type": "samuel",
       "stage": "hook",
-      "narration": "Samuel!"
+      "ref": "1 Samuel 3:4",
+      "sky": 0.05,
+      "cues": [
+        "Mitten in der Nacht",
+        "deinen Namen",
+        "Wer war das"
+      ],
+      "narration": "Mitten in der Nacht [pause short] ruft jemand deinen Namen. [pause short] Wer war das?"
+    },
+    {
+      "id": "schilo",
+      "type": "samuel",
+      "stage": "temple",
+      "ref": "1 Samuel 3:1–3, 21",
+      "sky": 0.05,
+      "cues": [
+        "Das Heiligtum in Schilo",
+        "der junge Samuel",
+        "dem alten Priester Eli",
+        "nur selten"
+      ],
+      "narration": "Das Heiligtum in Schilo. [pause short] Hier dient der junge Samuel dem alten Priester Eli. [pause short] In jenen Tagen spricht der Herr nur selten."
+    },
+    {
+      "id": "ruf",
+      "type": "samuel",
+      "stage": "call",
+      "ref": "1 Samuel 3:3–5",
+      "sky": 0.05,
+      "calls": [
+        {
+          "n": 1,
+          "at": "Stimme: Samuel",
+          "text": "SAMUEL!"
+        }
+      ],
+      "say": [
+        {
+          "who": "samuel",
+          "text": "Hier bin ich!",
+          "at": "Hier bin ich"
+        }
+      ],
+      "cues": [
+        "Die Lampe Gottes",
+        "Samuel schläft",
+        "Er springt auf",
+        "rennt zu Eli"
+      ],
+      "narration": "Die Lampe Gottes brennt noch. [pause short] Samuel schläft. [pause short] Da ruft eine Stimme: [pause short] Samuel! [pause short] Er springt auf: Hier bin ich! [pause short] Und rennt zu Eli."
+    },
+    {
+      "id": "eli",
+      "type": "samuel",
+      "stage": "eli",
+      "ref": "1 Samuel 3:5",
+      "sky": 0.05,
+      "count": 1,
+      "say": [
+        {
+          "who": "eli",
+          "text": "Ich habe nicht gerufen.",
+          "at": "Ich habe nicht gerufen"
+        },
+        {
+          "who": "eli",
+          "text": "Leg dich wieder hin.",
+          "at": "Leg dich wieder hin"
+        }
+      ],
+      "cues": [
+        "Doch Eli sagt",
+        "Leg dich wieder hin"
+      ],
+      "narration": "Doch Eli sagt: [pause short] Ich habe nicht gerufen. [pause short] Leg dich wieder hin."
+    },
+    {
+      "id": "nochmal",
+      "type": "samuel",
+      "stage": "again",
+      "ref": "1 Samuel 3:6–8",
+      "sky": 0.05,
+      "count": 1,
+      "calls": [
+        {
+          "n": 2,
+          "at": "ein zweites Mal",
+          "text": "SAMUEL!"
+        },
+        {
+          "n": 3,
+          "at": "ein drittes Mal",
+          "text": "SAMUEL!"
+        }
+      ],
+      "cues": [
+        "rennt Samuel zu Eli",
+        "kennt den Herrn noch nicht"
+      ],
+      "narration": "Es passiert ein zweites Mal. [pause short] Und ein drittes Mal. [pause short] Jedes Mal rennt Samuel zu Eli. [pause short] Er kennt den Herrn noch nicht."
+    },
+    {
+      "id": "begreift",
+      "type": "samuel",
+      "stage": "understand",
+      "ref": "1 Samuel 3:8–9",
+      "sky": 0.05,
+      "count": 3,
+      "say": [
+        {
+          "who": "eli",
+          "text": "…",
+          "at": "was er antworten soll",
+          "sealed": true
+        }
+      ],
+      "cues": [
+        "Da begreift Eli",
+        "Der Herr ruft den Jungen",
+        "was er antworten soll"
+      ],
+      "narration": "Da begreift Eli: [pause short] Der Herr ruft den Jungen! [pause short] Und er sagt Samuel, was er antworten soll."
+    },
+    {
+      "id": "viertes",
+      "type": "samuel",
+      "stage": "answer",
+      "ref": "1 Samuel 3:9–10",
+      "sky": 0.05,
+      "count": 3,
+      "calls": [
+        {
+          "n": 4,
+          "at": "Samuel, Samuel",
+          "text": "SAMUEL, SAMUEL!"
+        }
+      ],
+      "say": [
+        {
+          "who": "samuel",
+          "text": "…",
+          "at": "antwortet er anders",
+          "sealed": true
+        }
+      ],
+      "cues": [
+        "legt sich wieder hin",
+        "Es wird still",
+        "antwortet er anders"
+      ],
+      "narration": "Samuel legt sich wieder hin. [pause short] Es wird still. [pause short] Dann ruft die Stimme ein viertes Mal: [pause short] Samuel, Samuel! [pause short] Und diesmal antwortet er anders."
+    },
+    {
+      "id": "morgen",
+      "type": "samuel",
+      "stage": "grow",
+      "ref": "1 Samuel 3:15, 19",
+      "sky": 0.8,
+      "cues": [
+        "öffnet Samuel die Türen",
+        "Er wächst heran",
+        "Der Herr ist mit ihm",
+        "zu Boden fallen"
+      ],
+      "narration": "Am Morgen öffnet Samuel die Türen des Heiligtums. [pause short] Er wächst heran. [pause short] Der Herr ist mit ihm [pause short] und lässt keines seiner Worte zu Boden fallen."
+    },
+    {
+      "id": "punch",
+      "type": "kinetic",
+      "sky": 0.9,
+      "holdAfterSec": 1.2,
+      "lines": [
+        "Gott ruft.",
+        "Oft leise.",
+        "Manchmal mehrmals.",
+        "Würdest du ihn hören?"
+      ],
+      "narration": "Gott ruft. [pause short] Oft leise. [pause short] Manchmal mehrmals. [pause short] Würdest du ihn hören?"
     }
   ]
 }
