@@ -231,3 +231,14 @@ test('gehalten heisst: zugesagt und vorbei', () => {
     false,
   )
 })
+
+test('zwei Ansprachen auf derselben Nummer füllen zwei Plätze', () => {
+  // Früher zählte die Nummer nur einmal: Platz 2 galt als offen, obwohl zwei
+  // Personen eingetragen waren – «Ansprachen» und «Leitung» zeigen beide.
+  const talks = [
+    { ...talk(1), id: 'a' },
+    { ...talk(1), id: 'b' },
+  ]
+  assert.equal(openTalkSlots(sunday('2026-02-08'), null, talks, 2), 0)
+  assert.equal(openTalkSlots(sunday('2026-02-08'), null, talks, 3), 1)
+})

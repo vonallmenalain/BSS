@@ -1307,6 +1307,16 @@ die andere. Zwischenlied und Musikeinlagen merken sich, nach wie vielen
 Ansprachen sie folgen. Ohne Zutun ergibt das den Normalfall: eine Ansprache,
 das Zwischenlied, die Schlussansprache.
 
+Beide Seiten bauen ihre Liste aus **derselben** Funktion (`talkPositions` in
+`lib/program`) – mit denselben Personen, derselben Folge und denselben
+Nummern. Teilen sich zwei Ansprachen eine Nummer, etwa aus einer älteren
+Fassung, in der der Zuteilungs-Dialog beim Wechsel des Datums die Position
+stehen liess, bleiben beide sichtbar: Wer später erfasst wurde, rückt hinter
+den anderen. Beim nächsten Handgriff an diesem Sonntag – verschieben,
+eintragen, einen Platz streichen – wird die ganze Folge neu durchnummeriert.
+Eine belegte Position im Dialog heisst «davor einfügen»: Wer dort steht,
+rückt nach hinten, bis zum nächsten offenen Platz.
+
 Der Ablauf folgt dem Handbuch (Abschnitt 29.2.1), gekürzt auf das, was am Pult
 gebraucht wird: Vorspiel, Willkommensgruss und Nachspiel stehen nicht im
 Programm, sie ergeben sich von selbst. Die Nummerierung entsteht aus der Liste
@@ -1315,7 +1325,9 @@ Programm, sie ergeben sich von selbst. Die Nummerierung entsteht aus der Liste
 **Ansprachen und Zeugnisse.** Wie viele Ansprachen eine Versammlung hat, steht
 als Standard in den Einstellungen. Für einen einzelnen Sonntag lässt sich mehr
 vorsehen: eine zusätzliche Ansprache, ein Zeugnis oder ein leerer Platz zum
-späteren Vergeben. Der Standard bleibt davon unberührt.
+späteren Vergeben. Der Standard bleibt davon unberührt. Ein leerer Platz lässt
+sich an seiner Zeile wieder streichen (Papierkorb) – wer dahinter steht,
+rückt auf, wie mit «Programmplatz streichen» unter **Leitung**.
 
 **Drei Schritte:** _Vorgesehen → Angefragt → Zugesagt_. Ein vierter Schritt
 «gehalten» wäre ein Klick nach der Versammlung, den niemand macht – und ohne

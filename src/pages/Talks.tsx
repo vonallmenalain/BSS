@@ -54,7 +54,6 @@ import {
 import { cn, formatPhone, matchesSearch, telHref } from '@/lib/utils'
 import {
   activeTalkFilterCount,
-  createTalk,
   DEFAULT_TALK_FILTER,
   deleteTalk,
   filterTalkCandidates,
@@ -66,17 +65,23 @@ import {
   speakerFields,
   talkYearOptions,
   updateTalk,
-  updateTalkSlots,
   type TalkCandidate,
   type TalkCandidateFilter,
   type TalkGenderFilter,
   type TalkSpeaker,
 } from '@/services/talks'
 import {
+  addTalkSlot,
+  countOpenPositions,
+  insertTalk,
+  moveTalkPosition,
+  nextOpenPosition,
   plannedTalksFor,
+  removeTalkSlot,
   sacramentDocId,
   saveSacramentMeeting,
   sundayProgram,
+  talkPositions,
   wasHeld,
   talksForDate,
   talksWithoutConfirmation,
@@ -112,9 +117,16 @@ export function Talks() {
   const { data: sacramentMeetings } = useSacramentMeetings(40)
   const toast = useToast()
   const [tab, setTab] = useUrlState<Tab>('ansicht', 'programm', TABS)
-  const [assignFor, setAssignFor] = useState<{ date: Date; slot: number; kind: TalkKind } | null>(
-    null,
-  )
+  /**
+   * Wofür der Zuteilungs-Dialog offen ist. `slot: null` heisst «der nächste
+   * offene Platz an dem Datum, das im Dialog steht» – er wird dort bestimmt,
+   * damit er beim Wechsel des Datums mitgeht.
+   */
+  const [assignFor, setAssignFor] = useState<{
+    date: Date
+    slot: number | null
+    kind: TalkKind
+  } | null>(null)
   /**
    * Welche Ansprache gerade bearbeitet wird – die Nummer, nicht der Eintrag.
    *
@@ -171,17 +183,18 @@ export function Talks() {
        * verschwindet nicht, weil der Sonntag umgewidmet wurde.
        */
       const planned = plannedTalksFor(date, meeting, settings.talksPerSunday)
-      const highest = assigned.reduce((max, talk) => Math.max(max, talk.slot), 0)
 
-      const slots = Array.from({ length: Math.max(planned, highest) }, (_, index) => ({
-        slot: index + 1,
-        talk: assigned.find((talk) => talk.slot === index + 1) ?? null,
-        /** Über die vorgesehene Anzahl hinaus – ein Zusatzpunkt */
-        extra: index + 1 > planned,
-      }))
+      /*
+       * Dieselben Plätze wie im Ablauf unter «Leitung» – aus derselben
+       * Funktion. Früher stand hier pro Nummer nur die erste Ansprache;
+       * teilten sich zwei eine Nummer, fehlte die zweite, obwohl «Leitung»
+       * sie zeigte und der Kopf sie mitzählte.
+       */
+      const slots = talkPositions(assigned, planned)
 
       return {
         date,
+        assigned,
         meeting,
         program,
         planned,
@@ -191,9 +204,7 @@ export function Talks() {
          * freiwillig. Ein Platzhalter zählt weiter mit: Er belegt zwar seine
          * Position, aber es steht noch niemand dahinter.
          */
-        openCount: slots.filter(
-          (entry) => !entry.extra && (!entry.talk || isTalkPlaceholder(entry.talk)),
-        ).length,
+        openCount: countOpenPositions(slots),
         // Besetzt heisst noch nicht zugesagt – auch das ist offene Arbeit.
         pendingCount: talksWithoutConfirmation(assigned),
       }
@@ -202,46 +213,51 @@ export function Talks() {
 
   const openSlots = schedule.reduce((sum, sunday) => sum + sunday.openCount, 0)
 
-  /** Zusätzlichen Programmplatz für einen einzelnen Sonntag vorsehen. */
-  const changeSlots = async (date: Date, next: number) => {
-    try {
-      await saveSacramentMeeting(date, {
-        talkSlots: next === settings.talksPerSunday ? null : next,
-      })
-    } catch (error) {
-      console.error(error)
-      toast.error('Anzahl konnte nicht gespeichert werden.')
+  /**
+   * Was an einem beliebigen Datum schon eingetragen und vorgesehen ist.
+   *
+   * Für den Zuteilungs-Dialog: Dort lässt sich das Datum wechseln, und die
+   * Position muss zum neuen Sonntag passen – nicht zu dem, von dem aus der
+   * Dialog geöffnet wurde. Genau so entstanden früher doppelt belegte
+   * Nummern.
+   */
+  const sundayAt = (date: Date) => {
+    const meeting = meetingByKey.get(sacramentDocId(date)) ?? null
+    return {
+      talks: talksForDate(talks, date),
+      planned: plannedTalksFor(date, meeting, settings.talksPerSunday),
     }
   }
 
+  /** Läuft einer der Handgriffe am Sonntag schief, sagt es eine Meldung. */
+  const guard = async (action: () => Promise<unknown>, message: string) => {
+    try {
+      await action()
+    } catch (error) {
+      console.error(error)
+      toast.error(message)
+    }
+  }
+
+  /** Die Anzahl eines Sonntags wieder dem Standard überlassen. */
+  const resetSlots = (date: Date) =>
+    guard(
+      () => saveSacramentMeeting(date, { talkSlots: null }),
+      'Anzahl konnte nicht gespeichert werden.',
+    )
+
   /**
-   * Eine Ansprache eine Position weiter vor oder zurück.
+   * Ein Platz eine Position weiter vor oder zurück.
    *
-   * Getauscht werden die Positionen selbst – dieselbe Zahl, nach der auch der
+   * Geschrieben wird die Position selbst – dieselbe Zahl, nach der auch der
    * Ablauf unter «Leitung» ordnet. Damit stimmen beide Ansichten überein,
    * gleich von welcher Seite aus verschoben wurde.
    */
-  const moveTalk = async (
-    slots: { slot: number; talk: Talk | null }[],
-    slot: number,
-    delta: number,
-  ) => {
-    const target = slot + delta
-    const talk = slots.find((entry) => entry.slot === slot)?.talk
-    if (!talk || target < 1 || target > slots.length) return
-    const other = slots.find((entry) => entry.slot === target)?.talk ?? null
-    try {
-      // Ein Batch, ganz oder gar nicht – sonst stünden nach einem halben
-      // Tausch zwei Ansprachen auf demselben Platz.
-      await updateTalkSlots([
-        { id: talk.id, slot: target },
-        ...(other ? [{ id: other.id, slot }] : []),
-      ])
-    } catch (error) {
-      console.error(error)
-      toast.error('Reihenfolge konnte nicht gespeichert werden.')
-    }
-  }
+  const moveTalk = (sunday: (typeof schedule)[number], position: number, delta: number) =>
+    guard(
+      () => moveTalkPosition(sunday.assigned, sunday.planned, position, delta),
+      'Reihenfolge konnte nicht gespeichert werden.',
+    )
 
   /*
    * Ein einziger Satz Filter für die Vorschläge – er gehört der Seite und
@@ -328,10 +344,6 @@ export function Talks() {
       ) : tab === 'programm' ? (
         <div className="space-y-3">
           {schedule.map((sunday) => {
-            // Erst eine bestehende Lücke füllen, sonst hinten anhängen –
-            // sonst entstünde beim Nachtragen ein Loch im Programm.
-            const nextSlot =
-              sunday.slots.find((entry) => !entry.talk)?.slot ?? sunday.slots.length + 1
             return (
               <section key={sunday.date.toISOString()} className="card p-4">
                 <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
@@ -343,22 +355,28 @@ export function Talks() {
                         {sunday.planned} statt {settings.talksPerSunday}
                       </span>
                     )}
-                    {!sunday.program.plansTalks ? null : sunday.openCount > 0 ? (
+                    {/* Beides ist offene Arbeit und steht deshalb nebeneinander:
+                        Plätze, für die noch jemand gesucht wird, und
+                        Eingetragene, deren Zusage noch aussteht. Vollständig
+                        ist erst, was zugesagt ist – wie in der Übersicht. */}
+                    {sunday.program.plansTalks && sunday.openCount > 0 && (
                       <span className="badge bg-amber-100 text-amber-800 dark:bg-amber-950 dark:text-amber-200">
                         {sunday.openCount} offen
                       </span>
-                    ) : sunday.pendingCount > 0 ? (
-                      /* Besetzt, aber noch ohne Zusage – dieselbe Regel wie in
-                         der Übersicht: vollständig ist erst, was zugesagt ist. */
+                    )}
+                    {sunday.program.plansTalks && sunday.pendingCount > 0 && (
                       <span className="badge bg-amber-100 text-amber-800 dark:bg-amber-950 dark:text-amber-200">
                         {sunday.pendingCount} ohne Zusage
                       </span>
-                    ) : (
-                      <span className="badge bg-emerald-100 text-emerald-800 dark:bg-emerald-950 dark:text-emerald-200">
-                        <Check className="size-3" aria-hidden />
-                        Vollständig
-                      </span>
                     )}
+                    {sunday.program.plansTalks &&
+                      sunday.openCount === 0 &&
+                      sunday.pendingCount === 0 && (
+                        <span className="badge bg-emerald-100 text-emerald-800 dark:bg-emerald-950 dark:text-emerald-200">
+                          <Check className="size-3" aria-hidden />
+                          Vollständig
+                        </span>
+                      )}
                     {!readOnly && (
                       <>
                         <ResponsibleButton
@@ -390,15 +408,16 @@ export function Talks() {
                 )}
 
                 <ul className="space-y-2">
-                  {sunday.slots.map(({ slot, talk, extra }) => (
-                    <li key={slot}>
+                  {sunday.slots.map(({ position, talk }) => (
+                    <li key={talk ? talk.id : `open-${position}`}>
                       {talk ? (
                         <TalkRow
                           talk={talk}
+                          position={position}
                           onEdit={() => setEditTalkId(talk.id)}
-                          first={slot === 1}
-                          last={slot === sunday.slots.length}
-                          onMove={(delta) => void moveTalk(sunday.slots, slot, delta)}
+                          first={position === 1}
+                          last={position === sunday.slots.length}
+                          onMove={(delta) => void moveTalk(sunday, position, delta)}
                           readOnly={readOnly}
                         />
                       ) : (
@@ -406,12 +425,28 @@ export function Talks() {
                            der nichts vergeben darf – er sagt, dass hier noch
                            jemand fehlt. Nur ist er dann kein Knopf. */
                         <EmptySlot
-                          slot={slot}
-                          extra={extra}
+                          position={position}
                           onAssign={
                             readOnly
                               ? undefined
-                              : () => setAssignFor({ date: sunday.date, slot, kind: 'talk' })
+                              : () =>
+                                  setAssignFor({ date: sunday.date, slot: position, kind: 'talk' })
+                          }
+                          onRemove={
+                            readOnly
+                              ? undefined
+                              : () =>
+                                  void guard(
+                                    () =>
+                                      removeTalkSlot(
+                                        sunday.date,
+                                        position,
+                                        sunday.assigned,
+                                        sunday.planned,
+                                        settings.talksPerSunday,
+                                      ),
+                                    'Platz konnte nicht gestrichen werden.',
+                                  )
                           }
                         />
                       )}
@@ -425,12 +460,12 @@ export function Talks() {
                     etwas, das gar nicht vorgesehen ist. */}
                 {sunday.program.plansTalks && !readOnly && (
                   <div className="mt-3 flex flex-wrap items-center gap-2 border-t border-slate-100 pt-3 dark:border-slate-800">
+                    {/* Erst eine bestehende Lücke füllen, sonst hinten
+                        anhängen – das bestimmt der Dialog (`slot: null`). */}
                     <button
                       type="button"
                       className="btn-secondary btn-sm"
-                      onClick={() =>
-                        setAssignFor({ date: sunday.date, slot: nextSlot, kind: 'talk' })
-                      }
+                      onClick={() => setAssignFor({ date: sunday.date, slot: null, kind: 'talk' })}
                     >
                       <Plus className="size-3.5" aria-hidden />
                       Ansprache
@@ -439,7 +474,7 @@ export function Talks() {
                       type="button"
                       className="btn-secondary btn-sm"
                       onClick={() =>
-                        setAssignFor({ date: sunday.date, slot: nextSlot, kind: 'testimony' })
+                        setAssignFor({ date: sunday.date, slot: null, kind: 'testimony' })
                       }
                     >
                       <Plus className="size-3.5" aria-hidden />
@@ -448,7 +483,18 @@ export function Talks() {
                     <button
                       type="button"
                       className="btn-ghost btn-sm"
-                      onClick={() => void changeSlots(sunday.date, sunday.planned + 1)}
+                      onClick={() =>
+                        void guard(
+                          () =>
+                            addTalkSlot(
+                              sunday.date,
+                              sunday.assigned,
+                              sunday.planned,
+                              settings.talksPerSunday,
+                            ),
+                          'Platz konnte nicht angelegt werden.',
+                        )
+                      }
                     >
                       Leeren Platz hinzufügen
                     </button>
@@ -456,7 +502,7 @@ export function Talks() {
                       <button
                         type="button"
                         className="btn-ghost btn-sm"
-                        onClick={() => void changeSlots(sunday.date, settings.talksPerSunday)}
+                        onClick={() => void resetSlots(sunday.date)}
                       >
                         Auf Standard zurücksetzen
                       </button>
@@ -477,21 +523,18 @@ export function Talks() {
           onFilter={setFilter}
           readOnly={readOnly}
           onAssign={(member) => {
-            // Den nächsten freien Programmplatz vorschlagen. Sind alle
-            // Positionen belegt – etwa durch Platzhalter –, kommt der Eintrag
-            // hintendran; zwei Einträge auf derselben Position brächten die
-            // Reihenfolge durcheinander.
+            // Der erste Sonntag mit einem offenen Platz. Welche Position, ergibt
+            // sich im Dialog aus dem Datum (`slot: null`): Sind alle belegt –
+            // etwa durch Platzhalter –, kommt der Eintrag hintendran; zwei
+            // Einträge auf derselben Position gibt es nicht.
             const target = schedule.find((sunday) => sunday.openCount > 0)
-            const slot =
-              target?.slots.find((s) => !s.talk && !s.extra)?.slot ??
-              (target ? target.slots.length + 1 : 1)
             setPresetMember(member)
             // Ist kein Platz frei, schlägt der Dialog den nächsten Sonntag
             // vor – nicht das heutige Datum: Ein Eintrag an einem Werktag
             // erschiene in keiner Programmansicht und wäre unauffindbar.
             setAssignFor({
               date: target?.date ?? schedule[0]?.date ?? new Date(),
-              slot,
+              slot: null,
               kind: 'talk',
             })
           }}
@@ -511,9 +554,10 @@ export function Talks() {
               setPresetMember(null)
             }}
             date={assignFor?.date ?? new Date()}
-            slot={assignFor?.slot ?? 1}
+            slot={assignFor?.slot ?? null}
             kind={assignFor?.kind ?? 'talk'}
             presetMember={presetMember}
+            sundayAt={sundayAt}
           />
 
           {editTalk && (
@@ -522,6 +566,11 @@ export function Talks() {
                  blieben Art, Thema und Notiz der vorigen im Formular stehen. */
               key={editTalk.id}
               talk={editTalk}
+              position={
+                schedule
+                  .flatMap((sunday) => sunday.slots)
+                  .find((row) => row.talk?.id === editTalk.id)?.position ?? editTalk.slot
+              }
               suggestions={candidates.map((candidate) => candidate.member)}
               onClose={() => setEditTalkId(null)}
             />
@@ -552,6 +601,7 @@ export function Talks() {
 
 function TalkRow({
   talk,
+  position,
   onEdit,
   first,
   last,
@@ -559,6 +609,8 @@ function TalkRow({
   readOnly = false,
 }: {
   talk: Talk
+  /** Die Nummer im Programm – dieselbe wie unter «Leitung» (siehe `talkPositions`) */
+  position: number
   onEdit: () => void
   first: boolean
   last: boolean
@@ -583,7 +635,7 @@ function TalkRow({
   const inner = (
     <>
       <span className="tabular grid size-7 shrink-0 place-items-center rounded-full bg-slate-100 text-xs font-semibold dark:bg-slate-800">
-        {talk.slot}
+        {position}
       </span>
       <Avatar name={name} id={talk.memberId || undefined} size="sm" />
       <span className="min-w-0 flex-1">
@@ -664,49 +716,62 @@ function TalkRow({
  *
  * Ohne `onAssign` ist es kein Knopf mehr, sondern bloss die Auskunft, dass
  * hier jemand fehlt – dieselbe Zeile, ohne die Einladung, sie anzufassen.
+ *
+ * Daneben lässt er sich streichen: Ein leerer Platz, der zu viel ist – etwa
+ * einer, der eben mit «Leeren Platz hinzufügen» dazukam –, war bisher nur
+ * über «Auf Standard zurücksetzen» wegzubekommen, und das auch nur, wenn
+ * der Sonntag danach wieder dem Standard entsprach. Wer dahinter steht,
+ * rückt eine Position auf – dasselbe wie «Programmplatz streichen» unter
+ * «Leitung».
  */
 function EmptySlot({
-  slot,
-  extra,
+  position,
   onAssign,
+  onRemove,
 }: {
-  slot: number
-  /** Über die vorgesehene Anzahl hinaus */
-  extra: boolean
+  position: number
   onAssign?: () => void
+  onRemove?: () => void
 }) {
   const inner = (
     <>
       <span className="tabular grid size-7 shrink-0 place-items-center rounded-full bg-slate-100 text-xs font-semibold dark:bg-slate-800">
-        {slot}
+        {position}
       </span>
       <CalendarPlus className="size-4" aria-hidden />
-      {onAssign
-        ? extra
-          ? 'Zusätzlichen Platz vergeben'
-          : 'Ansprache vergeben'
-        : extra
-          ? 'Zusätzlicher Platz – noch offen'
-          : 'Noch offen'}
+      {onAssign ? 'Ansprache vergeben' : 'Noch offen'}
     </>
   )
 
   const shell =
-    'flex w-full items-center gap-3 rounded-lg border border-dashed border-slate-300 px-3 py-2.5 text-sm text-slate-500 dark:border-slate-700 dark:text-slate-400'
-
-  if (!onAssign) return <div className={shell}>{inner}</div>
+    'flex min-w-0 flex-1 items-center gap-3 rounded-lg px-3 py-2.5 text-left text-sm text-slate-500 dark:text-slate-400'
 
   return (
-    <button
-      type="button"
-      onClick={onAssign}
-      className={cn(
-        shell,
-        'transition hover:border-slate-400 hover:bg-slate-50 dark:hover:bg-slate-800/50',
+    <div className="flex items-center gap-1 rounded-lg border border-dashed border-slate-300 pr-1 dark:border-slate-700">
+      {onAssign ? (
+        <button
+          type="button"
+          onClick={onAssign}
+          className={cn(shell, 'transition hover:bg-slate-50 dark:hover:bg-slate-800/50')}
+        >
+          {inner}
+        </button>
+      ) : (
+        <div className={shell}>{inner}</div>
       )}
-    >
-      {inner}
-    </button>
+
+      {onRemove && (
+        <button
+          type="button"
+          className="btn-ghost shrink-0 p-1.5 text-slate-400 hover:text-rose-600 dark:hover:text-rose-400"
+          onClick={onRemove}
+          aria-label={`Platz ${position} streichen`}
+          title="Platz streichen – wer dahinter steht, rückt auf"
+        >
+          <Trash2 className="size-4" aria-hidden />
+        </button>
+      )}
+    </div>
   )
 }
 
@@ -1142,13 +1207,17 @@ function AssignDialog({
   slot,
   kind: initialKind,
   presetMember: preset,
+  sundayAt,
 }: {
   open: boolean
   onClose: () => void
   date: Date
-  slot: number
+  /** Gewünschte Position – `null` heisst «der nächste offene Platz am gewählten Datum» */
+  slot: number | null
   kind: TalkKind
   presetMember: Member | null
+  /** Was am gewählten Datum schon eingetragen und vorgesehen ist */
+  sundayAt: (date: Date) => { talks: Talk[]; planned: number }
 }) {
   const { members, settings } = useData()
   const { profile } = useAuth()
@@ -1160,7 +1229,14 @@ function AssignDialog({
   /** Von Hand erfasster Name – für alle, die nicht in der Mitgliederliste stehen. */
   const [manual, setManual] = useState('')
   const [dateValue, setDateValue] = useState('')
-  const [slotValue, setSlotValue] = useState(1)
+  /** Die gewünschte Position – `null` heisst «der nächste offene Platz». */
+  const [slotChoice, setSlotChoice] = useState<number | null>(null)
+  /**
+   * Hat jemand die Position von Hand gesetzt? Solange nicht, geht sie mit dem
+   * Datum mit. Früher blieb sie beim Datumswechsel stehen – die Position des
+   * ersten Sonntags landete am zweiten auf einer schon vergebenen Nummer.
+   */
+  const [slotTouched, setSlotTouched] = useState(false)
   const [kind, setKind] = useState<TalkKind>('talk')
   const [topic, setTopic] = useState('')
   const [duration, setDuration] = useState<number | ''>(10)
@@ -1170,7 +1246,8 @@ function AssignDialog({
   useEffect(() => {
     if (!open) return
     setDateValue(toDateInput(date))
-    setSlotValue(slot)
+    setSlotChoice(slot)
+    setSlotTouched(false)
     setKind(initialKind)
     setSelected(preset)
     setManual('')
@@ -1180,6 +1257,28 @@ function AssignDialog({
     setDuration(initialKind === 'testimony' ? 5 : 10)
     setStatus('asked')
   }, [open, date, slot, initialKind, preset])
+
+  /** Das im Dialog gewählte Datum – mit der Uhrzeit der Versammlung. */
+  const chosenDate = useMemo(
+    () => (dateValue ? new Date(`${dateValue}T${settings.sacramentTime}:00`) : null),
+    [dateValue, settings.sacramentTime],
+  )
+  const chosenSunday = chosenDate ? sundayAt(chosenDate) : null
+  const rows = chosenSunday ? talkPositions(chosenSunday.talks, chosenSunday.planned) : []
+  /** Weiter hinten als «angehängt» geht nicht – dort stünde eine Lücke. */
+  const lastPosition = rows.length + 1
+  // Der erste offene Platz, sonst hinten angehängt – laufend aus dem Bestand.
+  const slotValue =
+    slotChoice ??
+    (chosenSunday ? nextOpenPosition(chosenSunday.talks, chosenSunday.planned) : lastPosition)
+  const position = Math.min(Math.max(slotValue, 1), lastPosition)
+  const occupant = rows[position - 1]?.talk ?? null
+
+  const changeDate = (value: string) => {
+    setDateValue(value)
+    // Die Position gehörte zum vorigen Sonntag – ausser, sie wurde von Hand gesetzt.
+    if (!slotTouched) setSlotChoice(null)
+  }
 
   const ranked = useMemo(
     () =>
@@ -1231,19 +1330,25 @@ function AssignDialog({
 
   const handleSubmit = async (event: FormEvent) => {
     event.preventDefault()
+    if (!chosenDate || !chosenSunday) return
 
     setSaving(true)
     try {
-      const { outcome } = await createTalk({
-        ...speakerFields(speaker),
-        date: new Date(`${dateValue}T${settings.sacramentTime}:00`),
-        slot: slotValue,
-        kind,
-        topic: topic.trim(),
-        durationMinutes: typeof duration === 'number' ? duration : undefined,
-        status: effectiveStatus,
-        askedById: speaker ? (profile?.id ?? null) : null,
-      })
+      // Ist die Position belegt, rücken die Folgenden nach – im selben Zug.
+      const { outcome } = await insertTalk(
+        {
+          ...speakerFields(speaker),
+          date: chosenDate,
+          kind,
+          topic: topic.trim(),
+          durationMinutes: typeof duration === 'number' ? duration : undefined,
+          status: effectiveStatus,
+          askedById: speaker ? (profile?.id ?? null) : null,
+        },
+        position,
+        chosenSunday.talks,
+        chosenSunday.planned,
+      )
       toast.saved(
         speaker
           ? `${TALK_KIND_LABELS[kind]} eingetragen.`
@@ -1264,7 +1369,7 @@ function AssignDialog({
       open={open}
       onClose={onClose}
       title={`${TALK_KIND_LABELS[kind]} vergeben`}
-      description={formatDateLong(date)}
+      description={formatDateLong(chosenDate ?? date)}
       size="lg"
       footer={
         <>
@@ -1459,7 +1564,7 @@ function AssignDialog({
               type="date"
               className="input"
               value={dateValue}
-              onChange={(event) => setDateValue(event.target.value)}
+              onChange={(event) => changeDate(event.target.value)}
               required
             />
           </div>
@@ -1471,10 +1576,13 @@ function AssignDialog({
               id="talk-slot"
               type="number"
               min={1}
-              max={10}
+              max={lastPosition}
               className="input"
               value={slotValue}
-              onChange={(event) => setSlotValue(Number.parseInt(event.target.value, 10) || 1)}
+              onChange={(event) => {
+                setSlotTouched(true)
+                setSlotChoice(Number.parseInt(event.target.value, 10) || 1)
+              }}
             />
           </div>
           <div>
@@ -1494,6 +1602,16 @@ function AssignDialog({
             />
           </div>
         </div>
+
+        {/* Was mit der gewählten Position geschieht – bevor gespeichert wird. */}
+        {occupant ? (
+          <p className="hint -mt-2">
+            Position {position} ist mit {talkSpeakerLabel(occupant)} belegt – der neue Eintrag kommt
+            davor, wer dort steht, rückt nach hinten.
+          </p>
+        ) : slotValue > lastPosition ? (
+          <p className="hint -mt-2">Wird als Position {position} hinten angehängt.</p>
+        ) : null}
 
         <div>
           <label className="label" htmlFor="talk-topic">
@@ -1541,6 +1659,7 @@ function AssignDialog({
 
 function EditTalkDialog({
   talk,
+  position,
   suggestions,
   onClose,
 }: {
@@ -1552,6 +1671,8 @@ function EditTalkDialog({
    * Öffnen (siehe `changeSpeaker`).
    */
   talk: Talk
+  /** Die Nummer, unter der der Eintrag in der Liste steht */
+  position: number
   /** Vorschlagsreihenfolge «wer war lange nicht dran» – wie beim Zuteilen */
   suggestions: Member[]
   onClose: () => void
@@ -1617,7 +1738,7 @@ function EditTalkDialog({
         open
         onClose={onClose}
         title={talkSpeakerLabel(talk)}
-        description={`${formatDate(talk.date)} · Position ${talk.slot} · ${TALK_KIND_LABELS[talk.kind ?? 'talk']}`}
+        description={`${formatDate(talk.date)} · Position ${position} · ${TALK_KIND_LABELS[talk.kind ?? 'talk']}`}
         footer={
           <>
             <button

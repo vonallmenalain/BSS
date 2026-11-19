@@ -1,18 +1,17 @@
-import {
-  arrayUnion,
-  deleteField,
-  doc,
-  serverTimestamp,
-  setDoc,
-  Timestamp,
-} from '@/lib/db'
+import { arrayUnion, deleteField, doc, serverTimestamp, setDoc, Timestamp } from '@/lib/db'
 import { db, COLLECTIONS } from '@/lib/firebase'
 import { toDate, toDateInput, weekdaysInMonth } from '@/lib/dates'
 import { stripUndefined, uid } from '@/lib/utils'
 import { commit, type SaveOutcome } from '@/lib/sync'
-import { planProgramOrder } from '@/lib/program'
+import {
+  planProgramOrder,
+  planRemoveOpenPosition,
+  planTalkInsert,
+  planTalkMove,
+  plannedAfterAdding,
+} from '@/lib/program'
 import { musicRoleFields, type MusicRole } from '@/lib/musicRoles'
-import { updateTalkSlots } from '@/services/talks'
+import { createTalk, updateTalkSlots, type TalkInput } from '@/services/talks'
 import {
   HYMN_SLOTS,
   type AnnouncementEntry,
@@ -30,12 +29,16 @@ import {
  */
 export {
   buildProgram,
+  countOpenPositions,
+  nextOpenPosition,
   nextTalkSlot,
   openSlotKey,
   planProgramOrder,
   programKey,
+  talkPositions,
   type ProgramEntry,
   type ProgramEntryKind,
+  type TalkPosition,
 } from '@/lib/program'
 
 export {
@@ -333,31 +336,66 @@ export async function saveMusicPerson(
 }
 
 /**
+ * Eine Ansprache an einer bestimmten Position eintragen.
+ *
+ * Ist die Position belegt, rücken die Folgenden nach hinten – im selben
+ * Batch wie der neue Eintrag (siehe `planTalkInsert`). «Ansprachen» und
+ * «Leitung» tragen beide hierüber ein.
+ */
+export async function insertTalk(
+  input: Omit<TalkInput, 'slot'>,
+  position: number,
+  sundayTalks: Talk[],
+  planned: number,
+): Promise<{ id: string; outcome: SaveOutcome }> {
+  const plan = planTalkInsert(sundayTalks, planned, position)
+  return createTalk({ ...input, slot: plan.slot }, plan.slots)
+}
+
+/**
+ * Einen Platz eine Position weiter vor oder zurück – offen oder vergeben.
+ *
+ * Die ganze Folge wird dabei durchnummeriert: Damit gibt es danach keine
+ * doppelt belegte Nummer mehr, falls es vorher eine gab.
+ */
+export async function moveTalkPosition(
+  sundayTalks: Talk[],
+  planned: number,
+  position: number,
+  delta: number,
+): Promise<SaveOutcome | null> {
+  return updateTalkSlots(planTalkMove(sundayTalks, planned, position, delta))
+}
+
+/**
  * Einen weiteren Programmplatz für Ansprachen vorsehen.
  *
- * Gezählt wird ab dem höchsten belegten Platz: Sonst käme bei drei bereits
+ * Gezählt wird ab dem letzten belegten Platz: Sonst käme bei drei bereits
  * vergebenen Ansprachen und zwei vorgesehenen Plätzen kein freier Platz dazu.
  */
 export async function addTalkSlot(
   date: Date,
   talks: Talk[],
   planned: number,
+  defaultCount?: number,
 ): Promise<SaveOutcome> {
-  const highest = talks.reduce((max, talk) => Math.max(max, talk.slot), planned)
-  return saveSacramentMeeting(date, { talkSlots: highest + 1 })
+  const next = plannedAfterAdding(talks, planned)
+  return saveSacramentMeeting(date, { talkSlots: next === defaultCount ? null : next })
 }
 
 /** Einen offenen Programmplatz streichen – die dahinterliegenden rücken auf. */
 export async function removeTalkSlot(
   date: Date,
-  slot: number,
+  position: number,
   talks: Talk[],
   planned: number,
   defaultCount: number,
-): Promise<SaveOutcome> {
-  await updateTalkSlots(
-    talks.filter((talk) => talk.slot > slot).map((talk) => ({ id: talk.id, slot: talk.slot - 1 })),
-  )
-  const next = Math.max(0, planned - 1)
-  return saveSacramentMeeting(date, { talkSlots: next === defaultCount ? null : next })
+): Promise<SaveOutcome | null> {
+  const plan = planRemoveOpenPosition(talks, planned, position)
+  // Belegt oder gar nicht vorhanden – dann gibt es nichts zu streichen.
+  if (!plan) return null
+  await updateTalkSlots(plan.slots)
+  return saveSacramentMeeting(date, {
+    talkSlots: plan.planned === defaultCount ? null : plan.planned,
+  })
 }
