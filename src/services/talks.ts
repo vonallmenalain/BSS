@@ -72,28 +72,48 @@ export function speakerFields(speaker: TalkSpeaker | null): {
   return { memberId: '', memberName: speaker.name.trim() }
 }
 
-export async function createTalk(input: TalkInput): Promise<{ id: string; outcome: SaveOutcome }> {
+/**
+ * Legt eine Ansprache an.
+ *
+ * `reorder` sind die Positionen, die dafür nachrücken (siehe
+ * `planTalkInsert`). Sie gehen im selben Batch wie der neue Eintrag: Ginge
+ * nur eines von beiden durch, stünden zwei Ansprachen auf derselben Nummer.
+ */
+export async function createTalk(
+  input: TalkInput,
+  reorder: { id: string; slot: number }[] = [],
+): Promise<{ id: string; outcome: SaveOutcome }> {
   // Die ID entsteht im Client, damit sie auch ohne Netz sofort feststeht.
   const docRef = doc(talksRef)
-  const outcome = await commit(
-    setDoc(docRef, {
-      ...stripUndefined({
-        topic: input.topic?.trim(),
-        notes: input.notes?.trim(),
-        durationMinutes: input.durationMinutes,
-      }),
-      memberId: input.memberId ?? '',
-      memberName: input.memberName,
-      date: Timestamp.fromDate(input.date),
-      slot: input.slot,
-      kind: input.kind ?? 'talk',
-      status: input.status ?? 'planned',
-      askedById: input.askedById ?? null,
-      askedAt: input.status === 'asked' ? serverTimestamp() : null,
-      createdAt: serverTimestamp(),
-      updatedAt: serverTimestamp(),
+  const data = {
+    ...stripUndefined({
+      topic: input.topic?.trim(),
+      notes: input.notes?.trim(),
+      durationMinutes: input.durationMinutes,
     }),
-  )
+    memberId: input.memberId ?? '',
+    memberName: input.memberName,
+    date: Timestamp.fromDate(input.date),
+    slot: input.slot,
+    kind: input.kind ?? 'talk',
+    status: input.status ?? 'planned',
+    askedById: input.askedById ?? null,
+    askedAt: input.status === 'asked' ? serverTimestamp() : null,
+    createdAt: serverTimestamp(),
+    updatedAt: serverTimestamp(),
+  }
+
+  let outcome: SaveOutcome
+  if (reorder.length === 0) {
+    outcome = await commit(setDoc(docRef, data))
+  } else {
+    const batch = writeBatch(db)
+    batch.set(docRef, data)
+    reorder.forEach(({ id, slot }) =>
+      batch.update(doc(db, COLLECTIONS.talks, id), { slot, updatedAt: serverTimestamp() }),
+    )
+    outcome = await commit(batch.commit())
+  }
   // Wer beim Erfassen gleich zusagt, hat gesprochen – die Statistik gehört
   // schon hier nachgeführt und nicht erst beim nächsten Statuswechsel.
   if ((input.status ?? 'planned') === 'confirmed' && input.memberId) {

@@ -42,7 +42,6 @@ import { cn } from '@/lib/utils'
 import { formatHymn } from '@/services/hymns'
 import { lastPrayerByMember, rankPrayerCandidates, setPrayer } from '@/services/prayers'
 import {
-  createTalk,
   deleteTalk,
   rankTalkCandidates,
   setTalkSpeaker,
@@ -54,6 +53,7 @@ import {
   addTalkSlot,
   buildProgram,
   emptySacramentMeeting,
+  insertTalk,
   moveInList,
   newAnnouncement,
   businessLabel,
@@ -522,17 +522,23 @@ export function Conducting() {
     [dateKey, settings.sacramentTime],
   )
 
-  const assignTalk = (slot: number, speaker: TalkSpeaker) => {
+  /* Über denselben Weg wie unter «Ansprachen»: Ist der Platz inzwischen
+     belegt, rücken die Folgenden nach, statt sich eine Nummer zu teilen. */
+  const assignTalk = (position: number, speaker: TalkSpeaker) => {
     void guard(
       () =>
-        createTalk({
-          ...speakerFields(speaker),
-          date: talkDate,
-          slot,
-          kind: 'talk',
-          status: 'planned',
-          askedById: profile?.id ?? null,
-        }),
+        insertTalk(
+          {
+            ...speakerFields(speaker),
+            date: talkDate,
+            kind: 'talk',
+            status: 'planned',
+            askedById: profile?.id ?? null,
+          },
+          position,
+          sundayTalks,
+          planned,
+        ),
       'Ansprache konnte nicht eingetragen werden.',
     )
   }
@@ -1168,7 +1174,7 @@ export function Conducting() {
                     className="btn-secondary btn-sm"
                     onClick={() =>
                       void guard(
-                        () => addTalkSlot(date, sundayTalks, planned),
+                        () => addTalkSlot(date, sundayTalks, planned, settings.talksPerSunday),
                         'Programmplatz konnte nicht angelegt werden.',
                       )
                     }

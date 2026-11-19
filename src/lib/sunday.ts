@@ -1,4 +1,5 @@
 import { toDate } from './dates.ts'
+import { countOpenPositions, talkPositions } from './program.ts'
 import {
   ACTIVE_TALK_STATUSES,
   isTalkPlaceholder,
@@ -146,14 +147,9 @@ export function openTalkSlots(
   defaultCount: number,
 ): number {
   const planned = plannedTalksFor(date, meeting, defaultCount)
-  const taken = new Set(
-    talks
-      .filter((talk) => ACTIVE_TALK_STATUSES.includes(talk.status) && !isTalkPlaceholder(talk))
-      .map((talk) => talk.slot),
-  )
-  let open = 0
-  for (let slot = 1; slot <= planned; slot++) if (!taken.has(slot)) open++
-  return open
+  // Dieselben Plätze, die «Ansprachen» und «Leitung» zeigen (siehe `lib/program`).
+  const active = talks.filter((talk) => ACTIVE_TALK_STATUSES.includes(talk.status))
+  return countOpenPositions(talkPositions(active, planned))
 }
 
 /**

@@ -3,8 +3,15 @@ import { test } from 'node:test'
 
 import {
   buildProgram,
+  countOpenPositions,
+  nextOpenPosition,
   nextTalkSlot,
+  plannedAfterAdding,
   planProgramOrder,
+  planRemoveOpenPosition,
+  planTalkInsert,
+  planTalkMove,
+  talkPositions,
   type ProgramSource,
 } from '../src/lib/program.ts'
 import type { HymnChoice, Talk, TalkKind } from '../src/lib/types.ts'
@@ -276,4 +283,184 @@ test('der nächste Programmplatz füllt zuerst die Lücke', () => {
   assert.equal(nextTalkSlot([talk('a', 1), talk('c', 3)]), 2)
   assert.equal(nextTalkSlot([talk('a', 1), talk('b', 2)]), 3)
   assert.equal(nextTalkSlot([]), 1)
+})
+
+/* ------------------------------------------------------------------ */
+/* Dieselben Plätze unter «Ansprachen» und «Leitung»                   */
+/* ------------------------------------------------------------------ */
+
+/** Eine Ansprache, die zum Zeitpunkt `minute` erfasst wurde. */
+function entered(id: string, slot: number, minute: number, name = id): Talk {
+  return {
+    ...talk(id, slot, name),
+    createdAt: { seconds: minute * 60, nanoseconds: 0 } as unknown as Talk['createdAt'],
+  }
+}
+
+/** Die Zeilen unter «Ansprachen»: Name oder «·» für einen offenen Platz, * für Zusatzpunkte. */
+const rows = (talks: Talk[], planned: number) =>
+  talkPositions(talks, planned).map(
+    (row) => `${row.position}:${row.talk ? row.talk.id : '·'}${row.extra ? '*' : ''}`,
+  )
+
+/** Die Ansprachen im Ablauf unter «Leitung», in ihrer Reihenfolge. */
+const conducted = (talks: Talk[], planned: number) =>
+  buildProgram({ hymns: {}, musicalNumbers: [], programOrder: [] }, talks, hymnTitle, planned)
+    .filter((entry) => entry.kind === 'talk' || entry.kind === 'testimony')
+    .map((entry) => `${entry.slot}:${entry.talkId ?? '·'}`)
+
+/** Schreibt Positionen zurück – wie es `updateTalkSlots` in Firestore täte. */
+const applySlots = (talks: Talk[], updates: { id: string; slot: number }[]) => {
+  const bySlot = new Map(updates.map((entry) => [entry.id, entry.slot]))
+  return talks.map((entry) => ({ ...entry, slot: bySlot.get(entry.id) ?? entry.slot }))
+}
+
+test('zwei Ansprachen auf derselben Nummer bleiben beide sichtbar', () => {
+  // Der Fall vom 13. Dezember: vier Eingetragene, je zwei auf Nummer 1 und 2.
+  // «Ansprachen» zeigte nur zwei davon, «Leitung» alle vier.
+  const talks = [
+    entered('heinz', 2, 3),
+    entered('sylvie', 1, 1),
+    entered('moesha', 2, 4),
+    entered('milena', 1, 2),
+  ]
+  assert.deepEqual(rows(talks, 2), ['1:sylvie', '2:milena', '3:heinz*', '4:moesha*'])
+  assert.deepEqual(
+    conducted(talks, 2),
+    ['1:sylvie', '2:milena', '3:heinz', '4:moesha'],
+    '«Leitung» zeigt dieselben vier in derselben Folge und mit denselben Nummern.',
+  )
+  assert.equal(countOpenPositions(talkPositions(talks, 2)), 0)
+})
+
+test('bei gleicher Nummer steht vorne, wer zuerst erfasst war', () => {
+  const talks = [entered('spaet', 1, 9), entered('frueh', 1, 1)]
+  assert.deepEqual(rows(talks, 2), ['1:frueh', '2:spaet'])
+  // Ein eben erst angelegter Eintrag hat noch keinen Zeitstempel – er gilt als jüngster.
+  const pending = { ...talk('neu', 1), createdAt: null as unknown as Talk['createdAt'] }
+  assert.deepEqual(rows([pending, entered('alt', 1, 5)], 2), ['1:alt', '2:neu'])
+})
+
+test('eine Lücke innerhalb der vorgesehenen Plätze bleibt offen', () => {
+  // Jemand hat abgesagt und wurde entfernt – der Platz wartet auf Ersatz.
+  const talks = [talk('a', 1), talk('c', 3)]
+  assert.deepEqual(rows(talks, 3), ['1:a', '2:·', '3:c'])
+  assert.deepEqual(conducted(talks, 3), ['1:a', '2:·', '3:c'])
+  assert.equal(countOpenPositions(talkPositions(talks, 3)), 1)
+})
+
+test('hinter den vorgesehenen Plätzen rücken Zusatzpunkte lückenlos zusammen', () => {
+  const talks = [talk('a', 1), talk('b', 2), talk('e', 5)]
+  assert.deepEqual(rows(talks, 2), ['1:a', '2:b', '3:e*'])
+  assert.deepEqual(conducted(talks, 2), ['1:a', '2:b', '3:e'])
+  // Offene Plätze vorne bleiben, der Zusatzpunkt steht dahinter.
+  assert.deepEqual(rows([talk('a', 1), talk('e', 5)], 3), ['1:a', '2:·', '3:·', '4:e*'])
+  // An einem Sonntag ohne Ansprachen steht ein Eingetragener trotzdem da.
+  assert.deepEqual(rows([talk('x', 2)], 0), ['1:x*'])
+})
+
+test('ein Platzhalter belegt seinen Platz, zählt aber als offen', () => {
+  const placeholder = { ...talk('p', 2), memberId: '', memberName: '' }
+  const positions = talkPositions([talk('a', 1), placeholder], 2)
+  assert.deepEqual(rows([talk('a', 1), placeholder], 2), ['1:a', '2:p'])
+  assert.equal(countOpenPositions(positions), 1)
+})
+
+test('neu eingetragen wird am ersten offenen Platz, sonst hinten', () => {
+  assert.equal(nextOpenPosition([talk('a', 1), talk('c', 3)], 3), 2)
+  assert.equal(nextOpenPosition([talk('a', 1), talk('b', 2)], 2), 3)
+  // Doppelt belegt zählt nicht als frei: hinter den vieren, nicht auf Nummer 3.
+  assert.equal(nextOpenPosition([talk('a', 1), talk('b', 1), talk('c', 2), talk('d', 2)], 3), 5)
+  assert.equal(nextOpenPosition([], 2), 1)
+})
+
+test('eine freie Position wird einfach belegt', () => {
+  const plan = planTalkInsert([talk('a', 1), talk('c', 3)], 3, 2)
+  assert.equal(plan.slot, 2)
+  assert.deepEqual(plan.slots, [])
+})
+
+test('auf einer belegten Position rücken die Folgenden bis zum nächsten offenen Platz', () => {
+  // a, b, offen – neu auf Position 1: a und b rücken nach, der offene Platz wird aufgefüllt.
+  const talks = [talk('a', 1), talk('b', 2)]
+  const plan = planTalkInsert(talks, 3, 1)
+  assert.equal(plan.slot, 1)
+  assert.deepEqual(plan.slots, [
+    { id: 'a', slot: 2 },
+    { id: 'b', slot: 3 },
+  ])
+  const after = [...applySlots(talks, plan.slots), talk('neu', plan.slot)]
+  assert.deepEqual(rows(after, 3), ['1:neu', '2:a', '3:b'])
+
+  // Ist nichts mehr offen, wird die Folge länger – der Letzte wird zum Zusatzpunkt.
+  const full = planTalkInsert(talks, 2, 2)
+  assert.equal(full.slot, 2)
+  assert.deepEqual(full.slots, [{ id: 'b', slot: 3 }])
+})
+
+test('Eintragen bereinigt doppelt belegte Nummern', () => {
+  const talks = [entered('a', 1, 1), entered('b', 1, 2), entered('c', 2, 3)]
+  const plan = planTalkInsert(talks, 3, 5)
+  // Hinten angehängt – an Position 4, nicht an der gewünschten 5: dort entstünde eine Lücke.
+  assert.equal(plan.slot, 4)
+  const after = [...applySlots(talks, plan.slots), talk('neu', plan.slot)]
+  assert.deepEqual(
+    after.map((entry) => `${entry.id}=${entry.slot}`),
+    ['a=1', 'b=2', 'c=3', 'neu=4'],
+  )
+})
+
+test('Verschieben unter «Ansprachen» nimmt offene Plätze mit', () => {
+  const talks = [talk('a', 1), talk('c', 3)]
+  // c an den offenen Platz 2 vorziehen – der offene Platz rutscht nach hinten.
+  const moved = applySlots(talks, planTalkMove(talks, 3, 3, -1))
+  assert.deepEqual(rows(moved, 3), ['1:a', '2:c', '3:·'])
+  // Am Rand gibt es nichts zu verschieben.
+  assert.deepEqual(planTalkMove(talks, 3, 1, -1), [])
+})
+
+test('Verschieben bei doppelt belegten Nummern tauscht genau die beiden Zeilen', () => {
+  const talks = [entered('a', 1, 1), entered('b', 1, 2), entered('c', 2, 3)]
+  const moved = applySlots(talks, planTalkMove(talks, 2, 3, -1))
+  assert.deepEqual(rows(moved, 2), ['1:a', '2:c', '3:b*'])
+  assert.deepEqual(
+    moved.map((entry) => `${entry.id}=${entry.slot}`),
+    ['a=1', 'b=3', 'c=2'],
+    'Danach steht jede Ansprache auf ihrer eigenen Nummer.',
+  )
+})
+
+test('ein leerer Platz lässt sich streichen – die Folgenden rücken auf', () => {
+  // «Leeren Platz hinzufügen» an einem vollen Sonntag – und wieder weg.
+  const talks = [talk('a', 1), talk('b', 2)]
+  const planned = plannedAfterAdding(talks, 2)
+  assert.equal(planned, 3)
+  assert.deepEqual(rows(talks, planned), ['1:a', '2:b', '3:·'])
+
+  const removed = planRemoveOpenPosition(talks, planned, 3)
+  assert.deepEqual(removed, { planned: 2, slots: [] })
+
+  // Ein offener Platz in der Mitte: wer dahinter steht, rückt auf.
+  const middle = planRemoveOpenPosition([talk('a', 1), talk('c', 3)], 3, 2)
+  assert.deepEqual(middle, { planned: 2, slots: [{ id: 'c', slot: 2 }] })
+
+  // Ein vergebener Platz wird so nicht gestrichen.
+  assert.equal(planRemoveOpenPosition(talks, 3, 1), null)
+})
+
+test('ein leerer Platz kommt hinter die Zusatzpunkte, nicht davor', () => {
+  // Drei Eingetragene bei zwei vorgesehenen Plätzen: «+1» hiesse sonst drei,
+  // und zu sehen wäre gar kein freier Platz.
+  const talks = [talk('a', 1), talk('b', 2), talk('c', 3)]
+  const planned = plannedAfterAdding(talks, 2)
+  assert.equal(planned, 4)
+  assert.deepEqual(rows(talks, planned), ['1:a', '2:b', '3:c', '4:·'])
+})
+
+test('nach dem Bereinigen ergibt sich dieselbe Folge noch einmal', () => {
+  const talks = [entered('a', 2, 1), entered('b', 2, 2), entered('c', 7, 3), entered('d', 1, 4)]
+  const once = applySlots(talks, planTalkMove(talks, 3, 1, 0))
+  const twice = applySlots(once, planTalkMove(once, 3, 1, 0))
+  assert.deepEqual(rows(once, 3), rows(talks, 3))
+  assert.deepEqual(rows(twice, 3), rows(once, 3))
 })
