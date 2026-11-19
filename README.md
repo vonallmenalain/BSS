@@ -1329,7 +1329,22 @@ späteren Vergeben. Der Standard bleibt davon unberührt. Ein leerer Platz läss
 sich an seiner Zeile wieder streichen (Papierkorb) – wer dahinter steht,
 rückt auf, wie mit «Programmplatz streichen» unter **Leitung**.
 
-**Drei Schritte:** _Vorgesehen → Angefragt → Zugesagt_. Ein vierter Schritt
+**Ein besetzter Platz zählt als vorgesehen.** Zusatzpunkte gibt es nicht: Wer
+über den Standard hinaus eingetragen wird, belegt einen Platz wie jeder
+andere, und der Sonntag zeigt «4 statt 2». Sagt die vierte Person ab, ist ihr
+Platz offen und erscheint unter «_n_ offen» – er verschwindet nicht still.
+Plätze entstehen durch Eintragen oder «Leeren Platz hinzufügen» und gehen nur
+über den Papierkorb weg: **Entfernen** löscht den Eintrag, sein Platz bleibt
+offen. Einzig unter **Leitung** nimmt «Programmpunkt entfernen» einen
+Platzhalter mitsamt seinem Platz weg – am Sonntag soll das kein zweiter Griff
+sein.
+
+**Drei Schritte:** _Vorgesehen → Angefragt → Zugesagt_. Unter «Ansprachen» ist
+der Status an jeder Zeile ein Knopf: Ein Tippen führt einen Schritt weiter,
+nach der Zusage wieder von vorne, und die Meldung darunter bietet
+«Rückgängig» für den Fehlgriff. Ein Platzhalter hat keinen nächsten Schritt –
+für niemanden ist nichts anzufragen. Unter **Leitung** steht der Status
+bewusst nicht: Dort steht nur, was am Pult gesagt wird. Ein vierter Schritt
 «gehalten» wäre ein Klick nach der Versammlung, den niemand macht – und ohne
 ihn stimmte die Auswertung «wer war lange nicht dran» nicht mehr. Deshalb
 **zählt die Zusage**: Wer zugesagt hat und dessen Eintrag im Programm stehen
@@ -1337,16 +1352,26 @@ bleibt, hat gesprochen. Springt jemand kurzfristig ein, wird der Eintrag unter
 «Leitung» geändert oder gelöscht, und die Statistik stimmt wieder. Im Verlauf
 erscheint eine Zusage, sobald ihr Sonntag vorbei ist.
 
-«Abgesagt» und «Gestrichen» sind aus demselben Grund weggefallen: Eine Absage
-heisst, dass der Platz wieder frei ist, und das sagt man am deutlichsten,
-indem man den Eintrag entfernt. Wo im Bestand noch einer dieser beiden Werte
+«Abgesagt» und «Gestrichen» sind als Status weggefallen: Eine Absage heisst,
+dass der Platz wieder frei ist. Wo im Bestand noch einer dieser beiden Werte
 steht, wird er nicht mehr angezeigt – der Platz gilt als frei.
+
+**Absage.** Sagt jemand ab, steht dafür im Dialog des Eintrags der Knopf
+**Absage**. Der Name geht, der Platz bleibt mit Art, Thema und Dauer als
+Platzhalter stehen und zählt wieder als offen; im selben Dialog lässt sich
+gleich die nächste Person eintragen. Am Platz bleibt vermerkt, wer schon
+abgesagt hat – in der Zeile («Abgesagt: …») und im Dialog mit Datum. Auf
+Wunsch fällt die Person danach drei oder sechs Monate aus den Vorschlägen,
+über denselben Vermerk wie «Nicht anfragen»: unter «Vorschläge» jederzeit
+aufzuheben, und ein bestehender längerer Vermerk wird nie verkürzt. Hatte sie
+schon zugesagt, wird die Mitgliederstatistik gleich berichtigt.
 
 **Vollständig ist erst, was zugesagt ist.** Der grüne Haken am Sonntag – in der
 Übersicht wie unter «Ansprachen» – erscheint, wenn jeder Platz vergeben **und**
-jede Zusage da ist. Fehlt noch jemand, steht dort «_n_ offen»; sind alle Plätze
-besetzt, aber noch nicht alle haben zugesagt, «_n_ ohne Zusage». Sonst hiesse
-ein Sonntag vollständig, an dem noch drei Anfragen unbeantwortet sind.
+jede Zusage da ist. Fehlt noch jemand, steht dort «_n_ offen»; wer eingetragen
+ist, aber noch nicht zugesagt hat, zählt unter «_n_ ohne Zusage». Unter
+«Ansprachen» stehen beide nebeneinander. Sonst hiesse ein Sonntag vollständig,
+an dem noch drei Anfragen unbeantwortet sind.
 
 **Ein Name von Hand.** Am Pult steht nicht immer jemand aus der eigenen
 Gemeinde: ein besuchender Hoher Rat, die Missionare, «Zeugnisse der neuen

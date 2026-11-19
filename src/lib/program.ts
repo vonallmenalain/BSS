@@ -5,6 +5,7 @@ import {
   type HymnChoice,
   type Talk,
   type TalkKind,
+  type TalkStatus,
 } from './types.ts'
 
 /**
@@ -82,8 +83,6 @@ export interface TalkPosition {
   position: number
   /** `null` heisst: Der Platz ist vorgesehen, aber noch nicht vergeben. */
   talk: Talk | null
-  /** Über die vorgesehene Anzahl hinaus – ein Zusatzpunkt */
-  extra: boolean
 }
 
 /** Wann ein Eintrag erfasst wurde – ein noch unterwegs befindlicher gilt als jüngster. */
@@ -125,9 +124,15 @@ function compareTalks(a: Talk, b: Talk): number {
  * zuerst erfasst war.
  *
  * Offene Plätze gibt es nur innerhalb der vorgesehenen Anzahl – eine Lücke
- * dort ist ein Platz, für den noch jemand gesucht wird. Dahinter rücken die
- * Zusatzpunkte lückenlos zusammen: Eine Lücke jenseits der vorgesehenen
- * Anzahl wäre ein Platz, den niemand vorgesehen hat.
+ * dort ist ein Platz, für den noch jemand gesucht wird. Wer darüber hinaus
+ * eingetragen ist, rückt lückenlos an: Eine Lücke dahinter wäre ein Platz,
+ * den niemand vorgesehen hat.
+ *
+ * **Ein besetzter Platz zählt als vorgesehen.** Zusatzpunkte gibt es nicht:
+ * Stehen an einem Sonntag mit zwei vorgesehenen Ansprachen vier Personen,
+ * hat er vier Plätze. Sagt die vierte ab, ist ihr Platz offen wie jeder
+ * andere – und nicht bloss ein freiwilliger Zusatz, nach dem niemand fragt.
+ * Die Anzahl eines Sonntags ist deshalb immer die Länge dieser Liste.
  */
 export function talkPositions(talks: Talk[], planned: number): TalkPosition[] {
   const placed = new Map<number, Talk>()
@@ -143,18 +148,17 @@ export function talkPositions(talks: Talk[], planned: number): TalkPosition[] {
   return Array.from({ length: Math.max(planned, previous) }, (_, index) => ({
     position: index + 1,
     talk: placed.get(index + 1) ?? null,
-    extra: index + 1 > planned,
   }))
 }
 
 /**
- * Wie viele der vorgesehenen Plätze sind noch offen?
+ * Wie viele Plätze sind noch offen?
  *
  * Ein Platzhalter – ein eingetragener Punkt, zu dem noch niemand feststeht –
- * zählt weiterhin als offen. Zusatzpunkte zählen nicht: Sie sind freiwillig.
+ * zählt weiterhin als offen; so auch ein Platz, an dem jemand abgesagt hat.
  */
 export function countOpenPositions(rows: TalkPosition[]): number {
-  return rows.filter((row) => !row.extra && (!row.talk || isTalkPlaceholder(row.talk))).length
+  return rows.filter((row) => !row.talk || isTalkPlaceholder(row.talk)).length
 }
 
 /** Der Platz, den eine neue Ansprache bekommt: der erste offene, sonst hinten angehängt. */
@@ -223,9 +227,10 @@ export function planTalkMove(
 /**
  * Einen offenen Platz streichen – die dahinterliegenden rücken auf.
  *
- * Ein offener Platz liegt immer innerhalb der vorgesehenen Anzahl; sie wird
- * deshalb um eins kleiner. Ein vergebener Platz lässt sich so nicht
- * streichen – das ist «Entfernen» an der Ansprache selbst.
+ * Die Anzahl des Sonntags wird um eins kleiner – gezählt ab allen Plätzen,
+ * auch denen, die über die bisher vorgesehene Anzahl hinaus besetzt sind.
+ * Ein vergebener Platz lässt sich so nicht streichen; erst wird die Person
+ * entfernt, dann der Platz.
  */
 export function planRemoveOpenPosition(
   talks: Talk[],
@@ -236,7 +241,46 @@ export function planRemoveOpenPosition(
   const index = position - 1
   if (index < 0 || index >= sequence.length || sequence[index] !== null) return null
   sequence.splice(index, 1)
-  return { planned: Math.max(0, planned - 1), slots: renumber(sequence) }
+  return { planned: sequence.length, slots: renumber(sequence) }
+}
+
+/**
+ * Einen Eintrag entfernen.
+ *
+ * Unter «Ansprachen» bleibt sein Platz offen stehen (`keepPlace`): Steht der
+ * Eintrag über die bisher vorgesehene Anzahl hinaus, wird sie mitgezogen –
+ * sonst rückten die Folgenden in die Lücke, und der Platz wäre weg statt
+ * frei. Wer ihn ganz loswerden will, streicht danach den offenen Platz.
+ *
+ * Unter «Leitung» verschwindet ein Platzhalter mitsamt seinem Platz – dort
+ * heisst der Knopf «Programmpunkt entfernen», und am Sonntag soll das kein
+ * zweiter Griff sein. Wer dahinter steht, rückt auf.
+ */
+export function planTalkRemoval(
+  talks: Talk[],
+  planned: number,
+  id: string,
+  keepPlace = true,
+): { planned: number; slots: { id: string; slot: number }[] } | null {
+  const sequence = talkPositions(talks, planned).map((row) => row.talk)
+  const index = sequence.findIndex((talk) => talk?.id === id)
+  if (index === -1) return null
+  if (!keepPlace) {
+    sequence.splice(index, 1)
+    return { planned: sequence.length, slots: renumber(sequence) }
+  }
+  sequence[index] = null
+  return { planned: Math.max(planned, sequence.length), slots: renumber(sequence) }
+}
+
+/**
+ * Der nächste Schritt eines Eintrags: _Vorgesehen → Angefragt → Zugesagt_.
+ *
+ * Nach der Zusage beginnt es wieder vorne – für den Fehlgriff gibt es
+ * «Rückgängig» in der Meldung.
+ */
+export function nextTalkStatus(status: TalkStatus): TalkStatus {
+  return status === 'planned' ? 'asked' : status === 'asked' ? 'confirmed' : 'planned'
 }
 
 /**
