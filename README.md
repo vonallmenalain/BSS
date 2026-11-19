@@ -1331,8 +1331,11 @@ rückt auf, wie mit «Programmplatz streichen» unter **Leitung**.
 
 **Ein besetzter Platz zählt als vorgesehen.** Zusatzpunkte gibt es nicht: Wer
 über den Standard hinaus eingetragen wird, belegt einen Platz wie jeder
-andere, und der Sonntag zeigt «4 statt 2». Sagt die vierte Person ab, ist ihr
-Platz offen und erscheint unter «_n_ offen» – er verschwindet nicht still.
+andere. Der Standard aus den Einstellungen ist ein Richtwert für die leeren
+Plätze eines neuen Sonntags; wer vier Ansprachen einträgt, hat an diesem
+Sonntag vier, und nichts meldet das als Abweichung. Sagt die vierte Person
+ab, ist ihr Platz offen und erscheint unter «_n_ offen» – er verschwindet
+nicht still.
 Plätze entstehen durch Eintragen oder «Leeren Platz hinzufügen» und gehen nur
 über den Papierkorb weg: **Entfernen** löscht den Eintrag, sein Platz bleibt
 offen. Einzig unter **Leitung** nimmt «Programmpunkt entfernen» einen
