@@ -204,11 +204,6 @@ export function Talks() {
         planned,
         slots,
         /*
-         * Ein besetzter Platz zählt als vorgesehen – die Anzahl des Sonntags
-         * ist die Länge der Liste und nicht bloss die Einstellung.
-         */
-        places: slots.length,
-        /*
          * Brächte «Auf Standard zurücksetzen» hier etwas? Nur, wenn danach
          * eine andere Anzahl Plätze dastünde: Wer über den Standard hinaus
          * eingetragen ist, bleibt ja stehen.
@@ -390,11 +385,9 @@ export function Talks() {
                   <h2 className="text-sm font-semibold">{formatDateLong(sunday.date)}</h2>
                   <div className="flex flex-wrap items-center gap-2">
                     <SundayProgramBadge program={sunday.program} />
-                    {sunday.program.plansTalks && sunday.places !== settings.talksPerSunday && (
-                      <span className="badge bg-slate-100 text-slate-600 dark:bg-slate-800 dark:text-slate-300">
-                        {sunday.places} statt {settings.talksPerSunday}
-                      </span>
-                    )}
+                    {/* Kein «4 statt 2»: Der Standard ist ein Richtwert. Wer vier
+                        Ansprachen einträgt, hat an diesem Sonntag vier – das
+                        ist keine Abweichung, die eigens gemeldet gehört. */}
                     {/* Beides ist offene Arbeit und steht deshalb nebeneinander:
                         Plätze, für die noch jemand gesucht wird, und
                         Eingetragene, deren Zusage noch aussteht. Vollständig
