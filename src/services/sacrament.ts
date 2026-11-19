@@ -8,10 +8,11 @@ import {
   planRemoveOpenPosition,
   planTalkInsert,
   planTalkMove,
+  planTalkRemoval,
   plannedAfterAdding,
 } from '@/lib/program'
 import { musicRoleFields, type MusicRole } from '@/lib/musicRoles'
-import { createTalk, updateTalkSlots, type TalkInput } from '@/services/talks'
+import { createTalk, deleteTalk, updateTalkSlots, type TalkInput } from '@/services/talks'
 import {
   HYMN_SLOTS,
   type AnnouncementEntry,
@@ -31,6 +32,7 @@ export {
   buildProgram,
   countOpenPositions,
   nextOpenPosition,
+  nextTalkStatus,
   nextTalkSlot,
   openSlotKey,
   planProgramOrder,
@@ -398,4 +400,31 @@ export async function removeTalkSlot(
   return saveSacramentMeeting(date, {
     talkSlots: plan.planned === defaultCount ? null : plan.planned,
   })
+}
+
+/**
+ * Einen Eintrag entfernen – sein Platz bleibt als offener Platz stehen,
+ * ausser `keepPlace` ist ausgeschaltet (siehe `planTalkRemoval`).
+ *
+ * Ändert sich dabei die Anzahl der Plätze, wird sie zuerst geschrieben. In
+ * dieser Reihenfolge: Ginge danach das Löschen schief, stünde schlimmstenfalls
+ * ein Platz zu viel da – nie einer zu wenig.
+ */
+export async function removeTalkEntry(
+  date: Date,
+  id: string,
+  sundayTalks: Talk[],
+  planned: number,
+  defaultCount: number,
+  { keepPlace = true }: { keepPlace?: boolean } = {},
+): Promise<SaveOutcome> {
+  const plan = planTalkRemoval(sundayTalks, planned, id, keepPlace)
+  // Ein Sonntag ohne Ansprachen (Zeugnisversammlung …) hat keine Plätze, die
+  // offen bleiben könnten – dort wird nichts mitgezogen.
+  if (plan && planned > 0 && plan.planned !== planned) {
+    await saveSacramentMeeting(date, {
+      talkSlots: plan.planned === defaultCount ? null : plan.planned,
+    })
+  }
+  return deleteTalk(id, plan?.slots ?? [])
 }

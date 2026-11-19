@@ -6,11 +6,13 @@ import {
   countOpenPositions,
   nextOpenPosition,
   nextTalkSlot,
+  nextTalkStatus,
   plannedAfterAdding,
   planProgramOrder,
   planRemoveOpenPosition,
   planTalkInsert,
   planTalkMove,
+  planTalkRemoval,
   talkPositions,
   type ProgramSource,
 } from '../src/lib/program.ts'
@@ -297,11 +299,9 @@ function entered(id: string, slot: number, minute: number, name = id): Talk {
   }
 }
 
-/** Die Zeilen unter «Ansprachen»: Name oder «·» für einen offenen Platz, * für Zusatzpunkte. */
+/** Die Zeilen unter «Ansprachen»: Name oder «·» für einen offenen Platz. */
 const rows = (talks: Talk[], planned: number) =>
-  talkPositions(talks, planned).map(
-    (row) => `${row.position}:${row.talk ? row.talk.id : '·'}${row.extra ? '*' : ''}`,
-  )
+  talkPositions(talks, planned).map((row) => `${row.position}:${row.talk ? row.talk.id : '·'}`)
 
 /** Die Ansprachen im Ablauf unter «Leitung», in ihrer Reihenfolge. */
 const conducted = (talks: Talk[], planned: number) =>
@@ -324,7 +324,7 @@ test('zwei Ansprachen auf derselben Nummer bleiben beide sichtbar', () => {
     entered('moesha', 2, 4),
     entered('milena', 1, 2),
   ]
-  assert.deepEqual(rows(talks, 2), ['1:sylvie', '2:milena', '3:heinz*', '4:moesha*'])
+  assert.deepEqual(rows(talks, 2), ['1:sylvie', '2:milena', '3:heinz', '4:moesha'])
   assert.deepEqual(
     conducted(talks, 2),
     ['1:sylvie', '2:milena', '3:heinz', '4:moesha'],
@@ -349,14 +349,14 @@ test('eine Lücke innerhalb der vorgesehenen Plätze bleibt offen', () => {
   assert.equal(countOpenPositions(talkPositions(talks, 3)), 1)
 })
 
-test('hinter den vorgesehenen Plätzen rücken Zusatzpunkte lückenlos zusammen', () => {
+test('wer über die vorgesehenen Plätze hinaus eingetragen ist, rückt lückenlos an', () => {
   const talks = [talk('a', 1), talk('b', 2), talk('e', 5)]
-  assert.deepEqual(rows(talks, 2), ['1:a', '2:b', '3:e*'])
+  assert.deepEqual(rows(talks, 2), ['1:a', '2:b', '3:e'])
   assert.deepEqual(conducted(talks, 2), ['1:a', '2:b', '3:e'])
   // Offene Plätze vorne bleiben, der Zusatzpunkt steht dahinter.
-  assert.deepEqual(rows([talk('a', 1), talk('e', 5)], 3), ['1:a', '2:·', '3:·', '4:e*'])
+  assert.deepEqual(rows([talk('a', 1), talk('e', 5)], 3), ['1:a', '2:·', '3:·', '4:e'])
   // An einem Sonntag ohne Ansprachen steht ein Eingetragener trotzdem da.
-  assert.deepEqual(rows([talk('x', 2)], 0), ['1:x*'])
+  assert.deepEqual(rows([talk('x', 2)], 0), ['1:x'])
 })
 
 test('ein Platzhalter belegt seinen Platz, zählt aber als offen', () => {
@@ -422,7 +422,7 @@ test('Verschieben unter «Ansprachen» nimmt offene Plätze mit', () => {
 test('Verschieben bei doppelt belegten Nummern tauscht genau die beiden Zeilen', () => {
   const talks = [entered('a', 1, 1), entered('b', 1, 2), entered('c', 2, 3)]
   const moved = applySlots(talks, planTalkMove(talks, 2, 3, -1))
-  assert.deepEqual(rows(moved, 2), ['1:a', '2:c', '3:b*'])
+  assert.deepEqual(rows(moved, 2), ['1:a', '2:c', '3:b'])
   assert.deepEqual(
     moved.map((entry) => `${entry.id}=${entry.slot}`),
     ['a=1', 'b=3', 'c=2'],
@@ -463,4 +463,69 @@ test('nach dem Bereinigen ergibt sich dieselbe Folge noch einmal', () => {
   const twice = applySlots(once, planTalkMove(once, 3, 1, 0))
   assert.deepEqual(rows(once, 3), rows(talks, 3))
   assert.deepEqual(rows(twice, 3), rows(once, 3))
+})
+
+/* ------------------------------------------------------------------ */
+/* Besetzte Plätze zählen als vorgesehen                               */
+/* ------------------------------------------------------------------ */
+
+const placeholderAt = (id: string, slot: number): Talk => ({
+  ...talk(id, slot),
+  memberId: '',
+  memberName: '',
+})
+
+test('ein besetzter Platz über dem Standard zählt wie jeder andere', () => {
+  // Zwei vorgesehen, vier eingetragen – der vierte sagt ab und wird zum Platzhalter.
+  const talks = [talk('a', 1), talk('b', 2), talk('c', 3), placeholderAt('d', 4)]
+  const positions = talkPositions(talks, 2)
+  assert.equal(positions.length, 4, 'Der Sonntag hat vier Plätze, nicht zwei.')
+  assert.equal(
+    countOpenPositions(positions),
+    1,
+    'Der abgesagte vierte Platz ist offen – kein freiwilliger Zusatz, nach dem niemand fragt.',
+  )
+})
+
+test('Entfernen lässt den Platz offen – auch über dem Standard', () => {
+  const talks = [talk('a', 1), talk('b', 2), talk('c', 3), talk('d', 4)]
+  // c steht auf Platz 3, bei zwei vorgesehenen: Die Anzahl wird mitgezogen.
+  const plan = planTalkRemoval(talks, 2, 'c')
+  assert.ok(plan)
+  assert.equal(plan.planned, 4)
+  const after = applySlots(
+    talks.filter((entry) => entry.id !== 'c'),
+    plan.slots,
+  )
+  assert.deepEqual(rows(after, plan.planned), ['1:a', '2:b', '3:·', '4:d'])
+
+  // Innerhalb der vorgesehenen Plätze ändert sich an der Anzahl nichts.
+  assert.deepEqual(planTalkRemoval(talks, 4, 'a'), { planned: 4, slots: [] })
+  // Was nicht dasteht, wird nicht entfernt.
+  assert.equal(planTalkRemoval(talks, 4, 'x'), null)
+})
+
+test('unter «Leitung» verschwindet ein Platzhalter mitsamt seinem Platz', () => {
+  const talks = [talk('a', 1), placeholderAt('p', 2), talk('c', 3)]
+  const plan = planTalkRemoval(talks, 3, 'p', false)
+  assert.deepEqual(plan, { planned: 2, slots: [{ id: 'c', slot: 2 }] })
+  const after = applySlots(
+    talks.filter((entry) => entry.id !== 'p'),
+    plan?.slots ?? [],
+  )
+  assert.deepEqual(rows(after, 2), ['1:a', '2:c'])
+})
+
+test('ein offener Platz lässt sich auch dann streichen, wenn mehr besetzt als vorgesehen sind', () => {
+  // Zwei vorgesehen, drei eingetragen, dazu ein leerer Platz: Gestrichen
+  // bleiben drei – nicht einer, weil von den vorgesehenen zwei abgezogen würde.
+  const talks = [talk('a', 1), talk('b', 2), talk('c', 3)]
+  const planned = plannedAfterAdding(talks, 2)
+  assert.deepEqual(planRemoveOpenPosition(talks, planned, 4), { planned: 3, slots: [] })
+})
+
+test('der Status geht einen Schritt weiter – nach der Zusage wieder von vorne', () => {
+  assert.equal(nextTalkStatus('planned'), 'asked')
+  assert.equal(nextTalkStatus('asked'), 'confirmed')
+  assert.equal(nextTalkStatus('confirmed'), 'planned')
 })

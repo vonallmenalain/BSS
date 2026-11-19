@@ -17,6 +17,7 @@ import {
   TriangleAlert,
   UserMinus,
   UserPlus,
+  UserX,
   X,
 } from 'lucide-react'
 import { useData } from '@/contexts/DataContext'
@@ -52,10 +53,11 @@ import {
   upcomingWeekdays,
 } from '@/lib/dates'
 import { cn, formatPhone, matchesSearch, telHref } from '@/lib/utils'
+import { holdAfterDecline, talkAvailability } from '@/lib/availability'
 import {
   activeTalkFilterCount,
+  declineTalk,
   DEFAULT_TALK_FILTER,
-  deleteTalk,
   filterTalkCandidates,
   NEVER_SPOKE,
   rankTalkCandidates,
@@ -76,7 +78,9 @@ import {
   insertTalk,
   moveTalkPosition,
   nextOpenPosition,
+  nextTalkStatus,
   plannedTalksFor,
+  removeTalkEntry,
   removeTalkSlot,
   sacramentDocId,
   saveSacramentMeeting,
@@ -200,11 +204,24 @@ export function Talks() {
         planned,
         slots,
         /*
-         * Nur die regulären Plätze gelten als «offen»; Zusatzpunkte sind
-         * freiwillig. Ein Platzhalter zählt weiter mit: Er belegt zwar seine
-         * Position, aber es steht noch niemand dahinter.
+         * Ein besetzter Platz zählt als vorgesehen – die Anzahl des Sonntags
+         * ist die Länge der Liste und nicht bloss die Einstellung.
          */
-        openCount: countOpenPositions(slots),
+        places: slots.length,
+        /*
+         * Brächte «Auf Standard zurücksetzen» hier etwas? Nur, wenn danach
+         * eine andere Anzahl Plätze dastünde: Wer über den Standard hinaus
+         * eingetragen ist, bleibt ja stehen.
+         */
+        resettable:
+          meeting?.talkSlots != null &&
+          talkPositions(assigned, settings.talksPerSunday).length !== slots.length,
+        /*
+         * Ein Platzhalter zählt als offen: Er belegt zwar seine Position,
+         * aber es steht noch niemand dahinter – etwa nach einer Absage. An
+         * einem Sonntag ohne Ansprachen fehlt dagegen nichts.
+         */
+        openCount: program.plansTalks ? countOpenPositions(slots) : 0,
         // Besetzt heisst noch nicht zugesagt – auch das ist offene Arbeit.
         pendingCount: talksWithoutConfirmation(assigned),
       }
@@ -237,6 +254,29 @@ export function Talks() {
       console.error(error)
       toast.error(message)
     }
+  }
+
+  /**
+   * Der Status eines Eintrags einen Schritt weiter – mit einem Tippen.
+   *
+   * Der Ablauf ist immer derselbe: vorgesehen, angefragt, zugesagt. Dafür
+   * jedes Mal den Dialog zu öffnen, war ein Umweg. Weil ein Tippen schnell
+   * daneben geht, steht in der Meldung «Rückgängig».
+   */
+  const cycleStatus = (talk: Talk) => {
+    const previous = talk.status
+    const next = nextTalkStatus(previous)
+    void guard(async () => {
+      await setTalkStatus(talk.id, next)
+      toast.undo(
+        next === 'confirmed'
+          ? `${talkSpeakerLabel(talk)}: zugesagt – zählt damit als gehalten.`
+          : `${talkSpeakerLabel(talk)}: ${TALK_STATUS_LABELS[next].toLowerCase()}.`,
+        async () => {
+          await setTalkStatus(talk.id, previous)
+        },
+      )
+    }, 'Status konnte nicht geändert werden.')
   }
 
   /** Die Anzahl eines Sonntags wieder dem Standard überlassen. */
@@ -350,9 +390,9 @@ export function Talks() {
                   <h2 className="text-sm font-semibold">{formatDateLong(sunday.date)}</h2>
                   <div className="flex flex-wrap items-center gap-2">
                     <SundayProgramBadge program={sunday.program} />
-                    {sunday.program.plansTalks && sunday.planned !== settings.talksPerSunday && (
+                    {sunday.program.plansTalks && sunday.places !== settings.talksPerSunday && (
                       <span className="badge bg-slate-100 text-slate-600 dark:bg-slate-800 dark:text-slate-300">
-                        {sunday.planned} statt {settings.talksPerSunday}
+                        {sunday.places} statt {settings.talksPerSunday}
                       </span>
                     )}
                     {/* Beides ist offene Arbeit und steht deshalb nebeneinander:
@@ -415,6 +455,7 @@ export function Talks() {
                           talk={talk}
                           position={position}
                           onEdit={() => setEditTalkId(talk.id)}
+                          onCycleStatus={() => cycleStatus(talk)}
                           first={position === 1}
                           last={position === sunday.slots.length}
                           onMove={(delta) => void moveTalk(sunday, position, delta)}
@@ -498,7 +539,7 @@ export function Talks() {
                     >
                       Leeren Platz hinzufügen
                     </button>
-                    {sunday.planned !== settings.talksPerSunday && (
+                    {sunday.resettable && (
                       <button
                         type="button"
                         className="btn-ghost btn-sm"
@@ -566,6 +607,7 @@ export function Talks() {
                  blieben Art, Thema und Notiz der vorigen im Formular stehen. */
               key={editTalk.id}
               talk={editTalk}
+              sundayAt={sundayAt}
               position={
                 schedule
                   .flatMap((sunday) => sunday.slots)
@@ -603,6 +645,7 @@ function TalkRow({
   talk,
   position,
   onEdit,
+  onCycleStatus,
   first,
   last,
   onMove,
@@ -612,6 +655,8 @@ function TalkRow({
   /** Die Nummer im Programm – dieselbe wie unter «Leitung» (siehe `talkPositions`) */
   position: number
   onEdit: () => void
+  /** Ein Schritt weiter: Vorgesehen → Angefragt → Zugesagt (siehe `nextTalkStatus`) */
+  onCycleStatus: () => void
   first: boolean
   last: boolean
   onMove: (delta: number) => void
@@ -629,6 +674,7 @@ function TalkRow({
      damit beim Durchgehen auffällt, dass hier noch jemand fehlt. */
   const placeholder = isTalkPlaceholder(talk)
   const name = talkSpeakerLabel(talk)
+  const declined = (talk.declines ?? []).map((entry) => entry.memberName).join(', ')
 
   /* Dasselbe Innere in einem Knopf oder in einem schlichten Feld – der
      Inhalt hängt nicht daran, ob man ihn anfassen darf. */
@@ -652,10 +698,40 @@ function TalkRow({
             {talk.topic}
           </span>
         )}
+        {/* Wer für diesen Platz schon abgesagt hat – damit beim Suchen der
+            nächsten Person niemand ein zweites Mal gefragt wird. */}
+        {placeholder && declined && (
+          <span className="block truncate text-xs text-slate-500 dark:text-slate-400">
+            Abgesagt: {declined}
+          </span>
+        )}
       </span>
-      <TalkStatusBadge status={talk.status} />
     </>
   )
+
+  /*
+   * Der Status ist ein eigener Knopf neben der Zeile und nicht Teil davon:
+   * Ein Tippen darauf führt einen Schritt weiter, ohne den Dialog zu öffnen.
+   * Ein Platzhalter hat keinen nächsten Schritt – für niemanden lässt sich
+   * nichts anfragen –, und wer nur nachschaut, ändert ohnehin nichts.
+   */
+  const next = nextTalkStatus(talk.status)
+  const status =
+    readOnly || placeholder ? (
+      <span className="shrink-0 px-1">
+        <TalkStatusBadge status={talk.status} />
+      </span>
+    ) : (
+      <button
+        type="button"
+        onClick={onCycleStatus}
+        className="shrink-0 rounded-full p-1 transition hover:opacity-80 focus-visible:ring-2 focus-visible:ring-sky-500 focus-visible:outline-none"
+        aria-label={`Status von ${name}: ${TALK_STATUS_LABELS[talk.status]} – ändern auf ${TALK_STATUS_LABELS[next]}`}
+        title={`Tippen für «${TALK_STATUS_LABELS[next]}»`}
+      >
+        <TalkStatusBadge status={talk.status} />
+      </button>
+    )
 
   return (
     <div className="flex items-center gap-1 rounded-lg border border-slate-200 pr-1 dark:border-slate-700">
@@ -670,6 +746,8 @@ function TalkRow({
           {inner}
         </button>
       )}
+
+      {status}
 
       {member?.mobile && (
         <a
@@ -1660,6 +1738,7 @@ function AssignDialog({
 function EditTalkDialog({
   talk,
   position,
+  sundayAt,
   suggestions,
   onClose,
 }: {
@@ -1673,11 +1752,16 @@ function EditTalkDialog({
   talk: Talk
   /** Die Nummer, unter der der Eintrag in der Liste steht */
   position: number
+  /** Was an einem Datum eingetragen und vorgesehen ist – fürs Entfernen */
+  sundayAt: (date: Date) => { talks: Talk[]; planned: number }
   /** Vorschlagsreihenfolge «wer war lange nicht dran» – wie beim Zuteilen */
   suggestions: Member[]
   onClose: () => void
 }) {
   const toast = useToast()
+  const { settings } = useData()
+  const [declining, setDeclining] = useState(false)
+  const placeholder = isTalkPlaceholder(talk)
   /*
    * Art, Thema und Notiz stehen im Formular und werden erst beim Speichern
    * geschrieben. Die Startwerte gelten deshalb nur beim Öffnen: Ein
@@ -1776,6 +1860,34 @@ function EditTalkDialog({
               Ohne Namen bleibt der Punkt als Platzhalter im Programm stehen – mit Art, Dauer und
               Thema.
             </p>
+
+            {/* Die Absage gehört zur Person: Sie geht, der Platz bleibt – und
+                gleich hier lässt sich die nächste eintragen. */}
+            {!placeholder && (
+              <button
+                type="button"
+                className="btn-secondary btn-sm mt-2"
+                onClick={() => setDeclining(true)}
+              >
+                <UserX className="size-3.5" aria-hidden />
+                Absage
+              </button>
+            )}
+
+            {(talk.declines ?? []).length > 0 && (
+              <div className="mt-3 rounded-lg bg-slate-50 px-3 py-2 text-xs text-slate-600 dark:bg-slate-800/60 dark:text-slate-300">
+                <p className="font-medium">Für diesen Platz abgesagt</p>
+                <ul className="mt-1 space-y-0.5">
+                  {(talk.declines ?? []).map((entry, index) => (
+                    <li key={`${entry.memberName}-${index}`} className="flex items-center gap-1.5">
+                      <UserX className="size-3 shrink-0 text-slate-400" aria-hidden />
+                      {entry.memberName}
+                      <span className="text-slate-400">· {formatDate(entry.at)}</span>
+                    </li>
+                  ))}
+                </ul>
+              </div>
+            )}
           </div>
 
           <div>
@@ -1846,9 +1958,11 @@ function EditTalkDialog({
         open={confirmDelete}
         onClose={() => setConfirmDelete(false)}
         onConfirm={() => {
-          void deleteTalk(talk.id)
+          const date = toDate(talk.date) ?? new Date()
+          const sunday = sundayAt(date)
+          void removeTalkEntry(date, talk.id, sunday.talks, sunday.planned, settings.talksPerSunday)
             .then((outcome) => {
-              toast.saved('Eintrag entfernt.', outcome)
+              toast.saved('Eintrag entfernt – der Platz ist wieder offen.', outcome)
               onClose()
             })
             .catch((error: unknown) => {
@@ -1856,11 +1970,141 @@ function EditTalkDialog({
               toast.error('Eintrag konnte nicht entfernt werden.')
             })
         }}
-        title="Ansprache entfernen?"
-        message="Der Programmplatz wird wieder frei."
+        title="Eintrag entfernen?"
+        message={
+          placeholder
+            ? 'Art, Thema und Notiz werden gelöscht. Der Platz bleibt offen – in der Liste lässt er sich danach streichen.'
+            : 'Der ganze Eintrag wird gelöscht, der Platz bleibt offen. Hat jemand abgesagt, ist «Absage» der bessere Weg: Dann bleiben Art und Thema stehen, und die Absage ist vermerkt.'
+        }
         confirmLabel="Entfernen"
         danger
       />
+
+      {declining && <DeclineDialog talk={talk} onClose={() => setDeclining(false)} />}
     </>
+  )
+}
+
+/* ------------------------------------------------------------------ */
+/* Absage                                                              */
+/* ------------------------------------------------------------------ */
+
+/** Wie lange jemand nach einer Absage nicht vorgeschlagen wird – in Monaten. */
+const DECLINE_PAUSES = [
+  { months: 0, label: 'Weiter vorschlagen' },
+  { months: 3, label: '3 Monate nicht' },
+  { months: 6, label: '6 Monate nicht' },
+] as const
+
+/**
+ * Jemand hat abgesagt.
+ *
+ * Der Name geht, der Platz bleibt – mit Art, Thema und Dauer. Die Absage wird
+ * am Platz vermerkt (siehe `declineTalk`). Wer gerade abgesagt hat, will
+ * meist nicht nächste Woche wieder gefragt werden: Auf Wunsch fällt die
+ * Person deshalb eine Weile aus den Vorschlägen – über denselben Vermerk wie
+ * «Nicht anfragen», also jederzeit unter «Vorschläge» wieder aufzuheben.
+ */
+function DeclineDialog({ talk, onClose }: { talk: Talk; onClose: () => void }) {
+  const toast = useToast()
+  const { membersById } = useData()
+  const member = talk.memberId ? (membersById.get(talk.memberId) ?? null) : null
+  const availability = member ? talkAvailability(member) : null
+  /* Schon «auf Weiteres» ausgenommen – daran ändert eine Absage nichts. */
+  const heldIndefinitely = availability !== null && !availability.available && !availability.until
+  const [months, setMonths] = useState<number>(3)
+  const [saving, setSaving] = useState(false)
+
+  const name = talkSpeakerLabel(talk)
+  const firstName = member?.firstName ?? name
+  const until = availability ? holdAfterDecline(availability, months) : null
+
+  const submit = async () => {
+    setSaving(true)
+    try {
+      const outcome = await declineTalk(talk.id)
+      if (member && availability && until) {
+        await setTalkAvailability(member.id, false, until)
+      }
+      toast.saved(
+        until
+          ? `Absage eingetragen – der Platz ist wieder offen. ${firstName} wird bis ${formatDate(until)} nicht vorgeschlagen.`
+          : 'Absage eingetragen – der Platz ist wieder offen.',
+        outcome ?? undefined,
+      )
+      onClose()
+    } catch (error) {
+      console.error(error)
+      toast.error('Absage konnte nicht eingetragen werden.')
+    } finally {
+      setSaving(false)
+    }
+  }
+
+  return (
+    <Modal
+      open
+      onClose={onClose}
+      title={`Absage von ${name}`}
+      description={formatDateLong(talk.date)}
+      size="sm"
+      footer={
+        <>
+          <button type="button" className="btn-secondary" onClick={onClose} disabled={saving}>
+            Abbrechen
+          </button>
+          <button
+            type="button"
+            className="btn-primary"
+            data-autofocus
+            onClick={() => void submit()}
+            disabled={saving}
+          >
+            {saving ? 'Wird gespeichert …' : 'Absage eintragen'}
+          </button>
+        </>
+      }
+    >
+      <div className="space-y-4">
+        <p className="text-sm text-slate-600 dark:text-slate-300">
+          Der Name wird entfernt. Der Platz bleibt mit Art, Thema und Dauer stehen und gilt wieder
+          als offen – die Absage wird daran vermerkt.
+        </p>
+
+        {/* Ohne Mitglied gibt es niemanden, der aus den Vorschlägen fallen könnte. */}
+        {member &&
+          (heldIndefinitely ? (
+            <p className="hint">
+              {firstName} ist schon auf Weiteres von den Vorschlägen ausgenommen.
+            </p>
+          ) : (
+            <div>
+              <span className="label">Danach vorschlagen?</span>
+              <div className="flex flex-wrap gap-2">
+                {DECLINE_PAUSES.map((option) => (
+                  <button
+                    key={option.months}
+                    type="button"
+                    aria-pressed={months === option.months}
+                    onClick={() => setMonths(option.months)}
+                    className={
+                      months === option.months ? 'btn-primary btn-sm' : 'btn-secondary btn-sm'
+                    }
+                  >
+                    {option.label}
+                  </button>
+                ))}
+              </div>
+              <p className="hint">
+                {months === 0
+                  ? `${firstName} bleibt in den Vorschlägen.`
+                  : until
+                    ? `${firstName} steht bis ${formatDate(until)} nicht in den Vorschlägen – unter «Vorschläge» jederzeit wieder aufzuheben.`
+                    : `${firstName} ist ohnehin schon länger von den Vorschlägen ausgenommen.`}
+              </p>
+            </div>
+          ))}
+      </div>
+    </Modal>
   )
 }

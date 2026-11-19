@@ -242,3 +242,11 @@ test('zwei Ansprachen auf derselben Nummer füllen zwei Plätze', () => {
   assert.equal(openTalkSlots(sunday('2026-02-08'), null, talks, 2), 0)
   assert.equal(openTalkSlots(sunday('2026-02-08'), null, talks, 3), 1)
 })
+
+test('ein Platzhalter über dem Standard gilt als offen – an einer Zeugnisversammlung nicht', () => {
+  // Zwei vorgesehen, drei eingetragen, der dritte hat abgesagt.
+  const talks = [talk(1), talk(2), { ...talk(3), id: 'p', memberId: '', memberName: '' }]
+  assert.equal(openTalkSlots(sunday('2026-02-08'), null, talks, 2), 1)
+  // Am ersten Sonntag fehlt nichts, auch wenn dort ein Platzhalter steht.
+  assert.equal(openTalkSlots(sunday('2026-02-01'), null, talks, 2), 0)
+})

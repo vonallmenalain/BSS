@@ -2047,9 +2047,25 @@ export interface Talk extends WithId {
   askedById?: string | null
   askedAt?: TS | null
   notes?: string
+  /**
+   * Wer für diesen Platz schon abgesagt hat – älteste zuerst.
+   *
+   * Der Platz bleibt nach einer Absage stehen und wird neu vergeben. Wer
+   * dann die nächste Person sucht, sieht hier, wen er schon gefragt hat.
+   */
+  declines?: TalkDecline[]
 
   createdAt?: TS
   updatedAt?: TS
+}
+
+/** Eine Absage für einen Platz im Programm (siehe `Talk.declines`). */
+export interface TalkDecline {
+  /** Leer, wenn der Name von Hand erfasst war */
+  memberId: string
+  memberName: string
+  /** Wann die Absage eingetragen wurde */
+  at: TS
 }
 
 /**

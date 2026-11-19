@@ -146,6 +146,8 @@ export function openTalkSlots(
   talks: Talk[],
   defaultCount: number,
 ): number {
+  // An einem Sonntag ohne Ansprachen fehlt nichts – auch wenn dort etwas steht.
+  if (!sundayProgram(date, meeting).plansTalks) return 0
   const planned = plannedTalksFor(date, meeting, defaultCount)
   // Dieselben Plätze, die «Ansprachen» und «Leitung» zeigen (siehe `lib/program`).
   const active = talks.filter((talk) => ACTIVE_TALK_STATUSES.includes(talk.status))

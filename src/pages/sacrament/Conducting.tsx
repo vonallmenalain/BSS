@@ -42,7 +42,6 @@ import { cn } from '@/lib/utils'
 import { formatHymn } from '@/services/hymns'
 import { lastPrayerByMember, rankPrayerCandidates, setPrayer } from '@/services/prayers'
 import {
-  deleteTalk,
   rankTalkCandidates,
   setTalkSpeaker,
   speakerFields,
@@ -60,6 +59,7 @@ import {
   isBusinessEmpty,
   newBusinessEntry,
   newMusicalNumber,
+  removeTalkEntry,
   removeTalkSlot,
   replaceInList,
   plannedTalksFor,
@@ -807,7 +807,15 @@ export function Conducting() {
                       className="btn-ghost btn-sm text-rose-600 dark:text-rose-400"
                       onClick={() =>
                         void guard(
-                          () => deleteTalk(talk.id),
+                          () =>
+                            removeTalkEntry(
+                              date,
+                              talk.id,
+                              sundayTalks,
+                              planned,
+                              settings.talksPerSunday,
+                              { keepPlace: false },
+                            ),
                           'Programmpunkt konnte nicht entfernt werden.',
                         )
                       }

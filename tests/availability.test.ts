@@ -1,7 +1,12 @@
 import assert from 'node:assert/strict'
 import { test } from 'node:test'
 
-import { prayerAvailability, talkAvailability } from '../src/lib/availability.ts'
+import {
+  holdAfterDecline,
+  prayerAvailability,
+  talkAvailability,
+  type Availability,
+} from '../src/lib/availability.ts'
 import type { Member } from '../src/lib/types.ts'
 
 /*
@@ -115,4 +120,34 @@ test('der neue Haken sticht ein stehen gebliebenes Datum', () => {
     JETZT,
   )
   assert.equal(status.available, true)
+})
+
+/* ------------------------------------------------------------------ */
+/* Nach einer Absage                                                   */
+/* ------------------------------------------------------------------ */
+
+const free: Availability = { available: true, until: null, changedAt: null, expired: false }
+const now = new Date('2026-11-19T12:00:00')
+
+test('nach einer Absage eine Weile nicht vorschlagen', () => {
+  assert.equal(
+    holdAfterDecline(free, 3, now)?.toDateString(),
+    new Date('2027-02-19T12:00:00').toDateString(),
+  )
+  assert.equal(holdAfterDecline(free, 0, now), null, 'Ohne Pause bleibt das Mitglied unberührt.')
+})
+
+test('eine Absage verkürzt keinen bestehenden Vermerk', () => {
+  const indefinitely: Availability = { ...free, available: false }
+  assert.equal(holdAfterDecline(indefinitely, 3, now), null, '«Auf Weiteres» bleibt.')
+
+  const longer: Availability = { ...free, available: false, until: new Date('2027-06-01') }
+  assert.equal(holdAfterDecline(longer, 3, now), null, 'Ein späteres Datum bleibt.')
+
+  const shorter: Availability = { ...free, available: false, until: new Date('2026-12-01') }
+  assert.equal(
+    holdAfterDecline(shorter, 3, now)?.toDateString(),
+    new Date('2027-02-19T12:00:00').toDateString(),
+    'Ein früheres Datum wird verlängert.',
+  )
 })

@@ -1,3 +1,4 @@
+import { addMonths } from 'date-fns'
 import { toDate } from './dates.ts'
 import type { Member } from './types.ts'
 
@@ -74,4 +75,22 @@ export function prayerAvailability(member: Member, now = new Date()): Availabili
       ? member.prayerHoldUntil != null
       : member.availableForPrayers === false
   return resolve(blocked, member.prayerHoldUntil, member.prayerAvailabilityChangedAt, now)
+}
+
+/**
+ * Bis wann jemand nach einer Absage nicht mehr vorgeschlagen wird.
+ *
+ * `null` heisst: am Mitglied nichts ändern – weil keine Pause gewünscht ist
+ * oder schon ein Vermerk gilt, der mindestens so lange reicht. Ein «auf
+ * Weiteres» oder ein späteres Datum wird durch eine Absage nie verkürzt.
+ */
+export function holdAfterDecline(
+  current: Availability,
+  months: number,
+  now: Date = new Date(),
+): Date | null {
+  if (months <= 0) return null
+  const until = addMonths(now, months)
+  if (!current.available && (current.until === null || current.until >= until)) return null
+  return until
 }

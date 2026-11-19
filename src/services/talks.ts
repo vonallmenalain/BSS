@@ -1,4 +1,5 @@
 import {
+  arrayUnion,
   collection,
   deleteDoc,
   deleteField,
@@ -243,14 +244,81 @@ export async function recalculateLastTalk(memberId: string): Promise<SaveOutcome
   )
 }
 
-export async function deleteTalk(id: string): Promise<SaveOutcome> {
+/**
+ * Löscht einen Eintrag.
+ *
+ * `reorder` sind die Positionen, die dabei neu durchnummeriert werden (siehe
+ * `planTalkRemoval`) – im selben Batch, damit nie ein halber Stand bleibt.
+ */
+export async function deleteTalk(
+  id: string,
+  reorder: { id: string; slot: number }[] = [],
+): Promise<SaveOutcome> {
   const ref = doc(db, COLLECTIONS.talks, id)
   const snapshot = await getDoc(ref)
   const talk = snapshot.exists() ? ({ id: snapshot.id, ...snapshot.data() } as Talk) : null
-  const outcome = await commit(deleteDoc(ref))
+
+  let outcome: SaveOutcome
+  const others = reorder.filter((entry) => entry.id !== id)
+  if (others.length === 0) {
+    outcome = await commit(deleteDoc(ref))
+  } else {
+    const batch = writeBatch(db)
+    batch.delete(ref)
+    others.forEach(({ id: other, slot }) =>
+      batch.update(doc(db, COLLECTIONS.talks, other), { slot, updatedAt: serverTimestamp() }),
+    )
+    outcome = await commit(batch.commit())
+  }
   forgetDoc(COLLECTIONS.talks, id)
   // Zählte die Ansprache bereits, muss die Mitgliederstatistik nachgeführt werden.
   if (countsAsHeld(talk?.status) && talk?.memberId) await recalculateLastTalk(talk.memberId)
+  return outcome
+}
+
+/**
+ * Jemand hat abgesagt: Der Name geht, der Platz bleibt.
+ *
+ * Art, Thema, Dauer und Notiz bleiben stehen – der Platz wird zum
+ * Platzhalter und gilt wieder als offen. Wer abgesagt hat, wird am Platz
+ * vermerkt (`declines`); so ist beim Suchen der nächsten Person zu sehen,
+ * wer schon gefragt wurde. Der Status geht auf «Vorgesehen» zurück: Für
+ * niemanden ist nichts angefragt.
+ *
+ * Hatte die Person schon zugesagt, zählte die Ansprache bei ihr bereits als
+ * gehalten – die Statistik wird deshalb gleich berichtigt.
+ *
+ * Ob sie eine Weile nicht mehr vorgeschlagen wird, entscheidet der Aufrufer
+ * (siehe `setTalkAvailability`): Das ist ein Vermerk am Mitglied und nicht
+ * an der Ansprache.
+ */
+export async function declineTalk(id: string): Promise<SaveOutcome | null> {
+  const ref = doc(db, COLLECTIONS.talks, id)
+  const snapshot = await getDoc(ref)
+  if (!snapshot.exists()) return null
+  const talk = { id: snapshot.id, ...snapshot.data() } as Talk
+  const name = talk.memberName?.trim() ?? ''
+  if (!talk.memberId && !name) return null
+
+  const outcome = await commit(
+    updateDoc(ref, {
+      memberId: '',
+      memberName: '',
+      status: 'planned',
+      askedById: null,
+      askedAt: null,
+      // In einer Liste ist kein Server-Zeitstempel erlaubt – die Uhr des
+      // Geräts genügt für «wann hat wer abgesagt».
+      declines: arrayUnion({
+        memberId: talk.memberId ?? '',
+        memberName: name,
+        at: Timestamp.fromDate(new Date()),
+      }),
+      updatedAt: serverTimestamp(),
+    }),
+  )
+
+  if (countsAsHeld(talk.status) && talk.memberId) await recalculateLastTalk(talk.memberId)
   return outcome
 }
 
